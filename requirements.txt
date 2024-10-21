@@ -1,8 +1,6 @@
 ./dependencies/tesserocr-2.7.0-cp312-cp312-win_amd64.whl
 beautifultable
 colorama
-coverage
-cryptography
 httpx
 keyboard
 lxml
@@ -10,7 +8,7 @@ mouse
 mss
 natsort
 numpy<2
-opencv-python==4.10.0.82
+opencv-python==4.10.0.84
 Pillow
 pre-commit
 psutil

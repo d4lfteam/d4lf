@@ -1,4 +1,10 @@
+default_install_hook_types: [pre-push]
 repos:
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v19.1.2
+    hooks:
+      - id: clang-format
+        files: \.(cpp|h)$
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
@@ -18,7 +24,7 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+    rev: v0.7.0
     hooks:
       - id: ruff
         args: [--fix]

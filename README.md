@@ -60,6 +60,38 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
     - Due to your local windows settings, the tool might not be able to control the mouse. Just run the tool as admin
       and it should work. If you don't want to run it as admin, you can disable the mouse control in the params.ini
       by setting `vision_mode_only` to `true`.
+- I am trying to import a trade search from diablo.trade and am getting an error that I need to install Chrome.
+    - diablo.trade has a setting enabled that will block all automated access, but we use a chrome-based browser to
+      circumvent this. For diablo.trade imports it is required that Chrome be installed. Regular build imports can
+      work with any browser.
+
+### TTS
+
+D4 uses a third-party TTS engine called Tolk. Tolk has a feature that allows custom third-party TTS DLLs to be loaded.
+D4 automatically loads the DLL, which actually just sends the text to another application rather than reading it aloud.
+This is similar to having a Braille TTS application for D4.
+
+To use TTS, you need to:
+
+- Copy `saapi64.dll` to your D4 directory
+- Enable `Use Screen Reader` and `3rd Party Screen Reader` in D4 Accesibility settings
+- Set `use_tts` in your `params.ini` to either `full` or `mixed` (or via the [GUI](#GUI))
+
+#### Restrictions
+
+Currently, `use_tts` enables either a mixed mode where image processing is still used for item and affix position detection,
+but TTS is used for everything text-related. This results in a small improvement in performance and a major improvement
+in accuracy. Or a full mode where only TTS is used. This will be super fast but loses the overlay.
+
+**YOU NEED TO ENABLE ADVANCED TOOLTIP INFORMATION**
+
+**The following is currently supported using any form of tts:**
+
+- Full item detection for all wearable items, e.g. armor, weapons, and accessories. Both in `vision_mode` and
+`loot_filter`.
+- Basic item detection for all? other items, e.g. only type + rarity
+
+We might also discontinue the pure image processing mode and even mixed mode in the future, as TTS is easier to maintain.
 
 ### Configs
 
@@ -75,17 +107,17 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | [general]                                         | Description                                                                                                                                                                                                                                                                                                                                                                                                                              |
 |---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | profiles                                          | A set of profiles separated by comma. d4lf will look for these yaml files in config/profiles and in C:/Users/WINDOWS_USER/.d4lf/profiles                                                                                                                                                                                                                                                                                                 |
-| keep_aspects                                      | - `all`: Keep all legendary items <br>- `upgrade`: Keep all legendary items that upgrade your codex of power <br>- `none`: Keep no legendary items based on aspect (they are still filtered!)                                                                                                                                                                                                                                            |
+| browser                                           | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported. Note: Trade importing can only work with Chrome and ignores this setting.                                                                                                                                                                                                                           |
+| check_chest_tabs                                  | Which chest tabs will be checked and filtered for items in case chest is open when starting the filter. You need to buy all slots. Counting is done left to right. E.g. 1,2,4 will check tab 1, tab 2, tab 4                                                                                                                                                                                                                             |
+| full_dump                                         | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not                                                                                                                                                                                                                                                                                                                                |
 | handle_rares                                      | - `filter`: Filter them based on your profiles <br>- `ignore`: Ignores all rares, vision mode shows them as blue and auto mode never junks or favorites them <br>- `junk`: Vision mode shows them always as red, auto mode always junks rares                                                                                                                                                                                            |
 | handle_uniques                                    | How to handle uniques that do not match any filter. This property does not apply to filtered uniques. All mythics are favorited regardless of filter. <br/>- `favorite`: Mark the unique as favorite and vision mode will show it as green (default)<br/>- `ignore`: Do nothing with the unique and vision mode will show it as green<br/>- `junk`: Mark any uniques that don't match any filters as junk and show as red in vision mode |
-| run_vision_mode_on_startup                        | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey                                                                                                                                                                                                                                                                                              |
-| check_chest_tabs                                  | Which chest tabs will be checked and filtered for items in case chest is open when starting the filter. You need to buy all slots. Counting is done left to right. E.g. 1,2,4 will check tab 1, tab 2, tab 4                                                                                                                                                                                                                             |
-| move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything                                                                                                             |
+| keep_aspects                                      | - `all`: Keep all legendary items <br>- `upgrade`: Keep all legendary items that upgrade your codex of power <br>- `none`: Keep no legendary items based on aspect (they are still filtered!)                                                                                                                                                                                                                                            |
 | mark_as_favorite                                  | Whether to favorite matched items or not. Defaults to true                                                                                                                                                                                                                                                                                                                                                                               |
 | minimum_overlay_font_size                         | The minimum font size for the vision overlay, specifically the green text that shows which filter(s) are matching. Note: For small profile names, the font may actually be larger than this size but will never go below this size.                                                                                                                                                                                                      |
-| hidden_transparency                               | The overlay will become transparent after not hovering it for a while. This can be changed by specifying any value between [0, 1] with 0 being completely invisible and 1 completely visible                                                                                                                                                                                                                                             |
-| browser                                           | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported                                                                                                                                                                                                                                                                                                      |
-| full_dump                                         | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not                                                                                                                                                                                                                                                                                                                                |
+| move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything                                                                                                             |
+| run_vision_mode_on_startup                        | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey                                                                                                                                                                                                                                                                                              |
+| use_tts                                           | use TTS instead of OCR, see [TTS](#TTS)                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 | [char]    | Description                       |
 |-----------|-----------------------------------|
@@ -423,17 +455,7 @@ in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json).
 
 ### Python Setup
 
-- You can use [miniconda](https://docs.conda.io/projects/miniconda/en/latest/) or just plain python.
-
-Conda setup:
-
-```bash
-git clone https://github.com/aeon0/d4lf
-cd d4lf
-conda env create -f environment.yml
-conda activate d4lf
-python -m src.main
-```
+- You can use plain python or something like [miniconda](https://docs.conda.io/projects/miniconda/en/latest/).
 
 Python setup (windows, linux venv activation differs):
 
@@ -446,22 +468,33 @@ python -m pip install -r requirements.txt
 python -m src.main
 ```
 
+Conda setup:
+
+```bash
+git clone https://github.com/aeon0/d4lf
+cd d4lf
+conda env create -f environment.yml
+conda activate d4lf
+python -m src.main
+```
+
 ### Formatting & Linting
 
-Ruff is used for linting and auto formatting. You can run it with:
+Just use pre-commit.
 
 ```bash
-ruff format
+pre-commit install
 ```
+
+or directly via
 
 ```bash
-ruff check
+pre-commit run -a
 ```
-
-Setup VS Code by using the ruff extension. Also turn on "trim trailing whitespaces" is VS Code settings.
 
 ## Credits
 
 - Icon based of: [CarbotAnimations](https://www.youtube.com/carbotanimations/about)
-- Some of the OCR code is originally from [@gleed](https://github.com/aliig). Good guy.
+- Some of the OCR code is originally from [@gleed](https://github.com/aliig). Good guy
 - Names and textures for matching from [Blizzard](https://www.blizzard.com)
+- Thanks to NekrosStratia for the initial idea and help with TTS mode
