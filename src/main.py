@@ -5,20 +5,19 @@ import sys
 import time
 import traceback
 
-import keyboard
 from beautifultable import BeautifulTable
 from PIL import Image  # noqa #  Note: Somehow needed, otherwise the binary has an issue with tesserocr
 
 import src.logger
-from src import __version__
+from src import __version__, tts
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
-from src.config.models import ItemRefreshType
+from src.config.models import UseTTSType
 from src.gui.qt_gui import start_gui
 from src.item.filter import Filter
 from src.logger import LOG_DIR
 from src.overlay import Overlay
-from src.utils.process_handler import safe_exit
+from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
 
 LOGGER = logging.getLogger(__name__)
@@ -56,22 +55,11 @@ def main():
     while not Cam().is_offset_set():
         time.sleep(0.2)
 
-    overlay = None
+    ScriptHandler()
 
-    keyboard.add_hotkey(IniConfigLoader().advanced_options.run_scripts, lambda: overlay.run_scripts() if overlay is not None else None)
-    keyboard.add_hotkey(IniConfigLoader().advanced_options.exit_key, lambda: safe_exit())
-    if not IniConfigLoader().advanced_options.vision_mode_only:
-        keyboard.add_hotkey(IniConfigLoader().advanced_options.run_filter, lambda: overlay.filter_items() if overlay is not None else None)
-        keyboard.add_hotkey(
-            IniConfigLoader().advanced_options.run_filter_force_refresh,
-            lambda: overlay.filter_items(ItemRefreshType.force_with_filter) if overlay is not None else None,
-        )
-        keyboard.add_hotkey(
-            IniConfigLoader().advanced_options.force_refresh_only,
-            lambda: overlay.filter_items(ItemRefreshType.force_without_filter) if overlay is not None else None,
-        )
-        keyboard.add_hotkey(IniConfigLoader().advanced_options.move_to_inv, lambda: overlay.move_items_to_inventory())
-        keyboard.add_hotkey(IniConfigLoader().advanced_options.move_to_chest, lambda: overlay.move_items_to_stash())
+    if IniConfigLoader().general.use_tts in [UseTTSType.full, UseTTSType.mixed]:
+        LOGGER.debug(f"TTS mode: {IniConfigLoader().general.use_tts.value}")
+        tts.start_connection()
 
     overlay = Overlay()
     overlay.run()

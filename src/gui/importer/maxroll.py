@@ -55,6 +55,10 @@ def import_maxroll(url: str):
     for item_id in active_profile["items"].values():
         item_filter = ItemFilterModel()
         resolved_item = items[str(item_id)]
+        if (item_type := _find_item_type(mapping_data=mapping_data["items"], value=resolved_item["id"])) is None:
+            LOGGER.error("Couldn't find item type")
+            return
+        item_filter.itemType = [item_type]
         # magic/rare = 0, legendary = 1, unique = 2, mythic = 4
         if resolved_item["id"] in mapping_data["items"] and mapping_data["items"][resolved_item["id"]]["magicType"] in [2, 4]:
             unique_model = UniqueModel()
@@ -69,10 +73,6 @@ def import_maxroll(url: str):
             except Exception:
                 LOGGER.exception(f"Unexpected error importing unique {unique_name}, please report a bug.")
             continue
-        if (item_type := _find_item_type(mapping_data=mapping_data["items"], value=resolved_item["id"])) is None:
-            LOGGER.error("Couldn't find item type")
-            return
-        item_filter.itemType = [item_type]
         item_filter.affixPool = [
             AffixFilterCountModel(
                 count=[
@@ -154,7 +154,7 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
                     else:
                         if affix["attributes"][0]["param"] == -1460542966 and affix["attributes"][0]["id"] == 1033:
                             attr_desc = "to core skills"
-                        elif affix["attributes"][0]["param"] == -755407686 and affix["attributes"][0]["id"] == 1034:
+                        elif affix["attributes"][0]["param"] == -755407686 and affix["attributes"][0]["id"] in [1034, 1091]:
                             attr_desc = "to defensive skills"
                         elif affix["attributes"][0]["param"] == 746476422 and affix["attributes"][0]["id"] == 1034:
                             attr_desc = "to mastery skills"

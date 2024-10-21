@@ -1,8 +1,6 @@
 ./dependencies/tesserocr-2.7.1-cp313-cp313-win_amd64.whl
 beautifultable
 colorama
-coverage
-cryptography
 httpx
 keyboard
 lxml

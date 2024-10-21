@@ -33,16 +33,16 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
-class _MatchedFilter:
+class MatchedFilter:
     profile: str
     matched_affixes: list[Affix] = field(default_factory=list)
     did_match_aspect: bool = False
 
 
 @dataclass
-class _FilterResult:
+class FilterResult:
     keep: bool
-    matched: list[_MatchedFilter]
+    matched: list[MatchedFilter]
     unique_aspect_in_profile = False
     all_unique_filters_are_aspects = False
 
@@ -78,10 +78,10 @@ class Filter:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def _check_affixes(self, item: Item) -> _FilterResult:
-        res = _FilterResult(False, [])
+    def _check_affixes(self, item: Item) -> FilterResult:
+        res = FilterResult(False, [])
         if not self.affix_filters:
-            return _FilterResult(True, [])
+            return FilterResult(True, [])
         non_tempered_affixes = [affix for affix in item.affixes if affix.type != AffixType.tempered]
         for profile_name, profile_filter in self.affix_filters.items():
             for filter_item in profile_filter:
@@ -113,27 +113,27 @@ class Filter:
                 all_matches = matched_affixes + matched_inherents
                 LOGGER.info(f"Matched {profile_name}.Affixes.{filter_name}: {[x.name for x in all_matches]}")
                 res.keep = True
-                res.matched.append(_MatchedFilter(f"{profile_name}.{filter_name}", all_matches))
+                res.matched.append(MatchedFilter(f"{profile_name}.{filter_name}", all_matches))
         return res
 
     @staticmethod
-    def _check_aspect(item: Item) -> _FilterResult:
-        res = _FilterResult(False, [])
+    def _check_aspect(item: Item) -> FilterResult:
+        res = FilterResult(False, [])
         if IniConfigLoader().general.keep_aspects == AspectFilterType.none or (
             IniConfigLoader().general.keep_aspects == AspectFilterType.upgrade and not item.codex_upgrade
         ):
             return res
         LOGGER.info("Matched Aspects that updates codex")
         res.keep = True
-        res.matched.append(_MatchedFilter("Aspects", did_match_aspect=True))
+        res.matched.append(MatchedFilter("Aspects", did_match_aspect=True))
         return res
 
-    def _check_sigil(self, item: Item) -> _FilterResult:
-        res = _FilterResult(False, [])
+    def _check_sigil(self, item: Item) -> FilterResult:
+        res = FilterResult(False, [])
         if not self.sigil_filters.items():
             LOGGER.info("Matched Sigils")
             res.keep = True
-            res.matched.append(_MatchedFilter("default"))
+            res.matched.append(MatchedFilter("default"))
         for profile_name, profile_filter in self.sigil_filters.items():
             # check item power
             if not self._match_item_power(max_power=profile_filter.maxTier, min_power=profile_filter.minTier, item_power=item.power):
@@ -164,15 +164,15 @@ class Filter:
                     continue
             LOGGER.info(f"Matched {profile_name}.Sigils")
             res.keep = True
-            res.matched.append(_MatchedFilter(f"{profile_name}"))
+            res.matched.append(MatchedFilter(f"{profile_name}"))
         return res
 
-    def _check_unique_item(self, item: Item) -> _FilterResult:
-        res = _FilterResult(False, [])
+    def _check_unique_item(self, item: Item) -> FilterResult:
+        res = FilterResult(False, [])
         all_filters_are_aspect = True
         if not self.unique_filters:
             keep = IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk or item.rarity == ItemRarity.Mythic
-            return _FilterResult(keep, [])
+            return FilterResult(keep, [])
         for profile_name, profile_filter in self.unique_filters.items():
             for filter_item in profile_filter:
                 if not filter_item.aspect:
@@ -202,7 +202,7 @@ class Filter:
                 matched_full_name = f"{profile_name}.{item.aspect.name}"
                 if filter_item.profileAlias:
                     matched_full_name = f"{filter_item.profileAlias}.{item.aspect.name}"
-                res.matched.append(_MatchedFilter(matched_full_name, did_match_aspect=True))
+                res.matched.append(MatchedFilter(matched_full_name, did_match_aspect=True))
         res.all_unique_filters_are_aspects = all_filters_are_aspect
 
         # Always keep mythics no matter what
@@ -348,11 +348,11 @@ class Filter:
             sys.exit(1)
         self.last_loaded = time.time()
 
-    def should_keep(self, item: Item) -> _FilterResult:
+    def should_keep(self, item: Item) -> FilterResult:
         if not self.files_loaded or self._did_files_change():
             self.load_files()
 
-        res = _FilterResult(False, [])
+        res = FilterResult(False, [])
 
         if item.item_type is None or item.power is None:
             return res

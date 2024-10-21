@@ -17,6 +17,7 @@ HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
 
 DEPRECATED_INI_KEYS = [
+    "hidden_transparency",
     "import_build",
     "local_prefs_path",
     "move_item_type",
@@ -29,17 +30,21 @@ class AspectFilterType(enum.StrEnum):
     upgrade = enum.auto()
 
 
+class ComparisonType(enum.StrEnum):
+    larger = enum.auto()
+    smaller = enum.auto()
+
+
 class HandleRaresType(enum.StrEnum):
     filter = enum.auto()
     ignore = enum.auto()
     junk = enum.auto()
 
 
-class MoveItemsType(enum.StrEnum):
-    everything = enum.auto()
-    favorites = enum.auto()
-    junk = enum.auto()
-    unmarked = enum.auto()
+class ItemRefreshType(enum.StrEnum):
+    force_with_filter = enum.auto()
+    force_without_filter = enum.auto()
+    no_refresh = enum.auto()
 
 
 class LogLevels(enum.StrEnum):
@@ -50,21 +55,23 @@ class LogLevels(enum.StrEnum):
     critical = enum.auto()
 
 
+class MoveItemsType(enum.StrEnum):
+    everything = enum.auto()
+    favorites = enum.auto()
+    junk = enum.auto()
+    unmarked = enum.auto()
+
+
 class UnfilteredUniquesType(enum.StrEnum):
     favorite = enum.auto()
     ignore = enum.auto()
     junk = enum.auto()
 
 
-class ComparisonType(enum.StrEnum):
-    larger = enum.auto()
-    smaller = enum.auto()
-
-
-class ItemRefreshType(enum.StrEnum):
-    force_with_filter = enum.auto()
-    force_without_filter = enum.auto()
-    no_refresh = enum.auto()
+class UseTTSType(enum.StrEnum):
+    full = enum.auto()
+    mixed = enum.auto()
+    off = enum.auto()
 
 
 class _IniBaseModel(BaseModel):
@@ -247,14 +254,15 @@ class GeneralModel(_IniBaseModel):
         default=UnfilteredUniquesType.favorite,
         description="What should be done with uniques that do not match any profile. Mythics are always favorited. If mark_as_favorite is unchecked then uniques that match a profile will not be favorited.",
     )
-    hidden_transparency: float = Field(
-        default=0.35, description="Transparency of the overlay when not hovering it (has a 3 second delay after hovering)"
-    )
     keep_aspects: AspectFilterType = Field(
         default=AspectFilterType.upgrade, description="Whether to keep aspects that didn't match a filter"
     )
     language: str = Field(
         default="enUS", description="Do not change. Only English is supported at this time", json_schema_extra={HIDE_FROM_GUI_KEY: "True"}
+    )
+    mark_as_favorite: bool = Field(
+        default=True,
+        description="Whether to favorite matched items or not",
     )
     minimum_overlay_font_size: int = Field(
         default=12,
@@ -268,10 +276,6 @@ class GeneralModel(_IniBaseModel):
         default=[MoveItemsType.everything],
         description="When doing stash/inventory transfer, what types of items should be moved",
     )
-    mark_as_favorite: bool = Field(
-        default=True,
-        description="Whether to favorite matched items or not",
-    )
     profiles: list[str] = Field(
         default=[],
         description='Which filter profiles should be run. All .yaml files with "Aspects" and '
@@ -279,6 +283,7 @@ class GeneralModel(_IniBaseModel):
         "C:/Users/USERNAME/.d4lf/profiles/*.yaml",
     )
     run_vision_mode_on_startup: bool = Field(default=True, description="Whether to run vision mode on startup or not")
+    use_tts: UseTTSType = Field(default=UseTTSType.off, description="Whether to use tts or not")
 
     @field_validator("check_chest_tabs", mode="before")
     def check_chest_tabs_index(cls, v: str) -> list[int]:
@@ -300,12 +305,6 @@ class GeneralModel(_IniBaseModel):
     def language_must_exist(cls, v: str) -> str:
         if v not in ["enUS"]:
             raise ValueError("language not supported")
-        return v
-
-    @field_validator("hidden_transparency")
-    def transparency_in_range(cls, v: float) -> float:
-        if not 0 <= v <= 1:
-            raise ValueError("must be in [0, 1]")
         return v
 
     @field_validator("minimum_overlay_font_size")
