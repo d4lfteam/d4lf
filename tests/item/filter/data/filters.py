@@ -177,8 +177,6 @@ sigil = ProfileModel(
             SigilConditionModel(name="jalals_vigil"),
             SigilConditionModel(name="iron_hold", condition=["shadow_damage"]),
         ],
-        maxTier=80,
-        minTier=40,
     ),
 )
 

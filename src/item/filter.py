@@ -135,10 +135,6 @@ class Filter:
             res.keep = True
             res.matched.append(MatchedFilter("default"))
         for profile_name, profile_filter in self.sigil_filters.items():
-            # check item power
-            if not self._match_item_power(max_power=profile_filter.maxTier, min_power=profile_filter.minTier, item_power=item.power):
-                continue
-
             blacklist_empty = not profile_filter.blacklist
             is_in_blacklist = self._match_affixes_sigils(
                 expected_affixes=profile_filter.blacklist, sigil_affixes=item.affixes + item.inherent
@@ -354,11 +350,11 @@ class Filter:
 
         res = FilterResult(False, [])
 
-        if item.item_type is None or item.power is None:
-            return res
-
         if item.item_type == ItemType.Sigil:
             return self._check_sigil(item)
+
+        if item.item_type is None or item.power is None:
+            return res
 
         if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
             return self._check_unique_item(item)

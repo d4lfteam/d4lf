@@ -10,8 +10,6 @@ class TestSigil(Item):
 
 
 sigils = [
-    ("power too low", [], TestSigil(power=20)),
-    ("power too high", [], TestSigil(power=100)),
     ("affix in blacklist", [], TestSigil(affixes=[Affix(name="death_pulse"), Affix(name="reduce_cooldowns_on_kill", value=0.25)])),
     ("inherent in blacklist", [], TestSigil(inherent=[Affix(name="underroot")])),
     ("affix not in whitelist", [], TestSigil(inherent=[Affix(name="lubans_rest")])),
