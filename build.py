@@ -37,7 +37,8 @@ def create_batch_for_gui(release_dir: Path, exe_name: str):
     with open(batch_file_path, "w") as f:
         f.write("@echo off\n")
         f.write('cd /d "%~dp0"\n')
-        f.write(f'start "" {exe_name} --gui')
+        f.write(f'{exe_name} --gui\n')
+        f.write(f'start "" {exe_name}\n')
 
 
 if __name__ == "__main__":
