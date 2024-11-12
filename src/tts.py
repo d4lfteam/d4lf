@@ -12,6 +12,7 @@ from src.config.helper import singleton
 LAST_ITEM = []
 LOGGER = logging.getLogger(__name__)
 _DATA_QUEUE = queue.Queue(maxsize=100)
+TO_FILTER = ["Champions who earn the favor of"]
 
 
 class ItemIdentifiers(enum.Enum):
@@ -31,7 +32,7 @@ class Publisher:
         while True:
             data = fix_data(_DATA_QUEUE.get())
             local_cache.append(data)
-            if not filter_data and (
+            if not filter_data(data) and (
                 any(word in data.lower() for word in ["mouse button"]) and (start := find_item_start(local_cache)) is not None
             ):
                 global LAST_ITEM
@@ -111,9 +112,7 @@ def find_item_start(data: list[str]) -> int | None:
 
 
 def filter_data(data: str) -> True:
-    to_filter = ["Champions who earn the favor of"]
-
-    return any(word in data for word in to_filter)
+    return any(word in data for word in TO_FILTER)
 
 
 def fix_data(data: str) -> str:
