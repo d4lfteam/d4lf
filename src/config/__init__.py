@@ -8,4 +8,6 @@ def get_base_dir(bundled: bool = False) -> Path:
     return Path(__file__).parent.parent.parent
 
 
+AFFIX_COMPARISON_CHARS = 60
+
 BASE_DIR = get_base_dir(False)

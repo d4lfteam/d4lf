@@ -46,7 +46,7 @@ jobs:
         id: check_beta
         shell: powershell
         run: |
-          if ("${{ env.VERSION }}".Contains("beta")) {
+          if ($env:VERSION -like "*beta*" -or $env:VERSION -like "*alpha*") {
             echo "IS_BETA=true" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
           } else {
             echo "IS_BETA=false" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8

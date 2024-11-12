@@ -2,7 +2,6 @@ from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
 from src.template_finder import SearchArgs
 from src.ui.inventory_base import InventoryBase
-from src.ui.menu import ToggleMethod
 
 
 class CharInventory(InventoryBase):
@@ -13,7 +12,4 @@ class CharInventory(InventoryBase):
             ref=["sort_icon", "sort_icon_hover"], threshold=0.8, roi=ResManager().roi.sort_icon, use_grayscale=False
         )
         self.open_hotkey = IniConfigLoader().char.inventory
-        self.open_method = ToggleMethod.HOTKEY
-        self.close_hotkey = "esc"
-        self.close_method = ToggleMethod.HOTKEY
         self.delay = 1  # Needed as they added a "fad-in" for the items

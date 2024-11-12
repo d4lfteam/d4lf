@@ -4,7 +4,7 @@ from pytest_mock import MockerFixture
 
 import tests.item.filter.data.filters as filters
 from src.config.models import SigilPriority
-from src.item.filter import Filter, _FilterResult
+from src.item.filter import Filter, FilterResult
 from src.item.models import Item
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.sigils import sigil_jalal, sigil_priority, sigils
@@ -21,7 +21,7 @@ def _create_mocked_filter(mocker: MockerFixture) -> Filter:
 @pytest.mark.parametrize(("name", "result", "item"), natsorted(affixes), ids=[name for name, _, _ in natsorted(affixes)])
 def test_affixes(name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    mocker.patch("item.filter.Filter._check_aspect", return_value=_FilterResult(keep=False, matched=[]))
+    mocker.patch("item.filter.Filter._check_aspect", return_value=FilterResult(keep=False, matched=[]))
     test_filter.affix_filters = {filters.affix.name: filters.affix.Affixes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 

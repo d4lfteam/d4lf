@@ -12,10 +12,12 @@ class AffixType(enum.Enum):
 
 @dataclass
 class Affix:
-    name: str
-    type: AffixType = AffixType.normal
     loc: tuple[int, int] = None
+    max_value: float | None = None
+    min_value: float | None = None
+    name: str = ""
     text: str = ""
+    type: AffixType = AffixType.normal
     value: float | None = None
 
     def __eq__(self, other: "Affix") -> bool:

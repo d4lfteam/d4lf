@@ -152,7 +152,8 @@ class Gui(QMainWindow):
             "https://diablo.trade/listings/items?exactPrice=true&itemType=equipment&price=50000000,999999999999&rarity=legendary&sold=true&sort=newest\n\n"
             "Please note that only legendary items are supported at the moment. The listing must also have an exact price.\n"
             "You can create such a filter by using the one above as a base and then add your custom data to it.\n"
-            f"It will then create a file based on the listings in: {IniConfigLoader().user_dir / "profiles"}"
+            f"It will then create a file based on the listings in: {IniConfigLoader().user_dir / "profiles"}\n\n"
+            "NOTE: You must have Chrome installed on your computer to use this feature."
         )
         instructions_text.setReadOnly(True)
         font_metrics = instructions_text.fontMetrics()

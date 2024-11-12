@@ -5,9 +5,8 @@ from enum import Enum
 import keyboard
 import numpy as np
 
-from src.template_finder import SearchArgs, SearchResult, TemplateMatch
+from src.template_finder import SearchArgs, SearchResult
 from src.utils.misc import run_until_condition
-from src.utils.mouse_selector import select_search_result
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,34 +21,8 @@ class Menu:
         self.menu_name: str = ""
         self.parent_menu: Menu | None = None
         self.is_open_search_args: SearchArgs | None = None
-        self.open_button_search_args: SearchArgs | None = None
-        self.close_button_search_args = self.open_button_search_args
         self.open_hotkey: str = ""
-        self.close_hotkey: str = "esc"
-        self.open_method: ToggleMethod = ToggleMethod.BUTTON
-        self.close_method: ToggleMethod = ToggleMethod.HOTKEY
         self.delay = 0
-
-    @staticmethod
-    def select_button(search: SearchArgs | TemplateMatch) -> bool:
-        """
-        Selects a button based on a given search object.
-        :param search: A SearchArgs or TemplateMatch object to identify the button
-        :return: True if the button is successfully selected, False otherwise.
-        """
-        if isinstance(search, SearchArgs):
-            result = search.detect()
-            if not result.success:
-                LOGGER.error(f"Could not find {search.ref} button")
-                return False
-            match = result.matches[0]
-        elif isinstance(search, TemplateMatch):
-            match = search
-        else:
-            LOGGER.error(f"Invalid type {type(search)} for search")
-            return False
-        select_search_result(match)
-        return True
 
     def open(self) -> bool:
         """
@@ -61,34 +34,11 @@ class Menu:
             LOGGER.error(f"Could not open parent menu {self.parent_menu.menu_name}")
             return False
         if not (is_open := self.is_open()):
-            debug_string = f"Opening {self.menu_name} with"
-            if self.open_method == ToggleMethod.BUTTON:
-                debug_string += f" button {self.open_button_search_args.ref}"
-                self.select_button(self.open_button_search_args)
-            elif self.open_method == ToggleMethod.HOTKEY:
-                debug_string += f" hotkey {self.open_hotkey}"
-                keyboard.send(self.open_hotkey)
-            LOGGER.debug(debug_string)
+            LOGGER.debug(f"Opening {self.menu_name} using hotkey {self.open_hotkey}")
+            keyboard.send(self.open_hotkey)
         else:
             LOGGER.debug(f"{self.menu_name} already open")
         return is_open or self.wait_until_open()
-
-    def close(self) -> bool:
-        """
-        Closes the menu by pressing the escape key.
-        :return: True if the menu is successfully closed, False otherwise.
-        """
-        if self.is_open():
-            debug_string = f"Closing {self.menu_name} with"
-            if self.close_method == ToggleMethod.BUTTON:
-                debug_string += f" button {self.close_button_search_args.ref}"
-                self.select_button(self.close_button_search_args)
-            elif self.close_method == ToggleMethod.HOTKEY:
-                debug_string += f" hotkey {self.close_hotkey}"
-                keyboard.send(self.close_hotkey)
-            LOGGER.debug(debug_string)
-            return self.wait_until_closed(timeout=3)
-        return True
 
     def _check_match(self, res: SearchResult) -> bool:
         """
@@ -119,18 +69,4 @@ class Menu:
         if not success:
             LOGGER.warning(f"Could not find {self.menu_name} after {timeout} seconds")
         time.sleep(self.delay)
-        return success
-
-    def wait_until_closed(self, timeout: float = 10, mode: str = "all") -> bool:
-        """
-        Waits until the menu is closed.
-        :param timeout: The number of seconds to wait before timing out.
-        :param mode: The mode to use when searching for the menu. See template_finder.py for more info.
-        :return: True if the menu is closed, False otherwise.
-        """
-        args: SearchArgs = self.is_open_search_args
-        args.mode = mode
-        _, success = run_until_condition(lambda: args.is_visible(), lambda res: not res, timeout)
-        if not success:
-            LOGGER.warning(f"{self.menu_name} still visible after {timeout} seconds")
         return success

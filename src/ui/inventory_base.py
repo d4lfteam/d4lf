@@ -83,4 +83,4 @@ class InventoryBase(Menu):
         return occupied_slots, empty_slots
 
     def hover_item(self, item: ItemSlot):
-        mouse.move(*Cam().window_to_monitor(item.center), randomize=15, delay_factor=(1.1, 1.3))
+        mouse.move(*Cam().window_to_monitor(item.center), randomize=15)
