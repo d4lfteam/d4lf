@@ -1,14 +1,13 @@
 default_install_hook_types: [pre-push]
 repos:
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v19.1.2
+    rev: v19.1.3
     hooks:
       - id: clang-format
         files: \.(cpp|h)$
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
-#      - id: check-added-large-files # Disabled because git-lfs in GH costs?!
       - id: check-ast
       - id: check-case-conflict
       - id: check-executables-have-shebangs
@@ -22,10 +21,18 @@ repos:
         args: [--autofix, --indent=4, --no-ensure-ascii]
       - id: requirements-txt-fixer
       - id: trailing-whitespace
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.7.0
+    rev: v0.7.3
     hooks:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.18
+    hooks:
+      - id: mdformat
+  - repo: https://github.com/google/yamlfmt
+    rev: v0.14.0
+    hooks:
+      - id: yamlfmt
+        args: [-conf, .yamlfmt.yaml]

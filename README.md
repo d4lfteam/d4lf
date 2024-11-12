@@ -3,7 +3,7 @@
 Filter items and sigils in your inventory based on affixes, aspects and thresholds of their values. For questions,
 feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6T) or use github issues.
 
-![sample](assets/thumbnail.jpg)]
+![sample](assets/thumbnail.jpg)
 
 ## Features
 
@@ -30,40 +30,40 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 - Download and extract the latest version (.zip) from the releases: https://github.com/aeon0/d4lf/releases
 - Generate a profile of what you want to filter for. To do so you have a few options:
-    - Open gui.bat and import a profile by pasting a build page from popular planner websites
-    - Take one someone else has generated from our [discord](https://discord.gg/YyzaPhAN6T)
-    - Create one yourself by looking at the [examples](#how-to-filter--profiles) below
+  - Open gui.bat and import a profile by pasting a build page from popular planner websites
+  - Take one someone else has generated from our [discord](https://discord.gg/YyzaPhAN6T)
+  - Create one yourself by looking at the [examples](#how-to-filter--profiles) below
 - If downloaded or created manually, place the profile in the `C:/Users/<WINDOWS_USER>/.d4lf/profiles` folder. The GUI
   importer has a button to open this folder directly. If imported they are placed there automatically.
 - Run gui.bat and use the GUI config tab to configure the profiles. Select the '...' next to profiles to activate which
   profiles you want to use.
 - Execute d4lf.exe and launch Diablo 4.
 - There is a small overlay on the center bottom with buttons:
-    - max/min: Show or hide the console output
-    - filter: Auto filter inventory and stash if open (number of stash tabs configurable)
-    - vision: Turn vision mode (overlay) on/off
+  - max/min: Show or hide the console output
+  - filter: Auto filter inventory and stash if open (number of stash tabs configurable)
+  - vision: Turn vision mode (overlay) on/off
 - Alternatively use the hotkeys. e.g. f11 for filtering
 
 ### Common problems
 
 - The GUI crashes immediately upon opening, with no error message given
-    - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
-      your params.ini through the config tab. Using the GUI for configuration will ensure the file is always accurate.
+  - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
+    your params.ini through the config tab. Using the GUI for configuration will ensure the file is always accurate.
 - I'm used to my profiles being in the downloaded d4lf folder, where are they?
-    - This was never the recommended place to keep the profiles. They should now be placed in your Windows user folder
-      so that you don't need to move them around for every update. Use the GUI to open up that folder directly.
+  - This was never the recommended place to keep the profiles. They should now be placed in your Windows user folder
+    so that you don't need to move them around for every update. Use the GUI to open up that folder directly.
 - I'm used to affix fields looking like this: `[ dexterity, 33 ]`
-    - Formats like `[ dexterity, 33 ]` are still completely valid. The importer creates affix fields which look
-      like `{name: dexterity, value: 33}`. These are identical and either format can be used interchangeably. We
-      recommend starting all new builds through the importer, so examples show the format the importer uses.
+  - Formats like `[ dexterity, 33 ]` are still completely valid. The importer creates affix fields which look
+    like `{name: dexterity, value: 33}`. These are identical and either format can be used interchangeably. We
+    recommend starting all new builds through the importer, so examples show the format the importer uses.
 - Mouse control isn't possible
-    - Due to your local windows settings, the tool might not be able to control the mouse. Just run the tool as admin
-      and it should work. If you don't want to run it as admin, you can disable the mouse control in the params.ini
-      by setting `vision_mode_only` to `true`.
+  - Due to your local windows settings, the tool might not be able to control the mouse. Just run the tool as admin
+    and it should work. If you don't want to run it as admin, you can disable the mouse control in the params.ini
+    by setting `vision_mode_only` to `true`.
 - I am trying to import a trade search from diablo.trade and am getting an error that I need to install Chrome.
-    - diablo.trade has a setting enabled that will block all automated access, but we use a chrome-based browser to
-      circumvent this. For diablo.trade imports it is required that Chrome be installed. Regular build imports can
-      work with any browser.
+  - diablo.trade has a setting enabled that will block all automated access, but we use a chrome-based browser to
+    circumvent this. For diablo.trade imports it is required that Chrome be installed. Regular build imports can
+    work with any browser.
 
 ### TTS
 
@@ -88,7 +88,7 @@ in accuracy. Or a full mode where only TTS is used. This will be super fast but 
 **The following is currently supported using any form of tts:**
 
 - Full item detection for all wearable items, e.g. armor, weapons, and accessories. Both in `vision_mode` and
-`loot_filter`.
+  `loot_filter`.
 - Basic item detection for all? other items, e.g. only type + rarity
 
 We might also discontinue the pure image processing mode and even mixed mode in the future, as TTS is easier to maintain.
@@ -104,7 +104,7 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 
 ### params.ini
 
-| [general]                                         | Description                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| \[general\]                                         | Description                                                                                                                                                                                                                                                                                                                                                                                                                              |
 |---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | profiles                                          | A set of profiles separated by comma. d4lf will look for these yaml files in config/profiles and in C:/Users/WINDOWS_USER/.d4lf/profiles                                                                                                                                                                                                                                                                                                 |
 | browser                                           | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported. Note: Trade importing can only work with Chrome and ignores this setting.                                                                                                                                                                                                                           |
@@ -119,11 +119,11 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | run_vision_mode_on_startup                        | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey                                                                                                                                                                                                                                                                                              |
 | use_tts                                           | use TTS instead of OCR, see [TTS](#TTS)                                                                                                                                                                                                                                                                                                                                                                                                  |
 
-| [char]    | Description                       |
+| \[char\]    | Description                       |
 |-----------|-----------------------------------|
 | inventory | Your hotkey for opening inventory |
 
-| [advanced_options]       | Description                                                                                                              |
+| \[advanced_options\]       | Description                                                                                                              |
 |--------------------------|--------------------------------------------------------------------------------------------------------------------------|
 | move_to_inv              | Hotkey for moving items from stash to inventory                                                                          |
 | move_to_chest            | Hotkey for moving items from inventory to stash                                                                          |
@@ -132,7 +132,7 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | run_filter_force_refresh | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                               |
 | force_refresh_only       | Hotkey to reset all item statuses without running a filter after                                                         |
 | exit_key                 | Hotkey to exit d4lf.exe                                                                                                  |
-| log_level                | Logging level. Can be any of [debug, info, warning, error, critical]                                                     |
+| log_level                | Logging level. Can be any of \[debug, info, warning, error, critical\]                                                     |
 | scripts                  | Running different scripts                                                                                                |
 | process_name             | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted |
 | vision_mode_only         | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.            |
@@ -211,14 +211,14 @@ has a name and can filter for any combination of the following:
   of `affixPool`
 - `affixPool`: A list of multiple different rulesets to filter for. Each ruleset must be fulfilled or the item is
   discarded
-    - `count`: Define a list of affixes (see [syntax](#affix--aspects-filter-syntax)) and
-      optionally `minCount`, `maxCount` and `minGreaterAffixCount`
-        - `minCount`: specifies the minimum number of affixes that must match the item. defaults to amount of specified
-          affixes
-        - `maxCount` specifies the maximum number of affixes that must match the item. defaults to amount of specified
-          affixes
-        - `minGreaterAffixCount`: specifies the minimum number of greater affixes inside this count group. defaults
-          to `0`
+  - `count`: Define a list of affixes (see [syntax](#affix--aspects-filter-syntax)) and
+    optionally `minCount`, `maxCount` and `minGreaterAffixCount`
+    - `minCount`: specifies the minimum number of affixes that must match the item. defaults to amount of specified
+      affixes
+    - `maxCount` specifies the maximum number of affixes that must match the item. defaults to amount of specified
+      affixes
+    - `minGreaterAffixCount`: specifies the minimum number of greater affixes inside this count group. defaults
+      to `0`
 - `inherentPool`: The same rules as for `affixPool` apply, but this is evaluated against the inherent affixes of the
   item
 
