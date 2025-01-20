@@ -79,7 +79,7 @@ def setup(log_level: str = "DEBUG") -> None:
     threading.excepthook = _log_unhandled_exceptions
     # create rotating file handler
     rotating_handler = logging.handlers.RotatingFileHandler(
-        LOG_DIR / f"log_{datetime.datetime.now(tz=datetime.UTC).strftime("%Y_%m_%d_%H_%M_%S")}.txt",
+        LOG_DIR / f"log_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}.txt",
         mode="w",
         maxBytes=10 * 1024**2,
         backupCount=1000,

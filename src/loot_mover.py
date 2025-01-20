@@ -66,7 +66,7 @@ def move_items_to_inventory():
         unhandled_slots, _ = chest.get_item_slots()
 
         LOGGER.debug(
-            f"Stash tab {i} - Number of stash items: {len(unhandled_slots)} - Number of empty inventory " f"spaces: {empty_slot_count}"
+            f"Stash tab {i} - Number of stash items: {len(unhandled_slots)} - Number of empty inventory spaces: {empty_slot_count}"
         )
 
         item_move_count, _ = _move_items(inv, unhandled_slots, empty_slot_count, move_item_type)

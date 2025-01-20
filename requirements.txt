@@ -1,4 +1,4 @@
-./dependencies/tesserocr-2.7.0-cp312-cp312-win_amd64.whl
+./dependencies/tesserocr-2.7.1-cp313-cp313-win_amd64.whl
 beautifultable
 colorama
 coverage
@@ -9,8 +9,8 @@ lxml
 mouse
 mss
 natsort
-numpy<2
-opencv-python==4.10.0.82
+numpy
+opencv-python==4.11.0.86
 Pillow
 pre-commit
 psutil
@@ -28,7 +28,7 @@ pytweening
 pywin32
 pyyaml
 rapidfuzz
-ruamel.yaml==0.18.6
+ruamel.yaml~=0.18.0
 ruff
 selenium
 seleniumbase
