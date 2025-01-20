@@ -105,7 +105,7 @@ def import_maxroll(url: str):
     if not build_name:
         build_name = all_data["class"]
         if active_profile["name"]:
-            build_name += f"_{active_profile["name"]}"
+            build_name += f"_{active_profile['name']}"
     save_as_profile(file_name=build_name, profile=profile, url=url)
     LOGGER.info("Finished")
 
@@ -149,7 +149,7 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
                     attr_param = affix["attributes"][0]["param"]
                     for skill_data in mapping_data["skills"].values():
                         if skill_data["id"] == attr_param:
-                            attr_desc = f"to {skill_data["name"]}"
+                            attr_desc = f"to {skill_data['name']}"
                             break
                     else:
                         if affix["attributes"][0]["param"] == -1460542966 and affix["attributes"][0]["id"] == 1033:

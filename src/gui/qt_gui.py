@@ -152,7 +152,7 @@ class Gui(QMainWindow):
             "https://diablo.trade/listings/items?exactPrice=true&itemType=equipment&price=50000000,999999999999&rarity=legendary&sold=true&sort=newest\n\n"
             "Please note that only legendary items are supported at the moment. The listing must also have an exact price.\n"
             "You can create such a filter by using the one above as a base and then add your custom data to it.\n"
-            f"It will then create a file based on the listings in: {IniConfigLoader().user_dir / "profiles"}"
+            f"It will then create a file based on the listings in: {IniConfigLoader().user_dir / 'profiles'}"
         )
         instructions_text.setReadOnly(True)
         font_metrics = instructions_text.fontMetrics()
@@ -237,7 +237,7 @@ class Gui(QMainWindow):
             "https://d4builds.gg/builds/ef414fbd-81cd-49d1-9c8d-4938b278e2ee\n"
             "or\n"
             "https://mobalytics.gg/diablo-4/builds/barbarian/bash\n\n"
-            f"It will create a file based on the label of the build in the planer in: {IniConfigLoader().user_dir / "profiles"}\n\n"
+            f"It will create a file based on the label of the build in the planer in: {IniConfigLoader().user_dir / 'profiles'}\n\n"
             "For d4builds you need to specify your browser in the params.ini file"
         )
         instructions_text.setReadOnly(True)

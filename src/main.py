@@ -1,3 +1,4 @@
+import tesserocr  # noqa #  Note: Somehow needed, otherwise the binary has an issue with tesserocr
 import logging
 import os
 import sys

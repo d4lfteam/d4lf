@@ -270,7 +270,7 @@ def search(
         if not suppress_debug and len(matches) > 1 and mode == "all":
             LOGGER.debug(
                 "Found the following matches:\n"
-                + ", ".join([f"  {template_match.name} ({template_match.score*100:.1f}% confidence)" for template_match in matches])
+                + ", ".join([f"  {template_match.name} ({template_match.score * 100:.1f}% confidence)" for template_match in matches])
             )
     elif not suppress_debug:
         LOGGER.debug(f"Could not find desired templates: {ref}")

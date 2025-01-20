@@ -87,7 +87,7 @@ def get_pc_info():
             result[key]["current_clock_speed"] = cpu.CurrentClockSpeed
             result[key]["max_clock_speed"] = cpu.MaxClockSpeed
             LOGGER.info(
-                f"CPU: Name: {result[key]["name"]}, Cores: {result[key]["cores"]}, Threads: {result[key]["threads"]}, Current Clock Speed: {result[key]["current_clock_speed"]}, Max Clock Speed: {result[key]["max_clock_speed"]}"
+                f"CPU: Name: {result[key]['name']}, Cores: {result[key]['cores']}, Threads: {result[key]['threads']}, Current Clock Speed: {result[key]['current_clock_speed']}, Max Clock Speed: {result[key]['max_clock_speed']}"
             )
             i += 1  # noqa SIM113
         except Exception:
@@ -102,7 +102,7 @@ def get_pc_info():
             result[key] = {}
             result[key]["name"] = gpu.Name.strip()
             result[key]["vram"] = max(gpu.AdapterRAM / 1024**3, 0) if gpu.AdapterRAM is not None else 0
-            LOGGER.info(f"GPU: Name: {result[key]["name"]}, VRAM: {result[key]["vram"]} GB")
+            LOGGER.info(f"GPU: Name: {result[key]['name']}, VRAM: {result[key]['vram']} GB")
             i += 1
         except Exception:
             pass
@@ -118,7 +118,7 @@ def get_pc_info():
             result[key]["speed"] = memory.Speed
             result[key]["capacity"] = int(memory.Capacity) / 1024**3 if memory.Capacity is not None else 0
             LOGGER.info(
-                f"RAM: Manufacturer: {result[key]["manufacturer"]}, Speed: {result[key]["speed"]}, Capacity: {result[key]["capacity"]} GB"
+                f"RAM: Manufacturer: {result[key]['manufacturer']}, Speed: {result[key]['speed']}, Capacity: {result[key]['capacity']} GB"
             )
             i += 1
         except Exception:
@@ -133,7 +133,7 @@ def get_pc_info():
             result[key] = {}
             result[key]["model"] = disk_drive.Model.strip()
             result[key]["size"] = int(disk_drive.Size) / 1024**3 if disk_drive.Size is not None else 0
-            LOGGER.info(f"Drive: Model: {result[key]["model"]}, Size: {result[key]["size"]} GB")
+            LOGGER.info(f"Drive: Model: {result[key]['model']}, Size: {result[key]['size']} GB")
             i += 1
         except Exception:
             pass

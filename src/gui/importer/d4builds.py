@@ -143,7 +143,7 @@ def import_d4builds(url: str, driver: ChromiumDriver = None):
         finished_filters.append({filter_name: item_filter})
     profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))), Uniques=unique_filters)
     save_as_profile(
-        file_name=f"d4build_{class_name}_{datetime.datetime.now(tz=datetime.UTC).strftime("%Y_%m_%d_%H_%M_%S")}", profile=profile, url=url
+        file_name=f"d4build_{class_name}_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}", profile=profile, url=url
     )
     LOGGER.info("Finished")
 

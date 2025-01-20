@@ -175,7 +175,7 @@ def save_as_profile(file_name: str, profile: ProfileModel, url: str):
     save_path.parent.mkdir(parents=True, exist_ok=True)
     with open(save_path, "w", encoding="utf-8") as file:
         file.write(f"# {url}\n")
-        file.write(f"# {datetime.datetime.now(tz=datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")} (v{__version__})\n")
+        file.write(f"# {datetime.datetime.now(tz=datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')} (v{__version__})\n")
         file.write(
             _to_yaml_str(
                 profile,

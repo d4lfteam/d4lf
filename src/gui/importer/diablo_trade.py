@@ -106,7 +106,7 @@ def import_diablo_trade(url: str, max_listings: int, driver: seleniumbase.Driver
     except Exception as exc:
         LOGGER.exception(msg := "Failed to validate profile. Dumping data for debugging.")
         with open(
-            IniConfigLoader().user_dir / f"diablo_trade_dump_{datetime.datetime.now(tz=datetime.UTC).strftime("%Y_%m_%d_%H_%M_%S")}.json",
+            IniConfigLoader().user_dir / f"diablo_trade_dump_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}.json",
             "w",
         ) as f:
             json.dump(all_listings, f, indent=4, sort_keys=True)
@@ -114,7 +114,7 @@ def import_diablo_trade(url: str, max_listings: int, driver: seleniumbase.Driver
 
     LOGGER.info(f"Saving profile with {len(profile.Affixes)} filters")
     save_as_profile(
-        file_name=f"diablo_trade_{datetime.datetime.now(tz=datetime.UTC).strftime("%Y_%m_%d_%H_%M_%S")}", profile=profile, url=url
+        file_name=f"diablo_trade_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}", profile=profile, url=url
     )
     LOGGER.info("Finished")
 
