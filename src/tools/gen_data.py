@@ -18,14 +18,14 @@ def remove_content_in_braces(input_string) -> str:
     result = result.replace(";", "")
     result = re.sub(r"(\d)[, ]+(\d)", r"\1\2", result)  # Remove , between numbers (large number seperator)
     result = re.sub(r"(\+)?\d+(\.\d+)?%?", "", result)  # Remove numbers and trailing % or preceding +
-    result = re.sub(r"[\[\]+\-:%\'\#]", "", result)  # Remove [ and ] and leftover +, -, %, :, ', #
+    result = re.sub(r"[\[\]+\-:%\'#]", "", result)  # Remove [ and ] and leftover +, -, %, :, ', #
     result = " ".join(result.split())  # Remove extra spaces
     result.strip()
     return result
 
 
 def get_random_number_idx(s: str) -> list[int]:
-    filtered_string = re.findall(r"\{c_random\}|\{c_number\}", s)
+    filtered_string = re.findall(r"\{c_random}|\{c_number}", s)
     res = []
     for i, val in enumerate(filtered_string):
         if val == "{c_random}":
