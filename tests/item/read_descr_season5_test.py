@@ -270,7 +270,7 @@ items = [
             affixes=[
                 Affix(name="maximum_life", value=950),
                 Affix(name="cooldown_reduction", value=9.1, type=AffixType.rerolled),
-                Affix(name="to_conjuration_mastery", value=2),
+                Affix(name="to_conjuration_skills", value=2),
                 Affix(name="unstable_currents_cooldown_reduction", value=16.1, type=AffixType.tempered),
                 Affix(name="overpower_damage", value=80.5, type=AffixType.tempered),
             ],
