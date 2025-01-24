@@ -2,4 +2,3 @@
 *.png binary
 *.traineddata binary
 *.whl binary
-benchmarks/assets/imageproc/*.png filter=lfs diff=lfs merge=lfs -text
