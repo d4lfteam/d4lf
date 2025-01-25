@@ -16,11 +16,7 @@ MODULE_LOGGER = logging.getLogger(__name__)
 HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
 
-DEPRECATED_INI_KEYS = [
-    "import_build",
-    "local_prefs_path",
-    "move_item_type",
-]
+DEPRECATED_INI_KEYS = ["import_build", "local_prefs_path", "move_item_type", "use_tts"]
 
 
 class AspectFilterType(enum.StrEnum):
