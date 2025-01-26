@@ -25,6 +25,7 @@ pytest-mock
 pytest-pythonpath
 pytest-xdist
 pytweening
+pywinstyles
 pywin32
 pyyaml
 rapidfuzz
