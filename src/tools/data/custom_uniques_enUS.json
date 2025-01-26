@@ -29,6 +29,12 @@
             0
         ]
     },
+    "pitfighters_gull": {
+        "desc": "seconds and leaves behind a cloud of shadows. While within the cloud",
+        "num_idx": [
+            0
+        ]
+    },
     "rakanoths_wake": {
         "desc": "when you cast a skill with a cooldown you explode dealing fire damage",
         "num_idx": [

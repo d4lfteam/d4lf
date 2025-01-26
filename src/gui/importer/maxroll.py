@@ -64,11 +64,14 @@ def import_maxroll(url: str):
             unique_model = UniqueModel()
             unique_name = mapping_data["items"][resolved_item["id"]]["name"]
             try:
+                unique_name = _unique_name_special_handling(unique_name)
                 unique_model.aspect = AspectUniqueFilterModel(name=unique_name)
-                unique_model.affix = [
-                    AffixFilterModel(name=x.name)
-                    for x in _find_item_affixes(mapping_data=mapping_data, item_affixes=resolved_item["explicits"])
-                ]
+                # Maxroll's uniques are all over the place in quality when it comes to affixes and names.
+                # Removing support for this for now.
+                # unique_model.affix = [
+                #     AffixFilterModel(name=x.name)
+                #     for x in _find_item_affixes(mapping_data=mapping_data, item_affixes=resolved_item["explicits"])
+                # ]
                 unique_filters.append(unique_model)
             except Exception:
                 LOGGER.exception(f"Unexpected error importing unique {unique_name}, please report a bug.")
@@ -193,6 +196,16 @@ def _attr_desc_special_handling(affix_id: str) -> str:
             return "non-physical damage"
         case _:
             return ""
+
+
+def _unique_name_special_handling(unique_name: str) -> str:
+    match unique_name:
+        case "[PH] Season 7 Necro Pants":
+            return "kessimes_legacy"
+        case "[PH] Season 7 Barb Chest":
+            return "mantle_of_mountains_fury"
+        case _:
+            return unique_name
 
 
 def _find_item_type(mapping_data: dict, value: str) -> ItemType | None:
