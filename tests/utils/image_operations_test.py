@@ -102,12 +102,12 @@ def test_create_mask():
     assert np.count_nonzero(mask) == 100 - 36
 
 
-@pytest.fixture()
+@pytest.fixture
 def filter_img():
     return np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
 
 
-@pytest.fixture()
+@pytest.fixture
 def color_range():
     return [np.array([0, 0, 0]), np.array([180, 255, 255])]
 

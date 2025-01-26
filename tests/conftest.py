@@ -5,7 +5,7 @@ from src.config.loader import IniConfigLoader
 from src.config.models import BrowserType
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_ini_loader(mocker: MockerFixture):
     general_mock = mocker.patch.object(IniConfigLoader(), "_general")
     general_mock.language = "enUS"
