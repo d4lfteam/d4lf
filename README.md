@@ -104,38 +104,38 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 
 ### params.ini
 
-| \[general\]                                         | Description                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| [general] | Description |
 |---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| profiles                                          | A set of profiles separated by comma. d4lf will look for these yaml files in config/profiles and in C:/Users/WINDOWS_USER/.d4lf/profiles                                                                                                                                                                                                                                                                                                 |
-| browser                                           | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported. Note: Trade importing can only work with Chrome and ignores this setting.                                                                                                                                                                                                                           |
-| check_chest_tabs                                  | Which chest tabs will be checked and filtered for items in case chest is open when starting the filter. You need to buy all slots. Counting is done left to right. E.g. 1,2,4 will check tab 1, tab 2, tab 4                                                                                                                                                                                                                             |
-| full_dump                                         | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not                                                                                                                                                                                                                                                                                                                                |
-| handle_rares                                      | - `filter`: Filter them based on your profiles <br>- `ignore`: Ignores all rares, vision mode shows them as blue and auto mode never junks or favorites them <br>- `junk`: Vision mode shows them always as red, auto mode always junks rares                                                                                                                                                                                            |
-| handle_uniques                                    | How to handle uniques that do not match any filter. This property does not apply to filtered uniques. All mythics are favorited regardless of filter. <br/>- `favorite`: Mark the unique as favorite and vision mode will show it as green (default)<br/>- `ignore`: Do nothing with the unique and vision mode will show it as green<br/>- `junk`: Mark any uniques that don't match any filters as junk and show as red in vision mode |
-| keep_aspects                                      | - `all`: Keep all legendary items <br>- `upgrade`: Keep all legendary items that upgrade your codex of power <br>- `none`: Keep no legendary items based on aspect (they are still filtered!)                                                                                                                                                                                                                                            |
-| mark_as_favorite                                  | Whether to favorite matched items or not. Defaults to true                                                                                                                                                                                                                                                                                                                                                                               |
-| minimum_overlay_font_size                         | The minimum font size for the vision overlay, specifically the green text that shows which filter(s) are matching. Note: For small profile names, the font may actually be larger than this size but will never go below this size.                                                                                                                                                                                                      |
-| move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything                                                                                                             |
-| run_vision_mode_on_startup                        | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey                                                                                                                                                                                                                                                                                              |
-| use_tts                                           | use TTS instead of OCR, see [TTS](#TTS)                                                                                                                                                                                                                                                                                                                                                                                                  |
+| profiles | A set of profiles separated by comma. d4lf will look for these yaml files in config/profiles and in C:/Users/WINDOWS_USER/.d4lf/profiles |
+| browser | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported. Note: Trade importing can only work with Chrome and ignores this setting. |
+| check_chest_tabs | Which chest tabs will be checked and filtered for items in case chest is open when starting the filter. You need to buy all slots. Counting is done left to right. E.g. 1,2,4 will check tab 1, tab 2, tab 4 |
+| full_dump | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not |
+| handle_rares | - `filter`: Filter them based on your profiles <br>- `ignore`: Ignores all rares, vision mode shows them as blue and auto mode never junks or favorites them <br>- `junk`: Vision mode shows them always as red, auto mode always junks rares |
+| handle_uniques | How to handle uniques that do not match any filter. This property does not apply to filtered uniques. All mythics are favorited regardless of filter. <br/>- `favorite`: Mark the unique as favorite and vision mode will show it as green (default)<br/>- `ignore`: Do nothing with the unique and vision mode will show it as green<br/>- `junk`: Mark any uniques that don't match any filters as junk and show as red in vision mode |
+| keep_aspects | - `all`: Keep all legendary items <br>- `upgrade`: Keep all legendary items that upgrade your codex of power <br>- `none`: Keep no legendary items based on aspect (they are still filtered!) |
+| mark_as_favorite | Whether to favorite matched items or not. Defaults to true |
+| minimum_overlay_font_size | The minimum font size for the vision overlay, specifically the green text that shows which filter(s) are matching. Note: For small profile names, the font may actually be larger than this size but will never go below this size. |
+| move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything |
+| run_vision_mode_on_startup | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey |
+| use_tts | use TTS instead of OCR, see [TTS](#TTS) |
 
-| \[char\]    | Description                       |
+| [char] | Description |
 |-----------|-----------------------------------|
 | inventory | Your hotkey for opening inventory |
 
-| \[advanced_options\]       | Description                                                                                                              |
+| [advanced_options] | Description |
 |--------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| move_to_inv              | Hotkey for moving items from stash to inventory                                                                          |
-| move_to_chest            | Hotkey for moving items from inventory to stash                                                                          |
-| run_scripts              | Hotkey to start/stop vision mode                                                                                         |
-| run_filter               | Hotkey to start/stop filtering items                                                                                     |
-| run_filter_force_refresh | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                               |
-| force_refresh_only       | Hotkey to reset all item statuses without running a filter after                                                         |
-| exit_key                 | Hotkey to exit d4lf.exe                                                                                                  |
-| log_level                | Logging level. Can be any of \[debug, info, warning, error, critical\]                                                     |
-| scripts                  | Running different scripts                                                                                                |
-| process_name             | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted |
-| vision_mode_only         | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.            |
+| move_to_inv | Hotkey for moving items from stash to inventory |
+| move_to_chest | Hotkey for moving items from inventory to stash |
+| run_scripts | Hotkey to start/stop vision mode |
+| run_filter | Hotkey to start/stop filtering items |
+| run_filter_force_refresh | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset |
+| force_refresh_only | Hotkey to reset all item statuses without running a filter after |
+| exit_key | Hotkey to exit d4lf.exe |
+| log_level | Logging level. Can be any of [debug, info, warning, error, critical] |
+| scripts | Running different scripts |
+| process_name | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted |
+| vision_mode_only | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled. |
 
 ### GUI
 
