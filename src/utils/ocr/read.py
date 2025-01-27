@@ -4,7 +4,7 @@ import uuid
 
 import cv2
 import numpy as np
-from tesserocr import OEM, RIL, PyTessBaseAPI
+import tesserocr
 
 from src.config import BASE_DIR
 from src.config.data import COLORS
@@ -24,13 +24,15 @@ class _APILoader:
         self._apis = []
         self._lock = threading.Lock()
 
-    def get_api(self, user: uuid.UUID) -> PyTessBaseAPI:
+    def get_api(self, user: uuid.UUID) -> tesserocr.PyTessBaseAPI:
         with self._lock:
             for api in self._apis:
                 if not api["user"]:
                     api["user"] = user
                     return api["api"]
-            new_api = PyTessBaseAPI(psm=3, oem=OEM.LSTM_ONLY, path=str(self.tessdata_path), lang=IniConfigLoader().general.language)
+            new_api = tesserocr.PyTessBaseAPI(
+                psm=3, oem=tesserocr.OEM.LSTM_ONLY, path=str(self.tessdata_path), lang=IniConfigLoader().general.language
+            )
             new_api.SetVariable("debug_file", "/dev/null")
             self._apis.append({"api": new_api, "user": user})
             return new_api
@@ -69,7 +71,7 @@ def image_to_text(img: np.ndarray, line_boxes: bool = False, do_pre_proc: bool =
     text = api.GetUTF8Text().strip()
     res = OcrResult(original_text=text, text=text, word_confidences=api.AllWordConfidences(), mean_confidence=api.MeanTextConf())
     if line_boxes:
-        line_boxes_res = api.GetComponentImages(RIL.TEXTLINE, True)
+        line_boxes_res = api.GetComponentImages(tesserocr.RIL.TEXTLINE, True)
         _APILoader().release_api(my_id)
         return res, line_boxes_res
     _APILoader().release_api(my_id)

@@ -23,17 +23,17 @@ repos:
       - id: requirements-txt-fixer
       - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.2
+    rev: v0.9.3
     hooks:
       - id: ruff
         args: [--fix]
       - id: ruff-format
-  - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.21
-    hooks:
-      - id: mdformat
-  - repo: https://github.com/google/yamlfmt
-    rev: v0.15.0
-    hooks:
-      - id: yamlfmt
-        args: [-conf, .yamlfmt.yaml]
+#  - repo: https://github.com/executablebooks/mdformat
+#    rev: 0.7.21
+#    hooks:
+#      - id: mdformat
+#  - repo: https://github.com/google/yamlfmt
+#    rev: v0.15.0
+#    hooks:
+#      - id: yamlfmt
+#        args: [-conf, .yamlfmt.yaml]

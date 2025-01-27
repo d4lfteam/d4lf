@@ -1,4 +1,5 @@
 import tesserocr  # noqa #  Note: Somehow needed, otherwise the binary has an issue with tesserocr
+from PIL import Image  # noqa #  Note: Somehow needed, otherwise the binary has an issue with tesserocr
 import logging
 import os
 import sys
@@ -6,7 +7,6 @@ import time
 import traceback
 
 from beautifultable import BeautifulTable
-from PIL import Image  # noqa #  Note: Somehow needed, otherwise the binary has an issue with tesserocr
 
 import src.logger
 from src import __version__, tts
