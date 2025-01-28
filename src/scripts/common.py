@@ -33,13 +33,14 @@ def reset_canvas(root, canvas):
 def reset_item_status(occupied, inv):
     for item_slot in occupied:
         if item_slot.is_fav:
-            inv.hover_item(item_slot)
+            inv.hover_item_with_delay(item_slot)
             keyboard.send("space")
         if item_slot.is_junk:
-            inv.hover_item(item_slot)
+            inv.hover_item_with_delay(item_slot)
             keyboard.send("space")
-            time.sleep(0.13)
+            time.sleep(0.15)
             keyboard.send("space")
+        time.sleep(0.15)
 
     if occupied:
         mouse.move(*Cam().abs_window_to_monitor((0, 0)))

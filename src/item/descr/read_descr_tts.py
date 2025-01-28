@@ -324,7 +324,9 @@ def read_descr() -> Item | None:
         ]
     ):
         return item
-    if all([not is_armor(item.item_type), not is_jewelry(item.item_type), not is_weapon(item.item_type)]):
+    if all(
+        [not is_armor(item.item_type), not is_jewelry(item.item_type), not is_weapon(item.item_type), item.item_type != ItemType.Shield]
+    ):
         return None
     if item.rarity not in [ItemRarity.Legendary, ItemRarity.Mythic, ItemRarity.Unique]:
         return item
