@@ -16,11 +16,11 @@ LOGGER = logging.getLogger(__name__)
 
 
 def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
-    occupied, empty = inv.get_item_slots()
+    occupied, _ = inv.get_item_slots()
 
     if force_refresh == ItemRefreshType.force_with_filter or force_refresh == ItemRefreshType.force_without_filter:
         reset_item_status(occupied, inv)
-        occupied, empty = inv.get_item_slots()
+        occupied, _ = inv.get_item_slots()
 
     if force_refresh == ItemRefreshType.force_without_filter:
         return
@@ -28,12 +28,11 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
     num_fav = sum(1 for slot in occupied if slot.is_fav)
     num_junk = sum(1 for slot in occupied if slot.is_junk)
     LOGGER.info(f"Items: {len(occupied)} (favorite: {num_fav}, junk: {num_junk}) in {inv.menu_name}")
-    previous_item = occupied[1] if len(occupied) > 1 else empty[0]
     for item in occupied:
         if item.is_junk or item.is_fav:
             continue
         inv.hover_item(item)
-        time.sleep(0.15)
+        time.sleep(0.10)
         img = Cam().grab()
         item_descr = None
         item_descr_previous_check = None
@@ -49,9 +48,8 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
             # Check again to make sure the item is what we think.
             # Move off of the item then back on again
             inv.hover_left_of_item(item)
-            time.sleep(0.05)
             inv.hover_item(item)
-            time.sleep(0.15)
+            time.sleep(0.10)
             try:
                 item_descr = src.item.descr.read_descr_tts.read_descr()
                 LOGGER.debug(f"Parsed item based on TTS: {item_descr}")
@@ -65,8 +63,6 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
 
         if item_descr is None:
             continue
-
-        previous_item = item
 
         # Hardcoded filters
         if item_descr.rarity == ItemRarity.Common and item_descr.item_type == ItemType.Material:

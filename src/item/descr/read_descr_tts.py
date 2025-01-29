@@ -123,6 +123,10 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         return Item(item_type=ItemType.Material)
     if any(tts_item[1].lower().endswith(x) for x in ["gem"]):
         return Item(item_type=ItemType.Gem)
+    if any(tts_item[1].lower().endswith(x) for x in ["cache"]):
+        return Item(item_type=ItemType.Cache)
+    if any(tts_item[1].lower().endswith(x) for x in ["whispering wood"]):
+        return Item(item_type=ItemType.WhisperingWood)
     if "rune of" in tts_item[1].lower():
         item = Item(item_type=ItemType.Rune)
         search_string_split = tts_item[1].lower().split(" rune of ")
@@ -232,7 +236,10 @@ def _get_item_type(data: str):
 
 
 def _is_codex_upgrade(tts_section: list[str], item: Item) -> bool:
-    return any("upgrades an aspect in the codex of power on salvage" in line.lower() for line in tts_section)
+    for line in tts_section:
+        if "upgrades an aspect in the codex of power on salvage" in line.lower() or "unlocks new aspect" in line.lower():
+            return True
+    return False
 
 
 def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
@@ -320,7 +327,7 @@ def read_descr() -> Item | None:
             is_consumable(item.item_type),
             is_mapping(item.item_type),
             is_socketable(item.item_type),
-            item.item_type in [ItemType.Material, ItemType.Tribute],
+            item.item_type in [ItemType.Material, ItemType.Tribute, ItemType.Cache],
         ]
     ):
         return item
