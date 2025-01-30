@@ -118,7 +118,7 @@ def vision_mode():
     canvas = tk.Canvas(root, bg="black", highlightthickness=0)
     canvas.pack(fill=tk.BOTH, expand=True)
 
-    LOGGER.info("Starting Vision Filter")
+    LOGGER.info("Starting Vision Mode")
     inv = CharInventory()
     chest = Chest()
     img = Cam().grab()
