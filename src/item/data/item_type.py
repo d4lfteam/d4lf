@@ -32,6 +32,7 @@ class ItemType(Enum):
     Tome = "tome"
     Wand = "wand"
     # Custom Types
+    Cache = "cache"
     Compass = "compass"
     Consumable = "consumable"
     Gem = "gem"
@@ -41,6 +42,7 @@ class ItemType(Enum):
     Sigil = "nightmare sigil"
     TemperManual = "temper manual"
     Tribute = "tribute"
+    WhisperingWood = "whispering wood"
 
 
 def is_armor(item_type: ItemType) -> bool:
@@ -63,10 +65,7 @@ def is_consumable(item_type: ItemType) -> bool:
 
 
 def is_mapping(item_type: ItemType) -> bool:
-    return item_type in [
-        ItemType.Compass,
-        ItemType.Sigil,
-    ]
+    return item_type in [ItemType.Compass, ItemType.Sigil, ItemType.WhisperingWood]
 
 
 def is_jewelry(item_type: ItemType) -> bool:

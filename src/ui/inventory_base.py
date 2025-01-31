@@ -84,3 +84,13 @@ class InventoryBase(Menu):
 
     def hover_item(self, item: ItemSlot):
         mouse.move(*Cam().window_to_monitor(item.center), randomize=15)
+
+    # Needed for double checking a TTS
+    def hover_left_of_item(self, item: ItemSlot):
+        mouse.move(
+            *Cam().window_to_monitor([item.bounding_box[0] - item.bounding_box[2] / 2, item.bounding_box[1] + item.bounding_box[3] / 2]),
+            randomize=15,
+        )
+
+    def hover_item_with_delay(self, item: ItemSlot, delay_factor: tuple[float, float] = (1.5, 2.0)):
+        mouse.move(*Cam().window_to_monitor(item.center), randomize=15, delay_factor=delay_factor)

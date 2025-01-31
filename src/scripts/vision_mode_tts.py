@@ -37,6 +37,8 @@ class VisionMode:
         self.clear_timer_id = None
         self.queue = queue.Queue()
         self.draw_from_queue()
+        self.stop_thread = None
+        self.is_running = False
 
     def adjust_textbox_size(self):
         self.textbox.config(state=tk.NORMAL)
@@ -157,8 +159,18 @@ class VisionMode:
             LOGGER.exception("Error in vision mode. Please create a bug report")
 
     def start(self):
-        LOGGER.info("Starting Vision Filter")
+        LOGGER.info("Starting Vision Mode")
         Publisher().subscribe(self.on_tts)
+        self.is_running = True
+
+    def stop(self):
+        LOGGER.info("Stopping Vision Mode")
+        self.request_clear()
+        Publisher().unsubscribe(self.on_tts)
+        self.is_running = False
+
+    def running(self):
+        return self.is_running
 
 
 def create_match_text(matches: list[MatchedFilter]):

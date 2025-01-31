@@ -244,7 +244,7 @@ class mouse:
             from_point, (x, y), offsetBoundaryX=offsetBoundaryX, offsetBoundaryY=offsetBoundaryY, targetPoints=targetPoints
         )
 
-        duration = min(0.3, max(0.05, dist * 0.0004) * random.uniform(delay_factor[0], delay_factor[1]))
+        duration = min(0.5, max(0.05, dist * 0.0004) * random.uniform(delay_factor[0], delay_factor[1]))
         delta = duration / len(human_curve.points)
 
         for point in human_curve.points:
