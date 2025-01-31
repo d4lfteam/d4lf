@@ -82,8 +82,10 @@ class Gui(QMainWindow):
             self.settings.setValue("size", self.size())
             self.settings.setValue("pos", self.pos())
         self.settings.setValue("maximized", self.isMaximized())
-        self.profile_tab_widget.check_close_save()
-        e.accept()
+        if self.profile_tab_widget.check_close_save():
+            e.accept()
+        else:
+            e.ignore()
 
     def _diablo_trade_tab(self):
         tab_diablo_trade = QWidget(self)

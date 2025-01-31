@@ -1,29 +1,46 @@
-from src.gui.build_from_yaml import *
-from PyQt6.QtWidgets import QHeaderView, QTableView, QLabel, QVBoxLayout, QHBoxLayout, QSpinBox, QComboBox, QGroupBox, QSizePolicy, QFormLayout, QCompleter, QMessageBox
+from src.config.models import DynamicItemFilterModel, AffixFilterModel, AffixFilterCountModel, ItemFilterModel, ItemType
+from src.gui.dialog import IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox
+from PyQt6.QtWidgets import QHeaderView, QTableView, QLabel, QVBoxLayout, QHBoxLayout, QComboBox, QGroupBox, QSizePolicy, QFormLayout, QCompleter, QMessageBox
 from PyQt6.QtCore import Qt
 
 class D4LFItem(QGroupBox):
-    def __init__(self, item : Item, affixesNames, itemTypes):
+    def __init__(self, item : DynamicItemFilterModel, affixesNames, itemTypes):
         super().__init__()
-        self.setTitle(item.itemName)
-        self.setStyleSheet("QGroupBox {font-size: 10pt;} QLabel {font-size: 10pt;} QComboBox {font-size: 10pt;} QSpinBox {font-size: 10pt;}")
-        self.main_layout = QVBoxLayout()
-        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.item_name = list(item.root.keys())[0]
         self.item = item
+        self.item_type = self.item.root[self.item_name].itemType[0].value
+        self.affix_pool = self.item.root[self.item_name].affixPool
+        self.inherent_pool = self.item.root[self.item_name].inherentPool
+        self.min_power = self.item.root[self.item_name].minPower
+
         self.changed = False
-        self.setMaximumSize(300, 500)
         self.affixesNames = affixesNames
         self.itemTypes = itemTypes
 
-        self.minPowerEdit = QSpinBox(self)
-        self.minPowerEdit.setMaximum(800)
-        self.minPowerEdit.setMaximumWidth(100)
-        self.minPowerEdit.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        self.minPower_form = QFormLayout()
-        self.minPower_form.addRow(QLabel("minPower:"), self.minPowerEdit)
-        self.main_layout.addLayout(self.minPower_form)
+        self.setTitle(self.item_name)
+        self.setStyleSheet("QGroupBox {font-size: 10pt;} QLabel {font-size: 10pt;} IgnoreScrollWheelComboBox {font-size: 10pt;} IgnoreScrollWheelSpinBox {font-size: 10pt;}")
+        self.setMaximumSize(300, 500)
 
-        if item.affixPool:
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        self.form_layout = QFormLayout()
+
+        self.item_type_label = QLabel("Item Type:")
+        self.item_type_label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        self.item_type_label_info = QLabel(self.find_item_from_value(self.item_type))
+        self.item_type_label_info.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        self.form_layout.addRow(self.item_type_label, self.item_type_label_info)
+
+        self.minPowerEdit = IgnoreScrollWheelSpinBox()
+        self.minPowerEdit.setMaximum(800)
+        self.minPowerEdit.setMaximumWidth(75)
+        self.minPowerEdit.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        self.form_layout.addRow(QLabel("minPower:"), self.minPowerEdit)
+        self.main_layout.addLayout(self.form_layout)
+        self.affixListLayout = None
+        self.inherentListLayout = None
+        if self.affix_pool:
             self.affixes_label = QLabel("Affixes:")
             self.affixes_label.setMaximumSize(200, 50)
             self.affixes_label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
@@ -31,7 +48,7 @@ class D4LFItem(QGroupBox):
             self.affixListLayout = QVBoxLayout()
             self.main_layout.addLayout(self.affixListLayout)
 
-        if item.inherentPool:
+        if self.inherent_pool:
             self.inherent_label = QLabel("Inherent:")
             self.inherent_label.setMaximumSize(200, 50)
             self.inherent_label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
@@ -45,25 +62,22 @@ class D4LFItem(QGroupBox):
         self.minPowerEdit.valueChanged.connect(self.item_changed)
 
     def load_item(self):
-        self.minPowerEdit.setValue(self.item.minPower)
-        for pool in self.item.affixPool:
+        self.minPowerEdit.setValue(self.min_power)
+        for pool in self.affix_pool:
             for affix in pool.count:
                 affixComboBox = self.create_affix_combobox(affix.name)
                 self.affixListLayout.addWidget(affixComboBox)
-            if pool.minCount != None:
-                minCount = self.create_pair_label_spinbox("minCount:", 3, pool.minCount)
-                self.affixListLayout.addLayout(minCount)
-            if pool.minGreaterAffixCount != None:
-                minGreaterAffixCount = self.create_pair_label_spinbox("minGreaterAffixCount:", 3, pool.minGreaterAffixCount)
-                self.affixListLayout.addLayout(minGreaterAffixCount)
+            if pool.minCount != None and pool.minGreaterAffixCount != None:
+                layout = self.create_form_layout(pool.minCount, pool.minGreaterAffixCount)
+                self.affixListLayout.addLayout(layout)
 
-        for pool in self.item.inherentPool:
+        for pool in self.inherent_pool:
             for affix in pool.count:
                 affixComboBox = self.create_affix_combobox(affix.name)
                 self.inherentListLayout.addWidget(affixComboBox)
 
     def create_affix_combobox(self, affix_name):
-        affixComboBox = QComboBox()
+        affixComboBox = IgnoreScrollWheelComboBox()
         affixComboBox.setEditable(True)
         affixComboBox.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         affixComboBox.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
@@ -75,6 +89,8 @@ class D4LFItem(QGroupBox):
 
         affixComboBox.setView(table_view)
         affixComboBox.addItems(self.affixesNames.values())
+        for i, affixes in enumerate(self.affixesNames.values()):
+            affixComboBox.setItemData(i, affixes, Qt.ItemDataRole.ToolTipRole)
 
         key_list = list(self.affixesNames.keys())
         try:
@@ -94,19 +110,22 @@ class D4LFItem(QGroupBox):
         else:
             return False
 
-    def create_pair_label_spinbox(self, labelText, maxValue, value):
-        ret = QHBoxLayout()
-        ret.setContentsMargins(0, 0, 50, 0)
-        label = QLabel(labelText)
-        spinBox = QSpinBox()
-        spinBox.setMaximum(maxValue)
-        spinBox.setValue(value)
-        spinBox.setMaximumWidth(70)
-        label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        spinBox.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        ret.addWidget(label)
-        ret.addWidget(spinBox)
-        spinBox.valueChanged.connect(self.item_changed)
+    def create_form_layout(self, minCount, minGreaterAffixCount):
+        ret = QFormLayout()
+        mincount_label = QLabel("minCount:")
+        mincount_spinBox = IgnoreScrollWheelSpinBox()
+        mincount_spinBox.setMaximum(3)
+        mincount_spinBox.setValue(minCount)
+        mincount_spinBox.setMaximumWidth(60)
+        mincount_spinBox.valueChanged.connect(self.item_changed)
+        ret.addRow(mincount_label, mincount_spinBox)
+        mingreater_label = QLabel("minGreaterAffixCount:")
+        mingreater_spinBox = IgnoreScrollWheelSpinBox()
+        mingreater_spinBox.setMaximum(3)
+        mingreater_spinBox.setValue(minGreaterAffixCount)
+        mingreater_spinBox.setMaximumWidth(60)
+        mingreater_spinBox.valueChanged.connect(self.item_changed)
+        ret.addRow(mingreater_label, mingreater_spinBox)
         return ret
 
     def set_minPower(self, minPower):
@@ -116,46 +135,87 @@ class D4LFItem(QGroupBox):
         for i in range(self.affixListLayout.count()):
             layout = self.affixListLayout.itemAt(i).layout()
             if layout != None:
-                if isinstance(layout, QHBoxLayout):
-                    if layout.itemAt(0).widget().text() == "minGreaterAffixCount:":
-                        layout.itemAt(1).widget().setValue(minGreaterAffix)
+                if isinstance(layout, QFormLayout):
+                    layout.itemAt(3).widget().setValue(minGreaterAffix)
 
     def set_minCount(self, minCount):
         for i in range(self.affixListLayout.count()):
             layout = self.affixListLayout.itemAt(i).layout()
             if layout != None:
-                if isinstance(layout, QHBoxLayout):
-                    if layout.itemAt(0).widget().text() == "minCount:":
-                        layout.itemAt(1).widget().setValue(minCount)
+                if isinstance(layout, QFormLayout):
+                    layout.itemAt(1).widget().setValue(minCount)
 
-    def find_key_from_value(self, target_value):
+    def find_affix_from_value(self, target_value):
         for key, value in self.affixesNames.items():
             if value == target_value:
                 return key
         return None
 
+    def find_item_from_value(self, target_value):
+        for key, value in self.itemTypes.items():
+            if value == target_value:
+                return key
+        return None
+
     def save_item(self):
-        self.item.minPower = self.minPowerEdit.value()
-        for pool in self.item.affixPool:
+        self.min_power = self.minPowerEdit.value()
+        for pool in self.affix_pool:
             for i in range(self.affixListLayout.count()):
                 widget = self.affixListLayout.itemAt(i).widget()
                 layout = self.affixListLayout.itemAt(i).layout()
                 if widget != None:
-                    if isinstance(widget, QComboBox):
-                        pool.count[i] = Affix(self.find_key_from_value(widget.currentText()))
+                    if isinstance(widget, IgnoreScrollWheelComboBox):
+                        pool.count[i] = AffixFilterModel(name=self.find_affix_from_value(widget.currentText()))
                 elif layout != None:
-                    if isinstance(layout, QHBoxLayout):
-                        if layout.itemAt(0).widget().text() == "minCount:":
-                            pool.minCount = layout.itemAt(1).widget().value()
-                        elif layout.itemAt(0).widget().text() == "minGreaterAffixCount:":
-                            pool.minGreaterAffixCount = layout.itemAt(1).widget().value()
+                    if isinstance(layout, QFormLayout):
+                        pool.minCount = layout.itemAt(1).widget().value()
+                        pool.minGreaterAffixCount = layout.itemAt(3).widget().value()
 
-        for pool in self.item.inherentPool:
+        for pool in self.inherent_pool:
             for i in range(self.inherentListLayout.count()):
                 widget = self.inherentListLayout.itemAt(i).widget()
-                if isinstance(widget, QComboBox):
-                    pool.count[i] = Affix(self.find_key_from_value(widget.currentText()))
+                if isinstance(widget, IgnoreScrollWheelComboBox):
+                    pool.count[i] = AffixFilterModel(name=self.find_affix_from_value(widget.currentText()))
         self.changed = False
+        self.item.root[self.item_name].affixPool = self.affix_pool
+        if self.inherent_pool:
+            self.item.root[self.item_name].inherentPool = self.inherent_pool
+        self.item.root[self.item_name].minPower= self.min_power
+        return self.item
+
+    def save_item_create(self):
+        new_item = ItemFilterModel()
+        new_item.itemType = [ItemType(self.item_type)]
+        new_item.minPower = self.minPowerEdit.value()
+        new_item.affixPool = []
+        new_item.inherentPool = []
+        affix_filter_count_list = []
+        minCount = 0
+        minGreaterAffixCount = 0
+
+        for i in range(self.affixListLayout.count()):
+                widget = self.affixListLayout.itemAt(i).widget()
+                layout = self.affixListLayout.itemAt(i).layout()
+                if widget != None:
+                    if isinstance(widget, IgnoreScrollWheelComboBox):
+                        affix_filter_count_list.append(AffixFilterModel(name=self.find_affix_from_value(widget.currentText())))
+                elif layout != None:
+                    if isinstance(layout, QFormLayout):
+                        minCount = layout.itemAt(1).widget().value()
+                        minGreaterAffixCount = layout.itemAt(3).widget().value()
+        affix_filter_count = AffixFilterCountModel(minCount=minCount, minGreaterAffixCount=minGreaterAffixCount, count=affix_filter_count_list)
+        new_item.affixPool.append(affix_filter_count)
+
+        if self.inherentListLayout:
+            inherent_filter_count_list = []
+            for i in range(self.inherentListLayout.count()):
+                widget = self.inherentListLayout.itemAt(i).widget()
+                if isinstance(widget, IgnoreScrollWheelComboBox):
+                    inherent_filter_count_list.append(AffixFilterModel(name=self.find_affix_from_value(widget.currentText())))
+            inherent_filter_count = AffixFilterCountModel(count=inherent_filter_count_list)
+            new_item.inherentPool.append(inherent_filter_count)
+
+        return DynamicItemFilterModel(**{self.item_name: new_item})
 
     def item_changed(self):
         self.changed = True

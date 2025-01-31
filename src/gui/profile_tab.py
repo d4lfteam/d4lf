@@ -1,12 +1,22 @@
-import configparser
-import sys
 import os
 import json
-import time
-from src.gui.build_from_yaml import *
+import logging
+import yaml
+from pydantic import ValidationError
+
+from typing import List
+from src.config import BASE_DIR
+from src.config.loader import IniConfigLoader
+from src.config.models import DynamicItemFilterModel, SigilFilterModel, UniqueModel, ConfigDict, AffixFilterCountModel
+from src.gui.importer.common import ProfileModel, save_as_profile, _to_yaml_str
+from src.gui.importer.maxroll import import_maxroll
 from src.gui.dialog import *
 from src.gui.d4lfitem import *
-from src.config import BASE_DIR
+from src.item.filter import _UniqueKeyLoader
+
+from PyQt6.QtCore import Qt
+
+LOGGER = logging.getLogger(__name__)
 
 PROFILE_TABNAME = "Edit Profile"
 
@@ -23,7 +33,6 @@ class ProfileTab(QWidget):
         scrollable_layout = QVBoxLayout(scroll_widget)
         scroll_area.setWidgetResizable(True)
 
-
         info_layout = QHBoxLayout()
         info_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -39,10 +48,21 @@ class ProfileTab(QWidget):
         tools_groupbox_layout = QHBoxLayout()
         self.file_button = QPushButton("File")
         self.save_button = QPushButton("Save")
-        self.file_button.clicked.connect(self.load_yaml)
+        self.refresh_button = QPushButton("Refresh")
+        self.file_button.clicked.connect(self.load)
         self.save_button.clicked.connect(self.save_yaml)
+        self.refresh_button.clicked.connect(self.refresh)
         tools_groupbox_layout.addWidget(self.file_button)
         tools_groupbox_layout.addWidget(self.save_button)
+        tools_groupbox_layout.addWidget(self.refresh_button)
+
+        self.create_item_button = QPushButton("Create Item")
+        self.create_item_button.clicked.connect(self.create_item)
+        tools_groupbox_layout.addWidget(self.create_item_button)
+
+        self.delete_item_button = QPushButton("Delete Item")
+        self.delete_item_button.clicked.connect(self.delete_items)
+        tools_groupbox_layout.addWidget(self.delete_item_button)
 
         self.set_all_minGreaterAffix_button = QPushButton("Set all minGreaterAffix")
         self.set_all_minPower_button = QPushButton("Set all minPower")
@@ -67,10 +87,10 @@ class ProfileTab(QWidget):
 
         self.item_widgets = QWidget()
         self.item_widgets_layout = QGridLayout()
-        self.item_list = []
+        self.item_widgets_layout.setDefaultPositioning(4, Qt.Orientation.Horizontal)
+        self.item_list : List[D4LFItem] = []
         self.item_widgets.setLayout(self.item_widgets_layout)
         scrollable_layout.addWidget(self.item_widgets)
-        self.update_filename_label()
         scroll_widget.setLayout(scrollable_layout)
         scroll_area.setWidget(scroll_widget)
         self.main_layout.addWidget(scroll_area)
@@ -84,11 +104,12 @@ class ProfileTab(QWidget):
         instructions_text.append("All values are not saved automatically immediately upon changing.")
         instructions_text.append("You must click the save button to apply the changes to the profile.")
         instructions_text.append("")
-        instructions_text.append("Note: You will need to restart d4lf after modifying these values. Modifying profile file manually while this gui is running is not supported (and really not necessary).")
+        instructions_text.append("Note: Modifying profile file manually while this gui is running is not supported (and really not necessary).")
 
         instructions_text.setFixedHeight(150)
         self.main_layout.addWidget(instructions_text)
         self.setLayout(self.main_layout)
+        self.load()
 
 
     def confirm_discard_changes(self):
@@ -142,69 +163,135 @@ class ProfileTab(QWidget):
             self.create_alert("No file loaded")
 
     def load_items(self):
-        i = 0
-        j = 0
+        row = 0
+        col = 0
+
 
         while self.item_widgets_layout.count():
             item = self.item_widgets_layout.takeAt(0)
             item.widget().deleteLater()
 
         self.item_list = []
-
-        for item in self.root.affixes:
+        for item in self.root.Affixes:
             d4lf_item = D4LFItem(item, self.affixesNames, self.itemTypes)
             self.item_list.append(d4lf_item)
-            if i % 4 == 0 and i != 0:
-                i = 0
-                j += 1
-            self.item_widgets_layout.addWidget(d4lf_item, j, i)
-            i += 1
+            if col % 4 == 0 and col != 0:
+                col = 0
+                row += 1
+            self.item_widgets_layout.addWidget(d4lf_item, row, col)
+            col += 1
 
-    def load_yaml(self):
+    def load(self):
+        profiles: list[str] = IniConfigLoader().general.profiles
+        custom_profile_path = IniConfigLoader().user_dir / "profiles"
         if not self.file_path: # at start, set default file to build in params.ini
-            params_file = os.path.join(os.getenv("USERPROFILE"), ".d4lf", "params.ini")
-            params_data = configparser.ConfigParser()
-            params_data.read(params_file)
-            profile_names = params_data.get('general', 'profiles').split(',')
-            if profile_names[0]:
-                file_path = os.path.join(os.getenv("USERPROFILE"), ".d4lf", "profiles", f"{profile_names[0]}.yaml")
+            if profiles[0]:
+                custom_file_path = custom_profile_path / f"{profiles[0]}.yaml"
+                if custom_file_path.is_file():
+                    file_path = custom_file_path
+                else:
+                    LOGGER.error(f"Could not load profile {profiles[0]}. Checked: {custom_file_path}")
             else:
-                base_dir = os.path.join(os.getenv("USERPROFILE"), ".d4lf", "profiles")
-                file_path, _ = QFileDialog.getOpenFileName(self, "Open YAML File", base_dir, "YAML Files (*.yaml *.yml)")
+                file_path, _ = QFileDialog.getOpenFileName(self, "Open YAML File", str(custom_profile_path), "YAML Files (*.yaml *.yml)")
         else:
-            base_dir = os.path.join(os.getenv("USERPROFILE"), ".d4lf", "profiles")
-            file_path, _ = QFileDialog.getOpenFileName(self, "Open YAML File", base_dir, "YAML Files (*.yaml *.yml)")
+            file_path, _ = QFileDialog.getOpenFileName(self, "Open YAML File", str(custom_profile_path), "YAML Files (*.yaml *.yml)")
+
         if file_path:
-            self.root = Root.load_yaml(file_path)
-            self.file_path = os.path.abspath(file_path)
+            self.file_path = file_path
+            if not self.load_yaml():
+                return False
             self.update_filename_label()
             self.load_items()
             return True
         return False
 
-    def update_filename_label(self, close=False):
-        if close:
-            self.filenameLabel.setText("No file loaded")
-            return
-        if not self.file_path:
-            if not self.load_yaml():
-                self.filenameLabel.setText("No file loaded")
-                return
+    def load_yaml(self):
+        filename = os.path.basename(self.file_path)  # Get the filename from the full path
+        filename_without_extension = filename.rsplit(".", 1)[0]  # Remove the extension
+        profile_str = filename_without_extension.replace("_", " ")  # Replace underscores with spaces
+        self.root = None
+        with open(self.file_path, encoding="utf-8") as f:
+            try:
+                config = yaml.load(stream=f, Loader=_UniqueKeyLoader)
+            except Exception as e:
+                LOGGER.error(f"Error in the YAML file {self.file_path}: {e}")
+                return False
+            if config is None:
+                LOGGER.error(f"Empty YAML file {self.file_path}, please remove it")
+                return False
+            try:
+                self.root = ProfileModel(name=profile_str, **config)
+            except ValidationError as e:
+                LOGGER.error(f"Validation errors in {self.file_path}")
+                LOGGER.error(e)
+                return False
+        return True
 
+    def update_filename_label(self):
         if self.file_path:
-            filename = self.file_path.split("\\")[-1]  # Get the filename from the full path
+            filename = os.path.basename(self.file_path)  # Get the filename from the full path
             filename_without_extension = filename.rsplit(".", 1)[0]  # Remove the extension
             display_name = filename_without_extension.replace("_", " ")  # Replace underscores with spaces
             self.filenameLabel.setText(display_name)
 
     def save_yaml(self):
+        new_profile_affixes = []
         for d4lf_item in self.item_list:
-            d4lf_item.save_item()
+            new_profile_affixes.append(d4lf_item.save_item())
         if self.root:
-            self.root.save_yaml(self.file_path)
+            p = ProfileModel(name="imported profile", Affixes=new_profile_affixes, Uniques=self.root.Uniques)
+            save_as_profile(self.filenameLabel.text(), p, "custom")
 
     def check_close_save(self):
-        if self.item_list:
-            for d4lf_item in self.item_list:
-                if d4lf_item.has_changes():
-                    return self.confirm_discard_changes()
+        new_profile_affixes = []
+        for d4lf_item in self.item_list:
+            new_profile_affixes.append(d4lf_item.save_item_create())
+        if self.root:
+            p = ProfileModel(name=self.filenameLabel.text(), Affixes=new_profile_affixes, Uniques=self.root.Uniques)
+            if p != self.root:
+                return self.confirm_discard_changes()
+        return True
+
+    def check_item_name(self, name):
+        for d4lf_item in self.item_list:
+            if d4lf_item.item_name == name:
+                return False
+        return True
+
+    def create_item(self):
+        dialog = CreateItem(self.itemTypes, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            item = dialog.get_value()
+            if not self.check_item_name(list(item.root.keys())[0]):
+                self.create_alert("An item with the same already exists, please choose a different name.")
+                return
+            item_widget = D4LFItem(item, self.affixesNames, self.itemTypes)
+            item_widget.item_changed()
+            self.item_list.append(item_widget)
+            nb_item = self.item_widgets_layout.count()
+            row = nb_item // 4
+            col = nb_item % 4
+            self.item_widgets_layout.addWidget(item_widget, row, col)
+            return
+
+    def delete_items(self):
+        item_names = [item.item_name for item in self.item_list]
+        dialog = DeleteItem(item_names, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            for item_name in dialog.get_value():
+                for i, item in enumerate(self.item_list):
+                    if item.item_name == item_name:
+                        self.item_list.pop(i)
+                        to_delete = self.item_widgets_layout.takeAt(i)
+                        to_delete.widget().deleteLater()
+                        break
+            return
+
+    def refresh(self):
+        self.item_list = []
+
+        if not self.load_yaml():
+            return
+
+        self.update_filename_label()
+        self.load_items()
