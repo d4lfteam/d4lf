@@ -2,14 +2,13 @@ import os
 import json
 import logging
 import yaml
-from pydantic import ValidationError
 
+from pydantic import ValidationError
+from PyQt6.QtWidgets import QGridLayout, QTextBrowser, QFileDialog
 from typing import List
 from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
-from src.config.models import DynamicItemFilterModel, SigilFilterModel, UniqueModel, ConfigDict, AffixFilterCountModel
-from src.gui.importer.common import ProfileModel, save_as_profile, _to_yaml_str
-from src.gui.importer.maxroll import import_maxroll
+from src.gui.importer.common import ProfileModel, save_as_profile
 from src.gui.dialog import *
 from src.gui.d4lfitem import *
 from src.item.filter import _UniqueKeyLoader

@@ -1,6 +1,6 @@
 from src.config.models import DynamicItemFilterModel, AffixFilterModel, AffixFilterCountModel, ItemFilterModel, ItemType
 from src.gui.dialog import IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox
-from PyQt6.QtWidgets import QHeaderView, QTableView, QLabel, QVBoxLayout, QHBoxLayout, QComboBox, QGroupBox, QSizePolicy, QFormLayout, QCompleter, QMessageBox
+from PyQt6.QtWidgets import QHeaderView, QTableView, QLabel, QVBoxLayout, QComboBox, QGroupBox, QSizePolicy, QFormLayout, QCompleter, QMessageBox
 from PyQt6.QtCore import Qt
 
 class D4LFItem(QGroupBox):

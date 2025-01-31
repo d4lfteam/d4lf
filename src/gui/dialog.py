@@ -1,7 +1,6 @@
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QSpinBox, QPushButton, QHBoxLayout, QGridLayout, QTextBrowser, QGroupBox, QFormLayout, QComboBox, QLineEdit, QCheckBox
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidgetItem, QPushButton, QScrollArea, QFileDialog, QVBoxLayout, QWidget, QLineEdit, QLabel, QFormLayout, QHBoxLayout, QMessageBox, QMenuBar, QStatusBar, QSizePolicy
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QSpinBox, QPushButton, QHBoxLayout, QGroupBox, QFormLayout, QLineEdit, QCheckBox
+from PyQt6.QtWidgets import QPushButton, QScrollArea, QVBoxLayout, QWidget, QLineEdit, QLabel, QFormLayout, QHBoxLayout, QMessageBox, QSizePolicy
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QFont, QIcon
 from src.gui.config_tab import IgnoreScrollWheelComboBox
 from src.config.models import AffixFilterCountModel, AffixFilterModel, ItemFilterModel, DynamicItemFilterModel, ItemType
 
