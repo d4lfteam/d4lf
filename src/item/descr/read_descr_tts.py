@@ -161,8 +161,11 @@ def _get_affixes_from_tts_section(tts_section: list[str], item: Item, length: in
     dps = None
     item_power = None
     masterwork = None
+    armory = None
     start = 0
     for i, line in enumerate(tts_section):
+        if "armory loadout" in line.lower():
+            armory = i
         if "masterwork" in line.lower():
             masterwork = i
         if "item power" in line.lower():
@@ -170,7 +173,7 @@ def _get_affixes_from_tts_section(tts_section: list[str], item: Item, length: in
         if "damage per second" in line.lower():
             dps = i
             break  # this will always be the last line of the 3
-    base_value = masterwork if masterwork else item_power
+    base_value = armory if armory else masterwork if masterwork else item_power
     if is_weapon(item.item_type):
         start = dps + 2
     elif is_jewelry(item.item_type):
