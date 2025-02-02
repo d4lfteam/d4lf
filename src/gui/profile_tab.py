@@ -131,17 +131,11 @@ class ProfileTab(QWidget):
         if reply == QMessageBox.StandardButton.Yes:
             self.save_yaml()
             return True
-        elif reply == QMessageBox.StandardButton.No:
-            return True
-        else:
-            return False
+        return reply == QMessageBox.StandardButton.No
 
     def create_alert(self, msg: str):
         reply = QMessageBox.warning(self, "Alert", msg, QMessageBox.StandardButton.Ok)
-        if reply == QMessageBox.StandardButton.Ok:
-            return True
-        else:
-            return False
+        return reply == QMessageBox.StandardButton.Ok
 
     def set_all_minGreaterAffix(self):
         if self.file_path:
@@ -263,10 +257,7 @@ class ProfileTab(QWidget):
         return True
 
     def check_item_name(self, name):
-        for d4lf_item in self.item_list:
-            if d4lf_item.item_name == name:
-                return False
-        return True
+        return all(d4lf_item.item_name != name for d4lf_item in self.item_list)
 
     def create_item(self):
         dialog = CreateItem(self.itemTypes, self)

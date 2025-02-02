@@ -80,7 +80,7 @@ class D4LFItem(QGroupBox):
             for affix in pool.count:
                 affixComboBox = self.create_affix_combobox(affix.name)
                 self.affixListLayout.addWidget(affixComboBox)
-            if pool.minCount != None and pool.minGreaterAffixCount != None:
+            if pool.minCount is not None and pool.minGreaterAffixCount is not None:
                 layout = self.create_form_layout(pool.minCount, pool.minGreaterAffixCount)
                 self.affixListLayout.addLayout(layout)
 
@@ -118,10 +118,7 @@ class D4LFItem(QGroupBox):
 
     def create_alert(self, msg: str):
         reply = QMessageBox.warning(self, "Alert", msg, QMessageBox.StandardButton.Ok)
-        if reply == QMessageBox.StandardButton.Ok:
-            return True
-        else:
-            return False
+        return reply == QMessageBox.StandardButton.Ok
 
     def create_form_layout(self, minCount, minGreaterAffixCount):
         ret = QFormLayout()
@@ -147,16 +144,14 @@ class D4LFItem(QGroupBox):
     def set_minGreaterAffix(self, minGreaterAffix):
         for i in range(self.affixListLayout.count()):
             layout = self.affixListLayout.itemAt(i).layout()
-            if layout != None:
-                if isinstance(layout, QFormLayout):
-                    layout.itemAt(3).widget().setValue(minGreaterAffix)
+            if layout is not None and isinstance(layout, QFormLayout):
+                layout.itemAt(3).widget().setValue(minGreaterAffix)
 
     def set_minCount(self, minCount):
         for i in range(self.affixListLayout.count()):
             layout = self.affixListLayout.itemAt(i).layout()
-            if layout != None:
-                if isinstance(layout, QFormLayout):
-                    layout.itemAt(1).widget().setValue(minCount)
+            if layout is not None and isinstance(layout, QFormLayout):
+                layout.itemAt(1).widget().setValue(minCount)
 
     def find_affix_from_value(self, target_value):
         for key, value in self.affixesNames.items():
@@ -176,13 +171,12 @@ class D4LFItem(QGroupBox):
             for i in range(self.affixListLayout.count()):
                 widget = self.affixListLayout.itemAt(i).widget()
                 layout = self.affixListLayout.itemAt(i).layout()
-                if widget != None:
+                if widget is not None:
                     if isinstance(widget, IgnoreScrollWheelComboBox):
                         pool.count[i] = AffixFilterModel(name=self.find_affix_from_value(widget.currentText()))
-                elif layout != None:
-                    if isinstance(layout, QFormLayout):
-                        pool.minCount = layout.itemAt(1).widget().value()
-                        pool.minGreaterAffixCount = layout.itemAt(3).widget().value()
+                elif layout is not None and isinstance(layout, QFormLayout):
+                    pool.minCount = layout.itemAt(1).widget().value()
+                    pool.minGreaterAffixCount = layout.itemAt(3).widget().value()
 
         for pool in self.inherent_pool:
             for i in range(self.inherentListLayout.count()):
@@ -209,13 +203,12 @@ class D4LFItem(QGroupBox):
         for i in range(self.affixListLayout.count()):
                 widget = self.affixListLayout.itemAt(i).widget()
                 layout = self.affixListLayout.itemAt(i).layout()
-                if widget != None:
+                if widget is not None:
                     if isinstance(widget, IgnoreScrollWheelComboBox):
                         affix_filter_count_list.append(AffixFilterModel(name=self.find_affix_from_value(widget.currentText())))
-                elif layout != None:
-                    if isinstance(layout, QFormLayout):
-                        minCount = layout.itemAt(1).widget().value()
-                        minGreaterAffixCount = layout.itemAt(3).widget().value()
+                elif layout is not None and isinstance(layout, QFormLayout):
+                    minCount = layout.itemAt(1).widget().value()
+                    minGreaterAffixCount = layout.itemAt(3).widget().value()
         affix_filter_count = AffixFilterCountModel(minCount=minCount, minGreaterAffixCount=minGreaterAffixCount, count=affix_filter_count_list)
         new_item.affixPool.append(affix_filter_count)
 
