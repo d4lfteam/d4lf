@@ -31,6 +31,7 @@ class IgnoreScrollWheelSpinBox(QSpinBox):
 
         return event.ignore()
 
+
 class MinPowerDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -59,6 +60,7 @@ class MinPowerDialog(QDialog):
 
     def get_value(self):
         return self.spinBox.value()
+
 
 class MinGreaterDialog(QDialog):
     def __init__(self, parent=None):
@@ -89,6 +91,7 @@ class MinGreaterDialog(QDialog):
     def get_value(self):
         return self.spinBox.value()
 
+
 class MinCountDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -117,6 +120,7 @@ class MinCountDialog(QDialog):
 
     def get_value(self):
         return self.spinBox.value()
+
 
 class CreateItem(QDialog):
     def __init__(self, item_types, parent=None):
@@ -185,25 +189,16 @@ class CreateItem(QDialog):
         item.itemType = [ItemType(item_type)]
         item.affixPool = [
             AffixFilterCountModel(
-                count=[
-                    AffixFilterModel(name=x)
-                    for x in dummy_affixes[:affixes_number]
-                ],
+                count=[AffixFilterModel(name=x) for x in dummy_affixes[:affixes_number]],
                 minCount=2,
                 minGreaterAffixCount=0,
             )
         ]
         if inherent_number > 0:
-            item.inherentPool = [
-                AffixFilterCountModel(
-                    count=[
-                        AffixFilterModel(name=x)
-                        for x in dummy_affixes[:inherent_number]
-                    ]
-                )
-            ]
+            item.inherentPool = [AffixFilterCountModel(count=[AffixFilterModel(name=x) for x in dummy_affixes[:inherent_number]])]
         item.minPower = 100
         return DynamicItemFilterModel(**{item_name: item})
+
 
 class DeleteItem(QDialog):
     def __init__(self, item_names, parent=None):
