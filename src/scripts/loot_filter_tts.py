@@ -32,7 +32,7 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
         if item.is_junk or item.is_fav:
             continue
         inv.hover_item(item)
-        time.sleep(0.05)
+        time.sleep(0.1)
         img = Cam().grab()
         item_descr = None
         item_descr_previous_check = None
@@ -49,7 +49,7 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
             # Move off of the item then back on again
             inv.hover_left_of_item(item)
             inv.hover_item(item)
-            time.sleep(0.05)
+            time.sleep(0.1)
             try:
                 item_descr = src.item.descr.read_descr_tts.read_descr()
                 LOGGER.debug(f"Parsed item based on TTS: {item_descr}")

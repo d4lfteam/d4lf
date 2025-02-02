@@ -180,8 +180,6 @@ def _get_affixes_from_tts_section(tts_section: list[str], item: Item, length: in
         start = base_value
     elif is_armor(item.item_type):
         start = base_value + 1
-    elif item.item_type == ItemType.Shield:
-        start = base_value + 3
     start += 1
     return tts_section[start : start + length]
 
