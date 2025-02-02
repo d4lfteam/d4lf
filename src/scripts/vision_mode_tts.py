@@ -152,7 +152,13 @@ class VisionMode:
             match = res.keep
 
             if match:
-                text = create_match_text(reversed(res.matched))
+                if not res.matched:
+                    if item_descr.rarity == ItemRarity.Unique:
+                        text = ["Unique"]
+                    elif item_descr.rarity == ItemRarity.Mythic:
+                        text = ["Mythic (Always Kept)"]
+                else:
+                    text = create_match_text(reversed(res.matched))
                 return self.request_draw("\n".join(text), "#23fc5d")
             self.request_clear()
         except Exception:

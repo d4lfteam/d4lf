@@ -33,7 +33,8 @@ class Publisher:
             data = fix_data(_DATA_QUEUE.get())
             local_cache.append(data)
             if not filter_data(data) and (
-                any(word in data.lower() for word in ["mouse button"]) and (start := find_item_start(local_cache)) is not None
+                any(word in data.lower() for word in ["mouse button", "action button"])
+                and (start := find_item_start(local_cache)) is not None
             ):
                 global LAST_ITEM
                 LAST_ITEM = local_cache[start:]

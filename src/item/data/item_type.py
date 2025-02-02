@@ -46,13 +46,7 @@ class ItemType(Enum):
 
 
 def is_armor(item_type: ItemType) -> bool:
-    return item_type in [
-        ItemType.Boots,
-        ItemType.ChestArmor,
-        ItemType.Gloves,
-        ItemType.Helm,
-        ItemType.Legs,
-    ]
+    return item_type in [ItemType.Boots, ItemType.ChestArmor, ItemType.Gloves, ItemType.Helm, ItemType.Legs, ItemType.Shield]
 
 
 def is_consumable(item_type: ItemType) -> bool:
