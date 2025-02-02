@@ -240,15 +240,13 @@ class ProfileTab(QWidget):
             self.filenameLabel.setText(display_name)
 
     def save_yaml(self):
-        new_profile_affixes = []
-        new_profile_affixes.append(d4lf_item.save_item() for d4lf_item in self.item_list)
+        new_profile_affixes = [d4lf_item.save_item() for d4lf_item in self.item_list]
         if self.root:
             p = ProfileModel(name="imported profile", Affixes=new_profile_affixes, Uniques=self.root.Uniques)
             save_as_profile(self.filenameLabel.text(), p, "custom")
 
     def check_close_save(self):
-        new_profile_affixes = []
-        new_profile_affixes.append(d4lf_item.save_item_create() for d4lf_item in self.item_list)
+        new_profile_affixes = [d4lf_item.save_item_create() for d4lf_item in self.item_list]
         if self.root:
             p = ProfileModel(name=self.filenameLabel.text(), Affixes=new_profile_affixes, Uniques=self.root.Uniques)
             if p != self.root:
