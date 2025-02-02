@@ -1,23 +1,23 @@
-import os
 import json
 import logging
-import yaml
+import os
 
+import yaml
 from pydantic import ValidationError
-from PyQt6.QtWidgets import QGridLayout, QTextBrowser, QFileDialog
-from typing import List
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QFileDialog, QGridLayout, QTextBrowser
+
 from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
-from src.gui.importer.common import ProfileModel, save_as_profile
-from src.gui.dialog import *
 from src.gui.d4lfitem import *
+from src.gui.dialog import *
+from src.gui.importer.common import ProfileModel, save_as_profile
 from src.item.filter import _UniqueKeyLoader
-
-from PyQt6.QtCore import Qt
 
 LOGGER = logging.getLogger(__name__)
 
-PROFILE_TABNAME = "Edit Profile"
+PROFILE_TABNAME = "edit profile (beta)"
+
 
 class ProfileTab(QWidget):
     def __init__(self):
@@ -77,17 +77,17 @@ class ProfileTab(QWidget):
         self.main_layout.addLayout(info_layout)
 
         self.itemTypes = None
-        with open(str(BASE_DIR / "assets/lang/enUS/item_types.json"), 'r') as f:
+        with open(str(BASE_DIR / "assets/lang/enUS/item_types.json")) as f:
             self.itemTypes = json.load(f)
 
         self.affixesNames = None
-        with open(str(BASE_DIR / "assets/lang/enUS/affixes.json"), 'r') as f:
+        with open(str(BASE_DIR / "assets/lang/enUS/affixes.json")) as f:
             self.affixesNames = json.load(f)
 
         self.item_widgets = QWidget()
         self.item_widgets_layout = QGridLayout()
         self.item_widgets_layout.setDefaultPositioning(4, Qt.Orientation.Horizontal)
-        self.item_list : List[D4LFItem] = []
+        self.item_list: list[D4LFItem] = []
         self.item_widgets.setLayout(self.item_widgets_layout)
         scrollable_layout.addWidget(self.item_widgets)
         scroll_widget.setLayout(scrollable_layout)
@@ -97,24 +97,24 @@ class ProfileTab(QWidget):
         self.main_layout.addWidget(instructions_label)
 
         instructions_text = QTextBrowser()
-        instructions_text.append("The default profile loaded is the first profile in the params.ini file. You can change the default profile in the params.ini file by changing the 'profiles' value to the desired profile name.")
-        instructions_text.append("You can also load a profile by clicking the 'File' button.")
+        instructions_text.append("You load a profile by clicking the 'File' button.")
         instructions_text.append("")
         instructions_text.append("All values are not saved automatically immediately upon changing.")
         instructions_text.append("You must click the save button to apply the changes to the profile.")
         instructions_text.append("")
-        instructions_text.append("Note: Modifying profile file manually while this gui is running is not supported (and really not necessary).")
 
         instructions_text.setFixedHeight(150)
         self.main_layout.addWidget(instructions_text)
         self.setLayout(self.main_layout)
         self.load()
 
-
     def confirm_discard_changes(self):
-        reply = QMessageBox.warning(self, 'Unsaved Changes',
+        reply = QMessageBox.warning(
+            self,
+            "Unsaved Changes",
             "You have unsaved changes. Do you want to save them before continuing?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel)
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
+        )
         if reply == QMessageBox.StandardButton.Yes:
             self.save_yaml()
             return True
@@ -124,7 +124,7 @@ class ProfileTab(QWidget):
             return False
 
     def create_alert(self, msg: str):
-        reply = QMessageBox.warning(self, 'Alert', msg, QMessageBox.StandardButton.Ok)
+        reply = QMessageBox.warning(self, "Alert", msg, QMessageBox.StandardButton.Ok)
         if reply == QMessageBox.StandardButton.Ok:
             return True
         else:
@@ -150,7 +150,6 @@ class ProfileTab(QWidget):
         else:
             self.create_alert("No file loaded")
 
-
     def set_all_minPower(self):
         if self.file_path:
             dialog = MinPowerDialog(self)
@@ -164,7 +163,6 @@ class ProfileTab(QWidget):
     def load_items(self):
         row = 0
         col = 0
-
 
         while self.item_widgets_layout.count():
             item = self.item_widgets_layout.takeAt(0)
@@ -183,7 +181,7 @@ class ProfileTab(QWidget):
     def load(self):
         profiles: list[str] = IniConfigLoader().general.profiles
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
-        if not self.file_path: # at start, set default file to build in params.ini
+        if not self.file_path:  # at start, set default file to build in params.ini
             if profiles[0]:
                 custom_file_path = custom_profile_path / f"{profiles[0]}.yaml"
                 if custom_file_path.is_file():

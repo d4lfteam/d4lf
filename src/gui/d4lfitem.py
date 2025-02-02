@@ -1,7 +1,20 @@
-from src.config.models import DynamicItemFilterModel, AffixFilterModel, AffixFilterCountModel, ItemFilterModel, ItemType
-from src.gui.dialog import IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox
-from PyQt6.QtWidgets import QHeaderView, QTableView, QLabel, QVBoxLayout, QComboBox, QGroupBox, QSizePolicy, QFormLayout, QCompleter, QMessageBox
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QCompleter,
+    QFormLayout,
+    QGroupBox,
+    QHeaderView,
+    QLabel,
+    QMessageBox,
+    QSizePolicy,
+    QTableView,
+    QVBoxLayout,
+)
+
+from src.config.models import AffixFilterCountModel, AffixFilterModel, DynamicItemFilterModel, ItemFilterModel, ItemType
+from src.gui.dialog import IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox
+
 
 class D4LFItem(QGroupBox):
     def __init__(self, item : DynamicItemFilterModel, affixesNames, itemTypes):
@@ -104,7 +117,7 @@ class D4LFItem(QGroupBox):
         return affixComboBox
 
     def create_alert(self, msg: str):
-        reply = QMessageBox.warning(self, 'Alert', msg, QMessageBox.StandardButton.Ok)
+        reply = QMessageBox.warning(self, "Alert", msg, QMessageBox.StandardButton.Ok)
         if reply == QMessageBox.StandardButton.Ok:
             return True
         else:

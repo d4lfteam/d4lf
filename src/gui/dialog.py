@@ -1,8 +1,24 @@
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QSpinBox, QPushButton, QHBoxLayout, QGroupBox, QFormLayout, QLineEdit, QCheckBox
-from PyQt6.QtWidgets import QPushButton, QScrollArea, QVBoxLayout, QWidget, QLineEdit, QLabel, QFormLayout, QHBoxLayout, QMessageBox, QSizePolicy
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
+)
+
+from src.config.models import AffixFilterCountModel, AffixFilterModel, DynamicItemFilterModel, ItemFilterModel, ItemType
 from src.gui.config_tab import IgnoreScrollWheelComboBox
-from src.config.models import AffixFilterCountModel, AffixFilterModel, ItemFilterModel, DynamicItemFilterModel, ItemType
+
 
 class IgnoreScrollWheelSpinBox(QSpinBox):
     def __init__(self):
@@ -164,7 +180,7 @@ class CreateItem(QDialog):
         item_type = self.type_input.currentText()
         affixes_number = self.affixes_number.value()
         inherent_number = self.inherent_number.value()
-        dummy_affixes = ['attack_speed', 'critical_strike_chance', 'maximum_life']
+        dummy_affixes = ["attack_speed", "critical_strike_chance", "maximum_life"]
         item = ItemFilterModel()
         item.itemType = [ItemType(item_type)]
         item.affixPool = [
