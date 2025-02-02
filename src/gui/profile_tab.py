@@ -3,8 +3,6 @@ import logging
 import os
 
 import yaml
-from gui.d4lfitem import D4LFItem
-from gui.dialog import CreateItem, DeleteItem, MinCountDialog, MinGreaterDialog, MinPowerDialog
 from pydantic import ValidationError
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -22,6 +20,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from gui.d4lfitem import D4LFItem
+from gui.dialog import CreateItem, DeleteItem, MinCountDialog, MinGreaterDialog, MinPowerDialog
 from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
 from src.gui.importer.common import ProfileModel, save_as_profile
