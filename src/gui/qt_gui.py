@@ -24,7 +24,7 @@ from src import __version__
 from src.config import BASE_DIR
 from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
-from src.gui import config_tab
+from src.gui import config_tab, profile_tab
 from src.gui.importer.d4builds import import_d4builds
 from src.gui.importer.diablo_trade import import_diablo_trade
 from src.gui.importer.maxroll import import_maxroll
@@ -69,7 +69,8 @@ class Gui(QMainWindow):
         self._maxroll_or_d4builds_tab()
         self._diablo_trade_tab()
         self.tab_widget.addTab(config_tab.ConfigTab(), config_tab.CONFIG_TABNAME)
-
+        self.profile_tab_widget = profile_tab.ProfileTab()
+        self.tab_widget.addTab(self.profile_tab_widget, profile_tab.PROFILE_TABNAME)
         LOGGER.root.addHandler(self.maxroll_log_handler)
         self.tab_widget.currentChanged.connect(self._handle_tab_changed)
         self._toggle_dark_mode()
@@ -80,8 +81,10 @@ class Gui(QMainWindow):
             self.settings.setValue("size", self.size())
             self.settings.setValue("pos", self.pos())
         self.settings.setValue("maximized", self.isMaximized())
-
-        e.accept()
+        if self.profile_tab_widget.check_close_save():
+            e.accept()
+        else:
+            e.ignore()
 
     def _diablo_trade_tab(self):
         tab_diablo_trade = QWidget(self)
