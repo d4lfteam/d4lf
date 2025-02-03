@@ -24,8 +24,7 @@ from src import __version__
 from src.config import BASE_DIR
 from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
-from src.gui import config_tab
-from src.gui import profile_tab
+from src.gui import config_tab, profile_tab
 from src.gui.importer.d4builds import import_d4builds
 from src.gui.importer.diablo_trade import import_diablo_trade
 from src.gui.importer.maxroll import import_maxroll
