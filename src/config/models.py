@@ -283,7 +283,9 @@ class GeneralModel(_IniBaseModel):
         "C:/Users/USERNAME/.d4lf/profiles/*.yaml",
     )
     run_vision_mode_on_startup: bool = Field(default=True, description="Whether to run vision mode on startup or not")
-    use_tts: UseTTSType = Field(default=UseTTSType.off, description="Whether to use tts or not")
+    use_tts: UseTTSType = Field(
+        default=UseTTSType.full, description="Whether to use tts or not", json_schema_extra={HIDE_FROM_GUI_KEY: "True"}
+    )
 
     @field_validator("check_chest_tabs", mode="before")
     def check_chest_tabs_index(cls, v: str) -> list[int]:
@@ -312,6 +314,11 @@ class GeneralModel(_IniBaseModel):
         if not 10 <= v <= 20:
             raise ValueError("Font size must be between 10 and 20, inclusive")
         return v
+
+    @field_validator("use_tts")
+    def always_use_full_tts(cls, v: UseTTSType) -> UseTTSType:
+        # Right now only full TTS is supported so force it to be used
+        return UseTTSType.full
 
     @field_validator("move_to_inv_item_type", "move_to_stash_item_type", mode="before")
     def convert_move_item_type(cls, v: str):

@@ -139,7 +139,10 @@ class ScriptHandler:
 
 
 def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh, tts: bool = False):
-    LOGGER.info("Run Loot filter")
+    if tts:
+        LOGGER.info("Running loot filter, mouse will jiggle as items are double checked using TTS")
+    else:
+        LOGGER.info("Run Loot filter")
     mouse.move(*Cam().abs_window_to_monitor((0, 0)))
     check_items = src.scripts.loot_filter_tts.check_items if tts else src.scripts.loot_filter.check_items
 
