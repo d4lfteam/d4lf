@@ -62,6 +62,7 @@ def main():
     if IniConfigLoader().general.use_tts in [UseTTSType.full, UseTTSType.mixed]:
         LOGGER.debug(f"TTS mode: {IniConfigLoader().general.use_tts.value}")
         # Check that the dll has been installed
+        d4_process_found = False
         for proc in psutil.process_iter(["name", "exe"]):
             if proc.name().lower() == "diablo iv.exe":
                 d4_dir = Path(proc.exe()).parent
@@ -72,7 +73,10 @@ def main():
                     )
                 else:
                     LOGGER.debug(f"TTS DLL found at {tts_dll}")
+                d4_process_found = True
                 break
+        if not d4_process_found:
+            LOGGER.warning("No process named Diablo IV.exe was found and unable to automatically determine if TTS DLL is installed.")
         tts.start_connection()
 
     overlay = Overlay()
