@@ -48,6 +48,16 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
         inherent_num = 2
     elif item.item_type in [ItemType.Shield]:
         inherent_num = 4
+
+    if item.rarity == ItemRarity.Unique and item.item_type not in [ItemType.Shield]:
+        # Uniques can have variable amounts of inherents. Sometimes we might not have a number for how many
+        # inherents there are though and in that case we'll stick with the legendary default and hope for the best
+        # Lidless wall, the only unique shield, doesn't count block chance as an inherent so we just use the legendary
+        # default there too
+        unique_inherents = Dataloader().aspect_unique_num_inherents.get(item.name)
+        if unique_inherents is not None:
+            inherent_num = unique_inherents
+
     affixes = _get_affixes_from_tts_section(tts_section, item, inherent_num + affixes_num)
     for i, affix_text in enumerate(affixes):
         if i < inherent_num:
@@ -58,9 +68,8 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
             affix = _get_affix_from_text(affix_text)
             item.affixes.append(affix)
         else:
-            name = closest_match(clean_str(affix_text)[:AFFIX_COMPARISON_CHARS], Dataloader().aspect_unique_dict)
             item.aspect = Aspect(
-                name=name,
+                name=item.name,
                 text=affix_text,
                 value=find_number(affix_text),
             )
@@ -148,6 +157,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     search_string_split = search_string.split(" ")
     item.rarity = _get_item_rarity(search_string_split[0])
     item.item_type = _get_item_type(" ".join(search_string_split[1:]))
+    item.name = tts_item[0].lower().replace("'", "").replace(" ", "_").replace(",", "")
     for _i, line in enumerate(tts_item):
         if "item power" in line.lower():
             item.power = int(find_number(line))
