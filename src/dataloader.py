@@ -16,6 +16,7 @@ class Dataloader:
     affix_sigil_dict = {}
     aspect_unique_dict = {}
     aspect_unique_num_idx = {}
+    aspect_unique_num_inherents = {}
     error_map = {}
     filter_after_keyword = []
     filter_words = []
@@ -69,3 +70,4 @@ class Dataloader:
             for key, d in data.items():
                 self.aspect_unique_dict[key] = d["desc"][:AFFIX_COMPARISON_CHARS]
                 self.aspect_unique_num_idx[key] = d["num_idx"]
+                self.aspect_unique_num_inherents[key] = d.get("num_inherents")
