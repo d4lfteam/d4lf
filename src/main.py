@@ -1,12 +1,14 @@
-import tesserocr  # noqa #  Note: Somehow needed, otherwise the binary has an issue with tesserocr
-from PIL import Image  # noqa #  Note: Somehow needed, otherwise the binary has an issue with tesserocr
 import logging
 import os
 import sys
 import time
 import traceback
+from pathlib import Path
 
+import psutil
+import tesserocr  # noqa #  Note: Somehow needed, otherwise the binary has an issue with tesserocr
 from beautifultable import BeautifulTable
+from PIL import Image  # noqa #  Note: Somehow needed, otherwise the binary has an issue with tesserocr
 
 import src.logger
 from src import __version__, tts
@@ -59,6 +61,22 @@ def main():
 
     if IniConfigLoader().general.use_tts in [UseTTSType.full, UseTTSType.mixed]:
         LOGGER.debug(f"TTS mode: {IniConfigLoader().general.use_tts.value}")
+        # Check that the dll has been installed
+        d4_process_found = False
+        for proc in psutil.process_iter(["name", "exe"]):
+            if proc.name().lower() == "diablo iv.exe":
+                d4_dir = Path(proc.exe()).parent
+                tts_dll = d4_dir / "saapi64.dll"
+                if not tts_dll.exists():
+                    LOGGER.warning(
+                        f"TTS DLL was not found in {d4_dir}. Have you followed the instructions in https://github.com/d4lfteam/d4lf/tree/6.0.0-tts?tab=readme-ov-file#tts ?"
+                    )
+                else:
+                    LOGGER.debug(f"TTS DLL found at {tts_dll}")
+                d4_process_found = True
+                break
+        if not d4_process_found:
+            LOGGER.warning("No process named Diablo IV.exe was found and unable to automatically determine if TTS DLL is installed.")
         tts.start_connection()
 
     overlay = Overlay()
