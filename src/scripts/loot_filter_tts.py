@@ -28,38 +28,23 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
     num_fav = sum(1 for slot in occupied if slot.is_fav)
     num_junk = sum(1 for slot in occupied if slot.is_junk)
     LOGGER.info(f"Items: {len(occupied)} (favorite: {num_fav}, junk: {num_junk}) in {inv.menu_name}")
+    start_checking_items = time.time()
     for item in occupied:
         if item.is_junk or item.is_fav:
             continue
-        inv.hover_item(item)
+        inv.hover_item_with_delay(item)
         time.sleep(0.1)
         img = Cam().grab()
         item_descr = None
-        item_descr_previous_check = None
-        try:
-            item_descr_previous_check = src.item.descr.read_descr_tts.read_descr()
-            LOGGER.debug(f"Initial parsed item based on TTS: {item_descr_previous_check}")
-        except Exception:
-            screenshot("tts_error", img=img)
-            LOGGER.exception(f"Error in TTS read_descr. {src.tts.LAST_ITEM=}")
-
         retry_count = 0
-        while item_descr is None and retry_count != 5:
-            # Check again to make sure the item is what we think.
-            # Move off of the item then back on again
-            inv.hover_left_of_item(item)
-            inv.hover_item(item)
-            time.sleep(0.1)
+
+        while item_descr is None and retry_count != 2:
             try:
                 item_descr = src.item.descr.read_descr_tts.read_descr()
-                LOGGER.debug(f"Check {retry_count + 1}: Parsed item based on TTS: {item_descr}")
-                if item_descr != item_descr_previous_check:
-                    item_descr_previous_check = item_descr
-                    item_descr = None
+                LOGGER.debug(f"Attempt {retry_count} to parse item based on TTS: {item_descr}")
             except Exception:
                 screenshot("tts_error", img=img)
                 LOGGER.exception(f"Error in TTS read_descr. {src.tts.LAST_ITEM=}")
-            retry_count += 1
 
         if item_descr is None:
             continue
@@ -120,3 +105,5 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
                 and IniConfigLoader().general.mark_as_favorite
             ):
                 mark_as_favorite()
+
+    LOGGER.debug(f"  Time to filter all items in stash/inventory tab: {time.time() - start_checking_items:.2f}s")

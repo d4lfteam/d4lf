@@ -75,7 +75,7 @@ To use TTS, you need to:
 
 - Copy `saapi64.dll` to your D4 directory
 - Enable `Use Screen Reader` and `3rd Party Screen Reader` in D4 Accesibility settings
-- Set `use_tts` in your `params.ini` to either `full` or `mixed` (or via the [GUI](#GUI))
+- ~~Set `use_tts` in your `params.ini` to either `full` or `mixed` (or via the [GUI](#GUI))~~ (At this time only TTS full is supported and the configs default to that. You do not need to change any configs)
 
 #### Restrictions
 
