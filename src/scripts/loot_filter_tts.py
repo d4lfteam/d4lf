@@ -2,6 +2,7 @@ import logging
 import time
 
 import src.item.descr.read_descr_tts
+from item.data.affix import AffixType
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import HandleRaresType, ItemRefreshType, UnfilteredUniquesType
@@ -98,7 +99,13 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
                     mark_as_favorite()
         else:
             if not res.keep:
-                mark_as_junk()
+                # Specific functionality for Season 7 to help complete challenge to salvage ancestral legendaries
+                # The .value shouldn't be needed here but for some reason the direct comparison never worked
+                is_greater = any(affix.type.value == AffixType.greater.value for affix in item_descr.affixes)
+                if is_greater and IniConfigLoader().general.s7_do_not_junk_ancestral_legendaries:
+                    LOGGER.info("Skipping marking as junk because it is an ancestral legendary.")
+                else:
+                    mark_as_junk()
             elif (
                 res.keep
                 and (matched_any_affixes or item_descr.rarity == ItemRarity.Mythic or item_descr.item_type == ItemType.Sigil)
