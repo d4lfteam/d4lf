@@ -981,7 +981,8 @@
         "desc": "when consuming a corpse there is a chance to also create a decaying",
         "num_idx": [
             0
-        ]
+        ],
+        "num_inherents": 2
     },
     "the_oculus": {
         "desc": "gain the effect of the teleport enchantment for free. when you evade using teleport enchantment you are taken to a random location.",

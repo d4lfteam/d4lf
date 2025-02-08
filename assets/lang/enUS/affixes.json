@@ -221,6 +221,7 @@
     "core_attack_speed": "core attack speed",
     "core_damage": "core damage",
     "corpse_attack_speed": "corpse attack speed",
+    "corpse_damage": "corpse damage",
     "corpse_explosion_damage": "corpse explosion damage",
     "corpse_explosion_fears_and_slows_for_seconds": "corpse explosion fears and slows for seconds",
     "corpse_explosion_size": "corpse explosion size",

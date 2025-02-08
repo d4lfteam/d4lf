@@ -38,7 +38,7 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
         item_descr_previous_check = None
         try:
             item_descr_previous_check = src.item.descr.read_descr_tts.read_descr()
-            LOGGER.debug(f"Parsed item based on TTS: {item_descr}")
+            LOGGER.debug(f"Initial parsed item based on TTS: {item_descr_previous_check}")
         except Exception:
             screenshot("tts_error", img=img)
             LOGGER.exception(f"Error in TTS read_descr. {src.tts.LAST_ITEM=}")
@@ -52,7 +52,7 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
             time.sleep(0.1)
             try:
                 item_descr = src.item.descr.read_descr_tts.read_descr()
-                LOGGER.debug(f"Parsed item based on TTS: {item_descr}")
+                LOGGER.debug(f"Check {retry_count + 1}: Parsed item based on TTS: {item_descr}")
                 if item_descr != item_descr_previous_check:
                     item_descr_previous_check = item_descr
                     item_descr = None
@@ -79,6 +79,9 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
             continue
         if item_descr.item_type == ItemType.TemperManual:
             LOGGER.info("Matched: Temper Manual")
+            continue
+        if item_descr.item_type == ItemType.Cache:
+            LOGGER.info("Matched: Cache")
             continue
         if item_descr.rarity in [ItemRarity.Magic, ItemRarity.Common] and item_descr.item_type != ItemType.Sigil:
             mark_as_junk()

@@ -61,7 +61,8 @@
         "desc": "when consuming a corpse there is a chance to also create a decaying",
         "num_idx": [
             0
-        ]
+        ],
+        "num_inherents": 2
     },
     "the_third_blade": {
         "desc": "your weapon mastery skills are now also core skills that have no cooldowns but",

@@ -25,7 +25,7 @@ _AFFIX_RE = re.compile(
     r"(?P<affixvalue2>[0-9]+\.[0-9]+).+?\[(?P<minvalue2>[0-9]+\.[0-9]+) - (?P<maxvalue2>[0-9]+\.[0-9]+)\]|"
     r"(?P<affixvalue3>[.0-9]+)[^0-9]+\[(?P<onlyvalue>[.0-9]+)\]|"
     r".?![^\[\]]*[\[\]](?P<affixvalue4>\d+.?:\.\d+?)(?P<greateraffix1>[ ]*)|"
-    r"(?P<greateraffix2>\d+)(?![^\[]*\[).*",
+    r"(?P<greateraffix2>\d+)(?![^\[(]*[])]).*",
     re.DOTALL,
 )
 
