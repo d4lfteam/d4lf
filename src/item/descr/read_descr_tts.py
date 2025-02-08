@@ -25,17 +25,13 @@ _AFFIX_RE = re.compile(
     r"(?P<affixvalue2>[0-9]+\.[0-9]+).+?\[(?P<minvalue2>[0-9]+\.[0-9]+) - (?P<maxvalue2>[0-9]+\.[0-9]+)\]|"
     r"(?P<affixvalue3>[.0-9]+)[^0-9]+\[(?P<onlyvalue>[.0-9]+)\]|"
     r".?![^\[\]]*[\[\]](?P<affixvalue4>\d+.?:\.\d+?)(?P<greateraffix1>[ ]*)|"
-    r"(?P<greateraffix2>\d+)(?![^\[(]*[])]).*",
+    r"(?P<greateraffix2>\d+)(?![^\[]*\[).*",
     re.DOTALL,
 )
 
-_AFFIX_REPLACEMENTS = [
-    "%",
-    "+",
-    ",",
-    "[+]",
-    "[x]",
-]
+_REPLACE_COMPARE_RE = re.compile(r"\(.*\)")
+
+_AFFIX_REPLACEMENTS = ["%", "+", ",", "[+]", "[x]", "per 5 Seconds"]
 LOGGER = logging.getLogger(__name__)
 
 
@@ -198,6 +194,7 @@ def _get_affix_from_text(text: str) -> Affix:
     result = Affix(text=text)
     for x in _AFFIX_REPLACEMENTS:
         text = text.replace(x, "")
+    text = _REPLACE_COMPARE_RE.sub("", text).strip()
     matched_groups = {}
     for match in _AFFIX_RE.finditer(text):
         matched_groups = {name: value for name, value in match.groupdict().items() if value is not None}
@@ -225,7 +222,7 @@ def _get_affix_from_text(text: str) -> Affix:
         result.min_value = float(matched_groups.get("onlyvalue"))
         result.max_value = float(matched_groups.get("onlyvalue"))
     result.name = rapidfuzz.process.extractOne(
-        keep_letters_and_spaces(text), list(Dataloader().affix_dict), scorer=rapidfuzz.distance.Levenshtein.distance
+        keep_letters_and_spaces(result.text), list(Dataloader().affix_dict), scorer=rapidfuzz.distance.Levenshtein.distance
     )[0]
     return result
 
