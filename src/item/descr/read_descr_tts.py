@@ -247,7 +247,10 @@ def _get_item_type(data: str):
 
 
 def _is_codex_upgrade(tts_section: list[str], item: Item) -> bool:
-    return any("upgrades an aspect in the codex of power" in line.lower() or "unlocks new aspect" in line.lower() for line in tts_section)
+    for line in tts_section:
+        if "upgrades an aspect in the codex of power on salvage" in line.lower() or "unlocks new aspect" in line.lower():
+            return True
+    return False
 
 
 def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:

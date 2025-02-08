@@ -283,9 +283,6 @@ class GeneralModel(_IniBaseModel):
         "C:/Users/USERNAME/.d4lf/profiles/*.yaml",
     )
     run_vision_mode_on_startup: bool = Field(default=True, description="Whether to run vision mode on startup or not")
-    s7_do_not_junk_ancestral_legendaries: bool = Field(
-        default=False, description="Season 7 Specific: Do not mark ancestral legendaries as junk for seasonal challenge"
-    )
     use_tts: UseTTSType = Field(
         default=UseTTSType.full, description="Whether to use tts or not", json_schema_extra={HIDE_FROM_GUI_KEY: "True"}
     )
