@@ -2,4 +2,4 @@ import concurrent.futures
 
 TP = concurrent.futures.ThreadPoolExecutor()
 
-__version__ = "6.0.0alpha8"
+__version__ = "6.0.0alpha9"
