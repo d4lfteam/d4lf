@@ -12,23 +12,23 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from src.config.models import AffixFilterCountModel, AffixFilterModel, DynamicItemFilterModel, ItemFilterModel, ItemType
+from src.config.models import AffixFilterCountModel, AffixFilterModel, DynamicItemFilterModel, ItemFilterModel
 from src.gui.dialog import IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox
 
 
 class D4LFItem(QGroupBox):
-    def __init__(self, item: DynamicItemFilterModel, affixesNames, itemTypes):
+    def __init__(self, item: DynamicItemFilterModel, affixesNames, allItemTypes):
         super().__init__()
         self.item_name = list(item.root.keys())[0]
         self.item = item
-        self.item_type = self.item.root[self.item_name].itemType[0].value
+        self.item_types = self.item.root[self.item_name].itemType
         self.affix_pool = self.item.root[self.item_name].affixPool
         self.inherent_pool = self.item.root[self.item_name].inherentPool
         self.min_power = self.item.root[self.item_name].minPower
 
         self.changed = False
         self.affixesNames = affixesNames
-        self.itemTypes = itemTypes
+        self.allItemTypes = allItemTypes
 
         self.setTitle(self.item_name)
         self.setStyleSheet(
@@ -41,9 +41,9 @@ class D4LFItem(QGroupBox):
 
         self.form_layout = QFormLayout()
 
-        self.item_type_label = QLabel("Item Type:")
+        self.item_type_label = QLabel("Item Types:")
         self.item_type_label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        self.item_type_label_info = QLabel(self.find_item_from_value(self.item_type))
+        self.item_type_label_info = QLabel(", ".join([self.find_item_from_value(item_type.value) for item_type in self.item_types]))
         self.item_type_label_info.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.form_layout.addRow(self.item_type_label, self.item_type_label_info)
 
@@ -162,7 +162,7 @@ class D4LFItem(QGroupBox):
         return None
 
     def find_item_from_value(self, target_value):
-        for key, value in self.itemTypes.items():
+        for key, value in self.allItemTypes.items():
             if value == target_value:
                 return key
         return None
@@ -194,7 +194,7 @@ class D4LFItem(QGroupBox):
 
     def save_item_create(self):
         new_item = ItemFilterModel()
-        new_item.itemType = [ItemType(self.item_type)]
+        new_item.itemType = self.item_types
         new_item.minPower = self.minPowerEdit.value()
         new_item.affixPool = []
         new_item.inherentPool = []
