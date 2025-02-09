@@ -56,8 +56,8 @@ def import_maxroll(url: str):
         item_filter = ItemFilterModel()
         resolved_item = items[str(item_id)]
         if (item_type := _find_item_type(mapping_data=mapping_data["items"], value=resolved_item["id"])) is None:
-            LOGGER.error("Couldn't find item type")
-            return
+            LOGGER.warning(f"Couldn't find item type for {resolved_item['id']} from mapping data provided by Maxroll. Skipping item.")
+            continue
         item_filter.itemType = [item_type]
         # magic/rare = 0, legendary = 1, unique = 2, mythic = 4
         if resolved_item["id"] in mapping_data["items"] and mapping_data["items"][resolved_item["id"]]["magicType"] in [2, 4]:

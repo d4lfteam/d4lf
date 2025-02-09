@@ -8,8 +8,6 @@ import src.logger
 import src.tts
 from src.cam import Cam
 from src.config.helper import singleton
-from src.config.loader import IniConfigLoader
-from src.config.models import HandleRaresType
 from src.config.ui import ResManager
 from src.item.data.item_type import ItemType, is_armor, is_consumable, is_jewelry, is_mapping, is_socketable, is_weapon
 from src.item.data.rarity import ItemRarity
@@ -132,10 +130,8 @@ class VisionMode:
             elif item_descr.item_type == ItemType.Material:
                 LOGGER.info("Matched: Material")
                 ignored_item = True
-            if (
-                item_descr.rarity == ItemRarity.Rare
-                and (is_armor(item_descr.item_type) or is_weapon(item_descr.item_type) or is_jewelry(item_descr.item_type))
-                and IniConfigLoader().general.handle_rares in [HandleRaresType.ignore, HandleRaresType.junk]
+            if item_descr.rarity == ItemRarity.Rare and (
+                is_armor(item_descr.item_type) or is_weapon(item_descr.item_type) or is_jewelry(item_descr.item_type)
             ):
                 LOGGER.info("Matched: Rare, ignore Item")
                 ignored_item = True

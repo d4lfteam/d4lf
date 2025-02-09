@@ -1,5 +1,6 @@
 import logging
 import os
+import pathlib
 import sys
 import time
 import traceback
@@ -23,6 +24,8 @@ from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
 
 LOGGER = logging.getLogger(__name__)
+
+SETUP_INSTRUCTIONS_URL = "https://github.com/d4lfteam/d4lf/tree/6.0.0-tts?tab=readme-ov-file#tts"
 
 
 def main():
@@ -61,26 +64,63 @@ def main():
 
     if IniConfigLoader().general.use_tts in [UseTTSType.full, UseTTSType.mixed]:
         LOGGER.debug(f"TTS mode: {IniConfigLoader().general.use_tts.value}")
-        # Check that the dll has been installed
-        d4_process_found = False
-        for proc in psutil.process_iter(["name", "exe"]):
-            if proc.name().lower() == "diablo iv.exe":
-                d4_dir = Path(proc.exe()).parent
-                tts_dll = d4_dir / "saapi64.dll"
-                if not tts_dll.exists():
-                    LOGGER.warning(
-                        f"TTS DLL was not found in {d4_dir}. Have you followed the instructions in https://github.com/d4lfteam/d4lf/tree/6.0.0-tts?tab=readme-ov-file#tts ?"
-                    )
-                else:
-                    LOGGER.debug(f"TTS DLL found at {tts_dll}")
-                d4_process_found = True
-                break
-        if not d4_process_found:
-            LOGGER.warning("No process named Diablo IV.exe was found and unable to automatically determine if TTS DLL is installed.")
+        check_for_proper_tts_configuration()
         tts.start_connection()
 
     overlay = Overlay()
     overlay.run()
+
+
+def check_for_proper_tts_configuration():
+    # Check that the dll has been installed
+    d4_process_found = False
+    for proc in psutil.process_iter(["name", "exe"]):
+        if proc.name().lower() == "diablo iv.exe":
+            d4_dir = Path(proc.exe()).parent
+            tts_dll = d4_dir / "saapi64.dll"
+            if not tts_dll.exists():
+                LOGGER.warning(f"TTS DLL was not found in {d4_dir}. Have you followed the instructions in {SETUP_INSTRUCTIONS_URL} ?")
+            else:
+                LOGGER.debug(f"TTS DLL found at {tts_dll}")
+            d4_process_found = True
+            break
+    if not d4_process_found:
+        LOGGER.warning("No process named Diablo IV.exe was found and unable to automatically determine if TTS DLL is installed.")
+
+    # Check if everything is set up properly in Diablo 4 settings
+    local_prefs = get_d4_local_prefs_file()
+    if local_prefs:
+        with open(local_prefs) as file:
+            prefs = file.read()
+            if 'UseScreenReader "1"' not in prefs:
+                LOGGER.error(
+                    f"Use Screen Reader is not enabled in Accessibility Settings in D4. No items will be read. Read more about initial setup here: {SETUP_INSTRUCTIONS_URL}"
+                )
+            if 'UseThirdPartyReader "1"' not in prefs:
+                LOGGER.error(
+                    f"3rd Party Screen Reader is not enabled in Accessibility Settings in D4. No items will be read. Read more about initial setup here: {SETUP_INSTRUCTIONS_URL}"
+                )
+    else:
+        LOGGER.warning("Unable to find a Diablo 4 local prefs file. Can't automatically check if TTS is configured properly in-game.")
+
+
+def get_d4_local_prefs_file() -> Path | None:
+    documents_file = pathlib.Path.home() / "Documents" / "Diablo IV" / "LocalPrefs.txt"
+    onedrive_file = pathlib.Path.home() / "OneDrive" / "Documents" / "Diablo IV" / "LocalPrefs.txt"
+
+    if documents_file.exists() and onedrive_file.exists():
+        # Return the newest of the two
+        if documents_file.stat().st_mtime > onedrive_file.stat().st_mtime:
+            return documents_file
+        return onedrive_file
+
+    if documents_file.exists():
+        return documents_file
+
+    if onedrive_file.exists():
+        return onedrive_file
+
+    return None
 
 
 if __name__ == "__main__":

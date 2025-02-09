@@ -1,8 +1,12 @@
+import os
+
 import pytest
 from pytest_mock import MockerFixture
 
 from src.dataloader import Dataloader
 from src.gui.importer.mobalytics import import_mobalytics
+
+IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 URLS = [
     "https://mobalytics.gg/diablo-4/builds/barbarian/barbarian-leveling-guide",
@@ -25,6 +29,7 @@ URLS = [
 
 @pytest.mark.parametrize("url", URLS)
 @pytest.mark.requests
+@pytest.mark.skipif(not IN_GITHUB_ACTIONS, reason="Importer tests are skipped if not run from Github Actions")
 def test_import_mobalytics(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
     Dataloader()  # need to load data first or the mock will make it impossible
     mocker.patch("builtins.open", new=mocker.mock_open())

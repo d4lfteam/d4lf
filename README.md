@@ -3,7 +3,7 @@
 Filter items and sigils in your inventory based on affixes, aspects and thresholds of their values. For questions,
 feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6T) or use github issues.
 
-![sample](assets/thumbnail.jpg)
+![sample](assets/thumbnail_tts_temp_hopefully.jpg)
 
 ## Features
 
@@ -11,7 +11,8 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Filter by item type, item power and greater affix count
 - Filter by affix and their values
 - Filter uniques by their affix and aspect values
-- Filter sigils by blacklisting and whitelisting locations and affixes
+- Filter sigils by blacklisting and whitelisting locations and affixes (work in progress)
+- Automatically marks all common, magic, and rare gear as junk
 - Quickly move items from your stash or inventory
 - Supported resolutions are all aspect ratios between 16:10 and 21:9
 
@@ -19,16 +20,18 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 ### Game Settings
 
-- Font size can be small or medium in the Gameplay Settings
 - Game Language must be English
-- **The higher the resolution and quality settings, the better the detection and OCR will work**
-- **The tool does not play well with HDR as it makes everything super bright**
-- **The advanced item comparison feature might cause incorrect classifications**
-- **Stuttering has been reported on some machines with V-Sync, G-Sync, Active Sync or similar enabled in the settings**
+- IMPORTANT: Advanced Tooltip Information must be enabled in Options > Gameplay > Gameplay. If you don't do this then item parsing will be very inconsistent and you will receive no warning something is wrong.
+- Use Screen Reader must be enabled in Options > Accessibility
+- 3rd Party Screen Reader must be enabled in Options > Accessibility
 
-### Quick start guide
+### Installation and quick start guide
 
 - Download and extract the latest version (.zip) from the releases: https://github.com/aeon0/d4lf/releases
+- Copy `saapi64.dll` from the downloaded folder to your "Diablo IV" directory
+  - To find your D4 directory:
+    - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
+    - In Steam, right click the game, select Manage > Browse local files
 - Generate a profile of what you want to filter for. To do so you have a few options:
   - Open gui.bat and import a profile by pasting a build page from popular planner websites
   - Take one someone else has generated from our [discord](https://discord.gg/YyzaPhAN6T)
@@ -37,12 +40,20 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
   importer has a button to open this folder directly. If imported they are placed there automatically.
 - Run gui.bat and use the GUI config tab to configure the profiles. Select the '...' next to profiles to activate which
   profiles you want to use.
+- Ensure all [game settings](#game-settings) are configured properly.
 - Execute d4lf.exe and launch Diablo 4.
-- There is a small overlay on the center bottom with buttons:
-  - max/min: Show or hide the console output
-  - filter: Auto filter inventory and stash if open (number of stash tabs configurable)
-  - vision: Turn vision mode (overlay) on/off
-- Alternatively use the hotkeys. e.g. f11 for filtering
+- Use the hotkeys listed in d4lf.exe to run filtering. By default, F11 will run the loot filter and filter your items.
+- For most common issues, if something is wrong, you will see an error or warning when you start d4lf.exe
+
+### Updating an existing installation
+
+All configurations are stored in a separate location so all you need to do is download the newest version and delete your old version.
+
+Your profiles and configuration should continue to work. The only exception to this is if the major version of the release changes. In that case, a change was made that will make previous profiles no longer work.
+
+Example 1: You're on version 5.1.14 and updating to 5.2.0. Your profiles will continue to work fine.
+
+Example 2: You're on version 5.1.14 and updating to 6.0.0. Your profiles will no longer work and you'll need to update or re-import them on the newest version.
 
 ### Common problems
 
@@ -71,28 +82,6 @@ D4 uses a third-party TTS engine called Tolk. Tolk has a feature that allows cus
 D4 automatically loads the DLL, which actually just sends the text to another application rather than reading it aloud.
 This is similar to having a Braille TTS application for D4.
 
-To use TTS, you need to:
-
-- Copy `saapi64.dll` to your D4 directory
-- Enable `Use Screen Reader` and `3rd Party Screen Reader` in D4 Accesibility settings
-- ~~Set `use_tts` in your `params.ini` to either `full` or `mixed` (or via the [GUI](#GUI))~~ (At this time only TTS full is supported and the configs default to that. You do not need to change any configs)
-
-#### Restrictions
-
-Currently, `use_tts` enables either a mixed mode where image processing is still used for item and affix position detection,
-but TTS is used for everything text-related. This results in a small improvement in performance and a major improvement
-in accuracy. Or a full mode where only TTS is used. This will be super fast but loses the overlay.
-
-**YOU NEED TO ENABLE ADVANCED TOOLTIP INFORMATION**
-
-**The following is currently supported using any form of tts:**
-
-- Full item detection for all wearable items, e.g. armor, weapons, and accessories. Both in `vision_mode` and
-  `loot_filter`.
-- Basic item detection for all? other items, e.g. only type + rarity
-
-We might also discontinue the pure image processing mode and even mixed mode in the future, as TTS is easier to maintain.
-
 ### Configs
 
 The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
@@ -104,20 +93,20 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 
 ### params.ini
 
-| \[general\]                                         | Description                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| \[general\]                                       | Description                                                                                                                                                                                                                                                                                                                                                                                                                              |
 |---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | profiles                                          | A set of profiles separated by comma. d4lf will look for these yaml files in config/profiles and in C:/Users/WINDOWS_USER/.d4lf/profiles                                                                                                                                                                                                                                                                                                 |
 | browser                                           | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported. Note: Trade importing can only work with Chrome and ignores this setting.                                                                                                                                                                                                                           |
 | check_chest_tabs                                  | Which chest tabs will be checked and filtered for items in case chest is open when starting the filter. You need to buy all slots. Counting is done left to right. E.g. 1,2,4 will check tab 1, tab 2, tab 4                                                                                                                                                                                                                             |
 | full_dump                                         | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not                                                                                                                                                                                                                                                                                                                                |
-| handle_rares                                      | - `filter`: Filter them based on your profiles <br>- `ignore`: Ignores all rares, vision mode shows them as blue and auto mode never junks or favorites them <br>- `junk`: Vision mode shows them always as red, auto mode always junks rares                                                                                                                                                                                            |
 | handle_uniques                                    | How to handle uniques that do not match any filter. This property does not apply to filtered uniques. All mythics are favorited regardless of filter. <br/>- `favorite`: Mark the unique as favorite and vision mode will show it as green (default)<br/>- `ignore`: Do nothing with the unique and vision mode will show it as green<br/>- `junk`: Mark any uniques that don't match any filters as junk and show as red in vision mode |
 | keep_aspects                                      | - `all`: Keep all legendary items <br>- `upgrade`: Keep all legendary items that upgrade your codex of power <br>- `none`: Keep no legendary items based on aspect (they are still filtered!)                                                                                                                                                                                                                                            |
 | mark_as_favorite                                  | Whether to favorite matched items or not. Defaults to true                                                                                                                                                                                                                                                                                                                                                                               |
 | minimum_overlay_font_size                         | The minimum font size for the vision overlay, specifically the green text that shows which filter(s) are matching. Note: For small profile names, the font may actually be larger than this size but will never go below this size.                                                                                                                                                                                                      |
 | move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything                                                                                                             |
 | run_vision_mode_on_startup                        | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey                                                                                                                                                                                                                                                                                              |
-| use_tts                                           | use TTS instead of OCR, see [TTS](#TTS)                                                                                                                                                                                                                                                                                                                                                                                                  |
+| s7_do_not_junk_ancestral_legendaries              | Do not mark ancestral legendaries as junk. This is to help with the season 7 Slayer seasonal challenge "Precious Shards"                                                                                                                                                                                                                                                                                                                  |
+| use_tts (temporarily hidden)                      | use TTS instead of OCR, see [TTS](#TTS)                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 | \[char\]    | Description                       |
 |-----------|-----------------------------------|
@@ -146,6 +135,7 @@ Current functionality:
 - Import builds from maxroll/d4builds/mobalytics
 - Create profiles based off of searches for diablo.trade (requires chrome)
 - Complete management of your params.ini through the config tab
+- A beta version of a manual profile editor/creator
 
 Each tab gives further instructions on how to use it and what kind of input it expects.
 
@@ -300,7 +290,7 @@ Affixes:
 Affix names are lower case and spaces are replaced by underscore. You can find the full list of names
 in [assets/lang/enUS/affixes.json](assets/lang/enUS/affixes.json).
 
-### Sigils
+### Sigils (Note: This functionality may not be completely working at this time)
 
 Sigils are defined by the top-level key `Sigils`. It contains a list of affix or location names that you want to filter
 for. If no Sigil filter is provided, all Sigils will be kept.
@@ -404,6 +394,12 @@ Uniques:
 ```
 
 ```yaml
+# Take all uniques with at least 1 greater affix
+Uniques:
+  - minGreaterAffixCount: 1
+```
+
+```yaml
 # Take all unique pants
 Uniques:
   - itemType: pants
@@ -449,7 +445,17 @@ Uniques:
 </details>
 
 Unique names are lower case and spaces are replaced by underscore. You can find the full list of names
-in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json).
+in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json). Occasionally a unique is missing. If you find one missing just raise an issue and we can add it.
+
+## Future Plans
+
+- Reevaluate the TTS "mixed" mode to see if it's possible to bring back a more robust vision mode
+- Evaluate bringing back the small overlay the previous versions used
+- A video explaining the initial setup
+- Evaluate using joystick emulation to further increase speed for users willing to do additional setup
+- Rework sigil filtering to match modern sigils
+- Finish GUI documentation
+- Want something done that's not mentioned here? Leave a suggestion in the [discord](https://discord.gg/YyzaPhAN6T) or use github issues. Or, make the changes yourself and open up a PR!
 
 ## Develop
 
@@ -459,8 +465,10 @@ in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json).
 
 Python setup (windows, linux venv activation differs):
 
+If you intend to submit PRs, create your own fork of d4lf and clone that in the steps below.
+
 ```bash
-git clone https://github.com/aeon0/d4lf
+git clone https://github.com/d4lfteam/d4lf
 cd d4lf
 python -m venv venv
 venv\Scripts\activate
@@ -471,10 +479,11 @@ python -m src.main
 Conda setup:
 
 ```bash
-git clone https://github.com/aeon0/d4lf
+git clone https://github.com/d4lfteam/d4lf
 cd d4lf
 conda env create -f environment.yml
 conda activate d4lf
+python -m pip install -r requirements.txt
 python -m src.main
 ```
 

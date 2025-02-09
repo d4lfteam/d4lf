@@ -5,7 +5,7 @@ import src.item.descr.read_descr_tts
 from item.data.affix import AffixType
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
-from src.config.models import HandleRaresType, ItemRefreshType, UnfilteredUniquesType
+from src.config.models import ItemRefreshType, UnfilteredUniquesType
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter
@@ -29,6 +29,9 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
     num_fav = sum(1 for slot in occupied if slot.is_fav)
     num_junk = sum(1 for slot in occupied if slot.is_junk)
     LOGGER.info(f"Items: {len(occupied)} (favorite: {num_fav}, junk: {num_junk}) in {inv.menu_name}")
+    # These are used to check if there's any signs that the user does not have Advanced Tooltip Comparison on
+    num_of_items_with_all_ga = 0
+    num_of_affixed_items_checked = 0
     start_checking_items = time.time()
     for item in occupied:
         if item.is_junk or item.is_fav:
@@ -69,15 +72,13 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
         if item_descr.item_type == ItemType.Cache:
             LOGGER.info("Matched: Cache")
             continue
-        if item_descr.rarity in [ItemRarity.Magic, ItemRarity.Common] and item_descr.item_type != ItemType.Sigil:
+        if item_descr.rarity in [ItemRarity.Rare, ItemRarity.Magic, ItemRarity.Common] and item_descr.item_type != ItemType.Sigil:
             mark_as_junk()
             continue
-        if item_descr.rarity == ItemRarity.Rare and IniConfigLoader().general.handle_rares == HandleRaresType.ignore:
-            LOGGER.info("Matched: Rare, ignore Item")
-            continue
-        if item_descr.rarity == ItemRarity.Rare and IniConfigLoader().general.handle_rares == HandleRaresType.junk:
-            mark_as_junk()
-            continue
+
+        num_of_affixed_items_checked += 1
+        if all(affix.type.value == AffixType.greater.value for affix in item_descr.affixes):
+            num_of_items_with_all_ga += 1
 
         # Check if we want to keep the item
         start_filter = time.time()
@@ -114,3 +115,9 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
                 mark_as_favorite()
 
     LOGGER.debug(f"  Time to filter all items in stash/inventory tab: {time.time() - start_checking_items:.2f}s")
+
+    # If more than 80% of the items had all greater affixes that means something is probably wrong
+    if num_of_affixed_items_checked > 1 and (num_of_items_with_all_ga / num_of_affixed_items_checked > 0.8):
+        LOGGER.warning(
+            f"{num_of_items_with_all_ga} out of {num_of_affixed_items_checked} items checked had all greater affixes. You are either exceptionally lucky or have not enabled Advanced Tooltip Information in Options > Gameplay"
+        )
