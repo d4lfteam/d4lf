@@ -31,7 +31,7 @@ _AFFIX_RE = re.compile(
 
 _REPLACE_COMPARE_RE = re.compile(r"\(.*\)")
 
-_AFFIX_REPLACEMENTS = ["%", "+", ",", "[+]", "[x]", "per 5 Seconds"]
+_AFFIX_REPLACEMENTS = ["%", "+", ",", "[+]", "[x]", "per 5 Seconds", "Make Enemies Vulnerable for 2 Seconds", "[2]"]
 LOGGER = logging.getLogger(__name__)
 
 

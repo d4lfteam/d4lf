@@ -505,6 +505,58 @@ items = [
             rarity=ItemRarity.Legendary,
         ),
     ),
+    # Test for lucky hit chance to make enemies vulnerable
+    (
+        [
+            "ADVENTURERS GLOVES OF ULTIMATE SHADOW",
+            "Legendary Gloves",
+            "750 Item Power",
+            "60 Armor",
+            "+272 Maximum Life [244 - 272]",
+            "Lucky Hit: Up to a +43.8% Chance to Make Enemies Vulnerable for 2 Seconds [43.3 - 47.2]%[2]",
+            "+2 to Core Skills [1 - 2]",
+            "Bone Storm and Blood Wave are also Darkness Skills, deal Shadow damage, and gain additional effects: . Enemies damaged by Bone Storm take 873 [635 - 1,429] Shadow damage over 2 seconds. . Blood Wave creates Desecrated Ground as it travels, dealing 13,974 [10,163 - 22,867] Shadow damage over 4 seconds",
+            "Requires Level 60",
+            "Sell Value: 22,572 Gold",
+            "Durability: 100/100. Tempers: 5/5",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(
+                    max_value=272.0,
+                    min_value=244.0,
+                    name="maximum_life",
+                    text="+272 Maximum Life [244 - 272]",
+                    type=AffixType.normal,
+                    value=272.0,
+                ),
+                Affix(
+                    max_value=47.2,
+                    min_value=43.3,
+                    name="lucky_hit_up_to_a_chance_to_make_enemies_vulnerable_for_seconds",
+                    text="Lucky Hit: Up to a +43.8% Chance to Make Enemies Vulnerable for 2 Seconds [43.3 - 47.2]%[2]",
+                    type=AffixType.normal,
+                    value=43.8,
+                ),
+                Affix(
+                    max_value=2.0,
+                    min_value=1.0,
+                    name="to_core_skills",
+                    text="+2 to Core Skills [1 - 2]",
+                    type=AffixType.normal,
+                    value=2.0,
+                ),
+            ],
+            aspect=None,
+            codex_upgrade=False,
+            inherent=[],
+            item_type=ItemType.Gloves,
+            name="adventurers_gloves_of_ultimate_shadow",
+            power=750,
+            rarity=ItemRarity.Legendary,
+        ),
+    ),
 ]
 
 
