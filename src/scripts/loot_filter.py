@@ -3,7 +3,7 @@ import time
 
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
-from src.config.models import HandleRaresType, ItemRefreshType, UnfilteredUniquesType
+from src.config.models import ItemRefreshType, UnfilteredUniquesType
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
 from src.item.descr.read_descr import read_descr
@@ -96,12 +96,12 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
         if rarity in [ItemRarity.Magic, ItemRarity.Common] and item_descr.item_type != ItemType.Sigil:
             mark_as_junk()
             continue
-        if rarity == ItemRarity.Rare and IniConfigLoader().general.handle_rares == HandleRaresType.ignore:
-            LOGGER.info("Matched: Rare, ignore Item")
-            continue
-        if rarity == ItemRarity.Rare and IniConfigLoader().general.handle_rares == HandleRaresType.junk:
-            mark_as_junk()
-            continue
+        # if rarity == ItemRarity.Rare and IniConfigLoader().general.handle_rares == HandleRaresType.ignore:
+        #     LOGGER.info("Matched: Rare, ignore Item")
+        #     continue
+        # if rarity == ItemRarity.Rare and IniConfigLoader().general.handle_rares == HandleRaresType.junk:
+        #     mark_as_junk()
+        #     continue
 
         # Check if we want to keep the item
         start_filter = time.time()

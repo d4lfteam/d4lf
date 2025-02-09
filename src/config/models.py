@@ -16,12 +16,7 @@ MODULE_LOGGER = logging.getLogger(__name__)
 HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
 
-DEPRECATED_INI_KEYS = [
-    "hidden_transparency",
-    "import_build",
-    "local_prefs_path",
-    "move_item_type",
-]
+DEPRECATED_INI_KEYS = ["hidden_transparency", "import_build", "local_prefs_path", "move_item_type", "handle_rares"]
 
 
 class AspectFilterType(enum.StrEnum):
@@ -33,12 +28,6 @@ class AspectFilterType(enum.StrEnum):
 class ComparisonType(enum.StrEnum):
     larger = enum.auto()
     smaller = enum.auto()
-
-
-class HandleRaresType(enum.StrEnum):
-    filter = enum.auto()
-    ignore = enum.auto()
-    junk = enum.auto()
 
 
 class ItemRefreshType(enum.StrEnum):
@@ -249,7 +238,6 @@ class GeneralModel(_IniBaseModel):
         default=False,
         description="When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not",
     )
-    handle_rares: HandleRaresType = Field(default=HandleRaresType.filter, description="How to handle rares that the filter finds.")
     handle_uniques: UnfilteredUniquesType = Field(
         default=UnfilteredUniquesType.favorite,
         description="What should be done with uniques that do not match any profile. Mythics are always favorited. If mark_as_favorite is unchecked then uniques that match a profile will not be favorited.",
