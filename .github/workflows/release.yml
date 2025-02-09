@@ -46,7 +46,7 @@ jobs:
         id: check_beta
         shell: powershell
         run: |
-          if ("${{ env.VERSION }}".Contains("beta")) {
+          if ($env:VERSION -like "*beta*" -or $env:VERSION -like "*alpha*") {
             echo "IS_BETA=true" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
           } else {
             echo "IS_BETA=false" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
@@ -74,3 +74,9 @@ jobs:
               }
           } | ConvertTo-Json
           Invoke-RestMethod -Uri $webhookUrl -Method Post -ContentType "application/json" -Body $payload
+
+      - name: Sending message to Discord with release notes
+        uses: nhevia/discord-styled-releases@main
+        with:
+          webhook_id: ${{ secrets.DISCORD_WEBHOOK_ID }}
+          webhook_token: ${{ secrets.DISCORD_WEBHOOK_TOKEN }}

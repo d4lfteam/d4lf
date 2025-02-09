@@ -249,6 +249,7 @@ class mouse:
 
         for point in human_curve.points:
             _mouse.move(point[0], point[1], duration=delta)
+        time.sleep(0.05)
 
     @staticmethod
     def _is_clicking_safe():

@@ -17,6 +17,7 @@ class Item:
     codex_upgrade: bool = False
     inherent: list[Affix] = field(default_factory=list)
     item_type: ItemType | None = None
+    name: str | None = None
     power: int | None = None
     rarity: ItemRarity | None = None
 
@@ -42,6 +43,9 @@ class Item:
         if self.power != other.power:
             LOGGER.debug("Power not the same")
             res = False
+        if self.name != other.name:
+            LOGGER.debug("Names do not match")
+            res = False
         if self.rarity != other.rarity:
             LOGGER.debug("Rarity not the same")
             res = False
@@ -57,6 +61,7 @@ class ItemJSONEncoder(json.JSONEncoder):
                 "codex_upgrade": o.codex_upgrade,
                 "inherent": [affix.__dict__ for affix in o.inherent],
                 "item_type": o.item_type.value if o.item_type else None,
+                "name": o.name if o.name else None,
                 "power": o.power if o.power else None,
                 "rarity": o.rarity.value if o.rarity else None,
             }
