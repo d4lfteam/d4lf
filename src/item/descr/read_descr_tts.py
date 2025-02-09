@@ -31,7 +31,7 @@ _AFFIX_RE = re.compile(
 
 _REPLACE_COMPARE_RE = re.compile(r"\(.*\)")
 
-_AFFIX_REPLACEMENTS = ["%", "+", ",", "[+]", "[x]", "per 5 Seconds", "Make Enemies Vulnerable for 2 Seconds", "[2]"]
+_AFFIX_REPLACEMENTS = ["%", "+", ",", "[+]", "[x]", "per 5 Seconds"]
 LOGGER = logging.getLogger(__name__)
 
 
@@ -195,6 +195,12 @@ def _get_affix_from_text(text: str) -> Affix:
     for x in _AFFIX_REPLACEMENTS:
         text = text.replace(x, "")
     text = _REPLACE_COMPARE_RE.sub("", text).strip()
+
+    # A hacky way to make lucky hit chance to make vulnerable work. Hoping Chris saves me from myself on this one one day
+    if "Lucky Hit" in text and "Vulnerable" in text:
+        for x in ["Make Enemies Vulnerable for 2 Seconds", "[2]"]:
+            text = text.replace(x, "")
+
     matched_groups = {}
     for match in _AFFIX_RE.finditer(text):
         matched_groups = {name: value for name, value in match.groupdict().items() if value is not None}
