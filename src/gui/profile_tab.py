@@ -175,6 +175,11 @@ class ProfileTab(QWidget):
             item.widget().deleteLater()
 
         self.item_list = []
+
+        if len(self.root.Affixes) > 20:
+            self.create_alert("Profiles with more than 20 affixes are not supported.")
+            return
+
         for item in self.root.Affixes:
             d4lf_item = D4LFItem(item, self.affixesNames, self.itemTypes)
             self.item_list.append(d4lf_item)
