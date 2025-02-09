@@ -114,9 +114,8 @@ class ProfileTab(QWidget):
         instructions_text.append("")
         instructions_text.append("All values are not saved automatically immediately upon changing.")
         instructions_text.append("You must click the save button to apply the changes to the profile.")
-        instructions_text.append("")
 
-        instructions_text.setFixedHeight(150)
+        instructions_text.setFixedHeight(100)
         self.main_layout.addWidget(instructions_text)
         self.setLayout(self.main_layout)
         self.load()
@@ -188,7 +187,7 @@ class ProfileTab(QWidget):
     def load(self):
         profiles: list[str] = IniConfigLoader().general.profiles
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
-        if not self.file_path:  # at start, set default file to build in params.ini
+        if not self.file_path and len(profiles) > 0:  # at start, set default file to build in params.ini
             if profiles[0]:
                 custom_file_path = custom_profile_path / f"{profiles[0]}.yaml"
                 if custom_file_path.is_file():
@@ -245,13 +244,13 @@ class ProfileTab(QWidget):
             p = ProfileModel(name="imported profile", Affixes=new_profile_affixes, Uniques=self.root.Uniques)
             save_as_profile(self.filenameLabel.text(), p, "custom")
 
-    def check_close_save(self):
-        new_profile_affixes = [d4lf_item.save_item_create() for d4lf_item in self.item_list]
-        if self.root:
-            p = ProfileModel(name=self.filenameLabel.text(), Affixes=new_profile_affixes, Uniques=self.root.Uniques)
-            if p != self.root:
-                return self.confirm_discard_changes()
-        return True
+    # def check_close_save(self):
+    #     new_profile_affixes = [d4lf_item.save_item_create() for d4lf_item in self.item_list]
+    #     if self.root:
+    #         p = ProfileModel(name=self.filenameLabel.text(), Affixes=new_profile_affixes, Uniques=self.root.Uniques)
+    #         if p != self.root:
+    #             return self.confirm_discard_changes()
+    #     return True
 
     def check_item_name(self, name):
         return all(d4lf_item.item_name != name for d4lf_item in self.item_list)
