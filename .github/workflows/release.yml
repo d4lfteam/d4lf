@@ -75,8 +75,17 @@ jobs:
           } | ConvertTo-Json
           Invoke-RestMethod -Uri $webhookUrl -Method Post -ContentType "application/json" -Body $payload
 
-      - name: Sending message to Discord with release notes
-        uses: nhevia/discord-styled-releases@main
+      # From: https://github.com/SethCohen/github-releases-to-discord
+      - name: Github Releases To Discord
+        uses: SethCohen/github-releases-to-discord@v1
         with:
-          webhook_id: ${{ secrets.DISCORD_WEBHOOK_ID }}
-          webhook_token: ${{ secrets.DISCORD_WEBHOOK_TOKEN }}
+          webhook_url: ${{ secrets.DISCORD_WEBHOOK }}
+          color: "2105893"
+          username: "D4LF Release"
+
+# Not currently working, but I have an issue out for it: https://github.com/nhevia/discord-styled-releases/issues/12
+#      - name: Sending message to Discord with release notes
+#        uses: nhevia/discord-styled-releases@main
+#        with:
+#          webhook_id: ${{ secrets.DISCORD_WEBHOOK_ID }}
+#          webhook_token: ${{ secrets.DISCORD_WEBHOOK_TOKEN }}

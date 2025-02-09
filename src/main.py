@@ -25,7 +25,7 @@ from src.utils.window import WindowSpec, start_detecting_window
 
 LOGGER = logging.getLogger(__name__)
 
-SETUP_INSTRUCTIONS_URL = "https://github.com/d4lfteam/d4lf/tree/6.0.0-tts?tab=readme-ov-file#tts"
+SETUP_INSTRUCTIONS_URL = "https://github.com/d4lfteam/d4lf/blob/main/README.md#how-to-setup"
 
 
 def main():
