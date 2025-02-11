@@ -10,6 +10,7 @@ import win32pipe
 from src.config.helper import singleton
 
 LAST_ITEM = []
+CONNECTED = False
 LOGGER = logging.getLogger(__name__)
 _DATA_QUEUE = queue.Queue(maxsize=100)
 TO_FILTER = ["Champions who earn the favor of"]
@@ -73,6 +74,8 @@ def read_pipe() -> None:
 
         win32pipe.ConnectNamedPipe(handle, None)
         LOGGER.debug("TTS client connected")
+        global CONNECTED
+        CONNECTED = True
 
         while True:
             try:
@@ -93,6 +96,7 @@ def read_pipe() -> None:
 
         win32file.CloseHandle(handle)
         print("TTS client disconnected")
+        CONNECTED = False
 
 
 def find_item_start(data: list[str]) -> int | None:

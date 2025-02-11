@@ -16,6 +16,7 @@ from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import ItemRefreshType, UseTTSType
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
+from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.ui.char_inventory import CharInventory
 from src.ui.chest import Chest
 from src.utils.custom_mouse import mouse
@@ -55,7 +56,12 @@ class ScriptHandler:
 
     def filter_items(self, force_refresh=ItemRefreshType.no_refresh):
         if IniConfigLoader().general.use_tts in [UseTTSType.full, UseTTSType.mixed]:
-            self._start_or_stop_loot_interaction_thread(run_loot_filter, (force_refresh, True))
+            if src.tts.CONNECTED:
+                self._start_or_stop_loot_interaction_thread(run_loot_filter, (force_refresh, True))
+            else:
+                LOGGER.warning(
+                    f"TTS connection has not been made yet. Have you followed all of the instructions in {SETUP_INSTRUCTIONS_URL}?"
+                )
         else:
             self._start_or_stop_loot_interaction_thread(run_loot_filter, (force_refresh, False))
 

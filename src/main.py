@@ -20,12 +20,11 @@ from src.gui.qt_gui import start_gui
 from src.item.filter import Filter
 from src.logger import LOG_DIR
 from src.overlay import Overlay
+from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
 
 LOGGER = logging.getLogger(__name__)
-
-SETUP_INSTRUCTIONS_URL = "https://github.com/d4lfteam/d4lf/blob/main/README.md#how-to-setup"
 
 
 def main():
