@@ -60,7 +60,8 @@ class ScriptHandler:
                 self._start_or_stop_loot_interaction_thread(run_loot_filter, (force_refresh, True))
             else:
                 LOGGER.warning(
-                    f"TTS connection has not been made yet. Have you followed all of the instructions in {SETUP_INSTRUCTIONS_URL}?"
+                    f"TTS connection has not been made yet. Have you followed all of the instructions in {SETUP_INSTRUCTIONS_URL}? " +
+                    "If so, it's possible your Windows user does not have the correct permissions to allow Diablo 4 to connect to a third party screen reader."
                 )
         else:
             self._start_or_stop_loot_interaction_thread(run_loot_filter, (force_refresh, False))
