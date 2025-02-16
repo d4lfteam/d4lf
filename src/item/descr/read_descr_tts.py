@@ -101,10 +101,11 @@ def _add_affixes_from_tts_mixed(
             item.inherent.append(affix)
         elif i < inherent_num + affixes_num:
             affix = _get_affix_from_text(affix_text)
-            affix.loc = affix_bullets[i - len(inherent_affix_bullets)].center
-            if affix_bullets[i - len(inherent_affix_bullets)].name.startswith("greater_affix"):
+            affix_index = i - inherent_num
+            affix.loc = affix_bullets[affix_index].center
+            if affix_bullets[affix_index].name.startswith("greater_affix"):
                 affix.type = AffixType.greater
-            elif affix_bullets[i - len(inherent_affix_bullets)].name.startswith("rerolled"):
+            elif affix_bullets[affix_index].name.startswith("rerolled"):
                 affix.type = AffixType.rerolled
             else:
                 affix.type = AffixType.normal
