@@ -209,6 +209,9 @@ def _get_affix_from_text(text: str) -> Affix:
     if "Lucky Hit" in text and "Vulnerable" in text:
         for x in ["Make Enemies Vulnerable for 2 Seconds", "[2]"]:
             text = text.replace(x, "")
+    elif "for 4 Seconds" in text and "Blood Orb" in text:
+        for x in ["for 4 Seconds", "[4]"]:
+            text = text.replace(x, "")
 
     matched_groups = {}
     for match in _AFFIX_RE.finditer(text):
