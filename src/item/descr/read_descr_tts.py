@@ -266,7 +266,6 @@ def _is_codex_upgrade(tts_section: list[str], item: Item) -> bool:
 
 
 def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
-    screenshot("item_descr", img=img_item_descr)
     tts_section = copy.copy(src.tts.LAST_ITEM)
     if not tts_section:
         return None
