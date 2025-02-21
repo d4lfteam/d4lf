@@ -7,14 +7,13 @@ import rapidfuzz
 
 import src.tts
 from src import TP
-from src.config import AFFIX_COMPARISON_CHARS
 from src.dataloader import Dataloader
 from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect
 from src.item.data.item_type import ItemType, is_armor, is_consumable, is_jewelry, is_mapping, is_socketable, is_weapon
 from src.item.data.rarity import ItemRarity
 from src.item.descr import keep_letters_and_spaces
-from src.item.descr.text import clean_str, closest_match, find_number
+from src.item.descr.text import find_number
 from src.item.descr.texture import find_affix_bullets, find_aspect_bullet, find_seperator_short, find_seperators_long
 from src.item.models import Item
 from src.template_finder import TemplateMatch
@@ -35,7 +34,8 @@ _AFFIX_REPLACEMENTS = ["%", "+", ",", "[+]", "[x]", "per 5 Seconds"]
 LOGGER = logging.getLogger(__name__)
 
 
-def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
+# Returns a tuple with the number of affixes.  It's in the format (inherent_num, affixes_num)
+def _get_affix_counts(item: Item) -> (int, int):
     inherent_num = 0
     affixes_num = 3 if item.rarity == ItemRarity.Legendary else 4
     if is_weapon(item.item_type) or item.item_type in [ItemType.Amulet, ItemType.Boots]:
@@ -53,6 +53,12 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
         unique_inherents = Dataloader().aspect_unique_num_inherents.get(item.name)
         if unique_inherents is not None:
             inherent_num = unique_inherents
+
+    return (inherent_num, affixes_num)
+
+
+def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
+    inherent_num, affixes_num = _get_affix_counts(item)
 
     affixes = _get_affixes_from_tts_section(tts_section, item, inherent_num + affixes_num)
     for i, affix_text in enumerate(affixes):
@@ -79,32 +85,35 @@ def _add_affixes_from_tts_mixed(
     affix_bullets: list[TemplateMatch],
     aspect_bullet: TemplateMatch | None,
 ) -> Item:
+    # With advanced item compare on we'll actually find more bullets than we need, so we don't rely on them for number of affixes
+    inherent_num, affixes_num = _get_affix_counts(item)
+
     affixes = _get_affixes_from_tts_section(
         tts_section,
         item,
-        len(inherent_affix_bullets)
-        + len([x for x in affix_bullets if any(x.name.startswith(s) for s in ["affix", "greater_affix", "rerolled"])]),
+        inherent_num + affixes_num,
     )
+    print(affix_bullets)
     for i, affix_text in enumerate(affixes):
-        if i < len(inherent_affix_bullets):
+        if i < inherent_num:
             affix = _get_affix_from_text(affix_text)
             affix.type = AffixType.inherent
             affix.loc = inherent_affix_bullets[i].center
             item.inherent.append(affix)
-        elif i < len(inherent_affix_bullets) + len(affix_bullets):
+        elif i < inherent_num + affixes_num:
             affix = _get_affix_from_text(affix_text)
-            affix.loc = affix_bullets[i - len(inherent_affix_bullets)].center
-            if affix_bullets[i - len(inherent_affix_bullets)].name.startswith("greater_affix"):
+            affix_index = i - inherent_num
+            affix.loc = affix_bullets[affix_index].center
+            if affix_bullets[affix_index].name.startswith("greater_affix"):
                 affix.type = AffixType.greater
-            elif affix_bullets[i - len(inherent_affix_bullets)].name.startswith("rerolled"):
+            elif affix_bullets[affix_index].name.startswith("rerolled"):
                 affix.type = AffixType.rerolled
             else:
                 affix.type = AffixType.normal
             item.affixes.append(affix)
         else:
-            name = closest_match(clean_str(affix_text)[:AFFIX_COMPARISON_CHARS], Dataloader().aspect_unique_dict)
             item.aspect = Aspect(
-                name=name,
+                name=item.name,
                 loc=aspect_bullet.center,
                 text=affix_text,
                 value=find_number(affix_text),
@@ -178,7 +187,7 @@ def _get_affixes_from_tts_section(tts_section: list[str], item: Item, length: in
             item_power = i
         if "damage per second" in line.lower():
             dps = i
-            break  # this will always be the last line of the 3
+            break  # this will always be the last line of the 4
     base_value = armory if armory else masterwork if masterwork else item_power
     if is_weapon(item.item_type):
         start = dps + 2
@@ -257,6 +266,7 @@ def _is_codex_upgrade(tts_section: list[str], item: Item) -> bool:
 
 
 def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
+    screenshot("item_descr", img=img_item_descr)
     tts_section = copy.copy(src.tts.LAST_ITEM)
     if not tts_section:
         return None

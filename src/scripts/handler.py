@@ -10,6 +10,7 @@ import src.logger
 import src.scripts.loot_filter
 import src.scripts.loot_filter_tts
 import src.scripts.vision_mode
+import src.scripts.vision_mode_mixed
 import src.scripts.vision_mode_tts
 import src.tts
 from src.cam import Cam
@@ -31,8 +32,10 @@ LOCK = threading.Lock()
 class ScriptHandler:
     def __init__(self):
         self.loot_interaction_thread = None
-        self.script_threads = []
-        self.vision_mode = src.scripts.vision_mode_tts.VisionMode()
+        if IniConfigLoader().general.use_tts == UseTTSType.full:
+            self.vision_mode = src.scripts.vision_mode_tts.VisionModeTTS()
+        else:
+            self.vision_mode = src.scripts.vision_mode_mixed.VisionModeMixed()
 
         self.setup_key_binds()
         if IniConfigLoader().general.run_vision_mode_on_startup:
@@ -79,7 +82,7 @@ class ScriptHandler:
                     LOGGER.info("Stopping filter or move process")
                     kill_thread(self.loot_interaction_thread)
                     self.loot_interaction_thread = None
-                    if self.did_stop_scripts and IniConfigLoader().general.use_tts == UseTTSType.full and not self.vision_mode.running():
+                    if self.did_stop_scripts and not self.vision_mode.running():
                         self.vision_mode.start()
                 else:
                     self.loot_interaction_thread = threading.Thread(
@@ -95,17 +98,9 @@ class ScriptHandler:
         try:
             # We will stop all scripts if they are currently running and restart them afterward if needed
             self.did_stop_scripts = False
-            if IniConfigLoader().general.use_tts == UseTTSType.full:
-                if self.vision_mode.running():
-                    self.vision_mode.stop()
-                    self.did_stop_scripts = True
-            else:
-                if len(self.script_threads) > 0:
-                    LOGGER.info("Stopping Scripts")
-                    for script_thread in self.script_threads:
-                        kill_thread(script_thread)
-                    self.script_threads = []
-                    self.did_stop_scripts = True
+            if self.vision_mode.running():
+                self.vision_mode.stop()
+                self.did_stop_scripts = True
 
             loot_interaction_method(*method_args)
 
@@ -122,23 +117,10 @@ class ScriptHandler:
                     return
 
                 # TODO Probably just remove the "scripts" concept and change to a checkbox for vision mode
-                if IniConfigLoader().general.use_tts == UseTTSType.full:
-                    if self.vision_mode.running():
-                        self.vision_mode.stop()
-                    else:
-                        self.vision_mode.start()
+                if self.vision_mode.running():
+                    self.vision_mode.stop()
                 else:
-                    if len(self.script_threads) > 0:
-                        LOGGER.info("Stopping Vision Mode")
-                        for script_thread in self.script_threads:
-                            kill_thread(script_thread)
-                        self.script_threads = []
-                    else:
-                        for name in IniConfigLoader().advanced_options.scripts:
-                            if name == "vision_mode":
-                                vision_mode_thread = threading.Thread(target=src.scripts.vision_mode.vision_mode, daemon=True)
-                                vision_mode_thread.start()
-                                self.script_threads.append(vision_mode_thread)
+                    self.vision_mode.start()
             finally:
                 LOCK.release()
         else:

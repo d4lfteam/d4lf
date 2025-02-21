@@ -4,6 +4,9 @@ import time
 import keyboard
 
 from src.cam import Cam
+from src.item.data.item_type import ItemType, is_armor, is_consumable, is_jewelry, is_mapping, is_socketable, is_weapon
+from src.item.data.rarity import ItemRarity
+from src.item.models import Item
 from src.utils.custom_mouse import mouse
 
 LOGGER = logging.getLogger(__name__)
@@ -46,3 +49,28 @@ def reset_item_status(occupied, inv):
 
     if occupied:
         mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+
+
+def is_ignored_item(item_descr: Item):
+    if is_consumable(item_descr.item_type):
+        LOGGER.info("Matched: Consumable")
+        return True
+    if is_mapping(item_descr.item_type):
+        LOGGER.info("Matched: Mapping")
+        return True
+    if is_socketable(item_descr.item_type):
+        LOGGER.info("Matched: Socketable")
+        return True
+    if item_descr.item_type == ItemType.Tribute:
+        LOGGER.info("Matched: Tribute")
+        return True
+    if item_descr.item_type == ItemType.Material:
+        LOGGER.info("Matched: Material")
+        return True
+    if item_descr.rarity == ItemRarity.Rare and (
+        is_armor(item_descr.item_type) or is_weapon(item_descr.item_type) or is_jewelry(item_descr.item_type)
+    ):
+        LOGGER.info("Matched: Rare, ignore Item")
+        return True
+
+    return False

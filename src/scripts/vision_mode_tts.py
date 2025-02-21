@@ -2,14 +2,16 @@ import logging
 import queue
 import tkinter as tk
 from tkinter import font
+from tkinter.font import Font
 
 import src.item.descr.read_descr_tts
 import src.logger
 import src.tts
+from config.helper import singleton
+from config.loader import IniConfigLoader
+from scripts.common import is_ignored_item
 from src.cam import Cam
-from src.config.helper import singleton
 from src.config.ui import ResManager
-from src.item.data.item_type import ItemType, is_armor, is_consumable, is_jewelry, is_mapping, is_socketable, is_weapon
 from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter, MatchedFilter
 from src.tts import Publisher
@@ -20,7 +22,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 @singleton
-class VisionMode:
+class VisionModeTTS:
     def __init__(self):
         self.root = tk.Tk()
         self.root.overrideredirect(True)
@@ -35,7 +37,6 @@ class VisionMode:
         self.clear_timer_id = None
         self.queue = queue.Queue()
         self.draw_from_queue()
-        self.stop_thread = None
         self.is_running = False
 
     def adjust_textbox_size(self):
@@ -62,8 +63,9 @@ class VisionMode:
 
     def create_textbox(self):
         self.clear_textbox()
-
-        self.textbox = tk.Text(self.root, bg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0)
+        minimum_font_size = IniConfigLoader().general.minimum_overlay_font_size
+        minimum_font = Font(family="Courier New", size=minimum_font_size)
+        self.textbox = tk.Text(self.root, bg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0, font=minimum_font)
         x, y = ResManager().resolution
         self.textbox.place(x=x / 2, y=y / 5)
         self.textbox.config(state=tk.DISABLED)
@@ -114,28 +116,7 @@ class VisionMode:
             if item_descr is None:
                 return None
 
-            ignored_item = False
-            if is_consumable(item_descr.item_type):
-                LOGGER.info("Matched: Consumable")
-                ignored_item = True
-            if is_mapping(item_descr.item_type):
-                LOGGER.info("Matched: Mapping")
-                ignored_item = True
-            if is_socketable(item_descr.item_type):
-                LOGGER.info("Matched: Socketable")
-                ignored_item = True
-            elif item_descr.item_type == ItemType.Tribute:
-                LOGGER.info("Matched: Tribute")
-                ignored_item = True
-            elif item_descr.item_type == ItemType.Material:
-                LOGGER.info("Matched: Material")
-                ignored_item = True
-            if item_descr.rarity == ItemRarity.Rare and (
-                is_armor(item_descr.item_type) or is_weapon(item_descr.item_type) or is_jewelry(item_descr.item_type)
-            ):
-                LOGGER.info("Matched: Rare, ignore Item")
-                ignored_item = True
-
+            ignored_item = is_ignored_item(item_descr)
             if ignored_item:
                 self.request_clear()
                 return None

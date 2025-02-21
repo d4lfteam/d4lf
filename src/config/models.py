@@ -60,7 +60,6 @@ class UnfilteredUniquesType(enum.StrEnum):
 class UseTTSType(enum.StrEnum):
     full = enum.auto()
     mixed = enum.auto()
-    off = enum.auto()
 
 
 class _IniBaseModel(BaseModel):
@@ -275,7 +274,8 @@ class GeneralModel(_IniBaseModel):
         default=False, description="Season 7 Specific: Do not mark ancestral legendaries as junk for seasonal challenge"
     )
     use_tts: UseTTSType = Field(
-        default=UseTTSType.full, description="Whether to use tts or not", json_schema_extra={HIDE_FROM_GUI_KEY: "True"}
+        default=UseTTSType.mixed,
+        description="Use of TTS is required. Should the vision mode be the mixed vision mode or the full one? Note: Mixed does not work with controllers",
     )
 
     @field_validator("check_chest_tabs", mode="before")
@@ -306,11 +306,6 @@ class GeneralModel(_IniBaseModel):
             raise ValueError("Font size must be between 10 and 20, inclusive")
         return v
 
-    @field_validator("use_tts")
-    def always_use_full_tts(cls, v: UseTTSType) -> UseTTSType:
-        # Right now only full TTS is supported so force it to be used
-        return UseTTSType.full
-
     @field_validator("move_to_inv_item_type", "move_to_stash_item_type", mode="before")
     def convert_move_item_type(cls, v: str):
         if isinstance(v, str):
@@ -328,6 +323,11 @@ class GeneralModel(_IniBaseModel):
                 MODULE_LOGGER.warning(
                     f"{key}=non_favorites is deprecated. Changing to equivalent of junk and unmarked instead. Modify this value in the GUI to remove this message."
                 )
+        if "use_tts" in data and data["use_tts"] == "off":
+            data["use_tts"] = UseTTSType.mixed
+            MODULE_LOGGER.warning(
+                f"{key}=Turning off TTS is deprecated. Changing to mixed mode instead. Modify this value in the GUI to remove this message."
+            )
         return data
 
 
