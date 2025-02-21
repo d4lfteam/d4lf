@@ -8,3 +8,7 @@ class ItemRarity(Enum):
     Mythic = "mythic"
     Rare = "rare"
     Unique = "unique"
+
+
+def is_junk_rarity(item_rarity: ItemRarity) -> bool:
+    return item_rarity in [ItemRarity.Common, ItemRarity.Magic, ItemRarity.Rare]

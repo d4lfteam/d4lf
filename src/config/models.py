@@ -431,8 +431,6 @@ class SigilConditionModel(BaseModel):
 class SigilFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     blacklist: list[SigilConditionModel] = []
-    maxTier: int = sys.maxsize
-    minTier: int = 0
     priority: SigilPriority = SigilPriority.blacklist
     whitelist: list[SigilConditionModel] = []
 
@@ -441,15 +439,7 @@ class SigilFilterModel(BaseModel):
         errors = [item for item in self.blacklist if item in self.whitelist]
         if errors:
             raise ValueError(f"blacklist and whitelist must not overlap: {errors}")
-        if self.minTier > self.maxTier:
-            raise ValueError("minTier must be smaller than maxTier")
         return self
-
-    @field_validator("minTier", "maxTier")
-    def min_max_tier_in_range(cls, v: int) -> int:
-        if not 0 <= v <= 100:
-            raise ValueError("must be in [0, 100]")
-        return v
 
 
 class UniqueModel(BaseModel):

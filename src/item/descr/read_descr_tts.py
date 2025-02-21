@@ -121,6 +121,20 @@ def _add_affixes_from_tts_mixed(
     return item
 
 
+def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
+    name = tts_section[2].split(" in ")[0]
+    item.name = _correct_name(name)
+
+    affixes = [tts_section[4], tts_section[6]]
+
+    for affix_name in affixes:
+        affix = Affix(name=_correct_name(keep_letters_and_spaces(affix_name)))
+        affix.type = AffixType.normal
+        item.affixes.append(affix)
+
+    return item
+
+
 def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     if tts_item[0].startswith(src.tts.ItemIdentifiers.COMPASS.value):
         return Item(rarity=ItemRarity.Common, item_type=ItemType.Compass)
@@ -162,12 +176,18 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     search_string_split = search_string.split(" ")
     item.rarity = _get_item_rarity(search_string_split[0])
     item.item_type = _get_item_type(" ".join(search_string_split[1:]))
-    item.name = tts_item[0].lower().replace("'", "").replace(" ", "_").replace(",", "")
+    item.name = _correct_name(tts_item[0])
     for _i, line in enumerate(tts_item):
         if "item power" in line.lower():
             item.power = int(find_number(line))
             break
     return item
+
+
+def _correct_name(name: str) -> str | None:
+    if name:
+        return name.lower().replace("'", "").replace(" ", "_").replace(",", "")
+    return name
 
 
 def _get_affixes_from_tts_section(tts_section: list[str], item: Item, length: int):
@@ -345,6 +365,8 @@ def read_descr() -> Item | None:
         return None
     if (item := _create_base_item_from_tts(tts_section)) is None:
         return None
+    if item.item_type == ItemType.Sigil:
+        return _add_sigil_affixes_from_tts(tts_section, item)
     if any(
         [
             is_consumable(item.item_type),
@@ -354,6 +376,7 @@ def read_descr() -> Item | None:
         ]
     ):
         return item
+
     if all(
         [not is_armor(item.item_type), not is_jewelry(item.item_type), not is_weapon(item.item_type), item.item_type != ItemType.Shield]
     ):

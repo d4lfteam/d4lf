@@ -5,7 +5,7 @@ from src.item.models import Item
 
 
 class TestItem(Item):
-    def __init__(self, rarity=ItemRarity.Rare, power=910, **kwargs):
+    def __init__(self, rarity=ItemRarity.Legendary, power=910, **kwargs):
         super().__init__(rarity=rarity, power=power, **kwargs)
 
 

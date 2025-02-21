@@ -1,11 +1,10 @@
 {
     "dungeons": {
-        "glacial_fissure": "glacial fissure"
     },
     "major": {
-        "the_beast_in_ice": "the beast in ice imprisoned no longer, face the beast in ice in its frozen cave."
     },
     "positive": {
-        "ancestors_favor": "ancestors favor you earn more experience while within this dungeon"
+        "ancestors_favor": "ancestors favor you earn more experience while within this dungeon",
+        "forgotten_altar": "this world will always spawn a forgotten altar"
     }
 }
