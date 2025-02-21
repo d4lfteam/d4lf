@@ -20,12 +20,11 @@ from src.gui.qt_gui import start_gui
 from src.item.filter import Filter
 from src.logger import LOG_DIR
 from src.overlay import Overlay
+from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
 
 LOGGER = logging.getLogger(__name__)
-
-SETUP_INSTRUCTIONS_URL = "https://github.com/d4lfteam/d4lf/blob/main/README.md#how-to-setup"
 
 
 def main():
@@ -105,22 +104,25 @@ def check_for_proper_tts_configuration():
 
 
 def get_d4_local_prefs_file() -> Path | None:
-    documents_file = pathlib.Path.home() / "Documents" / "Diablo IV" / "LocalPrefs.txt"
-    onedrive_file = pathlib.Path.home() / "OneDrive" / "Documents" / "Diablo IV" / "LocalPrefs.txt"
+    all_potential_files: list[Path] = [
+        pathlib.Path.home() / "Documents" / "Diablo IV" / "LocalPrefs.txt",
+        pathlib.Path.home() / "OneDrive" / "Documents" / "Diablo IV" / "LocalPrefs.txt",
+        pathlib.Path.home() / "OneDrive" / "MyDocuments" / "Diablo IV" / "LocalPrefs.txt",
+    ]
 
-    if documents_file.exists() and onedrive_file.exists():
-        # Return the newest of the two
-        if documents_file.stat().st_mtime > onedrive_file.stat().st_mtime:
-            return documents_file
-        return onedrive_file
+    existing_files: list[Path] = [file for file in all_potential_files if file.exists()]
 
-    if documents_file.exists():
-        return documents_file
+    if len(existing_files) == 0:
+        return None
 
-    if onedrive_file.exists():
-        return onedrive_file
+    if len(existing_files) == 1:
+        return existing_files[0]
 
-    return None
+    most_recently_modified_file = existing_files[0]
+    for existing_file in existing_files[1:]:
+        if existing_file.stat().st_mtime > most_recently_modified_file.stat().st_mtime:
+            most_recently_modified_file = existing_file
+    return most_recently_modified_file
 
 
 if __name__ == "__main__":
