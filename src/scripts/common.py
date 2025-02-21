@@ -54,7 +54,7 @@ def is_ignored_item(item_descr: Item):
     if is_consumable(item_descr.item_type):
         LOGGER.info("Matched: Consumable")
         return True
-    if is_mapping(item_descr.item_type) and not item_descr.item_type == ItemType.Sigil:
+    if is_mapping(item_descr.item_type) and item_descr.item_type != ItemType.Sigil:
         LOGGER.info("Matched: Non-sigil Mapping")
         return True
     if is_socketable(item_descr.item_type):

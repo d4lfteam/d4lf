@@ -290,7 +290,7 @@ Affixes:
 Affix names are lower case and spaces are replaced by underscore. You can find the full list of names
 in [assets/lang/enUS/affixes.json](assets/lang/enUS/affixes.json).
 
-### Sigils (Note: This functionality may not be completely working at this time)
+### Sigils
 
 Sigils are defined by the top-level key `Sigils`. It contains a list of affix or location names that you want to filter
 for. If no Sigil filter is provided, all Sigils will be kept.
@@ -299,8 +299,6 @@ for. If no Sigil filter is provided, all Sigils will be kept.
 
 ```yaml
 Sigils:
-  minTier: 40
-  maxTier: 100
   blacklist:
     # locations
     - endless_gates
@@ -317,8 +315,6 @@ present, `blacklist` will be used to discard sigils that match any of the blackl
 ```yaml
 # Only keep sigils for vault_of_the_forsaken without any of the affixes armor_breakers and resistance_breakers
 Sigils:
-  minTier: 40
-  maxTier: 100
   blacklist:
     - armor_breakers
     - resistance_breakers
@@ -331,8 +327,6 @@ To switch that priority, you can add the `priority` key with the value `whitelis
 ```yaml
 # This will keep all vault of the forsaken sigils even if they have armor_breakers or resistance_breakers
 Sigils:
-  minTier: 40
-  maxTier: 100
   blacklist:
     - armor_breakers
     - resistance_breakers
@@ -346,8 +340,6 @@ You can also create conditional filters based on a single affix or location.
 ```yaml
 # Only keep sigils for iron_hold when it also has shadow_damage
 Sigils:
-  minTier: 40
-  maxTier: 100
   blacklist:
     - armor_breakers
     - resistance_breakers
