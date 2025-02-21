@@ -273,7 +273,10 @@ class GeneralModel(_IniBaseModel):
     s7_do_not_junk_ancestral_legendaries: bool = Field(
         default=False, description="Season 7 Specific: Do not mark ancestral legendaries as junk for seasonal challenge"
     )
-    use_tts: UseTTSType = Field(default=UseTTSType.full, description="Whether to use tts or not")
+    use_tts: UseTTSType = Field(
+        default=UseTTSType.mixed,
+        description="Use of TTS is required. Should the vision mode be the mixed vision mode or the full one? Note: Mixed does not work with controllers",
+    )
 
     @field_validator("check_chest_tabs", mode="before")
     def check_chest_tabs_index(cls, v: str) -> list[int]:
