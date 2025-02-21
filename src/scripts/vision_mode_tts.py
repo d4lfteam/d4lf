@@ -2,11 +2,13 @@ import logging
 import queue
 import tkinter as tk
 from tkinter import font
+from tkinter.font import Font
 
 import src.item.descr.read_descr_tts
 import src.logger
 import src.tts
 from config.helper import singleton
+from config.loader import IniConfigLoader
 from scripts.common import is_ignored_item
 from src.cam import Cam
 from src.config.ui import ResManager
@@ -61,8 +63,9 @@ class VisionModeTTS:
 
     def create_textbox(self):
         self.clear_textbox()
-
-        self.textbox = tk.Text(self.root, bg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0)
+        minimum_font_size = IniConfigLoader().general.minimum_overlay_font_size
+        minimum_font = Font(family="Courier New", size=minimum_font_size)
+        self.textbox = tk.Text(self.root, bg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0, font=minimum_font)
         x, y = ResManager().resolution
         self.textbox.place(x=x / 2, y=y / 5)
         self.textbox.config(state=tk.DISABLED)

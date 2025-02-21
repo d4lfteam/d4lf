@@ -17,6 +17,7 @@ from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
 from src.item.filter import Filter
 from src.item.find_descr import find_descr
+from src.item.models import Item
 from src.scripts.common import is_ignored_item, reset_canvas
 from src.tts import Publisher
 from src.ui.char_inventory import CharInventory
@@ -40,8 +41,10 @@ class VisionModeMixed:
         self.root.attributes("-transparentcolor", "white")
         self.canvas = tk.Canvas(self.root, bg="white", highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True)
-        self.clear_timer_id = None
         self.clear_when_item_not_selected_thread = None
+        self.evaluate_item_thread = None
+        self.current_item = None
+        self.is_cleared = True
         self.queue = queue.Queue()
         self.draw_from_queue()
         self.is_running = False
@@ -147,12 +150,17 @@ class VisionModeMixed:
             task = self.queue.get_nowait()
             if task[0] == "clear":
                 reset_canvas(self.root, self.canvas)
-            if task[0] == "empty":
-                self.draw_empty_outline(task[1], task[2])
-            if task[0] == "match":
-                self.draw_match_outline(task[1], task[2], task[3])
-            if task[0] == "no_match":
-                self.draw_no_match_outline(task[1])
+                self.is_cleared = True
+            else:
+                item_desc = task[1]
+                if item_desc == self.current_item:
+                    self.is_cleared = False
+                    if task[0] == "empty":
+                        self.draw_empty_outline(task[2], task[3])
+                    if task[0] == "match":
+                        self.draw_match_outline(task[2], task[3], task[4])
+                    if task[0] == "no_match":
+                        self.draw_no_match_outline(task[2])
         except queue.Empty:
             pass
 
@@ -210,6 +218,18 @@ class VisionModeMixed:
             self.request_clear()
             return
 
+        self.current_item = item_descr
+
+        # Kick off a thread that will evaluate the item and queue up the appropriate drawings.
+        # If one already exists we'll kill it since a new item has come in
+        if self.evaluate_item_thread:
+            kill_thread(self.evaluate_item_thread)
+
+        self.evaluate_item_thread = threading.Thread(target=self.evaluate_item_and_queue_draw, args=(item_descr,), daemon=True)
+        self.evaluate_item_thread.start()
+
+    def evaluate_item_and_queue_draw(self, item_descr: Item):
+        self.request_clear()
         if self.clear_when_item_not_selected_thread:
             kill_thread(self.clear_when_item_not_selected_thread)
             self.clear_when_item_not_selected_thread = None
@@ -223,14 +243,17 @@ class VisionModeMixed:
         try:
             while retry_count < 5 and not is_confirmed:
                 retry_count += 1
-                img = Cam().grab()
                 mouse_pos = Cam().monitor_to_window(mouse.get_position())
                 # get closest pos to a item center
                 delta = self.possible_centers - mouse_pos
                 distances = np.linalg.norm(delta, axis=1)
                 closest_index = np.argmin(distances)
                 item_center = self.possible_centers[closest_index]
-                found, rarity, cropped_descr, item_roi = find_descr(img, item_center)
+
+                # Before we get the cropped_descr we need to ensure there is no previous overlay on screen
+                while not self.is_cleared:
+                    time.sleep(0.10)
+                found, rarity, cropped_descr, item_roi = find_descr(Cam().grab(), item_center)
 
                 top_left_corner = None if not found else item_roi[:2]
                 if found:
@@ -251,9 +274,9 @@ class VisionModeMixed:
                         ignored_item = is_ignored_item(item_descr)
                         # Make the canvas gray for "found the item" or blue for "ignored this item"
                         if ignored_item:
-                            self.request_empty_outline(item_roi, "#00b3b3")
+                            self.request_empty_outline(item_descr, item_roi, "#00b3b3")
                         else:
-                            self.request_empty_outline(item_roi, "#888888")
+                            self.request_empty_outline(item_descr, item_roi, "#888888")
 
                         # Since we've now drawn something we kick off a thread to remove the drawing
                         # if the item is unselected. It is also automatically removed if a different
@@ -271,16 +294,17 @@ class VisionModeMixed:
                         last_top_left_corner = top_left_corner
                         last_center = item_center
 
-                        # We need to get the item_descr again but this time with affix locations
-                        item_descr_with_loc = src.item.descr.read_descr_tts.read_descr_mixed(cropped_descr)
-                        res = Filter().should_keep(item_descr_with_loc)
-                        match = res.keep
+                        if item_descr == self.current_item:
+                            # We need to get the item_descr again but this time with affix locations
+                            item_descr_with_loc = src.item.descr.read_descr_tts.read_descr_mixed(cropped_descr)
+                            res = Filter().should_keep(item_descr_with_loc)
+                            match = res.keep
 
-                        # Adapt colors based on config
-                        if match:
-                            self.request_match_box(item_roi, res, item_descr_with_loc)
-                        elif not match:
-                            self.request_no_match_box(item_roi)
+                            # Adapt colors based on config
+                            if match:
+                                self.request_match_box(item_descr, item_roi, res, item_descr_with_loc)
+                            elif not match:
+                                self.request_no_match_box(item_descr, item_roi)
                 else:
                     self.request_clear()
                     last_center = None
@@ -289,6 +313,8 @@ class VisionModeMixed:
                     time.sleep(0.15)
         except Exception:
             LOGGER.exception("Error in vision mode. Please create a bug report")
+        finally:
+            self.evaluate_item_thread = None
 
     def check_for_item_still_selected(self, item_center):
         while True:
@@ -311,14 +337,14 @@ class VisionModeMixed:
     def request_clear(self):
         self.queue.put(("clear",))
 
-    def request_empty_outline(self, item_roi, color):
-        self.queue.put(("empty", item_roi, color))
+    def request_empty_outline(self, item_descr, item_roi, color):
+        self.queue.put(("empty", item_descr, item_roi, color))
 
-    def request_match_box(self, item_roi, should_keep_res, item_descr_with_affix):
-        self.queue.put(("match", item_roi, should_keep_res, item_descr_with_affix))
+    def request_match_box(self, item_descr, item_roi, should_keep_res, item_descr_with_affix):
+        self.queue.put(("match", item_descr, item_roi, should_keep_res, item_descr_with_affix))
 
-    def request_no_match_box(self, item_roi):
-        self.queue.put(("no_match", item_roi))
+    def request_no_match_box(self, item_descr, item_roi):
+        self.queue.put(("no_match", item_descr, item_roi))
 
     def start(self):
         LOGGER.info("Starting Vision Mode")
@@ -328,6 +354,9 @@ class VisionModeMixed:
     def stop(self):
         LOGGER.info("Stopping Vision Mode")
         self.request_clear()
+        if self.evaluate_item_thread:
+            kill_thread(self.evaluate_item_thread)
+            self.evaluate_item_thread = None
         if self.clear_when_item_not_selected_thread:
             kill_thread(self.clear_when_item_not_selected_thread)
             self.clear_when_item_not_selected_thread = None

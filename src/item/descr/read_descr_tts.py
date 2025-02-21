@@ -93,6 +93,7 @@ def _add_affixes_from_tts_mixed(
         item,
         inherent_num + affixes_num,
     )
+    print(affix_bullets)
     for i, affix_text in enumerate(affixes):
         if i < inherent_num:
             affix = _get_affix_from_text(affix_text)
@@ -262,6 +263,7 @@ def _is_codex_upgrade(tts_section: list[str], item: Item) -> bool:
 
 
 def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
+    screenshot("item_descr", img=img_item_descr)
     tts_section = copy.copy(src.tts.LAST_ITEM)
     if not tts_section:
         return None
