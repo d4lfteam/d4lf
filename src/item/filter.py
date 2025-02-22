@@ -26,7 +26,7 @@ from src.config.models import (
 from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect
 from src.item.data.item_type import ItemType
-from src.item.data.rarity import ItemRarity
+from src.item.data.rarity import ItemRarity, is_junk_rarity
 from src.item.models import Item
 
 LOGGER = logging.getLogger(__name__)
@@ -135,18 +135,14 @@ class Filter:
             res.keep = True
             res.matched.append(MatchedFilter("default"))
         for profile_name, profile_filter in self.sigil_filters.items():
-            # check item power
-            if not self._match_item_power(max_power=profile_filter.maxTier, min_power=profile_filter.minTier, item_power=item.power):
-                continue
-
             blacklist_empty = not profile_filter.blacklist
             is_in_blacklist = self._match_affixes_sigils(
-                expected_affixes=profile_filter.blacklist, sigil_affixes=item.affixes + item.inherent
+                expected_affixes=profile_filter.blacklist, sigil_name=item.name, sigil_affixes=item.affixes + item.inherent
             )
             blacklist_ok = True if blacklist_empty else not is_in_blacklist
             whitelist_empty = not profile_filter.whitelist
             is_in_whitelist = self._match_affixes_sigils(
-                expected_affixes=profile_filter.whitelist, sigil_affixes=item.affixes + item.inherent
+                expected_affixes=profile_filter.whitelist, sigil_name=item.name, sigil_affixes=item.affixes + item.inherent
             )
             whitelist_ok = True if whitelist_empty else is_in_whitelist
 
@@ -242,9 +238,9 @@ class Filter:
         return result
 
     @staticmethod
-    def _match_affixes_sigils(expected_affixes: list[SigilConditionModel], sigil_affixes: list[Affix]) -> bool:
+    def _match_affixes_sigils(expected_affixes: list[SigilConditionModel], sigil_name: str, sigil_affixes: list[Affix]) -> bool:
         for expected_affix in expected_affixes:
-            if not [affix for affix in sigil_affixes if affix.name == expected_affix.name]:
+            if sigil_name != expected_affix.name and not [affix for affix in sigil_affixes if affix.name == expected_affix.name]:
                 continue
             if expected_affix.condition and not any(affix.name in expected_affix.condition for affix in sigil_affixes):
                 continue
@@ -354,11 +350,11 @@ class Filter:
 
         res = FilterResult(False, [])
 
-        if item.item_type is None or item.power is None:
-            return res
-
         if item.item_type == ItemType.Sigil:
             return self._check_sigil(item)
+
+        if item.item_type is None or item.power is None or is_junk_rarity(item.rarity):
+            return res
 
         if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
             return self._check_unique_item(item)

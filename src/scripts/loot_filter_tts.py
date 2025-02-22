@@ -9,7 +9,7 @@ from src.item.data.affix import AffixType
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter
-from src.scripts.common import mark_as_favorite, mark_as_junk, reset_item_status
+from src.scripts.common import is_ignored_item, mark_as_favorite, mark_as_junk, reset_item_status
 from src.ui.inventory_base import InventoryBase
 from src.utils.window import screenshot
 
@@ -55,26 +55,7 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
             continue
 
         # Hardcoded filters
-        if item_descr.rarity == ItemRarity.Common and item_descr.item_type == ItemType.Material:
-            LOGGER.info("Matched: Material")
-            continue
-        if item_descr.rarity == ItemRarity.Legendary and item_descr.item_type == ItemType.Material:
-            LOGGER.info("Matched: Extracted Aspect")
-            continue
-        if item_descr.item_type == ItemType.Elixir:
-            LOGGER.info("Matched: Elixir")
-            continue
-        if item_descr.item_type == ItemType.Incense:
-            LOGGER.info("Matched: Incense")
-            continue
-        if item_descr.item_type == ItemType.TemperManual:
-            LOGGER.info("Matched: Temper Manual")
-            continue
-        if item_descr.item_type == ItemType.Cache:
-            LOGGER.info("Matched: Cache")
-            continue
-        if item_descr.rarity in [ItemRarity.Rare, ItemRarity.Magic, ItemRarity.Common] and item_descr.item_type != ItemType.Sigil:
-            mark_as_junk()
+        if is_ignored_item(item_descr):
             continue
 
         num_of_affixed_items_checked += 1

@@ -106,7 +106,7 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything                                                                                                             |
 | run_vision_mode_on_startup                      | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey                                                                                                                                                                                                                                                                                              |
 | s7_do_not_junk_ancestral_legendaries            | Do not mark ancestral legendaries as junk. This is to help with the season 7 Slayer seasonal challenge "Precious Shards"                                                                                                                                                                                                                                                                                                                 |
-| use_tts                                         | Which vision mode you would like to use with [TTS](#TTS). `mixed` does the classic green highlighting on screen, but is slight slower. `full` just puts green text on screen but is very fast and works with controllers.                                                                                                                                                                                                                |
+| use_tts                                         | Which vision mode you would like to use with [TTS](#TTS). `mixed` does the classic green highlighting on screen, but is slightly slower. `full` just puts green text on screen but is very fast and works with controllers.                                                                                                                                                                                                              |
 
 | \[char\]    | Description                       |
 |-----------|-----------------------------------|
@@ -290,7 +290,7 @@ Affixes:
 Affix names are lower case and spaces are replaced by underscore. You can find the full list of names
 in [assets/lang/enUS/affixes.json](assets/lang/enUS/affixes.json).
 
-### Sigils (Note: This functionality may not be completely working at this time)
+### Sigils
 
 Sigils are defined by the top-level key `Sigils`. It contains a list of affix or location names that you want to filter
 for. If no Sigil filter is provided, all Sigils will be kept.
@@ -299,8 +299,6 @@ for. If no Sigil filter is provided, all Sigils will be kept.
 
 ```yaml
 Sigils:
-  minTier: 40
-  maxTier: 100
   blacklist:
     # locations
     - endless_gates
@@ -317,8 +315,6 @@ present, `blacklist` will be used to discard sigils that match any of the blackl
 ```yaml
 # Only keep sigils for vault_of_the_forsaken without any of the affixes armor_breakers and resistance_breakers
 Sigils:
-  minTier: 40
-  maxTier: 100
   blacklist:
     - armor_breakers
     - resistance_breakers
@@ -331,8 +327,6 @@ To switch that priority, you can add the `priority` key with the value `whitelis
 ```yaml
 # This will keep all vault of the forsaken sigils even if they have armor_breakers or resistance_breakers
 Sigils:
-  minTier: 40
-  maxTier: 100
   blacklist:
     - armor_breakers
     - resistance_breakers
@@ -346,8 +340,6 @@ You can also create conditional filters based on a single affix or location.
 ```yaml
 # Only keep sigils for iron_hold when it also has shadow_damage
 Sigils:
-  minTier: 40
-  maxTier: 100
   blacklist:
     - armor_breakers
     - resistance_breakers
