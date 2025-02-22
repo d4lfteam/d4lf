@@ -1,8 +1,6 @@
 {
-    "dungeons": {
-    },
-    "major": {
-    },
+    "dungeons": {},
+    "major": {},
     "positive": {
         "ancestors_favor": "ancestors favor you earn more experience while within this dungeon",
         "forgotten_altar": "this world will always spawn a forgotten altar"
