@@ -63,10 +63,8 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
             num_of_items_with_all_ga += 1
 
         # Check if we want to keep the item
-        start_filter = time.time()
         res = Filter().should_keep(item_descr)
         matched_any_affixes = len(res.matched) > 0 and len(res.matched[0].matched_affixes) > 0
-        LOGGER.debug(f"  Runtime (Filter): {time.time() - start_filter:.2f}s")
 
         # Uniques have special handling. If they have an aspect specifically called out by a profile they are treated
         # like any other item. If not, and there are no non-aspect filters, then they are handled by the handle_uniques
@@ -75,7 +73,9 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
             if not res.keep:
                 mark_as_junk()
             elif res.keep:
-                if res.all_unique_filters_are_aspects and not res.unique_aspect_in_profile:
+                if len(res.matched) == 1 and res.matched[0].profile.lower() == "cosmetics":
+                    LOGGER.info("Ignoring unique because it matches no filters and is a cosmetic upgrade.")
+                elif res.all_unique_filters_are_aspects and not res.unique_aspect_in_profile:
                     if IniConfigLoader().general.handle_uniques == UnfilteredUniquesType.favorite:
                         mark_as_favorite()
                 elif IniConfigLoader().general.mark_as_favorite:

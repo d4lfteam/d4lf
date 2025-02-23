@@ -30,6 +30,11 @@ class ComparisonType(enum.StrEnum):
     smaller = enum.auto()
 
 
+class CosmeticFilterType(enum.StrEnum):
+    junk = enum.auto()
+    ignore = enum.auto()
+
+
 class ItemRefreshType(enum.StrEnum):
     force_with_filter = enum.auto()
     force_without_filter = enum.auto()
@@ -236,6 +241,9 @@ class GeneralModel(_IniBaseModel):
     full_dump: bool = Field(
         default=False,
         description="When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not",
+    )
+    handle_cosmetics: CosmeticFilterType = Field(
+        default=CosmeticFilterType.ignore, description="What should be done with cosmetic upgrades that do not match any filter"
     )
     handle_uniques: UnfilteredUniquesType = Field(
         default=UnfilteredUniquesType.favorite,

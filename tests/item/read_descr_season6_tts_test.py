@@ -256,6 +256,7 @@ items = [
                 value=26,
             ),
             codex_upgrade=False,
+            cosmetic_upgrade=True,
             inherent=[
                 Affix(
                     max_value=85,

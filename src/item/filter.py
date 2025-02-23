@@ -15,6 +15,7 @@ from src.config.models import (
     AffixFilterModel,
     AspectFilterType,
     ComparisonType,
+    CosmeticFilterType,
     DynamicItemFilterModel,
     ProfileModel,
     SigilConditionModel,
@@ -126,6 +127,18 @@ class Filter:
         LOGGER.info("Matched Aspects that updates codex")
         res.keep = True
         res.matched.append(MatchedFilter("Aspects", did_match_aspect=True))
+        return res
+
+    @staticmethod
+    def _check_cosmetic(item: Item) -> FilterResult:
+        res = FilterResult(False, [])
+        if IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.junk or (
+            IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.ignore and not item.cosmetic_upgrade
+        ):
+            return res
+        LOGGER.info("Matched new cosmetic")
+        res.keep = True
+        res.matched.append(MatchedFilter("Cosmetics"))
         return res
 
     def _check_sigil(self, item: Item) -> FilterResult:
@@ -353,17 +366,20 @@ class Filter:
         if item.item_type == ItemType.Sigil:
             return self._check_sigil(item)
 
-        if item.item_type is None or item.power is None or is_junk_rarity(item.rarity):
+        if item.item_type is None or item.power is None or (is_junk_rarity(item.rarity) and not item.cosmetic_upgrade):
             return res
 
         if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
-            return self._check_unique_item(item)
-
-        if item.rarity not in [ItemRarity.Unique, ItemRarity.Mythic]:
+            res = self._check_unique_item(item)
+        elif item.rarity not in [ItemRarity.Unique, ItemRarity.Mythic]:
             keep_affixes = self._check_affixes(item)
             if keep_affixes.keep:
                 return keep_affixes
             if item.rarity == ItemRarity.Legendary:
-                return self._check_aspect(item)
+                res = self._check_aspect(item)
+
+        # After checking all possible options, if we still don't match, we check for a cosmetic upgrade
+        if not res.keep:
+            return self._check_cosmetic(item)
 
         return res
