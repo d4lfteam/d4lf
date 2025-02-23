@@ -281,8 +281,12 @@ def _get_item_type(data: str):
         return None
 
 
-def _is_codex_upgrade(tts_section: list[str], item: Item) -> bool:
+def _is_codex_upgrade(tts_section: list[str]) -> bool:
     return any("upgrades an aspect in the codex of power" in line.lower() or "unlocks new aspect" in line.lower() for line in tts_section)
+
+
+def _is_cosmetic_upgrade(tts_section: list[str]):
+    return any("unlocks new look on salvage" in line.lower() for line in tts_section)
 
 
 def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
@@ -354,7 +358,8 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
         inherent_affix_bullets = affix_bullets[:number_inherents]
         affix_bullets = affix_bullets[number_inherents:]
 
-    item.codex_upgrade = _is_codex_upgrade(tts_section, item)
+    item.codex_upgrade = _is_codex_upgrade(tts_section)
+    item.cosmetic_upgrade = _is_cosmetic_upgrade(tts_section)
     aspect_bullet = futures["aspect_bullet"].result() if futures["aspect_bullet"] is not None else None
     return _add_affixes_from_tts_mixed(tts_section, item, inherent_affix_bullets, affix_bullets, aspect_bullet=aspect_bullet)
 
@@ -384,5 +389,6 @@ def read_descr() -> Item | None:
     if item.rarity not in [ItemRarity.Legendary, ItemRarity.Mythic, ItemRarity.Unique]:
         return item
 
-    item.codex_upgrade = _is_codex_upgrade(tts_section, item)
+    item.codex_upgrade = _is_codex_upgrade(tts_section)
+    item.cosmetic_upgrade = _is_cosmetic_upgrade(tts_section)
     return _add_affixes_from_tts(tts_section, item)
