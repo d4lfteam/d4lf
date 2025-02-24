@@ -16,7 +16,7 @@ MODULE_LOGGER = logging.getLogger(__name__)
 HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
 
-DEPRECATED_INI_KEYS = ["hidden_transparency", "import_build", "local_prefs_path", "move_item_type", "handle_rares"]
+DEPRECATED_INI_KEYS = ["hidden_transparency", "import_build", "local_prefs_path", "move_item_type", "handle_rares", "scripts"]
 
 
 class AspectFilterType(enum.StrEnum):
@@ -62,9 +62,9 @@ class UnfilteredUniquesType(enum.StrEnum):
     junk = enum.auto()
 
 
-class UseTTSType(enum.StrEnum):
-    full = enum.auto()
-    mixed = enum.auto()
+class VisionModeType(enum.StrEnum):
+    highlight_matches = enum.auto()
+    fast = enum.auto()
 
 
 class _IniBaseModel(BaseModel):
@@ -177,10 +177,9 @@ class AdvancedOptionsModel(_IniBaseModel):
         description="Hotkey to run the filter process with a force refresh. The status of all junk/favorite items will be reset",
         json_schema_extra={IS_HOTKEY_KEY: "True"},
     )
-    run_scripts: str = Field(
-        default="f9", description="Hotkey to enable/disable the vision filter", json_schema_extra={IS_HOTKEY_KEY: "True"}
+    run_vision_mode: str = Field(
+        default="f9", description="Hotkey to enable/disable the vision mode", json_schema_extra={IS_HOTKEY_KEY: "True"}
     )
-    scripts: list[str] = Field(default=["vision_mode"], json_schema_extra={HIDE_FROM_GUI_KEY: "True"})
     vision_mode_only: bool = Field(
         default=False, description="Only allow vision mode to run. All hotkeys and actions that click will be disabled."
     )
@@ -194,25 +193,27 @@ class AdvancedOptionsModel(_IniBaseModel):
             self.move_to_inv,
             self.run_filter,
             self.run_filter_force_refresh,
-            self.run_scripts,
+            self.run_vision_mode,
         ]
         if len(set(keys)) != len(keys):
             raise ValueError("hotkeys must be unique")
         return self
 
     @field_validator(
-        "exit_key", "force_refresh_only", "move_to_chest", "move_to_inv", "run_filter", "run_filter_force_refresh", "run_scripts"
+        "exit_key", "force_refresh_only", "move_to_chest", "move_to_inv", "run_filter", "run_filter_force_refresh", "run_vision_mode"
     )
     def key_must_exist(cls, k: str) -> str:
         return validate_hotkey(k)
 
-    @field_validator("scripts", mode="before")
-    def check_scripts_is_list(cls, v: str) -> list[str]:
-        if isinstance(v, str):
-            v = v.split(",")
-        elif not isinstance(v, list):
-            raise ValueError("must be a list or a string")
-        return v
+    @model_validator(mode="before")
+    def check_deprecation(cls, data) -> dict:
+        if "run_scripts" in data:
+            MODULE_LOGGER.warning(
+                "run_scripts is deprecated. Setting run_vision_mode to the equivalent value instead. Remove run_scripts from your params.ini to remove this message."
+            )
+            data["run_vision_mode"] = data["run_scripts"]
+            data.pop("run_scripts", None)
+        return data
 
 
 class CharModel(_IniBaseModel):
@@ -281,9 +282,9 @@ class GeneralModel(_IniBaseModel):
     s7_do_not_junk_ancestral_legendaries: bool = Field(
         default=False, description="Season 7 Specific: Do not mark ancestral legendaries as junk for seasonal challenge"
     )
-    use_tts: UseTTSType = Field(
-        default=UseTTSType.mixed,
-        description="Use of TTS is required. Should the vision mode be the mixed vision mode or the full one? Note: Mixed does not work with controllers",
+    vision_mode_type: VisionModeType = Field(
+        default=VisionModeType.highlight_matches,
+        description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
     )
 
     @field_validator("check_chest_tabs", mode="before")
@@ -331,11 +332,16 @@ class GeneralModel(_IniBaseModel):
                 MODULE_LOGGER.warning(
                     f"{key}=non_favorites is deprecated. Changing to equivalent of junk and unmarked instead. Modify this value in the GUI to remove this message."
                 )
-        if "use_tts" in data and data["use_tts"] == "off":
-            data["use_tts"] = UseTTSType.mixed
+        if "use_tts" in data:
             MODULE_LOGGER.warning(
-                f"{key}=Turning off TTS is deprecated. Changing to mixed mode instead. Modify this value in the GUI to remove this message."
+                "use_tts is deprecated. Setting vision_mode to the equivalent value instead. Remove use_tts from your params.ini to remove this message."
             )
+            use_tts_mode = data["use_tts"]
+            if use_tts_mode == "mixed" or use_tts_mode == "off":
+                data["vision_mode_type"] = VisionModeType.highlight_matches
+            else:
+                data["vision_mode_type"] = VisionModeType.fast
+            data.pop("use_tts", None)
         return data
 
 

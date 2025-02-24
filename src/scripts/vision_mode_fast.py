@@ -22,7 +22,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 @singleton
-class VisionModeTTS:
+class VisionModeFast:
     def __init__(self):
         self.root = tk.Tk()
         self.root.overrideredirect(True)
