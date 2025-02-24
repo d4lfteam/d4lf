@@ -15,7 +15,6 @@ import src.logger
 from src import __version__, tts
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
-from src.config.models import UseTTSType
 from src.gui.qt_gui import start_gui
 from src.item.filter import Filter
 from src.logger import LOG_DIR
@@ -42,7 +41,7 @@ def main():
     print(f"============ D4 Loot Filter {__version__} ============")
     table = BeautifulTable()
     table.set_style(BeautifulTable.STYLE_BOX_ROUNDED)
-    table.rows.append([IniConfigLoader().advanced_options.run_scripts, "Run/Stop Vision Filter"])
+    table.rows.append([IniConfigLoader().advanced_options.run_vision_mode, "Run/Stop Vision Filter"])
     if not IniConfigLoader().advanced_options.vision_mode_only:
         table.rows.append([IniConfigLoader().advanced_options.run_filter, "Run/Stop Auto Filter"])
         table.rows.append([IniConfigLoader().advanced_options.run_filter_force_refresh, "Force Run/Stop Filter, Resetting Item Status"])
@@ -61,10 +60,9 @@ def main():
 
     ScriptHandler()
 
-    if IniConfigLoader().general.use_tts in [UseTTSType.full, UseTTSType.mixed]:
-        LOGGER.debug(f"TTS mode: {IniConfigLoader().general.use_tts.value}")
-        check_for_proper_tts_configuration()
-        tts.start_connection()
+    LOGGER.debug(f"Vision mode type: {IniConfigLoader().general.vision_mode_type.value}")
+    check_for_proper_tts_configuration()
+    tts.start_connection()
 
     overlay = Overlay()
     overlay.run()

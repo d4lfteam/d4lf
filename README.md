@@ -107,23 +107,22 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything                                                                                                             |
 | run_vision_mode_on_startup                        | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey                                                                                                                                                                                                                                                                                              |
 | s7_do_not_junk_ancestral_legendaries              | Do not mark ancestral legendaries as junk. This is to help with the season 7 Slayer seasonal challenge "Precious Shards"                                                                                                                                                                                                                                                                                                                 |
-| use_tts                                           | Which vision mode you would like to use with [TTS](#TTS). `mixed` does the classic green highlighting on screen, but is slightly slower. `full` just puts green text on screen but is very fast and works with controllers.                                                                                                                                                                                                              |
+| vision_mode_type                                  | Which vision mode you would like to use?. `highlight_matches` does the classic green highlighting of affixes on screen, but is slightly slower. `fast` just puts green text on screen but is very fast and works with controllers.                                                                                                                                                                                                       |
 
 | \[char\]    | Description                       |
 |-----------|-----------------------------------|
 | inventory | Your hotkey for opening inventory |
 
-| \[advanced_options\]       | Description                                                                                                              |
+| \[advanced_options\]     | Description                                                                                                              |
 |--------------------------|--------------------------------------------------------------------------------------------------------------------------|
 | move_to_inv              | Hotkey for moving items from stash to inventory                                                                          |
 | move_to_chest            | Hotkey for moving items from inventory to stash                                                                          |
-| run_scripts              | Hotkey to start/stop vision mode                                                                                         |
 | run_filter               | Hotkey to start/stop filtering items                                                                                     |
 | run_filter_force_refresh | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                               |
+| run_vision_mode          | Hotkey to start/stop vision mode                                                                                         |
 | force_refresh_only       | Hotkey to reset all item statuses without running a filter after                                                         |
 | exit_key                 | Hotkey to exit d4lf.exe                                                                                                  |
 | log_level                | Logging level. Can be any of \[debug, info, warning, error, critical\]                                                     |
-| scripts                  | Running different scripts                                                                                                |
 | process_name             | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted |
 | vision_mode_only         | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.            |
 

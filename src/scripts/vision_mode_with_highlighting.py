@@ -33,7 +33,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 @singleton
-class VisionModeMixed:
+class VisionModeWithHighlighting:
     def __init__(self):
         super().__init__()
         self.root = tk.Tk()
