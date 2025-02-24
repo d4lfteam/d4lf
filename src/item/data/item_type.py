@@ -77,24 +77,27 @@ def is_socketable(item_type: ItemType) -> bool:
 
 
 def is_weapon(item_type: ItemType) -> bool:
-    return item_type in [
-        ItemType.Axe,
-        ItemType.Axe2H,
-        ItemType.Bow,
-        ItemType.Crossbow2H,
-        ItemType.Dagger,
-        ItemType.Focus,
-        ItemType.Glaive,
-        ItemType.Mace,
-        ItemType.Mace2H,
-        ItemType.OffHandTotem,
-        ItemType.Polearm,
-        ItemType.Quarterstaff,
-        ItemType.Scythe,
-        ItemType.Scythe2H,
-        ItemType.Staff,
-        ItemType.Sword,
-        ItemType.Sword2H,
-        ItemType.Tome,
-        ItemType.Wand,
-    ]
+    return item_type in WEAPON_TYPES
+
+
+WEAPON_TYPES = [
+    ItemType.Axe,
+    ItemType.Axe2H,
+    ItemType.Bow,
+    ItemType.Crossbow2H,
+    ItemType.Dagger,
+    ItemType.Focus,
+    ItemType.Glaive,
+    ItemType.Mace,
+    ItemType.Mace2H,
+    ItemType.OffHandTotem,
+    ItemType.Polearm,
+    ItemType.Quarterstaff,
+    ItemType.Scythe,
+    ItemType.Scythe2H,
+    ItemType.Staff,
+    ItemType.Sword,
+    ItemType.Sword2H,
+    ItemType.Tome,
+    ItemType.Wand,
+]
