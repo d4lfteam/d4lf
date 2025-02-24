@@ -154,6 +154,9 @@ class AspectUniqueFilterModel(AffixAspectFilterModel):
 
 
 class AdvancedOptionsModel(_IniBaseModel):
+    disable_tts_warning: bool = Field(
+        default=False, description="If TTS is working for you but you are still receiving the warning, check this box to disable it."
+    )
     exit_key: str = Field(default="f12", description="Hotkey to exit d4lf", json_schema_extra={IS_HOTKEY_KEY: "True"})
     force_refresh_only: str = Field(
         default="ctrl+shift+f11",
