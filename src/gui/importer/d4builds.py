@@ -21,7 +21,7 @@ from src.gui.importer.common import (
     save_as_profile,
 )
 from src.item.data.affix import Affix
-from src.item.data.item_type import ItemType
+from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
 
 LOGGER = logging.getLogger(__name__)
@@ -81,13 +81,14 @@ def import_d4builds(url: str, driver: ChromiumDriver = None):
         item_type = None
         affixes = []
         inherents = []
+        is_weapon = "weapon" in slot.lower()
         for stat in stats:
             if stat.xpath(TEMPERING_ICON_XPATH):
                 continue
             if "filled" not in stat.xpath("../..")[0].attrib["class"]:
                 continue
             affix_name = stat.xpath("./span")[0].text
-            if "weapon" in slot.lower() and (x := fix_weapon_type(input_str=affix_name)) is not None:
+            if is_weapon and (x := fix_weapon_type(input_str=affix_name)) is not None:
                 item_type = x
                 continue
             if "offhand" in slot.lower() and (x := fix_offhand_type(input_str=affix_name, class_str=class_name)) is not None:
@@ -122,8 +123,14 @@ def import_d4builds(url: str, driver: ChromiumDriver = None):
             match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot.replace(" ", ""))) if item_type is None else item_type
         )
         if item_type is None:
-            LOGGER.warning(f"Couldn't match item_type: {slot}. Please edit manually")
-        item_filter.itemType = [item_type] if item_type is not None else []
+            if is_weapon:
+                LOGGER.warning(f"Couldn't find an item_type for weapon slot {slot}, defaulting to all weapon types instead.")
+                item_filter.itemType = WEAPON_TYPES
+            else:
+                item_filter.itemType = []
+                LOGGER.warning(f"Couldn't match item_type: {slot}. Please edit manually")
+        else:
+            item_filter.itemType = [item_type]
         item_filter.affixPool = [
             AffixFilterCountModel(
                 count=[AffixFilterModel(name=x.name) for x in affixes],
@@ -134,7 +141,7 @@ def import_d4builds(url: str, driver: ChromiumDriver = None):
         item_filter.minPower = 100
         if inherents:
             item_filter.inherentPool = [AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])]
-        filter_name_template = item_filter.itemType[0].name if item_filter.itemType else slot.replace(" ", "")
+        filter_name_template = item_filter.itemType[0].name if item_type else slot.replace(" ", "")
         filter_name = filter_name_template
         i = 2
         while any(filter_name == next(iter(x)) for x in finished_filters):
