@@ -367,6 +367,18 @@ Additionally, you can filter all uniques based on a generic property like their 
 affixes. Once a "global" filter like this is applied then all uniques will have a filter that now applies to them
 and handle_uniques will be ignored.
 
+The following global filters are available. As a reminder, these will apply to all uniques that are not specifically 
+being filtered by aspect:
+
+- `itemType`: The name of the type or a list of multiple types.
+  See [assets/lang/enUS/item_types.json](assets/lang/enUS/item_types.json)
+- `minGreaterAffixCount`: Only keep uniques with a specific number of greater affixes
+- `minPercentOfAspect` (experimental): Only keep uniques whose aspect is above a percentage of the total possible. 
+  For example, if this is set to 80 and an aspect has a range of 100-200, then a value of 180 would be kept but a value
+  of 150 would be marked as junk. This functionality is new so please report any issues found with it.
+- `minPower`: The minimum item power of uniques to keep
+- `mythic`: If set to true, only keep mythic uniques.
+
 In vision mode, uniques show as <filename>.<aspect>. For example myuniques.yaml with fists_of_fate aspect defined
 would show as myuniques.fists_of_fate. The label for the filename can be configured at the aspect level using the
 profileAlias flag (see examples).
@@ -432,6 +444,20 @@ Uniques:
     minPower: 900
     affix:
       - { name: damage_reduction_from_close_enemies, value: 12 }
+```
+
+```yaml
+# Note that if a unique matches any filter, it is kept. Each - denotes a new filter.
+# For example, the below will keep all uniques that have two greater affixes OR an aspect percentage greater than 80
+Uniques:
+  - minGreaterAffixCount: 2
+  - minPercentOfAspect: 80
+```
+```yaml
+# Conversely, this will match all uniques that have two greater affixes AND an aspect percentage greater than 80
+Uniques:
+  - minGreaterAffixCount: 2
+    minPercentOfAspect: 80
 ```
 
 </details>

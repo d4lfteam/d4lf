@@ -206,6 +206,9 @@ class Filter:
                 # check greater affixes
                 if not self._match_greater_affix_count(expected_min_count=filter_item.minGreaterAffixCount, item_affixes=item.affixes):
                     continue
+                # check aspect is in percent range
+                if not self._match_aspect_is_in_percent_range(expected_percent=filter_item.minPercentOfAspect, item_aspect=item.aspect):
+                    continue
                 LOGGER.info(f"Matched {profile_name}.Uniques: {item.aspect.name}")
                 res.keep = True
                 matched_full_name = f"{profile_name}.{item.aspect.name}"
@@ -269,6 +272,18 @@ class Filter:
 
     def _match_greater_affix_count(self, expected_min_count: int, item_affixes: list[Affix]) -> bool:
         return expected_min_count <= len([x for x in item_affixes if x.type == AffixType.greater])
+
+    def _match_aspect_is_in_percent_range(self, expected_percent: int, item_aspect: Aspect) -> bool:
+        if expected_percent == 0:
+            return True
+
+        if item_aspect.max_value > item_aspect.min_value:
+            percent_float = expected_percent / 100.0
+            return (item_aspect.value - item_aspect.min_value) / (item_aspect.max_value - item_aspect.min_value) >= percent_float
+
+        # This is the case where a smaller number is better
+        percent_float = (100 - expected_percent) / 100.0
+        return (item_aspect.value - item_aspect.max_value) / (item_aspect.min_value - item_aspect.max_value) <= percent_float
 
     @staticmethod
     def _match_item_aspect_or_affix(expected_aspect: AffixAspectFilterModel | None, item_aspect: Aspect | Affix) -> bool:

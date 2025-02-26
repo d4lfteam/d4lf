@@ -5,6 +5,8 @@ from dataclasses import dataclass
 class Aspect:
     name: str
     loc: tuple[int, int] = None
+    min_value: float = None
+    max_value: float = None
     text: str = ""
     value: float = None
 

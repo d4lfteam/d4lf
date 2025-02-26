@@ -75,6 +75,18 @@ jobs:
           } | ConvertTo-Json
           Invoke-RestMethod -Uri $webhookUrl -Method Post -ContentType "application/json" -Body $payload
 
+  github-releases-to-discord:
+    needs: release
+    runs-on: windows-latest
+    steps:
+      # From: https://github.com/SethCohen/github-releases-to-discord
+      - name: Github Releases To Discord
+        uses: SethCohen/github-releases-to-discord@master
+        with:
+          webhook_url: ${{ secrets.DISCORD_WEBHOOK }}
+          color: "2105893"
+          username: "D4LF Release"
+
 # Also not working, have a request out here: https://github.com/SethCohen/github-releases-to-discord/issues/29
 #      # From: https://github.com/SethCohen/github-releases-to-discord
 #      - name: Github Releases To Discord
