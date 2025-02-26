@@ -466,6 +466,7 @@ class UniqueModel(BaseModel):
     itemType: list[ItemType] = []
     profileAlias: str = ""
     minGreaterAffixCount: int = 0
+    minPercentOfAspect: int = 0
     minPower: int = 0
     mythic: bool = False
 
@@ -476,6 +477,13 @@ class UniqueModel(BaseModel):
     @field_validator("minGreaterAffixCount")
     def count_validator(cls, v: int) -> int:
         return check_greater_than_zero(v)
+
+    @field_validator("minPercentOfAspect")
+    def percent_validator(cls, v: int) -> int:
+        check_greater_than_zero(v)
+        if v > 100:
+            raise ValueError("must be less than or equal to 100")
+        return v
 
     @field_validator("itemType", mode="before")
     def parse_item_type(cls, data: str | list[str]) -> list[str]:

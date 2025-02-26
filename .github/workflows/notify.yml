@@ -2,7 +2,7 @@ name: Notify
 
 on:
   release:
-    types: [published]
+    types: [created, published]
 
 jobs:
   github-releases-to-discord:
