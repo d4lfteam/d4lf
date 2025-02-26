@@ -60,6 +60,7 @@ def main(d4data_dir: Path, companion_app_dir: Path):
             f"assets/lang/{lang}/aspects.json",
             f"assets/lang/{lang}/uniques.json",
             f"assets/lang/{lang}/sigils.json",
+            f"assets/lang/{lang}/tributes.json",
             f"assets/lang/{lang}/item_types.json",
             f"assets/lang/{lang}/tooltips.json",
         ]
@@ -173,6 +174,23 @@ def main(d4data_dir: Path, companion_app_dir: Path):
 
         with open(D4LF_BASE_DIR / f"assets/lang/{language}/sigils.json", "w", encoding="utf-8") as json_file:
             json.dump(sigil_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
+            json_file.write("\n")
+
+        print(f"Gen Tributes for {language}")
+        tribute_dict = {}
+
+        # Add others automatically
+        pattern = f"json/{language}_Text/meta/StringList/Item_*_TributeKeySigil_*.stl.json"
+        json_files = list(d4data_dir.glob(pattern))
+        for json_file in json_files:
+            with open(json_file, encoding="utf-8") as file:
+                data = json.load(file)
+                name_idx, _ = (0, 1) if data["arStrings"][0]["szLabel"] == "Name" else (1, 0)
+                tribute_name: str = data["arStrings"][name_idx]["szText"].lower().strip().replace("’", "").replace("'", "")
+                tribute_dict[tribute_name.replace(" ", "_").replace("(", "").replace(")", "")] = tribute_name
+
+        with open(D4LF_BASE_DIR / f"assets/lang/{language}/tributes.json", "w", encoding="utf-8") as json_file:
+            json.dump(tribute_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
             json_file.write("\n")
 
         print(f"Gen ItemTypes for {language}")
