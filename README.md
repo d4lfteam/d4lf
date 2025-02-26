@@ -367,13 +367,13 @@ Additionally, you can filter all uniques based on a generic property like their 
 affixes. Once a "global" filter like this is applied then all uniques will have a filter that now applies to them
 and handle_uniques will be ignored.
 
-The following global filters are available. As a reminder, these will apply to all uniques that are not specifically 
+The following global filters are available. As a reminder, these will apply to all uniques that are not specifically
 being filtered by aspect:
 
 - `itemType`: The name of the type or a list of multiple types.
   See [assets/lang/enUS/item_types.json](assets/lang/enUS/item_types.json)
 - `minGreaterAffixCount`: Only keep uniques with a specific number of greater affixes
-- `minPercentOfAspect` (experimental): Only keep uniques whose aspect is above a percentage of the total possible. 
+- `minPercentOfAspect` (experimental): Only keep uniques whose aspect is above a percentage of the total possible.
   For example, if this is set to 80 and an aspect has a range of 100-200, then a value of 180 would be kept but a value
   of 150 would be marked as junk. This functionality is new so please report any issues found with it.
 - `minPower`: The minimum item power of uniques to keep
