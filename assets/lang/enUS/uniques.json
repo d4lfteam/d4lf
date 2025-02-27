@@ -618,7 +618,7 @@
     },
     "okuns_catalyst": {
         "desc": "ball lightning orbits you creating a static field that damages all enemies within for of ball lightnings damage per active ball. you are unhindered as long as the field is active.",
-        "full": "{c_important}Ball Lightning{/c} orbits you creating a static field that damages all enemies within for {c_random}[Affix_Value_1* 100|%x|]{/c} of {c_important}Ball Lightning's{/c} damage per active ball. You are {c_important} {u}Unhindered{/u}{/c} as long as the field is active.",
+        "full": "{c_important}Ball Lightning{/c} orbits you creating a static field that damages all enemies within for {c_random}[Affix_Value_1* 100|%|]{/c} of {c_important}Ball Lightning's{/c} damage per active ball. You are {c_important} {u}Unhindered{/u}{/c} as long as the field is active.",
         "num_idx": [
             0
         ],

@@ -375,7 +375,8 @@ being filtered by aspect:
 - `minGreaterAffixCount`: Only keep uniques with a specific number of greater affixes
 - `minPercentOfAspect` (experimental): Only keep uniques whose aspect is above a percentage of the total possible.
   For example, if this is set to 80 and an aspect has a range of 100-200, then a value of 180 would be kept but a value
-  of 150 would be marked as junk. This functionality is new so please report any issues found with it.
+  of 150 would be marked as junk. Situations where a smaller value is what is wanted are automatically handled as well.
+  This functionality is new so please report any issues found with it.
 - `minPower`: The minimum item power of uniques to keep
 - `mythic`: If set to true, only keep mythic uniques.
 
