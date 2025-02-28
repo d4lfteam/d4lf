@@ -8,6 +8,7 @@ from src.item.filter import Filter, FilterResult
 from src.item.models import Item
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.sigils import sigil_jalal, sigil_priority, sigils
+from tests.item.filter.data.tributes import tributes
 from tests.item.filter.data.uniques import aspect_only_mythic_tests, simple_mythics, uniques
 
 
@@ -50,6 +51,13 @@ def test_sigil_priority(mocker: MockerFixture):
     assert test_filter.should_keep(sigil_priority).matched == []
     test_filter.sigil_filters[next(iter(test_filter.sigil_filters))].priority = SigilPriority.whitelist
     assert test_filter.should_keep(sigil_priority).matched[0].profile == filters.sigil_priority.name
+
+
+@pytest.mark.parametrize(("name", "result", "item"), natsorted(tributes), ids=[name for name, _, _ in natsorted(tributes)])
+def test_tributes(name: str, result: list[str], item: Item, mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.tribute_filters = {filters.tributes.name: filters.tributes.Tributes}
+    assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
 @pytest.mark.parametrize(("name", "result", "item"), natsorted(uniques), ids=[name for name, _, _ in natsorted(uniques)])

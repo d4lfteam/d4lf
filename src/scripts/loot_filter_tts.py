@@ -69,7 +69,7 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
         # Uniques have special handling. If they have an aspect specifically called out by a profile they are treated
         # like any other item. If not, and there are no non-aspect filters, then they are handled by the handle_uniques
         # property
-        if item_descr.rarity == ItemRarity.Unique:
+        if item_descr.rarity == ItemRarity.Unique and item_descr.item_type != ItemType.Tribute:
             if not res.keep:
                 mark_as_junk()
             elif res.keep:
@@ -90,7 +90,12 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
                     mark_as_junk()
             elif (
                 res.keep
-                and (matched_any_affixes or item_descr.rarity == ItemRarity.Mythic or item_descr.item_type == ItemType.Sigil)
+                and (
+                    matched_any_affixes
+                    or item_descr.rarity == ItemRarity.Mythic
+                    or item_descr.item_type == ItemType.Sigil
+                    or item_descr.item_type == ItemType.Tribute
+                )
                 and IniConfigLoader().general.mark_as_favorite
             ):
                 mark_as_favorite()

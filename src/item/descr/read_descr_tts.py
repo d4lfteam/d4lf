@@ -141,6 +141,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         item = Item(item_type=ItemType.Tribute)
         search_string_split = tts_item[1].split(" ")
         item.rarity = _get_item_rarity(search_string_split[0])
+        item.name = _correct_name(" ".join(search_string_split[1:]))
         return item
     if tts_item[0].startswith(src.tts.ItemIdentifiers.WHISPERING_KEY.value):
         return Item(item_type=ItemType.Consumable)
@@ -183,7 +184,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
 
 def _correct_name(name: str) -> str | None:
     if name:
-        return name.lower().replace("'", "").replace(" ", "_").replace(",", "")
+        return name.lower().replace("'", "").replace(" ", "_").replace(",", "").replace("(", "").replace(")", "")
     return name
 
 

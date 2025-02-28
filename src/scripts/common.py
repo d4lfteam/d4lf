@@ -60,9 +60,6 @@ def is_ignored_item(item_descr: Item):
     if is_socketable(item_descr.item_type):
         LOGGER.info("Matched: Socketable")
         return True
-    if item_descr.item_type == ItemType.Tribute:
-        LOGGER.info("Matched: Tribute")
-        return True
     if item_descr.item_type == ItemType.Material:
         LOGGER.info("Matched: Material")
         return True

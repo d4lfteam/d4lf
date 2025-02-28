@@ -11,6 +11,7 @@ from pydantic_numpy.model import NumpyModel
 
 from src.config.helper import check_greater_than_zero, validate_hotkey
 from src.item.data.item_type import ItemType
+from src.item.data.rarity import ItemRarity
 
 MODULE_LOGGER = logging.getLogger(__name__)
 HIDE_FROM_GUI_KEY = "hide_from_gui"
@@ -71,7 +72,7 @@ class _IniBaseModel(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, validate_assignment=True)
 
 
-def _parse_item_type(data: str | list[str]) -> list[str]:
+def _parse_item_type_or_rarities(data: str | list[str]) -> list[str]:
     if isinstance(data, str):
         return [data]
     return data
@@ -149,7 +150,7 @@ class AspectUniqueFilterModel(AffixAspectFilterModel):
         name = name.lower().replace("'", "").replace(" ", "_").replace(",", "")
 
         if name not in Dataloader().aspect_unique_dict:
-            raise ValueError(f"affix {name} does not exist")
+            raise ValueError(f"aspect {name} does not exist")
         return name
 
 
@@ -401,7 +402,7 @@ class ItemFilterModel(BaseModel):
 
     @field_validator("itemType", mode="before")
     def parse_item_type(cls, data: str | list[str]) -> list[str]:
-        return _parse_item_type(data)
+        return _parse_item_type_or_rarities(data)
 
 
 DynamicItemFilterModel = RootModel[dict[str, ItemFilterModel]]
@@ -459,6 +460,48 @@ class SigilFilterModel(BaseModel):
         return self
 
 
+class TributeFilterModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = None
+    rarities: list[ItemRarity] = []
+
+    @field_validator("name")
+    def name_must_exist(cls, name: str) -> str:
+        from src.dataloader import Dataloader  # This on module level would be a circular import, so we do it lazy for now
+
+        if not name:
+            return name
+
+        tribute_dict = Dataloader().tribute_dict
+        # Allow people to shorthand and leave off "tribute_of_"
+        name_with_tribute = "tribute_of_" + name
+        if name not in tribute_dict and name_with_tribute not in tribute_dict:
+            raise ValueError(f"No tribute named {name} or {name_with_tribute} exists")
+
+        if name_with_tribute in tribute_dict:
+            name = name_with_tribute
+
+        return name
+
+    @model_validator(mode="before")
+    def parse_data(cls, data: str | list[str] | dict[str, str | list[str]]) -> dict[str, str | list[str]]:
+        if isinstance(data, dict):
+            return data
+        if isinstance(data, str):
+            if any(rarity.value.lower() == data.lower() for rarity in ItemRarity):
+                return {"rarities": [data]}
+            return {"name": data}
+        if isinstance(data, list):
+            if not data:
+                raise ValueError("list cannot be empty")
+            return {"rarities": data}
+        raise ValueError("must be str or list")
+
+    @field_validator("rarities", mode="before")
+    def parse_rarities(cls, data: str | list[str]) -> list[str]:
+        return _parse_item_type_or_rarities(data)
+
+
 class UniqueModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     aspect: AspectUniqueFilterModel = None  # Aspect needs to stay on top so the model is written how people expect
@@ -487,7 +530,7 @@ class UniqueModel(BaseModel):
 
     @field_validator("itemType", mode="before")
     def parse_item_type(cls, data: str | list[str]) -> list[str]:
-        return _parse_item_type(data)
+        return _parse_item_type_or_rarities(data)
 
 
 class ProfileModel(BaseModel):
@@ -495,6 +538,7 @@ class ProfileModel(BaseModel):
     name: str
     Affixes: list[DynamicItemFilterModel] = []
     Sigils: SigilFilterModel | None = None
+    Tributes: list[TributeFilterModel] = []
     Uniques: list[UniqueModel] = []
 
 
