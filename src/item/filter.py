@@ -21,6 +21,7 @@ from src.config.models import (
     SigilConditionModel,
     SigilFilterModel,
     SigilPriority,
+    TributeFilterModel,
     UnfilteredUniquesType,
     UniqueModel,
 )
@@ -66,9 +67,10 @@ class Filter:
     aspect_filters = {}
     unique_filters = {}
     sigil_filters = {}
+    tribute_filters = {}
 
     files_loaded = False
-    all_file_pathes = []
+    all_file_paths = []
     last_loaded = None
 
     _initialized: bool = False
@@ -176,6 +178,31 @@ class Filter:
             res.matched.append(MatchedFilter(f"{profile_name}"))
         return res
 
+    def _check_tribute(self, item: Item) -> FilterResult:
+        res = FilterResult(False, [])
+        if not self.tribute_filters.items():
+            LOGGER.info("Matched Tributes")
+            res.keep = True
+            res.matched.append(MatchedFilter("default"))
+
+        if item.rarity == ItemRarity.Mythic:
+            LOGGER.info("Matched mythic tribute, always kept")
+            res.keep = True
+            res.matched.append(MatchedFilter("Mythic Tribute"))
+
+        for profile_name, profile_filter in self.tribute_filters.items():
+            for filter_item in profile_filter:
+                if filter_item.name and not item.name.startswith(filter_item.name):
+                    continue
+
+                if filter_item.rarities and item.rarity not in filter_item.rarities:
+                    continue
+
+                LOGGER.info(f"Matched {profile_name}.Tributes")
+                res.keep = True
+                res.matched.append(MatchedFilter(f"{profile_name}"))
+        return res
+
     def _check_unique_item(self, item: Item) -> FilterResult:
         res = FilterResult(False, [])
         all_filters_are_aspect = True
@@ -234,7 +261,7 @@ class Filter:
     def _did_files_change(self) -> bool:
         if self.last_loaded is None:
             return True
-        return any(os.path.getmtime(file_path) > self.last_loaded for file_path in self.all_file_pathes)
+        return any(os.path.getmtime(file_path) > self.last_loaded for file_path in self.all_file_paths)
 
     def _match_affixes_count(self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix]) -> list[Affix]:
         result = []
@@ -270,10 +297,12 @@ class Filter:
                 return False
         return True
 
-    def _match_greater_affix_count(self, expected_min_count: int, item_affixes: list[Affix]) -> bool:
+    @staticmethod
+    def _match_greater_affix_count(expected_min_count: int, item_affixes: list[Affix]) -> bool:
         return expected_min_count <= len([x for x in item_affixes if x.type == AffixType.greater])
 
-    def _match_aspect_is_in_percent_range(self, expected_percent: int, item_aspect: Aspect) -> bool:
+    @staticmethod
+    def _match_aspect_is_in_percent_range(expected_percent: int, item_aspect: Aspect) -> bool:
         if expected_percent == 0:
             return True
 
@@ -314,6 +343,7 @@ class Filter:
         self.files_loaded = True
         self.affix_filters: dict[str, list[DynamicItemFilterModel]] = {}
         self.sigil_filters: dict[str, SigilFilterModel] = {}
+        self.tribute_filters: dict[str, list[TributeFilterModel]] = {}
         self.unique_filters: dict[str, list[UniqueModel]] = {}
         profiles: list[str] = IniConfigLoader().general.profiles
 
@@ -324,7 +354,7 @@ class Filter:
             return
 
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
-        self.all_file_pathes = []
+        self.all_file_paths = []
 
         errors = False
         for profile_str in profiles:
@@ -335,7 +365,7 @@ class Filter:
                 LOGGER.error(f"Could not load profile {profile_str}. Checked: {custom_file_path}")
                 continue
 
-            self.all_file_pathes.append(profile_path)
+            self.all_file_paths.append(profile_path)
             with open(profile_path, encoding="utf-8") as f:
                 try:
                     config = yaml.load(stream=f, Loader=_UniqueKeyLoader)
@@ -362,6 +392,9 @@ class Filter:
                 if data.Sigils:
                     self.sigil_filters[data.name] = data.Sigils
                     info_str += "Sigils "
+                if data.Tributes:
+                    self.tribute_filters[data.name] = data.Tributes
+                    info_str += "Tributes "
                 if data.Uniques:
                     self.unique_filters[data.name] = data.Uniques
                     info_str += "Uniques"
@@ -380,6 +413,9 @@ class Filter:
 
         if item.item_type == ItemType.Sigil:
             return self._check_sigil(item)
+
+        if item.item_type == ItemType.Tribute:
+            return self._check_tribute(item)
 
         if item.item_type is None or item.power is None or (is_junk_rarity(item.rarity) and not item.cosmetic_upgrade):
             return res

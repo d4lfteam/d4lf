@@ -11,7 +11,8 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Filter by item type, item power and greater affix count
 - Filter by affix and their values
 - Filter uniques by their affix and aspect values
-- Filter sigils by blacklisting and whitelisting locations and affixes (work in progress)
+- Filter sigils by blacklisting and whitelisting locations and affixes
+- Filter tributes by name or rarity
 - Automatically marks all common, magic, and rare gear as junk
 - Quickly move items from your stash or inventory
 - Supported resolutions are all aspect ratios between 16:10 and 21:9
@@ -351,6 +352,37 @@ Sigils:
 
 Sigil affixes and location names are lower case and spaces are replaced by underscore. You can find the full list of
 names in [assets/lang/enUS/sigils.json](assets/lang/enUS/sigils.json).
+
+### Tributes
+
+Tributes are defined by the top-level key `Tributes`. It contains a list of either tribute names or rarities you want
+to filter. Any not in the list are not kept. If no Tribute filter is provided, all Tributes will be kept.
+
+Mythic tributes are always kept no matter what.
+
+<details><summary>Config Examples</summary>
+
+```yaml
+# Keeps tribute_of_mystique and all legendary and unique tributes
+Tributes:
+  - tribute_of_mystique
+  - [legendary, unique]
+```
+
+If you're exceptionally pressed for time, you can just put the name of the tribute without "tribute_of_" at the beginning.
+
+```yaml
+# Keeps Tribute of Mystique and Tribute of Ascendance (Resolute) and nothing else
+Tributes:
+  - mystique
+  - ascendance_resolute
+```
+
+</details>
+
+Tribute names are lower case and spaces are replaced by underscore. Parentheses are removed. Note that United and
+Tribute names in [assets/lang/enUS/tributes.json](assets/lang/enUS/sigils.json). You can find the list of item rarities
+in [rarity.py](src/item/data/rarity.py)
 
 ### Uniques
 

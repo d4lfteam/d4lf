@@ -21,6 +21,7 @@ class Dataloader:
     filter_after_keyword = []
     filter_words = []
     tooltips = {}
+    tribute_dict = {}
 
     _instance = None
     data_loaded = False
@@ -61,6 +62,9 @@ class Dataloader:
                 **affix_sigil_dict_all["major"],
                 **affix_sigil_dict_all["positive"],
             }
+
+        with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/tributes.json", encoding="utf-8") as f:
+            self.tribute_dict: dict = json.load(f)
 
         with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/tooltips.json", encoding="utf-8") as f:
             self.tooltips = json.load(f)
