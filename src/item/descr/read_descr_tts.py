@@ -75,7 +75,14 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
             affix = _get_affix_from_text(affix_text)
             item.affixes.append(affix)
         else:
-            item.aspect = _get_aspect_from_text(affix_text, item.name)
+            if item.rarity == ItemRarity.Mythic:
+                item.aspect = Aspect(
+                    name=item.name,
+                    text=affix_text,
+                    value=find_number(affix_text),
+                )
+            else:
+                item.aspect = _get_aspect_from_text(affix_text, item.name)
     return item
 
 
@@ -113,7 +120,14 @@ def _add_affixes_from_tts_mixed(
                 affix.type = AffixType.normal
             item.affixes.append(affix)
         else:
-            item.aspect = _get_aspect_from_text(affix_text, item.name)
+            if item.rarity == ItemRarity.Mythic:
+                item.aspect = Aspect(
+                    name=item.name,
+                    text=affix_text,
+                    value=find_number(affix_text),
+                )
+            else:
+                item.aspect = _get_aspect_from_text(affix_text, item.name)
             item.aspect.loc = aspect_bullet.center
     return item
 
@@ -272,7 +286,7 @@ def _get_aspect_from_text(text: str, name: str) -> Aspect:
     match = _ASPECT_RE.search(text)
     matched_groups = {name: value for name, value in match.groupdict().items() if value is not None and match}
     if not matched_groups:
-        raise Exception(f"Could not match affix text: {text}")
+        raise Exception(f"Could not match aspect text: {text}")
 
     if matched_groups.get("minvalue") is not None:
         result.min_value = float(matched_groups["minvalue"])
