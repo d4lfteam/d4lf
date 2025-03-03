@@ -27,31 +27,31 @@ class Item:
             return False
         res = True
         if self.affixes != other.affixes:
-            LOGGER.debug("Affixes do not match")
+            # LOGGER.debug("Affixes do not match")
             res = False
         if self.aspect != other.aspect:
-            LOGGER.debug("Aspect not the same")
+            # LOGGER.debug("Aspect not the same")
             res = False
         if self.codex_upgrade != other.codex_upgrade:
-            LOGGER.debug("Codex upgrade not the same")
+            # LOGGER.debug("Codex upgrade not the same")
             res = False
         if self.cosmetic_upgrade != other.cosmetic_upgrade:
-            LOGGER.debug("Cosmetic upgrade not the same")
+            # LOGGER.debug("Cosmetic upgrade not the same")
             res = False
         if self.inherent != other.inherent:
-            LOGGER.debug("Inherent affixes do not match")
+            # LOGGER.debug("Inherent affixes do not match")
             res = False
         if self.item_type != other.item_type:
-            LOGGER.debug("Type not the same")
+            # LOGGER.debug("Type not the same")
             res = False
         if self.power != other.power:
-            LOGGER.debug("Power not the same")
+            # LOGGER.debug("Power not the same")
             res = False
         if self.name != other.name:
-            LOGGER.debug("Names do not match")
+            # LOGGER.debug("Names do not match")
             res = False
         if self.rarity != other.rarity:
-            LOGGER.debug("Rarity not the same")
+            # LOGGER.debug("Rarity not the same")
             res = False
         return res
 
