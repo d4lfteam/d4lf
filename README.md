@@ -54,7 +54,7 @@ Your profiles and configuration should continue to work. The only exception to t
 
 Example 1: You're on version 5.1.14 and updating to 5.2.0. Your profiles will continue to work fine.
 
-Example 2: You're on version 5.1.14 and updating to 6.0.0. Your profiles will no longer work and you'll need to update or re-import them on the newest version.
+Example 2: You're on version 5.1.14 and updating to 6.0.0. Your profiles will might no longer work and you'll need to update or re-import them on the newest version.
 
 ### Common problems
 
@@ -76,6 +76,15 @@ Example 2: You're on version 5.1.14 and updating to 6.0.0. Your profiles will no
   - diablo.trade has a setting enabled that will block all automated access, but we use a chrome-based browser to
     circumvent this. For diablo.trade imports it is required that Chrome be installed. Regular build imports can
     work with any browser.
+- Steam user: The tool shows a warning saying "TTS connection has not been made yet." but I've set everything up correctly.
+  - If you're seeing this error, it means D4LF has found the DLL is in the correct location but the TTS connection is 
+    still not being made. This is most likely due to an issue with your windows user not allowing Diablo to connect to 
+    the third party screen reader. The following steps should resolve it:
+    - Set Diablo 4 to run as administrator. First, navigate to your Diablo 4 directory. You can get there through Steam by right clicking on the game and 
+      choosing Properties. In that menu, go to Installed Files and hit Browse. Right-click on Diablo IV.exe and go to Properties. In the Compatibility tab, check the box
+      that says "Run this program as an administrator"
+    - Run Diablo 4 again through Steam and see if that resolved the issue.
+    - If it did not, set Steam to run as administrator as well and make sure you are running Diablo through Steam. This should resolve the issue.
 
 ### TTS
 
