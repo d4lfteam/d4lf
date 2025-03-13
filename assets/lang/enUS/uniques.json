@@ -328,10 +328,12 @@
         "num_inherents": 1
     },
     "eyes_in_the_dark": {
-        "desc": "death trap deals increased damage and will re-arm itself a second time.",
+        "desc": "death trap deals increased damage and will rearm itself once after activating.",
+        "full": "{c_important}Death Trap{/c} deals {c_random}[Affix_Value_1|%x|]{/c} increased damage and will rearm itself once after activating.",
         "num_idx": [
             0
-        ]
+        ],
+        "num_inherents": 1
     },
     "fields_of_crimson": {
         "desc": "while using this weapon, damaging at least one enemy with rupture creates a blood pool that inflicts bleeding damage over seconds. enemies standing in the pool take increased damage.",

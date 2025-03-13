@@ -20,11 +20,11 @@ from src.template_finder import TemplateMatch
 from src.utils.window import screenshot
 
 _AFFIX_RE = re.compile(
-    r"(?P<affixvalue1>[0-9]+)[^0-9]+\[(?P<minvalue1>[0-9]+) - (?P<maxvalue1>[0-9]+)\]|"
-    r"(?P<affixvalue2>[0-9]+\.[0-9]+).+?\[(?P<minvalue2>[0-9]+\.[0-9]+) - (?P<maxvalue2>[0-9]+\.[0-9]+)\]|"
-    r"(?P<affixvalue3>[.0-9]+)[^0-9]+\[(?P<onlyvalue>[.0-9]+)\]|"
+    r"(?P<affixvalue1>[0-9]+)[^0-9]+\[(?P<minvalue1>[0-9]+) - (?P<maxvalue1>[0-9]+)]|"
+    r"(?P<affixvalue2>[0-9]+\.[0-9]+).+?\[(?P<minvalue2>[0-9]+\.[0-9]+) - (?P<maxvalue2>[0-9]+\.[0-9]+)]|"
+    r"(?P<affixvalue3>[.0-9]+)[^0-9]+\[(?P<onlyvalue>[.0-9]+)]|"
     r".?![^\[\]]*[\[\]](?P<affixvalue4>\d+.?:\.\d+?)(?P<greateraffix1>[ ]*)|"
-    r"(?P<greateraffix2>\d+)(?![^\[]*\[).*",
+    r"(?P<greateraffix2>[0-9]+[.0-9]*)(?![^\[]*\[).*",
     re.DOTALL,
 )
 
@@ -50,7 +50,7 @@ def _get_affix_counts(item: Item) -> (int, int):
     elif item.item_type in [ItemType.Shield]:
         inherent_num = 4
 
-    if item.rarity == ItemRarity.Unique and item.item_type not in [ItemType.Shield]:
+    if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and item.item_type not in [ItemType.Shield]:
         # Uniques can have variable amounts of inherents. Sometimes we might not have a number for how many
         # inherents there are though and in that case we'll stick with the legendary default and hope for the best
         # Lidless wall, the only unique shield, doesn't count block chance as an inherent so we just use the legendary
@@ -248,7 +248,7 @@ def _get_affix_from_text(text: str) -> Affix:
     matched_groups = {}
     for match in _AFFIX_RE.finditer(text):
         matched_groups = {name: value for name, value in match.groupdict().items() if value is not None}
-    if not matched_groups:
+    if not matched_groups and _has_numbers(text):
         raise Exception(f"Could not match affix text: {text}")
     for x in ["minvalue1", "minvalue2"]:
         if matched_groups.get(x) is not None:
@@ -275,6 +275,10 @@ def _get_affix_from_text(text: str) -> Affix:
         keep_letters_and_spaces(result.text), list(Dataloader().affix_dict), scorer=rapidfuzz.distance.Levenshtein.distance
     )[0]
     return result
+
+
+def _has_numbers(affix_text):
+    return any(char.isdigit() for char in affix_text)
 
 
 def _get_aspect_from_text(text: str, name: str) -> Aspect:
