@@ -683,6 +683,168 @@ items = [
             rarity=ItemRarity.Mythic,
         ),
     ),
+    # A real strange inherent that isn't matching its affix for some reason, though the affix exists
+    (
+        [
+            "SCOUNDRELS LEATHERS",
+            "Ancestral Unique Chest Armor",
+            "800 Item Power",
+            "Masterwork: 8 / 12",
+            "Armory Loadout",
+            "224 Armor",
+            "Your Trap and Grenade Skills are also considered Core Skills",
+            "+847 Maximum Life [822 - 885]",
+            "+33.8% Movement Speed while the Inner Sight Gauge is Full [33.8 - 45.5]%",
+            "+42.9% Inner Sight Duration [40.9 - 58.5]%",
+            "30.8% Damage Reduction from Enemies Affected by Trap Skills",
+            "While you have unlimited Energy from Inner Sight, casting a Core Skill has a 80% [60 - 80]% chance to spawn Caltrops, Poison Trap, or Death Trap. Gain 20%[x] [10 - 20]% Core Skill Damage.",
+            "+40 Dexterity",
+            "+40 Dexterity",
+            "Rumor has it he lost them in a game of Skull &amp; Anchor, but the boss is a devil with the dice. I think he wanted to give the poor sod something to keep him warm without wounding his pride.. - Elstir",
+            "Requires Level 60. Account BoundRogue. Only. Unique Equipped",
+            "Sell Value: 219,018 Gold",
+            "Durability: 60/100",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(
+                    max_value=885.0,
+                    min_value=822.0,
+                    name="maximum_life",
+                    text="+847 Maximum Life [822 - 885]",
+                    type=AffixType.normal,
+                    value=847.0,
+                ),
+                Affix(
+                    max_value=45.5,
+                    min_value=33.8,
+                    name="movement_speed_while_the_inner_sight_gauge_is_full",
+                    text="+33.8% Movement Speed while the Inner Sight Gauge is Full [33.8 - 45.5]%",
+                    type=AffixType.normal,
+                    value=33.8,
+                ),
+                Affix(
+                    max_value=58.5,
+                    min_value=40.9,
+                    name="inner_sight_duration",
+                    text="+42.9% Inner Sight Duration [40.9 - 58.5]%",
+                    type=AffixType.normal,
+                    value=42.9,
+                ),
+                Affix(
+                    max_value=None,
+                    min_value=None,
+                    name="damage_reduction_from_enemies_affected_by_trap_skills",
+                    text="30.8% Damage Reduction from Enemies Affected by Trap Skills",
+                    type=AffixType.greater,
+                    value=30.8,
+                ),
+            ],
+            aspect=Aspect(
+                name="scoundrels_leathers",
+                min_value=60.0,
+                max_value=80.0,
+                text="While you have unlimited Energy from Inner Sight, "
+                "casting a Core Skill has a 80% [60 - 80]% chance to "
+                "spawn Caltrops, Poison Trap, or Death Trap. Gain "
+                "20%[x] [10 - 20]% Core Skill Damage.",
+                value=80.0,
+            ),
+            codex_upgrade=False,
+            cosmetic_upgrade=False,
+            inherent=[
+                Affix(
+                    max_value=None,
+                    min_value=None,
+                    name="your_trap_and_grenade_skills_are_also_considered_core_skills",
+                    text="Your Trap and Grenade Skills are also considered Core Skills",
+                    type=AffixType.inherent,
+                    value=None,
+                )
+            ],
+            item_type=ItemType.ChestArmor,
+            name="scoundrels_leathers",
+            power=800,
+            rarity=ItemRarity.Unique,
+        ),
+    ),
+    # Tyrael's might isn't having the proper inherent read
+    (
+        [
+            "TYRAELS MIGHT",
+            "Ancestral Mythic Unique Chest Armor",
+            "800 Item Power",
+            "224 Armor",
+            "Ignore Durability Loss",
+            "+24.7% Movement Speed",
+            "+7.5% Maximum Resistance to All Elements [7.5]%",
+            "+60.0% Resistance to All Elements [60.0]%",
+            "20.0% Damage Reduction [20.0]%",
+            "While at full Life, your Skills unleash a divine barrage dealing 775 damage.",
+            "Empty Socket",
+            "Thus Tyrael, a perfect aspect of Justice, came to be. None were more vehement against the forces of hell. All demonic entities learned to shudder at Justices might. . -The Books of Jarl, Volume I",
+            "Requires Level 35. Account Bound. Unique Equipped",
+            "Unlocks new look on salvage",
+            "Sell Value: 206,382 Gold",
+            "Durability: 100/100",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(
+                    max_value=None, min_value=None, name="movement_speed", text="+24.7% Movement Speed", type=AffixType.greater, value=24.7
+                ),
+                Affix(
+                    max_value=7.5,
+                    min_value=7.5,
+                    name="maximum_resistance_to_all_elements",
+                    text="+7.5% Maximum Resistance to All Elements [7.5]%",
+                    type=AffixType.normal,
+                    value=7.5,
+                ),
+                Affix(
+                    max_value=60.0,
+                    min_value=60.0,
+                    name="resistance_to_all_elements",
+                    text="+60.0% Resistance to All Elements [60.0]%",
+                    type=AffixType.normal,
+                    value=60.0,
+                ),
+                Affix(
+                    max_value=20.0,
+                    min_value=20.0,
+                    name="damage_reduction",
+                    text="20.0% Damage Reduction [20.0]%",
+                    type=AffixType.normal,
+                    value=20.0,
+                ),
+            ],
+            aspect=Aspect(
+                name="tyraels_might",
+                min_value=None,
+                max_value=None,
+                text="While at full Life, your Skills unleash a divine barrage dealing 775 damage.",
+                value=775.0,
+            ),
+            codex_upgrade=False,
+            cosmetic_upgrade=True,
+            inherent=[
+                Affix(
+                    max_value=None,
+                    min_value=None,
+                    name="ignore_durability_loss",
+                    text="Ignore Durability Loss",
+                    type=AffixType.inherent,
+                    value=None,
+                )
+            ],
+            item_type=ItemType.ChestArmor,
+            name="tyraels_might",
+            power=800,
+            rarity=ItemRarity.Mythic,
+        ),
+    ),
 ]
 
 
