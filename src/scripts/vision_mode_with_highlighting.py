@@ -161,6 +161,8 @@ class VisionModeWithHighlighting:
                         self.draw_empty_outline(task[2], task[3])
                     if task[0] == "match":
                         self.draw_match_outline(task[2], task[3], task[4])
+                    if task[0] == "codex_upgrade":
+                        self.draw_codex_upgrade_outline(task[2], task[1])
                     if task[0] == "no_match":
                         self.draw_no_match_outline(task[2])
         except queue.Empty:
@@ -183,9 +185,7 @@ class VisionModeWithHighlighting:
     def draw_match_outline(self, item_roi, should_keep_res, item_descr):
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
 
-        # Determine color based on codex upgrade
-        color = "#fca503" if item_descr.codex_upgrade else "#23fc5d"  # Orange for codex upgrade, green otherwise
-        self.create_signal_rect(self.canvas, w, self.thick, color)
+        self.create_signal_rect(self.canvas, w, self.thick, "#23fc5d")
 
         # show all info strings of the profiles
         text_y = h
@@ -207,6 +207,17 @@ class VisionModeWithHighlighting:
     def draw_no_match_outline(self, item_roi):
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
         self.create_signal_rect(self.canvas, w, self.thick, "#fc2323")
+        self.root.update_idletasks()
+        self.root.update()
+
+    def draw_codex_upgrade_outline(self, item_roi, item_descr):
+        x, y, w, h, off = self.get_coords_from_roi(item_roi)
+
+        self.create_signal_rect(self.canvas, w, self.thick, "#fca503")
+
+        # show string indicating that this item upgrades the codex
+        text_y = self.draw_text(self.canvas, "Codex Upgrade", "#fca503", h, 5, w // 2)
+
         self.root.update_idletasks()
         self.root.update()
 
@@ -313,6 +324,8 @@ class VisionModeWithHighlighting:
                             # Adapt colors based on config
                             if match:
                                 self.request_match_box(item_descr, item_roi, res, item_descr_with_loc)
+                            elif item_descr.codex_upgrade:
+                                self.request_codex_upgrade_box(item_descr, item_roi)
                             elif not match:
                                 self.request_no_match_box(item_descr, item_roi)
                 else:
@@ -356,7 +369,11 @@ class VisionModeWithHighlighting:
     def request_no_match_box(self, item_descr, item_roi):
         self.queue.put(("no_match", item_descr, item_roi))
 
-    def start(self):
+    def request_codex_upgrade_box(self, item_descr, item_roi):
+        self.queue.put(("codex_upgrade", item_descr, item_roi))
+
+    def st
+        art(self):
         LOGGER.info("Starting Vision Mode")
         Publisher().subscribe(self.on_tts)
         self.is_running = True
