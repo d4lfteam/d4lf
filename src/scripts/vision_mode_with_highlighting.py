@@ -373,7 +373,6 @@ class VisionModeWithHighlighting:
         self.queue.put(("codex_upgrade", item_descr, item_roi))
 
     def start(self):
-        art(self):
         LOGGER.info("Starting Vision Mode")
         Publisher().subscribe(self.on_tts)
         self.is_running = True
