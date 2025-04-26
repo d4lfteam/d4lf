@@ -184,22 +184,21 @@ class VisionModeWithHighlighting:
 
     def draw_match_outline(self, item_roi, should_keep_res, item_descr):
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
-
         self.create_signal_rect(self.canvas, w, self.thick, "#23fc5d")
 
         # show all info strings of the profiles
         text_y = h
         for match in reversed(should_keep_res.matched):
-            text_y = self.draw_text(self.canvas, match.profile, color, text_y, 5, w // 2)
+            text_y = self.draw_text(self.canvas, match.profile, "#23fc5d", text_y, 5, w // 2)
         # Show matched bullets
         if item_descr is not None and len(should_keep_res.matched) > 0:
             bullet_width = self.thick * 3
             for affix in should_keep_res.matched[0].matched_affixes:
                 if affix.loc is not None:
-                    self.draw_rect(self.canvas, bullet_width, affix, off, color)
+                    self.draw_rect(self.canvas, bullet_width, affix, off, "#23fc5d")
 
             if item_descr.aspect is not None and any(m.did_match_aspect for m in should_keep_res.matched):
-                self.draw_rect(self.canvas, bullet_width, item_descr.aspect, off, color)
+                self.draw_rect(self.canvas, bullet_width, item_descr.aspect, off, "#23fc5d")
 
         self.root.update_idletasks()
         self.root.update()
