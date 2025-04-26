@@ -845,6 +845,91 @@ items = [
             rarity=ItemRarity.Mythic,
         ),
     ),
+    # Yet another unique not getting read correctly
+    (
+        [
+            "THE OCULUS",
+            "Unique Wand",
+            "750 Item Power",
+            "261 Damage Per Second  (-335)",
+            "[174 - 262] Damage per Hit",
+            "1.20 Attacks per Second (Very Fast)",
+            "+2 Maximum Evade Charges [2]",
+            "Attacks Reduce Evades Cooldown by 1.2 Seconds [1.2]",
+            "+80 Intelligence +[73 - 83]",
+            "+460.0% Teleport Damage [445.0 - 580.0]%",
+            "+50.0% Chance for Teleport to Deal Double Damage [36.5 - 50.0]%",
+            "+12 to Teleport [8 - 12]",
+            "Gain the effect of the Teleport Enchantment for free. When you Evade using Teleport Enchantment you are taken to a random location.",
+            "Empty Socket",
+            "The rhythm of the orb, which had pulsed steadily for five centuries, quickened as its owner took his final ragged breaths. It were as if some intelligence within reveled in the sight.. - Master Eos",
+            "Requires Level 60Sorcerer. Only. Unique Equipped",
+            "Sell Value: 184,341 Gold",
+            "Durability: 100/100",
+            "Mousewheel scroll down",
+            "Scroll Down",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(
+                    max_value=83.0,
+                    min_value=73.0,
+                    name="intelligence",
+                    text="+80 Intelligence +[73 - 83]",
+                    type=AffixType.normal,
+                    value=80.0,
+                ),
+                Affix(
+                    max_value=580.0,
+                    min_value=445.0,
+                    name="teleport_damage",
+                    text="+460.0% Teleport Damage [445.0 - 580.0]%",
+                    type=AffixType.normal,
+                    value=460.0,
+                ),
+                Affix(
+                    max_value=50.0,
+                    min_value=36.5,
+                    name="chance_for_teleport_to_deal_double_damage",
+                    text="+50.0% Chance for Teleport to Deal Double Damage [36.5 - 50.0]%",
+                    type=AffixType.normal,
+                    value=50.0,
+                ),
+                Affix(
+                    max_value=12.0, min_value=8.0, name="to_teleport", text="+12 to Teleport [8 - 12]", type=AffixType.normal, value=12.0
+                ),
+            ],
+            aspect=Aspect(
+                name="the_oculus",
+                text="Gain the effect of the Teleport Enchantment for free. When you Evade using Teleport Enchantment you are taken to a random location.",
+            ),
+            codex_upgrade=False,
+            cosmetic_upgrade=False,
+            inherent=[
+                Affix(
+                    max_value=2.0,
+                    min_value=2.0,
+                    name="maximum_evade_charges",
+                    text="+2 Maximum Evade Charges [2]",
+                    type=AffixType.inherent,
+                    value=2.0,
+                ),
+                Affix(
+                    max_value=1.2,
+                    min_value=1.2,
+                    name="attacks_reduce_evades_cooldown_by_seconds",
+                    text="Attacks Reduce Evades Cooldown by 1.2 Seconds [1.2]",
+                    type=AffixType.inherent,
+                    value=1.2,
+                ),
+            ],
+            item_type=ItemType.Wand,
+            name="the_oculus",
+            power=750,
+            rarity=ItemRarity.Unique,
+        ),
+    ),
 ]
 
 

@@ -288,16 +288,17 @@ def _get_aspect_from_text(text: str, name: str) -> Aspect:
     text = _REPLACE_COMPARE_RE.sub("", text).strip()
 
     match = _ASPECT_RE.search(text)
-    matched_groups = {name: value for name, value in match.groupdict().items() if value is not None and match}
-    if not matched_groups:
-        raise Exception(f"Could not match aspect text: {text}")
+    if match:  # No match means the aspect is text only, there are no values to filter on
+        matched_groups = {name: value for name, value in match.groupdict().items() if value is not None}
+        if not matched_groups:
+            raise Exception(f"Could not match aspect text: {text}")
 
-    if matched_groups.get("minvalue") is not None:
-        result.min_value = float(matched_groups["minvalue"])
-    if matched_groups.get("maxvalue") is not None:
-        result.max_value = float(matched_groups["maxvalue"])
-    if matched_groups.get("affixvalue") is not None:
-        result.value = float(matched_groups["affixvalue"])
+        if matched_groups.get("minvalue") is not None:
+            result.min_value = float(matched_groups["minvalue"])
+        if matched_groups.get("maxvalue") is not None:
+            result.max_value = float(matched_groups["maxvalue"])
+        if matched_groups.get("affixvalue") is not None:
+            result.value = float(matched_groups["affixvalue"])
 
     return result
 
