@@ -215,7 +215,7 @@ class VisionModeWithHighlighting:
         self.create_signal_rect(self.canvas, w, self.thick, "#fca503")
 
         # show string indicating that this item upgrades the codex
-        text_y = self.draw_text(self.canvas, "Codex Upgrade", "#fca503", h, 5, w // 2)
+        self.draw_text(self.canvas, "Codex Upgrade", "#fca503", h, 5, w // 2)
 
         self.root.update_idletasks()
         self.root.update()
