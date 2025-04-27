@@ -15,8 +15,10 @@ class Item:
     affixes: list[Affix] = field(default_factory=list)
     aspect: Aspect | None = None
     codex_upgrade: bool = False
+    cosmetic_upgrade: bool = False
     inherent: list[Affix] = field(default_factory=list)
     item_type: ItemType | None = None
+    name: str | None = None
     power: int | None = None
     rarity: ItemRarity | None = None
 
@@ -25,25 +27,31 @@ class Item:
             return False
         res = True
         if self.affixes != other.affixes:
-            LOGGER.debug("Affixes do not match")
+            # LOGGER.debug("Affixes do not match")
             res = False
         if self.aspect != other.aspect:
-            LOGGER.debug("Aspect not the same")
+            # LOGGER.debug("Aspect not the same")
             res = False
         if self.codex_upgrade != other.codex_upgrade:
-            LOGGER.debug("Codex upgrade not the same")
+            # LOGGER.debug("Codex upgrade not the same")
+            res = False
+        if self.cosmetic_upgrade != other.cosmetic_upgrade:
+            # LOGGER.debug("Cosmetic upgrade not the same")
             res = False
         if self.inherent != other.inherent:
-            LOGGER.debug("Inherent affixes do not match")
+            # LOGGER.debug("Inherent affixes do not match")
             res = False
         if self.item_type != other.item_type:
-            LOGGER.debug("Type not the same")
+            # LOGGER.debug("Type not the same")
             res = False
         if self.power != other.power:
-            LOGGER.debug("Power not the same")
+            # LOGGER.debug("Power not the same")
+            res = False
+        if self.name != other.name:
+            # LOGGER.debug("Names do not match")
             res = False
         if self.rarity != other.rarity:
-            LOGGER.debug("Rarity not the same")
+            # LOGGER.debug("Rarity not the same")
             res = False
         return res
 
@@ -55,8 +63,10 @@ class ItemJSONEncoder(json.JSONEncoder):
                 "affixes": [affix.__dict__ for affix in o.affixes],
                 "aspect": o.aspect.__dict__ if o.aspect else None,
                 "codex_upgrade": o.codex_upgrade,
+                "cosmetic_upgrade": o.cosmetic_upgrade,
                 "inherent": [affix.__dict__ for affix in o.inherent],
                 "item_type": o.item_type.value if o.item_type else None,
+                "name": o.name if o.name else None,
                 "power": o.power if o.power else None,
                 "rarity": o.rarity.value if o.rarity else None,
             }

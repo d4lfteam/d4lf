@@ -17,12 +17,6 @@
             2
         ]
     },
-    "eyes_in_the_dark": {
-        "desc": "death trap deals increased damage and will re-arm itself a second time.",
-        "num_idx": [
-            0
-        ]
-    },
     "locrans_talisman": {
         "desc": "your skills gain a critical strike chance bonus",
         "num_idx": [
@@ -61,7 +55,8 @@
         "desc": "when consuming a corpse there is a chance to also create a decaying",
         "num_idx": [
             0
-        ]
+        ],
+        "num_inherents": 2
     },
     "the_third_blade": {
         "desc": "your weapon mastery skills are now also core skills that have no cooldowns but",

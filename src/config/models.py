@@ -11,12 +11,13 @@ from pydantic_numpy.model import NumpyModel
 
 from src.config.helper import check_greater_than_zero, validate_hotkey
 from src.item.data.item_type import ItemType
+from src.item.data.rarity import ItemRarity
 
 MODULE_LOGGER = logging.getLogger(__name__)
 HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
 
-DEPRECATED_INI_KEYS = ["import_build", "local_prefs_path", "move_item_type", "use_tts"]
+DEPRECATED_INI_KEYS = ["hidden_transparency", "import_build", "local_prefs_path", "move_item_type", "handle_rares", "scripts"]
 
 
 class AspectFilterType(enum.StrEnum):
@@ -25,17 +26,20 @@ class AspectFilterType(enum.StrEnum):
     upgrade = enum.auto()
 
 
-class HandleRaresType(enum.StrEnum):
-    filter = enum.auto()
+class ComparisonType(enum.StrEnum):
+    larger = enum.auto()
+    smaller = enum.auto()
+
+
+class CosmeticFilterType(enum.StrEnum):
+    junk = enum.auto()
     ignore = enum.auto()
-    junk = enum.auto()
 
 
-class MoveItemsType(enum.StrEnum):
-    everything = enum.auto()
-    favorites = enum.auto()
-    junk = enum.auto()
-    unmarked = enum.auto()
+class ItemRefreshType(enum.StrEnum):
+    force_with_filter = enum.auto()
+    force_without_filter = enum.auto()
+    no_refresh = enum.auto()
 
 
 class LogLevels(enum.StrEnum):
@@ -46,28 +50,29 @@ class LogLevels(enum.StrEnum):
     critical = enum.auto()
 
 
+class MoveItemsType(enum.StrEnum):
+    everything = enum.auto()
+    favorites = enum.auto()
+    junk = enum.auto()
+    unmarked = enum.auto()
+
+
 class UnfilteredUniquesType(enum.StrEnum):
     favorite = enum.auto()
     ignore = enum.auto()
     junk = enum.auto()
 
 
-class ComparisonType(enum.StrEnum):
-    larger = enum.auto()
-    smaller = enum.auto()
-
-
-class ItemRefreshType(enum.StrEnum):
-    force_with_filter = enum.auto()
-    force_without_filter = enum.auto()
-    no_refresh = enum.auto()
+class VisionModeType(enum.StrEnum):
+    highlight_matches = enum.auto()
+    fast = enum.auto()
 
 
 class _IniBaseModel(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, validate_assignment=True)
 
 
-def _parse_item_type(data: str | list[str]) -> list[str]:
+def _parse_item_type_or_rarities(data: str | list[str]) -> list[str]:
     if isinstance(data, str):
         return [data]
     return data
@@ -145,11 +150,14 @@ class AspectUniqueFilterModel(AffixAspectFilterModel):
         name = name.lower().replace("'", "").replace(" ", "_").replace(",", "")
 
         if name not in Dataloader().aspect_unique_dict:
-            raise ValueError(f"affix {name} does not exist")
+            raise ValueError(f"aspect {name} does not exist")
         return name
 
 
 class AdvancedOptionsModel(_IniBaseModel):
+    disable_tts_warning: bool = Field(
+        default=False, description="If TTS is working for you but you are still receiving the warning, check this box to disable it."
+    )
     exit_key: str = Field(default="f12", description="Hotkey to exit d4lf", json_schema_extra={IS_HOTKEY_KEY: "True"})
     force_refresh_only: str = Field(
         default="ctrl+shift+f11",
@@ -173,10 +181,9 @@ class AdvancedOptionsModel(_IniBaseModel):
         description="Hotkey to run the filter process with a force refresh. The status of all junk/favorite items will be reset",
         json_schema_extra={IS_HOTKEY_KEY: "True"},
     )
-    run_scripts: str = Field(
-        default="f9", description="Hotkey to enable/disable the vision filter", json_schema_extra={IS_HOTKEY_KEY: "True"}
+    run_vision_mode: str = Field(
+        default="f9", description="Hotkey to enable/disable the vision mode", json_schema_extra={IS_HOTKEY_KEY: "True"}
     )
-    scripts: list[str] = Field(default=["vision_mode"], json_schema_extra={HIDE_FROM_GUI_KEY: "True"})
     vision_mode_only: bool = Field(
         default=False, description="Only allow vision mode to run. All hotkeys and actions that click will be disabled."
     )
@@ -190,25 +197,27 @@ class AdvancedOptionsModel(_IniBaseModel):
             self.move_to_inv,
             self.run_filter,
             self.run_filter_force_refresh,
-            self.run_scripts,
+            self.run_vision_mode,
         ]
         if len(set(keys)) != len(keys):
             raise ValueError("hotkeys must be unique")
         return self
 
     @field_validator(
-        "exit_key", "force_refresh_only", "move_to_chest", "move_to_inv", "run_filter", "run_filter_force_refresh", "run_scripts"
+        "exit_key", "force_refresh_only", "move_to_chest", "move_to_inv", "run_filter", "run_filter_force_refresh", "run_vision_mode"
     )
     def key_must_exist(cls, k: str) -> str:
         return validate_hotkey(k)
 
-    @field_validator("scripts", mode="before")
-    def check_scripts_is_list(cls, v: str) -> list[str]:
-        if isinstance(v, str):
-            v = v.split(",")
-        elif not isinstance(v, list):
-            raise ValueError("must be a list or a string")
-        return v
+    @model_validator(mode="before")
+    def check_deprecation(cls, data) -> dict:
+        if "run_scripts" in data:
+            MODULE_LOGGER.warning(
+                "run_scripts is deprecated. Setting run_vision_mode to the equivalent value instead. Remove run_scripts from your params.ini to remove this message."
+            )
+            data["run_vision_mode"] = data["run_scripts"]
+            data.pop("run_scripts", None)
+        return data
 
 
 class CharModel(_IniBaseModel):
@@ -238,19 +247,22 @@ class GeneralModel(_IniBaseModel):
         default=False,
         description="When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not",
     )
-    handle_rares: HandleRaresType = Field(default=HandleRaresType.filter, description="How to handle rares that the filter finds.")
+    handle_cosmetics: CosmeticFilterType = Field(
+        default=CosmeticFilterType.ignore, description="What should be done with cosmetic upgrades that do not match any filter"
+    )
     handle_uniques: UnfilteredUniquesType = Field(
         default=UnfilteredUniquesType.favorite,
         description="What should be done with uniques that do not match any profile. Mythics are always favorited. If mark_as_favorite is unchecked then uniques that match a profile will not be favorited.",
-    )
-    hidden_transparency: float = Field(
-        default=0.35, description="Transparency of the overlay when not hovering it (has a 3 second delay after hovering)"
     )
     keep_aspects: AspectFilterType = Field(
         default=AspectFilterType.upgrade, description="Whether to keep aspects that didn't match a filter"
     )
     language: str = Field(
         default="enUS", description="Do not change. Only English is supported at this time", json_schema_extra={HIDE_FROM_GUI_KEY: "True"}
+    )
+    mark_as_favorite: bool = Field(
+        default=True,
+        description="Whether to favorite matched items or not",
     )
     minimum_overlay_font_size: int = Field(
         default=12,
@@ -264,10 +276,6 @@ class GeneralModel(_IniBaseModel):
         default=[MoveItemsType.everything],
         description="When doing stash/inventory transfer, what types of items should be moved",
     )
-    mark_as_favorite: bool = Field(
-        default=True,
-        description="Whether to favorite matched items or not",
-    )
     profiles: list[str] = Field(
         default=[],
         description='Which filter profiles should be run. All .yaml files with "Aspects" and '
@@ -275,6 +283,13 @@ class GeneralModel(_IniBaseModel):
         "C:/Users/USERNAME/.d4lf/profiles/*.yaml",
     )
     run_vision_mode_on_startup: bool = Field(default=True, description="Whether to run vision mode on startup or not")
+    s7_do_not_junk_ancestral_legendaries: bool = Field(
+        default=False, description="Season 7 Specific: Do not mark ancestral legendaries as junk for seasonal challenge"
+    )
+    vision_mode_type: VisionModeType = Field(
+        default=VisionModeType.highlight_matches,
+        description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
+    )
 
     @field_validator("check_chest_tabs", mode="before")
     def check_chest_tabs_index(cls, v: str) -> list[int]:
@@ -296,12 +311,6 @@ class GeneralModel(_IniBaseModel):
     def language_must_exist(cls, v: str) -> str:
         if v not in ["enUS"]:
             raise ValueError("language not supported")
-        return v
-
-    @field_validator("hidden_transparency")
-    def transparency_in_range(cls, v: float) -> float:
-        if not 0 <= v <= 1:
-            raise ValueError("must be in [0, 1]")
         return v
 
     @field_validator("minimum_overlay_font_size")
@@ -327,6 +336,16 @@ class GeneralModel(_IniBaseModel):
                 MODULE_LOGGER.warning(
                     f"{key}=non_favorites is deprecated. Changing to equivalent of junk and unmarked instead. Modify this value in the GUI to remove this message."
                 )
+        if "use_tts" in data:
+            MODULE_LOGGER.warning(
+                "use_tts is deprecated. Setting vision_mode to the equivalent value instead. Remove use_tts from your params.ini to remove this message."
+            )
+            use_tts_mode = data["use_tts"]
+            if use_tts_mode == "mixed" or use_tts_mode == "off":
+                data["vision_mode_type"] = VisionModeType.highlight_matches
+            else:
+                data["vision_mode_type"] = VisionModeType.fast
+            data.pop("use_tts", None)
         return data
 
 
@@ -383,7 +402,7 @@ class ItemFilterModel(BaseModel):
 
     @field_validator("itemType", mode="before")
     def parse_item_type(cls, data: str | list[str]) -> list[str]:
-        return _parse_item_type(data)
+        return _parse_item_type_or_rarities(data)
 
 
 DynamicItemFilterModel = RootModel[dict[str, ItemFilterModel]]
@@ -430,8 +449,6 @@ class SigilConditionModel(BaseModel):
 class SigilFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     blacklist: list[SigilConditionModel] = []
-    maxTier: int = sys.maxsize
-    minTier: int = 0
     priority: SigilPriority = SigilPriority.blacklist
     whitelist: list[SigilConditionModel] = []
 
@@ -440,15 +457,49 @@ class SigilFilterModel(BaseModel):
         errors = [item for item in self.blacklist if item in self.whitelist]
         if errors:
             raise ValueError(f"blacklist and whitelist must not overlap: {errors}")
-        if self.minTier > self.maxTier:
-            raise ValueError("minTier must be smaller than maxTier")
         return self
 
-    @field_validator("minTier", "maxTier")
-    def min_max_tier_in_range(cls, v: int) -> int:
-        if not 0 <= v <= 100:
-            raise ValueError("must be in [0, 100]")
-        return v
+
+class TributeFilterModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = None
+    rarities: list[ItemRarity] = []
+
+    @field_validator("name")
+    def name_must_exist(cls, name: str) -> str:
+        from src.dataloader import Dataloader  # This on module level would be a circular import, so we do it lazy for now
+
+        if not name:
+            return name
+
+        tribute_dict = Dataloader().tribute_dict
+        # Allow people to shorthand and leave off "tribute_of_"
+        name_with_tribute = "tribute_of_" + name
+        if name not in tribute_dict and name_with_tribute not in tribute_dict:
+            raise ValueError(f"No tribute named {name} or {name_with_tribute} exists")
+
+        if name_with_tribute in tribute_dict:
+            name = name_with_tribute
+
+        return name
+
+    @model_validator(mode="before")
+    def parse_data(cls, data: str | list[str] | dict[str, str | list[str]]) -> dict[str, str | list[str]]:
+        if isinstance(data, dict):
+            return data
+        if isinstance(data, str):
+            if any(rarity.value.lower() == data.lower() for rarity in ItemRarity):
+                return {"rarities": [data]}
+            return {"name": data}
+        if isinstance(data, list):
+            if not data:
+                raise ValueError("list cannot be empty")
+            return {"rarities": data}
+        raise ValueError("must be str or list")
+
+    @field_validator("rarities", mode="before")
+    def parse_rarities(cls, data: str | list[str]) -> list[str]:
+        return _parse_item_type_or_rarities(data)
 
 
 class UniqueModel(BaseModel):
@@ -458,6 +509,7 @@ class UniqueModel(BaseModel):
     itemType: list[ItemType] = []
     profileAlias: str = ""
     minGreaterAffixCount: int = 0
+    minPercentOfAspect: int = 0
     minPower: int = 0
     mythic: bool = False
 
@@ -469,9 +521,16 @@ class UniqueModel(BaseModel):
     def count_validator(cls, v: int) -> int:
         return check_greater_than_zero(v)
 
+    @field_validator("minPercentOfAspect")
+    def percent_validator(cls, v: int) -> int:
+        check_greater_than_zero(v)
+        if v > 100:
+            raise ValueError("must be less than or equal to 100")
+        return v
+
     @field_validator("itemType", mode="before")
     def parse_item_type(cls, data: str | list[str]) -> list[str]:
-        return _parse_item_type(data)
+        return _parse_item_type_or_rarities(data)
 
 
 class ProfileModel(BaseModel):
@@ -479,6 +538,7 @@ class ProfileModel(BaseModel):
     name: str
     Affixes: list[DynamicItemFilterModel] = []
     Sigils: SigilFilterModel | None = None
+    Tributes: list[TributeFilterModel] = []
     Uniques: list[UniqueModel] = []
 
 

@@ -7,9 +7,11 @@ from src.config.models import (
     ProfileModel,
     SigilConditionModel,
     SigilFilterModel,
+    TributeFilterModel,
     UniqueModel,
 )
 from src.item.data.item_type import ItemType
+from src.item.data.rarity import ItemRarity
 
 # noinspection PyTypeChecker
 affix = ProfileModel(
@@ -177,8 +179,6 @@ sigil = ProfileModel(
             SigilConditionModel(name="jalals_vigil"),
             SigilConditionModel(name="iron_hold", condition=["shadow_damage"]),
         ],
-        maxTier=80,
-        minTier=40,
     ),
 )
 
@@ -210,6 +210,15 @@ sigil_priority = ProfileModel(
             SigilConditionModel(name="iron_hold", condition=["shadow_damage"]),
         ],
     ),
+)
+
+tributes = ProfileModel(
+    name="tributes",
+    Tributes=[
+        TributeFilterModel(name="tribute_of_pride"),
+        TributeFilterModel(name="mystique"),
+        TributeFilterModel(rarities=[ItemRarity.Legendary, ItemRarity.Unique]),
+    ],
 )
 
 unique = ProfileModel(

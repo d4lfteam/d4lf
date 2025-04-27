@@ -13,6 +13,8 @@
 .pytest_cache/
 .venv
 .vs/
+/tts/saapi
+/tts/x64
 __pycache__/
 build/
 config/bnip/*

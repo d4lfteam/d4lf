@@ -32,7 +32,72 @@ class ItemType(Enum):
     Tome = "tome"
     Wand = "wand"
     # Custom Types
+    Cache = "cache"
+    Compass = "compass"
+    Consumable = "consumable"
+    Gem = "gem"
     Incense = "incense"
     Material = "material"
-    Sigil = "sigil"
+    Rune = "rune"
+    Sigil = "nightmare sigil"
     TemperManual = "temper manual"
+    Tribute = "tribute"
+    WhisperingWood = "whispering wood"
+
+
+def is_armor(item_type: ItemType) -> bool:
+    return item_type in [ItemType.Boots, ItemType.ChestArmor, ItemType.Gloves, ItemType.Helm, ItemType.Legs, ItemType.Shield]
+
+
+def is_consumable(item_type: ItemType) -> bool:
+    return item_type in [
+        ItemType.Consumable,
+        ItemType.Elixir,
+        ItemType.Incense,
+        ItemType.TemperManual,
+    ]
+
+
+def is_mapping(item_type: ItemType) -> bool:
+    return item_type in [ItemType.Compass, ItemType.Sigil, ItemType.WhisperingWood]
+
+
+def is_jewelry(item_type: ItemType) -> bool:
+    return item_type in [
+        ItemType.Amulet,
+        ItemType.Ring,
+    ]
+
+
+def is_socketable(item_type: ItemType) -> bool:
+    return item_type in [
+        ItemType.Gem,
+        ItemType.Rune,
+    ]
+
+
+def is_weapon(item_type: ItemType) -> bool:
+    return item_type in WEAPON_TYPES
+
+
+WEAPON_TYPES = [
+    ItemType.Axe,
+    ItemType.Axe2H,
+    ItemType.Bow,
+    ItemType.Crossbow2H,
+    ItemType.Dagger,
+    ItemType.Focus,
+    ItemType.Glaive,
+    ItemType.Mace,
+    ItemType.Mace2H,
+    ItemType.OffHandTotem,
+    ItemType.Polearm,
+    ItemType.Quarterstaff,
+    ItemType.Scythe,
+    ItemType.Scythe2H,
+    ItemType.Staff,
+    ItemType.Sword,
+    ItemType.Sword2H,
+    ItemType.Tome,
+    ItemType.Wand,
+]

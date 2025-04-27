@@ -60,6 +60,7 @@ def main(d4data_dir: Path, companion_app_dir: Path):
             f"assets/lang/{lang}/aspects.json",
             f"assets/lang/{lang}/uniques.json",
             f"assets/lang/{lang}/sigils.json",
+            f"assets/lang/{lang}/tributes.json",
             f"assets/lang/{lang}/item_types.json",
             f"assets/lang/{lang}/tooltips.json",
         ]
@@ -72,6 +73,7 @@ def main(d4data_dir: Path, companion_app_dir: Path):
         # Create Uniques
         print(f"Gen Uniques for {language}")
         unique_dict = {}
+        potential_custom_uniques = {}
         pattern = f"json/{language}_Text/meta/StringList/Item_*_Unique_*.stl.json"
         json_files = list(d4data_dir.glob(pattern))
         for json_file in json_files:
@@ -88,16 +90,36 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                 affix_file_name = "Affix_" + "_".join(splits[1:])
                 affix_file_path = json_file.parent / affix_file_name
                 if not affix_file_path.exists():
+                    if not any(string_to_skip in name_clean for string_to_skip in ["[ph]", "(ph)", "ph_", "_test_", "debug"]) and not any(
+                        string_to_skip in affix_file_name
+                        for string_to_skip in ["S07_Witch_", "_QST_", "_TEST_", "_NoPowers", "_Cache", "_zzOld_"]
+                    ):
+                        potential_custom_uniques[name_clean] = affix_file_path
                     continue
                 with open(affix_file_path, encoding="utf-8") as affix_file:
                     data = json.load(affix_file)
                     desc = data["arStrings"][0]["szText"]
                     desc_clean = remove_content_in_braces(desc.lower().replace("’", ""))
                     num_idx = get_random_number_idx(desc)
-                    unique_dict[name_clean] = {"desc": desc_clean, "full": desc, "num_idx": num_idx}
+                    unique_dict[name_clean] = {"desc": desc_clean, "full": desc, "num_idx": num_idx, "num_inherents": None}
+                item_file_name = "_".join(splits[1:])
+                item_file_name = item_file_name.replace("stl", "itm")
+                item_file_path = d4data_dir / "json" / "base" / "meta" / "Item" / item_file_name
+                if not item_file_path.exists():
+                    print(f"WARNING: {name_clean} had no item file at {item_file_path}, it will not have an inherents count")
+                    continue
+                with open(item_file_path, encoding="utf-8") as item_file:
+                    data = json.load(item_file)
+                    num_inherents = len(data["arInherentAffixes"])
+                    unique_dict[name_clean]["num_inherents"] = num_inherents
         # add custom uniques that seem to be missing
         with open(D4LF_BASE_DIR / f"src/tools/data/custom_uniques_{language}.json", encoding="utf-8") as json_file:
             data = json.load(json_file)
+            for unique_name, affix_file_path in potential_custom_uniques.items():
+                if unique_name not in data:
+                    print(
+                        f"WARNING: {unique_name} was found in unique files but no affixes were found and no custom unique is created for it. Look for an affix file with a similar name to {affix_file_path}"
+                    )
             unique_dict.update(data)
         with open(D4LF_BASE_DIR / f"assets/lang/{language}/uniques.json", "w", encoding="utf-8") as json_file:
             json.dump(unique_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
@@ -152,6 +174,23 @@ def main(d4data_dir: Path, companion_app_dir: Path):
 
         with open(D4LF_BASE_DIR / f"assets/lang/{language}/sigils.json", "w", encoding="utf-8") as json_file:
             json.dump(sigil_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
+            json_file.write("\n")
+
+        print(f"Gen Tributes for {language}")
+        tribute_dict = {}
+
+        # Add others automatically
+        pattern = f"json/{language}_Text/meta/StringList/Item_*_TributeKeySigil_*.stl.json"
+        json_files = list(d4data_dir.glob(pattern))
+        for json_file in json_files:
+            with open(json_file, encoding="utf-8") as file:
+                data = json.load(file)
+                name_idx, _ = (0, 1) if data["arStrings"][0]["szLabel"] == "Name" else (1, 0)
+                tribute_name: str = data["arStrings"][name_idx]["szText"].lower().strip().replace("’", "").replace("'", "")
+                tribute_dict[tribute_name.replace(" ", "_").replace("(", "").replace(")", "")] = tribute_name
+
+        with open(D4LF_BASE_DIR / f"assets/lang/{language}/tributes.json", "w", encoding="utf-8") as json_file:
+            json.dump(tribute_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
             json_file.write("\n")
 
         print(f"Gen ItemTypes for {language}")

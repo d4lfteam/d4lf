@@ -3,7 +3,7 @@
 Filter items and sigils in your inventory based on affixes, aspects and thresholds of their values. For questions,
 feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6T) or use github issues.
 
-![sample](assets/thumbnail.jpg)]
+![sample](assets/thumbnail.jpg)
 
 ## Features
 
@@ -12,6 +12,8 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Filter by affix and their values
 - Filter uniques by their affix and aspect values
 - Filter sigils by blacklisting and whitelisting locations and affixes
+- Filter tributes by name or rarity
+- Automatically marks all common, magic, and rare gear as junk
 - Quickly move items from your stash or inventory
 - Supported resolutions are all aspect ratios between 16:10 and 21:9
 
@@ -19,47 +21,76 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 ### Game Settings
 
-- Font size can be small or medium in the Gameplay Settings
 - Game Language must be English
-- **The higher the resolution and quality settings, the better the detection and OCR will work**
-- **The tool does not play well with HDR as it makes everything super bright**
-- **The advanced item comparison feature might cause incorrect classifications**
-- **Stuttering has been reported on some machines with V-Sync, G-Sync, Active Sync or similar enabled in the settings**
+- IMPORTANT: Advanced Tooltip Information must be enabled in Options > Gameplay > Gameplay. If you don't do this then item parsing will be very inconsistent and you will receive no warning something is wrong.
+- Use Screen Reader must be enabled in Options > Accessibility
+- 3rd Party Screen Reader must be enabled in Options > Accessibility
 
-### Quick start guide
+### Installation and quick start guide
 
 - Download and extract the latest version (.zip) from the releases: https://github.com/aeon0/d4lf/releases
+- Copy `saapi64.dll` from the downloaded folder to your "Diablo IV" directory
+  - To find your D4 directory:
+    - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
+    - In Steam, right click the game, select Manage > Browse local files
 - Generate a profile of what you want to filter for. To do so you have a few options:
-    - Open gui.bat and import a profile by pasting a build page from popular planner websites
-    - Take one someone else has generated from our [discord](https://discord.gg/YyzaPhAN6T)
-    - Create one yourself by looking at the [examples](#how-to-filter--profiles) below
+  - Open gui.bat and import a profile by pasting a build page from popular planner websites
+  - Take one someone else has generated from our [discord](https://discord.gg/YyzaPhAN6T)
+  - Create one yourself by looking at the [examples](#how-to-filter--profiles) below
 - If downloaded or created manually, place the profile in the `C:/Users/<WINDOWS_USER>/.d4lf/profiles` folder. The GUI
   importer has a button to open this folder directly. If imported they are placed there automatically.
 - Run gui.bat and use the GUI config tab to configure the profiles. Select the '...' next to profiles to activate which
   profiles you want to use.
+- Ensure all [game settings](#game-settings) are configured properly.
 - Execute d4lf.exe and launch Diablo 4.
-- There is a small overlay on the center bottom with buttons:
-    - max/min: Show or hide the console output
-    - filter: Auto filter inventory and stash if open (number of stash tabs configurable)
-    - vision: Turn vision mode (overlay) on/off
-- Alternatively use the hotkeys. e.g. f11 for filtering
+- Use the hotkeys listed in d4lf.exe to run filtering. By default, F11 will run the loot filter and filter your items.
+- For most common issues, if something is wrong, you will see an error or warning when you start d4lf.exe
+
+### Updating an existing installation
+
+All configurations are stored in a separate location so all you need to do is download the newest version and delete your old version.
+
+Your profiles and configuration should continue to work. The only exception to this is if the major version of the release changes. In that case, a change was made that will make previous profiles no longer work.
+
+Example 1: You're on version 5.1.14 and updating to 5.2.0. Your profiles will continue to work fine.
+
+Example 2: You're on version 5.1.14 and updating to 6.0.0. Your profiles will might no longer work and you'll need to update or re-import them on the newest version.
 
 ### Common problems
 
 - The GUI crashes immediately upon opening, with no error message given
-    - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
-      your params.ini through the config tab. Using the GUI for configuration will ensure the file is always accurate.
+  - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
+    your params.ini through the config tab. Using the GUI for configuration will ensure the file is always accurate.
 - I'm used to my profiles being in the downloaded d4lf folder, where are they?
-    - This was never the recommended place to keep the profiles. They should now be placed in your Windows user folder
-      so that you don't need to move them around for every update. Use the GUI to open up that folder directly.
+  - This was never the recommended place to keep the profiles. They should now be placed in your Windows user folder
+    so that you don't need to move them around for every update. Use the GUI to open up that folder directly.
 - I'm used to affix fields looking like this: `[ dexterity, 33 ]`
-    - Formats like `[ dexterity, 33 ]` are still completely valid. The importer creates affix fields which look
-      like `{name: dexterity, value: 33}`. These are identical and either format can be used interchangeably. We
-      recommend starting all new builds through the importer, so examples show the format the importer uses.
+  - Formats like `[ dexterity, 33 ]` are still completely valid. The importer creates affix fields which look
+    like `{name: dexterity, value: 33}`. These are identical and either format can be used interchangeably. We
+    recommend starting all new builds through the importer, so examples show the format the importer uses.
 - Mouse control isn't possible
-    - Due to your local windows settings, the tool might not be able to control the mouse. Just run the tool as admin
-      and it should work. If you don't want to run it as admin, you can disable the mouse control in the params.ini
-      by setting `vision_mode_only` to `true`.
+  - Due to your local windows settings, the tool might not be able to control the mouse. Just run the tool as admin
+    and it should work. If you don't want to run it as admin, you can disable the mouse control in the params.ini
+    by setting `vision_mode_only` to `true`.
+- I am trying to import a trade search from diablo.trade and am getting an error that I need to install Chrome.
+  - diablo.trade has a setting enabled that will block all automated access, but we use a chrome-based browser to
+    circumvent this. For diablo.trade imports it is required that Chrome be installed. Regular build imports can
+    work with any browser.
+- Steam user: The tool shows a warning saying "TTS connection has not been made yet." but I've set everything up correctly.
+  - If you're seeing this error, it means D4LF has found the DLL is in the correct location but the TTS connection is
+    still not being made. This is most likely due to an issue with your windows user not allowing Diablo to connect to
+    the third party screen reader. The following steps should resolve it:
+    - Set Diablo 4 to run as administrator. First, navigate to your Diablo 4 directory. You can get there through Steam by right clicking on the game and
+      choosing Properties. In that menu, go to Installed Files and hit Browse. Right-click on Diablo IV.exe and go to Properties. In the Compatibility tab, check the box
+      that says "Run this program as an administrator"
+    - Run Diablo 4 again through Steam and see if that resolved the issue.
+    - If it did not, set Steam to run as administrator as well and make sure you are running Diablo through Steam. This should resolve the issue.
+
+### TTS
+
+D4 uses a third-party TTS engine called Tolk. Tolk has a feature that allows custom third-party TTS DLLs to be loaded.
+D4 automatically loads the DLL, which actually just sends the text to another application rather than reading it aloud.
+This is similar to having a Braille TTS application for D4.
 
 ### Configs
 
@@ -72,36 +103,36 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 
 ### params.ini
 
-| [general]                                         | Description                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| \[general\]                                       | Description                                                                                                                                                                                                                                                                                                                                                                                                                              |
 |---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | profiles                                          | A set of profiles separated by comma. d4lf will look for these yaml files in config/profiles and in C:/Users/WINDOWS_USER/.d4lf/profiles                                                                                                                                                                                                                                                                                                 |
-| keep_aspects                                      | - `all`: Keep all legendary items <br>- `upgrade`: Keep all legendary items that upgrade your codex of power <br>- `none`: Keep no legendary items based on aspect (they are still filtered!)                                                                                                                                                                                                                                            |
-| handle_rares                                      | - `filter`: Filter them based on your profiles <br>- `ignore`: Ignores all rares, vision mode shows them as blue and auto mode never junks or favorites them <br>- `junk`: Vision mode shows them always as red, auto mode always junks rares                                                                                                                                                                                            |
-| handle_uniques                                    | How to handle uniques that do not match any filter. This property does not apply to filtered uniques. All mythics are favorited regardless of filter. <br/>- `favorite`: Mark the unique as favorite and vision mode will show it as green (default)<br/>- `ignore`: Do nothing with the unique and vision mode will show it as green<br/>- `junk`: Mark any uniques that don't match any filters as junk and show as red in vision mode |
-| run_vision_mode_on_startup                        | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey                                                                                                                                                                                                                                                                                              |
+| browser                                           | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported. Note: Trade importing can only work with Chrome and ignores this setting.                                                                                                                                                                                                                           |
 | check_chest_tabs                                  | Which chest tabs will be checked and filtered for items in case chest is open when starting the filter. You need to buy all slots. Counting is done left to right. E.g. 1,2,4 will check tab 1, tab 2, tab 4                                                                                                                                                                                                                             |
-| move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything                                                                                                             |
+| full_dump                                         | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not                                                                                                                                                                                                                                                                                                                                |
+| handle_cosmetics                                  | How to handle new cosmetics that do not match any filter and are not aspect upgrades. `ignore` will ignore them, `junk` will mark them as junk                                                                                                                                                                                                                                                                                           |
+| handle_uniques                                    | How to handle uniques that do not match any filter. This property does not apply to filtered uniques. All mythics are favorited regardless of filter. <br/>- `favorite`: Mark the unique as favorite and vision mode will show it as green (default)<br/>- `ignore`: Do nothing with the unique and vision mode will show it as green<br/>- `junk`: Mark any uniques that don't match any filters as junk and show as red in vision mode |
+| keep_aspects                                      | - `all`: Keep all legendary items <br>- `upgrade`: Keep all legendary items that upgrade your codex of power <br>- `none`: Keep no legendary items based on aspect (they are still filtered!) <br>- **Note**: Items with no profile matches but are aspect upgrades will be highlighted in orange.                                                                                                                                                                                                                                            |
 | mark_as_favorite                                  | Whether to favorite matched items or not. Defaults to true                                                                                                                                                                                                                                                                                                                                                                               |
 | minimum_overlay_font_size                         | The minimum font size for the vision overlay, specifically the green text that shows which filter(s) are matching. Note: For small profile names, the font may actually be larger than this size but will never go below this size.                                                                                                                                                                                                      |
-| hidden_transparency                               | The overlay will become transparent after not hovering it for a while. This can be changed by specifying any value between [0, 1] with 0 being completely invisible and 1 completely visible                                                                                                                                                                                                                                             |
-| browser                                           | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported                                                                                                                                                                                                                                                                                                      |
-| full_dump                                         | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not                                                                                                                                                                                                                                                                                                                                |
+| move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything                                                                                                             |
+| run_vision_mode_on_startup                        | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey                                                                                                                                                                                                                                                                                              |
+| s7_do_not_junk_ancestral_legendaries              | Do not mark ancestral legendaries as junk. This is to help with the season 7 Slayer seasonal challenge "Precious Shards"                                                                                                                                                                                                                                                                                                                 |
+| vision_mode_type                                  | Which vision mode you would like to use?. `highlight_matches` does the classic green highlighting of affixes on screen, but is slightly slower. `fast` just puts green text on screen but is very fast and works with controllers.                                                                                                                                                                                                       |
 
-| [char]    | Description                       |
+| \[char\]    | Description                       |
 |-----------|-----------------------------------|
 | inventory | Your hotkey for opening inventory |
 
-| [advanced_options]       | Description                                                                                                              |
+| \[advanced_options\]     | Description                                                                                                              |
 |--------------------------|--------------------------------------------------------------------------------------------------------------------------|
 | move_to_inv              | Hotkey for moving items from stash to inventory                                                                          |
 | move_to_chest            | Hotkey for moving items from inventory to stash                                                                          |
-| run_scripts              | Hotkey to start/stop vision mode                                                                                         |
 | run_filter               | Hotkey to start/stop filtering items                                                                                     |
 | run_filter_force_refresh | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                               |
+| run_vision_mode          | Hotkey to start/stop vision mode                                                                                         |
 | force_refresh_only       | Hotkey to reset all item statuses without running a filter after                                                         |
 | exit_key                 | Hotkey to exit d4lf.exe                                                                                                  |
-| log_level                | Logging level. Can be any of [debug, info, warning, error, critical]                                                     |
-| scripts                  | Running different scripts                                                                                                |
+| log_level                | Logging level. Can be any of \[debug, info, warning, error, critical\]                                                     |
 | process_name             | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted |
 | vision_mode_only         | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.            |
 
@@ -114,6 +145,7 @@ Current functionality:
 - Import builds from maxroll/d4builds/mobalytics
 - Create profiles based off of searches for diablo.trade (requires chrome)
 - Complete management of your params.ini through the config tab
+- A beta version of a manual profile editor/creator
 
 Each tab gives further instructions on how to use it and what kind of input it expects.
 
@@ -179,14 +211,14 @@ has a name and can filter for any combination of the following:
   of `affixPool`
 - `affixPool`: A list of multiple different rulesets to filter for. Each ruleset must be fulfilled or the item is
   discarded
-    - `count`: Define a list of affixes (see [syntax](#affix--aspects-filter-syntax)) and
-      optionally `minCount`, `maxCount` and `minGreaterAffixCount`
-        - `minCount`: specifies the minimum number of affixes that must match the item. defaults to amount of specified
-          affixes
-        - `maxCount` specifies the maximum number of affixes that must match the item. defaults to amount of specified
-          affixes
-        - `minGreaterAffixCount`: specifies the minimum number of greater affixes inside this count group. defaults
-          to `0`
+  - `count`: Define a list of affixes (see [syntax](#affix--aspects-filter-syntax)) and
+    optionally `minCount`, `maxCount` and `minGreaterAffixCount`
+    - `minCount`: specifies the minimum number of affixes that must match the item. defaults to amount of specified
+      affixes
+    - `maxCount` specifies the maximum number of affixes that must match the item. defaults to amount of specified
+      affixes
+    - `minGreaterAffixCount`: specifies the minimum number of greater affixes inside this count group. defaults
+      to `0`
 - `inherentPool`: The same rules as for `affixPool` apply, but this is evaluated against the inherent affixes of the
   item
 
@@ -277,8 +309,6 @@ for. If no Sigil filter is provided, all Sigils will be kept.
 
 ```yaml
 Sigils:
-  minTier: 40
-  maxTier: 100
   blacklist:
     # locations
     - endless_gates
@@ -295,8 +325,6 @@ present, `blacklist` will be used to discard sigils that match any of the blackl
 ```yaml
 # Only keep sigils for vault_of_the_forsaken without any of the affixes armor_breakers and resistance_breakers
 Sigils:
-  minTier: 40
-  maxTier: 100
   blacklist:
     - armor_breakers
     - resistance_breakers
@@ -309,8 +337,6 @@ To switch that priority, you can add the `priority` key with the value `whitelis
 ```yaml
 # This will keep all vault of the forsaken sigils even if they have armor_breakers or resistance_breakers
 Sigils:
-  minTier: 40
-  maxTier: 100
   blacklist:
     - armor_breakers
     - resistance_breakers
@@ -324,8 +350,6 @@ You can also create conditional filters based on a single affix or location.
 ```yaml
 # Only keep sigils for iron_hold when it also has shadow_damage
 Sigils:
-  minTier: 40
-  maxTier: 100
   blacklist:
     - armor_breakers
     - resistance_breakers
@@ -337,6 +361,37 @@ Sigils:
 
 Sigil affixes and location names are lower case and spaces are replaced by underscore. You can find the full list of
 names in [assets/lang/enUS/sigils.json](assets/lang/enUS/sigils.json).
+
+### Tributes
+
+Tributes are defined by the top-level key `Tributes`. It contains a list of either tribute names or rarities you want
+to filter. Any not in the list are not kept. If no Tribute filter is provided, all Tributes will be kept.
+
+Mythic tributes are always kept no matter what.
+
+<details><summary>Config Examples</summary>
+
+```yaml
+# Keeps tribute_of_mystique and all legendary and unique tributes
+Tributes:
+  - tribute_of_mystique
+  - [legendary, unique]
+```
+
+If you're exceptionally pressed for time, you can just put the name of the tribute without "tribute_of_" at the beginning.
+
+```yaml
+# Keeps Tribute of Mystique and Tribute of Ascendance (Resolute) and nothing else
+Tributes:
+  - mystique
+  - ascendance_resolute
+```
+
+</details>
+
+Tribute names are lower case and spaces are replaced by underscore. Parentheses are removed. Note that United and
+Tribute names in [assets/lang/enUS/tributes.json](assets/lang/enUS/sigils.json). You can find the list of item rarities
+in [rarity.py](src/item/data/rarity.py)
 
 ### Uniques
 
@@ -352,6 +407,19 @@ you'll only need to specify the threshold that you want to apply (see examples b
 Additionally, you can filter all uniques based on a generic property like their item power or if they have greater
 affixes. Once a "global" filter like this is applied then all uniques will have a filter that now applies to them
 and handle_uniques will be ignored.
+
+The following global filters are available. As a reminder, these will apply to all uniques that are not specifically
+being filtered by aspect:
+
+- `itemType`: The name of the type or a list of multiple types.
+  See [assets/lang/enUS/item_types.json](assets/lang/enUS/item_types.json)
+- `minGreaterAffixCount`: Only keep uniques with a specific number of greater affixes
+- `minPercentOfAspect` (experimental): Only keep uniques whose aspect is above a percentage of the total possible.
+  For example, if this is set to 80 and an aspect has a range of 100-200, then a value of 180 would be kept but a value
+  of 150 would be marked as junk. Situations where a smaller value is what is wanted are automatically handled as well.
+  This functionality is new so please report any issues found with it.
+- `minPower`: The minimum item power of uniques to keep
+- `mythic`: If set to true, only keep mythic uniques.
 
 In vision mode, uniques show as <filename>.<aspect>. For example myuniques.yaml with fists_of_fate aspect defined
 would show as myuniques.fists_of_fate. The label for the filename can be configured at the aspect level using the
@@ -369,6 +437,12 @@ Uniques:
 # Take all uniques with item power > 900
 Uniques:
   - minPower: 900
+```
+
+```yaml
+# Take all uniques with at least 1 greater affix
+Uniques:
+  - minGreaterAffixCount: 1
 ```
 
 ```yaml
@@ -414,31 +488,45 @@ Uniques:
       - { name: damage_reduction_from_close_enemies, value: 12 }
 ```
 
+```yaml
+# Note that if a unique matches any filter, it is kept. Each - denotes a new filter.
+# For example, the below will keep all uniques that have two greater affixes OR an aspect percentage greater than 80
+Uniques:
+  - minGreaterAffixCount: 2
+  - minPercentOfAspect: 80
+```
+```yaml
+# Conversely, this will match all uniques that have two greater affixes AND an aspect percentage greater than 80
+Uniques:
+  - minGreaterAffixCount: 2
+    minPercentOfAspect: 80
+```
+
 </details>
 
 Unique names are lower case and spaces are replaced by underscore. You can find the full list of names
-in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json).
+in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json). Occasionally a unique is missing. If you find one missing just raise an issue and we can add it.
+
+## Future Plans
+
+- Evaluate bringing back the small overlay the previous versions used
+- A video explaining the initial setup
+- Evaluate using joystick emulation to further increase speed for users willing to do additional setup
+- Finish GUI documentation
+- Want something done that's not mentioned here? Leave a suggestion in the [discord](https://discord.gg/YyzaPhAN6T) or use github issues. Or, make the changes yourself and open up a PR!
 
 ## Develop
 
 ### Python Setup
 
-- You can use [miniconda](https://docs.conda.io/projects/miniconda/en/latest/) or just plain python.
-
-Conda setup:
-
-```bash
-git clone https://github.com/aeon0/d4lf
-cd d4lf
-conda env create -f environment.yml
-conda activate d4lf
-python -m src.main
-```
+- You can use plain python or something like [miniconda](https://docs.conda.io/projects/miniconda/en/latest/).
 
 Python setup (windows, linux venv activation differs):
 
+If you intend to submit PRs, create your own fork of d4lf and clone that in the steps below.
+
 ```bash
-git clone https://github.com/aeon0/d4lf
+git clone https://github.com/d4lfteam/d4lf
 cd d4lf
 python -m venv venv
 venv\Scripts\activate
@@ -446,22 +534,34 @@ python -m pip install -r requirements.txt
 python -m src.main
 ```
 
+Conda setup:
+
+```bash
+git clone https://github.com/d4lfteam/d4lf
+cd d4lf
+conda env create -f environment.yml
+conda activate d4lf
+python -m pip install -r requirements.txt
+python -m src.main
+```
+
 ### Formatting & Linting
 
-Ruff is used for linting and auto formatting. You can run it with:
+Just use pre-commit.
 
 ```bash
-ruff format
+pre-commit install
 ```
+
+or directly via
 
 ```bash
-ruff check
+pre-commit run -a
 ```
-
-Setup VS Code by using the ruff extension. Also turn on "trim trailing whitespaces" is VS Code settings.
 
 ## Credits
 
 - Icon based of: [CarbotAnimations](https://www.youtube.com/carbotanimations/about)
-- Some of the OCR code is originally from [@gleed](https://github.com/aliig). Good guy.
+- Some of the OCR code is originally from [@gleed](https://github.com/aliig). Good guy
 - Names and textures for matching from [Blizzard](https://www.blizzard.com)
+- Thanks to NekrosStratia for the initial idea and help with TTS mode
