@@ -25,7 +25,11 @@ from gui.dialog import CreateItem, DeleteItem, MinCountDialog, MinGreaterDialog,
 from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
 from src.gui.importer.common import ProfileModel, save_as_profile
+from src.gui.profile_editor import ProfileEditor
 from src.item.filter import _UniqueKeyLoader
+from pydantic import BaseModel
+import numpy as np
+import enum
 
 LOGGER = logging.getLogger(__name__)
 
@@ -97,12 +101,8 @@ class ProfileTab(QWidget):
         with open(str(BASE_DIR / "assets/lang/enUS/affixes.json")) as f:
             self.affixesNames = json.load(f)
 
-        self.item_widgets = QWidget()
-        self.item_widgets_layout = QGridLayout()
-        self.item_widgets_layout.setDefaultPositioning(4, Qt.Orientation.Horizontal)
-        self.item_list: list[D4LFItem] = []
-        self.item_widgets.setLayout(self.item_widgets_layout)
-        scrollable_layout.addWidget(self.item_widgets)
+        self.load()
+        scrollable_layout.addWidget(self.model_editor)
         scroll_widget.setLayout(scrollable_layout)
         scroll_area.setWidget(scroll_widget)
         self.main_layout.addWidget(scroll_area)
@@ -118,7 +118,7 @@ class ProfileTab(QWidget):
         instructions_text.setFixedHeight(100)
         self.main_layout.addWidget(instructions_text)
         self.setLayout(self.main_layout)
-        self.load()
+
 
     def confirm_discard_changes(self):
         reply = QMessageBox.warning(
@@ -166,28 +166,46 @@ class ProfileTab(QWidget):
         else:
             self.create_alert("No file loaded")
 
-    def load_items(self):
-        row = 0
-        col = 0
+    def load_items(self, model, indent=0, prefix="", max_list_items=3):
+        """Recursively pretty-print Pydantic models with indentation"""
+        indent_str = " " * indent
+        next_indent = indent + 4
+        if isinstance(model, BaseModel):
+            print(f"{indent_str}{prefix}{model.__class__.__name__}:")
+            for name, field in model.model_fields.items():
+                value = getattr(model, name)
+                self.load_items(value, next_indent, f"{name}: ", max_list_items)
 
-        while self.item_widgets_layout.count():
-            item = self.item_widgets_layout.takeAt(0)
-            item.widget().deleteLater()
+        elif isinstance(model, list):
+            if len(model) > max_list_items:
+                print(f"{indent_str}{prefix}[{len(model)} items]")
+                for i, item in enumerate(model[:max_list_items]):
+                    self.load_items(item, next_indent, f"[{i}] ", max_list_items)
+                if len(model) > max_list_items:
+                    print(f"{indent_str} ... and {len(model)-max_list_items} more")
+            else:
+                print(f"{indent_str}{prefix}[")
+                for i, item in enumerate(model):
+                    self.load_items(item, next_indent, f"[{i}] ", max_list_items)
+                print(f"{indent_str}]")
 
-        self.item_list = []
+        elif isinstance(model, dict):
+            print(f"{indent_str}{prefix}{{")
+            for key, value in model.items():
+                self.load_items(value, next_indent, f"{key}: ", max_list_items)
+            print(f"{indent_str}}}")
 
-        if len(self.root.Affixes) > 20:
-            self.create_alert("Profiles with more than 20 affixes are not supported.")
-            return
+        elif isinstance(model, np.ndarray):
+            print(f"{indent_str}{prefix}ndarray(shape={model.shape}, dtype={model.dtype})")
 
-        for item in self.root.Affixes:
-            d4lf_item = D4LFItem(item, self.affixesNames, self.itemTypes)
-            self.item_list.append(d4lf_item)
-            if col % 4 == 0 and col != 0:
-                col = 0
-                row += 1
-            self.item_widgets_layout.addWidget(d4lf_item, row, col)
-            col += 1
+        elif isinstance(model, enum.Enum):
+            print(f"{indent_str}{prefix}{model.value}")
+
+        elif hasattr(model, "__dict__"):  # Fallback for other objects
+            print(f"{indent_str}{prefix}{str(model)}")
+
+        else:
+            print(f"{indent_str}{prefix}{model}")
 
     def load(self):
         profiles: list[str] = IniConfigLoader().general.profiles
@@ -210,7 +228,8 @@ class ProfileTab(QWidget):
             if not self.load_yaml():
                 return False
             self.update_filename_label()
-            self.load_items()
+            #self.load_items(self.root)
+            self.model_editor = ProfileEditor(self.root)
             return True
         return False
 

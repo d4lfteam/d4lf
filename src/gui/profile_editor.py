@@ -1,0 +1,309 @@
+from PyQt6.QtWidgets import (QWidget, QScrollArea, QVBoxLayout, QGroupBox, QFormLayout,
+                            QPushButton, QListWidget, QListWidgetItem, QHBoxLayout,
+                            QLineEdit, QInputDialog, QTabWidget, QMessageBox)
+from PyQt6.QtCore import Qt
+from src.config.models import ItemType, AffixFilterModel, AffixFilterCountModel, ItemFilterModel, ComparisonType, ProfileModel, DynamicItemFilterModel
+from src.dataloader import Dataloader
+from src.gui.dialog import IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox
+
+class AffixGroupEditor(QGroupBox):
+    def __init__(self, item_type: ItemType, config: ItemFilterModel, parent=None):
+        super().__init__(parent)
+        self.item_type = item_type
+        self.config = config
+        self.setTitle(item_type.value)
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout()
+
+        # General Settings
+        general_form = QFormLayout()
+        self.min_power = IgnoreScrollWheelSpinBox()
+        self.min_power.setMaximum(950)
+        self.min_power.setValue(self.config.minPower)
+        general_form.addRow("Minimum Power:", self.min_power)
+
+        self.min_greater = IgnoreScrollWheelSpinBox()
+        self.min_greater.setMaximum(950)
+        self.min_greater.setValue(self.config.minGreaterAffixCount)
+        general_form.addRow("Min Greater Affixes:", self.min_greater)
+
+        layout.addLayout(general_form)
+
+        # Affix Pools
+        self.affix_pools = QListWidget()
+        self.affix_pools.setAlternatingRowColors(True)
+        for pool in self.config.affixPool:
+            self.add_affix_pool_item(pool)
+
+        pool_btn_layout = QHBoxLayout()
+        add_pool_btn = QPushButton("Add Affix Pool")
+        add_pool_btn.clicked.connect(self.add_affix_pool)
+        remove_pool_btn = QPushButton("Remove Pool")
+        remove_pool_btn.clicked.connect(lambda: self.remove_selected(self.affix_pools))
+
+        pool_btn_layout.addWidget(add_pool_btn)
+        pool_btn_layout.addWidget(remove_pool_btn)
+
+        layout.addWidget(self.affix_pools)
+        layout.addLayout(pool_btn_layout)
+
+        self.setLayout(layout)
+
+    def add_affix_pool_item(self, pool: AffixFilterCountModel):
+        item = QListWidgetItem()
+        widget = AffixPoolWidget(pool)
+        item.setSizeHint(widget.sizeHint())
+        self.affix_pools.addItem(item)
+        self.affix_pools.setItemWidget(item, widget)
+
+    def add_affix_pool(self):
+        new_pool = AffixFilterCountModel(
+            count=[],
+            minCount=1,
+            maxCount=3,
+            minGreaterAffixCount=0
+        )
+        self.config.affixPool.append(new_pool)
+        self.add_affix_pool_item(new_pool)
+
+    def remove_selected(self, list_widget):
+        for item in list_widget.selectedItems():
+            row = list_widget.row(item)
+            list_widget.takeItem(row)
+            del self.config.affixPool[row]
+
+    def save_config(self):
+        self.config.minPower = self.min_power.value()
+        self.config.minGreaterAffixCount = self.min_greater.value()
+
+class AffixPoolWidget(QWidget):
+    def __init__(self, pool: AffixFilterCountModel, parent=None):
+        super().__init__(parent)
+        self.pool = pool
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout()
+
+        # Pool Configuration
+        config_layout = QHBoxLayout()
+        self.min_count = IgnoreScrollWheelSpinBox()
+        self.min_count.setMaximum(950)
+        self.min_count.setValue(self.pool.minCount)
+        config_layout.addWidget(self.min_count)
+
+        self.max_count = IgnoreScrollWheelSpinBox()
+        self.max_count.setMaximum(950)
+        self.pool.maxCount = 2147483647 if self.pool.maxCount > 2147483647 else self.pool.maxCount
+        self.max_count.setValue(self.pool.maxCount)
+        config_layout.addWidget(self.max_count)
+
+        self.min_greater = IgnoreScrollWheelSpinBox()
+        self.min_greater.setMaximum(950)
+        self.min_greater.setValue(self.pool.minGreaterAffixCount)
+        config_layout.addWidget(self.min_greater)
+
+        layout.addLayout(config_layout)
+
+        # Affix List
+        self.affix_list = QListWidget()
+        self.affix_list.setAlternatingRowColors(True)
+        for affix in self.pool.count:
+            self.add_affix_item(affix)
+
+        affix_btn_layout = QHBoxLayout()
+        add_affix_btn = QPushButton("Add Affix")
+        add_affix_btn.clicked.connect(self.add_affix)
+        remove_affix_btn = QPushButton("Remove Affix")
+        remove_affix_btn.clicked.connect(lambda: self.remove_selected(self.affix_list))
+
+        layout.addWidget(self.affix_list)
+        layout.addLayout(affix_btn_layout)
+        self.setLayout(layout)
+
+    def add_affix_item(self, affix: AffixFilterModel):
+        item = QListWidgetItem()
+        widget = AffixWidget(affix)
+        item.setSizeHint(widget.sizeHint())
+        self.affix_list.addItem(item)
+        self.affix_list.setItemWidget(item, widget)
+
+    def add_affix(self):
+        new_affix = AffixFilterModel(name="", value=None)
+        self.pool.count.append(new_affix)
+        self.add_affix_item(new_affix)
+
+    def remove_selected(self, list_widget):
+        for item in list_widget.selectedItems():
+            row = list_widget.row(item)
+            list_widget.takeItem(row)
+            del self.pool.count[row]
+
+class AffixWidget(QWidget):
+    def __init__(self, affix: AffixFilterModel, parent=None):
+        super().__init__(parent)
+        self.affix = affix
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QHBoxLayout()
+
+        # Affix Name Combobox
+        self.name_combo = IgnoreScrollWheelComboBox()
+        self.name_combo.addItems(sorted(Dataloader().affix_dict.keys()))
+        if self.affix.name in Dataloader().affix_dict:
+            self.name_combo.setCurrentText(self.affix.name)
+        self.name_combo.currentTextChanged.connect(self.update_name)
+
+        # Value Input
+        self.value_edit = QLineEdit()
+        self.value_edit.setPlaceholderText("Value (optional)")
+        if self.affix.value is not None:
+            self.value_edit.setText(str(self.affix.value))
+        self.value_edit.textChanged.connect(self.update_value)
+
+        # Comparison Combobox
+        self.comparison_combo = IgnoreScrollWheelComboBox()
+        self.comparison_combo.addItems([ct.value for ct in ComparisonType])
+        self.comparison_combo.setCurrentText(self.affix.comparison.value)
+        self.comparison_combo.currentTextChanged.connect(self.update_comparison)
+
+        layout.addWidget(self.name_combo, 4)
+        layout.addWidget(self.value_edit, 2)
+        layout.addWidget(self.comparison_combo, 2)
+        self.setLayout(layout)
+
+    def update_name(self, name):
+        self.affix.name = name
+
+    def update_value(self, value):
+        try:
+            self.affix.value = float(value) if value else None
+        except ValueError:
+            pass
+
+    def update_comparison(self, comparison):
+        self.affix.comparison = ComparisonType(comparison)
+
+class AffixesTab(QWidget):
+    def __init__(self, profile_model: ProfileModel, parent=None):
+        super().__init__(parent)
+        self.profile_model = profile_model
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout()
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+
+        self.container = QWidget()
+        self.container_layout = QVBoxLayout()
+        self.container_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        # Add existing groups
+        for affix_group in self.profile_model.Affixes:
+            for item_type, config in affix_group.root.items():
+                group = AffixGroupEditor(ItemType.__members__[item_type], config)
+                self.container_layout.addWidget(group)
+
+        # Add controls
+        btn_layout = QHBoxLayout()
+        add_btn = QPushButton("Add Item Type")
+        add_btn.clicked.connect(self.add_item_type)
+        save_btn = QPushButton("Save All")
+        save_btn.clicked.connect(self.save_all)
+
+        btn_layout.addWidget(add_btn)
+        btn_layout.addStretch()
+        btn_layout.addWidget(save_btn)
+
+        self.container.setLayout(self.container_layout)
+        scroll.setWidget(self.container)
+
+        layout.addWidget(scroll)
+        layout.addLayout(btn_layout)
+        self.setLayout(layout)
+
+    def add_item_type(self):
+        item_type, ok = QInputDialog.getItem(
+            self, "Add Item Type", "Select:", [e.value for e in ItemType]
+        )
+        if ok and item_type:
+            new_filter = ItemFilterModel(
+                itemType=[ItemType(item_type)],
+                minPower=0
+            )
+            dynamic_filter = DynamicItemFilterModel(root={item_type: new_filter})
+            self.profile_model.Affixes.append(dynamic_filter)
+
+            group = AffixGroupEditor(ItemType(item_type), new_filter)
+            self.container_layout.addWidget(group)
+
+    def save_all(self):
+        # Save all group configurations
+        for i in range(self.container_layout.count()):
+            widget = self.container_layout.itemAt(i).widget()
+            if isinstance(widget, AffixGroupEditor):
+                widget.save_config()
+
+class SigilsTab(QWidget):
+    def __init__(self, profile_model: ProfileModel, parent=None):
+        super().__init__(parent)
+        # Sigils-specific UI implementation
+        pass
+
+class TributesTab(QWidget):
+    def __init__(self, profile_model: ProfileModel, parent=None):
+        super().__init__(parent)
+        # Tributes-specific UI implementation
+        pass
+
+class UniquesTab(QWidget):
+    def __init__(self, profile_model: ProfileModel, parent=None):
+        super().__init__(parent)
+        # Uniques-specific UI implementation
+        pass
+
+class ProfileEditor(QTabWidget):
+    def __init__(self, profile_model: ProfileModel, parent=None):
+        super().__init__(parent)
+        self.profile_model = profile_model
+        self.setup_ui()
+
+    def setup_ui(self):
+        # Create main tabs
+        self.affixes_tab = AffixesTab(self.profile_model)
+        self.sigils_tab = SigilsTab(self.profile_model)  # To be implemented
+        self.tributes_tab = TributesTab(self.profile_model)  # To be implemented
+        self.uniques_tab = UniquesTab(self.profile_model)  # To be implemented
+
+        # Add tabs with icons
+        self.addTab(self.affixes_tab, "Affixes")
+        self.addTab(self.sigils_tab, "Sigils")
+        self.addTab(self.tributes_tab, "Tributes")
+        self.uniques_index = self.addTab(self.uniques_tab, "Uniques")
+
+        # Configure tab widget properties
+        self.setDocumentMode(True)
+        self.setMovable(False)
+        self.setTabPosition(QTabWidget.TabPosition.North)
+        self.setElideMode(Qt.TextElideMode.ElideRight)
+
+        # Connect signals
+        self.currentChanged.connect(self.on_tab_changed)
+
+    def on_tab_changed(self, index):
+        """Handle tab changes and validation"""
+        if index == self.uniques_index:
+            self.validate_uniques_tab()
+
+    def validate_uniques_tab(self):
+        """Example validation method"""
+        pass
+
+    def save_all(self):
+        """Save all tabs' configurations"""
+        self.affixes_tab.save_all()
+        # Add save calls for other tabs
+        QMessageBox.information(self, "Saved", "All configurations saved successfully")
