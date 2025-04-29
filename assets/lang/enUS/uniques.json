@@ -21,6 +21,12 @@
         "num_idx": [],
         "num_inherents": 1
     },
+    "[ph]_ichorous_salvation": {
+        "desc": "ichorous salvation",
+        "full": "Ichorous Salvation",
+        "num_idx": [],
+        "num_inherents": 2
+    },
     "[ph]_thorn_pulse": {
         "desc": "thorn pulse",
         "full": "[PH] Thorn Pulse",
@@ -40,10 +46,10 @@
         "num_inherents": 1
     },
     "airidahs_inexorable_will": {
-        "desc": "when casting an ultimate skill and again seconds after, you pull in distant enemies and deal physical damage to them. this damage is increased by per point of willpower you have. current bonus",
-        "full": "When casting an {c_important}Ultimate{/c} Skill and again {c_number}[Affix.\"Static Value 0\"]{/c} seconds after, you Pull in Distant enemies and deal {c_random}[Affix_Flat_Value_1]{/c} Physical damage to them. This damage is increased by {c_number}[(Affix_Value_2 * 100)|2%x|]{/c} per {c_number}[Affix.\"Static Value 2\"]{/c} point of Willpower you have.\r\n\r\nCurrent Bonus: {c_number}[Floor(Owner.Willpower_Total) * (Affix_Value_2 * 100) / Affix.\"Static Value 2\"|x%|]{/c}",
+        "desc": "casting an ultimate skill pulls in distant enemies, dealing physical damage to them and increasing by for every points of willpower you have. this effect repeats once more seconds later. current bonus",
+        "full": "Casting an {c_important}Ultimate{/c} Skill Pulls in Distant enemies, dealing {c_random}[Affix_Flat_Value_1]{/c} Physical damage to them and increasing by {c_number}[(Affix_Value_2 * 100)|%x|]{/c} for every {c_number}[Affix.\"Static Value 2\"]{/c} |4point:points; of Willpower you have. This effect repeats once more {c_number}[Affix.\"Static Value 0\"]{/c} seconds later.\r\n\r\nCurrent Bonus: {c_number}[Floor(Owner.Willpower_Total) * (Affix_Value_2 * 100) / Affix.\"Static Value 2\"|x%|]{/c}",
         "num_idx": [
-            1
+            0
         ],
         "num_inherents": 2
     },
@@ -111,6 +117,22 @@
         ],
         "num_inherents": 2
     },
+    "bands_of_ichorous_rose": {
+        "desc": "poison trap always deals its full damage over seconds and it benefits from all of its upgrades, which are increased by . poison trap also benefits from combo points has no cooldown during inner sight cooldown is reduced by preparation",
+        "full": "{c_important}Poison Trap{/c} always deals its full damage over {c_number}[Affix.\"Static Value 0\"]{/c} seconds and it benefits from all of its upgrades, which are increased by {c_random}[Affix_Value_1|1%x|]{/c}.\r\n\r\n{c_important}Poison Trap{/c} also: \r\n{icon:bullet,1.2}Benefits from {c_important}Combo Points{/c}\r\n{icon:bullet,1.2}Has no Cooldown during {c_important}Inner Sight{/c}\r\n{icon:bullet,1.2}Cooldown is reduced by {c_important}Preparation{/c}",
+        "num_idx": [
+            1
+        ],
+        "num_inherents": 1
+    },
+    "bane_of ahjad-den": {
+        "desc": "every seconds, your next mighty throw detonates its pulses instantly as fire damage and deals increased damage.",
+        "full": "Every {c_number}[Affix.\"Static Value 0\"]{/c} seconds, your next {c_important}Mighty Throw{/c} detonates its pulses instantly as Fire Damage and deals {c_random}[Affix_Value_1*100|1%x|]{/c} increased damage.",
+        "num_idx": [
+            1
+        ],
+        "num_inherents": 0
+    },
     "banished_lords_talisman": {
         "desc": "after you spend of your primary resource, your next core skill is guaranteed to overpower. your critical strikes that overpower deal increased damage.",
         "full": "After you spend {c_number}[Affix.\"Static Value 0\"]{/c} of your Primary Resource, your next {c_important}Core{/c} Skill is guaranteed to {c_important}{u}Overpower{/u}{/c}. Your Critical Strikes that {c_important}{u}Overpower{/u}{/c} deal {c_random}[Affix_Value_1|%x|]{/c} increased damage.",
@@ -126,7 +148,7 @@
             1,
             2
         ],
-        "num_inherents": 1
+        "num_inherents": 2
     },
     "beastfall_boots": {
         "desc": "when you cast an ultimate skill, your next core skill consumes all of your energy and deals increased damage per energy consumed. using a cooldown restores energy.",
@@ -250,8 +272,8 @@
         "num_inherents": 0
     },
     "deathless_visage": {
-        "desc": "bone spear deals more critical strike damage and forms echoes that burst for physical damage, increased by for every of your total critical strike damage bonus. current bonus",
-        "full": "{c_important}Bone Spear{/c} deals {c_random}[Affix_Value_2|1%x|]{/c} more Critical Strike Damage and forms echoes that burst for {c_random}[(Owner.Weapon_Damage_Min_Total + Owner.Weapon_Damage_Delta_Total) * (1 + Owner.Main_Hand_Damage_Percent_Bonus) * Affix_Value_1]{/c} Physical damage, increased by {c_number}[Affix.\"Static Value 0\"|%x|]{/c} for every {c_number}[Affix.\"Static Value 1\"|%|]{/c} of your total Critical Strike Damage bonus.\r\n\r\nCurrent Bonus: {c_number}[Floor((Owner.(ComputeCritDamageScalar() + (-1)) + Owner.Crit_Damage_Percent) / (Affix.\"Static Value 1\" / 100)) * Affix.\"Static Value 0\"|x%||1|]{/c}",
+        "desc": "bone spear deals more critical strike damage. casting it forms echoes that deal of its normal damage.",
+        "full": "{c_important}Bone Spear{/c} deals {c_random}[Affix_Value_2|%x|]{/c} more Critical Strike Damage. Casting it forms echoes that deal {c_random}[Affix_Value_1|%x|*100]{/c} of its normal damage.",
         "num_idx": [
             0,
             1
@@ -298,8 +320,8 @@
         "num_inherents": 2
     },
     "ebonpiercer": {
-        "desc": "blight also shoots smaller projectiles that pierce enemies and deal shadow damage over seconds.",
-        "full": "{c_important}Blight{/c} also shoots {c_number}[Affix.\"Static Value 1\"]{/c} smaller projectiles that pierce enemies and deal {c_random}[(Owner.Weapon_Damage_Min_Total + Owner.Weapon_Damage_Delta_Total) * (1 + Owner.Main_Hand_Damage_Percent_Bonus) * Affix_Value_1]{/c} Shadow damage over {c_number}[Affix.\"Static Value 0\"]{/c} seconds.",
+        "desc": "blight also shoots smaller projectiles that pierce enemies and deal corrupting damage over seconds.",
+        "full": "{c_important}Blight{/c} also shoots {c_number}[Affix.\"Static Value 1\"]{/c} smaller projectiles that pierce enemies and deal {c_random}[(Owner.Weapon_Damage_Min_Total + Owner.Weapon_Damage_Delta_Total) * (1 + Owner.Main_Hand_Damage_Percent_Bonus) * Affix_Value_1]{/c} Corrupting damage over {c_number}[Affix.\"Static Value 0\"]{/c} seconds.",
         "num_idx": [
             1
         ],
@@ -384,8 +406,8 @@
         "num_inherents": 2
     },
     "fractured_winterglass": {
-        "desc": "casting frozen orb has a chance to spawn a random conjuration when it explodes. lucky hit your conjurations have up to a chance to launch a frozen orb at nearby enemies.",
-        "full": "Casting {c_important}Frozen Orb{/c} has a {c_random}[Affix_Value_1|%|]{/c} chance to spawn a random {c_important}Conjuration{/c} when it explodes.\r\n\r\n{c_label}Lucky Hit:{/c} Your {c_important}Conjurations{/c} have up to a {c_random}[Affix_Value_2|%|]{/c} chance to launch a {c_important}Frozen Orb{/c} at Nearby enemies.",
+        "desc": "casting frozen orb has a chance to spawn a random conjuration on your action bar when it explodes. lucky hit your conjurations have up to a chance to launch a frozen orb at nearby enemies.",
+        "full": "Casting {c_important}Frozen Orb{/c} has a {c_random}[Affix_Value_1|%|]{/c} chance to spawn a random {c_important}Conjuration{/c} on your Action Bar when it explodes.\r\n\r\n{c_label}Lucky Hit:{/c} Your {c_important}Conjurations{/c} have up to a {c_random}[Affix_Value_2|%|]{/c} chance to launch a {c_important}Frozen Orb{/c} at Nearby enemies.",
         "num_idx": [
             0,
             1
@@ -393,10 +415,20 @@
         "num_inherents": 1
     },
     "frostburn": {
-        "desc": "lucky hit up to a chance to freeze enemies for seconds.",
-        "full": "{c_label}Lucky Hit:{/c} Up to a {c_random}[Affix_Value_1|%|]{/c} chance to {c_important}{u}Freeze{/u}{/c} enemies for {c_number}[Affix.\"Static Value 0\"]{/c} seconds.",
+        "desc": "you deal increased fire damage to chilled enemies and increased cold damage to burning enemies.",
+        "full": "You deal {c_random}[Affix_Value_1|%x|]{/c} increased Fire damage to {c_important}{u}Chilled{/u}{/c} enemies and {c_random}[Affix_Value_2|%x|]{/c} increased Cold damage to Burning enemies.",
         "num_idx": [
-            0
+            0,
+            1
+        ],
+        "num_inherents": 1
+    },
+    "gathlens_birthright": {
+        "desc": "while in human form, every nature magic critical strikes, or against bosses, grant anima of the forest for seconds. anima of the forest grants the perfect storm and earthen might key passives.",
+        "full": "While in Human form, every {c_random}[Affix_Value_1]{/c} {c_important}Nature Magic{/c} {c_important}Critical Strikes{/c}, or {c_random}[Affix_Value_1 / (Affix.\"Static Value 1\" + 1)]{/c} against Bosses, grant Anima of the Forest for {c_number}[Affix.\"Static Value 0\"]{/c} seconds.\r\n\r\nAnima of the Forest grants the {c_important}Perfect Storm{/c} and {c_important}Earthen Might{/c} Key Passives.",
+        "num_idx": [
+            0,
+            1
         ],
         "num_inherents": 1
     },
@@ -417,8 +449,8 @@
         "num_inherents": 0
     },
     "gohrs_devastating_grips": {
-        "desc": "whirlwind explodes every seconds and after it ends, dealing of the base damage dealt to surrounding enemies as fire damage.",
-        "full": "{c_important}Whirlwind{/c} explodes every {c_number}[Affix.\"Static Value 0\"]{/c} seconds and after it ends, dealing {c_random}[Affix_Value_1|%|]{/c} of the Base damage dealt to surrounding enemies as Fire damage.",
+        "desc": "whirlwind explodes every seconds dealing increased damage as fire. critical strikes with whirlwind reduce the time until the next explosion by seconds down to second.",
+        "full": "{c_important}Whirlwind{/c} explodes every {c_number}[Affix.\"Static Value 0\"]{/c} seconds dealing {c_random}[Affix_Value_1*100|%|]{/c} increased damage as Fire. {c_important}Critical Strikes{/c} with {c_important}Whirlwind{/c} reduce the time until the next explosion by {c_number}[Affix.\"Static Value 1\"|1|]{/c} seconds down to {c_number}[Affix.\"Static Value 2\"]{/c} second.",
         "num_idx": [
             1
         ],
@@ -441,10 +473,19 @@
         "num_inherents": 1
     },
     "greaves_of_the_empty_tomb": {
-        "desc": "sever leaves behind desecrated ground that deals shadow damage over seconds.",
-        "full": "{c_important}Sever{/c} leaves behind {c_important}Desecrated Ground{/c} that deals {c_random}[(Owner.Weapon_Damage_Min_Total + Owner.Weapon_Damage_Delta_Total) * (1 + Owner.Main_Hand_Damage_Percent_Bonus) * Affix_Value_1]{/c} Shadow damage over {c_number}[Affix.\"Static Value 0\"]{/c} seconds.",
+        "desc": "sever leaves behind desecrated ground that deals corrupting damage over seconds.",
+        "full": "{c_important}Sever{/c} leaves behind {c_important}Desecrated Ground{/c} that deals {c_random}[(Owner.Weapon_Damage_Min_Total + Owner.Weapon_Damage_Delta_Total) * (1 + Owner.Main_Hand_Damage_Percent_Bonus) * Affix_Value_1]{/c} Corrupting damage over {c_number}[Affix.\"Static Value 0\"]{/c} seconds.",
         "num_idx": [
             0
+        ],
+        "num_inherents": 2
+    },
+    "hail_of_verglas": {
+        "desc": "ice shards now spreads out with additional shards. you deal increased damage for each time ice shards damages an enemy for seconds, up to .",
+        "full": "{c_important}Ice Shards{/c} now spreads out with {c_number}[Affix.\"Static Value 2\"]{/c} additional shards. You deal {c_random}[Affix_Value_1*100|1x%|]{/c} increased damage for each time {c_important}Ice Shards{/c} damages an enemy for {c_number}[Affix.\"Static Value 0\"]{/c} seconds, up to {c_random}[Affix_Value_1*100*Affix.\"Static Value 1\"|1x%|]{/c}.",
+        "num_idx": [
+            1,
+            3
         ],
         "num_inherents": 2
     },
@@ -463,8 +504,8 @@
         "num_inherents": 0
     },
     "heir_of_perdition": {
-        "desc": "succumb to hatred and earn mothers favor, increasing your damage dealt by . slaughter enemies to briefly steal mothers favor from nearby allies.",
-        "full": "Succumb to hatred and earn Mother's Favor, increasing your damage dealt by {c_number}[Affix_Value_1|%x|]{/c}. Slaughter enemies to briefly steal Mother's Favor from Nearby allies.",
+        "desc": "succumb to hatred and earn mothers favor, increasing your damage dealt by . slaughter enemies to briefly steal mothers favor from surrounding allies.",
+        "full": "Succumb to hatred and earn Mother's Favor, increasing your damage dealt by {c_number}[Affix_Value_1|%x|]{/c}. Slaughter enemies to briefly steal Mother's Favor from surrounding allies.",
         "num_idx": [],
         "num_inherents": 1
     },
@@ -501,8 +542,8 @@
         "num_inherents": 0
     },
     "indiras_memory": {
-        "desc": "blood wave is additionally a bone skill. it spawns a bone prison at its end point and increases your blood skill damage by for seconds when cast. bone spear is additionally a blood skill. it drains maximum life each cast after hitting an enemy to consume a surrounding corpse and launch a new bone spear from it.",
-        "full": "{c_important}Blood Wave{/c} is additionally a {c_important}Bone{/c} Skill. It spawns a {c_important}Bone Prison{/c} at its end point and increases your {c_important}Blood{/c} Skill damage by {c_random}[Affix_Value_1|%x|]{/c} for {c_number}[Affix.\"Static Value 0\"]{/c} seconds when Cast.\r\n\r\n{c_important}Bone Spear{/c} is additionally a {c_important}Blood{/c} Skill. It drains {c_number}[Affix.\"Static Value 2\"*100|%|]{/c} Maximum Life each Cast after hitting an enemy to consume a surrounding Corpse and launch a new {c_important}Bone Spear{/c} from it.",
+        "desc": "blood wave is additionally a bone skill. it spawns a bone prison at its end point and increases your blood skill damage by for seconds when cast. bone spear is additionally a blood skill that consumes a corpse to launch a bone spear from it, draining of your maximum life on hit.",
+        "full": "{c_important}Blood Wave{/c} is additionally a {c_important}Bone{/c} Skill. It spawns a {c_important}Bone Prison{/c} at its end point and increases your {c_important}Blood{/c} Skill damage by {c_random}[Affix_Value_1|%x|]{/c} for {c_number}[Affix.\"Static Value 0\"]{/c} seconds when Cast.\r\n\r\n{c_important}Bone Spear{/c} is additionally a {c_important}Blood{/c} Skill that consumes a Corpse to launch a {c_important}Bone Spear{/c} from it, draining {c_number}[Affix.\"Static Value 2\"*100|%|]{/c} of your Maximum Life on hit.",
         "num_idx": [
             0
         ],
@@ -525,12 +566,10 @@
         "num_inherents": 0
     },
     "kessimes_legacy": {
-        "desc": "blood wave now forms a wave on each side of you. both waves converge at your feet, pulling in all surrounding enemies and exploding for damage. each wave hit causes enemies to take more damage from your blood waves, up to .",
-        "full": "{c_important}Blood Wave{/c} now forms a wave on each side of you. Both waves converge at your feet, Pulling In all surrounding enemies and exploding for {c_random}[(Owner.Weapon_Damage_Min_Total + Owner.Weapon_Damage_Delta_Total) * Affix_Value_2]{/c} damage.\r\n\r\nEach wave hit causes enemies to take {c_random}[Affix_Value_1|%2|]{/c} more damage from your {c_important}Blood Waves{/c}, up to {c_random}[(Affix_Value_1*Affix.\"Static Value 0\")|%1|]{/c}.",
+        "desc": "blood wave now forms a wave on each side of you. both waves converge at your feet, pulling in all surrounding enemies and exploding for damage.",
+        "full": "{c_important}Blood Wave{/c} now forms a wave on each side of you. Both waves converge at your feet, Pulling In all surrounding enemies and exploding for {c_random}[(Owner.Weapon_Damage_Min_Total + Owner.Weapon_Damage_Delta_Total) * Affix_Value_2]{/c} damage.",
         "num_idx": [
-            0,
-            1,
-            2
+            0
         ],
         "num_inherents": 1
     },
@@ -566,8 +605,8 @@
         "num_inherents": 0
     },
     "malefic_crescent": {
-        "desc": "lupine ferocitys critical strike damage is increased to for consecutive critical strikes.",
-        "full": "{c_important}Lupine Ferocity's{/c} Critical Strike Damage is increased to {c_random}[Affix_Value_1 * 100|%x|]{/c} for consecutive Critical Strikes.",
+        "desc": "lupine ferocitys critical strike damage is increased by for consecutive critical strikes.",
+        "full": "{c_important}Lupine Ferocity's{/c} Critical Strike Damage is increased by {c_random}[Affix_Value_1 * 100|%x|]{/c} for consecutive Critical Strikes.",
         "num_idx": [
             0
         ],
@@ -619,8 +658,8 @@
         "num_inherents": 1
     },
     "okuns_catalyst": {
-        "desc": "ball lightning orbits you creating a static field that damages all enemies within for of ball lightnings damage per active ball. you are unhindered as long as the field is active.",
-        "full": "{c_important}Ball Lightning{/c} orbits you creating a static field that damages all enemies within for {c_random}[Affix_Value_1* 100|%|]{/c} of {c_important}Ball Lightning's{/c} damage per active ball. You are {c_important} {u}Unhindered{/u}{/c} as long as the field is active.",
+        "desc": "casting ball lightning instead creates a separate static field around you that damages all enemies within for of ball lightnings damage per active ball. you are unhindered as long as the field is active.",
+        "full": "Casting {c_important}Ball Lightning{/c} instead creates a separate static field around you that damages all enemies within for {c_random}[Affix_Value_1* 100|%|]{/c} of {c_important}Ball Lightning's{/c} damage per active ball. You are {c_important} {u}Unhindered{/u}{/c} as long as the field is active.",
         "num_idx": [
             0
         ],
@@ -731,8 +770,8 @@
         "num_idx": []
     },
     "ring_of_red_furor": {
-        "desc": "after spending fury within seconds, your next cast of hammer of the ancients, upheaval, or death blow within seconds is a guaranteed critical strike and deals bonus critical strike damage.",
-        "full": "After spending {c_number}[Affix_Value_2]{/c} Fury within {c_number}[Affix.\"Static Value 0\"]{/c} seconds, your next cast of {c_important}Hammer of the Ancients{/c}, {c_important}Upheaval{/c}, or {c_important}Death Blow{/c} within {c_number}[Affix.\"Static Value 1\"]{/c} seconds is a guaranteed Critical Strike and deals {c_random}[Affix_Value_1|%x|]{/c} bonus Critical Strike Damage.",
+        "desc": "after spending fury within seconds, your next nonchanneled core or weapon mastery skill cast within seconds is a guaranteed critical strike and deals bonus critical strike damage.",
+        "full": "After spending {c_number}[Affix_Value_2]{/c} Fury within {c_number}[Affix.\"Static Value 0\"]{/c} seconds, your next non-Channeled {c_important}Core{/c} or {c_important}Weapon Mastery{/c} Skill Cast within {c_number}[Affix.\"Static Value 1\"]{/c} seconds is a guaranteed Critical Strike and deals {c_random}[Affix_Value_1|%x|]{/c} bonus Critical Strike Damage.",
         "num_idx": [
             3
         ],
@@ -803,6 +842,14 @@
         ],
         "num_inherents": 2
     },
+    "sanguivor_blade_of_zir": {
+        "desc": "your summons damage afflict enemies with vampiric curse. consuming a corpse also contributes a soul to vampiric curse, which can now stack up to souls. only army of the dead can now unleash the souls from vampiric curse, causing both army of the dead and the souls to deal increased damage per soul unleashed.",
+        "full": "Your {c_important}Summons'{/c} damage afflict enemies with {c_important}{u}Vampiric Curse{/u}{/c}. Consuming a Corpse also contributes a soul to {c_important}{u}Vampiric Curse{/u}{/c}, which can now stack up to {c_number}[Affix.\"Static Value 0\"]{/c} souls.\r\n\r\nOnly {c_important}Army of the Dead{/c} can now unleash the souls from {c_important}{u}Vampiric Curse{/u}{/c}, causing both {c_important}Army of the Dead{/c} and the souls to deal {c_random}[Affix_Value_1|x%1|]{/c} increased damage per soul unleashed.",
+        "num_idx": [
+            1
+        ],
+        "num_inherents": 1
+    },
     "scorn_of_the_earth": {
         "desc": "your evade is now soar. soar deals increased damage.",
         "full": "Your {c_important}Evade{/c} is now {c_important}Soar{/c}.\r\n\r\n{c_important}Soar{/c} deals {c_random}[Affix_Value_1*100|%x|]{/c} increased damage.",
@@ -820,10 +867,9 @@
         "num_inherents": 2
     },
     "scoundrels_leathers": {
-        "desc": "while you have unlimited energy from inner sight, casting a core skill has a chance to spawn caltrops, poison trap, or death trap. gain core skill damage.",
-        "full": "While you have unlimited Energy from {c_important}Inner Sight{/c}, casting a {c_important}Core{/c} Skill has a {c_random}[Affix_Value_1|%|]{/c} chance to spawn {c_important}Caltrops{/c}, {c_important}Poison Trap{/c}, or {c_important}Death Trap{/c}. Gain {c_random}[Affix_Value_2|%x|]{/c} {c_important}Core{/c} Skill Damage.",
+        "desc": "your trap skills can be thrown and will spawn a death trap every seconds when cast, granting you increased damage for seconds.",
+        "full": "Your {c_important}Trap{/c} Skills can be thrown and will spawn a {c_important}Death Trap{/c} every {c_number}[Affix.\"Static Value 0\"]{/c} seconds when Cast, granting you {c_random}[Affix_Value_1|%x|]{/c} increased damage for {c_number}[Affix.\"Static Value 1\"||]{/c} seconds. ",
         "num_idx": [
-            0,
             1
         ],
         "num_inherents": 1
@@ -911,10 +957,18 @@
         "num_inherents": 0
     },
     "strike_of_stormhorn": {
-        "desc": "ball lightning splashes on impact for increased damage. it stuns enemies for second if it reaches its maximum range. super ball lightnings are larger, deal increased damage, have a higher lucky hit chance, and their stun duration is increased to seconds.",
-        "full": "{c_important}Ball Lightning{/c} splashes on impact for {c_random}[Affix_Value_1*100|%x|]{/c} increased damage. It Stuns enemies for {c_number}[Affix.\"Static Value 2\"]{/c} second if it reaches its maximum range.\r\n\r\n{c_important}Super Ball Lightnings{/c} are larger, deal  {c_number}[Affix.\"Static Value 4\"|%x|]{/c} increased damage, have a higher Lucky Hit Chance, and their Stun duration is increased to {c_number}[Affix.\"Static Value 3\"]{/c} seconds.",
+        "desc": "ball lightning splashes on impact dealing of its total damage instantly. it stuns enemies for second if it reaches its maximum range. super ball lightnings are larger, deal increased damage, have a higher lucky hit chance, and their stun duration is increased to seconds.",
+        "full": "{c_important}Ball Lightning{/c} splashes on impact dealing {c_random}[Affix_Value_1*100|%|]{/c} of its total damage instantly. It Stuns enemies for {c_number}[Affix.\"Static Value 2\"]{/c} second if it reaches its maximum range.\r\n\r\n{c_important}Super Ball Lightnings{/c} are larger, deal  {c_number}[Affix.\"Static Value 4\"|%x|]{/c} increased damage, have a higher Lucky Hit Chance, and their Stun duration is increased to {c_number}[Affix.\"Static Value 3\"]{/c} seconds.",
         "num_idx": [
             0
+        ],
+        "num_inherents": 1
+    },
+    "sunbirds_gorget": {
+        "desc": "picking up a storm feather forms a firestorm around you for seconds dealing fire damage every seconds. every additional storm feathers you pick up intensifies the firestorm, increasing its damage by but not refreshing its duration. storm feathers are now jaguar skills and the firestorm is an eagle, jaguar, and storm feather skill.",
+        "full": "Picking up a {c_important}{u}Storm Feather{/u}{/c} forms a firestorm around you for {c_number}[Affix.\"Static Value 0\"]{/c} seconds dealing {c_random}[(Owner.Weapon_Damage_Min_Total + Owner.Weapon_Damage_Delta_Total) * Affix_Value_1]{/c} Fire damage every {c_number}[Affix.\"Static Value 3\"|1|]{/c} seconds.\r\n\r\nEvery {c_important}[Affix.\"Static Value 1\"]{/c} additional {c_important}{u}Storm Feathers{/u}{/c} you pick up intensifies the firestorm, increasing its damage by {c_number}[Affix.\"Static Value 2\"|%x|]{/c} but not refreshing its duration. {c_important}{u}Storm Feathers{/u}{/c} are now {c_important}Jaguar{/c} Skills and the firestorm is an {c_important}Eagle{/c}, {c_important}Jaguar{/c}, and {c_important}{u}Storm Feather{/u}{/c} Skill.",
+        "num_idx": [
+            1
         ],
         "num_inherents": 1
     },
@@ -929,7 +983,7 @@
     },
     "tal_rashas_iridescent_loop": {
         "desc": "casting a pyromancy, shock, or frost skill increases your damage by for seconds, stacking once per element. casting again refreshes all bonuses if the previous skill was a different element.",
-        "full": "Casting a {c_important}Pyromancy{/c}, {c_important}Shock{/c}, or {c_important}Frost{/c} Skill increases your damage by {c_random}[Affix_Value_1|1%x|]{/c} for {c_number}[Affix.\"Static Value 0\"]{/c} seconds, stacking once per element. Casting again refreshes all bonuses if the previous skill was a different Element.",
+        "full": "Casting a {c_important}Pyromancy{/c}, {c_important}Shock{/c}, or {c_important}Frost{/c} Skill increases your damage by {c_random}[Affix_Value_1|1%x|]{/c} for {c_number}[Affix.\"Static Value 0\"]{/c} seconds, stacking once per Element. Casting again refreshes all bonuses if the previous skill was a different Element.",
         "num_idx": [
             0
         ],
@@ -1029,8 +1083,8 @@
         "num_inherents": 0
     },
     "twin_strikes": {
-        "desc": "after casting double swing times, your next double swing will hit additional times, each dealing increased damage and stunning for second.",
-        "full": "After casting {c_important}Double Swing{/c} {c_number}[Affix.\"Static Value 0\" - 1]{/c} times, your next {c_important}Double Swing{/c} will hit {c_number}[Affix.\"Static Value 1\"]{/c} additional times, each dealing {c_random}[Affix_Value_1|%x|]{/c} increased damage and Stunning for {c_number}[Affix.\"Static Value 2\"]{/c} second.",
+        "desc": "after casting double swing times, your double swing will continue to hit additional times, each dealing increased damage for seconds.",
+        "full": "After Casting {c_important}Double Swing{/c} {c_number}[Affix.\"Static Value 0\"]{/c} times, your Double Swing will continue to hit {c_number}[Affix.\"Static Value 1\"]{/c} additional times, each dealing {c_random}[Affix_Value_1|%x|]{/c} increased damage for {c_number}[Affix.\"Static Value 3\"]{/c} seconds.",
         "num_idx": [
             2
         ],
@@ -1094,7 +1148,7 @@
     },
     "wildheart_hunger": {
         "desc": "shapeshifting into a new animal form increases the value of your bestial rampage bonuses by , up to . this bonus decays by per second.",
-        "full": "{c_important}Shapeshifting{/c} into a new animal form increases the value of your {c_important}Bestial Rampage{/c} bonuses by {c_random}[Affix_Value_1|1%+|]{/c}, up to {c_random}[(Affix_Value_1*Affix.\"Static Value 0\")|1%+|]{/c}. This bonus decays by {c_number}[Affix.\"Static Value 1\"|%|]{/c} per second.",
+        "full": "{c_important}Shapeshifting{/c} into a new animal form increases the value of your {c_important}Bestial Rampage{/c} bonuses by {c_random}[Affix_Value_1|1%+|]{/c}, up to {c_random}[(Affix_Value_1*Affix.\"Static Value 0\")|1%+|]{/c}. This bonus decays by {c_number}[Affix.\"Static Value 1\"|1%|]{/c} per second.",
         "num_idx": [
             0,
             1
@@ -1126,10 +1180,10 @@
         "num_inherents": 2
     },
     "writhing_band_of_trickery": {
-        "desc": "casting a subterfuge skill leaves behind a decoy trap that continuously taunts and lures enemies. after seconds, it explodes, dealing shadow damage. this effect is treated as a trap skill and can only spawn one decoy trap every seconds.",
-        "full": "Casting a {c_important}Subterfuge{/c} Skill leaves behind a {c_important}Decoy Trap{/c} that continuously Taunts and lures enemies. After {c_number}[Affix.\"Static Value 1\"]{/c} seconds, it explodes, dealing {c_random}[Affix_Flat_Value_1]{/c} Shadow damage. \r\n\r\nThis effect is treated as a {c_important}Trap{/c} Skill and can only spawn one {c_important}Decoy Trap{/c} every {c_number}[Affix.\"Static Value 0\"]{/c} seconds.",
+        "desc": "your subterfuge skills create a decoy trap that taunts and lures enemies, dealing corrupting damage over seconds. this counts as a trap skill and only one decoy can be active at a time.",
+        "full": "Your {c_important}Subterfuge{/c} Skills create a {c_important}Decoy Trap{/c} that Taunts and lures enemies, dealing {c_random}[(Owner.Weapon_Damage_Min_Total + Owner.Weapon_Damage_Delta_Total) * Affix_Value_1]{/c} Corrupting damage over {c_number}[Affix.\"Static Value 1\"]{/c} seconds. This counts as a {c_important}Trap{/c} Skill and only one {c_important}Decoy{/c} can be active at a time. ",
         "num_idx": [
-            1
+            0
         ],
         "num_inherents": 2
     },
