@@ -1,17 +1,27 @@
 from PyQt6.QtWidgets import (QWidget, QScrollArea, QVBoxLayout, QGroupBox, QFormLayout,
                             QPushButton, QListWidget, QListWidgetItem, QHBoxLayout,
-                            QLineEdit, QInputDialog, QTabWidget, QMessageBox)
+                            QLineEdit, QInputDialog, QTabWidget, QMessageBox, QGridLayout, QSizePolicy, QLabel)
 from PyQt6.QtCore import Qt
 from src.config.models import ItemType, AffixFilterModel, AffixFilterCountModel, ItemFilterModel, ComparisonType, ProfileModel, DynamicItemFilterModel
 from src.dataloader import Dataloader
 from src.gui.dialog import IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox
 
 class AffixGroupEditor(QGroupBox):
-    def __init__(self, item_type: ItemType, config: ItemFilterModel, parent=None):
+    def __init__(self, item_name: str, item_type: ItemType, config: ItemFilterModel, parent=None):
         super().__init__(parent)
+        self.item_name = item_name
         self.item_type = item_type
         self.config = config
-        self.setTitle(item_type.value)
+        # self.setStyleSheet("""
+        #                     QGroupBox
+        #                     {
+        #                         font-size: 18px;
+        #                         font-weight: bold;
+        #                     }""")
+        self.setTitle(item_name)
+        self.setMinimumSize(400, 500)
+        self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding,
+                          QSizePolicy.Policy.MinimumExpanding)
         self.setup_ui()
 
     def setup_ui(self):
@@ -19,6 +29,11 @@ class AffixGroupEditor(QGroupBox):
 
         # General Settings
         general_form = QFormLayout()
+        self.item_type_combo = IgnoreScrollWheelComboBox()
+        self.item_type_combo.addItems(ItemType.__members__)
+        self.item_type_combo.setCurrentText(self.item_type.name)
+        self.item_type_combo.setMaximumWidth(150)
+        general_form.addRow("Item Type:", self.item_type_combo)
         self.min_power = IgnoreScrollWheelSpinBox()
         self.min_power.setMaximum(950)
         self.min_power.setValue(self.config.minPower)
@@ -59,8 +74,15 @@ class AffixGroupEditor(QGroupBox):
         self.affix_pools.setItemWidget(item, widget)
 
     def add_affix_pool(self):
+        # Create a default valid affix
+        default_affix = AffixFilterModel(
+            name=list(Dataloader().affix_dict.keys())[0],  # First valid affix name
+            value=None,
+            comparison=ComparisonType.larger
+        )
+
         new_pool = AffixFilterCountModel(
-            count=[],
+            count=[default_affix],  # Start with at least one valid affix
             minCount=1,
             maxCount=3,
             minGreaterAffixCount=0
@@ -68,10 +90,11 @@ class AffixGroupEditor(QGroupBox):
         self.config.affixPool.append(new_pool)
         self.add_affix_pool_item(new_pool)
 
-    def remove_selected(self, list_widget):
+    def remove_selected(self, list_widget : QListWidget):
         for item in list_widget.selectedItems():
             row = list_widget.row(item)
             list_widget.takeItem(row)
+            list_widget.removeItemWidget(item)
             del self.config.affixPool[row]
 
     def save_config(self):
@@ -86,26 +109,51 @@ class AffixPoolWidget(QWidget):
 
     def setup_ui(self):
         layout = QVBoxLayout()
-
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         # Pool Configuration
         config_layout = QHBoxLayout()
+        config_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        min_count_label = QLabel("Min Count:")
+        min_count_label.setMaximumWidth(100)
+        config_layout.addWidget(min_count_label)
         self.min_count = IgnoreScrollWheelSpinBox()
-        self.min_count.setMaximum(950)
         self.min_count.setValue(self.pool.minCount)
+        self.min_count.setMaximumWidth(100)
         config_layout.addWidget(self.min_count)
+        config_layout.addSpacing(150)
 
+        max_count_label = QLabel("Max Count:")
+        max_count_label.setMaximumWidth(100)
+        config_layout.addWidget(max_count_label)
         self.max_count = IgnoreScrollWheelSpinBox()
-        self.max_count.setMaximum(950)
         self.pool.maxCount = 2147483647 if self.pool.maxCount > 2147483647 else self.pool.maxCount
         self.max_count.setValue(self.pool.maxCount)
+        self.max_count.setMaximumWidth(100)
         config_layout.addWidget(self.max_count)
+        config_layout.addSpacing(150)
 
+
+        min_greater_label = QLabel("Min Greater Affixes:")
+        min_greater_label.setMaximumWidth(100)
+        config_layout.addWidget(min_greater_label)
         self.min_greater = IgnoreScrollWheelSpinBox()
-        self.min_greater.setMaximum(950)
         self.min_greater.setValue(self.pool.minGreaterAffixCount)
+        self.min_greater.setMaximumWidth(100)
         config_layout.addWidget(self.min_greater)
 
         layout.addLayout(config_layout)
+
+        title_layout = QHBoxLayout()
+        title_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        affix_label = QLabel("Affixes")
+        value_label = QLabel("Value")
+        comparison_label = QLabel("Comparison")
+        title_layout.addSpacing(250)
+        title_layout.addWidget(affix_label)
+        title_layout.addSpacing(400)
+        title_layout.addWidget(value_label)
+        title_layout.addSpacing(100)
+        title_layout.addWidget(comparison_label)
 
         # Affix List
         self.affix_list = QListWidget()
@@ -116,11 +164,15 @@ class AffixPoolWidget(QWidget):
         affix_btn_layout = QHBoxLayout()
         add_affix_btn = QPushButton("Add Affix")
         add_affix_btn.clicked.connect(self.add_affix)
+        affix_btn_layout.addWidget(add_affix_btn)
         remove_affix_btn = QPushButton("Remove Affix")
         remove_affix_btn.clicked.connect(lambda: self.remove_selected(self.affix_list))
+        affix_btn_layout.addWidget(remove_affix_btn)
 
-        layout.addWidget(self.affix_list)
+        layout.addLayout(title_layout)
         layout.addLayout(affix_btn_layout)
+        layout.addWidget(self.affix_list)
+
         self.setLayout(layout)
 
     def add_affix_item(self, affix: AffixFilterModel):
@@ -131,7 +183,7 @@ class AffixPoolWidget(QWidget):
         self.affix_list.setItemWidget(item, widget)
 
     def add_affix(self):
-        new_affix = AffixFilterModel(name="", value=None)
+        new_affix = AffixFilterModel(name=list(Dataloader().affix_dict.keys())[0], value=None)
         self.pool.count.append(new_affix)
         self.add_affix_item(new_affix)
 
@@ -149,16 +201,19 @@ class AffixWidget(QWidget):
 
     def setup_ui(self):
         layout = QHBoxLayout()
+        layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         # Affix Name Combobox
         self.name_combo = IgnoreScrollWheelComboBox()
         self.name_combo.addItems(sorted(Dataloader().affix_dict.keys()))
+        self.name_combo.setMaximumWidth(600)
         if self.affix.name in Dataloader().affix_dict:
             self.name_combo.setCurrentText(self.affix.name)
         self.name_combo.currentTextChanged.connect(self.update_name)
 
         # Value Input
         self.value_edit = QLineEdit()
+        self.value_edit.setMaximumWidth(100)
         self.value_edit.setPlaceholderText("Value (optional)")
         if self.affix.value is not None:
             self.value_edit.setText(str(self.affix.value))
@@ -166,13 +221,16 @@ class AffixWidget(QWidget):
 
         # Comparison Combobox
         self.comparison_combo = IgnoreScrollWheelComboBox()
+        self.comparison_combo.setMaximumWidth(100)
         self.comparison_combo.addItems([ct.value for ct in ComparisonType])
         self.comparison_combo.setCurrentText(self.affix.comparison.value)
         self.comparison_combo.currentTextChanged.connect(self.update_comparison)
 
-        layout.addWidget(self.name_combo, 4)
-        layout.addWidget(self.value_edit, 2)
-        layout.addWidget(self.comparison_combo, 2)
+        layout.addWidget(self.name_combo)
+        layout.addSpacing(50)
+        layout.addWidget(self.value_edit)
+        layout.addSpacing(50)
+        layout.addWidget(self.comparison_combo)
         self.setLayout(layout)
 
     def update_name(self, name):
@@ -201,11 +259,10 @@ class AffixesTab(QWidget):
         self.container = QWidget()
         self.container_layout = QVBoxLayout()
         self.container_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.container_layout.setContentsMargins(5, 5, 5, 5)
+
         # Add existing groups
-        for affix_group in self.profile_model.Affixes:
-            for item_type, config in affix_group.root.items():
-                group = AffixGroupEditor(ItemType.__members__[item_type], config)
-                self.container_layout.addWidget(group)
+        self._populate_layout()
 
         # Add controls
         btn_layout = QHBoxLayout()
@@ -224,6 +281,13 @@ class AffixesTab(QWidget):
         layout.addWidget(scroll)
         layout.addLayout(btn_layout)
         self.setLayout(layout)
+
+    def _populate_layout(self):
+        """Populate the grid layout with existing groups"""
+        for idx, affix_group in enumerate(self.profile_model.Affixes):
+            for item_name, config in affix_group.root.items():
+                group = AffixGroupEditor(item_name, ItemType(config.itemType[0]), config)
+                self.container_layout.addWidget(group)
 
     def add_item_type(self):
         item_type, ok = QInputDialog.getItem(

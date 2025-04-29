@@ -46,7 +46,7 @@ class ProfileTab(QWidget):
 
         scroll_area = QScrollArea(self)
         scroll_widget = QWidget(scroll_area)
-        scrollable_layout = QVBoxLayout(scroll_widget)
+        self.scrollable_layout = QVBoxLayout(scroll_widget)
         scroll_area.setWidgetResizable(True)
 
         info_layout = QHBoxLayout()
@@ -102,8 +102,8 @@ class ProfileTab(QWidget):
             self.affixesNames = json.load(f)
 
         self.load()
-        scrollable_layout.addWidget(self.model_editor)
-        scroll_widget.setLayout(scrollable_layout)
+        self.scrollable_layout.addWidget(self.model_editor)
+        scroll_widget.setLayout(self.scrollable_layout)
         scroll_area.setWidget(scroll_widget)
         self.main_layout.addWidget(scroll_area)
         instructions_label = QLabel("Instructions")
@@ -315,4 +315,6 @@ class ProfileTab(QWidget):
             return
 
         self.update_filename_label()
-        self.load_items()
+        self.scrollable_layout.removeWidget(self.model_editor)
+        self.model_editor = ProfileEditor(self.root)
+        self.scrollable_layout.addWidget(self.model_editor)
