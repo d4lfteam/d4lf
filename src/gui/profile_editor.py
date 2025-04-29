@@ -6,7 +6,7 @@ from src.config.models import ItemType, AffixFilterModel, AffixFilterCountModel,
 from src.dataloader import Dataloader
 from src.gui.dialog import IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox
 
-class AffixGroupEditor(QGroupBox):
+class AffixGroupEditor(QWidget):
     def __init__(self, item_name: str, item_type: ItemType, config: ItemFilterModel, parent=None):
         super().__init__(parent)
         self.item_name = item_name
@@ -18,7 +18,7 @@ class AffixGroupEditor(QGroupBox):
         #                         font-size: 18px;
         #                         font-weight: bold;
         #                     }""")
-        self.setTitle(item_name)
+        # self.setTitle(item_name)
         self.setMinimumSize(400, 500)
         self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding,
                           QSizePolicy.Policy.MinimumExpanding)
@@ -245,49 +245,18 @@ class AffixWidget(QWidget):
     def update_comparison(self, comparison):
         self.affix.comparison = ComparisonType(comparison)
 
-class AffixesTab(QWidget):
+class AffixesTab(QTabWidget):
     def __init__(self, profile_model: ProfileModel, parent=None):
         super().__init__(parent)
         self.profile_model = profile_model
         self.setup_ui()
 
     def setup_ui(self):
-        layout = QVBoxLayout()
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-
-        self.container = QWidget()
-        self.container_layout = QVBoxLayout()
-        self.container_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.container_layout.setContentsMargins(5, 5, 5, 5)
-
-        # Add existing groups
-        self._populate_layout()
-
-        # Add controls
-        btn_layout = QHBoxLayout()
-        add_btn = QPushButton("Add Item Type")
-        add_btn.clicked.connect(self.add_item_type)
-        save_btn = QPushButton("Save All")
-        save_btn.clicked.connect(self.save_all)
-
-        btn_layout.addWidget(add_btn)
-        btn_layout.addStretch()
-        btn_layout.addWidget(save_btn)
-
-        self.container.setLayout(self.container_layout)
-        scroll.setWidget(self.container)
-
-        layout.addWidget(scroll)
-        layout.addLayout(btn_layout)
-        self.setLayout(layout)
-
-    def _populate_layout(self):
         """Populate the grid layout with existing groups"""
         for idx, affix_group in enumerate(self.profile_model.Affixes):
             for item_name, config in affix_group.root.items():
                 group = AffixGroupEditor(item_name, ItemType(config.itemType[0]), config)
-                self.container_layout.addWidget(group)
+                self.addTab(group, item_name)
 
     def add_item_type(self):
         item_type, ok = QInputDialog.getItem(
@@ -302,7 +271,7 @@ class AffixesTab(QWidget):
             self.profile_model.Affixes.append(dynamic_filter)
 
             group = AffixGroupEditor(ItemType(item_type), new_filter)
-            self.container_layout.addWidget(group)
+            # self.addTab(group, )
 
     def save_all(self):
         # Save all group configurations

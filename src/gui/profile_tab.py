@@ -102,7 +102,7 @@ class ProfileTab(QWidget):
             self.affixesNames = json.load(f)
 
         self.load()
-        self.scrollable_layout.addWidget(self.model_editor)
+        self.profile_editor_created = False
         scroll_widget.setLayout(self.scrollable_layout)
         scroll_area.setWidget(scroll_widget)
         self.main_layout.addWidget(scroll_area)
@@ -228,10 +228,14 @@ class ProfileTab(QWidget):
             if not self.load_yaml():
                 return False
             self.update_filename_label()
-            #self.load_items(self.root)
-            self.model_editor = ProfileEditor(self.root)
             return True
         return False
+
+    def create_profile_editor(self):
+        if not self.profile_editor_created:
+            self.model_editor = ProfileEditor(self.root)
+            self.scrollable_layout.addWidget(self.model_editor)
+            self.profile_editor_created = True
 
     def load_yaml(self):
         filename = os.path.basename(self.file_path)  # Get the filename from the full path
