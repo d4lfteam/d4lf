@@ -89,7 +89,8 @@ class Container(QWidget):
             if color_background:
                 # If color_background is True, set the stylesheet of _content_widget to have a lighter background color
                 self._content_widget.setStyleSheet(".QWidget{background-color: rgb(73, 73, 73); "
-                                                   "margin-left: 2px; padding-top: 20px; margin-right: 2px}")
+                                                   "margin-left: 2px; padding-top: 20px; margin-right: 2px}"
+                                                   ".QLabel{background-color: rgb(73, 73, 73)}")
 
             self.header = Header(name, self._content_widget) # Create a Header instance and pass the name and _content_widget as arguments
             layout.addWidget(self.header) # Add the header to the layout

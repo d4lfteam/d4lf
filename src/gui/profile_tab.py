@@ -19,8 +19,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from gui.d4lfitem import D4LFItem
-from gui.dialog import CreateItem, DeleteItem, MinCountDialog, MinGreaterDialog, MinPowerDialog
+from gui.dialog import DeleteItem
 from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
 from src.gui.importer.common import ProfileModel, save_as_profile
@@ -70,24 +69,6 @@ class ProfileTab(QWidget):
         tools_groupbox_layout.addWidget(self.file_button)
         tools_groupbox_layout.addWidget(self.save_button)
         tools_groupbox_layout.addWidget(self.refresh_button)
-
-        self.create_item_button = QPushButton("Create Item")
-        self.create_item_button.clicked.connect(self.create_item)
-        tools_groupbox_layout.addWidget(self.create_item_button)
-
-        self.delete_item_button = QPushButton("Delete Item")
-        self.delete_item_button.clicked.connect(self.delete_items)
-        tools_groupbox_layout.addWidget(self.delete_item_button)
-
-        self.set_all_minGreaterAffix_button = QPushButton("Set all minGreaterAffix")
-        self.set_all_minPower_button = QPushButton("Set all minPower")
-        self.set_all_minCount_button = QPushButton("Set all minCount")
-        self.set_all_minGreaterAffix_button.clicked.connect(self.set_all_minGreaterAffix)
-        self.set_all_minPower_button.clicked.connect(self.set_all_minPower)
-        self.set_all_minCount_button.clicked.connect(self.set_all_minCount)
-        tools_groupbox_layout.addWidget(self.set_all_minGreaterAffix_button)
-        tools_groupbox_layout.addWidget(self.set_all_minPower_button)
-        tools_groupbox_layout.addWidget(self.set_all_minCount_button)
         tools_groupbox.setLayout(tools_groupbox_layout)
         info_layout.addWidget(tools_groupbox)
         self.main_layout.addLayout(info_layout)
@@ -134,36 +115,6 @@ class ProfileTab(QWidget):
     def create_alert(self, msg: str):
         reply = QMessageBox.warning(self, "Alert", msg, QMessageBox.StandardButton.Ok)
         return reply == QMessageBox.StandardButton.Ok
-
-    def set_all_minGreaterAffix(self):
-        if self.file_path:
-            dialog = MinGreaterDialog(self)
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                minGreaterAffix = dialog.get_value()
-                for d4lf_item in self.item_list:
-                    d4lf_item.set_minGreaterAffix(minGreaterAffix)
-        else:
-            self.create_alert("No file loaded")
-
-    def set_all_minCount(self):
-        if self.file_path:
-            dialog = MinCountDialog(self)
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                minCount = dialog.get_value()
-                for d4lf_item in self.item_list:
-                    d4lf_item.set_minCount(minCount)
-        else:
-            self.create_alert("No file loaded")
-
-    def set_all_minPower(self):
-        if self.file_path:
-            dialog = MinPowerDialog(self)
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                minPower = dialog.get_value()
-                for d4lf_item in self.item_list:
-                    d4lf_item.set_minPower(minPower)
-        else:
-            self.create_alert("No file loaded")
 
     def load_items(self, model, indent=0, prefix="", max_list_items=3):
         """Recursively pretty-print Pydantic models with indentation"""
@@ -266,10 +217,7 @@ class ProfileTab(QWidget):
             self.filenameLabel.setText(display_name)
 
     def save_yaml(self):
-        new_profile_affixes = [d4lf_item.save_item() for d4lf_item in self.item_list]
-        if self.root:
-            p = ProfileModel(name="imported profile", Affixes=new_profile_affixes, Uniques=self.root.Uniques)
-            save_as_profile(self.filenameLabel.text(), p, "custom")
+        self.model_editor.save_all()
 
     # def check_close_save(self):
     #     new_profile_affixes = [d4lf_item.save_item_create() for d4lf_item in self.item_list]
@@ -278,25 +226,6 @@ class ProfileTab(QWidget):
     #         if p != self.root:
     #             return self.confirm_discard_changes()
     #     return True
-
-    def check_item_name(self, name):
-        return all(d4lf_item.item_name != name for d4lf_item in self.item_list)
-
-    def create_item(self):
-        dialog = CreateItem(self.itemTypes, self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            item = dialog.get_value()
-            if not self.check_item_name(list(item.root.keys())[0]):
-                self.create_alert("An item with the same already exists, please choose a different name.")
-                return
-            item_widget = D4LFItem(item, self.affixesNames, self.itemTypes)
-            item_widget.item_changed()
-            self.item_list.append(item_widget)
-            nb_item = self.item_widgets_layout.count()
-            row = nb_item // 4
-            col = nb_item % 4
-            self.item_widgets_layout.addWidget(item_widget, row, col)
-            return
 
     def delete_items(self):
         item_names = [item.item_name for item in self.item_list]

@@ -2,12 +2,16 @@ from PyQt6.QtWidgets import (QWidget, QTabWidget, QMessageBox)
 from PyQt6.QtCore import Qt
 from src.config.models import ProfileModel
 from src.gui.affixes_tab import AffixesTab
+from src.gui.sigils_tab import SigilsTab
+from src.gui.importer.common import _to_yaml_str
+from src.config.loader import IniConfigLoader
+from src import __version__
 
-class SigilsTab(QWidget):
-    def __init__(self, profile_model: ProfileModel, parent=None):
-        super().__init__(parent)
-        # Sigils-specific UI implementation
-        pass
+import datetime
+import logging
+import re
+
+LOGGER = logging.getLogger(__name__)
 
 class TributesTab(QWidget):
     def __init__(self, profile_model: ProfileModel, parent=None):
@@ -29,8 +33,8 @@ class ProfileEditor(QTabWidget):
 
     def setup_ui(self):
         # Create main tabs
-        self.affixes_tab = AffixesTab(self.profile_model)
-        self.sigils_tab = SigilsTab(self.profile_model)  # To be implemented
+        self.affixes_tab = AffixesTab(self.profile_model.Affixes)
+        self.sigils_tab = SigilsTab(self.profile_model.Sigils)  # To be implemented
         self.tributes_tab = TributesTab(self.profile_model)  # To be implemented
         self.uniques_tab = UniquesTab(self.profile_model)  # To be implemented
 
@@ -60,6 +64,24 @@ class ProfileEditor(QTabWidget):
 
     def save_all(self):
         """Save all tabs' configurations"""
-        self.affixes_tab.save_all()
-        # Add save calls for other tabs
+        self.save_to_yaml(self.profile_model.name + "_custom", self.profile_model, "custom")
+
         QMessageBox.information(self, "Saved", "All configurations saved successfully")
+
+    def save_to_yaml(self, file_name: str, profile: ProfileModel, url : str):
+            file_name = file_name.replace("'", "")
+            file_name = re.sub(r"\W", "_", file_name)
+            file_name = re.sub(r"_+", "_", file_name).rstrip("_")
+            save_path = IniConfigLoader().user_dir / f"profiles/{file_name}.yaml"
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(save_path, "w", encoding="utf-8") as file:
+                file.write(f"# {url}\n")
+                file.write(f"# {datetime.datetime.now(tz=datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')} (v{__version__})\n")
+                file.write(
+                    _to_yaml_str(
+                        profile,
+                        exclude_unset=not IniConfigLoader().general.full_dump,
+                        exclude={},
+                    )
+                )
+            LOGGER.info(f"Created profile {save_path}")
