@@ -8,7 +8,6 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
     QFileDialog,
-    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -20,12 +19,15 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from gui.d4lfitem import D4LFItem
-from gui.dialog import CreateItem, DeleteItem, MinCountDialog, MinGreaterDialog, MinPowerDialog
+from gui.dialog import DeleteItem
 from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
 from src.gui.importer.common import ProfileModel, save_as_profile
+from src.gui.profile_editor import ProfileEditor
 from src.item.filter import _UniqueKeyLoader
+from pydantic import BaseModel
+import numpy as np
+import enum
 
 LOGGER = logging.getLogger(__name__)
 
@@ -42,7 +44,7 @@ class ProfileTab(QWidget):
 
         scroll_area = QScrollArea(self)
         scroll_widget = QWidget(scroll_area)
-        scrollable_layout = QVBoxLayout(scroll_widget)
+        self.scrollable_layout = QVBoxLayout(scroll_widget)
         scroll_area.setWidgetResizable(True)
 
         info_layout = QHBoxLayout()
@@ -67,24 +69,6 @@ class ProfileTab(QWidget):
         tools_groupbox_layout.addWidget(self.file_button)
         tools_groupbox_layout.addWidget(self.save_button)
         tools_groupbox_layout.addWidget(self.refresh_button)
-
-        self.create_item_button = QPushButton("Create Item")
-        self.create_item_button.clicked.connect(self.create_item)
-        tools_groupbox_layout.addWidget(self.create_item_button)
-
-        self.delete_item_button = QPushButton("Delete Item")
-        self.delete_item_button.clicked.connect(self.delete_items)
-        tools_groupbox_layout.addWidget(self.delete_item_button)
-
-        self.set_all_minGreaterAffix_button = QPushButton("Set all minGreaterAffix")
-        self.set_all_minPower_button = QPushButton("Set all minPower")
-        self.set_all_minCount_button = QPushButton("Set all minCount")
-        self.set_all_minGreaterAffix_button.clicked.connect(self.set_all_minGreaterAffix)
-        self.set_all_minPower_button.clicked.connect(self.set_all_minPower)
-        self.set_all_minCount_button.clicked.connect(self.set_all_minCount)
-        tools_groupbox_layout.addWidget(self.set_all_minGreaterAffix_button)
-        tools_groupbox_layout.addWidget(self.set_all_minPower_button)
-        tools_groupbox_layout.addWidget(self.set_all_minCount_button)
         tools_groupbox.setLayout(tools_groupbox_layout)
         info_layout.addWidget(tools_groupbox)
         self.main_layout.addLayout(info_layout)
@@ -97,13 +81,9 @@ class ProfileTab(QWidget):
         with open(str(BASE_DIR / "assets/lang/enUS/affixes.json")) as f:
             self.affixesNames = json.load(f)
 
-        self.item_widgets = QWidget()
-        self.item_widgets_layout = QGridLayout()
-        self.item_widgets_layout.setDefaultPositioning(4, Qt.Orientation.Horizontal)
-        self.item_list: list[D4LFItem] = []
-        self.item_widgets.setLayout(self.item_widgets_layout)
-        scrollable_layout.addWidget(self.item_widgets)
-        scroll_widget.setLayout(scrollable_layout)
+        self.load()
+        self.profile_editor_created = False
+        scroll_widget.setLayout(self.scrollable_layout)
         scroll_area.setWidget(scroll_widget)
         self.main_layout.addWidget(scroll_area)
         instructions_label = QLabel("Instructions")
@@ -118,7 +98,7 @@ class ProfileTab(QWidget):
         instructions_text.setFixedHeight(100)
         self.main_layout.addWidget(instructions_text)
         self.setLayout(self.main_layout)
-        self.load()
+
 
     def confirm_discard_changes(self):
         reply = QMessageBox.warning(
@@ -136,58 +116,46 @@ class ProfileTab(QWidget):
         reply = QMessageBox.warning(self, "Alert", msg, QMessageBox.StandardButton.Ok)
         return reply == QMessageBox.StandardButton.Ok
 
-    def set_all_minGreaterAffix(self):
-        if self.file_path:
-            dialog = MinGreaterDialog(self)
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                minGreaterAffix = dialog.get_value()
-                for d4lf_item in self.item_list:
-                    d4lf_item.set_minGreaterAffix(minGreaterAffix)
+    def load_items(self, model, indent=0, prefix="", max_list_items=3):
+        """Recursively pretty-print Pydantic models with indentation"""
+        indent_str = " " * indent
+        next_indent = indent + 4
+        if isinstance(model, BaseModel):
+            print(f"{indent_str}{prefix}{model.__class__.__name__}:")
+            for name, field in model.model_fields.items():
+                value = getattr(model, name)
+                self.load_items(value, next_indent, f"{name}: ", max_list_items)
+
+        elif isinstance(model, list):
+            if len(model) > max_list_items:
+                print(f"{indent_str}{prefix}[{len(model)} items]")
+                for i, item in enumerate(model[:max_list_items]):
+                    self.load_items(item, next_indent, f"[{i}] ", max_list_items)
+                if len(model) > max_list_items:
+                    print(f"{indent_str} ... and {len(model)-max_list_items} more")
+            else:
+                print(f"{indent_str}{prefix}[")
+                for i, item in enumerate(model):
+                    self.load_items(item, next_indent, f"[{i}] ", max_list_items)
+                print(f"{indent_str}]")
+
+        elif isinstance(model, dict):
+            print(f"{indent_str}{prefix}{{")
+            for key, value in model.items():
+                self.load_items(value, next_indent, f"{key}: ", max_list_items)
+            print(f"{indent_str}}}")
+
+        elif isinstance(model, np.ndarray):
+            print(f"{indent_str}{prefix}ndarray(shape={model.shape}, dtype={model.dtype})")
+
+        elif isinstance(model, enum.Enum):
+            print(f"{indent_str}{prefix}{model.value}")
+
+        elif hasattr(model, "__dict__"):  # Fallback for other objects
+            print(f"{indent_str}{prefix}{str(model)}")
+
         else:
-            self.create_alert("No file loaded")
-
-    def set_all_minCount(self):
-        if self.file_path:
-            dialog = MinCountDialog(self)
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                minCount = dialog.get_value()
-                for d4lf_item in self.item_list:
-                    d4lf_item.set_minCount(minCount)
-        else:
-            self.create_alert("No file loaded")
-
-    def set_all_minPower(self):
-        if self.file_path:
-            dialog = MinPowerDialog(self)
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                minPower = dialog.get_value()
-                for d4lf_item in self.item_list:
-                    d4lf_item.set_minPower(minPower)
-        else:
-            self.create_alert("No file loaded")
-
-    def load_items(self):
-        row = 0
-        col = 0
-
-        while self.item_widgets_layout.count():
-            item = self.item_widgets_layout.takeAt(0)
-            item.widget().deleteLater()
-
-        self.item_list = []
-
-        if len(self.root.Affixes) > 20:
-            self.create_alert("Profiles with more than 20 affixes are not supported.")
-            return
-
-        for item in self.root.Affixes:
-            d4lf_item = D4LFItem(item, self.affixesNames, self.itemTypes)
-            self.item_list.append(d4lf_item)
-            if col % 4 == 0 and col != 0:
-                col = 0
-                row += 1
-            self.item_widgets_layout.addWidget(d4lf_item, row, col)
-            col += 1
+            print(f"{indent_str}{prefix}{model}")
 
     def load(self):
         profiles: list[str] = IniConfigLoader().general.profiles
@@ -210,9 +178,14 @@ class ProfileTab(QWidget):
             if not self.load_yaml():
                 return False
             self.update_filename_label()
-            self.load_items()
             return True
         return False
+
+    def create_profile_editor(self):
+        if not self.profile_editor_created:
+            self.model_editor = ProfileEditor(self.root)
+            self.scrollable_layout.addWidget(self.model_editor)
+            self.profile_editor_created = True
 
     def load_yaml(self):
         filename = os.path.basename(self.file_path)  # Get the filename from the full path
@@ -244,10 +217,7 @@ class ProfileTab(QWidget):
             self.filenameLabel.setText(display_name)
 
     def save_yaml(self):
-        new_profile_affixes = [d4lf_item.save_item() for d4lf_item in self.item_list]
-        if self.root:
-            p = ProfileModel(name="imported profile", Affixes=new_profile_affixes, Uniques=self.root.Uniques)
-            save_as_profile(self.filenameLabel.text(), p, "custom")
+        self.model_editor.save_all()
 
     # def check_close_save(self):
     #     new_profile_affixes = [d4lf_item.save_item_create() for d4lf_item in self.item_list]
@@ -256,25 +226,6 @@ class ProfileTab(QWidget):
     #         if p != self.root:
     #             return self.confirm_discard_changes()
     #     return True
-
-    def check_item_name(self, name):
-        return all(d4lf_item.item_name != name for d4lf_item in self.item_list)
-
-    def create_item(self):
-        dialog = CreateItem(self.itemTypes, self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            item = dialog.get_value()
-            if not self.check_item_name(list(item.root.keys())[0]):
-                self.create_alert("An item with the same already exists, please choose a different name.")
-                return
-            item_widget = D4LFItem(item, self.affixesNames, self.itemTypes)
-            item_widget.item_changed()
-            self.item_list.append(item_widget)
-            nb_item = self.item_widgets_layout.count()
-            row = nb_item // 4
-            col = nb_item % 4
-            self.item_widgets_layout.addWidget(item_widget, row, col)
-            return
 
     def delete_items(self):
         item_names = [item.item_name for item in self.item_list]
@@ -296,4 +247,6 @@ class ProfileTab(QWidget):
             return
 
         self.update_filename_label()
-        self.load_items()
+        self.scrollable_layout.removeWidget(self.model_editor)
+        self.model_editor = ProfileEditor(self.root)
+        self.scrollable_layout.addWidget(self.model_editor)
