@@ -243,3 +243,52 @@ class DeleteItem(QDialog):
 
     def get_value(self):
         return [checkbox.text() for checkbox in self.checkbox_list if checkbox.isChecked()]
+
+class DeleteAffixPool(QDialog):
+    def __init__(self, nb_affix_pool, inherent : bool = False, parent=None):
+        super().__init__(parent)
+        if inherent:
+            self.setWindowTitle("Delete Inherent Pool")
+            self.groupbox = QGroupBox("Inherent Pool")
+        else:
+            self.setWindowTitle("Delete Affix Pool")
+            self.groupbox = QGroupBox("Affix Pool")
+        self.setFixedSize(300, 200)
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+
+        scroll_area = QScrollArea(self)
+        scroll_widget = QWidget(scroll_area)
+        scrollable_layout = QVBoxLayout(scroll_widget)
+        self.groupbox_layout = QVBoxLayout()
+
+        label = QLabel("Select items to delete:")
+        label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        self.groupbox_layout.addWidget(label)
+
+        self.checkbox_list = []
+        for i in range(nb_affix_pool):
+            checkbox = QCheckBox(f"Count {i}")
+            scrollable_layout.addWidget(checkbox)
+            self.checkbox_list.append(checkbox)
+        scroll_widget.setLayout(scrollable_layout)
+        scroll_area.setWidget(scroll_widget)
+        self.groupbox_layout.addWidget(scroll_area)
+        self.groupbox.setLayout(self.groupbox_layout)
+        self.buttonLayout = QHBoxLayout()
+        self.okButton = QPushButton("OK")
+        self.okButton.clicked.connect(self.accept)
+        self.cancelButton = QPushButton("Cancel")
+        self.cancelButton.clicked.connect(self.reject)
+
+        self.buttonLayout.addWidget(self.okButton)
+        self.buttonLayout.addWidget(self.cancelButton)
+
+        self.main_layout.addWidget(self.groupbox)
+        self.main_layout.addLayout(self.buttonLayout)
+
+        self.setLayout(self.main_layout)
+
+    def get_value(self):
+        return [checkbox.text() for checkbox in self.checkbox_list if checkbox.isChecked()]
