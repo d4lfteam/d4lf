@@ -123,18 +123,18 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 |-----------|-----------------------------------|
 | inventory | Your hotkey for opening inventory |
 
-| \[advanced_options\]     | Description                                                                                                              |
-|--------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| move_to_inv              | Hotkey for moving items from stash to inventory                                                                          |
-| move_to_chest            | Hotkey for moving items from inventory to stash                                                                          |
-| run_filter               | Hotkey to start/stop filtering items                                                                                     |
+| \[advanced_options\]   | Description                                                                                                              |
+|------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| move_to_inv            | Hotkey for moving items from stash to inventory                                                                          |
+| move_to_chest          | Hotkey for moving items from inventory to stash                                                                          |
+| run_filter             | Hotkey to start/stop filtering items                                                                                     |
 | run_filter_force_refresh | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                               |
-| run_vision_mode          | Hotkey to start/stop vision mode                                                                                         |
-| force_refresh_only       | Hotkey to reset all item statuses without running a filter after                                                         |
-| exit_key                 | Hotkey to exit d4lf.exe                                                                                                  |
-| log_level                | Logging level. Can be any of \[debug, info, warning, error, critical\]                                                     |
-| process_name             | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted |
-| vision_mode_only         | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.            |
+| run_vision_mode        | Hotkey to start/stop vision mode                                                                                         |
+| force_refresh_only     | Hotkey to reset all item statuses without running a filter after                                                         |
+| exit_key               | Hotkey to exit d4lf.exe                                                                                                  |
+| log_lvl                | Logging level. Can be any of \[debug, info, warning, error, critical\]                                                     |
+| process_name           | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted |
+| vision_mode_only       | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.            |
 
 ### GUI
 
