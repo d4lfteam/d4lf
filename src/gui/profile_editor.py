@@ -3,6 +3,7 @@ from PyQt6.QtCore import Qt
 from src.config.models import ProfileModel
 from src.gui.affixes_tab import AffixesTab
 from src.gui.sigils_tab import SigilsTab
+from src.gui.tributes_tab import TributesTab
 from src.gui.importer.common import _to_yaml_str
 from src.config.loader import IniConfigLoader
 from src import __version__
@@ -12,12 +13,6 @@ import logging
 import re
 
 LOGGER = logging.getLogger(__name__)
-
-class TributesTab(QWidget):
-    def __init__(self, profile_model: ProfileModel, parent=None):
-        super().__init__(parent)
-        # Tributes-specific UI implementation
-        pass
 
 class UniquesTab(QWidget):
     def __init__(self, profile_model: ProfileModel, parent=None):
@@ -35,7 +30,7 @@ class ProfileEditor(QTabWidget):
         # Create main tabs
         self.affixes_tab = AffixesTab(self.profile_model.Affixes)
         self.sigils_tab = SigilsTab(self.profile_model.Sigils)  # To be implemented
-        self.tributes_tab = TributesTab(self.profile_model)  # To be implemented
+        self.tributes_tab = TributesTab(self.profile_model.Tributes)  # To be implemented
         self.uniques_tab = UniquesTab(self.profile_model)  # To be implemented
 
         # Add tabs with icons
@@ -81,7 +76,7 @@ class ProfileEditor(QTabWidget):
                     _to_yaml_str(
                         profile,
                         exclude_unset=not IniConfigLoader().general.full_dump,
-                        exclude={},
+                        exclude={"name"},
                     )
                 )
             LOGGER.info(f"Created profile {save_path}")

@@ -18,9 +18,12 @@ class ConditionWidget(QWidget):
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.name_combo.addItems(sorted(Dataloader().affix_sigil_dict_all['minor'].values()))
-        self.name_combo.addItems(sorted(Dataloader().affix_sigil_dict_all['major'].values()))
-        self.name_combo.addItems(sorted(Dataloader().affix_sigil_dict_all['positive'].values()))
+        affix_sigil_dict = {
+                **Dataloader().affix_sigil_dict_all["minor"],
+                **Dataloader().affix_sigil_dict_all["major"],
+                **Dataloader().affix_sigil_dict_all["positive"],
+        }
+        self.name_combo.addItems(sorted(affix_sigil_dict.values()))
         self.name_combo.setMaximumWidth(600)
         self.name_combo.setCurrentText(condition)
         self.name_combo.currentIndexChanged.connect(self.update_condition)
@@ -54,7 +57,7 @@ class SigilWidget(Container):
         self.sigil_name_combo.setEditable(True)
         self.sigil_name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.sigil_name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.sigil_name_combo.addItems(Dataloader().affix_sigil_dict_all["dungeons"].values())
+        self.sigil_name_combo.addItems(sorted(Dataloader().affix_sigil_dict_all["dungeons"].values()))
         self.sigil_name_combo.setCurrentText(self.sigil_name)
         self.sigil_name_combo.setMaximumWidth(150)
         self.sigil_name_combo.currentIndexChanged.connect(self.update_sigil_dungeon)
@@ -141,8 +144,26 @@ class SigilsTab(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 20, 0, 20)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.create_button_layout()
         self.create_form()
         self.create_containers()
+
+    def create_button_layout(self):
+        btn_layout = QHBoxLayout()
+
+        add_sigil_btn = QPushButton("Add Sigil")
+        add_sigil_btn.clicked.connect(self.create_sigil)
+
+        remove_whitelist_sigil_btn = QPushButton("Remove Whitelist Sigil")
+        remove_whitelist_sigil_btn.clicked.connect(lambda: self.remove_sigil())
+
+        remove_blacklist_sigil_btn = QPushButton("Remove Blacklist Sigil")
+        remove_blacklist_sigil_btn.clicked.connect(lambda: self.remove_sigil(blacklist = True))
+
+        btn_layout.addWidget(add_sigil_btn)
+        btn_layout.addWidget(remove_whitelist_sigil_btn)
+        btn_layout.addWidget(remove_blacklist_sigil_btn)
+        self.main_layout.addLayout(btn_layout)
 
     def create_form(self):
         self.general_form = QFormLayout()
@@ -176,24 +197,8 @@ class SigilsTab(QWidget):
             self.add_sigil(sigil_condition, True)
             self.whitelist_sigils.append(Dataloader().affix_sigil_dict[sigil_condition.name])
 
-        btn_layout = QHBoxLayout()
-
-        add_sigil_btn = QPushButton("Add Sigil")
-        add_sigil_btn.clicked.connect(self.create_sigil)
-
-        remove_whitelist_sigil_btn = QPushButton("Remove Whitelist Sigil")
-        remove_whitelist_sigil_btn.clicked.connect(lambda: self.remove_sigil())
-
-        remove_blacklist_sigil_btn = QPushButton("Remove Blacklist Sigil")
-        remove_blacklist_sigil_btn.clicked.connect(lambda: self.remove_sigil(blacklist = True))
-
-        btn_layout.addWidget(add_sigil_btn)
-        btn_layout.addWidget(remove_whitelist_sigil_btn)
-        btn_layout.addWidget(remove_blacklist_sigil_btn)
-
         self.main_layout.addWidget(self.whitelist_container)
         self.main_layout.addWidget(self.blacklist_container)
-        self.main_layout.addLayout(btn_layout)
 
     def add_sigil(self, sigil_condition : SigilConditionModel, whitelist : bool = False):
         name = Dataloader().affix_sigil_dict_all['dungeons'][sigil_condition.name]
