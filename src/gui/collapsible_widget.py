@@ -78,7 +78,6 @@ class Header(QWidget):
 
 
 class Container(QWidget):
-    selected = pyqtSignal()
     def __init__(self, name, color_background=False):
             super(Container, self).__init__() # Call the constructor of the parent class
 
@@ -100,7 +99,6 @@ class Container(QWidget):
             self.collapse = self.header.collapse # Assign the collapse method of the header to the instance attribute collapse
             self.expand = self.header.expand # Assign the expand method of the header to the instance attribute expand
             self.toggle = self.header.mousePressEvent # Assign the mousePressEvent method of the header to the instance attribute toggle
-            self._content_widget.mousePressEvent = self.on_content_clicked
 
     @property
     def contentWidget(self):
@@ -109,13 +107,3 @@ class Container(QWidget):
             Returns: Content widget
             """
             return self._content_widget # Return the _content_widget when the contentWidget property is accessed
-
-    def on_content_clicked(self, event):
-        self.selected.emit()
-        event.accept()
-
-    def mousePressEvent(self, event):
-        # Check if the click is not on the header
-        if not self.header.geometry().contains(event.pos()):
-            self.selected.emit()
-        super().mousePressEvent(event)
