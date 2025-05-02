@@ -1,9 +1,10 @@
-from PyQt6.QtWidgets import (QWidget, QTabWidget, QMessageBox)
+from PyQt6.QtWidgets import (QTabWidget, QMessageBox, QInputDialog, QDialogButtonBox, QLineEdit)
 from PyQt6.QtCore import Qt
 from src.config.models import ProfileModel
 from src.gui.affixes_tab import AffixesTab
 from src.gui.sigils_tab import SigilsTab
 from src.gui.tributes_tab import TributesTab
+from src.gui.uniques_tab import UniquesTab
 from src.gui.importer.common import _to_yaml_str
 from src.config.loader import IniConfigLoader
 from src import __version__
@@ -13,12 +14,6 @@ import logging
 import re
 
 LOGGER = logging.getLogger(__name__)
-
-class UniquesTab(QWidget):
-    def __init__(self, profile_model: ProfileModel, parent=None):
-        super().__init__(parent)
-        # Uniques-specific UI implementation
-        pass
 
 class ProfileEditor(QTabWidget):
     def __init__(self, profile_model: ProfileModel, parent=None):
@@ -31,7 +26,7 @@ class ProfileEditor(QTabWidget):
         self.affixes_tab = AffixesTab(self.profile_model.Affixes)
         self.sigils_tab = SigilsTab(self.profile_model.Sigils)  # To be implemented
         self.tributes_tab = TributesTab(self.profile_model.Tributes)  # To be implemented
-        self.uniques_tab = UniquesTab(self.profile_model)  # To be implemented
+        self.uniques_tab = UniquesTab(self.profile_model.Uniques)  # To be implemented
 
         # Add tabs with icons
         self.addTab(self.affixes_tab, "Affixes")
@@ -45,23 +40,37 @@ class ProfileEditor(QTabWidget):
         self.setTabPosition(QTabWidget.TabPosition.North)
         self.setElideMode(Qt.TextElideMode.ElideRight)
 
-        # Connect signals
-        self.currentChanged.connect(self.on_tab_changed)
+    def show_warning(self):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Icon.Warning)
+        msg.setWindowTitle("Warning")
 
-    def on_tab_changed(self, index):
-        """Handle tab changes and validation"""
-        if index == self.uniques_index:
-            self.validate_uniques_tab()
+        # Newline in message text
+        msg.setText("The profile model might not be valid. Do you still want to save your changes ?")
 
-    def validate_uniques_tab(self):
-        """Example validation method"""
-        pass
+        msg.setStandardButtons(
+            QMessageBox.StandardButton.Save |
+            QMessageBox.StandardButton.Discard
+        )
+
+        response = msg.exec()
+        if response == QMessageBox.StandardButton.Save:
+            return True
+        else:
+            return False
 
     def save_all(self):
         """Save all tabs' configurations"""
-        self.save_to_yaml(self.profile_model.name + "_custom", self.profile_model, "custom")
-
-        QMessageBox.information(self, "Saved", "All configurations saved successfully")
+        model = ProfileModel.model_validate(self.profile_model)
+        if model != self.profile_model:
+            if self.show_warning():
+                self.save_to_yaml(self.profile_model.name + "_custom", self.profile_model, "custom")
+                QMessageBox.information(self, "Info", f"Profile saved successfully to {self.profile_model.name + "_custom.yaml"}")
+            else:
+                QMessageBox.information(self, "Info", f"Profile not saved.")
+        else:
+            self.save_to_yaml(self.profile_model.name + "_custom", self.profile_model, "custom")
+            QMessageBox.information(self, "Info", f"Profile saved successfully to {self.profile_model.name + "_custom.yaml"}")
 
     def save_to_yaml(self, file_name: str, profile: ProfileModel, url : str):
             file_name = file_name.replace("'", "")

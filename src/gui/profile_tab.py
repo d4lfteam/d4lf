@@ -103,7 +103,7 @@ class ProfileTab(QWidget):
         reply = QMessageBox.warning(
             self,
             "Unsaved Changes",
-            "You have unsaved changes. Do you want to save them before continuing?",
+            "You have unsaved changes. Do you want to save them before closing?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
         )
         if reply == QMessageBox.StandardButton.Yes:
