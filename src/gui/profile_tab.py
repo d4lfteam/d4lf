@@ -188,9 +188,6 @@ class ProfileTab(QWidget):
     def check_close_save(self):
         if self.root:
             if self.original_root != self.root:
-                print(self.original_root.model_dump_json())
-                print("\n===========================================\n")
-                print(self.root.model_dump_json())
                 return self.confirm_discard_changes()
         return True
 
