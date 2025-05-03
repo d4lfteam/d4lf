@@ -138,7 +138,6 @@
         "zenith": "zenith"
     },
     "major": {
-        "": " monsters gain of their maximum life as a barrier.",
         "avenger": "avenger killing a monster enrages monsters near it after a short delay, making them deal more damage.",
         "blood_blister": "blood blister killing a monster has a chance to spawn a blood blister. after a short time, it explodes, dealing heavy area damage.",
         "death_pulse": "death pulse killing a monster releases a deadly shadow pulse after a short delay.",
@@ -159,7 +158,6 @@
         "volcanic": "volcanic while in combat, gouts of flame periodically erupt near players."
     },
     "minor": {
-        "": " monsters become unstoppable when life drops below .",
         "armor_breakers": "armor breakers monster attacks from a distance reduce your armor by for seconds, stacking up to .",
         "backstabbers": "backstabbers close monster attacks from behind cause you to become vulnerable.",
         "barrier_breakers": "barrier breakers monsters deal more damage to barriers.",
@@ -201,14 +199,13 @@
         "unstoppable_monsters": "unstoppable monsters monsters become unstoppable when life drops below ."
     },
     "positive": {
-        "": " after attacking an enemy, your thorns are increased by for seconds, up to at max stacks.",
-        "ancestors_favor": "ancestors favor you earn more experience while within this dungeon",
+        "ancestors_favor": "ancestors favor extra lunar shrines and more glyph experience earned at the end of this dungeon.",
         "ancestral_awakening": "ancestral awakening you earn more glyph experience at the end of this dungeon.",
         "battle_hardened": "battle hardened gain damage reduction for every health you are missing.",
         "control_impaired_explosions": "control impaired explosions being hit by control impairing effects creates an explosion around you.",
         "extra_shrines": "extra shrines extra shrines will appear in the dungeon.",
         "fire_damage": "fire damage you deal more fire damage.",
-        "forgotten_altar": "this world will always spawn a forgotten altar",
+        "forgotten_altar": "forgotten altar this world will always spawn a forgotten altar.",
         "frost_damage": "frost damage you deal more frost damage.",
         "gold_find": "gold find you find more gold.",
         "hell_touched": "hell touched extra infernal shrines and more glyph experience earned at the end of this dungeon.",
