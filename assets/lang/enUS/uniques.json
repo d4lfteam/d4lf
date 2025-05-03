@@ -909,6 +909,14 @@
         ],
         "num_inherents": 0
     },
+    "sidhe_bindings": {
+        "desc": "casting familiar now summons all three elemental variants at once. familiars duration is increased by and its cooldown is reduced by seconds, but its maximum charges are reduced by .",
+        "full": "Casting {c_important}Familiar{/c} now Summons all three Elemental variants at once.\r\n\r\n{c_important}Familiar's{/c} duration is increased by {c_random}[Affix_Value_1|x%|]{/c} and its Cooldown is reduced by {c_number}2{/c} seconds, but its Maximum Charges are reduced by {c_number}1{/c}.",
+        "num_idx": [
+            0
+        ],
+        "num_inherents": 0
+    },
     "skyhunter": {
         "desc": "the first direct damage you deal to an enemy is a guaranteed critical strike. when you consume stacks of precision casting a skill, that skill gains increased critical strike damage and you gain energy.",
         "full": "The first direct damage you deal to an enemy is a guaranteed Critical Strike. When you consume stacks of {c_important}Precision{/c} casting a Skill, that Skill gains {c_random}[Affix_Value_1|%x|]{/c} increased Critical Strike Damage and you gain {c_random}[Affix_Value_2|1|]{/c} {c_important}Energy{/c}.",
@@ -949,6 +957,10 @@
             0
         ],
         "num_inherents": 0
+    },
+    "stone_of_vehemen": {
+        "desc": "while channeling stone burst and for seconds afterwards, you gain damage reduction. stone bursts final explosion deals increased damage, further increased by for each size increase",
+        "num_idx": []
     },
     "storms_companion": {
         "desc": "your wolf companions are infused with the power of the storm, dealing lightning damage and gaining the storm howl ability.",

@@ -45,6 +45,10 @@
             0
         ]
     },
+    "stone_of_vehemen": {
+        "desc": "while channeling stone burst and for seconds afterwards, you gain damage reduction. stone bursts final explosion deals increased damage, further increased by for each size increase",
+        "num_idx": []
+    },
     "the_basilisk": {
         "desc": "when you first hit an enemy with an earth skill petrify them for seconds",
         "num_idx": [

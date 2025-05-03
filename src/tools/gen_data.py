@@ -53,6 +53,8 @@ def check_ms(input_string) -> str:
 
 def main(d4data_dir: Path, companion_app_dir: Path):
     lang_arr = ["enUS"]  # "deDE", "frFR", "esES", "esMX", "itIT", "jaJP", "koKR", "plPL", "ptBR", "ruRU", "trTR", "zhCN", "zhTW"]
+    # Some items are just cosmetics or test items
+    items_to_ignore = ["harriers_of_war", "heart_of_war", "fists_of_war", "guise_of_war", "strides_of_war", "snake_glaive"]
 
     for lang in lang_arr:
         file_names = [
@@ -68,6 +70,9 @@ def main(d4data_dir: Path, companion_app_dir: Path):
             if os.path.exists(f):
                 os.remove(f)
         os.makedirs(f"assets/lang/{lang}", exist_ok=True)
+
+    with open(D4LF_BASE_DIR / "src/tools/data/custom_uniques_affix_file_names.json", encoding="utf-8") as custom_unique_affix_file:
+        custom_unique_affix_file_names = json.load(custom_unique_affix_file)
 
     for language in lang_arr:
         # Create Uniques
@@ -85,12 +90,21 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                 name = name_item[0]["szText"]
                 name_clean = name.strip().replace(" ", "_").lower().replace("’", "").replace("'", "").replace(",", "")
                 name_clean = check_ms(name_clean)
-                # Open affix file for affix
+                if name_clean in items_to_ignore:
+                    continue
                 splits = json_file.name.split("_")
-                affix_file_name = "Affix_" + "_".join(splits[1:])
+                # Open affix file for affix
+                if name_clean in custom_unique_affix_file_names:
+                    affix_file_name = custom_unique_affix_file_names[name_clean]
+                else:
+                    affix_file_name = "Affix_" + "_".join(splits[1:])
                 affix_file_path = json_file.parent / affix_file_name
                 if not affix_file_path.exists():
-                    if not any(string_to_skip in name_clean for string_to_skip in ["[ph]", "(ph)", "ph_", "_test_", "debug"]) and not any(
+                    # Among a bunch of debug stuff there are two yens blessings and one is bad
+                    if not any(
+                        string_to_skip in name_clean
+                        for string_to_skip in ["[ph]", "(ph)", "ph_", "_test_", "debug", "yens_blessing", "bucranis_"]
+                    ) and not any(
                         string_to_skip in affix_file_name
                         for string_to_skip in ["S07_Witch_", "_QST_", "_TEST_", "_NoPowers", "_Cache", "_zzOld_"]
                     ):
@@ -153,16 +167,16 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                             name = name.replace("(", "").replace(")", "").replace("{c_bonus}", "").replace("{/c}", "")
                         else:
                             desc = sigil_affix["szText"].lower().strip().replace("’", "").replace("'", "")
-                        sigil_dict[affix_type][name.replace(" ", "_")] = f"{name} {remove_content_in_braces(desc)}"
+                    sigil_dict[affix_type][name.replace(" ", "_")] = f"{name} {remove_content_in_braces(desc)}"
 
         # Some of the unique specific affixes are missing. Add them manually
         with open(D4LF_BASE_DIR / f"src/tools/data/custom_sigils_{language}.json", encoding="utf-8") as file:
             data = json.load(file)
-            for key, value in data.items():
+            for key, values in data.items():
                 if key in sigil_dict:
-                    for key2, value2 in value.items():
+                    for key2, value2 in values.items():
                         if key2 in sigil_dict[key]:
-                            if sigil_dict[key][key2] == value:
+                            if sigil_dict[key][key2] == value2:
                                 print(f"Sigil {key2} already exists in sigils.json. Can be deleted from custom json")
                             else:
                                 print(f"Sigil {key2} already exists in sigils.json but with different value")
@@ -170,7 +184,7 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                         else:
                             sigil_dict[key][key2] = value2
                 else:
-                    sigil_dict[key] = value
+                    sigil_dict[key] = values
 
         with open(D4LF_BASE_DIR / f"assets/lang/{language}/sigils.json", "w", encoding="utf-8") as json_file:
             json.dump(sigil_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
