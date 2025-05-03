@@ -184,9 +184,8 @@ class ProfileTab(QWidget):
         self.model_editor.save_all()
 
     def check_close_save(self):
-        if self.root:
-            if self.original_root != self.root:
-                return self.confirm_discard_changes()
+        if self.root and self.original_root != self.root:
+            return self.confirm_discard_changes()
         return True
 
     def delete_items(self):

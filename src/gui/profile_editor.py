@@ -53,9 +53,7 @@ class ProfileEditor(QTabWidget):
         msg.setStandardButtons(QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard)
 
         response = msg.exec()
-        if response == QMessageBox.StandardButton.Save:
-            return True
-        return False
+        return response == QMessageBox.StandardButton.Save
 
     def save_all(self):
         """Save all tabs' configurations"""

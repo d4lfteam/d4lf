@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QSpacerItem, QStac
 
 class Header(QWidget):
     def __init__(self, name, content_widget):
-        super(Header, self).__init__()
+        super().__init__()
         self.content = content_widget
         self.name = name
         self.expand_ico = ">"  # Use text instead of image
@@ -73,7 +73,7 @@ class Header(QWidget):
 
 class Container(QWidget):
     def __init__(self, name, color_background=False):
-        super(Container, self).__init__()  # Call the constructor of the parent class
+        super().__init__()  # Call the constructor of the parent class
 
         layout = QVBoxLayout(self)  # Create a QVBoxLayout instance and pass the current object as the parent
         layout.setContentsMargins(0, 0, 0, 0)  # Set the margins of the layout to 0

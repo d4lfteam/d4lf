@@ -62,11 +62,7 @@ class AffixGroupEditor(QWidget):
         self.item_type_combo.setEditable(True)
         self.item_type_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.item_type_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        item_types_names = []
-        for item in ItemType.__members__.values():
-            if is_armor(item) or is_jewelry(item) or is_weapon(item):
-                item_types_names.append(item.name)
-
+        item_types_names = [item.name for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)]
         self.item_type_combo.addItems(item_types_names)
         self.item_type_combo.setCurrentText(self.config.itemType[0].name)
         self.item_type_combo.setMaximumWidth(150)
@@ -187,9 +183,8 @@ class AffixGroupEditor(QWidget):
             to_delete_list = []
             for i in range(layout_widget.count()):
                 item = layout_widget.itemAt(i)
-                if item and item.widget() is not None:  # Check if the item is a widget
-                    if item.widget().header.name in to_delete:
-                        to_delete_list.append((item.widget(), i))
+                if item and item.widget() is not None and item.widget().header.name in to_delete:  # Check if the item is a widget
+                    to_delete_list.append((item.widget(), i))
             to_delete_list.reverse()
             for widget, index in to_delete_list:
                 widget.setParent(None)
@@ -370,7 +365,7 @@ class AffixWidget(QWidget):
         try:
             self.affix.value = float(value) if value else None
         except ValueError:
-            pass
+            return
 
     def update_comparison(self):
         comparison = self.comparison_combo.currentText()
@@ -400,7 +395,7 @@ class AffixesTab(QWidget):
         self.toolbar.setMovable(False)
         self.item_names = []
         for affix_group in self.affixes_model:
-            for item_name, config in affix_group.root.items():
+            for item_name in affix_group.root:
                 if item_name in self.item_names:
                     QMessageBox.warning(self, "Warning", f"Item name already exist please rename {item_name} in the profile file.")
                     continue
@@ -432,7 +427,7 @@ class AffixesTab(QWidget):
         dialog = CreateItem(self.item_names, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             item = dialog.get_value()
-            for item_name, config in item.root.items():
+            for item_name in item.root:
                 group = AffixGroupEditor(item)
                 self.item_names.append(item_name)
                 self.tab_widget.addTab(group, item_name)

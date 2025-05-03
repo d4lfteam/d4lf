@@ -127,7 +127,7 @@ class TributeWidget(Container):
         self.tribute_name_combo.currentIndexChanged.connect(self.update_tribute_name)
 
     def update_tribute_name(self, classic=True):
-        if self.first_changed_bug and self.tribute.name != None and self.old_name != None:
+        if self.first_changed_bug and self.tribute.name is not None and self.old_name is not None:
             self.first_changed_bug = False
             return
         new_name = self.tribute_name_combo.currentText()
@@ -148,7 +148,7 @@ class TributesTab(QWidget):
     def __init__(self, tributes: list[TributeFilterModel], parent=None):
         super().__init__(parent)
         super().__init__(parent)
-        if tributes == None:
+        if tributes is None:
             self.tributes = [TributeFilterModel()]
         else:
             self.tributes = tributes

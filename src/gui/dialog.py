@@ -417,10 +417,7 @@ class RemoveTribute(QDialog):
 
         self.checkbox_list = []
         for tribute in self.tributes:
-            if tribute:
-                checkbox = QCheckBox(Dataloader().tribute_dict[tribute])
-            else:
-                checkbox = QCheckBox("None")
+            checkbox = QCheckBox(Dataloader().tribute_dict[tribute]) if tribute else QCheckBox("None")
             scrollable_layout.addWidget(checkbox)
             self.checkbox_list.append(checkbox)
         scroll_widget.setLayout(scrollable_layout)

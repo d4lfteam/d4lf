@@ -149,7 +149,7 @@ class SigilWidget(Container):
 class SigilsTab(QWidget):
     def __init__(self, sigil_model: SigilFilterModel, parent=None):
         super().__init__(parent)
-        if sigil_model == None:
+        if sigil_model is None:
             self.sigil_model = SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.whitelist)
         else:
             self.sigil_model = sigil_model
@@ -248,10 +248,7 @@ class SigilsTab(QWidget):
                 self.sigil_model.blacklist.append(sigil_condition)
 
     def remove_sigil(self, blacklist: bool = False):
-        if blacklist:
-            dialog = RemoveSigil(self.blacklist_sigils, blacklist=True)
-        else:
-            dialog = RemoveSigil(self.whitelist_sigils)
+        dialog = RemoveSigil(self.blacklist_sigils, blacklist=True) if blacklist else RemoveSigil(self.whitelist_sigils)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             to_delete = dialog.get_value()
             if blacklist:

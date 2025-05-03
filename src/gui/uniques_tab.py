@@ -98,10 +98,7 @@ class UniqueWidget(QWidget):
         self.item_type_combo.setEditable(True)
         self.item_type_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.item_type_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        item_types_names = []
-        for item in ItemType.__members__.values():
-            if is_armor(item) or is_jewelry(item) or is_weapon(item):
-                item_types_names.append(item.name)
+        item_types_names = [item.name for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)]
         item_types_names.append("None")
         self.item_type_combo.addItems(item_types_names)
         if len(self.unique_model.itemType) == 0:
@@ -227,7 +224,7 @@ class UniqueWidget(QWidget):
         try:
             self.unique_model.aspect.value = float(value) if value else None
         except ValueError:
-            pass
+            return
 
     def update_aspect_comparison(self):
         comparison = self.comparison_combo.currentText()
@@ -296,14 +293,8 @@ class UniquesTab(QWidget):
         dialog = DeleteItem([self.tab_widget.tabText(i) for i in range(self.tab_widget.count())], self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             item_names_to_delete = dialog.get_value()
-            print(item_names_to_delete)
-            to_delete_index = []
-            for i in range(self.tab_widget.count()):
-                if self.tab_widget.tabText(i) in item_names_to_delete:
-                    to_delete_index.append(i)
+            to_delete_index = [i for i in range(self.tab_widget.count()) if self.tab_widget.tabText(i) in item_names_to_delete]
             to_delete_index.reverse()
-            print(to_delete_index)
-            print(len(self.unique_model_list))
             for index in to_delete_index:
                 self.tab_widget.removeTab(index)
                 self.unique_model_list.pop(index)
@@ -325,7 +316,7 @@ class UniquesTab(QWidget):
         if current_unique.unique_model.aspect:
             QMessageBox.warning(self, "Warn", "An aspect already exist for the current unique. Please modify the existing one.")
         else:
-            current_unique.unique_model.aspect = AspectUniqueFilterModel(name=sorted(list(Dataloader().aspect_unique_dict.keys()))[0])
+            current_unique.unique_model.aspect = AspectUniqueFilterModel(name=sorted(Dataloader().aspect_unique_dict.keys())[0])
             current_unique.create_aspect_groupbox()
 
     def add_affixes_to_current_unique(self):
@@ -333,7 +324,7 @@ class UniquesTab(QWidget):
         if current_unique.unique_model.affix:
             QMessageBox.warning(self, "Warn", "An affix already exist for the current unique. Please modify the existing one.")
         else:
-            current_unique.unique_model.affix = [AffixFilterModel(name=sorted(list(Dataloader().affix_dict.keys()))[0])]
+            current_unique.unique_model.affix = [AffixFilterModel(name=sorted(Dataloader().affix_dict.keys())[0])]
             current_unique.create_affix_groupbox()
 
     def remove_aspect_from_current_unique(self):
