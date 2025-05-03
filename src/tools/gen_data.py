@@ -88,7 +88,7 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                 if not name_item:
                     continue
                 name = name_item[0]["szText"]
-                name_clean = name.strip().replace(" ", "_").lower().replace("’", "").replace("'", "").replace(",", "")
+                name_clean = name.strip().replace(" ", "_").replace("\xa0", "_").lower().replace("’", "").replace("'", "").replace(",", "")
                 name_clean = check_ms(name_clean)
                 if name_clean in items_to_ignore:
                     continue
@@ -112,7 +112,10 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                     continue
                 with open(affix_file_path, encoding="utf-8") as affix_file:
                     data = json.load(affix_file)
-                    desc = data["arStrings"][0]["szText"]
+                    desc_item = [item for item in data["arStrings"] if item["szLabel"] == "Desc"]
+                    if not desc_item:
+                        continue
+                    desc = desc_item[0]["szText"]
                     desc_clean = remove_content_in_braces(desc.lower().replace("’", ""))
                     num_idx = get_random_number_idx(desc)
                     unique_dict[name_clean] = {"desc": desc_clean, "full": desc, "num_idx": num_idx, "num_inherents": None}
