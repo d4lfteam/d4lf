@@ -14,6 +14,7 @@ DATALOADER_LOCK = threading.Lock()
 class Dataloader:
     affix_dict = {}
     affix_sigil_dict = {}
+    affix_sigil_dict_all = {}
     aspect_unique_dict = {}
     aspect_unique_num_idx = {}
     aspect_unique_num_inherents = {}
@@ -55,12 +56,12 @@ class Dataloader:
                     LOGGER.warning(f"{item} type not in item_type.py")
 
         with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/sigils.json", encoding="utf-8") as f:
-            affix_sigil_dict_all = json.load(f)
+            self.affix_sigil_dict_all = json.load(f)
             self.affix_sigil_dict = {
-                **affix_sigil_dict_all["dungeons"],
-                **affix_sigil_dict_all["minor"],
-                **affix_sigil_dict_all["major"],
-                **affix_sigil_dict_all["positive"],
+                **self.affix_sigil_dict_all["dungeons"],
+                **self.affix_sigil_dict_all["minor"],
+                **self.affix_sigil_dict_all["major"],
+                **self.affix_sigil_dict_all["positive"],
             }
 
         with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/tributes.json", encoding="utf-8") as f:

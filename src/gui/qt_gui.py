@@ -81,10 +81,10 @@ class Gui(QMainWindow):
             self.settings.setValue("size", self.size())
             self.settings.setValue("pos", self.pos())
         self.settings.setValue("maximized", self.isMaximized())
-        # if self.profile_tab_widget.check_close_save():
-        #     e.accept()
-        # else:
-        #     e.ignore()
+        if self.profile_tab_widget.check_close_save():
+            e.accept()
+        else:
+            e.ignore()
 
     def _diablo_trade_tab(self):
         tab_diablo_trade = QWidget(self)
@@ -172,6 +172,8 @@ class Gui(QMainWindow):
         elif self.tab_widget.tabText(index) == D4TRADE_TABNAME:
             LOGGER.root.addHandler(self.diablo_trade_log_handler)
             LOGGER.root.removeHandler(self.maxroll_log_handler)
+        elif self.tab_widget.tabText(index) == profile_tab.PROFILE_TABNAME:
+            self.profile_tab_widget.create_profile_editor()
 
     def _maxroll_or_d4builds_tab(self):
         tab_maxroll = QWidget(self)
