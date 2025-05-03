@@ -191,11 +191,9 @@ class UniqueWidget(QWidget):
 
     def update_min_power(self):
         self.unique_model.minPower = self.min_power.value()
-        print(self.unique_model.minPower)
 
     def update_min_greater_affix(self):
         self.unique_model.minGreaterAffixCount = self.min_greater.value()
-        print(self.unique_model.minGreaterAffixCount)
 
     def update_min_percent(self):
         self.unique_model.minPercentOfAspect = self.min_percent.value()
