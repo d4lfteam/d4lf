@@ -101,7 +101,9 @@ def check_for_proper_tts_configuration():
                         f"3rd Party Screen Reader is not enabled in Accessibility Settings in D4. No items will be read. Read more about initial setup here: {SETUP_INSTRUCTIONS_URL}"
                     )
         else:
-            LOGGER.warning("Unable to find a Diablo 4 local prefs file. Can't automatically check if TTS is configured properly in-game.")
+            LOGGER.warning(
+                'Unable to find a Diablo 4 local prefs file. Can\'t automatically check if TTS is configured properly in-game. If d4lf is working without issue for you, you can disable this warning by enabling "disable_tts_warning" in the Advanced settings.'
+            )
 
 
 def get_d4_local_prefs_file() -> Path | None:
