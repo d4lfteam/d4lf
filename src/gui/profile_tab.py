@@ -26,8 +26,7 @@ from src.gui.importer.common import ProfileModel, save_as_profile
 from src.gui.profile_editor import ProfileEditor
 from src.item.filter import _UniqueKeyLoader
 from pydantic import BaseModel
-import numpy as np
-import enum
+import copy
 
 LOGGER = logging.getLogger(__name__)
 
@@ -63,7 +62,7 @@ class ProfileTab(QWidget):
         self.file_button = QPushButton("File")
         self.save_button = QPushButton("Save")
         self.refresh_button = QPushButton("Refresh")
-        self.file_button.clicked.connect(self.load)
+        self.file_button.clicked.connect(self.load_file)
         self.save_button.clicked.connect(self.save_yaml)
         self.refresh_button.clicked.connect(self.refresh)
         tools_groupbox_layout.addWidget(self.file_button)
@@ -104,7 +103,7 @@ class ProfileTab(QWidget):
         reply = QMessageBox.warning(
             self,
             "Unsaved Changes",
-            "You have unsaved changes. Do you want to save them before continuing?",
+            "You have unsaved changes. Do you want to save them before closing?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
         )
         if reply == QMessageBox.StandardButton.Yes:
@@ -116,46 +115,9 @@ class ProfileTab(QWidget):
         reply = QMessageBox.warning(self, "Alert", msg, QMessageBox.StandardButton.Ok)
         return reply == QMessageBox.StandardButton.Ok
 
-    def load_items(self, model, indent=0, prefix="", max_list_items=3):
-        """Recursively pretty-print Pydantic models with indentation"""
-        indent_str = " " * indent
-        next_indent = indent + 4
-        if isinstance(model, BaseModel):
-            print(f"{indent_str}{prefix}{model.__class__.__name__}:")
-            for name, field in model.model_fields.items():
-                value = getattr(model, name)
-                self.load_items(value, next_indent, f"{name}: ", max_list_items)
-
-        elif isinstance(model, list):
-            if len(model) > max_list_items:
-                print(f"{indent_str}{prefix}[{len(model)} items]")
-                for i, item in enumerate(model[:max_list_items]):
-                    self.load_items(item, next_indent, f"[{i}] ", max_list_items)
-                if len(model) > max_list_items:
-                    print(f"{indent_str} ... and {len(model)-max_list_items} more")
-            else:
-                print(f"{indent_str}{prefix}[")
-                for i, item in enumerate(model):
-                    self.load_items(item, next_indent, f"[{i}] ", max_list_items)
-                print(f"{indent_str}]")
-
-        elif isinstance(model, dict):
-            print(f"{indent_str}{prefix}{{")
-            for key, value in model.items():
-                self.load_items(value, next_indent, f"{key}: ", max_list_items)
-            print(f"{indent_str}}}")
-
-        elif isinstance(model, np.ndarray):
-            print(f"{indent_str}{prefix}ndarray(shape={model.shape}, dtype={model.dtype})")
-
-        elif isinstance(model, enum.Enum):
-            print(f"{indent_str}{prefix}{model.value}")
-
-        elif hasattr(model, "__dict__"):  # Fallback for other objects
-            print(f"{indent_str}{prefix}{str(model)}")
-
-        else:
-            print(f"{indent_str}{prefix}{model}")
+    def load_file(self):
+        self.load()
+        self.refresh()
 
     def load(self):
         profiles: list[str] = IniConfigLoader().general.profiles
@@ -207,6 +169,9 @@ class ProfileTab(QWidget):
                 LOGGER.error(f"Validation errors in {self.file_path}")
                 LOGGER.error(e)
                 return False
+            except TypeError as e:
+                self.root = ProfileModel(**config)
+        self.original_root = copy.deepcopy(self.root)
         return True
 
     def update_filename_label(self):
@@ -217,15 +182,14 @@ class ProfileTab(QWidget):
             self.filenameLabel.setText(display_name)
 
     def save_yaml(self):
+        self.original_root = copy.deepcopy(self.root)
         self.model_editor.save_all()
 
-    # def check_close_save(self):
-    #     new_profile_affixes = [d4lf_item.save_item_create() for d4lf_item in self.item_list]
-    #     if self.root:
-    #         p = ProfileModel(name=self.filenameLabel.text(), Affixes=new_profile_affixes, Uniques=self.root.Uniques)
-    #         if p != self.root:
-    #             return self.confirm_discard_changes()
-    #     return True
+    def check_close_save(self):
+        if self.root:
+            if self.original_root != self.root:
+                return self.confirm_discard_changes()
+        return True
 
     def delete_items(self):
         item_names = [item.item_name for item in self.item_list]

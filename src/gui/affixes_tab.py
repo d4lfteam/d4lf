@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (QWidget, QScrollArea, QVBoxLayout, QFormLayout,
                             QPushButton, QListWidget, QListWidgetItem, QHBoxLayout,
                             QLineEdit, QTabWidget, QSizePolicy, QLabel, QFrame, QDialog,
-                            QToolBar, QMessageBox, QToolButton)
+                            QToolBar, QMessageBox, QToolButton, QComboBox, QCompleter)
 from PyQt6.QtCore import Qt
 from src.config.models import ItemType, AffixFilterModel, AffixFilterCountModel, ItemFilterModel, ComparisonType, DynamicItemFilterModel
 from src.item.data.item_type import is_armor, is_jewelry, is_weapon
@@ -35,6 +35,9 @@ class AffixGroupEditor(QWidget):
         # General Settings
         general_form = QFormLayout()
         self.item_type_combo = IgnoreScrollWheelComboBox()
+        self.item_type_combo.setEditable(True)
+        self.item_type_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.item_type_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         item_types_names = []
         for item in ItemType.__members__.values():
             if is_armor(item) or is_jewelry(item) or is_weapon(item):
@@ -43,7 +46,7 @@ class AffixGroupEditor(QWidget):
         self.item_type_combo.addItems(item_types_names)
         self.item_type_combo.setCurrentText(self.config.itemType[0].name)
         self.item_type_combo.setMaximumWidth(150)
-        self.item_type_combo.currentTextChanged.connect(self.update_item_type)
+        self.item_type_combo.currentIndexChanged.connect(self.update_item_type)
         general_form.addRow("Item Type:", self.item_type_combo)
         self.min_power = IgnoreScrollWheelSpinBox()
         self.min_power.setMaximum(800)
@@ -184,11 +187,6 @@ class AffixGroupEditor(QWidget):
     def update_min_greater_affix(self):
         self.config.minGreaterAffixCount = self.min_greater.value()
 
-    def save_config(self):
-        print(self.config)
-
-
-
 class AffixPoolWidget(QWidget):
     def __init__(self, pool: AffixFilterCountModel, parent=None):
         super().__init__(parent)
@@ -215,8 +213,7 @@ class AffixPoolWidget(QWidget):
         max_count_label.setMaximumWidth(100)
         config_layout.addWidget(max_count_label)
         self.max_count = IgnoreScrollWheelSpinBox()
-        self.pool.maxCount = 2147483647 if self.pool.maxCount > 2147483647 else self.pool.maxCount
-        self.max_count.setValue(self.pool.maxCount)
+        self.max_count.setValue(2147483647 if self.pool.maxCount > 2147483647 else self.pool.maxCount)
         self.max_count.setMaximumWidth(100)
         self.max_count.valueChanged.connect(self.update_max_count)
         config_layout.addWidget(self.max_count)
@@ -275,11 +272,11 @@ class AffixPoolWidget(QWidget):
         self.affix_list.setItemWidget(item, widget)
 
     def add_affix(self):
-        new_affix = AffixFilterModel(name=list(Dataloader().affix_dict.keys())[0], value=None)
+        new_affix = AffixFilterModel(name=list(Dataloader().affix_dict.keys())[0], value=None, comparison=ComparisonType.larger)
         self.pool.count.append(new_affix)
         self.add_affix_item(new_affix)
 
-    def remove_selected(self, list_widget):
+    def remove_selected(self, list_widget : QListWidget):
         for item in list_widget.selectedItems():
             row = list_widget.row(item)
             list_widget.takeItem(row)
@@ -306,11 +303,14 @@ class AffixWidget(QWidget):
 
         # Affix Name Combobox
         self.name_combo = IgnoreScrollWheelComboBox()
+        self.name_combo.setEditable(True)
+        self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.name_combo.addItems(sorted(Dataloader().affix_dict.values()))
         self.name_combo.setMaximumWidth(600)
         if self.affix.name in Dataloader().affix_dict:
             self.name_combo.setCurrentText(Dataloader().affix_dict[self.affix.name])
-        self.name_combo.currentTextChanged.connect(self.update_name)
+        self.name_combo.currentIndexChanged.connect(self.update_name)
 
         # Value Input
         self.value_edit = QLineEdit()
@@ -319,14 +319,17 @@ class AffixWidget(QWidget):
         if self.affix.value is not None:
             self.value_edit.setText(str(self.affix.value))
         self.value_edit.textChanged.connect(self.update_value)
-
+        self.affix.value = self.affix.value
         # Comparison Combobox
         self.comparison_combo = IgnoreScrollWheelComboBox()
+        self.comparison_combo.setEditable(True)
+        self.comparison_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.comparison_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.comparison_combo.setMaximumWidth(100)
         self.comparison_combo.addItems([ct.value for ct in ComparisonType])
         self.comparison_combo.setCurrentText(self.affix.comparison.value)
-        self.comparison_combo.currentTextChanged.connect(self.update_comparison)
-
+        self.comparison_combo.currentIndexChanged.connect(self.update_comparison)
+        self.affix.comparison = ComparisonType(self.affix.comparison.value)
         layout.addWidget(self.name_combo)
         layout.addSpacing(50)
         layout.addWidget(self.value_edit)
@@ -334,8 +337,9 @@ class AffixWidget(QWidget):
         layout.addWidget(self.comparison_combo)
         self.setLayout(layout)
 
-    def update_name(self, name):
-        self.affix.name = name
+    def update_name(self):
+        reverse_dict = {v: k for k, v in Dataloader().affix_dict.items()}
+        self.affix.name = reverse_dict.get(self.name_combo.currentText())
 
     def update_value(self, value):
         try:
@@ -343,7 +347,8 @@ class AffixWidget(QWidget):
         except ValueError:
             pass
 
-    def update_comparison(self, comparison):
+    def update_comparison(self):
+        comparison = self.comparison_combo.currentText()
         self.affix.comparison = ComparisonType(comparison)
 
 class AffixesTab(QWidget):
@@ -405,6 +410,7 @@ class AffixesTab(QWidget):
                 group = AffixGroupEditor(item)
                 self.item_names.append(item_name)
                 self.tab_widget.addTab(group, item_name)
+                self.affixes_model.append(item)
             return
 
     def close_tab(self, index):
@@ -430,6 +436,7 @@ class AffixesTab(QWidget):
             for i in range(self.tab_widget.count()):
                 tab : AffixGroupEditor = self.tab_widget.widget(i)
                 tab.min_greater.setValue(minGreaterAffix)
+                tab.update_min_greater_affix()
 
     def set_all_minPower(self):
         dialog = MinPowerDialog(self)
@@ -438,3 +445,4 @@ class AffixesTab(QWidget):
             for i in range(self.tab_widget.count()):
                 tab : AffixGroupEditor = self.tab_widget.widget(i)
                 tab.min_power.setValue(minPower)
+                tab.update_min_power()
