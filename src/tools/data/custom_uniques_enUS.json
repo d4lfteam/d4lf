@@ -49,18 +49,18 @@
             1
         ]
     },
-    "the_third_blade": {
-        "desc": "your weapon mastery skills are now also core skills that have no cooldowns but",
-        "num_idx": [
-            0
-        ]
-    },
     "the_mortacrux": {
         "desc": "when consuming a corpse there is a chance to also create a decaying",
         "num_idx": [
             0
         ],
         "num_inherents": 2
+    },
+    "the_third_blade": {
+        "desc": "your weapon mastery skills are now also core skills that have no cooldowns but",
+        "num_idx": [
+            0
+        ]
     },
     "the_umbracrux": {
         "desc": "your subterfuge skills create an attackable shade totem for seconds",
