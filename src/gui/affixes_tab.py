@@ -338,8 +338,8 @@ class AffixWidget(QWidget):
         self.setLayout(layout)
 
     def update_name(self):
-        name = self.name_combo.currentText()
-        self.affix.name = name
+        reverse_dict = {v: k for k, v in Dataloader().affix_dict.items()}
+        self.affix.name = reverse_dict.get(self.name_combo.currentText())
 
     def update_value(self, value):
         try:
@@ -436,6 +436,7 @@ class AffixesTab(QWidget):
             for i in range(self.tab_widget.count()):
                 tab : AffixGroupEditor = self.tab_widget.widget(i)
                 tab.min_greater.setValue(minGreaterAffix)
+                tab.update_min_greater_affix()
 
     def set_all_minPower(self):
         dialog = MinPowerDialog(self)
@@ -444,3 +445,4 @@ class AffixesTab(QWidget):
             for i in range(self.tab_widget.count()):
                 tab : AffixGroupEditor = self.tab_widget.widget(i)
                 tab.min_power.setValue(minPower)
+                tab.update_min_power()

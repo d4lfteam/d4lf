@@ -439,3 +439,46 @@ class RemoveTribute(QDialog):
     def get_value(self):
         reverse_dict = {v: k for k, v in Dataloader().tribute_dict.items()}
         return [reverse_dict.get(checkbox.text()) for checkbox in self.checkbox_list if checkbox.isChecked()]
+
+class CreateUnique(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Create Unique")
+        self.groupbox = QGroupBox("Unique Infos")
+        self.setFixedSize(300, 300)
+
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        self.groupbox_layout = QVBoxLayout()
+
+        label = QLabel("Select info to add to the Unique:")
+        label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        self.groupbox_layout.addWidget(label)
+
+        self.checkbox_list = []
+
+        checkbox_aspect = QCheckBox("Aspect")
+        checkbox_affixe = QCheckBox("Affixes")
+        self.groupbox_layout.addWidget(checkbox_aspect)
+        self.groupbox_layout.addWidget(checkbox_affixe)
+        self.checkbox_list.append(checkbox_aspect)
+        self.checkbox_list.append(checkbox_affixe)
+
+        self.groupbox.setLayout(self.groupbox_layout)
+        self.buttonLayout = QHBoxLayout()
+        self.okButton = QPushButton("OK")
+        self.okButton.clicked.connect(self.accept)
+        self.cancelButton = QPushButton("Cancel")
+        self.cancelButton.clicked.connect(self.reject)
+
+        self.buttonLayout.addWidget(self.okButton)
+        self.buttonLayout.addWidget(self.cancelButton)
+
+        self.main_layout.addWidget(self.groupbox)
+        self.main_layout.addLayout(self.buttonLayout)
+
+        self.setLayout(self.main_layout)
+
+    def get_value(self):
+        return [checkbox.text() for checkbox in self.checkbox_list if checkbox.isChecked()]

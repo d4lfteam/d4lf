@@ -32,7 +32,7 @@ class ProfileEditor(QTabWidget):
         self.addTab(self.affixes_tab, "Affixes")
         self.addTab(self.sigils_tab, "Sigils")
         self.addTab(self.tributes_tab, "Tributes")
-        self.uniques_index = self.addTab(self.uniques_tab, "Uniques")
+        self.addTab(self.uniques_tab, "Uniques")
 
         # Configure tab widget properties
         self.setDocumentMode(True)
