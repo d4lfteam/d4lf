@@ -16,20 +16,24 @@
         "num_inherents": 1
     },
     "[ph]_distance_crit": {
-        "desc": "distance crit",
-        "full": "[PH] Distance Crit",
-        "num_idx": [],
+        "desc": "using consecutive basic skills creates a second mark on the ground under the first enemy is hit. moving away from the mark increases critical chance up to . the bonus ends when the mark disappears, and a new mark can only be created after the previous one vanishes.",
+        "full": "Using {c_number}[Affix.\"Static Value 1\"]{/c} consecutive {c_important}Basic{/c} Skills creates a {c_number}[Affix.\"Static Value 0\"]{/c} second mark on the ground under the first enemy is hit. Moving away from the mark increases Critical Chance up to {c_random}[Affix_Value_1|1||%|]{/c}. The bonus ends when the mark disappears, and a new mark can only be created after the previous one vanishes.",
+        "num_idx": [
+            2
+        ],
         "num_inherents": 1
     },
     "[ph]_ichorous_salvation": {
-        "desc": "ichorous salvation",
-        "full": "Ichorous Salvation",
-        "num_idx": [],
+        "desc": "every th flurry cast siphons all damageovertime effects on any enemy it hits, dealing the total damage instantly and consuming it. each unique consumption increases flurrys damage by for seconds.",
+        "full": "Every {c_number}[Affix.\"Static Value 1\"||]th{/c} {c_important}Flurry{/c} Cast siphons all Damage-Over-Time effects on any enemy it hits, dealing the total damage instantly and consuming it. \r\n\r\nEach unique consumption increases {c_important}Flurry's{/c} damage by {c_random}[Affix_Value_1|%x|]{/c} for {c_number}[Affix.\"Static Value 0\"||]{/c} seconds. ",
+        "num_idx": [
+            1
+        ],
         "num_inherents": 2
     },
     "[ph]_thorn_pulse": {
-        "desc": "thorn pulse",
-        "full": "[PH] Thorn Pulse",
+        "desc": "you continually pulse thorns damage every seconds. the frequency increases up to s for enemies.",
+        "full": "You continually pulse Thorns damage every {c_number}[Affix.\"Static Value 0\"]{/c} seconds. The frequency increases up to {c_number}[Affix.\"Static Value 1\"]{/c}s for {c_number}[Affix.\"Static Value 2\"]{/c} enemies. ",
         "num_idx": [],
         "num_inherents": 1
     },
@@ -104,10 +108,12 @@
         "num_inherents": 0
     },
     "azurewrath": {
-        "desc": "lucky hit up to a chance to freeze enemies for seconds and deal cold damage to them",
+        "desc": "your casts with this weapon apply vulnerable for seconds and chill enemies for .",
+        "full": "Your Casts with this weapon apply {c_important}{u}Vulnerable{/c}{/u} for {c_number}[Affix.\"Static Value 0\"]{/c} seconds and {c_important}{u}Chill{/c}{/u} enemies for {c_random}[Affix_Value_1|%|]{/c}.",
         "num_idx": [
-            2
-        ]
+            1
+        ],
+        "num_inherents": 1
     },
     "band_of_first_breath": {
         "desc": "casting evade consumes stacks of resolve to increase your damage dealt by for seconds. gain armored hides passive effect.",
@@ -125,7 +131,7 @@
         ],
         "num_inherents": 1
     },
-    "bane_of ahjad-den": {
+    "bane_of_ahjad-den": {
         "desc": "every seconds, your next mighty throw detonates its pulses instantly as fire damage and deals increased damage.",
         "full": "Every {c_number}[Affix.\"Static Value 0\"]{/c} seconds, your next {c_important}Mighty Throw{/c} detonates its pulses instantly as Fire Damage and deals {c_random}[Affix_Value_1*100|1%x|]{/c} increased damage.",
         "num_idx": [
@@ -984,7 +990,7 @@
         ],
         "num_inherents": 1
     },
-    "sunstained war-crozier": {
+    "sunstained_war-crozier": {
         "desc": "your focus skills benefit from all their upgrades, and they increase the damage of your potency skills by for seconds, up to .",
         "full": "Your {c_important}Focus{/c} Skills benefit from all their Upgrades, and they increase the damage of your {c_important}Potency{/c} Skills by {c_random}[Affix_Value_1|x%|]{/c} for {c_number}[Affix.\"Static Value 0\"]{/c} seconds, up to {c_random}[Affix_Value_1*Affix.\"Static Value 1\"|x%|]{/c}.",
         "num_idx": [
@@ -1046,11 +1052,12 @@
         "num_inherents": 2
     },
     "the_mortacrux": {
-        "desc": "when consuming a corpse there is a chance to also create a decaying",
+        "desc": "when consuming a corpse, there is a chance to also create a decaying skeletal simulacrum that seeks enemies but cannot attack. when it dies, it explodes for shadow damage. this effect is treated as a macabre skill.",
+        "full": "When consuming a Corpse, there is a {c_random}[Affix_Value_1|%|]{/c} chance to also create a decaying {c_important}Skeletal Simulacrum{/c} that seeks enemies but cannot attack. When it dies, it explodes for {c_number}[(Owner.Weapon_Damage_Min_Total + Owner.Weapon_Damage_Delta_Total) * Affix_Value_2]{/c} Shadow damage. \r\n\r\nThis effect is treated as a {c_important}Macabre{/c} Skill.",
         "num_idx": [
             0
         ],
-        "num_inherents": 2
+        "num_inherents": 1
     },
     "the_oculus": {
         "desc": "gain the effect of the teleport enchantment for free. when you evade using teleport enchantment you are taken to a random location.",
@@ -1145,10 +1152,12 @@
         "num_inherents": 0
     },
     "vox_omnium": {
-        "desc": "casting a core skill additionally fire instances of fire bolt frost bolt or spark",
+        "desc": "casting a core skill additionally fires instances of fire bolt, frost bolt, or spark, matching the elements of your last noncore skill casts. these projectiles deal increased damage.",
+        "full": "Casting a {c_important}Core{/c} Skill additionally fires {c_number}2{/c} instances of {c_important}Fire Bolt{/c}, {c_important}Frost Bolt{/c}, or {c_important}Spark{/c}, matching the Elements of your last {c_number}2{/c} non-{c_important}Core{/c} Skill casts. These projectiles deal {c_random}[Affix_Value_1|x%|]{/c} increased damage.",
         "num_idx": [
             2
-        ]
+        ],
+        "num_inherents": 1
     },
     "waxing_gibbous": {
         "desc": "killing an enemy with shred grants stealth for seconds. breaking stealth with an attack grants guaranteed critical strikes for seconds.",

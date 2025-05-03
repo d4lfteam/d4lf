@@ -1,10 +1,4 @@
 {
-    "azurewrath": {
-        "desc": "lucky hit up to a chance to freeze enemies for seconds and deal cold damage to them",
-        "num_idx": [
-            2
-        ]
-    },
     "crown_of_lucion": {
         "desc": "each time you use a skill with a resource Cost, gain increased damage and resource cost is increased by for seconds, stacking up to times.",
         "num_idx": [
@@ -55,13 +49,6 @@
             1
         ]
     },
-    "the_mortacrux": {
-        "desc": "when consuming a corpse there is a chance to also create a decaying",
-        "num_idx": [
-            0
-        ],
-        "num_inherents": 2
-    },
     "the_third_blade": {
         "desc": "your weapon mastery skills are now also core skills that have no cooldowns but",
         "num_idx": [
@@ -72,12 +59,6 @@
         "desc": "your subterfuge skills create an attackable shade totem for seconds",
         "num_idx": [
             0
-        ]
-    },
-    "vox_omnium": {
-        "desc": "casting a core skill additionally fire instances of fire bolt frost bolt or spark",
-        "num_idx": [
-            2
         ]
     }
 }
