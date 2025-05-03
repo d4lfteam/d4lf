@@ -1,16 +1,35 @@
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QDialog, QPushButton, QGroupBox,
-                             QFormLayout, QHBoxLayout, QListWidget, QListWidgetItem,
-                             QLabel, QMessageBox, QCompleter, QComboBox, QCheckBox,
-                             QTabWidget, QToolBar, QToolButton, QLineEdit, QScrollArea, QFrame)
-from PyQt6.QtCore import Qt, pyqtSignal
-from src.config.models import UniqueModel, ItemType, ComparisonType, AffixFilterModel, AspectUniqueFilterModel
-from src.item.data.item_type import is_armor, is_jewelry, is_weapon
-from src.gui.dialog import IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox, DeleteItem, MinGreaterDialog, MinPowerDialog
-from src.gui.affixes_tab import AffixWidget
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QCompleter,
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QTabWidget,
+    QToolBar,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from src.config.models import AffixFilterModel, AspectUniqueFilterModel, ComparisonType, ItemType, UniqueModel
 from src.dataloader import Dataloader
+from src.gui.affixes_tab import AffixWidget
+from src.gui.dialog import DeleteItem, IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox, MinGreaterDialog, MinPowerDialog
+from src.item.data.item_type import is_armor, is_jewelry, is_weapon
+
 
 class UniqueWidget(QWidget):
-    def __init__(self, unique_model : UniqueModel, parent=None):
+    def __init__(self, unique_model: UniqueModel, parent=None):
         super().__init__(parent)
         self.unique_model = unique_model
 
@@ -214,8 +233,9 @@ class UniqueWidget(QWidget):
         comparison = self.comparison_combo.currentText()
         self.unique_model.aspect.comparison = ComparisonType(comparison)
 
+
 class UniquesTab(QWidget):
-    def __init__(self, unique_model_list : list[UniqueModel], parent=None):
+    def __init__(self, unique_model_list: list[UniqueModel], parent=None):
         super().__init__(parent)
         self.unique_model_list = unique_model_list
         self.setup_ui()
@@ -301,7 +321,7 @@ class UniquesTab(QWidget):
         self.unique_model_list.append(unique_model)
 
     def add_aspect_to_current_unique(self):
-        current_unique : UniqueWidget = self.tab_widget.currentWidget()
+        current_unique: UniqueWidget = self.tab_widget.currentWidget()
         if current_unique.unique_model.aspect:
             QMessageBox.warning(self, "Warn", "An aspect already exist for the current unique. Please modify the existing one.")
         else:
@@ -309,7 +329,7 @@ class UniquesTab(QWidget):
             current_unique.create_aspect_groupbox()
 
     def add_affixes_to_current_unique(self):
-        current_unique : UniqueWidget = self.tab_widget.currentWidget()
+        current_unique: UniqueWidget = self.tab_widget.currentWidget()
         if current_unique.unique_model.affix:
             QMessageBox.warning(self, "Warn", "An affix already exist for the current unique. Please modify the existing one.")
         else:
@@ -317,7 +337,7 @@ class UniquesTab(QWidget):
             current_unique.create_affix_groupbox()
 
     def remove_aspect_from_current_unique(self):
-        current_unique : UniqueWidget = self.tab_widget.currentWidget()
+        current_unique: UniqueWidget = self.tab_widget.currentWidget()
         if not current_unique.unique_model.aspect:
             QMessageBox.warning(self, "Warn", "There is no aspect in the current unique. You can add one.")
         else:
@@ -325,7 +345,7 @@ class UniquesTab(QWidget):
             current_unique.remove_aspect_groupbox()
 
     def remove_affixes_from_current_unique(self):
-        current_unique : UniqueWidget = self.tab_widget.currentWidget()
+        current_unique: UniqueWidget = self.tab_widget.currentWidget()
         if not current_unique.unique_model.affix:
             QMessageBox.warning(self, "Warn", "There is no affix in the current unique. You can add one.")
         else:
@@ -337,7 +357,7 @@ class UniquesTab(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             minGreaterAffix = dialog.get_value()
             for i in range(self.tab_widget.count()):
-                tab : UniqueWidget = self.tab_widget.widget(i)
+                tab: UniqueWidget = self.tab_widget.widget(i)
                 tab.min_greater.setValue(minGreaterAffix)
                 tab.update_min_greater_affix()
 
@@ -346,6 +366,6 @@ class UniquesTab(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             minPower = dialog.get_value()
             for i in range(self.tab_widget.count()):
-                tab : UniqueWidget = self.tab_widget.widget(i)
+                tab: UniqueWidget = self.tab_widget.widget(i)
                 tab.min_power.setValue(minPower)
                 tab.update_min_power()

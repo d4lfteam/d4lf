@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import os
@@ -22,11 +23,9 @@ from PyQt6.QtWidgets import (
 from gui.dialog import DeleteItem
 from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
-from src.gui.importer.common import ProfileModel, save_as_profile
+from src.gui.importer.common import ProfileModel
 from src.gui.profile_editor import ProfileEditor
 from src.item.filter import _UniqueKeyLoader
-from pydantic import BaseModel
-import copy
 
 LOGGER = logging.getLogger(__name__)
 
@@ -98,7 +97,6 @@ class ProfileTab(QWidget):
         self.main_layout.addWidget(instructions_text)
         self.setLayout(self.main_layout)
 
-
     def confirm_discard_changes(self):
         reply = QMessageBox.warning(
             self,
@@ -169,7 +167,7 @@ class ProfileTab(QWidget):
                 LOGGER.error(f"Validation errors in {self.file_path}")
                 LOGGER.error(e)
                 return False
-            except TypeError as e:
+            except TypeError:
                 self.root = ProfileModel(**config)
         self.original_root = copy.deepcopy(self.root)
         return True

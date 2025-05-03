@@ -1,15 +1,29 @@
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QDialog, QPushButton,
-                             QFormLayout, QHBoxLayout, QListWidget, QListWidgetItem,
-                              QLabel, QMessageBox, QCompleter, QComboBox)
 from PyQt6.QtCore import Qt, pyqtSignal
-from src.config.models import SigilPriority, SigilFilterModel, SigilConditionModel
-from src.gui.dialog import IgnoreScrollWheelComboBox, CreateSigil, RemoveSigil
-from src.gui.collapsible_widget import Container
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QCompleter,
+    QDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from src.config.models import SigilConditionModel, SigilFilterModel, SigilPriority
 from src.dataloader import Dataloader
+from src.gui.collapsible_widget import Container
+from src.gui.dialog import CreateSigil, IgnoreScrollWheelComboBox, RemoveSigil
+
 
 class ConditionWidget(QWidget):
     condition_changed = pyqtSignal(str, str)
-    def __init__(self, condition : str, parent = None):
+
+    def __init__(self, condition: str, parent=None):
         super().__init__(parent)
         self.condition = condition
         widget_layout = QHBoxLayout()
@@ -19,9 +33,9 @@ class ConditionWidget(QWidget):
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         affix_sigil_dict = {
-                **Dataloader().affix_sigil_dict_all["minor"],
-                **Dataloader().affix_sigil_dict_all["major"],
-                **Dataloader().affix_sigil_dict_all["positive"],
+            **Dataloader().affix_sigil_dict_all["minor"],
+            **Dataloader().affix_sigil_dict_all["major"],
+            **Dataloader().affix_sigil_dict_all["positive"],
         }
         self.name_combo.addItems(sorted(affix_sigil_dict.values()))
         self.name_combo.setMaximumWidth(600)
@@ -35,9 +49,11 @@ class ConditionWidget(QWidget):
         self.condition = self.name_combo.currentText()
         self.condition_changed.emit(old_condition, self.condition)
 
+
 class SigilWidget(Container):
     dungeon_changed = pyqtSignal()
-    def __init__(self, sigil_name : str, sigil : SigilConditionModel, whitelist : bool):
+
+    def __init__(self, sigil_name: str, sigil: SigilConditionModel, whitelist: bool):
         super().__init__(sigil_name, True)
         self.sigil = sigil
         self.sigil_name = sigil_name
@@ -70,7 +86,7 @@ class SigilWidget(Container):
         self.condition_list.setMinimumHeight(50)
         self.condition_list.setAlternatingRowColors(True)
         for condition in self.sigil.condition:
-            if condition == '':
+            if condition == "":
                 continue
             self.add_condition_to_list(Dataloader().affix_sigil_dict[condition])
 
@@ -97,8 +113,8 @@ class SigilWidget(Container):
         self.condition_list.setItemWidget(widget_item, widget)
 
     def add_condition(self):
-        self.add_condition_to_list(list(Dataloader().affix_sigil_dict_all['minor'].values())[0])
-        self.sigil.condition.append(list(Dataloader().affix_sigil_dict_all['minor'].keys())[0])
+        self.add_condition_to_list(list(Dataloader().affix_sigil_dict_all["minor"].values())[0])
+        self.sigil.condition.append(list(Dataloader().affix_sigil_dict_all["minor"].keys())[0])
 
     def remove_selected(self):
         for item in self.condition_list.selectedItems():
@@ -108,26 +124,27 @@ class SigilWidget(Container):
 
     def revert_sigil_dungeon(self):
         self.sigil_name_combo.currentIndexChanged.disconnect()
-        self.sigil_name_combo.currentTextChanged.connect(lambda : self.update_sigil_dungeon(False))
+        self.sigil_name_combo.currentTextChanged.connect(lambda: self.update_sigil_dungeon(False))
         self.sigil_name_combo.setCurrentText(self.old_name)
         self.sigil_name_combo.currentTextChanged.disconnect()
         self.sigil_name_combo.currentIndexChanged.connect(self.update_sigil_dungeon)
 
-    def update_sigil_dungeon(self, classic = True):
+    def update_sigil_dungeon(self, classic=True):
         new_name = self.sigil_name_combo.currentText()
         self.old_name = self.sigil_name
         self.sigil_name = new_name
         self.header.set_name(new_name)
-        reverse_dict = {v: k for k, v in Dataloader().affix_sigil_dict_all['dungeons'].items()}
+        reverse_dict = {v: k for k, v in Dataloader().affix_sigil_dict_all["dungeons"].items()}
         self.sigil.name = reverse_dict.get(new_name)
         if classic:
             self.dungeon_changed.emit()
 
-    def on_condition_update(self, old_condition, condition : str):
+    def on_condition_update(self, old_condition, condition: str):
         reverse_dict = {v: k for k, v in Dataloader().affix_sigil_dict.items()}
         index = self.sigil.condition.index(reverse_dict.get(old_condition, ""))
         self.sigil.condition.pop(index)
         self.sigil.condition.insert(index, reverse_dict.get(condition))
+
 
 class SigilsTab(QWidget):
     def __init__(self, sigil_model: SigilFilterModel, parent=None):
@@ -158,7 +175,7 @@ class SigilsTab(QWidget):
         remove_whitelist_sigil_btn.clicked.connect(lambda: self.remove_sigil())
 
         remove_blacklist_sigil_btn = QPushButton("Remove Blacklist Sigil")
-        remove_blacklist_sigil_btn.clicked.connect(lambda: self.remove_sigil(blacklist = True))
+        remove_blacklist_sigil_btn.clicked.connect(lambda: self.remove_sigil(blacklist=True))
 
         btn_layout.addWidget(add_sigil_btn)
         btn_layout.addWidget(remove_whitelist_sigil_btn)
@@ -200,37 +217,37 @@ class SigilsTab(QWidget):
         self.main_layout.addWidget(self.whitelist_container)
         self.main_layout.addWidget(self.blacklist_container)
 
-    def add_sigil(self, sigil_condition : SigilConditionModel, whitelist : bool = False):
-        name = Dataloader().affix_sigil_dict_all['dungeons'][sigil_condition.name]
+    def add_sigil(self, sigil_condition: SigilConditionModel, whitelist: bool = False):
+        name = Dataloader().affix_sigil_dict_all["dungeons"][sigil_condition.name]
         if whitelist:
             widget = SigilWidget(name, sigil_condition, True)
-            widget.dungeon_changed.connect(lambda : self.on_dungeon_changed(widget))
+            widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
             self.whitelist_layout.addWidget(widget)
         else:
             widget = SigilWidget(name, sigil_condition, False)
-            widget.dungeon_changed.connect(lambda : self.on_dungeon_changed(widget))
+            widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
             self.blacklist_layout.addWidget(widget)
 
     def create_sigil(self):
         dialog = CreateSigil(self.whitelist_sigils, self.blacklist_sigils)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             sigil_name, type_name = dialog.get_value()
-            reverse_dict = {v: k for k, v in Dataloader().affix_sigil_dict_all['dungeons'].items()}
+            reverse_dict = {v: k for k, v in Dataloader().affix_sigil_dict_all["dungeons"].items()}
             sigil_condition = SigilConditionModel(name=reverse_dict.get(sigil_name), condition=[])
-            if type_name == 'whitelist':
+            if type_name == "whitelist":
                 widget = SigilWidget(sigil_name, sigil_condition, True)
-                widget.dungeon_changed.connect(lambda : self.on_dungeon_changed(widget))
+                widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
                 self.whitelist_layout.addWidget(widget)
                 self.whitelist_sigils.append(sigil_name)
                 self.sigil_model.whitelist.append(sigil_condition)
-            elif type_name == 'blacklist':
+            elif type_name == "blacklist":
                 widget = SigilWidget(sigil_name, sigil_condition, False)
-                widget.dungeon_changed.connect(lambda : self.on_dungeon_changed(widget))
+                widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
                 self.blacklist_layout.addWidget(widget)
                 self.blacklist_sigils.append(sigil_name)
                 self.sigil_model.blacklist.append(sigil_condition)
 
-    def remove_sigil(self, blacklist : bool = False):
+    def remove_sigil(self, blacklist: bool = False):
         if blacklist:
             dialog = RemoveSigil(self.blacklist_sigils, blacklist=True)
         else:
@@ -242,7 +259,7 @@ class SigilsTab(QWidget):
                     self.blacklist_sigils.remove(sigil)
                 to_delete_list = []
                 for i in range(self.blacklist_layout.count()):
-                    sigil_widget : SigilWidget = self.blacklist_layout.itemAt(i).widget()
+                    sigil_widget: SigilWidget = self.blacklist_layout.itemAt(i).widget()
                     if sigil_widget.sigil_name in to_delete:
                         to_delete_list.append(sigil_widget)
                 for sig_widget in to_delete_list:
@@ -253,18 +270,17 @@ class SigilsTab(QWidget):
                     self.whitelist_sigils.remove(sigil)
                 to_delete_list = []
                 for i in range(self.whitelist_layout.count()):
-                    sigil_widget : SigilWidget = self.whitelist_layout.itemAt(i).widget()
+                    sigil_widget: SigilWidget = self.whitelist_layout.itemAt(i).widget()
                     if sigil_widget.sigil_name in to_delete:
                         to_delete_list.append(sigil_widget)
                 for sig_widget in to_delete_list:
                     sig_widget.setParent(None)
                     self.sigil_model.whitelist.remove(sig_widget.sigil)
 
-
     def update_priority(self):
         self.sigil_model.priority = SigilPriority(self.priority_combobox.currentText())
 
-    def on_dungeon_changed(self, sigil_widget : SigilWidget):
+    def on_dungeon_changed(self, sigil_widget: SigilWidget):
         whitelist = sigil_widget.whitelist
         new_name = sigil_widget.sigil_name
         old_name = sigil_widget.old_name

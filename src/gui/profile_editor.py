@@ -1,19 +1,21 @@
-from PyQt6.QtWidgets import (QTabWidget, QMessageBox, QInputDialog, QDialogButtonBox, QLineEdit)
-from PyQt6.QtCore import Qt
-from src.config.models import ProfileModel
-from src.gui.affixes_tab import AffixesTab
-from src.gui.sigils_tab import SigilsTab
-from src.gui.tributes_tab import TributesTab
-from src.gui.uniques_tab import UniquesTab
-from src.gui.importer.common import _to_yaml_str
-from src.config.loader import IniConfigLoader
-from src import __version__
-
 import datetime
 import logging
 import re
 
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QMessageBox, QTabWidget
+
+from src import __version__
+from src.config.loader import IniConfigLoader
+from src.config.models import ProfileModel
+from src.gui.affixes_tab import AffixesTab
+from src.gui.importer.common import _to_yaml_str
+from src.gui.sigils_tab import SigilsTab
+from src.gui.tributes_tab import TributesTab
+from src.gui.uniques_tab import UniquesTab
+
 LOGGER = logging.getLogger(__name__)
+
 
 class ProfileEditor(QTabWidget):
     def __init__(self, profile_model: ProfileModel, parent=None):
@@ -48,16 +50,12 @@ class ProfileEditor(QTabWidget):
         # Newline in message text
         msg.setText("The profile model might not be valid. Do you still want to save your changes ?")
 
-        msg.setStandardButtons(
-            QMessageBox.StandardButton.Save |
-            QMessageBox.StandardButton.Discard
-        )
+        msg.setStandardButtons(QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard)
 
         response = msg.exec()
         if response == QMessageBox.StandardButton.Save:
             return True
-        else:
-            return False
+        return False
 
     def save_all(self):
         """Save all tabs' configurations"""
@@ -65,27 +63,27 @@ class ProfileEditor(QTabWidget):
         if model != self.profile_model:
             if self.show_warning():
                 self.save_to_yaml(self.profile_model.name + "_custom", self.profile_model, "custom")
-                QMessageBox.information(self, "Info", f"Profile saved successfully to {self.profile_model.name + "_custom.yaml"}")
+                QMessageBox.information(self, "Info", f"Profile saved successfully to {self.profile_model.name + '_custom.yaml'}")
             else:
-                QMessageBox.information(self, "Info", f"Profile not saved.")
+                QMessageBox.information(self, "Info", "Profile not saved.")
         else:
             self.save_to_yaml(self.profile_model.name + "_custom", self.profile_model, "custom")
-            QMessageBox.information(self, "Info", f"Profile saved successfully to {self.profile_model.name + "_custom.yaml"}")
+            QMessageBox.information(self, "Info", f"Profile saved successfully to {self.profile_model.name + '_custom.yaml'}")
 
-    def save_to_yaml(self, file_name: str, profile: ProfileModel, url : str):
-            file_name = file_name.replace("'", "")
-            file_name = re.sub(r"\W", "_", file_name)
-            file_name = re.sub(r"_+", "_", file_name).rstrip("_")
-            save_path = IniConfigLoader().user_dir / f"profiles/{file_name}.yaml"
-            save_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(save_path, "w", encoding="utf-8") as file:
-                file.write(f"# {url}\n")
-                file.write(f"# {datetime.datetime.now(tz=datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')} (v{__version__})\n")
-                file.write(
-                    _to_yaml_str(
-                        profile,
-                        exclude_unset=not IniConfigLoader().general.full_dump,
-                        exclude={"name"},
-                    )
+    def save_to_yaml(self, file_name: str, profile: ProfileModel, url: str):
+        file_name = file_name.replace("'", "")
+        file_name = re.sub(r"\W", "_", file_name)
+        file_name = re.sub(r"_+", "_", file_name).rstrip("_")
+        save_path = IniConfigLoader().user_dir / f"profiles/{file_name}.yaml"
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(save_path, "w", encoding="utf-8") as file:
+            file.write(f"# {url}\n")
+            file.write(f"# {datetime.datetime.now(tz=datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')} (v{__version__})\n")
+            file.write(
+                _to_yaml_str(
+                    profile,
+                    exclude_unset=not IniConfigLoader().general.full_dump,
+                    exclude={"name"},
                 )
-            LOGGER.info(f"Created profile {save_path}")
+            )
+        LOGGER.info(f"Created profile {save_path}")

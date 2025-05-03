@@ -1,6 +1,8 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QComboBox,
+    QCompleter,
     QDialog,
     QFormLayout,
     QGroupBox,
@@ -14,13 +16,12 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QVBoxLayout,
     QWidget,
-    QComboBox,
-    QCompleter
 )
 
 from src.config.models import AffixFilterCountModel, AffixFilterModel, DynamicItemFilterModel, ItemFilterModel, ItemType, TributeFilterModel
 from src.dataloader import Dataloader
 from src.gui.config_tab import IgnoreScrollWheelComboBox
+
 
 class IgnoreScrollWheelSpinBox(QSpinBox):
     def __init__(self):
@@ -93,8 +94,9 @@ class MinGreaterDialog(QDialog):
     def get_value(self):
         return self.spinBox.value()
 
+
 class CreateItem(QDialog):
-    def __init__(self, item_list : list[str], parent=None):
+    def __init__(self, item_list: list[str], parent=None):
         super().__init__(parent)
         self.setWindowTitle("Create Item")
         self.setFixedSize(300, 150)
@@ -190,8 +192,9 @@ class DeleteItem(QDialog):
     def get_value(self):
         return [checkbox.text() for checkbox in self.checkbox_list if checkbox.isChecked()]
 
+
 class DeleteAffixPool(QDialog):
-    def __init__(self, nb_affix_pool, inherent : bool = False, parent=None):
+    def __init__(self, nb_affix_pool, inherent: bool = False, parent=None):
         super().__init__(parent)
         if inherent:
             self.setWindowTitle("Delete Inherent Pool")
@@ -202,7 +205,6 @@ class DeleteAffixPool(QDialog):
         self.setFixedSize(300, 200)
         self.main_layout = QVBoxLayout()
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
 
         scroll_area = QScrollArea(self)
         scroll_widget = QWidget(scroll_area)
@@ -239,8 +241,9 @@ class DeleteAffixPool(QDialog):
     def get_value(self):
         return [checkbox.text() for checkbox in self.checkbox_list if checkbox.isChecked()]
 
+
 class CreateSigil(QDialog):
-    def __init__(self, whitelist_sigils : list[str], blacklist_sigils : list[str], parent=None):
+    def __init__(self, whitelist_sigils: list[str], blacklist_sigils: list[str], parent=None):
         super().__init__(parent)
 
         self.whitelist_sigils = whitelist_sigils
@@ -257,13 +260,13 @@ class CreateSigil(QDialog):
         self.name_input.setEditable(True)
         self.name_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.name_input.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.name_input.addItems(sorted(Dataloader().affix_sigil_dict_all['dungeons'].values()))
+        self.name_input.addItems(sorted(Dataloader().affix_sigil_dict_all["dungeons"].values()))
         self.type_label = QLabel("Type: ")
         self.type_input = IgnoreScrollWheelComboBox()
         self.type_input.setEditable(True)
         self.type_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.type_input.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.type_input.addItems(['whitelist', 'blacklist'])
+        self.type_input.addItems(["whitelist", "blacklist"])
         self.form_layout.addRow(self.name_label, self.name_input)
         self.form_layout.addRow(self.type_label, self.type_input)
         self.buttonLayout = QHBoxLayout()
@@ -294,8 +297,9 @@ class CreateSigil(QDialog):
         type_name = self.type_input.currentText()
         return sigil_name, type_name
 
+
 class RemoveSigil(QDialog):
-    def __init__(self, sigils : list[str], blacklist : bool = False, parent=None):
+    def __init__(self, sigils: list[str], blacklist: bool = False, parent=None):
         super().__init__(parent)
         self.sigils = sigils
         if blacklist:
@@ -308,7 +312,6 @@ class RemoveSigil(QDialog):
 
         self.main_layout = QVBoxLayout()
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
 
         scroll_area = QScrollArea(self)
         scroll_widget = QWidget(scroll_area)
@@ -345,8 +348,9 @@ class RemoveSigil(QDialog):
     def get_value(self):
         return [checkbox.text() for checkbox in self.checkbox_list if checkbox.isChecked()]
 
+
 class CreateTribute(QDialog):
-    def __init__(self, tributes : list[str], parent=None):
+    def __init__(self, tributes: list[str], parent=None):
         super().__init__(parent)
 
         self.tributes = tributes
@@ -390,8 +394,9 @@ class CreateTribute(QDialog):
         tribute_name = reverse_dict.get(self.name_input.currentText())
         return TributeFilterModel(name=tribute_name, rarities=[])
 
+
 class RemoveTribute(QDialog):
-    def __init__(self, tributes : list[str], parent=None):
+    def __init__(self, tributes: list[str], parent=None):
         super().__init__(parent)
         self.tributes = tributes
         self.setWindowTitle("Delete Tributes")
@@ -439,6 +444,7 @@ class RemoveTribute(QDialog):
     def get_value(self):
         reverse_dict = {v: k for k, v in Dataloader().tribute_dict.items()}
         return [reverse_dict.get(checkbox.text()) for checkbox in self.checkbox_list if checkbox.isChecked()]
+
 
 class CreateUnique(QDialog):
     def __init__(self, parent=None):

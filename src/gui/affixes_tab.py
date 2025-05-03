@@ -1,28 +1,52 @@
-from PyQt6.QtWidgets import (QWidget, QScrollArea, QVBoxLayout, QFormLayout,
-                            QPushButton, QListWidget, QListWidgetItem, QHBoxLayout,
-                            QLineEdit, QTabWidget, QSizePolicy, QLabel, QFrame, QDialog,
-                            QToolBar, QMessageBox, QToolButton, QComboBox, QCompleter)
 from PyQt6.QtCore import Qt
-from src.config.models import ItemType, AffixFilterModel, AffixFilterCountModel, ItemFilterModel, ComparisonType, DynamicItemFilterModel
-from src.item.data.item_type import is_armor, is_jewelry, is_weapon
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QCompleter,
+    QDialog,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QTabWidget,
+    QToolBar,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from src.config.models import AffixFilterCountModel, AffixFilterModel, ComparisonType, DynamicItemFilterModel, ItemType
 from src.dataloader import Dataloader
-from src.gui.dialog import (IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox, DeleteAffixPool,
-                            CreateItem, DeleteItem, MinGreaterDialog, MinPowerDialog)
 from src.gui.collapsible_widget import Container
+from src.gui.dialog import (
+    CreateItem,
+    DeleteAffixPool,
+    DeleteItem,
+    IgnoreScrollWheelComboBox,
+    IgnoreScrollWheelSpinBox,
+    MinGreaterDialog,
+    MinPowerDialog,
+)
+from src.item.data.item_type import is_armor, is_jewelry, is_weapon
+
 
 class AffixGroupEditor(QWidget):
-    def __init__(self, dynamic_filter : DynamicItemFilterModel, parent=None):
+    def __init__(self, dynamic_filter: DynamicItemFilterModel, parent=None):
         super().__init__(parent)
         for item_name, config in dynamic_filter.root.items():
             self.item_name = item_name
             self.config = config
 
-        self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding,
-                          QSizePolicy.Policy.MinimumExpanding)
+        self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
         self.setup_ui()
 
     def setup_ui(self):
-
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)
@@ -105,7 +129,7 @@ class AffixGroupEditor(QWidget):
         main_layout.addWidget(scroll_area)
         self.setLayout(main_layout)
 
-    def add_affix_pool_item(self, pool: AffixFilterCountModel, inherent : bool = False):
+    def add_affix_pool_item(self, pool: AffixFilterCountModel, inherent: bool = False):
         if inherent:
             nb_count = self.inherent_pool_layout.count()
             container = Container(f"Count {nb_count}", True)
@@ -126,14 +150,14 @@ class AffixGroupEditor(QWidget):
         default_affix = AffixFilterModel(
             name=list(Dataloader().affix_dict.keys())[0],  # First valid affix name
             value=None,
-            comparison=ComparisonType.larger
+            comparison=ComparisonType.larger,
         )
 
         new_pool = AffixFilterCountModel(
             count=[default_affix],  # Start with at least one valid affix
             minCount=1,
             maxCount=3,
-            minGreaterAffixCount=0
+            minGreaterAffixCount=0,
         )
         self.config.affixPool.append(new_pool)
         self.add_affix_pool_item(new_pool)
@@ -143,19 +167,19 @@ class AffixGroupEditor(QWidget):
         default_affix = AffixFilterModel(
             name=list(Dataloader().affix_dict.keys())[0],  # First valid affix name
             value=None,
-            comparison=ComparisonType.larger
+            comparison=ComparisonType.larger,
         )
 
         new_pool = AffixFilterCountModel(
             count=[default_affix],  # Start with at least one valid affix
             minCount=1,
             maxCount=3,
-            minGreaterAffixCount=0
+            minGreaterAffixCount=0,
         )
         self.config.affixPool.append(new_pool)
         self.add_affix_pool_item(new_pool, True)
 
-    def remove_selected(self, layout_widget : QVBoxLayout, inherent : bool = False):
+    def remove_selected(self, layout_widget: QVBoxLayout, inherent: bool = False):
         nb_pool = layout_widget.count()
         dialog = DeleteAffixPool(nb_pool, inherent)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -172,11 +196,11 @@ class AffixGroupEditor(QWidget):
                 self.config.affixPool.pop(index)
             self.reorganize_pool(layout_widget)
 
-    def reorganize_pool(self, layout_widget : QVBoxLayout):
+    def reorganize_pool(self, layout_widget: QVBoxLayout):
         for i in range(layout_widget.count()):
-                item = layout_widget.itemAt(i)
-                if item and item.widget() is not None:  # Check if the item is a widget
-                    item.widget().header.set_name(f"Count {i}")
+            item = layout_widget.itemAt(i)
+            if item and item.widget() is not None:  # Check if the item is a widget
+                item.widget().header.set_name(f"Count {i}")
 
     def update_item_type(self):
         self.config.itemType = [ItemType(ItemType._member_map_[self.item_type_combo.currentText()])]
@@ -186,6 +210,7 @@ class AffixGroupEditor(QWidget):
 
     def update_min_greater_affix(self):
         self.config.minGreaterAffixCount = self.min_greater.value()
+
 
 class AffixPoolWidget(QWidget):
     def __init__(self, pool: AffixFilterCountModel, parent=None):
@@ -218,7 +243,6 @@ class AffixPoolWidget(QWidget):
         self.max_count.valueChanged.connect(self.update_max_count)
         config_layout.addWidget(self.max_count)
         config_layout.addSpacing(150)
-
 
         min_greater_label = QLabel("Min Greater Affixes:")
         min_greater_label.setMaximumWidth(100)
@@ -276,7 +300,7 @@ class AffixPoolWidget(QWidget):
         self.pool.count.append(new_affix)
         self.add_affix_item(new_affix)
 
-    def remove_selected(self, list_widget : QListWidget):
+    def remove_selected(self, list_widget: QListWidget):
         for item in list_widget.selectedItems():
             row = list_widget.row(item)
             list_widget.takeItem(row)
@@ -290,6 +314,7 @@ class AffixPoolWidget(QWidget):
 
     def update_min_greater(self):
         self.pool.minGreaterAffixCount = self.min_greater.value()
+
 
 class AffixWidget(QWidget):
     def __init__(self, affix: AffixFilterModel, parent=None):
@@ -350,6 +375,7 @@ class AffixWidget(QWidget):
     def update_comparison(self):
         comparison = self.comparison_combo.currentText()
         self.affix.comparison = ComparisonType(comparison)
+
 
 class AffixesTab(QWidget):
     def __init__(self, affixes_model: list[DynamicItemFilterModel], parent=None):
@@ -434,7 +460,7 @@ class AffixesTab(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             minGreaterAffix = dialog.get_value()
             for i in range(self.tab_widget.count()):
-                tab : AffixGroupEditor = self.tab_widget.widget(i)
+                tab: AffixGroupEditor = self.tab_widget.widget(i)
                 tab.min_greater.setValue(minGreaterAffix)
                 tab.update_min_greater_affix()
 
@@ -443,6 +469,6 @@ class AffixesTab(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             minPower = dialog.get_value()
             for i in range(self.tab_widget.count()):
-                tab : AffixGroupEditor = self.tab_widget.widget(i)
+                tab: AffixGroupEditor = self.tab_widget.widget(i)
                 tab.min_power.setValue(minPower)
                 tab.update_min_power()
