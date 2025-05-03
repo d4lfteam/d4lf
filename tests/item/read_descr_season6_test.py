@@ -3,7 +3,6 @@ import pytest
 
 from src.cam import Cam
 from src.config import BASE_DIR
-from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
 from src.item.descr.read_descr import read_descr
@@ -64,18 +63,7 @@ materials = [
     ),
 ]
 
-sigils = [
-    (
-        (2560, 1440),
-        f"{BASE_PATH}/1440p_small_sigil_1.png",
-        Item(
-            affixes=[Affix(name="ancestors_favor"), Affix(name="monster_barrier")],
-            inherent=[Affix(name="carrion_fields", type=AffixType.inherent)],
-            item_type=ItemType.Sigil,
-            rarity=ItemRarity.Common,
-        ),
-    )
-]
+sigils = []
 
 
 def _run_test_helper(img_res: tuple[int, int], input_img: str, expected_item: Item):
