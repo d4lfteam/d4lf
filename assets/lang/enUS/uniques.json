@@ -1052,12 +1052,11 @@
         "num_inherents": 2
     },
     "the_mortacrux": {
-        "desc": "when consuming a corpse, there is a chance to also create a decaying skeletal simulacrum that seeks enemies but cannot attack. when it dies, it explodes for shadow damage. this effect is treated as a macabre skill.",
-        "full": "When consuming a Corpse, there is a {c_random}[Affix_Value_1|%|]{/c} chance to also create a decaying {c_important}Skeletal Simulacrum{/c} that seeks enemies but cannot attack. When it dies, it explodes for {c_number}[(Owner.Weapon_Damage_Min_Total + Owner.Weapon_Damage_Delta_Total) * Affix_Value_2]{/c} Shadow damage. \r\n\r\nThis effect is treated as a {c_important}Macabre{/c} Skill.",
+        "desc": "when consuming a corpse there is a chance to also create a decaying",
         "num_idx": [
             0
         ],
-        "num_inherents": 1
+        "num_inherents": 2
     },
     "the_oculus": {
         "desc": "gain the effect of the teleport enchantment for free. when you evade using teleport enchantment you are taken to a random location.",
