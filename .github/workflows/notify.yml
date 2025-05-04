@@ -2,15 +2,17 @@ name: Notify
 
 on:
   release:
-    types: [created, published]
+    types: [published]
 
 jobs:
   github-releases-to-discord:
     runs-on: ubuntu-latest
     steps:
       # From: https://github.com/SethCohen/github-releases-to-discord
+      - name: Checkout
+        uses: actions/checkout@v3
       - name: Github Releases To Discord
-        uses: SethCohen/github-releases-to-discord@master
+        uses: SethCohen/github-releases-to-discord@v1
         with:
           webhook_url: ${{ secrets.DISCORD_WEBHOOK }}
           color: "2105893"
