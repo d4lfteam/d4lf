@@ -63,15 +63,15 @@ jobs:
           tag_name: "v${{ env.VERSION }}"
           token: "${{ secrets.RELEASE_TOKEN }}"
 
-      - name: Send message to Discord
-        shell: powershell
-        run: |
-          $webhookUrl = "${{ secrets.DISCORD_WEBHOOK }}"
-          $payload = @{
-              username = "GitHub"
-              content = "**D4LF v${{ env.VERSION }}**`n`nRelease Page: <${{ steps.release.outputs.url }}>"
-              allowed_mentions = @{
-                parse = @()
-              }
-          } | ConvertTo-Json
-          Invoke-RestMethod -Uri $webhookUrl -Method Post -ContentType "application/json" -Body $payload
+#      - name: Send message to Discord
+#        shell: powershell
+#        run: |
+#          $webhookUrl = "${{ secrets.DISCORD_WEBHOOK }}"
+#          $payload = @{
+#              username = "GitHub"
+#              content = "**D4LF v${{ env.VERSION }}**`n`nRelease Page: <${{ steps.release.outputs.url }}>"
+#              allowed_mentions = @{
+#                parse = @()
+#              }
+#          } | ConvertTo-Json
+#          Invoke-RestMethod -Uri $webhookUrl -Method Post -ContentType "application/json" -Body $payload
