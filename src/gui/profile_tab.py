@@ -140,10 +140,10 @@ class ProfileTab(QWidget):
 
     def create_profile_editor(self):
         if not self.profile_editor_created and self.root:
-                self.model_editor = ProfileEditor(self.root)
-                self.scrollable_layout.addWidget(self.model_editor)
-                self.profile_editor_created = True
-                LOGGER.info(f"Profile {self.root.name} loaded into profile editor.")
+            self.model_editor = ProfileEditor(self.root)
+            self.scrollable_layout.addWidget(self.model_editor)
+            self.profile_editor_created = True
+            LOGGER.info(f"Profile {self.root.name} loaded into profile editor.")
 
     def load_yaml(self):
         if not self.file_path:
