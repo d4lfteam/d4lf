@@ -35,6 +35,7 @@ from src.gui.dialog import (
 )
 from src.item.data.item_type import is_armor, is_jewelry, is_weapon
 
+AFFIXES_TABNAME = "Affixes"
 
 class AffixGroupEditor(QWidget):
     def __init__(self, dynamic_filter: DynamicItemFilterModel, parent=None):
@@ -320,7 +321,16 @@ class AffixWidget(QWidget):
     def setup_ui(self):
         layout = QHBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        layout.setSpacing(50)
+        self.create_affix_name_combobox()
+        self.create_value_input()
+        self.create_comparison_combobox()
+        layout.addWidget(self.name_combo)
+        layout.addWidget(self.value_edit)
+        layout.addWidget(self.comparison_combo)
+        self.setLayout(layout)
 
+    def create_affix_name_combobox(self):
         # Affix Name Combobox
         self.name_combo = IgnoreScrollWheelComboBox()
         self.name_combo.setEditable(True)
@@ -332,30 +342,27 @@ class AffixWidget(QWidget):
             self.name_combo.setCurrentText(Dataloader().affix_dict[self.affix.name])
         self.name_combo.currentIndexChanged.connect(self.update_name)
 
+    def create_value_input(self):
         # Value Input
         self.value_edit = QLineEdit()
-        self.value_edit.setMaximumWidth(100)
+        self.value_edit.setFixedSize(100, self.value_edit.sizeHint().height())
         self.value_edit.setPlaceholderText("Value (optional)")
         if self.affix.value is not None:
             self.value_edit.setText(str(self.affix.value))
         self.value_edit.textChanged.connect(self.update_value)
         self.affix.value = self.affix.value
+
+    def create_comparison_combobox(self):
         # Comparison Combobox
         self.comparison_combo = IgnoreScrollWheelComboBox()
         self.comparison_combo.setEditable(True)
         self.comparison_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.comparison_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.comparison_combo.setMaximumWidth(100)
+        self.comparison_combo.setFixedSize(100, self.comparison_combo.sizeHint().height())
         self.comparison_combo.addItems([ct.value for ct in ComparisonType])
         self.comparison_combo.setCurrentText(self.affix.comparison.value)
         self.comparison_combo.currentIndexChanged.connect(self.update_comparison)
         self.affix.comparison = ComparisonType(self.affix.comparison.value)
-        layout.addWidget(self.name_combo)
-        layout.addSpacing(50)
-        layout.addWidget(self.value_edit)
-        layout.addSpacing(50)
-        layout.addWidget(self.comparison_combo)
-        self.setLayout(layout)
 
     def update_name(self):
         reverse_dict = {v: k for k, v in Dataloader().affix_dict.items()}
@@ -376,7 +383,12 @@ class AffixesTab(QWidget):
     def __init__(self, affixes_model: list[DynamicItemFilterModel], parent=None):
         super().__init__(parent)
         self.affixes_model = affixes_model
-        self.setup_ui()
+        self.loaded = False
+
+    def load(self):
+        if not self.loaded:
+            self.setup_ui()
+            self.loaded = True
 
     def setup_ui(self):
         """Populate the grid layout with existing groups"""

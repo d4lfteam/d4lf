@@ -19,6 +19,8 @@ from src.dataloader import Dataloader
 from src.gui.collapsible_widget import Container
 from src.gui.dialog import CreateSigil, IgnoreScrollWheelComboBox, RemoveSigil
 
+SIGILS_TABNAME = "Sigils"
+
 
 class ConditionWidget(QWidget):
     condition_changed = pyqtSignal(str, str)
@@ -153,8 +155,12 @@ class SigilsTab(QWidget):
             self.sigil_model = SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.whitelist)
         else:
             self.sigil_model = sigil_model
+        self.loaded = False
 
-        self.setup_ui()
+    def load(self):
+        if not self.loaded:
+            self.setup_ui()
+            self.loaded = True
 
     def setup_ui(self):
         """Populate the grid layout with existing groups"""

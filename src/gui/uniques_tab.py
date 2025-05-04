@@ -27,6 +27,7 @@ from src.gui.affixes_tab import AffixWidget
 from src.gui.dialog import DeleteItem, IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox, MinGreaterDialog, MinPowerDialog
 from src.item.data.item_type import is_armor, is_jewelry, is_weapon
 
+UNIQUES_TABNAME = "Uniques"
 
 class UniqueWidget(QWidget):
     def __init__(self, unique_model: UniqueModel, parent=None):
@@ -235,7 +236,12 @@ class UniquesTab(QWidget):
     def __init__(self, unique_model_list: list[UniqueModel], parent=None):
         super().__init__(parent)
         self.unique_model_list = unique_model_list
-        self.setup_ui()
+        self.loaded = False
+
+    def load(self):
+        if not self.loaded:
+            self.setup_ui()
+            self.loaded = True
 
     def setup_ui(self):
         self.main_layout = QVBoxLayout(self)

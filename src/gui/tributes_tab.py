@@ -19,6 +19,7 @@ from src.dataloader import Dataloader
 from src.gui.collapsible_widget import Container
 from src.gui.dialog import CreateTribute, IgnoreScrollWheelComboBox, RemoveTribute
 
+TRIBUTES_TABNAME = "Tributes"
 
 class RarityWidget(QWidget):
     rarity_changed = pyqtSignal(ItemRarity, ItemRarity)
@@ -152,8 +153,12 @@ class TributesTab(QWidget):
             self.tributes = [TributeFilterModel()]
         else:
             self.tributes = tributes
+        self.loaded = False
 
-        self.setup_ui()
+    def load(self):
+        if not self.loaded:
+            self.setup_ui()
+            self.loaded = True
 
     def setup_ui(self):
         self.main_layout = QVBoxLayout(self)
