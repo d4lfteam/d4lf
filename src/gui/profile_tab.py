@@ -7,7 +7,6 @@ import yaml
 from pydantic import ValidationError
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QDialog,
     QFileDialog,
     QGroupBox,
     QHBoxLayout,
@@ -20,7 +19,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from gui.dialog import DeleteItem
 from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
 from src.gui.importer.common import ProfileModel
@@ -137,14 +135,11 @@ class ProfileTab(QWidget):
 
         if file_path:
             self.file_path = file_path
-            if not self.load_yaml():
-                return False
-            return True
+            return self.load_yaml()
         return False
 
     def create_profile_editor(self):
-        if not self.profile_editor_created:
-            if self.root:
+        if not self.profile_editor_created and self.root:
                 self.model_editor = ProfileEditor(self.root)
                 self.scrollable_layout.addWidget(self.model_editor)
                 self.profile_editor_created = True
