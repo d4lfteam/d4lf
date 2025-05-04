@@ -8,11 +8,11 @@ from PyQt6.QtWidgets import QMessageBox, QTabWidget
 from src import __version__
 from src.config.loader import IniConfigLoader
 from src.config.models import ProfileModel
-from src.gui.affixes_tab import AffixesTab
+from src.gui.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.importer.common import _to_yaml_str
-from src.gui.sigils_tab import SigilsTab
-from src.gui.tributes_tab import TributesTab
-from src.gui.uniques_tab import UniquesTab
+from src.gui.sigils_tab import SIGILS_TABNAME, SigilsTab
+from src.gui.tributes_tab import TRIBUTES_TABNAME, TributesTab
+from src.gui.uniques_tab import UNIQUES_TABNAME, UniquesTab
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,21 +26,31 @@ class ProfileEditor(QTabWidget):
     def setup_ui(self):
         # Create main tabs
         self.affixes_tab = AffixesTab(self.profile_model.Affixes)
-        self.sigils_tab = SigilsTab(self.profile_model.Sigils)  # To be implemented
-        self.tributes_tab = TributesTab(self.profile_model.Tributes)  # To be implemented
-        self.uniques_tab = UniquesTab(self.profile_model.Uniques)  # To be implemented
-
+        self.sigils_tab = SigilsTab(self.profile_model.Sigils)
+        self.tributes_tab = TributesTab(self.profile_model.Tributes)
+        self.uniques_tab = UniquesTab(self.profile_model.Uniques)
+        self.currentChanged.connect(self.tab_changed)
         # Add tabs with icons
-        self.addTab(self.affixes_tab, "Affixes")
-        self.addTab(self.sigils_tab, "Sigils")
-        self.addTab(self.tributes_tab, "Tributes")
-        self.addTab(self.uniques_tab, "Uniques")
+        self.addTab(self.affixes_tab, AFFIXES_TABNAME)
+        self.addTab(self.sigils_tab, SIGILS_TABNAME)
+        self.addTab(self.tributes_tab, TRIBUTES_TABNAME)
+        self.addTab(self.uniques_tab, UNIQUES_TABNAME)
 
         # Configure tab widget properties
         self.setDocumentMode(True)
         self.setMovable(False)
         self.setTabPosition(QTabWidget.TabPosition.North)
         self.setElideMode(Qt.TextElideMode.ElideRight)
+
+    def tab_changed(self, index):
+        if self.tabText(index) == AFFIXES_TABNAME:
+            self.affixes_tab.load()
+        elif self.tabText(index) == SIGILS_TABNAME:
+            self.sigils_tab.load()
+        elif self.tabText(index) == TRIBUTES_TABNAME:
+            self.tributes_tab.load()
+        elif self.tabText(index) == UNIQUES_TABNAME:
+            self.uniques_tab.load()
 
     def show_warning(self):
         msg = QMessageBox()

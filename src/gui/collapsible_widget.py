@@ -1,8 +1,11 @@
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QSpacerItem, QStackedLayout, QVBoxLayout, QWidget
 
 
 class Header(QWidget):
+    firstExpansion = pyqtSignal()  # Signal emitted on first expansion
+
     def __init__(self, name, content_widget):
         super().__init__()
         self.content = content_widget
@@ -50,6 +53,7 @@ class Header(QWidget):
         # Set the minimum height of the background based on the layout height
         background.setMinimumHeight(int(layout.sizeHint().height() * 1.5))
         self.collapse()
+        self.first_expansion = True
 
     def mousePressEvent(self, *args):
         """Handle mouse events, call the function to toggle groups"""
@@ -58,6 +62,9 @@ class Header(QWidget):
 
     def expand(self):
         """Expand the collapsible group"""
+        if self.first_expansion:
+            self.firstExpansion.emit()
+            self.first_expansion = False
         self.content.setVisible(True)
         self.icon.setText(self.collapse_ico)  # Set text instead of pixmap
 
@@ -72,6 +79,8 @@ class Header(QWidget):
 
 
 class Container(QWidget):
+    firstExpansion = pyqtSignal()  # Signal emitted on first expansion
+
     def __init__(self, name, color_background=False):
         super().__init__()  # Call the constructor of the parent class
 
@@ -91,6 +100,8 @@ class Container(QWidget):
         layout.addWidget(self.header)  # Add the header to the layout
         layout.addWidget(self._content_widget)  # Add the _content_widget to the layout
 
+        self._content_initialized = False  # Track initialization state
+        self.header.firstExpansion.connect(self.first_expansion)
         # assign header methods to instance attributes so they can be called outside of this class
         self.collapse = self.header.collapse  # Assign the collapse method of the header to the instance attribute collapse
         self.expand = self.header.expand  # Assign the expand method of the header to the instance attribute expand
@@ -103,3 +114,7 @@ class Container(QWidget):
         Returns: Content widget
         """
         return self._content_widget  # Return the _content_widget when the contentWidget property is accessed
+
+    def first_expansion(self):
+        """Handle first expansion event"""
+        self.firstExpansion.emit()  # Notify about first expansion
