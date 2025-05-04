@@ -79,7 +79,6 @@ class ProfileTab(QWidget):
         with open(str(BASE_DIR / "assets/lang/enUS/affixes.json")) as f:
             self.affixesNames = json.load(f)
 
-        self.load()
         self.profile_editor_created = False
         scroll_widget.setLayout(self.scrollable_layout)
         scroll_area.setWidget(scroll_widget)
@@ -114,8 +113,11 @@ class ProfileTab(QWidget):
         return reply == QMessageBox.StandardButton.Ok
 
     def load_file(self):
-        self.load()
-        self.refresh()
+        if self.load():
+            self.scrollable_layout.removeWidget(self.model_editor)
+            self.model_editor = ProfileEditor(self.root)
+            self.scrollable_layout.addWidget(self.model_editor)
+            LOGGER.info(f"Profile {self.root.name} loaded into profile editor.")
 
     def load(self):
         profiles: list[str] = IniConfigLoader().general.profiles
@@ -137,17 +139,21 @@ class ProfileTab(QWidget):
             self.file_path = file_path
             if not self.load_yaml():
                 return False
-            self.update_filename_label()
             return True
         return False
 
     def create_profile_editor(self):
         if not self.profile_editor_created:
-            self.model_editor = ProfileEditor(self.root)
-            self.scrollable_layout.addWidget(self.model_editor)
-            self.profile_editor_created = True
+            if self.root:
+                self.model_editor = ProfileEditor(self.root)
+                self.scrollable_layout.addWidget(self.model_editor)
+                self.profile_editor_created = True
+                LOGGER.info(f"Profile {self.root.name} loaded into profile editor.")
 
     def load_yaml(self):
+        if not self.file_path:
+            LOGGER.debug("No profile loaded, cannot refresh.")
+            return False
         filename = os.path.basename(self.file_path)  # Get the filename from the full path
         filename_without_extension = filename.rsplit(".", 1)[0]  # Remove the extension
         profile_str = filename_without_extension.replace("_", " ")  # Replace underscores with spaces
@@ -163,13 +169,14 @@ class ProfileTab(QWidget):
                 return False
             try:
                 self.root = ProfileModel(name=profile_str, **config)
+                self.original_root = copy.deepcopy(self.root)
+                LOGGER.info(f"File {self.file_path} loaded.")
+                self.update_filename_label()
+                self.create_profile_editor()
             except ValidationError as e:
                 LOGGER.error(f"Validation errors in {self.file_path}")
                 LOGGER.error(e)
                 return False
-            except TypeError:
-                self.root = ProfileModel(**config)
-        self.original_root = copy.deepcopy(self.root)
         return True
 
     def update_filename_label(self):
@@ -188,26 +195,10 @@ class ProfileTab(QWidget):
             return self.confirm_discard_changes()
         return True
 
-    def delete_items(self):
-        item_names = [item.item_name for item in self.item_list]
-        dialog = DeleteItem(item_names, self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            for item_name in dialog.get_value():
-                for i, item in enumerate(self.item_list):
-                    if item.item_name == item_name:
-                        self.item_list.pop(i)
-                        to_delete = self.item_widgets_layout.takeAt(i)
-                        to_delete.widget().deleteLater()
-                        break
-            return
-
     def refresh(self):
-        self.item_list = []
-
         if not self.load_yaml():
             return
-
-        self.update_filename_label()
         self.scrollable_layout.removeWidget(self.model_editor)
         self.model_editor = ProfileEditor(self.root)
         self.scrollable_layout.addWidget(self.model_editor)
+        LOGGER.info(f"Profile {self.root.name} refreshed.")
