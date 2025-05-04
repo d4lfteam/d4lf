@@ -37,6 +37,7 @@ from src.item.data.item_type import is_armor, is_jewelry, is_weapon
 
 AFFIXES_TABNAME = "Affixes"
 
+
 class AffixGroupEditor(QWidget):
     def __init__(self, dynamic_filter: DynamicItemFilterModel, parent=None):
         super().__init__(parent)

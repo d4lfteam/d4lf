@@ -29,6 +29,7 @@ from src.item.data.item_type import is_armor, is_jewelry, is_weapon
 
 UNIQUES_TABNAME = "Uniques"
 
+
 class UniqueWidget(QWidget):
     def __init__(self, unique_model: UniqueModel, parent=None):
         super().__init__(parent)

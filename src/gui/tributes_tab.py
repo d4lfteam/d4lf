@@ -21,6 +21,7 @@ from src.gui.dialog import CreateTribute, IgnoreScrollWheelComboBox, RemoveTribu
 
 TRIBUTES_TABNAME = "Tributes"
 
+
 class RarityWidget(QWidget):
     rarity_changed = pyqtSignal(ItemRarity, ItemRarity)
 

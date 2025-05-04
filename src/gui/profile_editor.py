@@ -8,11 +8,11 @@ from PyQt6.QtWidgets import QMessageBox, QTabWidget
 from src import __version__
 from src.config.loader import IniConfigLoader
 from src.config.models import ProfileModel
-from src.gui.affixes_tab import AffixesTab, AFFIXES_TABNAME
+from src.gui.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.importer.common import _to_yaml_str
-from src.gui.sigils_tab import SigilsTab, SIGILS_TABNAME
-from src.gui.tributes_tab import TributesTab, TRIBUTES_TABNAME
-from src.gui.uniques_tab import UniquesTab, UNIQUES_TABNAME
+from src.gui.sigils_tab import SIGILS_TABNAME, SigilsTab
+from src.gui.tributes_tab import TRIBUTES_TABNAME, TributesTab
+from src.gui.uniques_tab import UNIQUES_TABNAME, UniquesTab
 
 LOGGER = logging.getLogger(__name__)
 
