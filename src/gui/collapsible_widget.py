@@ -1,10 +1,11 @@
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QSpacerItem, QStackedLayout, QVBoxLayout, QWidget
-from PyQt6.QtCore import pyqtSignal
 
 
 class Header(QWidget):
     firstExpansion = pyqtSignal()  # Signal emitted on first expansion
+
     def __init__(self, name, content_widget):
         super().__init__()
         self.content = content_widget
@@ -79,6 +80,7 @@ class Header(QWidget):
 
 class Container(QWidget):
     firstExpansion = pyqtSignal()  # Signal emitted on first expansion
+
     def __init__(self, name, color_background=False):
         super().__init__()  # Call the constructor of the parent class
 
