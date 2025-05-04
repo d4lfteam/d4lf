@@ -61,6 +61,7 @@ jobs:
           name: "v${{ env.VERSION }}"
           prerelease: ${{ env.IS_BETA == 'true' }}
           tag_name: "v${{ env.VERSION }}"
+          token: "v${{ secrets.RELEASE_TOKEN }}"
 
       - name: Send message to Discord
         shell: powershell
@@ -74,8 +75,3 @@ jobs:
               }
           } | ConvertTo-Json
           Invoke-RestMethod -Uri $webhookUrl -Method Post -ContentType "application/json" -Body $payload
-
-      - name: Github Releases To Discord
-        uses: sillyangel/releases-to-discord@v1
-        with:
-          webhook_url: ${{ secrets.DISCORD_WEBHOOK }}

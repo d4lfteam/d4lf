@@ -2,9 +2,7 @@ name: Notify
 
 on:
   release:
-    types: [created, published]
-  workflow_dispatch:
-  workflow_call:
+    types: [published]
 
 jobs:
   github-releases-to-discord:
@@ -12,7 +10,7 @@ jobs:
     steps:
       # From: https://github.com/SethCohen/github-releases-to-discord
       - name: Github Releases To Discord
-        uses: SethCohen/github-releases-to-discord@master
+        uses: SethCohen/github-releases-to-discord@v1
         with:
           webhook_url: ${{ secrets.DISCORD_WEBHOOK }}
           color: "2105893"
