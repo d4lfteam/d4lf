@@ -61,7 +61,7 @@ jobs:
           name: "v${{ env.VERSION }}"
           prerelease: ${{ env.IS_BETA == 'true' }}
           tag_name: "v${{ env.VERSION }}"
-          token: "v${{ secrets.RELEASE_TOKEN }}"
+          token: "${{ secrets.RELEASE_TOKEN }}"
 
       - name: Send message to Discord
         shell: powershell
