@@ -36,6 +36,8 @@ class ProfileTab(QWidget):
 
         self.root = None
         self.file_path = None
+        self.model_editor = None
+        self.first_show = True
         self.main_layout = QVBoxLayout(self)
 
         scroll_area = QScrollArea(self)
@@ -110,12 +112,27 @@ class ProfileTab(QWidget):
         reply = QMessageBox.warning(self, "Alert", msg, QMessageBox.StandardButton.Ok)
         return reply == QMessageBox.StandardButton.Ok
 
+    def show_tab(self):
+        if self.first_show:
+            self.first_show = False
+            if self.load():
+                self.create_profile_editor()
+
     def load_file(self):
-        if self.load():
-            self.scrollable_layout.removeWidget(self.model_editor)
+        if self.open_file():
+            if self.model_editor:
+                self.scrollable_layout.removeWidget(self.model_editor)
             self.model_editor = ProfileEditor(self.root)
             self.scrollable_layout.addWidget(self.model_editor)
             LOGGER.info(f"Profile {self.root.name} loaded into profile editor.")
+
+    def open_file(self):
+        custom_profile_path = IniConfigLoader().user_dir / "profiles"
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open YAML File", str(custom_profile_path), "YAML Files (*.yaml *.yml)")
+        if file_path:
+            self.file_path = file_path
+            return self.load_yaml()
+        return False
 
     def load(self):
         profiles: list[str] = IniConfigLoader().general.profiles
@@ -123,19 +140,14 @@ class ProfileTab(QWidget):
         if not self.file_path and len(profiles) > 0:  # at start, set default file to build in params.ini
             if profiles[0]:
                 custom_file_path = custom_profile_path / f"{profiles[0]}.yaml"
-                if custom_file_path.is_file():
-                    file_path = custom_file_path
-                else:
-                    file_path = None
+                if not custom_file_path.is_file():
                     LOGGER.error(f"Could not load profile {profiles[0]}. Checked: {custom_file_path}")
-            else:
-                file_path, _ = QFileDialog.getOpenFileName(self, "Open YAML File", str(custom_profile_path), "YAML Files (*.yaml *.yml)")
-        else:
-            file_path, _ = QFileDialog.getOpenFileName(self, "Open YAML File", str(custom_profile_path), "YAML Files (*.yaml *.yml)")
-
-        if file_path:
-            self.file_path = file_path
-            return self.load_yaml()
+                    return False
+                self.file_path = custom_file_path
+                return self.load_yaml()
+            return self.open_file()
+        if not self.file_path and len(profiles) == 0:
+            return self.open_file()
         return False
 
     def create_profile_editor(self):
@@ -167,7 +179,6 @@ class ProfileTab(QWidget):
                 self.original_root = copy.deepcopy(self.root)
                 LOGGER.info(f"File {self.file_path} loaded.")
                 self.update_filename_label()
-                self.create_profile_editor()
             except ValidationError as e:
                 LOGGER.error(f"Validation errors in {self.file_path}")
                 LOGGER.error(e)

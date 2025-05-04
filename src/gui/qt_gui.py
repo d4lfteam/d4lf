@@ -173,7 +173,7 @@ class Gui(QMainWindow):
             LOGGER.root.addHandler(self.diablo_trade_log_handler)
             LOGGER.root.removeHandler(self.maxroll_log_handler)
         elif self.tab_widget.tabText(index) == profile_tab.PROFILE_TABNAME:
-            self.profile_tab_widget.load()
+            self.profile_tab_widget.show_tab()
 
     def _maxroll_or_d4builds_tab(self):
         tab_maxroll = QWidget(self)
