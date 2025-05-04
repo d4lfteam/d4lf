@@ -1,3 +1,4 @@
+import logging
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -34,6 +35,8 @@ from src.gui.dialog import (
     MinPowerDialog,
 )
 from src.item.data.item_type import is_armor, is_jewelry, is_weapon
+
+LOGGER = logging.getLogger(__name__)
 
 AFFIXES_TABNAME = "Affixes"
 
@@ -85,20 +88,6 @@ class AffixGroupEditor(QWidget):
 
         self.content_layout.addLayout(general_form)
 
-        # Affix Pool
-        self.affix_pool_container = Container("Affix Pool")
-        self.affix_pool_layout = QVBoxLayout(self.affix_pool_container.contentWidget)
-
-        for pool in self.config.affixPool:
-            self.add_affix_pool_item(pool)
-
-        # Inherent Pool
-        self.inherent_pool_container = Container("Inherent Pool")
-        self.inherent_pool_layout = QVBoxLayout(self.inherent_pool_container.contentWidget)
-
-        for pool in self.config.inherentPool:
-            self.add_affix_pool_item(pool, True)
-
         pool_btn_layout = QHBoxLayout()
         add_affix_pool_btn = QPushButton("Add Affix Pool")
         add_affix_pool_btn.clicked.connect(self.add_affix_pool)
@@ -114,6 +103,16 @@ class AffixGroupEditor(QWidget):
         pool_btn_layout.addWidget(remove_affix_pool_btn)
         pool_btn_layout.addWidget(remove_inherent_pool_btn)
 
+        # Affix Pool
+        self.affix_pool_container = Container("Affix Pool")
+        self.affix_pool_layout = QVBoxLayout(self.affix_pool_container.contentWidget)
+        self.affix_pool_container.firstExpansion.connect(self.init_affix_pool)
+
+        # Inherent Pool
+        self.inherent_pool_container = Container("Inherent Pool")
+        self.inherent_pool_layout = QVBoxLayout(self.inherent_pool_container.contentWidget)
+        self.inherent_pool_container.firstExpansion.connect(self.init_inherent_pool)
+
         # Add widgets to content layout
         self.content_layout.addWidget(self.affix_pool_container)
         self.content_layout.addWidget(self.inherent_pool_container)
@@ -126,6 +125,16 @@ class AffixGroupEditor(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.addWidget(scroll_area)
         self.setLayout(main_layout)
+
+    def init_affix_pool(self):
+        """Initialize affix pool content on first expansion"""
+        for pool in self.config.affixPool:
+            self.add_affix_pool_item(pool)
+
+    def init_inherent_pool(self):
+        """Initialize inherent pool content on first expansion"""
+        for pool in self.config.inherentPool:
+            self.add_affix_pool_item(pool, True)
 
     def add_affix_pool_item(self, pool: AffixFilterCountModel, inherent: bool = False):
         if inherent:
