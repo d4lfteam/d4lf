@@ -35,6 +35,7 @@ class ItemType(Enum):
     Cache = "cache"
     Compass = "compass"
     Consumable = "consumable"
+    Cosmetic = "cosmetic"
     Gem = "gem"
     Incense = "incense"
     Material = "material"

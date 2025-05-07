@@ -69,5 +69,8 @@ def is_ignored_item(item_descr: Item):
     if item_descr.item_type == ItemType.Cache:
         LOGGER.info("Matched: Cache")
         return True
+    if item_descr.item_type == ItemType.Cosmetic:
+        LOGGER.info("Matched: Cosmetic only item")
+        return True
 
     return False
