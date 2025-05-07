@@ -59,7 +59,7 @@ def _get_affix_counts(item: Item) -> (int, int):
         if unique_inherents is not None:
             inherent_num = unique_inherents
 
-    return (inherent_num, affixes_num)
+    return inherent_num, affixes_num
 
 
 def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
@@ -89,7 +89,6 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
 def _add_affixes_from_tts_mixed(
     tts_section: list[str],
     item: Item,
-    inherent_affix_bullets: list[TemplateMatch],
     affix_bullets: list[TemplateMatch],
     aspect_bullet: TemplateMatch | None,
 ) -> Item:
@@ -101,20 +100,22 @@ def _add_affixes_from_tts_mixed(
         item,
         inherent_num + affixes_num,
     )
-    print(affix_bullets)
+
+    if len(affixes) - 1 > len(affix_bullets):
+        _raise_index_error(affixes, affix_bullets, item)
+
     for i, affix_text in enumerate(affixes):
         if i < inherent_num:
             affix = _get_affix_from_text(affix_text)
             affix.type = AffixType.inherent
-            affix.loc = inherent_affix_bullets[i].center
+            affix.loc = affix_bullets[i].center
             item.inherent.append(affix)
         elif i < inherent_num + affixes_num:
             affix = _get_affix_from_text(affix_text)
-            affix_index = i - inherent_num
-            affix.loc = affix_bullets[affix_index].center
-            if affix_bullets[affix_index].name.startswith("greater_affix"):
+            affix.loc = affix_bullets[i].center
+            if affix_bullets[i].name.startswith("greater_affix"):
                 affix.type = AffixType.greater
-            elif affix_bullets[affix_index].name.startswith("rerolled"):
+            elif affix_bullets[i].name.startswith("rerolled"):
                 affix.type = AffixType.rerolled
             else:
                 affix.type = AffixType.normal
@@ -130,6 +131,17 @@ def _add_affixes_from_tts_mixed(
                 item.aspect = _get_aspect_from_text(affix_text, item.name)
             item.aspect.loc = aspect_bullet.center
     return item
+
+
+def _raise_index_error(affixes, affix_bullets, item):
+    LOGGER.error("About to raise index error, dumping information for debug:")
+    LOGGER.error(f"Affixes ({len(affixes)}): {affixes}")
+    LOGGER.error(f"Affix Bullets ({len(affix_bullets)}): {affix_bullets}")
+    LOGGER.error(f"Item: {item}")
+
+    raise IndexError(
+        "Found more affixes than we found bullets to represent those affixes. This could be a temporary issue finding bullet positions on the screen, but if it happens consistently please open a bug report with a full screen screenshot with the item hovered on and vision mode disabled. Additionally, include the logs above this message."
+    )
 
 
 def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
@@ -359,47 +371,11 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
     }
 
     affix_bullets = find_affix_bullets(img_item_descr, sep_short_match)
-    sep_long_match = futures["sep_long"].result() if futures["sep_long"] is not None else None
-    if sep_long_match is None:
-        # Split affix bullets into inherent and others
-        # =========================
-        if item.rarity == ItemRarity.Mythic:  # TODO should refactor so we either apply some logic OR we look for separator
-            # Just pick the last 4 matches as affixes
-            inherent_affix_bullets = affix_bullets[:-4]
-            affix_bullets = affix_bullets[-4:]
-        elif item.item_type in [ItemType.ChestArmor, ItemType.Helm, ItemType.Gloves, ItemType.Legs]:
-            inherent_affix_bullets = []
-        elif item.item_type in [ItemType.Ring]:
-            inherent_affix_bullets = affix_bullets[:2]
-            affix_bullets = affix_bullets[2:]
-        elif item.item_type in [ItemType.Sigil]:
-            inherent_affix_bullets = affix_bullets[:3]
-            affix_bullets = affix_bullets[3:]
-        elif item.item_type in [ItemType.Shield]:
-            inherent_affix_bullets = affix_bullets[:4]
-            affix_bullets = affix_bullets[4:]
-        else:
-            # default for: Amulets, Boots, All Weapons
-            inherent_affix_bullets = affix_bullets[:1]
-            affix_bullets = affix_bullets[1:]
-    else:
-        # check how many affix bullets are below the long separator. if there are more below, then the long separator is the inherent separator.
-        inherent_sep = (None, 0)
-        for sep in sep_long_match:
-            candidate = (sep, len([True for bullet in affix_bullets if bullet.center[1] > sep.center[1]]))
-            if candidate[1] > inherent_sep[1]:
-                inherent_sep = candidate
-        if inherent_sep[0] is None:
-            number_inherents = 0
-        else:
-            number_inherents = len([True for bullet in affix_bullets if bullet.center[1] < inherent_sep[0].center[1]])
-        inherent_affix_bullets = affix_bullets[:number_inherents]
-        affix_bullets = affix_bullets[number_inherents:]
 
     item.codex_upgrade = _is_codex_upgrade(tts_section)
     item.cosmetic_upgrade = _is_cosmetic_upgrade(tts_section)
     aspect_bullet = futures["aspect_bullet"].result() if futures["aspect_bullet"] is not None else None
-    return _add_affixes_from_tts_mixed(tts_section, item, inherent_affix_bullets, affix_bullets, aspect_bullet=aspect_bullet)
+    return _add_affixes_from_tts_mixed(tts_section, item, affix_bullets, aspect_bullet=aspect_bullet)
 
 
 def read_descr() -> Item | None:
