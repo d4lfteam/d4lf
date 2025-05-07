@@ -179,6 +179,8 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         return Item(item_type=ItemType.Cache)
     if any(tts_item[1].lower().endswith(x) for x in ["whispering wood"]):
         return Item(item_type=ItemType.WhisperingWood)
+    if any(tts_item[1].lower().startswith(x) for x in ["cosmetic"]):
+        return Item(item_type=ItemType.Cosmetic)
     if "rune of" in tts_item[1].lower():
         item = Item(item_type=ItemType.Rune)
         search_string_split = tts_item[1].lower().split(" rune of ")
@@ -386,6 +388,9 @@ def read_descr() -> Item | None:
         return None
     if item.item_type == ItemType.Sigil:
         return _add_sigil_affixes_from_tts(tts_section, item)
+    if item.item_type == ItemType.Cosmetic:
+        item.cosmetic_upgrade = True
+        return item
     if any(
         [
             is_consumable(item.item_type),
