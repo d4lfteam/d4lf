@@ -77,6 +77,10 @@ def import_diablo_trade(url: str, max_listings: int, driver: seleniumbase.Driver
                 continue
             if item_type in [None, ItemType.Material]:
                 continue
+            if "rarity" not in listing:
+                if "name" in listing:
+                    LOGGER.debug(f"Skipping {listing['name']} because it had no rarity.")
+                continue
             item_rarity = match_to_enum(enum_class=ItemRarity, target_string=listing["rarity"])
             if item_rarity != ItemRarity.Legendary:
                 continue
