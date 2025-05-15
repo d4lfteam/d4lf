@@ -203,7 +203,10 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     search_string = tts_item[1].lower().replace("ancestral", "").strip()
     search_string_split = search_string.split(" ")
     item.rarity = _get_item_rarity(search_string_split[0])
-    item.item_type = _get_item_type(" ".join(search_string_split[1:]))
+    starting_item_type_index = 1
+    if item.rarity == ItemRarity.Mythic:
+        starting_item_type_index = 2
+    item.item_type = _get_item_type(" ".join(search_string_split[starting_item_type_index:]))
     item.name = _correct_name(tts_item[0])
     for _i, line in enumerate(tts_item):
         if "item power" in line.lower():
@@ -323,19 +326,11 @@ def _get_aspect_from_text(text: str, name: str) -> Aspect:
 
 
 def _get_item_rarity(data: str) -> ItemRarity | None:
-    res = rapidfuzz.process.extractOne(data, [rar.value for rar in ItemRarity], scorer=rapidfuzz.distance.Levenshtein.distance)
-    try:
-        return ItemRarity(res[0]) if res else None
-    except ValueError:
-        return None
+    return next((rar for rar in ItemRarity if rar.value == data), None)
 
 
 def _get_item_type(data: str):
-    res = rapidfuzz.process.extractOne(data, [it.value for it in ItemType], scorer=rapidfuzz.distance.Levenshtein.distance)
-    try:
-        return ItemType(res[0]) if res else None
-    except ValueError:
-        return None
+    return next((it for it in ItemType if it.value == data), None)
 
 
 def _is_codex_upgrade(tts_section: list[str]) -> bool:
