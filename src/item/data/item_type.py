@@ -38,6 +38,7 @@ class ItemType(Enum):
     Cosmetic = "cosmetic"
     Gem = "gem"
     Incense = "incense"
+    LairBossKey = "lairbosskey"
     Material = "material"
     Rune = "rune"
     Sigil = "nightmare sigil"

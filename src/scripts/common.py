@@ -72,5 +72,8 @@ def is_ignored_item(item_descr: Item):
     if item_descr.item_type == ItemType.Cosmetic:
         LOGGER.info("Matched: Cosmetic only item")
         return True
+    if item_descr.item_type == ItemType.LairBossKey:
+        LOGGER.info("Matched: Lair Boss Key")
+        return True
 
     return False

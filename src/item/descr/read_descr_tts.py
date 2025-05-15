@@ -181,6 +181,8 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         return Item(item_type=ItemType.WhisperingWood)
     if any(tts_item[1].lower().startswith(x) for x in ["cosmetic"]):
         return Item(item_type=ItemType.Cosmetic)
+    if any(tts_item[1].lower().endswith(x) for x in ["boss key"]):
+        return Item(item_type=ItemType.LairBossKey)
     if "rune of" in tts_item[1].lower():
         item = Item(item_type=ItemType.Rune)
         search_string_split = tts_item[1].lower().split(" rune of ")
@@ -396,7 +398,7 @@ def read_descr() -> Item | None:
             is_consumable(item.item_type),
             is_mapping(item.item_type),
             is_socketable(item.item_type),
-            item.item_type in [ItemType.Material, ItemType.Tribute, ItemType.Cache],
+            item.item_type in [ItemType.Material, ItemType.Tribute, ItemType.Cache, ItemType.LairBossKey],
         ]
     ):
         return item
