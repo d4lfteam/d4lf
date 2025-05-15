@@ -260,6 +260,9 @@ def _get_affix_from_text(text: str) -> Affix:
     elif "for 4 Seconds" in text and "Blood Orb" in text:
         for x in ["for 4 Seconds", "[4]"]:
             text = text.replace(x, "")
+    elif "for 7 Seconds" in text and "After Killing an Elite" in text:
+        for x in ["for 7 Seconds", "[7]"]:
+            text = text.replace(x, "")
 
     matched_groups = {}
     for match in _AFFIX_RE.finditer(text):
