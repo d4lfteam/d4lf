@@ -1,14 +1,14 @@
 default_install_hook_types: [pre-push]
 repos:
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v19.1.7
+    rev: v20.1.4
     hooks:
       - id: clang-format
         files: \.(cpp|h)$
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
-#      - id: check-added-large-files # Disabled because git-lfs in GH costs?!
+      #      - id: check-added-large-files # Disabled because git-lfs in GH costs?!
       - id: check-ast
       - id: check-case-conflict
       - id: check-executables-have-shebangs
@@ -23,17 +23,22 @@ repos:
       - id: requirements-txt-fixer
       - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.3
+    rev: v0.11.10
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix]
       - id: ruff-format
-#  - repo: https://github.com/executablebooks/mdformat
-#    rev: 0.7.21
-#    hooks:
-#      - id: mdformat
-#  - repo: https://github.com/google/yamlfmt
-#    rev: v0.15.0
-#    hooks:
-#      - id: yamlfmt
-#        args: [-conf, .yamlfmt.yaml]
+  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.14.0
+    hooks:
+      - id: pretty-format-toml
+        args: [--autofix, --indent, "4"]
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.22
+    hooks:
+      - id: mdformat
+  - repo: https://github.com/google/yamlfmt
+    rev: v0.16.0
+    hooks:
+      - id: yamlfmt
+        args: [-conf, .yamlfmt.yaml]

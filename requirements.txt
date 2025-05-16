@@ -1,4 +1,4 @@
-./dependencies/tesserocr-2.7.1-cp313-cp313-win_amd64.whl
+./dependencies/tesserocr-2.8.0-cp313-cp313-win_amd64.whl; sys_platform == 'win32'
 beautifultable
 colorama
 httpx
@@ -23,7 +23,7 @@ pytest-mock
 pytest-pythonpath
 pytest-xdist
 pytweening
-pywin32
+pywin32; sys_platform == 'win32'
 pyyaml
 rapidfuzz
 ruamel.yaml~=0.18.0
