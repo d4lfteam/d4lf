@@ -10,15 +10,12 @@ jobs:
   tests:
     runs-on: windows-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup env
         uses: ./.github/actions/setup_env
 
-      - name: pre-commit
-        shell: powershell
-        run: pre-commit run -a
+      - uses: pre-commit/action@v3.0.1
 
       - name: Pytest
         shell: powershell

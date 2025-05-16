@@ -14,6 +14,8 @@ runs:
       uses: astral-sh/setup-uv@v6
       with:
         activate-environment: true
+        enable-cache: true
+        ignore-nothing-to-cache: true
 
     - name: Install dependencies
       shell: powershell

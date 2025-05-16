@@ -18,10 +18,7 @@ jobs:
         )
     runs-on: windows-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          lfs: false # change to true when building benchmarks
+      - uses: actions/checkout@v4
 
       - name: Setup env
         uses: ./.github/actions/setup_env
@@ -52,9 +49,7 @@ jobs:
             echo "IS_BETA=false" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
           }
 
-      - name: Release
-        id: release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
           files: d4lf_v*.zip
           generate_release_notes: true
@@ -62,16 +57,3 @@ jobs:
           prerelease: ${{ env.IS_BETA == 'true' }}
           tag_name: "v${{ env.VERSION }}"
           token: "${{ secrets.RELEASE_TOKEN }}"
-
-#      - name: Send message to Discord
-#        shell: powershell
-#        run: |
-#          $webhookUrl = "${{ secrets.DISCORD_WEBHOOK }}"
-#          $payload = @{
-#              username = "GitHub"
-#              content = "**D4LF v${{ env.VERSION }}**`n`nRelease Page: <${{ steps.release.outputs.url }}>"
-#              allowed_mentions = @{
-#                parse = @()
-#              }
-#          } | ConvertTo-Json
-#          Invoke-RestMethod -Uri $webhookUrl -Method Post -ContentType "application/json" -Body $payload
