@@ -72,10 +72,6 @@ Example 2: You're on version 5.1.14 and updating to 6.0.0. Your profiles will mi
   - Due to your local windows settings, the tool might not be able to control the mouse. Just run the tool as admin
     and it should work. If you don't want to run it as admin, you can disable the mouse control in the params.ini
     by setting `vision_mode_only` to `true`.
-- I am trying to import a trade search from diablo.trade and am getting an error that I need to install Chrome.
-  - diablo.trade has a setting enabled that will block all automated access, but we use a chrome-based browser to
-    circumvent this. For diablo.trade imports it is required that Chrome be installed. Regular build imports can
-    work with any browser.
 - Steam user: The tool shows a warning saying "TTS connection has not been made yet." but I've set everything up correctly.
   - If you're seeing this error, it means D4LF has found the DLL is in the correct location but the TTS connection is
     still not being made. This is most likely due to an issue with your windows user not allowing Diablo to connect to
@@ -104,9 +100,9 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 ### params.ini
 
 | [general] | Description |
-|---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|---------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | profiles | A set of profiles separated by comma. d4lf will look for these yaml files in config/profiles and in C:/Users/WINDOWS_USER/.d4lf/profiles |
-| browser | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported. Note: Trade importing can only work with Chrome and ignores this setting. |
+| browser | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported. |
 | check_chest_tabs | Which chest tabs will be checked and filtered for items in case chest is open when starting the filter. You need to buy all slots. Counting is done left to right. E.g. 1,2,4 will check tab 1, tab 2, tab 4 |
 | full_dump | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not |
 | handle_cosmetics | How to handle new cosmetics that do not match any filter and are not aspect upgrades. `ignore` will ignore them, `junk` will mark them as junk |
@@ -143,7 +139,6 @@ Documentation is not yet finished. For now, it should be self-explanatory. Just 
 Current functionality:
 
 - Import builds from maxroll/d4builds/mobalytics
-- Create profiles based off of searches for diablo.trade (requires chrome)
 - Complete management of your params.ini through the config tab
 - A beta version of a manual profile editor/creator
 
