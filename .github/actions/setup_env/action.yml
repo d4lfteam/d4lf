@@ -9,8 +9,14 @@ runs:
       uses: actions/setup-python@v5
       with:
         python-version: "3.13"
-        cache: "pip"
+
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v6
+      with:
+        activate-environment: true
+        enable-cache: true
+        ignore-nothing-to-cache: true
 
     - name: Install dependencies
       shell: powershell
-      run: python.exe -m pip install -r requirements.txt
+      run: uv pip install -r requirements.txt

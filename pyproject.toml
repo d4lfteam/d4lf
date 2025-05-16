@@ -3,7 +3,6 @@ indent-width = 4
 line-length = 140
 target-version = "py313"
 
-
 [tool.ruff.format]
 docstring-code-format = true
 docstring-code-line-length = "dynamic"
@@ -13,6 +12,7 @@ quote-style = "double"
 skip-magic-trailing-comma = false
 
 [tool.ruff.lint]
+ignore = ["E501"]
 select = [
     "A",
     "ASYNC",
@@ -41,12 +41,8 @@ select = [
     "TID",
     "UP",
     "W",
-    "YTT",
-    # "PL",
-    # "PTH",
-    # "RUF",
+    "YTT"
 ]
-ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 split-on-trailing-comma = true

@@ -67,7 +67,8 @@ class Gui(QMainWindow):
         self.setCentralWidget(self.tab_widget)
 
         self._maxroll_or_d4builds_tab()
-        self._diablo_trade_tab()
+        # diablo trade changed search to be login only, so this no longer works
+        # self._diablo_trade_tab()
         self.tab_widget.addTab(config_tab.ConfigTab(), config_tab.CONFIG_TABNAME)
         self.profile_tab_widget = profile_tab.ProfileTab()
         self.tab_widget.addTab(self.profile_tab_widget, profile_tab.PROFILE_TABNAME)

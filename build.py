@@ -4,7 +4,6 @@ from pathlib import Path
 
 from src import __version__
 
-BENCHMARK_EXE_NAME = "d4lf_benchmark.exe"
 EXE_NAME = "d4lf.exe"
 
 
@@ -12,12 +11,6 @@ def build(release_dir: Path):
     installer_cmd = f"pyinstaller --clean --onefile --distpath {release_dir} --paths src src\\main.py"
     os.system(installer_cmd)
     (release_dir / "main.exe").rename(release_dir / EXE_NAME)
-
-
-def build_benchmark(release_dir: Path):
-    installer_cmd = f'pyinstaller --clean --onefile --distpath {release_dir} --paths src --add-data "benchmarks\\assets;benchmarks\\assets" benchmarks\\imageproc.py'
-    os.system(installer_cmd)
-    (release_dir / "imageproc.exe").rename(release_dir / BENCHMARK_EXE_NAME)
 
 
 def clean_up():
@@ -50,7 +43,6 @@ if __name__ == "__main__":
     RELEASE_DIR.mkdir(exist_ok=True, parents=True)
     clean_up()
     build(release_dir=RELEASE_DIR)
-    # build_benchmark(release_dir=RELEASE_DIR)
     copy_additional_resources(RELEASE_DIR)
     create_batch_for_gui(release_dir=RELEASE_DIR, exe_name=EXE_NAME)
     clean_up()
