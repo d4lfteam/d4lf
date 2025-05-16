@@ -1,4 +1,3 @@
-./dependencies/tesserocr-2.8.0-cp313-cp313-win_amd64.whl; sys_platform == 'win32'
 beautifultable
 colorama
 httpx
