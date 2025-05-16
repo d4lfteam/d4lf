@@ -7,9 +7,7 @@ import keyboard
 
 import src.item.descr.read_descr_tts
 import src.logger
-import src.scripts.loot_filter
 import src.scripts.loot_filter_tts
-import src.scripts.vision_mode
 import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
 import src.tts

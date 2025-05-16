@@ -33,6 +33,8 @@ _ASPECT_RE = re.compile(
     r" - (?P<maxvalue>[0-9]+[.]?[0-9]*)]"
 )
 
+_FOR_SECONDS_RE = re.compile(r"for (?P<forsecondsvalue>\d) Seconds")
+
 _REPLACE_COMPARE_RE = re.compile(r"\(.*\)")
 
 _AFFIX_REPLACEMENTS = ["%", "+", ",", "[+]", "[x]", "per 5 Seconds"]
@@ -256,15 +258,10 @@ def _get_affix_from_text(text: str) -> Affix:
         text = text.replace(x, "")
     text = _REPLACE_COMPARE_RE.sub("", text).strip()
 
-    # A hacky way to make lucky hit chance to make vulnerable work. Hoping Chris saves me from myself on this one one day
-    if "Lucky Hit" in text and "Vulnerable" in text:
-        for x in ["Make Enemies Vulnerable for 2 Seconds", "[2]"]:
-            text = text.replace(x, "")
-    elif "for 4 Seconds" in text and "Blood Orb" in text:
-        for x in ["for 4 Seconds", "[4]"]:
-            text = text.replace(x, "")
-    elif "for 7 Seconds" in text and "After Killing an Elite" in text:
-        for x in ["for 7 Seconds", "[7]"]:
+    # A semi-hacky way to handle "for X Seconds", which will get read as a GA if we do nothing
+    for_seconds_matches = _FOR_SECONDS_RE.findall(text)
+    for for_seconds_match in for_seconds_matches:
+        for x in [f"for {for_seconds_match} Seconds", f"[{for_seconds_match}]"]:
             text = text.replace(x, "")
 
     matched_groups = {}
