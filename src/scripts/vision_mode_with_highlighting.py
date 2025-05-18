@@ -322,9 +322,10 @@ class VisionModeWithHighlighting:
 
                             # Adapt colors based on config
                             if match:
-                                self.request_match_box(item_descr, item_roi, res, item_descr_with_loc)
-                            elif item_descr.codex_upgrade:
-                                self.request_codex_upgrade_box(item_descr, item_roi)
+                                if len(res.matched) == 1 and res.matched[0].profile == "Aspects":
+                                    self.request_codex_upgrade_box(item_descr, item_roi)
+                                else:
+                                    self.request_match_box(item_descr, item_roi, res, item_descr_with_loc)
                             elif not match:
                                 self.request_no_match_box(item_descr, item_roi)
                 else:
