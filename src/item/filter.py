@@ -303,7 +303,7 @@ class Filter:
 
     @staticmethod
     def _match_aspect_is_in_percent_range(expected_percent: int, item_aspect: Aspect) -> bool:
-        if expected_percent == 0:
+        if expected_percent == 0 or item_aspect.max_value is None or item_aspect.min_value is None:
             return True
 
         if item_aspect.max_value > item_aspect.min_value:
