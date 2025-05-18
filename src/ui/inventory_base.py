@@ -69,7 +69,7 @@ class InventoryBase(Menu):
 
             res_junk = search(self.junk_template, slot_img, threshold=0.65, use_grayscale=True)
 
-            if mean_value_fav > 205:
+            if mean_value_fav > 212:
                 item_slot.is_fav = True
                 occupied_slots.append(item_slot)
             elif res_junk.success and mean_value_overall < 75:
