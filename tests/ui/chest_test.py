@@ -3,7 +3,7 @@ import pytest
 
 from src.cam import Cam
 from src.config import BASE_DIR
-from src.ui.chest import Chest
+from src.ui.stash import Stash
 
 BASE_PATH = BASE_DIR / "tests/assets/ui"
 
@@ -12,6 +12,6 @@ BASE_PATH = BASE_DIR / "tests/assets/ui"
 def test_chest(img_res, input_img):
     Cam().update_window_pos(0, 0, *img_res)
     img = cv2.imread(input_img)
-    inv = Chest()
+    inv = Stash()
     flag = inv.is_open(img)
     assert flag
