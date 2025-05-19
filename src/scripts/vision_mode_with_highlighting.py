@@ -23,7 +23,8 @@ from src.item.models import Item
 from src.scripts.common import is_ignored_item, reset_canvas
 from src.tts import Publisher
 from src.ui.char_inventory import CharInventory
-from src.ui.chest import Chest
+from src.ui.stash import Stash
+from src.ui.vendor import Vendor
 from src.utils.custom_mouse import mouse
 from src.utils.image_operations import compare_histograms
 from src.utils.process_handler import kill_thread
@@ -54,20 +55,30 @@ class VisionModeWithHighlighting:
         self.thick = int(Cam().window_roi["height"] * 0.0047)
 
         inv = CharInventory()
-        chest = Chest()
+        stash = Stash()
+        vendor = Vendor()
         img = Cam().grab()
-        self.max_slot_size = chest.get_max_slot_size()
+        self.max_slot_size = stash.get_max_slot_size()
         occ_inv, empty_inv = inv.get_item_slots(img)
-        occ_chest, empty_chest = chest.get_item_slots(img)
+        occ_stash, empty_stash = stash.get_item_slots(img)
+        occ_vendor, empty_vendor = vendor.get_item_slots(img)
         possible_centers = []
         possible_centers += [slot.center for slot in occ_inv]
         possible_centers += [slot.center for slot in empty_inv]
-        possible_centers += [slot.center for slot in occ_chest]
-        possible_centers += [slot.center for slot in empty_chest]
+
         # add possible centers of equipped items
         for x in ResManager().pos.possible_centers:
             possible_centers.append(x)
+
+        possible_vendor_centers = possible_centers.copy()
+        possible_vendor_centers += [slot.center for slot in occ_vendor]
+        possible_vendor_centers += [slot.center for slot in empty_vendor]
+
+        possible_centers += [slot.center for slot in occ_stash]
+        possible_centers += [slot.center for slot in empty_stash]
+
         self.possible_centers = np.array(possible_centers)
+        self.possible_vendor_centers = np.array(possible_vendor_centers)
 
         self.screen_off_x = Cam().window_roi["left"]
         self.screen_off_y = Cam().window_roi["top"]
@@ -260,10 +271,11 @@ class VisionModeWithHighlighting:
                 retry_count += 1
                 mouse_pos = Cam().monitor_to_window(mouse.get_position())
                 # get closest pos to a item center
-                delta = self.possible_centers - mouse_pos
+                centers_to_use = self.possible_vendor_centers if item_descr.is_in_shop else self.possible_centers
+                delta = centers_to_use - mouse_pos
                 distances = np.linalg.norm(delta, axis=1)
                 closest_index = np.argmin(distances)
-                item_center = self.possible_centers[closest_index]
+                item_center = centers_to_use[closest_index]
 
                 # Before we get the cropped_descr we need to ensure there is no previous overlay on screen
                 while not self.is_cleared:

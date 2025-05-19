@@ -207,7 +207,6 @@ def search(
         new_match = False
         res, template_img, new_roi = _get_cv_result(template, img, roi, color_match, use_grayscale)
 
-        # i = 0
         while True and not (matches and mode == "first") and res is not None:
             _, max_val, _, max_pos = cv2.minMaxLoc(res)
 

@@ -10,10 +10,10 @@ from src.utils.custom_mouse import mouse
 LOGGER = logging.getLogger(__name__)
 
 
-class Chest(InventoryBase):
+class Stash(InventoryBase):
     def __init__(self):
         super().__init__(5, 10, is_stash=True)
-        self.menu_name = "Chest"
+        self.menu_name = "Stash"
         self.is_open_search_args = SearchArgs(
             ref=["stash_menu_icon", "stash_menu_icon_medium"], threshold=0.8, roi="stash_menu_icon", use_grayscale=True
         )

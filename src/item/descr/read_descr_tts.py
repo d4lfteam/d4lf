@@ -177,8 +177,6 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         return Item(item_type=ItemType.Material)
     if any(tts_item[1].lower().endswith(x) for x in ["gem"]):
         return Item(item_type=ItemType.Gem)
-    if any(tts_item[1].lower().endswith(x) for x in ["cache"]):
-        return Item(item_type=ItemType.Cache)
     if any(tts_item[1].lower().endswith(x) for x in ["whispering wood"]):
         return Item(item_type=ItemType.WhisperingWood)
     if any(tts_item[1].lower().startswith(x) for x in ["cosmetic"]):
@@ -191,6 +189,11 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         item.rarity = _get_item_rarity(search_string_split[0])
         return item
     item = Item()
+    if any("Cost : " in value for value in tts_item):
+        item.is_in_shop = True
+    if any(tts_item[1].lower().endswith(x) for x in ["cache"]):
+        item.item_type = ItemType.Cache
+        return item
     if tts_item[1].lower().endswith("elixir"):
         item.item_type = ItemType.Elixir
     elif tts_item[1].lower().endswith("incense"):

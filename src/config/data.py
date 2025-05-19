@@ -53,12 +53,13 @@ POSITIONS = (
         rel_descr_search_left=np.array([-900, 0, 150, 1760]),
         rel_descr_search_right=np.array([60, 0, 120, 1760]),
         rel_fav_flag=np.array([8, 6, 16, 20]),
+        slots_8x1=np.array([1166, 165, 125, 1462]),
         slots_3x11=np.array([2536, 1444, 1214, 486]),
         slots_5x10=np.array([92, 538, 1224, 972]),
         sort_icon=np.array([2440, 1332, 126, 124]),
         stash_menu_icon=np.array([592, 144, 218, 96]),
         tab_slots_6=np.array([300, 284, 800, 102]),
-        vendor_text=np.array([200, 782, 188, 44]),
+        vendor_menu_icon=np.array([182, 757, 220, 90]),
     ),
 )
 

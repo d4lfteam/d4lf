@@ -17,7 +17,7 @@ from src.config.models import ItemRefreshType, VisionModeType
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.ui.char_inventory import CharInventory
-from src.ui.chest import Chest
+from src.ui.stash import Stash
 from src.utils.custom_mouse import mouse
 from src.utils.process_handler import kill_thread, safe_exit
 from src.utils.window import screenshot
@@ -123,13 +123,13 @@ def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh)
     check_items = src.scripts.loot_filter_tts.check_items
 
     inv = CharInventory()
-    chest = Chest()
+    stash = Stash()
 
-    if chest.is_open():
+    if stash.is_open():
         for i in IniConfigLoader().general.check_chest_tabs:
-            chest.switch_to_tab(i)
+            stash.switch_to_tab(i)
             time.sleep(0.3)
-            check_items(chest, force_refresh)
+            check_items(stash, force_refresh)
         mouse.move(*Cam().abs_window_to_monitor((0, 0)))
         time.sleep(0.3)
         check_items(inv, force_refresh)
