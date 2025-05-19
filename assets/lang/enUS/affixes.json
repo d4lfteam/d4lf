@@ -112,6 +112,7 @@
     "chance_for_death_trap_to_deal_double_damage": "chance for death trap to deal double damage",
     "chance_for_decompose_to_deal_double_damage": "chance for decompose to deal double damage",
     "chance_for_deep_freeze_to_deal_double_damage": "chance for deep freeze to deal double damage",
+    "chance_for_double_swing_to_deal_double_damage": "chance for double swing to deal double damage",
     "chance_for_double_swing_to_hit_twice": "chance for double swing to hit twice",
     "chance_for_dust_devils_to_cast_twice": "chance for dust devils to cast twice",
     "chance_for_earth_spike_projectiles_to_cast_twice": "chance for earth spike projectiles to cast twice",
@@ -968,6 +969,7 @@
     "to_spark": "to spark",
     "to_spiked_armor": "to spiked armor",
     "to_stand_alone": "to stand alone",
+    "to_static_discharge": "to static discharge",
     "to_steel_grasp": "to steel grasp",
     "to_steel_grasp_cold_imbuement_frost_hurricane_or_skeletal_mage_mastery": "to steel grasp, cold imbuement, frost, hurricane, or skeletal mage mastery",
     "to_stinger": "to stinger",
@@ -1060,5 +1062,5 @@
     "wrath_of_the_berserker_cooldown_reduction": "wrath of the berserker cooldown reduction",
     "your_potion_also_grants_maximum_resistances_for_seconds": "your potion also grants maximum resistances for seconds",
     "your_stun_grenades_deal_of_their_total_damage_done_as_additional_burning_damage_over_seconds": "your stun grenades deal of their total damage done as additional burning damage over seconds",
-    "your_trap_and_grenade_skills_are_also_considered_core_skills": "your trap and grenade skills are also considered core skills"
+    "your_trap_skills_are_also_considered_core_skills": "your trap skills are also considered core skills"
 }

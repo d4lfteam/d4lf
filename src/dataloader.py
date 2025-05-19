@@ -15,6 +15,7 @@ class Dataloader:
     affix_dict = {}
     affix_sigil_dict = {}
     affix_sigil_dict_all = {}
+    aspect_list = []
     aspect_unique_dict = {}
     aspect_unique_num_idx = {}
     aspect_unique_num_inherents = {}
@@ -39,6 +40,9 @@ class Dataloader:
     def load_data(self):
         with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/affixes.json", encoding="utf-8") as f:
             self.affix_dict: dict = json.load(f)
+
+        with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/aspects.json", encoding="utf-8") as f:
+            self.aspect_list = json.load(f)
 
         with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/corrections.json", encoding="utf-8") as f:
             data = json.load(f)

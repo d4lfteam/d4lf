@@ -757,7 +757,7 @@ items = [
                 Affix(
                     max_value=None,
                     min_value=None,
-                    name="your_trap_and_grenade_skills_are_also_considered_core_skills",
+                    name="your_trap_skills_are_also_considered_core_skills",
                     text="Your Trap and Grenade Skills are also considered Core Skills",
                     type=AffixType.inherent,
                     value=None,
