@@ -245,7 +245,6 @@
     "of_piercing_static",
     "frostblitz",
     "charged",
-    "(ph)_of_ensnaring_current",
     "of_frozen_orbit",
     "serpentine",
     "of_armageddon",
@@ -344,10 +343,5 @@
     "of_potent_exchange",
     "of_alacrity",
     "of_endless_talons",
-    "rip_and_tear",
-    "(ph)_of_defense",
-    "(ph)_of_movement",
-    "(ph)_of_offense",
-    "(ph)_of_resource",
-    "(ph)_of_utility"
+    "rip_and_tear"
 ]

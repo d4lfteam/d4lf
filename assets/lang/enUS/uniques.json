@@ -1,46 +1,10 @@
 {
-    "(ph)_template_unique": {
-        "desc": "(ph) skill has random rolled stat against enemies with static stat and keyword.",
-        "full": "(PH) {c_important}Skill{/c} has {c_random}[Affix_Value_1|%+|]{/c} random rolled Stat against enemies with {c_number}[Affix.\"Static Value 0\"]{/c} static Stat and {c_important}{u}Keyword{/u}{/c}.",
-        "num_idx": [
-            0
-        ],
-        "num_inherents": 2
-    },
     "100000_steps": {
         "desc": "when activating or refreshing the full walking arsenal key passive effect, you automatically cast ground stomp and gain fury. can only occur once every seconds.",
         "full": "When activating or refreshing the full {c_important}Walking Arsenal{/c} Key Passive effect, you automatically cast {c_important}Ground Stomp{/c} and gain {c_random}[Affix_Value_1]{/c} Fury. Can only occur once every {c_number}[Affix_Value_2]{/c} seconds.",
         "num_idx": [
             0
         ],
-        "num_inherents": 1
-    },
-    "[ph]_distance_crit": {
-        "desc": "using consecutive basic skills creates a second mark on the ground under the first enemy is hit. moving away from the mark increases critical chance up to . the bonus ends when the mark disappears, and a new mark can only be created after the previous one vanishes.",
-        "full": "Using {c_number}[Affix.\"Static Value 1\"]{/c} consecutive {c_important}Basic{/c} Skills creates a {c_number}[Affix.\"Static Value 0\"]{/c} second mark on the ground under the first enemy is hit. Moving away from the mark increases Critical Chance up to {c_random}[Affix_Value_1|1||%|]{/c}. The bonus ends when the mark disappears, and a new mark can only be created after the previous one vanishes.",
-        "num_idx": [
-            2
-        ],
-        "num_inherents": 1
-    },
-    "[ph]_ichorous_salvation": {
-        "desc": "every th flurry cast siphons all damageovertime effects on any enemy it hits, dealing the total damage instantly and consuming it. each unique consumption increases flurrys damage by for seconds.",
-        "full": "Every {c_number}[Affix.\"Static Value 1\"||]th{/c} {c_important}Flurry{/c} Cast siphons all Damage-Over-Time effects on any enemy it hits, dealing the total damage instantly and consuming it. \r\n\r\nEach unique consumption increases {c_important}Flurry's{/c} damage by {c_random}[Affix_Value_1|%x|]{/c} for {c_number}[Affix.\"Static Value 0\"||]{/c} seconds. ",
-        "num_idx": [
-            1
-        ],
-        "num_inherents": 2
-    },
-    "[ph]_thorn_pulse": {
-        "desc": "you continually pulse thorns damage every seconds. the frequency increases up to s for enemies.",
-        "full": "You continually pulse Thorns damage every {c_number}[Affix.\"Static Value 0\"]{/c} seconds. The frequency increases up to {c_number}[Affix.\"Static Value 1\"]{/c}s for {c_number}[Affix.\"Static Value 2\"]{/c} enemies. ",
-        "num_idx": [],
-        "num_inherents": 1
-    },
-    "[wip]_eye_of_the_depths": {
-        "desc": "tbd",
-        "full": "TBD",
-        "num_idx": [],
         "num_inherents": 1
     },
     "ahavarion_spear_of_lycander": {

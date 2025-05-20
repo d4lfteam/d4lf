@@ -33,6 +33,10 @@ def get_random_number_idx(s: str) -> list[int]:
     return res
 
 
+def is_placeholder_name(name) -> bool:
+    return any(x in name for x in ["(ph)", "[ph]", "[wip]"])
+
+
 def check_ms(input_string) -> str:
     start_index = input_string.find("[ms]")
     end_index = input_string.find("[fs]")
@@ -87,6 +91,8 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                 aspect_name = data["arStrings"][name_idx]["szText"]
                 aspect_name_clean = aspect_name.strip().replace(" ", "_").lower().replace("’", "").replace("'", "").replace("-", "")
                 aspect_name_clean = check_ms(aspect_name_clean)
+                if is_placeholder_name(aspect_name_clean):
+                    continue
                 aspects_list.append(aspect_name_clean)
 
         with open(D4LF_BASE_DIR / f"assets/lang/{language}/aspects.json", "w", encoding="utf-8") as json_file:
@@ -108,7 +114,7 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                 name = name_item[0]["szText"]
                 name_clean = name.strip().replace(" ", "_").replace("\xa0", "_").lower().replace("’", "").replace("'", "").replace(",", "")
                 name_clean = check_ms(name_clean)
-                if name_clean in items_to_ignore:
+                if name_clean in items_to_ignore or is_placeholder_name(name_clean):
                     continue
                 splits = json_file.name.split("_")
                 # Open affix file for affix
