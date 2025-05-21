@@ -197,7 +197,9 @@ items = [
                     value=3.0,
                 ),
             ],
-            aspect=None,
+            aspect=Aspect(
+                name="of_inner_calm", text="Deal 19%[x] [10 - 20]% increased damage. Triple this bonus after standing still for 3 seconds."
+            ),
             codex_upgrade=False,
             cosmetic_upgrade=False,
             inherent=[

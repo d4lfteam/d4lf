@@ -83,8 +83,10 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
                     text=affix_text,
                     value=find_number(affix_text),
                 )
-            else:
+            elif item.rarity == ItemRarity.Unique:
                 item.aspect = _get_aspect_from_text(affix_text, item.name)
+            else:
+                item.aspect = _get_aspect_from_name(affix_text, item.name)
     return item
 
 
@@ -129,8 +131,10 @@ def _add_affixes_from_tts_mixed(
                     text=affix_text,
                     value=find_number(affix_text),
                 )
-            else:
+            elif item.rarity == ItemRarity.Unique:
                 item.aspect = _get_aspect_from_text(affix_text, item.name)
+            else:
+                item.aspect = _get_aspect_from_name(affix_text, item.name)
             item.aspect.loc = aspect_bullet.center
     return item
 
@@ -228,7 +232,7 @@ def _correct_name(name: str) -> str | None:
 
 
 def _get_affixes_from_tts_section(tts_section: list[str], item: Item, length: int):
-    if item.rarity in [ItemRarity.Mythic, ItemRarity.Unique]:
+    if item.rarity in [ItemRarity.Mythic, ItemRarity.Unique, ItemRarity.Legendary]:
         length += 1
     dps = None
     item_power = None
@@ -304,6 +308,7 @@ def _has_numbers(affix_text):
     return any(char.isdigit() for char in affix_text)
 
 
+# For unique aspects
 def _get_aspect_from_text(text: str, name: str) -> Aspect:
     result = Aspect(text=text, name=name)
     for x in _AFFIX_REPLACEMENTS:
@@ -324,6 +329,16 @@ def _get_aspect_from_text(text: str, name: str) -> Aspect:
             result.value = float(matched_groups["affixvalue"])
 
     return result
+
+
+# For legendary aspects
+def _get_aspect_from_name(text: str, name: str) -> Aspect | None:
+    for aspect_name in Dataloader().aspect_list:
+        if aspect_name in name:
+            return Aspect(text=text, name=aspect_name)
+
+    LOGGER.warning(f"Could not find an aspect representing {name} or {text} in our data.")
+    return None
 
 
 def _get_item_rarity(data: str) -> ItemRarity | None:

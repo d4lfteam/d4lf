@@ -42,6 +42,14 @@ items = [
             item_type=ItemType.Ring,
             power=750,
             rarity=ItemRarity.Legendary,
+            aspect=Aspect(
+                name="blood_boiling",
+                text="When your Core Skills Overpower an enemy, you spawn 3 "
+                "Volatile Blood Drops. Collecting a Volatile Blood "
+                "Drop causes it to explode, dealing 813 Physical "
+                "damage around you.. Every 20 seconds, your next Skill "
+                "is guaranteed to Overpower.",
+            ),
         ),
     ),
     (
@@ -75,6 +83,9 @@ items = [
             item_type=ItemType.Quarterstaff,
             power=750,
             rarity=ItemRarity.Legendary,
+            aspect=Aspect(
+                name="tormentors", text="Enemies who move while Poisoned by you additionally take 160% of your Thorns damage per second."
+            ),
         ),
     ),
     (
@@ -109,6 +120,10 @@ items = [
             item_type=ItemType.Polearm,
             power=750,
             rarity=ItemRarity.Legendary,
+            aspect=Aspect(
+                name="tormentors",
+                text="Enemies who move while Poisoned by you additionally take 280% [100 - 380]% of your Thorns damage per second.",
+            ),
         ),
     ),
     # Unique with an abnormal amount of inherents (1, normally pants have 0).
@@ -497,13 +512,18 @@ items = [
                     value=2.0,
                 ),
             ],
-            aspect=None,
             codex_upgrade=False,
             inherent=[],
             item_type=ItemType.Helm,
             name="aphotic_doom_casque",
             power=750,
             rarity=ItemRarity.Legendary,
+            aspect=Aspect(
+                name="aphotic",
+                text="Skeletal Priests empower your Skeletal Warriors "
+                "attacks to deal Shadow damage and have a 12.0% [5.0 - "
+                "20.0]% chance to Stun enemies for 1.5 seconds.",
+            ),
         ),
     ),
     # Test for lucky hit chance to make enemies vulnerable
@@ -549,7 +569,15 @@ items = [
                     value=2.0,
                 ),
             ],
-            aspect=None,
+            aspect=Aspect(
+                name="of_ultimate_shadow",
+                text="Bone Storm and Blood Wave are also Darkness Skills, "
+                "deal Shadow damage, and gain additional effects: . "
+                "Enemies damaged by Bone Storm take 873 [635 - 1,429] "
+                "Shadow damage over 2 seconds. . Blood Wave creates "
+                "Desecrated Ground as it travels, dealing 13,974 "
+                "[10,163 - 22,867] Shadow damage over 4 seconds",
+            ),
             codex_upgrade=False,
             inherent=[],
             item_type=ItemType.Gloves,
