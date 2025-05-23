@@ -7,6 +7,7 @@ from src.config.models import SigilPriority
 from src.item.filter import Filter, FilterResult
 from src.item.models import Item
 from tests.item.filter.data.affixes import affixes
+from tests.item.filter.data.aspects import aspects
 from tests.item.filter.data.sigils import sigil_jalal, sigil_priority, sigils
 from tests.item.filter.data.tributes import tributes
 from tests.item.filter.data.uniques import aspect_only_mythic_tests, simple_mythics, uniques
@@ -22,8 +23,15 @@ def _create_mocked_filter(mocker: MockerFixture) -> Filter:
 @pytest.mark.parametrize(("name", "result", "item"), natsorted(affixes), ids=[name for name, _, _ in natsorted(affixes)])
 def test_affixes(name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    mocker.patch("item.filter.Filter._check_aspect", return_value=FilterResult(keep=False, matched=[]))
     test_filter.affix_filters = {filters.affix.name: filters.affix.Affixes}
+    assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
+
+
+@pytest.mark.parametrize(("name", "result", "item"), natsorted(aspects), ids=[name for name, _, _ in natsorted(aspects)])
+def test_aspects(name: str, result: list[str], item: Item, mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
+    test_filter.aspect_upgrade_filters = {filters.aspects_filters.name: filters.aspects_filters.AspectUpgrades}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 

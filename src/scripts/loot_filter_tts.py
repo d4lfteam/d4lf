@@ -9,7 +9,7 @@ from src.item.data.affix import AffixType
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity, is_junk_rarity
 from src.item.filter import Filter
-from src.scripts.common import is_ignored_item, mark_as_favorite, mark_as_junk, reset_item_status
+from src.scripts.common import ASPECT_UPGRADES_LABEL, is_ignored_item, mark_as_favorite, mark_as_junk, reset_item_status
 from src.ui.inventory_base import InventoryBase
 from src.utils.window import screenshot
 
@@ -66,6 +66,7 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
         # Check if we want to keep the item
         res = Filter().should_keep(item_descr)
         matched_any_affixes = len(res.matched) > 0 and len(res.matched[0].matched_affixes) > 0
+        matched_profile_legendary_aspect = any(match.profile.endswith(f".{ASPECT_UPGRADES_LABEL}") for match in res.matched)
 
         # Uniques have special handling. If they have an aspect specifically called out by a profile they are treated
         # like any other item. If not, and there are no non-aspect filters, then they are handled by the handle_uniques
@@ -93,6 +94,7 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
                 res.keep
                 and (
                     matched_any_affixes
+                    or matched_profile_legendary_aspect
                     or item_descr.rarity == ItemRarity.Mythic
                     or item_descr.item_type == ItemType.Sigil
                     or item_descr.item_type == ItemType.Tribute

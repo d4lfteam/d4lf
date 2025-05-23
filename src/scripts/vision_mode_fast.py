@@ -9,11 +9,11 @@ import src.logger
 import src.tts
 from config.helper import singleton
 from config.loader import IniConfigLoader
-from scripts.common import is_ignored_item
 from src.cam import Cam
 from src.config.ui import ResManager
 from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter, MatchedFilter
+from src.scripts.common import ASPECT_UPGRADES_LABEL, COLOR_GREEN, COLOR_ORANGE, is_ignored_item
 from src.tts import Publisher
 from src.utils.custom_mouse import mouse
 from src.utils.window import screenshot
@@ -129,14 +129,17 @@ class VisionModeFast:
             match = res.keep
 
             if match:
+                color = COLOR_GREEN
                 if not res.matched:
                     if item_descr.rarity == ItemRarity.Unique:
                         text = ["Unique"]
                     elif item_descr.rarity == ItemRarity.Mythic:
                         text = ["Mythic (Always Kept)"]
                 else:
+                    if any(res_matched.profile.endswith(ASPECT_UPGRADES_LABEL) for res_matched in res.matched):
+                        color = COLOR_ORANGE
                     text = create_match_text(reversed(res.matched))
-                return self.request_draw("\n".join(text), "#23fc5d")
+                return self.request_draw("\n".join(text), color)
             self.request_clear()
         except Exception:
             LOGGER.exception("Error in vision mode. Please create a bug report")

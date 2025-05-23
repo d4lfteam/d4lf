@@ -160,6 +160,8 @@ always_keep_mythics = ProfileModel(
     ],
 )
 
+aspects_filters = ProfileModel(name="aspect_profile", AspectUpgrades=["profile_aspect", "aspect_not_in_inventory"])
+
 aspect_only_unique_filters = ProfileModel(
     name="aspect_only",
     Uniques=[
