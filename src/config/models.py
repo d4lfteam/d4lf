@@ -278,7 +278,7 @@ class GeneralModel(_IniBaseModel):
     )
     profiles: list[str] = Field(
         default=[],
-        description='Which filter profiles should be run. All .yaml files with "Aspects", '
+        description='Which filter profiles should be run. All .yaml files with "AspectUpgrades", '
         '"Affixes", "Uniques", "Sigils", etc sections will be used from '
         "C:/Users/USERNAME/.d4lf/profiles/*.yaml",
     )

@@ -297,14 +297,14 @@ in [assets/lang/enUS/affixes.json](assets/lang/enUS/affixes.json).
 
 ### AspectUpgrades (Experimental)
 
-Legendary Aspects that you want to be notified of receiving upgrades for can be placed in your profile. 
+Legendary Aspects that you want to be notified of receiving upgrades for can be placed in your profile.
 They are defined in the top-level key `AspectUpgrades`.
 
 This filter is generally for build-specific aspects that you'd like to be made aware of when you receive an upgrade so you can
 upgrade that aspect immediately at the occultist. We notify the user by favoriting the item and showing orange text or
-orange highlighting when hovering over the item. 
+orange highlighting when hovering over the item.
 
-If the item matches any other profile, this filter does nothing. This filter does respect the `mark_as_favorite` config property. 
+If the item matches any other profile, this filter does nothing. This filter does respect the `mark_as_favorite` config property.
 Any aspects that do not match this filter or are not codex upgrades are handled by the `keep_aspects` config property.
 
 <details><summary>Config Examples</summary>
