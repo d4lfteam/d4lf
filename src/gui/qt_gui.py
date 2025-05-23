@@ -169,9 +169,9 @@ class Gui(QMainWindow):
     def _handle_tab_changed(self, index):
         if self.tab_widget.tabText(index) == MAXROLL_D4B_MOBALYTICS_TABNAME:
             LOGGER.root.addHandler(self.maxroll_log_handler)
-            LOGGER.root.removeHandler(self.diablo_trade_log_handler)
+            # LOGGER.root.removeHandler(self.diablo_trade_log_handler)
         elif self.tab_widget.tabText(index) == D4TRADE_TABNAME:
-            LOGGER.root.addHandler(self.diablo_trade_log_handler)
+            # LOGGER.root.addHandler(self.diablo_trade_log_handler)
             LOGGER.root.removeHandler(self.maxroll_log_handler)
         elif self.tab_widget.tabText(index) == profile_tab.PROFILE_TABNAME:
             self.profile_tab_widget.show_tab()
