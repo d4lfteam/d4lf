@@ -17,10 +17,19 @@ from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import is_junk_rarity
-from src.item.filter import Filter
+from src.item.filter import Filter, FilterResult
 from src.item.find_descr import find_descr
 from src.item.models import Item
-from src.scripts.common import is_ignored_item, reset_canvas
+from src.scripts.common import (
+    ASPECT_UPGRADES_LABEL,
+    COLOR_BLUE,
+    COLOR_GREEN,
+    COLOR_GREY,
+    COLOR_ORANGE,
+    COLOR_RED,
+    is_ignored_item,
+    reset_canvas,
+)
 from src.tts import Publisher
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
@@ -173,7 +182,7 @@ class VisionModeWithHighlighting:
                     if task[0] == "match":
                         self.draw_match_outline(task[2], task[3], task[4])
                     if task[0] == "codex_upgrade":
-                        self.draw_codex_upgrade_outline(task[2], task[1])
+                        self.draw_codex_upgrade_outline(task[2], task[3])
                     if task[0] == "no_match":
                         self.draw_no_match_outline(task[2])
         except queue.Empty:
@@ -195,38 +204,44 @@ class VisionModeWithHighlighting:
 
     def draw_match_outline(self, item_roi, should_keep_res, item_descr):
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
-        self.create_signal_rect(self.canvas, w, self.thick, "#23fc5d")
+        self.create_signal_rect(self.canvas, w, self.thick, COLOR_GREEN)
 
         # show all info strings of the profiles
         text_y = h
         for match in reversed(should_keep_res.matched):
-            text_y = self.draw_text(self.canvas, match.profile, "#23fc5d", text_y, 5, w // 2)
+            text_y = self.draw_text(self.canvas, match.profile, COLOR_GREEN, text_y, 5, w // 2)
         # Show matched bullets
         if item_descr is not None and len(should_keep_res.matched) > 0:
             bullet_width = self.thick * 3
             for affix in should_keep_res.matched[0].matched_affixes:
                 if affix.loc is not None:
-                    self.draw_rect(self.canvas, bullet_width, affix, off, "#23fc5d")
+                    self.draw_rect(self.canvas, bullet_width, affix, off, COLOR_GREEN)
 
             if item_descr.aspect is not None and any(m.did_match_aspect for m in should_keep_res.matched):
-                self.draw_rect(self.canvas, bullet_width, item_descr.aspect, off, "#23fc5d")
+                self.draw_rect(self.canvas, bullet_width, item_descr.aspect, off, COLOR_GREEN)
 
         self.root.update_idletasks()
         self.root.update()
 
     def draw_no_match_outline(self, item_roi):
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
-        self.create_signal_rect(self.canvas, w, self.thick, "#fc2323")
+        self.create_signal_rect(self.canvas, w, self.thick, COLOR_RED)
         self.root.update_idletasks()
         self.root.update()
 
-    def draw_codex_upgrade_outline(self, item_roi, item_descr):
+    def draw_codex_upgrade_outline(self, item_roi, should_keep_result: FilterResult):
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
 
-        self.create_signal_rect(self.canvas, w, self.thick, "#fca503")
+        self.create_signal_rect(self.canvas, w, self.thick, COLOR_ORANGE)
 
         # show string indicating that this item upgrades the codex
-        self.draw_text(self.canvas, "Codex Upgrade", "#fca503", h, 5, w // 2)
+        if len(should_keep_result.matched) == 1 and should_keep_result.matched[0].profile == ASPECT_UPGRADES_LABEL:
+            self.draw_text(self.canvas, "Codex Upgrade", COLOR_ORANGE, h, 5, w // 2)
+        else:
+            # This matched an Aspects section in a profile, write the profiles
+            text_y = h
+            for match in reversed(should_keep_result.matched):
+                text_y = self.draw_text(self.canvas, match.profile, COLOR_ORANGE, text_y, 5, w // 2)
 
         self.root.update_idletasks()
         self.root.update()
@@ -301,9 +316,9 @@ class VisionModeWithHighlighting:
                         ignored_item = is_ignored_item(item_descr)
                         # Make the canvas gray for "found the item" or blue for "ignored this item"
                         if ignored_item:
-                            self.request_empty_outline(item_descr, item_roi, "#00b3b3")
+                            self.request_empty_outline(item_descr, item_roi, COLOR_BLUE)
                         else:
-                            self.request_empty_outline(item_descr, item_roi, "#888888")
+                            self.request_empty_outline(item_descr, item_roi, COLOR_GREY)
 
                         # Since we've now drawn something we kick off a thread to remove the drawing
                         # if the item is unselected. It is also automatically removed if a different
@@ -334,8 +349,8 @@ class VisionModeWithHighlighting:
 
                             # Adapt colors based on config
                             if match:
-                                if len(res.matched) == 1 and res.matched[0].profile == "Aspects":
-                                    self.request_codex_upgrade_box(item_descr, item_roi)
+                                if any(res_matched.profile.endswith(ASPECT_UPGRADES_LABEL) for res_matched in res.matched):
+                                    self.request_codex_upgrade_box(item_descr, item_roi, res)
                                 else:
                                     self.request_match_box(item_descr, item_roi, res, item_descr_with_loc)
                             elif not match:
@@ -381,8 +396,8 @@ class VisionModeWithHighlighting:
     def request_no_match_box(self, item_descr, item_roi):
         self.queue.put(("no_match", item_descr, item_roi))
 
-    def request_codex_upgrade_box(self, item_descr, item_roi):
-        self.queue.put(("codex_upgrade", item_descr, item_roi))
+    def request_codex_upgrade_box(self, item_descr, item_roi, res):
+        self.queue.put(("codex_upgrade", item_descr, item_roi, res))
 
     def start(self):
         LOGGER.info("Starting Vision Mode")

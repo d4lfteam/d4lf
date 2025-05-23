@@ -12,6 +12,14 @@ LOGGER = logging.getLogger(__name__)
 
 SETUP_INSTRUCTIONS_URL = "https://github.com/d4lfteam/d4lf/blob/main/README.md#how-to-setup"
 
+COLOR_GREEN = "#23fc5d"  # Matched a profile
+COLOR_RED = "#fc2323"  # Matched no profiles at all
+COLOR_ORANGE = "#fca503"  # Matched a codex upgrade
+COLOR_GREY = "#888888"  # Still processing or can't find the info we expect
+COLOR_BLUE = "#00b3b3"  # We recognize this as an item, but it is not one we handle
+
+ASPECT_UPGRADES_LABEL = "AspectUpgrades"
+
 
 def mark_as_junk():
     keyboard.send("space")

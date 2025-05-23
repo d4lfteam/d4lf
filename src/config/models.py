@@ -278,8 +278,8 @@ class GeneralModel(_IniBaseModel):
     )
     profiles: list[str] = Field(
         default=[],
-        description='Which filter profiles should be run. All .yaml files with "Aspects" and '
-        '"Affixes" sections will be used from '
+        description='Which filter profiles should be run. All .yaml files with "AspectUpgrades", '
+        '"Affixes", "Uniques", "Sigils", etc sections will be used from '
         "C:/Users/USERNAME/.d4lf/profiles/*.yaml",
     )
     run_vision_mode_on_startup: bool = Field(default=True, description="Whether to run vision mode on startup or not")
@@ -537,6 +537,7 @@ class ProfileModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str
     Affixes: list[DynamicItemFilterModel] = []
+    AspectUpgrades: list[str] = []
     Sigils: SigilFilterModel | None = None
     Tributes: list[TributeFilterModel] = []
     Uniques: list[UniqueModel] = []

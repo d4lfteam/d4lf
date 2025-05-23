@@ -30,6 +30,7 @@ from src.item.data.aspect import Aspect
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity, is_junk_rarity
 from src.item.models import Item
+from src.scripts.common import ASPECT_UPGRADES_LABEL
 
 LOGGER = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ class _UniqueKeyLoader(yaml.SafeLoader):
 
 class Filter:
     affix_filters = {}
-    aspect_filters = {}
+    aspect_upgrade_filters = {}
     unique_filters = {}
     sigil_filters = {}
     tribute_filters = {}
@@ -119,16 +120,27 @@ class Filter:
                 res.matched.append(MatchedFilter(f"{profile_name}.{filter_name}", all_matches))
         return res
 
-    @staticmethod
-    def _check_aspect(item: Item) -> FilterResult:
+    def _check_legendary_aspect(self, item: Item) -> FilterResult:
         res = FilterResult(False, [])
+
+        if item.codex_upgrade and self.aspect_upgrade_filters:
+            # See if the item matches any legendary aspects that were in the profile
+            for profile_name, profile_filter in self.aspect_upgrade_filters.items():
+                if any(legendary_aspect_name == item.aspect.name for legendary_aspect_name in profile_filter):
+                    LOGGER.info("Matched build-specific aspects that updates codex")
+                    res.keep = True
+                    res.matched.append(MatchedFilter(f"{profile_name}.{ASPECT_UPGRADES_LABEL}", did_match_aspect=True))
+
+            if res.keep:
+                return res
+
         if IniConfigLoader().general.keep_aspects == AspectFilterType.none or (
             IniConfigLoader().general.keep_aspects == AspectFilterType.upgrade and not item.codex_upgrade
         ):
             return res
         LOGGER.info("Matched Aspects that updates codex")
         res.keep = True
-        res.matched.append(MatchedFilter("Aspects", did_match_aspect=True))
+        res.matched.append(MatchedFilter(ASPECT_UPGRADES_LABEL, did_match_aspect=True))
         return res
 
     @staticmethod
@@ -342,6 +354,7 @@ class Filter:
     def load_files(self):
         self.files_loaded = True
         self.affix_filters: dict[str, list[DynamicItemFilterModel]] = {}
+        self.aspect_upgrade_filters: dict[str, list[str]] = {}
         self.sigil_filters: dict[str, SigilFilterModel] = {}
         self.tribute_filters: dict[str, list[TributeFilterModel]] = {}
         self.unique_filters: dict[str, list[UniqueModel]] = {}
@@ -389,6 +402,9 @@ class Filter:
                 if data.Affixes:
                     self.affix_filters[data.name] = data.Affixes
                     info_str += "Affixes "
+                if data.AspectUpgrades:
+                    self.aspect_upgrade_filters[data.name] = data.AspectUpgrades
+                    info_str += f"{ASPECT_UPGRADES_LABEL} "
                 if data.Sigils:
                     self.sigil_filters[data.name] = data.Sigils
                     info_str += "Sigils "
@@ -422,12 +438,12 @@ class Filter:
 
         if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
             res = self._check_unique_item(item)
-        elif item.rarity not in [ItemRarity.Unique, ItemRarity.Mythic]:
+        else:
             keep_affixes = self._check_affixes(item)
             if keep_affixes.keep:
                 return keep_affixes
             if item.rarity == ItemRarity.Legendary:
-                res = self._check_aspect(item)
+                res = self._check_legendary_aspect(item)
 
         # After checking all possible options, if we still don't match, we check for a cosmetic upgrade
         if not res.keep:

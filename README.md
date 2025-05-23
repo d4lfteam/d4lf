@@ -54,7 +54,7 @@ Your profiles and configuration should continue to work. The only exception to t
 
 Example 1: You're on version 5.1.14 and updating to 5.2.0. Your profiles will continue to work fine.
 
-Example 2: You're on version 5.1.14 and updating to 6.0.0. Your profiles will might no longer work and you'll need to update or re-import them on the newest version.
+Example 2: You're on version 5.1.14 and updating to 6.0.0. Your profiles will no longer work and you'll need to update or re-import them on the newest version.
 
 ### Common problems
 
@@ -158,7 +158,7 @@ your `params.ini` will be used to determine if an item should be kept. If one of
 will be kept regardless of the other profiles. Similarly, if a filter is missing in all profiles (e.g., there is
 no `Sigils` section in any profile), all corresponding items (in this case, sigils) will be kept.
 
-### Affix / Aspects Filter Syntax
+### Affix / Unique Aspect Filter Syntax
 
 You have three choices on how to specify aspects or affixes of an item:
 
@@ -294,6 +294,32 @@ Affixes:
 
 Affix names are lower case and spaces are replaced by underscore. You can find the full list of names
 in [assets/lang/enUS/affixes.json](assets/lang/enUS/affixes.json).
+
+### AspectUpgrades (Experimental)
+
+Legendary Aspects that you want to be notified of receiving upgrades for can be placed in your profile.
+They are defined in the top-level key `AspectUpgrades`.
+
+This filter is generally for build-specific aspects that you'd like to be made aware of when you receive an upgrade so you can
+upgrade that aspect immediately at the occultist. We notify the user by favoriting the item and showing orange text or
+orange highlighting when hovering over the item.
+
+If the item matches any other profile, this filter does nothing. This filter does respect the `mark_as_favorite` config property.
+Any aspects that do not match this filter or are not codex upgrades are handled by the `keep_aspects` config property.
+
+<details><summary>Config Examples</summary>
+
+```yaml
+AspectUpgrades:
+  # This would mark Snowveiled Adventurer's Pants as a favorite if it's a codex upgrade. It would ignore the pants otherwise.
+  - of_singed_extremities
+  - snowveiled
+```
+
+</details>
+
+Aspect names are lower case and spaces are replaced by underscore. You can find the full list of names
+in [assets/lang/enUS/aspects.json](assets/lang/enUS/aspects.json).
 
 ### Sigils
 
