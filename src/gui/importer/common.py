@@ -2,6 +2,7 @@ import datetime
 import functools
 import logging
 import re
+import shutil
 import time
 from collections.abc import Callable
 from typing import Literal, TypeVar
@@ -167,12 +168,20 @@ def retry_importer(func=None, inject_webdriver: bool = False, uc=False):
     return decorator_retry_importer if func is None else decorator_retry_importer(func)
 
 
-def save_as_profile(file_name: str, profile: ProfileModel, url: str) -> str:
+def save_as_profile(file_name: str, profile: ProfileModel, url: str, exclude=None, backup_file=False) -> str:
     file_name = file_name.replace("'", "")
     file_name = re.sub(r"\W", "_", file_name)
     file_name = re.sub(r"_+", "_", file_name).rstrip("_")
     save_path = IniConfigLoader().user_dir / f"profiles/{file_name}.yaml"
     save_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if save_path.exists() and backup_file:
+        backup_path = IniConfigLoader().user_dir / f"profiles/backups/{file_name}_original.yaml"
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+        if not backup_path.exists():  # If already backed up don't overwrite
+            shutil.copyfile(save_path, backup_path)
+
+    exclude = exclude if exclude else {"name", "Sigils"}
     with open(save_path, "w", encoding="utf-8") as file:
         file.write(f"# {url}\n")
         file.write(f"# {datetime.datetime.now(tz=datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')} (v{__version__})\n")
@@ -180,7 +189,7 @@ def save_as_profile(file_name: str, profile: ProfileModel, url: str) -> str:
             _to_yaml_str(
                 profile,
                 exclude_unset=not IniConfigLoader().general.full_dump,
-                exclude={"name", "Sigils"},
+                exclude=exclude,
             )
         )
     LOGGER.info(f"Created profile {save_path}")
