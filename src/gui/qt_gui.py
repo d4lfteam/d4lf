@@ -7,6 +7,7 @@ from PyQt6.QtCore import QObject, QPoint, QRegularExpression, QRunnable, QSettin
 from PyQt6.QtGui import QColor, QIcon, QRegularExpressionValidator
 from PyQt6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -27,6 +28,7 @@ from src.config.loader import IniConfigLoader
 from src.gui import config_tab, profile_tab
 from src.gui.importer.d4builds import import_d4builds
 from src.gui.importer.diablo_trade import import_diablo_trade
+from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.maxroll import import_maxroll
 from src.gui.importer.mobalytics import import_mobalytics
 from src.gui.open_user_config_button import OpenUserConfigButton
@@ -69,7 +71,8 @@ class Gui(QMainWindow):
         self._maxroll_or_d4builds_tab()
         # diablo trade changed search to be login only, so this no longer works
         # self._diablo_trade_tab()
-        self.tab_widget.addTab(config_tab.ConfigTab(), config_tab.CONFIG_TABNAME)
+        self.config_tab = config_tab.ConfigTab()
+        self.tab_widget.addTab(self.config_tab, config_tab.CONFIG_TABNAME)
         self.profile_tab_widget = profile_tab.ProfileTab()
         self.tab_widget.addTab(self.profile_tab_widget, profile_tab.PROFILE_TABNAME)
         LOGGER.root.addHandler(self.maxroll_log_handler)
@@ -173,6 +176,8 @@ class Gui(QMainWindow):
         elif self.tab_widget.tabText(index) == D4TRADE_TABNAME:
             # LOGGER.root.addHandler(self.diablo_trade_log_handler)
             LOGGER.root.removeHandler(self.maxroll_log_handler)
+        elif self.tab_widget.tabText(index) == config_tab.CONFIG_TABNAME:
+            self.config_tab.show_tab()
         elif self.tab_widget.tabText(index) == profile_tab.PROFILE_TABNAME:
             self.profile_tab_widget.show_tab()
 
@@ -185,6 +190,16 @@ class Gui(QMainWindow):
         def handle_text_changed(text):
             generate_button.setEnabled(bool(text.strip()))
 
+        def generate_checkbox(name, settings_value, desc) -> QCheckBox:
+            def save_setting_change(settings_value, value):
+                self.settings.setValue(settings_value, value)
+
+            checkbox = QCheckBox(name)
+            checkbox.setChecked(self.settings.value(settings_value, "true") == "true")
+            checkbox.setToolTip(desc)
+            checkbox.stateChanged.connect(lambda: save_setting_change(settings_value, checkbox.isChecked()))
+            return checkbox
+
         hbox = QHBoxLayout()
         url_label = QLabel("url")
         hbox.addWidget(url_label)
@@ -193,14 +208,54 @@ class Gui(QMainWindow):
         hbox.addWidget(input_box)
         layout.addLayout(hbox)
 
+        filename_hbox = QHBoxLayout()
+        filename_label = QLabel("Custom file name")
+        filename_hbox.addWidget(filename_label)
+        filename_input_box = QLineEdit()
+        filename_input_box.setPlaceholderText("Leave blank for default filename")
+        filename_hbox.addWidget(filename_input_box)
+        layout.addLayout(filename_hbox)
+
+        checkbox_hbox = QHBoxLayout()
+        import_uniques_checkbox = generate_checkbox(
+            "Import Uniques", "import_uniques", "Should uniques be included in the profile if they exist on the build page?"
+        )
+        import_aspect_upgrades_checkbox = generate_checkbox(
+            "Import Aspect Upgrades",
+            "import_aspect_upgrades",
+            "If legendary aspects are in the build, do you want an aspect upgrades section generated for them?",
+        )
+        add_to_profiles_checkbox = generate_checkbox(
+            "Auto-add To Profiles",
+            "import_add_to_profiles",
+            "After import, should the imported file be automatically added to your active profiles?",
+        )
+        checkbox_hbox.addWidget(import_uniques_checkbox)
+        checkbox_hbox.addWidget(import_aspect_upgrades_checkbox)
+        checkbox_hbox.addWidget(add_to_profiles_checkbox)
+        layout.addLayout(checkbox_hbox)
+
         def generate_button_click():
             url = input_box.text().strip()
+            custom_filename = filename_input_box.text()
+            if custom_filename:
+                custom_filename = custom_filename.split(".")[0]
+                custom_filename = custom_filename.strip()
+
+            importer_config = ImportConfig(
+                url,
+                import_uniques_checkbox.isChecked(),
+                import_aspect_upgrades_checkbox.isChecked(),
+                add_to_profiles_checkbox.isChecked(),
+                custom_filename,
+            )
+
             if "maxroll" in url:
-                worker = _Worker(name="maxroll", fn=import_maxroll, url=url)
+                worker = _Worker(name="maxroll", fn=import_maxroll, config=importer_config)
             elif "d4builds" in url:
-                worker = _Worker(name="d4builds", fn=import_d4builds, url=url)
+                worker = _Worker(name="d4builds", fn=import_d4builds, config=importer_config)
             else:
-                worker = _Worker(name="mobalytics", fn=import_mobalytics, url=url)
+                worker = _Worker(name="mobalytics", fn=import_mobalytics, config=importer_config)
             worker.signals.finished.connect(on_worker_finished)
             generate_button.setEnabled(False)
             generate_button.setText("Generating...")
@@ -211,6 +266,7 @@ class Gui(QMainWindow):
             generate_button.setEnabled(True)
             generate_button.setText("Generate")
             self.tab_widget.tabBar().enableTabSwitching(True)
+            filename_input_box.clear()
 
         hbox2 = QHBoxLayout()
         generate_button = QPushButton("Generate")
@@ -243,8 +299,8 @@ class Gui(QMainWindow):
             "https://d4builds.gg/builds/ef414fbd-81cd-49d1-9c8d-4938b278e2ee\n"
             "or\n"
             "https://mobalytics.gg/diablo-4/builds/barbarian/bash\n\n"
-            f"It will create a file based on the label of the build in the planer in: {IniConfigLoader().user_dir / 'profiles'}\n\n"
-            "For d4builds you need to specify your browser in the params.ini file"
+            f"It will create a file based on the label of the build in the planner in: {IniConfigLoader().user_dir / 'profiles'}\n\n"
+            "For d4builds you need to specify your browser in the config tab"
         )
         instructions_text.setReadOnly(True)
         font_metrics = instructions_text.fontMetrics()

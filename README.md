@@ -314,6 +314,9 @@ AspectUpgrades:
   # This would mark Snowveiled Adventurer's Pants as a favorite if it's a codex upgrade. It would ignore the pants otherwise.
   - of_singed_extremities
   - snowveiled
+
+# This works exact same as above, it's just a different way to format it
+AspectUpgrades: [of_singed_extremities, snowveiled]
 ```
 
 </details>

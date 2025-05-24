@@ -8,6 +8,7 @@ import src.logger
 from src.config.models import AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel, ItemFilterModel, ProfileModel, UniqueModel
 from src.dataloader import Dataloader
 from src.gui.importer.common import (
+    add_to_profiles,
     fix_offhand_type,
     fix_weapon_type,
     get_class_name,
@@ -16,9 +17,11 @@ from src.gui.importer.common import (
     retry_importer,
     save_as_profile,
 )
+from src.gui.importer.importer_config import ImportConfig
 from src.item.data.affix import Affix
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
+from src.scripts.common import correct_name
 
 LOGGER = logging.getLogger(__name__)
 
@@ -40,8 +43,8 @@ class MobalyticsException(Exception):
 
 
 @retry_importer
-def import_mobalytics(url: str):
-    url = url.strip().replace("\n", "")
+def import_mobalytics(config: ImportConfig):
+    url = config.url.strip().replace("\n", "")
     if BUILD_GUIDE_BASE_URL not in url:
         LOGGER.error("Invalid url, please use a mobalytics build guide")
         return
@@ -67,6 +70,7 @@ def import_mobalytics(url: str):
         raise MobalyticsException(msg)
     finished_filters = []
     unique_filters = []
+    aspect_upgrade_filters = []
     for item in items:
         item_filter = ItemFilterModel()
         if not (name := item.xpath(ITEM_NAME_XPATH)):
@@ -79,6 +83,9 @@ def import_mobalytics(url: str):
             raise MobalyticsException(msg)
         slot = slot_elem[0].attrib["alt"]
         unique_name = name[0].text if "aspect" not in name[0].text.lower() else ""
+        legendary_aspect = _get_legendary_aspect(name[0].text)
+        if legendary_aspect:
+            aspect_upgrade_filters.append(legendary_aspect)
         if not (stats := item.xpath(STATS_LIST_XPATH)):
             if item.xpath(ITEM_AFFIXES_EMPTY_XPATH):
                 if unique_name:
@@ -153,9 +160,21 @@ def import_mobalytics(url: str):
             filter_name = f"{filter_name_template}{i}"
             i += 1
         finished_filters.append({filter_name: item_filter})
-    profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))), Uniques=unique_filters)
+    profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))))
+    if config.import_uniques and unique_filters:
+        profile.Uniques = unique_filters
+    if config.import_aspect_upgrades and aspect_upgrade_filters:
+        profile.AspectUpgrades = aspect_upgrade_filters
+
+    if config.custom_file_name:
+        build_name = config.custom_file_name
+
     build_name = build_name if build_name else f"{class_name}_{data.xpath(BUILD_GUIDE_ACTIVE_LOADOUT_XPATH)[0].text()}"
-    save_as_profile(file_name=build_name, profile=profile, url=url)
+    corrected_file_name = save_as_profile(file_name=build_name, profile=profile, url=url)
+
+    if config.add_to_profiles:
+        add_to_profiles(corrected_file_name)
+
     LOGGER.info("Finished")
 
 
@@ -174,6 +193,16 @@ def _fix_input_url(url: str) -> str:
         new_query_dict["variantTab"] = query_dict["variantTab"]
     new_query_string = urlencode(new_query_dict, doseq=True)
     return urlunparse((parsed_url.scheme, parsed_url.netloc, parsed_url.path, parsed_url.params, new_query_string, parsed_url.fragment))
+
+
+def _get_legendary_aspect(name: str) -> str:
+    if "aspect" in name.lower():
+        aspect_name = correct_name(name.lower().replace("aspect", "").strip())
+
+        if aspect_name not in Dataloader().aspect_list:
+            LOGGER.warning(f"Imported legendary aspect '{aspect_name}' that is not in our aspect data, please report a bug.")
+        return aspect_name
+    return ""
 
 
 if __name__ == "__main__":

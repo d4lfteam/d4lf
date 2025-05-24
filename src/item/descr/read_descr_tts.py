@@ -16,6 +16,7 @@ from src.item.descr import keep_letters_and_spaces
 from src.item.descr.text import find_number
 from src.item.descr.texture import find_affix_bullets, find_aspect_bullet, find_seperator_short, find_seperators_long
 from src.item.models import Item
+from src.scripts.common import correct_name
 from src.template_finder import TemplateMatch
 from src.utils.window import screenshot
 
@@ -152,12 +153,12 @@ def _raise_index_error(affixes, affix_bullets, item):
 
 def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
     name = tts_section[2].split(" in ")[0]
-    item.name = _correct_name(name)
+    item.name = correct_name(name)
 
     affixes = [tts_section[4], tts_section[6]]
 
     for affix_name in affixes:
-        affix = Affix(name=_correct_name(keep_letters_and_spaces(affix_name)))
+        affix = Affix(name=correct_name(keep_letters_and_spaces(affix_name)))
         affix.type = AffixType.normal
         item.affixes.append(affix)
 
@@ -173,7 +174,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         item = Item(item_type=ItemType.Tribute)
         search_string_split = tts_item[1].split(" ")
         item.rarity = _get_item_rarity(search_string_split[0])
-        item.name = _correct_name(" ".join(search_string_split[1:]))
+        item.name = correct_name(" ".join(search_string_split[1:]))
         return item
     if tts_item[0].startswith(src.tts.ItemIdentifiers.WHISPERING_KEY.value):
         return Item(item_type=ItemType.Consumable)
@@ -217,18 +218,12 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     if item.rarity == ItemRarity.Mythic:
         starting_item_type_index = 2
     item.item_type = _get_item_type(" ".join(search_string_split[starting_item_type_index:]))
-    item.name = _correct_name(tts_item[0])
+    item.name = correct_name(tts_item[0])
     for _i, line in enumerate(tts_item):
         if "item power" in line.lower():
             item.power = int(find_number(line))
             break
     return item
-
-
-def _correct_name(name: str) -> str | None:
-    if name:
-        return name.lower().replace("'", "").replace(" ", "_").replace(",", "").replace("(", "").replace(")", "")
-    return name
 
 
 def _get_affixes_from_tts_section(tts_section: list[str], item: Item, length: int):
