@@ -13,6 +13,7 @@ import src.logger
 from src.config.models import AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel, ItemFilterModel, ProfileModel, UniqueModel
 from src.dataloader import Dataloader
 from src.gui.importer.common import (
+    add_to_profiles,
     fix_offhand_type,
     fix_weapon_type,
     get_class_name,
@@ -20,9 +21,11 @@ from src.gui.importer.common import (
     retry_importer,
     save_as_profile,
 )
+from src.gui.importer.importer_config import ImportConfig
 from src.item.data.affix import Affix
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
+from src.scripts.common import correct_name
 
 LOGGER = logging.getLogger(__name__)
 
@@ -35,6 +38,7 @@ ITEM_STATS_XPATH = ".//*[contains(@class, 'dropdown__button__wrapper')]"
 PAPERDOLL_ITEM_SLOT_XPATH = ".//*[contains(@class, 'builder__gear__slot')]"
 PAPERDOLL_ITEM_UNIQUE_NAME_XPATH = ".//*[contains(@class, 'builder__gear__name--')]"
 PAPERDOLL_ITEM_XPATH = ".//*[contains(@class, 'builder__gear__item') and not(contains(@class, 'disabled'))]"
+PAPERDOLL_LEGENDARY_ASPECT_XPATH = "//*[@class='builder__gear__name' and not(contains(@class, 'builder__gear__name--'))]"
 PAPERDOLL_XPATH = "//*[contains(@class, 'builder__gear__items')]"
 TEMPERING_ICON_XPATH = ".//*[contains(@src, 'tempering_02.png')]"
 UNIQUE_ICON_XPATH = ".//*[contains(@src, '/Uniques/')]"
@@ -45,8 +49,8 @@ class D4BuildsException(Exception):
 
 
 @retry_importer(inject_webdriver=True)
-def import_d4builds(url: str, driver: ChromiumDriver = None):
-    url = url.strip().replace("\n", "")
+def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
+    url = config.url.strip().replace("\n", "")
     if BASE_URL not in url:
         LOGGER.error("Invalid url, please use a d4builds url")
         return
@@ -67,6 +71,7 @@ def import_d4builds(url: str, driver: ChromiumDriver = None):
     slot_to_unique_name_map = _get_item_slots(data=data)
     finished_filters = []
     unique_filters = []
+    aspect_upgrade_filters = _get_legendary_aspects(data=data)
     for item in items[0]:
         item_filter = ItemFilterModel()
         if not (slot := item.xpath(ITEM_SLOT_XPATH)[1].tail):
@@ -116,7 +121,9 @@ def import_d4builds(url: str, driver: ChromiumDriver = None):
                 unique_model.affix = [AffixFilterModel(name=x.name) for x in affixes]
                 unique_filters.append(unique_model)
             except Exception:
-                LOGGER.exception(f"Unexpected error importing unique {unique_name}, please report a bug.")
+                LOGGER.exception(
+                    f"Unexpected error importing unique {unique_name}, please report a bug and include a link to the build you were trying to import."
+                )
             continue
 
         item_type = (
@@ -148,10 +155,20 @@ def import_d4builds(url: str, driver: ChromiumDriver = None):
             filter_name = f"{filter_name_template}{i}"
             i += 1
         finished_filters.append({filter_name: item_filter})
-    profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))), Uniques=unique_filters)
-    save_as_profile(
-        file_name=f"d4build_{class_name}_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}", profile=profile, url=url
+    profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))))
+    if config.import_uniques and unique_filters:
+        profile.Uniques = unique_filters
+    if config.import_aspect_upgrades and aspect_upgrade_filters:
+        profile.AspectUpgrades = aspect_upgrade_filters
+
+    file_name = (
+        config.custom_file_name
+        if config.custom_file_name
+        else f"d4build_{class_name}_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}"
     )
+    corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
+    if config.add_to_profiles:
+        add_to_profiles(corrected_file_name)
     LOGGER.info("Finished")
 
 
@@ -182,6 +199,24 @@ def _get_item_slots(data: lxml.html.HtmlElement) -> dict[str, str]:
                 slot = "Weapon"
             unique_name = item.xpath(PAPERDOLL_ITEM_UNIQUE_NAME_XPATH)
             result[slot] = unique_name[0].text if unique_name else ""
+    return result
+
+
+def _get_legendary_aspects(data: lxml.html.HtmlElement) -> list[str]:
+    result = []
+    if not (paperdoll := data.xpath(PAPERDOLL_XPATH)):
+        # Shouldn't happen, earlier code would have thrown an exception
+        return result
+
+    aspects = paperdoll[0].xpath(PAPERDOLL_LEGENDARY_ASPECT_XPATH)
+    for aspect in aspects:
+        aspect_name = correct_name(aspect.text.lower().replace("aspect", "").strip())
+
+        if aspect_name not in Dataloader().aspect_list:
+            LOGGER.warning(f"Imported legendary aspect '{aspect_name}' that is not in our aspect data, please report a bug.")
+
+        result.append(aspect_name)
+
     return result
 
 

@@ -1,6 +1,7 @@
 import enum
 import os
 import typing
+from pathlib import Path
 
 import keyboard
 from pydantic import BaseModel, ValidationError
@@ -164,6 +165,11 @@ class ConfigTab(QWidget):
 
         return parameter_value_widget
 
+    def show_tab(self):
+        self._reset_values_for_model(IniConfigLoader().general, "general")
+        self._reset_values_for_model(IniConfigLoader().char, "char")
+        self._reset_values_for_model(IniConfigLoader().advanced_options, "advanced_options")
+
     def reset_button_click(self):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Icon.Warning)
@@ -188,7 +194,7 @@ class ConfigTab(QWidget):
             if parameter_value_widget is None:
                 continue
 
-            if isinstance(parameter_value_widget, QChestTabWidget | QProfilesWidget | QHotkeyWidget):
+            if isinstance(parameter_value_widget, QChestTabWidget | QProfilesWidget | QHotkeyWidget | QMoveItemsWidget):
                 parameter_value_widget.reset_values(config_value)
             elif isinstance(parameter_value_widget, IgnoreScrollWheelComboBox):
                 parameter_value_widget.setCurrentText(config_value)
@@ -377,11 +383,11 @@ class QProfilePicker(QDialog):
         self.setGeometry(0, 0, 700, 500)
 
         profile_folder = IniConfigLoader().user_dir / "profiles"
-        if not os.path.exists(profile_folder):
-            os.makedirs(profile_folder)
+        if not Path.exists(profile_folder):
+            Path.mkdir(profile_folder)
 
-        all_profile_files = os.listdir(profile_folder)
-        all_profiles = [os.path.splitext(profile_file)[0] for profile_file in all_profile_files]
+        all_profile_files = profile_folder.iterdir()
+        all_profiles = [os.path.splitext(profile_file.name)[0] for profile_file in all_profile_files if profile_file.is_file()]
         all_profiles.sort(key=str.lower)
 
         self.disabled_profiles_list_widget = QListWidget()

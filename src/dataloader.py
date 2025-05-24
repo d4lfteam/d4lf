@@ -22,6 +22,7 @@ class Dataloader:
     error_map = {}
     filter_after_keyword = []
     filter_words = []
+    item_types_dict = {}
     tooltips = {}
     tribute_dict = {}
 
@@ -52,6 +53,7 @@ class Dataloader:
 
         with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/item_types.json", encoding="utf-8") as f:
             data = json.load(f)
+            self.item_types_dict = data
             for item, value in data.items():
                 if item in ItemType.__members__:
                     enum_member = ItemType[item]

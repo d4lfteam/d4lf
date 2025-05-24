@@ -7,7 +7,8 @@ import lxml.html
 import src.logger
 from src.config.models import AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel, ItemFilterModel, ProfileModel, UniqueModel
 from src.dataloader import Dataloader
-from src.gui.importer.common import get_with_retry, match_to_enum, retry_importer, save_as_profile
+from src.gui.importer.common import add_to_profiles, get_with_retry, match_to_enum, retry_importer, save_as_profile
+from src.gui.importer.importer_config import ImportConfig
 from src.item.data.affix import Affix
 from src.item.data.item_type import ItemType
 from src.item.descr.text import clean_str, closest_match
@@ -26,8 +27,8 @@ class MaxrollException(Exception):
 
 
 @retry_importer
-def import_maxroll(url: str):
-    url = url.strip().replace("\n", "")
+def import_maxroll(config: ImportConfig):
+    url = config.url.strip().replace("\n", "")
     if PLANNER_BASE_URL not in url and BUILD_GUIDE_BASE_URL not in url:
         LOGGER.error("Invalid url, please use a maxroll build guide or maxroll planner url")
         return
@@ -52,6 +53,7 @@ def import_maxroll(url: str):
     active_profile = build_data["profiles"][build_id]
     finished_filters = []
     unique_filters = []
+    aspect_upgrade_filters = []
     for item_id in active_profile["items"].values():
         item_filter = ItemFilterModel()
         resolved_item = items[str(item_id)]
@@ -60,7 +62,12 @@ def import_maxroll(url: str):
             continue
         item_filter.itemType = [item_type]
         # magic/rare = 0, legendary = 1, unique = 2, mythic = 4
-        if resolved_item["id"] in mapping_data["items"] and mapping_data["items"][resolved_item["id"]]["magicType"] in [2, 4]:
+        # Unique aspect handling
+        if (
+            resolved_item["id"] in mapping_data["items"]
+            and mapping_data["items"][resolved_item["id"]]["magicType"] in [2, 4]
+            and config.import_uniques
+        ):
             unique_model = UniqueModel()
             unique_name = mapping_data["items"][resolved_item["id"]]["name"]
             try:
@@ -76,6 +83,25 @@ def import_maxroll(url: str):
             except Exception:
                 LOGGER.exception(f"Unexpected error importing unique {unique_name}, please report a bug.")
             continue
+
+        # Legendary aspect upgrade handling
+        if (
+            resolved_item["id"] in mapping_data["items"]
+            and mapping_data["items"][resolved_item["id"]]["magicType"] == 1
+            and config.import_aspect_upgrades
+        ):
+            legendary_aspect = _find_legendary_aspect(mapping_data, resolved_item["legendaryPower"])
+            if legendary_aspect:
+                if legendary_aspect not in Dataloader().aspect_list:
+                    LOGGER.warning(f"Imported legendary aspect '{legendary_aspect}' that is not in our aspect data, please report a bug.")
+
+                aspect_upgrade_filters.append(legendary_aspect)
+            else:
+                LOGGER.warning(
+                    f"Unable to find legendary aspect in maxroll data for {item_type}, can not automatically add to AspectUpgrades"
+                )
+
+        # Standard item handling
         item_filter.affixPool = [
             AffixFilterCountModel(
                 count=[
@@ -104,12 +130,27 @@ def import_maxroll(url: str):
             i += 1
 
         finished_filters.append({filter_name: item_filter})
-    profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))), Uniques=unique_filters)
+    profile = ProfileModel(
+        name="imported profile",
+        Affixes=sorted(finished_filters, key=lambda x: next(iter(x))),
+    )
+    if config.import_uniques and unique_filters:
+        profile.Uniques = unique_filters
+    if config.import_aspect_upgrades and aspect_upgrade_filters:
+        profile.AspectUpgrades = aspect_upgrade_filters
+
+    if config.custom_file_name:
+        build_name = config.custom_file_name
+
     if not build_name:
         build_name = all_data["class"]
         if active_profile["name"]:
             build_name += f"_{active_profile['name']}"
-    save_as_profile(file_name=build_name, profile=profile, url=url)
+    corrected_file_name = save_as_profile(file_name=build_name, profile=profile, url=url)
+
+    if config.add_to_profiles:
+        add_to_profiles(corrected_file_name)
+
     LOGGER.info("Finished")
 
 
@@ -174,6 +215,20 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
                 LOGGER.error(f"Couldn't match {affix_id=}")
             break
     return res
+
+
+def _find_legendary_aspect(mapping_data: dict, legendary_aspect: dict) -> str | None:
+    for affix in mapping_data["affixes"].values():
+        if affix["id"] != legendary_aspect["nid"]:
+            continue
+
+        if "prefix" in affix:
+            return affix["prefix"].lower().replace(" ", "_")
+        if "suffix" in affix:
+            return affix["suffix"].lower().replace(" ", "_")
+        return None
+
+    return None
 
 
 def _attr_desc_special_handling(affix_id: str) -> str:

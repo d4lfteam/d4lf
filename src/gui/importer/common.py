@@ -167,7 +167,7 @@ def retry_importer(func=None, inject_webdriver: bool = False, uc=False):
     return decorator_retry_importer if func is None else decorator_retry_importer(func)
 
 
-def save_as_profile(file_name: str, profile: ProfileModel, url: str):
+def save_as_profile(file_name: str, profile: ProfileModel, url: str) -> str:
     file_name = file_name.replace("'", "")
     file_name = re.sub(r"\W", "_", file_name)
     file_name = re.sub(r"_+", "_", file_name).rstrip("_")
@@ -184,6 +184,17 @@ def save_as_profile(file_name: str, profile: ProfileModel, url: str):
             )
         )
     LOGGER.info(f"Created profile {save_path}")
+    return file_name
+
+
+def add_to_profiles(build_name):
+    profiles = IniConfigLoader().general.profiles
+    if build_name in profiles:
+        LOGGER.info(f"Profile {build_name} was already an active profile.")
+    else:
+        profiles.append(build_name)
+        IniConfigLoader().save_value("general", "profiles", ", ".join(profiles))
+        LOGGER.info(f"Added {build_name} to active profiles configuration")
 
 
 # Built in to_yaml_str does not preserve the order of the attributes of the model, which is important for uniques

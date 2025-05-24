@@ -95,6 +95,11 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                     continue
                 aspects_list.append(aspect_name_clean)
 
+        # add custom aspects that seem to be missing
+        with open(D4LF_BASE_DIR / f"src/tools/data/custom_aspects_{language}.json", encoding="utf-8") as json_file:
+            data = json.load(json_file)
+            aspects_list.extend(data)
+
         with open(D4LF_BASE_DIR / f"assets/lang/{language}/aspects.json", "w", encoding="utf-8") as json_file:
             json.dump(aspects_list, json_file, indent=4, ensure_ascii=False)
             json_file.write("\n")

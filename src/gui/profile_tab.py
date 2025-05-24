@@ -1,5 +1,4 @@
 import copy
-import json
 import logging
 import os
 
@@ -19,8 +18,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
+from src.dataloader import Dataloader
 from src.gui.importer.common import ProfileModel
 from src.gui.profile_editor import ProfileEditor
 from src.item.filter import _UniqueKeyLoader
@@ -71,13 +70,8 @@ class ProfileTab(QWidget):
         info_layout.addWidget(tools_groupbox)
         self.main_layout.addLayout(info_layout)
 
-        self.itemTypes = None
-        with open(str(BASE_DIR / "assets/lang/enUS/item_types.json")) as f:
-            self.itemTypes = json.load(f)
-
-        self.affixesNames = None
-        with open(str(BASE_DIR / "assets/lang/enUS/affixes.json")) as f:
-            self.affixesNames = json.load(f)
+        self.itemTypes = Dataloader().item_types_dict
+        self.affixesNames = Dataloader().affix_dict
 
         self.profile_editor_created = False
         scroll_widget.setLayout(self.scrollable_layout)
@@ -137,16 +131,14 @@ class ProfileTab(QWidget):
     def load(self):
         profiles: list[str] = IniConfigLoader().general.profiles
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
-        if not self.file_path and len(profiles) > 0:  # at start, set default file to build in params.ini
-            if profiles[0]:
-                custom_file_path = custom_profile_path / f"{profiles[0]}.yaml"
-                if not custom_file_path.is_file():
-                    LOGGER.error(f"Could not load profile {profiles[0]}. Checked: {custom_file_path}")
-                    return False
-                self.file_path = custom_file_path
-                return self.load_yaml()
-            return self.open_file()
-        if not self.file_path and len(profiles) == 0:
+        if not self.file_path and profiles:  # at start, set default file to build in params.ini
+            custom_file_path = custom_profile_path / f"{profiles[0]}.yaml"
+            if not custom_file_path.is_file():
+                LOGGER.error(f"Could not load profile {profiles[0]}. Checked: {custom_file_path}")
+                return False
+            self.file_path = custom_file_path
+            return self.load_yaml()
+        if not self.file_path and not profiles:
             return self.open_file()
         return False
 
