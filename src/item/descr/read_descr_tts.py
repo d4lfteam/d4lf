@@ -136,7 +136,8 @@ def _add_affixes_from_tts_mixed(
                 item.aspect = _get_aspect_from_text(affix_text, item.name)
             else:
                 item.aspect = _get_aspect_from_name(affix_text, item.name)
-            item.aspect.loc = aspect_bullet.center
+            if item.aspect:
+                item.aspect.loc = aspect_bullet.center
     return item
 
 

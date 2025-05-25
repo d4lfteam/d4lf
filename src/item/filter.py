@@ -126,7 +126,7 @@ class Filter:
         if item.codex_upgrade and self.aspect_upgrade_filters:
             # See if the item matches any legendary aspects that were in the profile
             for profile_name, profile_filter in self.aspect_upgrade_filters.items():
-                if any(legendary_aspect_name == item.aspect.name for legendary_aspect_name in profile_filter):
+                if item.aspect and any(legendary_aspect_name == item.aspect.name for legendary_aspect_name in profile_filter):
                     LOGGER.info("Matched build-specific aspects that updates codex")
                     res.keep = True
                     res.matched.append(MatchedFilter(f"{profile_name}.{ASPECT_UPGRADES_LABEL}", did_match_aspect=True))
