@@ -15,6 +15,6 @@ aspects = [
     (
         "codex upgrade match profile",
         ["aspect_profile.AspectUpgrades"],
-        TestItem(aspect=Aspect(name="profile_aspect")),
+        TestItem(aspect=Aspect(name="accelerating")),
     ),
 ]
