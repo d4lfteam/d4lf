@@ -4,11 +4,12 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMessageBox, QTabWidget
 
 from src.config.models import ProfileModel
-from src.gui.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.importer.common import save_as_profile
-from src.gui.sigils_tab import SIGILS_TABNAME, SigilsTab
-from src.gui.tributes_tab import TRIBUTES_TABNAME, TributesTab
-from src.gui.uniques_tab import UNIQUES_TABNAME, UniquesTab
+from src.gui.profile_editor.affixes_tab import AFFIXES_TABNAME, AffixesTab
+from src.gui.profile_editor.aspect_upgrades_tab import ASPECT_UPGRADES_TABNAME, AspectUpgradesTab
+from src.gui.profile_editor.sigils_tab import SIGILS_TABNAME, SigilsTab
+from src.gui.profile_editor.tributes_tab import TRIBUTES_TABNAME, TributesTab
+from src.gui.profile_editor.uniques_tab import UNIQUES_TABNAME, UniquesTab
 
 LOGGER = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class ProfileEditor(QTabWidget):
         self.profile_model = profile_model
         # Create main tabs
         self.affixes_tab = AffixesTab(self.profile_model.Affixes)
+        self.aspect_upgrades_tab = AspectUpgradesTab(self.profile_model.AspectUpgrades)
         self.sigils_tab = SigilsTab(self.profile_model.Sigils)
         self.tributes_tab = TributesTab(self.profile_model.Tributes)
         self.uniques_tab = UniquesTab(self.profile_model.Uniques)
@@ -26,6 +28,7 @@ class ProfileEditor(QTabWidget):
         self.currentChanged.connect(self.tab_changed)
         # Add tabs with icons
         self.addTab(self.affixes_tab, AFFIXES_TABNAME)
+        self.addTab(self.aspect_upgrades_tab, ASPECT_UPGRADES_TABNAME)
         self.addTab(self.sigils_tab, SIGILS_TABNAME)
         self.addTab(self.tributes_tab, TRIBUTES_TABNAME)
         self.addTab(self.uniques_tab, UNIQUES_TABNAME)
@@ -39,6 +42,8 @@ class ProfileEditor(QTabWidget):
     def tab_changed(self, index):
         if self.tabText(index) == AFFIXES_TABNAME:
             self.affixes_tab.load()
+        elif self.tabText(index) == ASPECT_UPGRADES_TABNAME:
+            self.aspect_upgrades_tab.load()
         elif self.tabText(index) == SIGILS_TABNAME:
             self.sigils_tab.load()
         elif self.tabText(index) == TRIBUTES_TABNAME:

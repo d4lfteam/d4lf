@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
 from src.config.loader import IniConfigLoader
 from src.dataloader import Dataloader
 from src.gui.importer.common import ProfileModel
-from src.gui.profile_editor import ProfileEditor
+from src.gui.profile_editor.profile_editor import ProfileEditor
 from src.item.filter import _UniqueKeyLoader
 
 LOGGER = logging.getLogger(__name__)
@@ -81,12 +81,11 @@ class ProfileTab(QWidget):
         self.main_layout.addWidget(instructions_label)
 
         instructions_text = QTextBrowser()
-        instructions_text.append("You load a profile by clicking the 'File' button.")
-        instructions_text.append("")
-        instructions_text.append("All values are not saved automatically immediately upon changing.")
-        instructions_text.append("You must click the save button to apply the changes to the profile.")
+        instructions_text.append(
+            "You load a profile by clicking the 'File' button. Click 'Save' to save your changes. Click 'Refresh' to undo your changes."
+        )
 
-        instructions_text.setFixedHeight(100)
+        instructions_text.setFixedHeight(50)
         self.main_layout.addWidget(instructions_text)
         self.setLayout(self.main_layout)
 

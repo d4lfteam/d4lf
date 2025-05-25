@@ -347,6 +347,7 @@ class AffixWidget(QWidget):
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.name_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
         self.name_combo.addItems(sorted(Dataloader().affix_dict.values()))
         self.name_combo.setMaximumWidth(600)
         if self.affix.name in Dataloader().affix_dict:

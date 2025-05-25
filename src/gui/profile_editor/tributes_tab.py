@@ -149,7 +149,6 @@ class TributeWidget(Container):
 class TributesTab(QWidget):
     def __init__(self, tributes: list[TributeFilterModel], parent=None):
         super().__init__(parent)
-        super().__init__(parent)
         if tributes is None:
             self.tributes = [TributeFilterModel()]
         else:

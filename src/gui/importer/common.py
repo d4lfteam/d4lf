@@ -188,7 +188,7 @@ def save_as_profile(file_name: str, profile: ProfileModel, url: str, exclude=Non
         file.write(
             _to_yaml_str(
                 profile,
-                exclude_unset=not IniConfigLoader().general.full_dump,
+                exclude_defaults=not IniConfigLoader().general.full_dump,
                 exclude=exclude,
             )
         )
@@ -207,8 +207,8 @@ def add_to_profiles(build_name):
 
 
 # Built in to_yaml_str does not preserve the order of the attributes of the model, which is important for uniques
-def _to_yaml_str(profile: ProfileModel, exclude_unset: bool, exclude: set[str]) -> str:
-    str_val = profile.model_dump_json(exclude_unset=exclude_unset, exclude=exclude)
+def _to_yaml_str(profile: ProfileModel, exclude_defaults: bool, exclude: set[str]) -> str:
+    str_val = profile.model_dump_json(exclude_defaults=exclude_defaults, exclude=exclude)
     yaml = YAML()
     yaml.default_flow_style = None
     dict_val = yaml.load(str_val)
