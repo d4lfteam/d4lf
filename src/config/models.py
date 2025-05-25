@@ -542,6 +542,20 @@ class ProfileModel(BaseModel):
     Tributes: list[TributeFilterModel] = []
     Uniques: list[UniqueModel] = []
 
+    @model_validator(mode="before")
+    def aspects_must_exist(self) -> "ProfileModel":
+        from src.dataloader import Dataloader  # This on module level would be a circular import, so we do it lazy for now
+
+        if "AspectUpgrades" not in self:
+            return self
+
+        all_aspects_list = Dataloader().aspect_list
+        aspects_not_in_all_aspects = [x for x in self["AspectUpgrades"] if x not in all_aspects_list]
+        if aspects_not_in_all_aspects:
+            raise ValueError(f"The following aspects in AspectUpgrades do not exist in our data: {', '.join(aspects_not_in_all_aspects)}")
+
+        return self
+
 
 class UiOffsetsModel(_IniBaseModel):
     find_bullet_points_width: int
