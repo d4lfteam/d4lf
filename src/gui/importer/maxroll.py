@@ -12,6 +12,7 @@ from src.gui.importer.importer_config import ImportConfig
 from src.item.data.affix import Affix
 from src.item.data.item_type import ItemType
 from src.item.descr.text import clean_str, closest_match
+from src.scripts.common import correct_name
 
 LOGGER = logging.getLogger(__name__)
 
@@ -93,9 +94,11 @@ def import_maxroll(config: ImportConfig):
             legendary_aspect = _find_legendary_aspect(mapping_data, resolved_item["legendaryPower"])
             if legendary_aspect:
                 if legendary_aspect not in Dataloader().aspect_list:
-                    LOGGER.warning(f"Imported legendary aspect '{legendary_aspect}' that is not in our aspect data, please report a bug.")
-
-                aspect_upgrade_filters.append(legendary_aspect)
+                    LOGGER.warning(
+                        f"Legendary aspect '{legendary_aspect}' that is not in our aspect data, unable to add to AspectUpgrades."
+                    )
+                else:
+                    aspect_upgrade_filters.append(legendary_aspect)
             else:
                 LOGGER.warning(
                     f"Unable to find legendary aspect in maxroll data for {item_type}, can not automatically add to AspectUpgrades"
@@ -223,9 +226,9 @@ def _find_legendary_aspect(mapping_data: dict, legendary_aspect: dict) -> str | 
             continue
 
         if "prefix" in affix:
-            return affix["prefix"].lower().replace(" ", "_")
+            return correct_name(affix["prefix"])
         if "suffix" in affix:
-            return affix["suffix"].lower().replace(" ", "_")
+            return correct_name(affix["suffix"])
         return None
 
     return None

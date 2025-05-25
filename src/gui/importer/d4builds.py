@@ -213,9 +213,9 @@ def _get_legendary_aspects(data: lxml.html.HtmlElement) -> list[str]:
         aspect_name = correct_name(aspect.text.lower().replace("aspect", "").strip())
 
         if aspect_name not in Dataloader().aspect_list:
-            LOGGER.warning(f"Imported legendary aspect '{aspect_name}' that is not in our aspect data, please report a bug.")
-
-        result.append(aspect_name)
+            LOGGER.warning(f"Legendary aspect '{aspect_name}' that is not in our aspect data, unable to add to AspectUpgrades.")
+        else:
+            result.append(aspect_name)
 
     return result
 

@@ -200,8 +200,9 @@ def _get_legendary_aspect(name: str) -> str:
         aspect_name = correct_name(name.lower().replace("aspect", "").strip())
 
         if aspect_name not in Dataloader().aspect_list:
-            LOGGER.warning(f"Imported legendary aspect '{aspect_name}' that is not in our aspect data, please report a bug.")
-        return aspect_name
+            LOGGER.warning(f"Legendary aspect '{aspect_name}' that is not in our aspect data, unable to add to AspectUpgrades.")
+        else:
+            return aspect_name
     return ""
 
 
