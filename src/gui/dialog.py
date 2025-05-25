@@ -443,6 +443,46 @@ class RemoveTribute(QDialog):
         return [reverse_dict.get(checkbox.text()) for checkbox in self.checkbox_list if checkbox.isChecked()]
 
 
+class AddAspectUpgrade(QDialog):
+    def __init__(self, aspect_upgrades: list[str], parent=None):
+        super().__init__(parent)
+
+        self.aspect_upgrades = aspect_upgrades
+
+        self.setWindowTitle("Add Aspect")
+        self.setFixedSize(300, 150)
+
+        self.main_layout = QVBoxLayout()
+        self.form_layout = QFormLayout()
+
+        unchosen_aspect_ugprades = [x for x in Dataloader().aspect_list if x not in aspect_upgrades]
+
+        self.name_label = QLabel("Aspect:")
+        self.name_input = IgnoreScrollWheelComboBox()
+        self.name_input.setEditable(True)
+        self.name_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.name_input.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.name_input.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+        self.name_input.addItems(unchosen_aspect_ugprades)
+        self.form_layout.addRow(self.name_label, self.name_input)
+        self.buttonLayout = QHBoxLayout()
+        self.okButton = QPushButton("OK")
+        self.okButton.clicked.connect(self.accept)
+        self.cancelButton = QPushButton("Cancel")
+        self.cancelButton.clicked.connect(self.reject)
+
+        self.buttonLayout.addWidget(self.okButton)
+        self.buttonLayout.addWidget(self.cancelButton)
+
+        self.main_layout.addLayout(self.form_layout)
+        self.main_layout.addLayout(self.buttonLayout)
+
+        self.setLayout(self.main_layout)
+
+    def get_value(self):
+        return self.name_input.currentText()
+
+
 class CreateUnique(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
