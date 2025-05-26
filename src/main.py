@@ -56,6 +56,10 @@ def main():
     while not Cam().is_offset_set():
         time.sleep(0.2)
 
+    # The code gets ahead of itself and seems to try to start scanning the screen when the resolution isn't
+    # fully set yet, so this small sleep resolves that.
+    time.sleep(0.5)
+
     ScriptHandler()
 
     LOGGER.debug(f"Vision mode type: {IniConfigLoader().general.vision_mode_type.value}")
