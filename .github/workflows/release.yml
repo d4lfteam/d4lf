@@ -30,8 +30,9 @@ jobs:
           python build.py
           $version = python -c "from src import __version__; print(__version__)"
           echo "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          $folderName = "d4lf_v" + $version
-          Compress-Archive -Path $folderName -DestinationPath "$folderName.zip"
+          $folderName = "d4lf"
+          $zipName = "d4lf_v" + $version
+          Compress-Archive -Path $folderName -DestinationPath "$zipName.zip"
 
       - name: Create Tag
         shell: powershell

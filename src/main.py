@@ -39,7 +39,7 @@ def main():
     print(f"============ D4 Loot Filter {__version__} ============")
     table = BeautifulTable()
     table.set_style(BeautifulTable.STYLE_BOX_ROUNDED)
-    table.rows.append([IniConfigLoader().advanced_options.run_vision_mode, "Run/Stop Vision Filter"])
+    table.rows.append([IniConfigLoader().advanced_options.run_vision_mode, "Run/Stop Vision Mode"])
     if not IniConfigLoader().advanced_options.vision_mode_only:
         table.rows.append([IniConfigLoader().advanced_options.run_filter, "Run/Stop Auto Filter"])
         table.rows.append([IniConfigLoader().advanced_options.run_filter_force_refresh, "Force Run/Stop Filter, Resetting Item Status"])
