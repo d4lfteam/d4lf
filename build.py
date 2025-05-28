@@ -37,7 +37,7 @@ def create_batch_for_gui(release_dir: Path, exe_name: str):
 if __name__ == "__main__":
     os.chdir(Path(__file__).parent)
     print(f"Building version: {__version__}")
-    RELEASE_DIR = Path(f"d4lf_v{__version__}")
+    RELEASE_DIR = Path("d4lf")
     if RELEASE_DIR.exists():
         shutil.rmtree(RELEASE_DIR.absolute())
     RELEASE_DIR.mkdir(exist_ok=True, parents=True)
