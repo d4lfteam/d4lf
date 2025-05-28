@@ -1139,6 +1139,12 @@
         ],
         "num_inherents": 1
     },
+    "wilted_potential": {
+        "desc": "this item is worthless as its power has been lost.",
+        "full": "This item is worthless as its power has been lost.",
+        "num_idx": [],
+        "num_inherents": 2
+    },
     "windforce": {
         "desc": "hits of barrage have a chance to deal triple damage and knock down enemies.",
         "full": "Hits of {c_important}Barrage{/c} have a {c_random}[Affix_Value_1|%|]{/c} chance to deal triple damage and Knock Down enemies.",
