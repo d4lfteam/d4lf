@@ -92,7 +92,7 @@ class VisionModeWithHighlighting:
         self.screen_off_x = Cam().window_roi["left"]
         self.screen_off_y = Cam().window_roi["top"]
 
-    def draw_rect(self, canvas: tk.Canvas, bullet_width, obj, off, color):
+    def draw_rect(self, bullet_width, obj, off, color):
         offset_loc = np.array(obj.loc) + off
         x1 = int(offset_loc[0] - bullet_width / 2)
         y1 = int(offset_loc[1] - bullet_width / 2)
@@ -100,8 +100,8 @@ class VisionModeWithHighlighting:
         y2 = int(offset_loc[1] + bullet_width / 2)
         self.canvas.create_rectangle(x1, y1, x2, y2, fill=color)
 
-    def draw_text(self, canvas, text, color, previous_text_y, offset, canvas_center_x) -> int:
-        if text is None or text == "":
+    def draw_text(self, canvas, text, color, previous_text_y, offset, canvas_center_x) -> int | None:
+        if not text:
             return None
 
         font_name = "Courier New"
@@ -198,7 +198,7 @@ class VisionModeWithHighlighting:
         self.canvas.config(height=h, width=w)
         self.create_signal_rect(self.canvas, w, self.thick, color)
 
-        self.root.geometry(f"{w}x{h}+{x + self.screen_off_x}+{y + self.screen_off_y}")
+        self.root.geometry(f"{w + 50}x{h}+{x + self.screen_off_x - 50}+{y + self.screen_off_y}")
         self.root.update_idletasks()
         self.root.update()
 
@@ -214,11 +214,13 @@ class VisionModeWithHighlighting:
         if item_descr is not None and len(should_keep_res.matched) > 0:
             bullet_width = self.thick * 3
             for affix in should_keep_res.matched[0].matched_affixes:
-                if affix.loc is not None:
-                    self.draw_rect(self.canvas, bullet_width, affix, off, COLOR_GREEN)
+                if affix.loc:
+                    affix_loc = np.array(affix.loc)
+                    self.draw_rect(bullet_width, affix, off, COLOR_GREEN)
+                    self.draw_text(self.canvas, "75%", COLOR_GREEN, affix_loc[1], 5, affix_loc[0] - 5)
 
-            if item_descr.aspect is not None and any(m.did_match_aspect for m in should_keep_res.matched):
-                self.draw_rect(self.canvas, bullet_width, item_descr.aspect, off, COLOR_GREEN)
+            if item_descr.aspect and any(m.did_match_aspect for m in should_keep_res.matched):
+                self.draw_rect(bullet_width, item_descr.aspect, off, COLOR_GREEN)
 
         self.root.update_idletasks()
         self.root.update()
