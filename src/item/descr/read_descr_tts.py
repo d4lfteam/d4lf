@@ -137,7 +137,14 @@ def _add_affixes_from_tts_mixed(
             else:
                 item.aspect = _get_aspect_from_name(affix_text, item.name)
             if item.aspect:
-                item.aspect.loc = aspect_bullet.center
+                if not aspect_bullet:
+                    LOGGER.warning(
+                        "No bullet was found for the aspect. If the aspect's first line is partially or fully off "
+                        "the screen, you can ignore this warning. Otherwise, please report a bug with a screenshot "
+                        "of the item."
+                    )
+                else:
+                    item.aspect.loc = aspect_bullet.center
     return item
 
 
