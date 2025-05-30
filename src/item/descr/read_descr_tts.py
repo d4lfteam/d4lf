@@ -95,6 +95,7 @@ def _add_affixes_from_tts_mixed(
     tts_section: list[str],
     item: Item,
     affix_bullets: list[TemplateMatch],
+    img_item_descr: np.ndarray,
     aspect_bullet: TemplateMatch | None,
 ) -> Item:
     # With advanced item compare on we'll actually find more bullets than we need, so we don't rely on them for number of affixes
@@ -107,7 +108,7 @@ def _add_affixes_from_tts_mixed(
     )
 
     if len(affixes) - 1 > len(affix_bullets):
-        _raise_index_error(affixes, affix_bullets, item)
+        _raise_index_error(affixes, affix_bullets, item, img_item_descr)
 
     for i, affix_text in enumerate(affixes):
         if i < inherent_num:
@@ -148,14 +149,20 @@ def _add_affixes_from_tts_mixed(
     return item
 
 
-def _raise_index_error(affixes, affix_bullets, item):
+def _raise_index_error(affixes, affix_bullets, item, img_item_descr: np.ndarray):
     LOGGER.error("About to raise index error, dumping information for debug:")
     LOGGER.error(f"Affixes ({len(affixes)}): {affixes}")
     LOGGER.error(f"Affix Bullets ({len(affix_bullets)}): {affix_bullets}")
     LOGGER.error(f"Item: {item}")
+    LOGGER.error("Placed screenshot of item in screenshot folder. Screenshot will start with 'not_enough_bullets'")
+    screenshot("not_enough_bullets", img=img_item_descr)
 
     raise IndexError(
-        "Found more affixes than we found bullets to represent those affixes. This could be a temporary issue finding bullet positions on the screen, but if it happens consistently please open a bug report with a full screen screenshot with the item hovered on and vision mode disabled. Additionally, include the logs above this message."
+        "Found more affixes than we found bullets to represent those affixes. "
+        "This could be a temporary issue finding bullet positions on the screen, "
+        "but if it happens consistently please open a bug report with a full screen "
+        "screenshot with the item hovered on and vision mode disabled. Additionally, "
+        "include the ~10 log lines above this message and the screenshot in the screenshot folder."
     )
 
 
@@ -396,7 +403,7 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
     item.codex_upgrade = _is_codex_upgrade(tts_section)
     item.cosmetic_upgrade = _is_cosmetic_upgrade(tts_section)
     aspect_bullet = futures["aspect_bullet"].result() if futures["aspect_bullet"] is not None else None
-    return _add_affixes_from_tts_mixed(tts_section, item, affix_bullets, aspect_bullet=aspect_bullet)
+    return _add_affixes_from_tts_mixed(tts_section, item, affix_bullets, img_item_descr, aspect_bullet=aspect_bullet)
 
 
 def read_descr() -> Item | None:
