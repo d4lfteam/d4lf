@@ -211,13 +211,13 @@ class VisionModeWithHighlighting:
         for match in reversed(should_keep_res.matched):
             text_y = self.draw_text(self.canvas, match.profile, COLOR_GREEN, text_y, 5, w // 2)
         # Show matched bullets
-        if item_descr is not None and len(should_keep_res.matched) > 0:
+        if item_descr and len(should_keep_res.matched) > 0:
             bullet_width = self.thick * 3
             for affix in should_keep_res.matched[0].matched_affixes:
-                if affix.loc is not None:
+                if affix.loc:
                     self.draw_rect(self.canvas, bullet_width, affix, off, COLOR_GREEN)
 
-            if item_descr.aspect is not None and any(m.did_match_aspect for m in should_keep_res.matched):
+            if item_descr.aspect and any(m.did_match_aspect for m in should_keep_res.matched):
                 self.draw_rect(self.canvas, bullet_width, item_descr.aspect, off, COLOR_GREEN)
 
         self.root.update_idletasks()
