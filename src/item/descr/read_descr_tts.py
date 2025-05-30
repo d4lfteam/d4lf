@@ -333,7 +333,7 @@ def _get_aspect_from_name(text: str, name: str) -> Aspect | None:
         if aspect_name in name:
             return Aspect(text=text, name=aspect_name)
 
-    LOGGER.warning(f"Could not find an aspect representing {name} or {text} in our data.")
+    LOGGER.warning(f"Could not find an aspect representing {name} in our data.")
     return None
 
 

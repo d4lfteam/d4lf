@@ -82,23 +82,32 @@ def main(d4data_dir: Path, companion_app_dir: Path):
         # Create Aspects
         print(f"Gen Aspects for {language}")
         aspects_list = []
-        pattern = f"json/{language}_Text/meta/StringList/Affix_legendary*.stl.json"
-        json_files = list(d4data_dir.glob(pattern))
-        for json_file in json_files:
-            with open(json_file, encoding="utf-8") as file:
-                data = json.load(file)
-                name_idx, desc_idx = (0, 1) if data["arStrings"][0]["szLabel"] == "Name" else (1, 0)
-                aspect_name = data["arStrings"][name_idx]["szText"]
-                aspect_name_clean = aspect_name.strip().replace(" ", "_").lower().replace("’", "").replace("'", "").replace("-", "")
-                aspect_name_clean = check_ms(aspect_name_clean)
-                if is_placeholder_name(aspect_name_clean):
-                    continue
-                aspects_list.append(aspect_name_clean)
+        aspect_pattern = "json/base/meta/Aspect/*.json"
+        aspect_files = list(d4data_dir.glob(aspect_pattern))
 
-        # add custom aspects that seem to be missing
-        with open(D4LF_BASE_DIR / f"src/tools/data/custom_aspects_{language}.json", encoding="utf-8") as json_file:
-            data = json.load(json_file)
-            aspects_list.extend(data)
+        for core_aspect_file in aspect_files:
+            if core_aspect_file.name.endswith("Axe Bad Data.asp.json"):
+                continue
+            # Get the associated Aspect file, which will tell us where to find the aspect file
+            with open(core_aspect_file, encoding="utf-8") as aspect_file:
+                # Get affix name from the file
+                aspect_data = json.load(aspect_file)
+                affix_name = aspect_data["snoAffix"]["name"]
+
+            core_affix_file_name = f"Affix_{affix_name}.stl.json"
+            core_affix_file = d4data_dir / f"json/{language}_Text/meta/StringList/{core_affix_file_name}"
+            if not core_affix_file.exists():
+                print(f"WARNING: Could not find file named {core_affix_file} in d4data.")
+            else:
+                with open(core_affix_file, encoding="utf-8") as file:
+                    data = json.load(file)
+                    name_idx = 0 if data["arStrings"][0]["szLabel"] == "Name" else 1
+                    aspect_name = data["arStrings"][name_idx]["szText"]
+                    aspect_name_clean = aspect_name.strip().replace(" ", "_").lower().replace("’", "").replace("'", "")
+                    aspect_name_clean = check_ms(aspect_name_clean)
+                    if is_placeholder_name(aspect_name_clean):
+                        continue
+                    aspects_list.append(aspect_name_clean)
 
         with open(D4LF_BASE_DIR / f"assets/lang/{language}/aspects.json", "w", encoding="utf-8") as json_file:
             aspects_list.sort()
