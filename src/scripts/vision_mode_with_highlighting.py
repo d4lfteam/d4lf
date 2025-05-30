@@ -217,6 +217,7 @@ class VisionModeWithHighlighting:
                 if affix.loc:
                     self.draw_rect(self.canvas, bullet_width, affix, off, COLOR_GREEN)
 
+
             if item_descr.aspect and item_descr.aspect.loc and any(m.did_match_aspect for m in should_keep_res.matched):
                 self.draw_rect(self.canvas, bullet_width, item_descr.aspect, off, COLOR_GREEN)
 
