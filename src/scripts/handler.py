@@ -129,10 +129,10 @@ def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh)
         for i in IniConfigLoader().general.check_chest_tabs:
             stash.switch_to_tab(i)
             time.sleep(0.3)
-            check_items(stash, force_refresh)
+            check_items(stash, force_refresh, stash_is_open=True)
         mouse.move(*Cam().abs_window_to_monitor((0, 0)))
         time.sleep(0.3)
-        check_items(inv, force_refresh)
+        check_items(inv, force_refresh, stash_is_open=True)
     else:
         if not inv.open():
             screenshot("inventory_not_open", img=Cam().grab())

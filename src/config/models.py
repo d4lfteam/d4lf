@@ -241,8 +241,12 @@ class BrowserType(enum.StrEnum):
 
 
 class GeneralModel(_IniBaseModel):
+    auto_use_temper_manuals: bool = Field(
+        default=True,
+        description="When using the loot filter, should found temper manuals be automatically used? Note: Will not work with stash open.",
+    )
     browser: BrowserType = Field(default=BrowserType.chrome, description="Which browser to use to get builds")
-    check_chest_tabs: list[int] = Field(default=[0, 1], description="Which tabs to check. Note: All 6 Tabs must be unlocked!")
+    check_chest_tabs: list[int] = Field(default=[0, 1], description="Which stash tabs to check. Note: All 6 Tabs must be unlocked!")
     full_dump: bool = Field(
         default=False,
         description="When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not",
