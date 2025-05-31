@@ -6,7 +6,7 @@ from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import ItemRefreshType, UnfilteredUniquesType
 from src.item.data.affix import AffixType
-from src.item.data.item_type import ItemType
+from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity, is_junk_rarity
 from src.item.filter import Filter
 from src.scripts.common import ASPECT_UPGRADES_LABEL, is_ignored_item, mark_as_favorite, mark_as_junk, reset_item_status
@@ -99,7 +99,7 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType, stash_is_ope
                     matched_any_affixes
                     or matched_profile_legendary_aspect
                     or item_descr.rarity == ItemRarity.Mythic
-                    or item_descr.item_type == ItemType.Sigil
+                    or is_sigil(item_descr.item_type)
                     or item_descr.item_type == ItemType.Tribute
                 )
                 and IniConfigLoader().general.mark_as_favorite

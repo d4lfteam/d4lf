@@ -36,6 +36,7 @@ class ItemType(Enum):
     Compass = "compass"
     Consumable = "consumable"
     Cosmetic = "cosmetic"
+    EscalationSigil = "escalation sigil"
     Gem = "gem"
     Incense = "incense"
     LairBossKey = "lairbosskey"
@@ -60,8 +61,12 @@ def is_consumable(item_type: ItemType) -> bool:
     ]
 
 
-def is_mapping(item_type: ItemType) -> bool:
-    return item_type in [ItemType.Compass, ItemType.Sigil, ItemType.WhisperingWood]
+def is_non_sigil_mapping(item_type: ItemType) -> bool:
+    return item_type in [ItemType.Compass, ItemType.WhisperingWood]
+
+
+def is_sigil(item_type: ItemType) -> bool:
+    return item_type in [ItemType.Sigil, ItemType.EscalationSigil]
 
 
 def is_jewelry(item_type: ItemType) -> bool:

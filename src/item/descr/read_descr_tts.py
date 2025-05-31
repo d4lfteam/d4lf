@@ -10,7 +10,7 @@ from src import TP
 from src.dataloader import Dataloader
 from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect
-from src.item.data.item_type import ItemType, is_armor, is_consumable, is_jewelry, is_mapping, is_socketable, is_weapon
+from src.item.data.item_type import ItemType, is_armor, is_consumable, is_jewelry, is_non_sigil_mapping, is_sigil, is_socketable, is_weapon
 from src.item.data.rarity import ItemRarity
 from src.item.descr import keep_letters_and_spaces
 from src.item.descr.text import find_number
@@ -185,6 +185,8 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         return Item(rarity=ItemRarity.Common, item_type=ItemType.Compass)
     if tts_item[0].startswith(src.tts.ItemIdentifiers.NIGHTMARE_SIGIL.value):
         return Item(rarity=ItemRarity.Common, item_type=ItemType.Sigil)
+    if tts_item[0].startswith(src.tts.ItemIdentifiers.ESCALATION_SIGIL.value):
+        return Item(rarity=ItemRarity.Common, item_type=ItemType.EscalationSigil)
     if tts_item[0].startswith(src.tts.ItemIdentifiers.TRIBUTE.value):
         item = Item(item_type=ItemType.Tribute)
         search_string_split = tts_item[1].split(" ")
@@ -378,7 +380,8 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
     if any(
         [
             is_consumable(item.item_type),
-            is_mapping(item.item_type),
+            is_non_sigil_mapping(item.item_type),
+            is_sigil(item.item_type),
             is_socketable(item.item_type),
             item.item_type in [ItemType.Material, ItemType.Tribute],
         ]
@@ -404,7 +407,7 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
 
     item.codex_upgrade = _is_codex_upgrade(tts_section)
     item.cosmetic_upgrade = _is_cosmetic_upgrade(tts_section)
-    aspect_bullet = futures["aspect_bullet"].result() if futures["aspect_bullet"] is not None else None
+    aspect_bullet = futures["aspect_bullet"].result() if futures["aspect_bullet"] else None
     return _add_affixes_from_tts_mixed(tts_section, item, affix_bullets, img_item_descr, aspect_bullet=aspect_bullet)
 
 
@@ -414,7 +417,7 @@ def read_descr() -> Item | None:
         return None
     if (item := _create_base_item_from_tts(tts_section)) is None:
         return None
-    if item.item_type == ItemType.Sigil:
+    if is_sigil(item.item_type):
         return _add_sigil_affixes_from_tts(tts_section, item)
     if item.item_type == ItemType.Cosmetic:
         item.cosmetic_upgrade = True
@@ -422,7 +425,7 @@ def read_descr() -> Item | None:
     if any(
         [
             is_consumable(item.item_type),
-            is_mapping(item.item_type),
+            is_non_sigil_mapping(item.item_type),
             is_socketable(item.item_type),
             item.item_type in [ItemType.Material, ItemType.Tribute, ItemType.Cache, ItemType.LairBossKey],
         ]

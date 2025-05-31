@@ -4,7 +4,8 @@ import time
 import keyboard
 
 from src.cam import Cam
-from src.item.data.item_type import ItemType, is_consumable, is_mapping, is_socketable
+from src.config.loader import IniConfigLoader
+from src.item.data.item_type import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
 from src.item.models import Item
 from src.utils.custom_mouse import mouse
 
@@ -62,17 +63,17 @@ def is_ignored_item(item_descr: Item):
     if is_consumable(item_descr.item_type):
         LOGGER.info("Matched: Consumable")
         return True
-    if is_mapping(item_descr.item_type) and item_descr.item_type != ItemType.Sigil:
+    if is_non_sigil_mapping(item_descr.item_type):
         LOGGER.info("Matched: Non-sigil Mapping")
+        return True
+    if item_descr.item_type == ItemType.EscalationSigil and IniConfigLoader().general.ignore_escalation_sigils:
+        LOGGER.info("Matched: Escalation Sigil and configured to be ignored")
         return True
     if is_socketable(item_descr.item_type):
         LOGGER.info("Matched: Socketable")
         return True
     if item_descr.item_type == ItemType.Material:
         LOGGER.info("Matched: Material")
-        return True
-    if item_descr.item_type == ItemType.TemperManual:
-        LOGGER.info("Matched: Temper Manual")
         return True
     if item_descr.item_type == ItemType.Cache:
         LOGGER.info("Matched: Cache")
