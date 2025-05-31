@@ -18,6 +18,7 @@ TO_FILTER = ["Champions who earn the favor of"]
 
 class ItemIdentifiers(enum.Enum):
     COMPASS = "Compass"
+    ESCALATION_SIGIL = "Escalation Sigil"
     NIGHTMARE_SIGIL = "Nightmare Sigil"
     TRIBUTE = "TRIBUTE OF"
     WHISPERING_KEY = "WHISPERING KEY"
@@ -100,7 +101,7 @@ def read_pipe() -> None:
 
 
 def find_item_start(data: list[str]) -> int | None:
-    ignored_words = ["COMPASS AFFIXES", "DUNGEON AFFIXES"]
+    ignored_words = ["COMPASS AFFIXES", "DUNGEON AFFIXES", "AFFIXES"]
 
     for index, item in reversed(list(enumerate(data))):
         if any(ignored in item for ignored in ignored_words):

@@ -258,6 +258,7 @@ class GeneralModel(_IniBaseModel):
         default=UnfilteredUniquesType.favorite,
         description="What should be done with uniques that do not match any profile. Mythics are always favorited. If mark_as_favorite is unchecked then uniques that match a profile will not be favorited.",
     )
+    ignore_escalation_sigils: bool = Field(default=True, description="When filtering Sigils, should escalation sigils be ignored?")
     keep_aspects: AspectFilterType = Field(
         default=AspectFilterType.upgrade, description="Whether to keep aspects that didn't match a filter"
     )
