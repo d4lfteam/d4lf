@@ -11,12 +11,13 @@ from src.item.data.rarity import ItemRarity, is_junk_rarity
 from src.item.filter import Filter
 from src.scripts.common import ASPECT_UPGRADES_LABEL, is_ignored_item, mark_as_favorite, mark_as_junk, reset_item_status
 from src.ui.inventory_base import InventoryBase
+from src.utils.custom_mouse import mouse
 from src.utils.window import screenshot
 
 LOGGER = logging.getLogger(__name__)
 
 
-def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
+def check_items(inv: InventoryBase, force_refresh: ItemRefreshType, stash_is_open=False):
     occupied, _ = inv.get_item_slots()
 
     if force_refresh == ItemRefreshType.force_with_filter or force_refresh == ItemRefreshType.force_without_filter:
@@ -56,6 +57,8 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType):
 
         # Hardcoded filters
         if is_ignored_item(item_descr):
+            if not stash_is_open and item_descr.item_type == ItemType.TemperManual and IniConfigLoader().general.auto_use_temper_manuals:
+                mouse.click("right")
             continue
 
         if not is_junk_rarity(item_descr.rarity):

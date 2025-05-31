@@ -100,8 +100,9 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 ### params.ini
 
 | [general] | Description |
-|---------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | profiles | A set of profiles separated by comma. d4lf will look for these yaml files in config/profiles and in C:/Users/WINDOWS_USER/.d4lf/profiles |
+| auto_use_temper_manuals | When using the loot filter, should found temper manuals be automatically used? Note: Will not work with stash open. |
 | browser | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported. |
 | check_chest_tabs | Which chest tabs will be checked and filtered for items in case chest is open when starting the filter. You need to buy all slots. Counting is done left to right. E.g. 1,2,4 will check tab 1, tab 2, tab 4 |
 | full_dump | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not |

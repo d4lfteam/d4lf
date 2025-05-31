@@ -218,6 +218,8 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         item.item_type = ItemType.Elixir
     elif tts_item[1].lower().endswith("incense"):
         item.item_type = ItemType.Incense
+    elif "temper manual" in tts_item[1].lower():
+        item.item_type = ItemType.TemperManual
     elif any(tts_item[1].lower().endswith(x) for x in ["consumable", "scroll"]):
         item.item_type = ItemType.Consumable
     if is_consumable(item.item_type):
@@ -352,11 +354,11 @@ def _get_aspect_from_name(text: str, name: str) -> Aspect | None:
 
 
 def _get_item_rarity(data: str) -> ItemRarity | None:
-    return next((rar for rar in ItemRarity if rar.value == data), None)
+    return next((rar for rar in ItemRarity if rar.value == data.lower()), None)
 
 
 def _get_item_type(data: str):
-    return next((it for it in ItemType if it.value == data), None)
+    return next((it for it in ItemType if it.value == data.lower()), None)
 
 
 def _is_codex_upgrade(tts_section: list[str]) -> bool:
