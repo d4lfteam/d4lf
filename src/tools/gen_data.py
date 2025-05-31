@@ -6,6 +6,35 @@ from pathlib import Path
 
 D4LF_BASE_DIR = Path(__file__).parent.parent.parent
 
+GEAR_TYPES = [
+    "Amulet",
+    "Axe",
+    "Axe2H",
+    "Boots",
+    "Bow",
+    "ChestArmor",
+    "Crossbow2H",
+    "Dagger",
+    "Focus",
+    "Glaive",
+    "Gloves",
+    "Helm",
+    "Legs",
+    "Mace",
+    "Mace2H",
+    "OffHandTotem",
+    "Polearm",
+    "Quarterstaff",
+    "Ring",
+    "Scythe",
+    "Scythe2H",
+    "Shield",
+    "Staff",
+    "Sword",
+    "Sword2H",
+    "Wand",
+]
+
 
 def remove_content_in_braces(input_string) -> str:
     pattern = r"\{.*?\}"
@@ -33,8 +62,11 @@ def get_random_number_idx(s: str) -> list[int]:
     return res
 
 
-def is_placeholder_name(name) -> bool:
-    return any(x in name for x in ["(ph)", "[ph]", "[wip]"])
+def is_placeholder_or_test_name(name) -> bool:
+    if any(x in name for x in ["(ph)", "[ph]", "[wip]", "(debug)", "[_ph_]", "[ph_", "bucranis_", "boost_", "_test_", "(not_used"]):
+        return True
+
+    return name.startswith("ph_")
 
 
 def check_ms(input_string) -> str:
@@ -58,7 +90,7 @@ def check_ms(input_string) -> str:
 def main(d4data_dir: Path, companion_app_dir: Path):
     lang_arr = ["enUS"]  # "deDE", "frFR", "esES", "esMX", "itIT", "jaJP", "koKR", "plPL", "ptBR", "ruRU", "trTR", "zhCN", "zhTW"]
     # Some items are just cosmetics or test items
-    items_to_ignore = ["harriers_of_war", "heart_of_war", "fists_of_war", "guise_of_war", "strides_of_war", "snake_glaive"]
+    # items_to_ignore = ["harriers_of_war", "heart_of_war", "fists_of_war", "guise_of_war", "strides_of_war", "snake_glaive"]
 
     for lang in lang_arr:
         file_names = [
@@ -75,111 +107,82 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                 os.remove(f)
         os.makedirs(f"assets/lang/{lang}", exist_ok=True)
 
-    with open(D4LF_BASE_DIR / "src/tools/data/custom_uniques_affix_file_names.json", encoding="utf-8") as custom_unique_affix_file:
-        custom_unique_affix_file_names = json.load(custom_unique_affix_file)
+    # with open(D4LF_BASE_DIR / "src/tools/data/custom_uniques_affix_file_names.json", encoding="utf-8") as custom_unique_affix_file:
+    #     custom_unique_affix_file_names = json.load(custom_unique_affix_file)
 
     for language in lang_arr:
         # Create Aspects
-        print(f"Gen Aspects for {language}")
-        aspects_list = []
-        aspect_pattern = "json/base/meta/Aspect/*.json"
-        aspect_files = list(d4data_dir.glob(aspect_pattern))
-
-        for core_aspect_file in aspect_files:
-            if core_aspect_file.name.endswith("Axe Bad Data.asp.json"):
-                continue
-            # Get the associated Aspect file, which will tell us where to find the aspect file
-            with open(core_aspect_file, encoding="utf-8") as aspect_file:
-                # Get affix name from the file
-                aspect_data = json.load(aspect_file)
-                affix_name = aspect_data["snoAffix"]["name"]
-
-            core_affix_file_name = f"Affix_{affix_name}.stl.json"
-            core_affix_file = d4data_dir / f"json/{language}_Text/meta/StringList/{core_affix_file_name}"
-            if not core_affix_file.exists():
-                print(f"WARNING: Could not find file named {core_affix_file} in d4data.")
-            else:
-                with open(core_affix_file, encoding="utf-8") as file:
-                    data = json.load(file)
-                    name_idx = 0 if data["arStrings"][0]["szLabel"] == "Name" else 1
-                    aspect_name = data["arStrings"][name_idx]["szText"]
-                    aspect_name_clean = aspect_name.strip().replace(" ", "_").lower().replace("’", "").replace("'", "")
-                    aspect_name_clean = check_ms(aspect_name_clean)
-                    if is_placeholder_name(aspect_name_clean):
-                        continue
-                    aspects_list.append(aspect_name_clean)
-
-        with open(D4LF_BASE_DIR / f"assets/lang/{language}/aspects.json", "w", encoding="utf-8") as json_file:
-            aspects_list.sort()
-            json.dump(aspects_list, json_file, indent=4, ensure_ascii=False)
-            json_file.write("\n")
+        generate_aspects(d4data_dir, language)
 
         # Create Uniques
-        print(f"Gen Uniques for {language}")
-        unique_dict = {}
-        potential_custom_uniques = {}
-        pattern = f"json/{language}_Text/meta/StringList/Item_*_Unique_*.stl.json"
-        json_files = list(d4data_dir.glob(pattern))
-        for json_file in json_files:
-            with open(json_file, encoding="utf-8") as file:
-                data = json.load(file)
-                name_item = [item for item in data["arStrings"] if item["szLabel"] == "Name"]
-                if not name_item:
-                    continue
-                name = name_item[0]["szText"]
-                name_clean = name.strip().replace(" ", "_").replace("\xa0", "_").lower().replace("’", "").replace("'", "").replace(",", "")
-                name_clean = check_ms(name_clean)
-                if name_clean in items_to_ignore or is_placeholder_name(name_clean):
-                    continue
-                splits = json_file.name.split("_")
-                # Open affix file for affix
-                if name_clean in custom_unique_affix_file_names:
-                    affix_file_name = custom_unique_affix_file_names[name_clean]
-                else:
-                    affix_file_name = "Affix_" + "_".join(splits[1:])
-                affix_file_path = json_file.parent / affix_file_name
-                if not affix_file_path.exists():
-                    # Among a bunch of debug stuff there are two yens blessings and one is bad
-                    if not any(
-                        string_to_skip in name_clean
-                        for string_to_skip in ["[ph]", "(ph)", "ph_", "_test_", "debug", "yens_blessing", "bucranis_"]
-                    ) and not any(
-                        string_to_skip in affix_file_name
-                        for string_to_skip in ["S07_Witch_", "_QST_", "_TEST_", "_NoPowers", "_Cache", "_zzOld_"]
-                    ):
-                        potential_custom_uniques[name_clean] = affix_file_path
-                    continue
-                with open(affix_file_path, encoding="utf-8") as affix_file:
-                    data = json.load(affix_file)
-                    desc_item = [item for item in data["arStrings"] if item["szLabel"] == "Desc"]
-                    if not desc_item:
-                        continue
-                    desc = desc_item[0]["szText"]
-                    desc_clean = remove_content_in_braces(desc.lower().replace("’", ""))
-                    num_idx = get_random_number_idx(desc)
-                    unique_dict[name_clean] = {"desc": desc_clean, "full": desc, "num_idx": num_idx, "num_inherents": None}
-                item_file_name = "_".join(splits[1:])
-                item_file_name = item_file_name.replace("stl", "itm")
-                item_file_path = d4data_dir / "json" / "base" / "meta" / "Item" / item_file_name
-                if not item_file_path.exists():
-                    print(f"WARNING: {name_clean} had no item file at {item_file_path}, it will not have an inherents count")
-                    continue
-                with open(item_file_path, encoding="utf-8") as item_file:
-                    data = json.load(item_file)
-                    num_inherents = len(data["arInherentAffixes"])
-                    unique_dict[name_clean]["num_inherents"] = num_inherents
-        # add custom uniques that seem to be missing
-        with open(D4LF_BASE_DIR / f"src/tools/data/custom_uniques_{language}.json", encoding="utf-8") as json_file:
-            data = json.load(json_file)
-            for unique_name, affix_file_path in potential_custom_uniques.items():
-                if unique_name not in data:
-                    print(
-                        f"WARNING: {unique_name} was found in unique files but no affixes were found and no custom unique is created for it. Look for an affix file with a similar name to {affix_file_path}"
-                    )
-            unique_dict.update(data)
-        with open(D4LF_BASE_DIR / f"assets/lang/{language}/uniques.json", "w", encoding="utf-8") as json_file:
-            json.dump(unique_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
-            json_file.write("\n")
+        generate_uniques(d4data_dir, language)
+
+        # Create Uniques
+        # print(f"Gen Uniques for {language}")
+        # unique_dict = {}
+        # potential_custom_uniques = {}
+        # pattern = f"json/{language}_Text/meta/StringList/Item_*_Unique_*.stl.json"
+        # json_files = list(d4data_dir.glob(pattern))
+        # for json_file in json_files:
+        #     with open(json_file, encoding="utf-8") as file:
+        #         data = json.load(file)
+        #         name_item = [item for item in data["arStrings"] if item["szLabel"] == "Name"]
+        #         if not name_item:
+        #             continue
+        #         name = name_item[0]["szText"]
+        #         name_clean = name.strip().replace(" ", "_").replace("\xa0", "_").lower().replace("’", "").replace("'", "").replace(",", "")
+        #         name_clean = check_ms(name_clean)
+        #         if name_clean in items_to_ignore or is_placeholder_name(name_clean):
+        #             continue
+        #         splits = json_file.name.split("_")
+        #         # Open affix file for affix
+        #         if name_clean in custom_unique_affix_file_names:
+        #             affix_file_name = custom_unique_affix_file_names[name_clean]
+        #         else:
+        #             affix_file_name = "Affix_" + "_".join(splits[1:])
+        #         affix_file_path = json_file.parent / affix_file_name
+        #         if not affix_file_path.exists():
+        #             # Among a bunch of debug stuff there are two yens blessings and one is bad
+        #             if not any(
+        #                 string_to_skip in name_clean
+        #                 for string_to_skip in ["[ph]", "(ph)", "ph_", "_test_", "debug", "yens_blessing", "bucranis_"]
+        #             ) and not any(
+        #                 string_to_skip in affix_file_name
+        #                 for string_to_skip in ["S07_Witch_", "_QST_", "_TEST_", "_NoPowers", "_Cache", "_zzOld_"]
+        #             ):
+        #                 potential_custom_uniques[name_clean] = affix_file_path
+        #             continue
+        #         with open(affix_file_path, encoding="utf-8") as affix_file:
+        #             data = json.load(affix_file)
+        #             desc_item = [item for item in data["arStrings"] if item["szLabel"] == "Desc"]
+        #             if not desc_item:
+        #                 continue
+        #             desc = desc_item[0]["szText"]
+        #             desc_clean = remove_content_in_braces(desc.lower().replace("’", ""))
+        #             num_idx = get_random_number_idx(desc)
+        #             unique_dict[name_clean] = {"desc": desc_clean, "full": desc, "num_idx": num_idx, "num_inherents": None}
+        #         item_file_name = "_".join(splits[1:])
+        #         item_file_name = item_file_name.replace("stl", "itm")
+        #         item_file_path = d4data_dir / "json" / "base" / "meta" / "Item" / item_file_name
+        #         if not item_file_path.exists():
+        #             print(f"WARNING: {name_clean} had no item file at {item_file_path}, it will not have an inherents count")
+        #             continue
+        #         with open(item_file_path, encoding="utf-8") as item_file:
+        #             data = json.load(item_file)
+        #             num_inherents = len(data["arInherentAffixes"])
+        #             unique_dict[name_clean]["num_inherents"] = num_inherents
+        # # add custom uniques that seem to be missing
+        # with open(D4LF_BASE_DIR / f"src/tools/data/custom_uniques_{language}.json", encoding="utf-8") as json_file:
+        #     data = json.load(json_file)
+        #     for unique_name, affix_file_path in potential_custom_uniques.items():
+        #         if unique_name not in data:
+        #             print(
+        #                 f"WARNING: {unique_name} was found in unique files but no affixes were found and no custom unique is created for it. Look for an affix file with a similar name to {affix_file_path}"
+        #             )
+        #     unique_dict.update(data)
+        # with open(D4LF_BASE_DIR / f"assets/lang/{language}/uniques.json", "w", encoding="utf-8") as json_file:
+        #     json.dump(unique_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
+        #     json_file.write("\n")
 
         print(f"Gen Sigils for {language}")
         sigil_dict = {"dungeons": {}, "minor": {}, "major": {}, "positive": {}}
@@ -250,37 +253,8 @@ def main(d4data_dir: Path, companion_app_dir: Path):
             json_file.write("\n")
 
         print(f"Gen ItemTypes for {language}")
-        whitelist_types = [
-            "Amulet",
-            "Axe",
-            "Axe2H",
-            "Boots",
-            "Bow",
-            "ChestArmor",
-            "Crossbow2H",
-            "Dagger",
-            "Elixir",
-            "Focus",
-            "Glaive",
-            "Gloves",
-            "Helm",
-            "Legs",
-            "Mace",
-            "Mace2H",
-            "OffHandTotem",
-            "Polearm",
-            "Quarterstaff",
-            "Ring",
-            "Scythe",
-            "Scythe2H",
-            "Shield",
-            "Staff",
-            "Sword",
-            "Sword2H",
-            "TemperManual",
-            "Tome",
-            "Wand",
-        ]
+        whitelist_types = GEAR_TYPES.copy()
+        whitelist_types.extend(["Elixir", "TemperManual", "Tome"])
         item_typ_dict = {"Material": "custom type material", "Sigil": "custom type sigil", "Incense": "custom type incense"}
         pattern = f"json/{language}_Text/meta/StringList/ItemType_*.stl.json"
         json_files = list(d4data_dir.glob(pattern))
@@ -335,6 +309,111 @@ def main(d4data_dir: Path, companion_app_dir: Path):
             json_file.write("\n")
 
         print("=============================")
+
+
+def generate_aspects(d4data_dir, language):
+    print(f"Gen Aspects for {language}")
+    aspects_list = []
+    aspect_pattern = "json/base/meta/Aspect/*.json"
+    aspect_files = list(d4data_dir.glob(aspect_pattern))
+
+    for core_aspect_file in aspect_files:
+        if core_aspect_file.name.endswith("Axe Bad Data.asp.json"):
+            continue
+        # Get the associated Aspect file, which will tell us where to find the aspect file
+        with open(core_aspect_file, encoding="utf-8") as aspect_file:
+            # Get affix name from the file
+            aspect_data = json.load(aspect_file)
+            affix_name = aspect_data["snoAffix"]["name"]
+
+        core_affix_file_name = f"Affix_{affix_name}.stl.json"
+        core_affix_file = d4data_dir / f"json/{language}_Text/meta/StringList/{core_affix_file_name}"
+        if not core_affix_file.exists():
+            print(f"WARNING: Could not find file named {core_affix_file} in d4data.")
+
+        with open(core_affix_file, encoding="utf-8") as file:
+            data = json.load(file)
+            name_idx = 0 if data["arStrings"][0]["szLabel"] == "Name" else 1
+            aspect_name = data["arStrings"][name_idx]["szText"]
+            aspect_name_clean = aspect_name.strip().replace(" ", "_").lower().replace("’", "").replace("'", "")
+            aspect_name_clean = check_ms(aspect_name_clean)
+            if is_placeholder_or_test_name(aspect_name_clean):
+                continue
+            aspects_list.append(aspect_name_clean)
+
+    with open(D4LF_BASE_DIR / f"assets/lang/{language}/aspects.json", "w", encoding="utf-8") as json_file:
+        aspects_list.sort()
+        json.dump(aspects_list, json_file, indent=4, ensure_ascii=False, sort_keys=True)
+        json_file.write("\n")
+
+
+def generate_uniques(d4data_dir, language):
+    items_to_ignore = [
+        "harriers_of_war",
+        "heart_of_war",
+        "fists_of_war",
+        "guise_of_war",
+        "strides_of_war",
+        "snake_glaive",
+        "halo",
+        "legendary_two-handed_sword_01",
+        "pact_amulet",
+    ]
+
+    print(f"Gen Uniques for {language}")
+    unique_dict = {}
+    unique_pattern = "json/base/meta/Item/*nique*.itm.json"
+    unique_files = list(d4data_dir.glob(unique_pattern))
+
+    for core_unique_file in unique_files:
+        # Get inherent count and item type from this file. Beyond that, we need the file name to find the enUS strings file.
+        with open(core_unique_file, encoding="utf-8") as unique_item_file:
+            unique_item_data = json.load(unique_item_file)
+            item_type = unique_item_data["snoItemType"]["name"]
+            num_inherents = len(unique_item_data["arInherentAffixes"])
+
+        if item_type not in GEAR_TYPES and item_type != "FocusBookOffHand":
+            continue
+
+        core_unique_file_id = core_unique_file.name.split(".")[0]
+        string_item_file_name = f"Item_{core_unique_file_id}.stl.json"
+        string_item_file = d4data_dir / f"json/{language}_Text/meta/StringList/{string_item_file_name}"
+
+        if not string_item_file.exists():
+            print(f"WARNING: Could not find file named {string_item_file} in d4data.")
+            continue
+
+        with open(string_item_file, encoding="utf-8") as file:
+            data = json.load(file)
+            name_item = [item for item in data["arStrings"] if item["szLabel"] == "Name"]
+            if not name_item:
+                continue
+            name = name_item[0]["szText"]
+            name_clean = name.strip().replace(" ", "_").replace("\xa0", "_").lower().replace("’", "").replace("'", "").replace(",", "")
+            name_clean = check_ms(name_clean)
+            if name_clean in items_to_ignore or is_placeholder_or_test_name(name_clean):
+                continue
+
+            unique_dict[name_clean] = {"num_inherents": num_inherents}
+            # splits = json_file.name.split("_")
+            # # Open affix file for affix
+            # affix_file_name = "Affix_" + "_".join(splits[1:])
+            # affix_file_path = json_file.parent / affix_file_name
+            # if not affix_file_path.exists():
+            #
+            # with open(affix_file_path, encoding="utf-8") as affix_file:
+            #     data = json.load(affix_file)
+            #     desc_item = [item for item in data["arStrings"] if item["szLabel"] == "Desc"]
+            #     if not desc_item:
+            #         continue
+            #     desc = desc_item[0]["szText"]
+            #     desc_clean = remove_content_in_braces(desc.lower().replace("’", ""))
+            #     num_idx = get_random_number_idx(desc)
+            #     unique_dict[name_clean] = {"desc": desc_clean, "full": desc, "num_idx": num_idx, "num_inherents": None}
+
+    with open(D4LF_BASE_DIR / f"assets/lang/{language}/uniques.json", "w", encoding="utf-8") as json_file:
+        json.dump(unique_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
+        json_file.write("\n")
 
 
 if __name__ == "__main__":
