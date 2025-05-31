@@ -160,7 +160,7 @@ class Filter:
         if not self.sigil_filters.items():
             LOGGER.info("Matched Sigils")
             res.keep = True
-            res.matched.append(MatchedFilter("default"))
+            res.matched.append(MatchedFilter("Sigils not filtered"))
         for profile_name, profile_filter in self.sigil_filters.items():
             blacklist_empty = not profile_filter.blacklist
             is_in_blacklist = self._match_affixes_sigils(
@@ -195,7 +195,7 @@ class Filter:
         if not self.tribute_filters.items():
             LOGGER.info("Matched Tributes")
             res.keep = True
-            res.matched.append(MatchedFilter("default"))
+            res.matched.append(MatchedFilter("Tributes not filtered"))
 
         if item.rarity == ItemRarity.Mythic:
             LOGGER.info("Matched mythic tribute, always kept")
