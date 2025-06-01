@@ -53,12 +53,9 @@ def _get_affix_counts(item: Item) -> (int, int):
     elif item.item_type in [ItemType.Shield]:
         inherent_num = 4
 
-    if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and item.item_type not in [ItemType.Shield]:
-        # Uniques can have variable amounts of inherents. Sometimes we might not have a number for how many
-        # inherents there are though and in that case we'll stick with the legendary default and hope for the best
-        # Lidless wall, the only unique shield, doesn't count block chance as an inherent so we just use the legendary
-        # default there too
-        unique_inherents = Dataloader().aspect_unique_num_inherents.get(item.name)
+    if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
+        # Uniques can have variable amounts of inherents.
+        unique_inherents = Dataloader().aspect_unique_dict.get(item.name)["num_inherents"]
         if unique_inherents is not None:
             inherent_num = unique_inherents
 

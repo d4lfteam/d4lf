@@ -192,7 +192,7 @@
         "num_inherents": 1
     },
     "lidless_wall": {
-        "num_inherents": 3
+        "num_inherents": 4
     },
     "locrans_talisman": {
         "num_inherents": 1
@@ -375,7 +375,7 @@
         "num_inherents": 2
     },
     "the_mortacrux": {
-        "num_inherents": 1
+        "num_inherents": 2
     },
     "the_oculus": {
         "num_inherents": 2
@@ -424,9 +424,6 @@
     },
     "wildheart_hunger": {
         "num_inherents": 1
-    },
-    "wilted_potential": {
-        "num_inherents": 2
     },
     "windforce": {
         "num_inherents": 1
