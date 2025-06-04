@@ -178,7 +178,7 @@ def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
 
 
 def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
-    if tts_item[0].startswith(src.tts.ItemIdentifiers.COMPASS.value):
+    if tts_item[1].endswith(src.tts.ItemIdentifiers.COMPASS.value):
         return Item(rarity=ItemRarity.Common, item_type=ItemType.Compass)
     if tts_item[0].startswith(src.tts.ItemIdentifiers.NIGHTMARE_SIGIL.value):
         return Item(rarity=ItemRarity.Common, item_type=ItemType.Sigil)
