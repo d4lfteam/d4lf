@@ -27,7 +27,7 @@ pyyaml
 rapidfuzz
 ruamel.yaml~=0.18.0
 ruff
-selenium
+selenium==4.23.1
 seleniumbase
 tk
 typing_extensions
