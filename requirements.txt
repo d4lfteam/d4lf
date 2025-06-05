@@ -27,8 +27,8 @@ pyyaml
 rapidfuzz
 ruamel.yaml~=0.18.0
 ruff
-selenium
-seleniumbase
+selenium==4.23.1
+seleniumbase==4.29.9
 tk
 typing_extensions
 webdriver-manager
