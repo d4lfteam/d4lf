@@ -91,7 +91,7 @@ def find_affix_bullets(img_item_descr: np.ndarray, sep_short_match: TemplateMatc
     tempered_icons = [f"tempered_affix_bullet_point_{x}" for x in range(1, 7)]
     template_list = ["greater_affix_bullet_point_1"] + affix_icons + rerolled_icons + tempered_icons
     all_templates = [f"{x}_medium" for x in template_list] + template_list
-    if ResManager().resolution[1] <= 1080:
+    if ResManager().resolution[1] <= 1200:
         all_templates += ["greater_affix_bullet_point_1080p_special"]
     return _find_bullets(
         img_item_descr=img_item_descr,
@@ -105,7 +105,7 @@ def find_affix_bullets(img_item_descr: np.ndarray, sep_short_match: TemplateMatc
 def find_aspect_bullet(img_item_descr: np.ndarray, sep_short_match: TemplateMatch) -> TemplateMatch | None:
     template_list = ["legendary_bullet_point", "unique_bullet_point", "mythic_bullet_point"]
     all_templates = [f"{x}_medium" for x in template_list] + template_list
-    if ResManager().resolution[1] <= 1080:
+    if ResManager().resolution[1] <= 1200:
         all_templates += ["mythic_bullet_point_1080p_special", "mythic_bullet_point_medium_1080p_special"]
     aspect_bullets = _find_bullets(
         img_item_descr=img_item_descr,
