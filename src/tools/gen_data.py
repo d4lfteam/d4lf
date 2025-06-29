@@ -278,6 +278,10 @@ def generate_aspects(d4data_dir, language):
 def generate_uniques(d4data_dir, language):
     items_to_ignore = ["halo", "pact_amulet", "wilted_potential"]
 
+    # Some uniques do not give the correct TTS. We'll use these maps to add the incorrect values to our uniques as well
+    with open(D4LF_BASE_DIR / f"src/tools/data/unique_fixes_{language}.json", encoding="utf-8") as unique_fixes_file:
+        unique_tts_fixes = json.load(unique_fixes_file)
+
     print(f"Gen Uniques for {language}")
     unique_dict = {}
     unique_pattern = "json/base/meta/Item/*nique*.itm.json"
@@ -329,6 +333,9 @@ def generate_uniques(d4data_dir, language):
                 continue
 
             unique_dict[name_clean] = {"num_inherents": num_inherents}
+            # Add it again if we're getting the wrong TTS. This should keep us safe if they ever fix it
+            if name_clean in unique_tts_fixes:
+                unique_dict[unique_tts_fixes[name_clean]] = {"num_inherents": num_inherents}
 
     with open(D4LF_BASE_DIR / f"assets/lang/{language}/uniques.json", "w", encoding="utf-8") as json_file:
         json.dump(unique_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)

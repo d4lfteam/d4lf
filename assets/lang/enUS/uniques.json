@@ -38,6 +38,9 @@
     "bane_of_ahjad-den": {
         "num_inherents": 0
     },
+    "bane_ofahjad-den": {
+        "num_inherents": 0
+    },
     "banished_lords_talisman": {
         "num_inherents": 1
     },
@@ -351,6 +354,9 @@
         "num_inherents": 1
     },
     "sunstained_war-crozier": {
+        "num_inherents": 1
+    },
+    "sunstainedwar-crozier": {
         "num_inherents": 1
     },
     "tal_rashas_iridescent_loop": {
