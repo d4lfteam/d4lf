@@ -402,6 +402,12 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
 
     affix_bullets = find_affix_bullets(img_item_descr, sep_short_match)
 
+    if item.rarity == ItemRarity.Unique and item.name not in Dataloader().aspect_unique_dict:
+        raise IndexError(
+            f"Unrecognized unique {item.name}. This most likely means the name of it reported "
+            f"from Diablo 4 is wrong. Please report a bug with this message."
+        )
+
     item.codex_upgrade = _is_codex_upgrade(tts_section)
     item.cosmetic_upgrade = _is_cosmetic_upgrade(tts_section)
     aspect_bullet = futures["aspect_bullet"].result() if futures["aspect_bullet"] else None
@@ -435,6 +441,12 @@ def read_descr() -> Item | None:
         return None
     if item.rarity not in [ItemRarity.Legendary, ItemRarity.Mythic, ItemRarity.Unique]:
         return item
+
+    if item.rarity == ItemRarity.Unique and item.name not in Dataloader().aspect_unique_dict:
+        raise IndexError(
+            f"Unrecognized unique {item.name}. This most likely means the name of it reported "
+            f"from Diablo 4 is wrong. Please report a bug with this message."
+        )
 
     item.codex_upgrade = _is_codex_upgrade(tts_section)
     item.cosmetic_upgrade = _is_cosmetic_upgrade(tts_section)
