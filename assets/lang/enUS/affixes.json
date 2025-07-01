@@ -62,7 +62,6 @@
     "caltrops_cooldown_reduction": "caltrops cooldown reduction",
     "caltrops_duration": "caltrops duration",
     "caltrops_size": "caltrops size",
-    "caltrops_smoke_grenade_and_death_trap_receive_your_stun_grenade_benefits": "caltrops, smoke grenade, and death trap receive your stun grenade benefits",
     "casted_hydras_have_heads": "casted hydras have heads",
     "casting_blood_wave_fortifies_you_for_maximum_life": "casting blood wave fortifies you for maximum life",
     "casting_bone_spear_reduces_blood_waves_cooldown_by_seconds.": "casting bone spear reduces blood waves cooldown by seconds.",
@@ -81,6 +80,7 @@
     "chance_for_ball_lightning_projectiles_to_cast_twice": "chance for ball lightning projectiles to cast twice",
     "chance_for_ball_lightning_projectiles_to_cast_twice_is_converted_to_chance_to_cast_a_super_ball_lightning.": "chance for ball lightning projectiles to cast twice is converted to chance to cast a super ball lightning.",
     "chance_for_barrage_projectiles_to_cast_twice": "chance for barrage projectiles to cast twice",
+    "chance_for_bash_to_hit_twice": "chance for bash to hit twice",
     "chance_for_basic_projectiles_to_cast_twice": "chance for basic projectiles to cast twice",
     "chance_for_basic_skills_to_deal_double_damage": "chance for basic skills to deal double damage",
     "chance_for_blade_shift_to_deal_double_damage": "chance for blade shift to deal double damage",
@@ -1061,6 +1061,5 @@
     "wolves_damage": "wolves damage",
     "wrath_of_the_berserker_cooldown_reduction": "wrath of the berserker cooldown reduction",
     "your_potion_also_grants_maximum_resistances_for_seconds": "your potion also grants maximum resistances for seconds",
-    "your_stun_grenades_deal_of_their_total_damage_done_as_additional_burning_damage_over_seconds": "your stun grenades deal of their total damage done as additional burning damage over seconds",
     "your_trap_skills_are_also_considered_core_skills": "your trap skills are also considered core skills"
 }
