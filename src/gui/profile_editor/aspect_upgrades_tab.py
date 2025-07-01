@@ -1,7 +1,7 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QDialog, QHBoxLayout, QLabel, QListWidget, QPushButton, QVBoxLayout, QWidget
 
-from gui.dialog import AddAspectUpgrade
+from src.gui.dialog import AddAspectUpgrade
 
 ASPECT_UPGRADES_TABNAME = "Aspect Upgrades"
 

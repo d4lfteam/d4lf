@@ -29,6 +29,9 @@
     "azurewrath": {
         "num_inherents": 1
     },
+    "balazans_maxtlatl": {
+        "num_inherents": 0
+    },
     "band_of_first_breath": {
         "num_inherents": 2
     },
@@ -81,6 +84,9 @@
         "num_inherents": 0
     },
     "deathless_visage": {
+        "num_inherents": 0
+    },
+    "deathmask_of_nirmitruq": {
         "num_inherents": 0
     },
     "deathspeakers_pendant": {
@@ -173,6 +179,9 @@
     "hellhammer": {
         "num_inherents": 1
     },
+    "hooves_of_the_mountain_god": {
+        "num_inherents": 1
+    },
     "howl_from_below": {
         "num_inherents": 0
     },
@@ -229,6 +238,9 @@
     },
     "okuns_catalyst": {
         "num_inherents": 1
+    },
+    "ophidian_iris": {
+        "num_inherents": 2
     },
     "overkill": {
         "num_inherents": 1
@@ -291,6 +303,9 @@
         "num_inherents": 2
     },
     "rod_of_kepeleke": {
+        "num_inherents": 1
+    },
+    "rotting_lightbringer": {
         "num_inherents": 1
     },
     "saboteurs_signet": {
@@ -379,6 +394,9 @@
     },
     "the_grandfather": {
         "num_inherents": 2
+    },
+    "the_hand_of_naz": {
+        "num_inherents": 0
     },
     "the_mortacrux": {
         "num_inherents": 2

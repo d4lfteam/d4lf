@@ -15,7 +15,7 @@ from selenium.webdriver.chromium.webdriver import ChromiumDriver
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
-from seleniumbase import Driver
+from seleniumbase import SB
 
 from src import __version__
 from src.config.loader import IniConfigLoader
@@ -125,7 +125,7 @@ def get_with_retry(url: str, custom_headers: dict[str, str] | None = None) -> ht
     raise ConnectionError(msg)
 
 
-def handle_popups(driver: ChromiumDriver, method: Callable[[D], Literal[False] | T], timeout=10):
+def handle_popups[D: WebDriver | WebElement, T](driver: ChromiumDriver, method: Callable[[D], Literal[False] | T], timeout: int = 10):
     LOGGER.info("Handling cookie / adblock popups")
     wait = WebDriverWait(driver, timeout)
     for _ in range(3):
@@ -233,7 +233,7 @@ def _rm_style_info(d):
 
 def setup_webdriver(uc: bool = False) -> ChromiumDriver:
     if uc:
-        return Driver(uc=uc, headless2=True)
+        return SB(uc=uc, headless2=True)
     match IniConfigLoader().general.browser:
         case BrowserType.edge:
             options = webdriver.EdgeOptions()
