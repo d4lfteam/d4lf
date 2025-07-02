@@ -126,6 +126,9 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 )
             continue
 
+        if not affixes:
+            continue
+
         item_type = (
             match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot.replace(" ", ""))) if item_type is None else item_type
         )
