@@ -91,11 +91,11 @@ def import_maxroll(config: ImportConfig):
             and mapping_data["items"][resolved_item["id"]]["magicType"] == 1
             and config.import_aspect_upgrades
         ):
-            legendary_aspect = _find_legendary_aspect(mapping_data, resolved_item["legendaryPower"])
+            legendary_aspect = _find_legendary_aspect(mapping_data, resolved_item.get("legendaryPower", {}))
             if legendary_aspect:
                 if legendary_aspect not in Dataloader().aspect_list:
                     LOGGER.warning(
-                        f"Legendary aspect '{legendary_aspect}' that is not in our aspect data, unable to add to AspectUpgrades."
+                        f"Found legendary aspect '{legendary_aspect}' that is not in our aspect data, unable to add to AspectUpgrades. Please report a bug."
                     )
                 else:
                     aspect_upgrade_filters.append(legendary_aspect)
@@ -221,6 +221,9 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
 
 
 def _find_legendary_aspect(mapping_data: dict, legendary_aspect: dict) -> str | None:
+    if not legendary_aspect:
+        return None
+
     for affix in mapping_data["affixes"].values():
         if affix["id"] != legendary_aspect["nid"]:
             continue
