@@ -137,10 +137,12 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                     for sigil_affix in data["arStrings"]:
                         if sigil_affix["szLabel"] == "AffixName":
                             name = sigil_affix["szText"].lower().strip().replace("’", "").replace("'", "")
-                            name = name.replace("(", "").replace(")", "").replace("{c_bonus}", "").replace("{/c}", "")
+                            name = name.replace("(", "").replace(")", "")
+                            name = remove_content_in_braces(name)
                         else:
                             desc = sigil_affix["szText"].lower().strip().replace("’", "").replace("'", "")
-                    sigil_dict[affix_type][name.replace(" ", "_")] = f"{name} {remove_content_in_braces(desc)}"
+                            desc = remove_content_in_braces(desc)
+                    sigil_dict[affix_type][name.replace(" ", "_")] = f"{name} {desc}"
 
         # Some of the unique specific affixes are missing. Add them manually
         with open(D4LF_BASE_DIR / f"src/tools/data/custom_sigils_{language}.json", encoding="utf-8") as file:
