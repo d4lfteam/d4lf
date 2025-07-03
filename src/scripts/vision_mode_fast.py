@@ -10,7 +10,6 @@ import src.tts
 from config.helper import singleton
 from config.loader import IniConfigLoader
 from src.cam import Cam
-from src.config.ui import ResManager
 from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter, MatchedFilter
 from src.scripts.common import ASPECT_UPGRADES_LABEL, COLOR_GREEN, COLOR_ORANGE, is_ignored_item
@@ -66,8 +65,7 @@ class VisionModeFast:
         minimum_font_size = IniConfigLoader().general.minimum_overlay_font_size
         minimum_font = Font(family="Courier New", size=minimum_font_size)
         self.textbox = tk.Text(self.root, bg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0, font=minimum_font)
-        x, y = ResManager().resolution
-        self.textbox.place(x=x / 2, y=y / 5)
+        self.textbox.place(x=IniConfigLoader().general.vision_mode_coordinates[0], y=IniConfigLoader().general.vision_mode_coordinates[1])
         self.textbox.config(state=tk.DISABLED)
 
     def draw_from_queue(self):
