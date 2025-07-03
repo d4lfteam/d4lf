@@ -144,7 +144,7 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                             desc = remove_content_in_braces(desc)
                     sigil_dict[affix_type][name.replace(" ", "_")] = f"{name} {desc}"
 
-        # Some of the unique specific affixes are missing. Add them manually
+        # Add any sigils we might be missing. Right now, that's none, but we leave the option for the future
         with open(D4LF_BASE_DIR / f"src/tools/data/custom_sigils_{language}.json", encoding="utf-8") as file:
             data = json.load(file)
             for key, values in data.items():
@@ -218,7 +218,8 @@ def main(d4data_dir: Path, companion_app_dir: Path):
             data = json.load(file)
             for affix in data:
                 desc: str = affix["Description"]
-                desc = remove_content_in_braces(desc.lower().strip().replace("'", "").replace("’", ""))
+                desc = desc.lower().strip().replace("'", "").replace("’", "").replace(".", "")
+                desc = remove_content_in_braces(desc)
                 name = desc.replace(",", "").replace(" ", "_")
                 if len(desc) > 2:
                     affix_dict[name] = desc
