@@ -299,6 +299,9 @@ class GeneralModel(_IniBaseModel):
         default=VisionModeType.highlight_matches,
         description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
     )
+    vision_mode_coordinates: tuple[int, int] | None = Field(
+        default=(0, 0), description="The top left coordinates of the vision mode overlay in pixels"
+    )
 
     @field_validator("check_chest_tabs", mode="before")
     def check_chest_tabs_index(cls, v: str) -> list[int]:
@@ -335,6 +338,22 @@ class GeneralModel(_IniBaseModel):
         elif not isinstance(v, list):
             raise ValueError("must be a list or a string")
         return [MoveItemsType[v.strip()] for v in v]
+
+    @field_validator("vision_mode_coordinates", mode="before")
+    def convert_vision_mode_coordinates(cls, v: str) -> tuple[int, int]:
+        if isinstance(v, str):
+            v = v.strip("()")
+            parts = [int(part.strip()) for part in v.replace(",", " ").split()]
+            if len(parts) != 2:
+                raise ValueError("Expected two integers for coordinates.")
+            for x in parts:
+                check_greater_than_zero(x)
+            return parts[0], parts[1]
+        if isinstance(v, tuple) and len(v) == 2 and all(isinstance(x, int) for x in v):
+            for x in v:
+                check_greater_than_zero(x)
+            return v[0], v[1]
+        raise ValueError("vision_mode_coordinates must be a tuple of two integers")
 
     @model_validator(mode="before")
     def check_deprecation(cls, data) -> dict:
