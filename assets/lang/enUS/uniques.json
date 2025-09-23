@@ -143,6 +143,9 @@
     "frostburn": {
         "num_inherents": 1
     },
+    "galvanic_azurite": {
+        "num_inherents": 2
+    },
     "gathlens_birthright": {
         "num_inherents": 1
     },
@@ -153,6 +156,9 @@
         "num_inherents": 0
     },
     "gohrs_devastating_grips": {
+        "num_inherents": 0
+    },
+    "gospel_of_the_devotee": {
         "num_inherents": 0
     },
     "grasp_of_shadow": {
@@ -179,6 +185,9 @@
     "hellhammer": {
         "num_inherents": 1
     },
+    "hesha_e_kesungi": {
+        "num_inherents": 0
+    },
     "hooves_of_the_mountain_god": {
         "num_inherents": 1
     },
@@ -202,6 +211,9 @@
     },
     "kessimes_legacy": {
         "num_inherents": 1
+    },
+    "kilt_of_blackwing": {
+        "num_inherents": 0
     },
     "lidless_wall": {
         "num_inherents": 4
@@ -241,6 +253,9 @@
     },
     "ophidian_iris": {
         "num_inherents": 2
+    },
+    "orphan_maker": {
+        "num_inherents": 1
     },
     "overkill": {
         "num_inherents": 1
@@ -310,6 +325,9 @@
     },
     "saboteurs_signet": {
         "num_inherents": 2
+    },
+    "sabre_of_tsasgal": {
+        "num_inherents": 1
     },
     "sanguivor_blade_of_zir": {
         "num_inherents": 1
