@@ -5,7 +5,7 @@ If you want to add data to these files, do the following steps:
 
 1. Download the latest version of d4data: https://github.com/DiabloTools/d4data.git
 1. Download the latest version of d4companion: https://github.com/josdemmers/Diablo4Companion
-1. Run [gen_data.py](/src/tools/gen_data.py). You provide the paths of the above two dowloads. For example,
+1. Run [gen_data.py](/src/tools/gen_data.py). You provide the paths of the above two downloads. For example,
    you might run: `python gen_data.py C:\Users\you\code\d4data C:\Users\you\code\Diablo4Companion`
 
 If you do not see the new data you're expecting to see, you need to add it to the appropriate custom\_\* file. These files store any additional data that we were not able to find in d4data for any reason.

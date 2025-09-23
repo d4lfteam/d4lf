@@ -63,7 +63,9 @@ def get_random_number_idx(s: str) -> list[int]:
 
 
 def is_placeholder_or_test_name(name) -> bool:
-    if any(x in name for x in ["(ph)", "[ph]", "[wip]", "(debug)", "[_ph_]", "[ph_", "bucranis_", "boost_", "_test_", "(not_used"]):
+    if any(
+        x in name for x in ["(ph)", "[ph]", "[wip]", "(ptr)", "(debug)", "[_ph_]", "[ph_", "bucranis_", "boost_", "_test_", "(not_used"]
+    ):
         return True
 
     return name.startswith("ph_")
@@ -333,6 +335,10 @@ def generate_uniques(d4data_dir, language):
             name_clean = name.strip().replace(" ", "_").replace("\xa0", "_").lower().replace("’", "").replace("'", "").replace(",", "")
             name_clean = check_ms(name_clean)
             if name_clean in items_to_ignore or is_placeholder_or_test_name(name_clean):
+                continue
+
+            # This is a bit of a hack to handle some chaos uniques which for some reason report fewer inherents than they actually have
+            if name_clean in unique_dict:
                 continue
 
             unique_dict[name_clean] = {"num_inherents": num_inherents}
