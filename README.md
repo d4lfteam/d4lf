@@ -13,7 +13,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Filter uniques by their affix and aspect values
 - Filter sigils by blacklisting and whitelisting locations and affixes
 - Filter tributes by name or rarity
-- Automatically marks all common, magic, and rare gear as junk
+- Automatically marks all common, magic, and optionally rare gear as junk
 - Quickly move items from your stash or inventory
 - Supported resolutions are all aspect ratios between 16:10 and 21:9
 
@@ -109,6 +109,7 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | handle_cosmetics | How to handle new cosmetics that do not match any filter and are not aspect upgrades. `ignore` will ignore them, `junk` will mark them as junk |
 | handle_uniques | How to handle uniques that do not match any filter. This property does not apply to filtered uniques. All mythics are favorited regardless of filter. <br/>- `favorite`: Mark the unique as favorite and vision mode will show it as green (default)<br/>- `ignore`: Do nothing with the unique and vision mode will show it as green<br/>- `junk`: Mark any uniques that don't match any filters as junk and show as red in vision mode |
 | ignore_escalation_sigils | When filtering Sigils, should escalation sigils be ignored? |
+| junk_rares | When filtering rares, should they be automatically makred as junk? Note: If set to false, rares with socketed gems may have unexpected results when being filtered |
 | keep_aspects | - `all`: Keep all legendary items <br>- `upgrade`: Keep all legendary items that upgrade your codex of power. If the item matches no profile, it will be highlighted in orange <br>- `none`: Keep no legendary items based on aspect (they are still filtered!) <br>- |
 | mark_as_favorite | Whether to favorite matched items or not. Defaults to true |
 | minimum_overlay_font_size | The minimum font size for the vision overlay, specifically the green text that shows which filter(s) are matching. Note: For small profile names, the font may actually be larger than this size but will never go below this size. |
