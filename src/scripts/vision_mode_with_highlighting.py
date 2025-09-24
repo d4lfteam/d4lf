@@ -16,7 +16,6 @@ from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
 from src.item.data.item_type import is_sigil
-from src.item.data.rarity import is_junk_rarity
 from src.item.filter import Filter, FilterResult
 from src.item.find_descr import find_descr
 from src.item.models import Item
@@ -28,6 +27,7 @@ from src.scripts.common import (
     COLOR_ORANGE,
     COLOR_RED,
     is_ignored_item,
+    is_junk_rarity,
     reset_canvas,
 )
 from src.tts import Publisher
@@ -340,7 +340,7 @@ class VisionModeWithHighlighting:
                             # We need to get the item_descr again but this time with affix locations
                             if is_sigil(item_descr.item_type) or is_junk_rarity(item_descr.rarity):
                                 # We won't highlight specific affixes for sigils. We'll see if people complain
-                                # We're also marking all common/magic/rares as junk so no need to do the image lookup
+                                # We're also marking all common/magic/potentially rares as junk so no need to do the image lookup
                                 item_descr_with_loc = item_descr
                             else:
                                 item_descr_with_loc = src.item.descr.read_descr_tts.read_descr_mixed(cropped_descr)

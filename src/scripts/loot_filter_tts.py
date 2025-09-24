@@ -7,9 +7,9 @@ from src.config.loader import IniConfigLoader
 from src.config.models import ItemRefreshType, UnfilteredUniquesType
 from src.item.data.affix import AffixType
 from src.item.data.item_type import ItemType, is_sigil
-from src.item.data.rarity import ItemRarity, is_junk_rarity
+from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter
-from src.scripts.common import ASPECT_UPGRADES_LABEL, is_ignored_item, mark_as_favorite, mark_as_junk, reset_item_status
+from src.scripts.common import ASPECT_UPGRADES_LABEL, is_ignored_item, is_junk_rarity, mark_as_favorite, mark_as_junk, reset_item_status
 from src.ui.inventory_base import InventoryBase
 from src.utils.custom_mouse import mouse
 from src.utils.window import screenshot

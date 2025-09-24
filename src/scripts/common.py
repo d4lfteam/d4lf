@@ -6,6 +6,7 @@ import keyboard
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.item.data.item_type import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
+from src.item.data.rarity import ItemRarity
 from src.item.models import Item
 from src.utils.custom_mouse import mouse
 
@@ -86,6 +87,12 @@ def is_ignored_item(item_descr: Item):
         return True
 
     return False
+
+
+def is_junk_rarity(item_rarity: ItemRarity) -> bool:
+    if IniConfigLoader().general.junk_rares:
+        return item_rarity in [ItemRarity.Common, ItemRarity.Magic, ItemRarity.Rare]
+    return item_rarity in [ItemRarity.Common, ItemRarity.Magic]
 
 
 def correct_name(name: str) -> str | None:

@@ -28,9 +28,9 @@ from src.config.models import (
 from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect
 from src.item.data.item_type import ItemType, is_sigil
-from src.item.data.rarity import ItemRarity, is_junk_rarity
+from src.item.data.rarity import ItemRarity
 from src.item.models import Item
-from src.scripts.common import ASPECT_UPGRADES_LABEL
+from src.scripts.common import ASPECT_UPGRADES_LABEL, is_junk_rarity
 
 LOGGER = logging.getLogger(__name__)
 
