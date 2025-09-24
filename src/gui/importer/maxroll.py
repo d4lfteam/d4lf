@@ -95,14 +95,21 @@ def import_maxroll(config: ImportConfig):
             if legendary_aspect:
                 if legendary_aspect not in Dataloader().aspect_list:
                     LOGGER.warning(
-                        f"Found legendary aspect '{legendary_aspect}' that is not in our aspect data, unable to add to AspectUpgrades. Please report a bug."
+                        f"Found legendary aspect '{legendary_aspect}' that is not in our aspect data, unable to add "
+                        f"to AspectUpgrades. Please report a bug."
                     )
                 else:
                     aspect_upgrade_filters.append(legendary_aspect)
             else:
-                LOGGER.warning(
-                    f"Unable to find legendary aspect in maxroll data for {item_type}, can not automatically add to AspectUpgrades"
-                )
+                msg = f"Unable to find legendary aspect in maxroll data for {item_type}, can not automatically add to AspectUpgrades."
+                # MaxRoll reports all rares as legendaries so this is an attempt to reduce false warnings for rares
+                if len(resolved_item["explicits"]) == 2:
+                    LOGGER.debug(
+                        msg + " We suspect this item is actually a rare and maxroll is falsely reporting it as a "
+                        "legendary, please double check."
+                    )
+                else:
+                    LOGGER.warning(msg)
 
         # Standard item handling
         item_filter.affixPool = [
@@ -312,7 +319,7 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int]:
         raise MaxrollException(msg)
     try:
         planner_id = embed[0].get("data-d4-profile")
-        data_id = int(embed[0].get("data-d4-data").split(",")[0]) - 1
+        data_id = int(embed[0].get("data-d4-id").split(",")[0]) - 1
     except Exception as ex:
         LOGGER.exception(msg)
         raise MaxrollException(msg) from ex
