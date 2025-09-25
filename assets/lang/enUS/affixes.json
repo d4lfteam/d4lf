@@ -106,6 +106,7 @@
     "chance_for_core_projectiles_to_cast_twice": "chance for core projectiles to cast twice",
     "chance_for_core_skills_to_hit_twice": "chance for core skills to hit twice",
     "chance_for_corpse_explosion_to_deal_double_damage": "chance for corpse explosion to deal double damage",
+    "chance_for_crackling_energy_to_zap_up_to_three_additional_targets": "chance for crackling energy to zap up to three additional targets",
     "chance_for_crushing_hand_to_extra_hit": "chance for crushing hand to extra hit",
     "chance_for_dance_of_knives_to_deal_double_damage": "chance for dance of knives to deal double damage",
     "chance_for_dash_to_deal_double_damage": "chance for dash to deal double damage",
