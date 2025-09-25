@@ -146,6 +146,9 @@
     "galvanic_azurite": {
         "num_inherents": 2
     },
+    "galvanicazurite": {
+        "num_inherents": 2
+    },
     "gathlens_birthright": {
         "num_inherents": 1
     },
