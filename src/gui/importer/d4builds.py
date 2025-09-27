@@ -106,7 +106,11 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             if affix_obj.name is None:
                 LOGGER.error(f"Couldn't match {affix_name=}")
                 continue
-            if ("ring" in slot.lower() and any(substring in affix_name.lower() for substring in ["resistance"])) or (
+            if (
+                "ring" in slot.lower()
+                and any(substring in affix_name.lower() for substring in ["resistance"])
+                and not any(substring in affix_name.lower() for substring in ["elements"])  # Exclude resistance to all elements
+            ) or (
                 "boots" in slot.lower() and any(substring in affix_name.lower() for substring in ["max evade charges", "attacks reduce"])
             ):
                 inherents.append(affix_obj)
@@ -182,8 +186,8 @@ def _corrections(input_str: str) -> str:
             return "maximum life"
         case "total armor":
             return "armor"
-    if "ranks to" in input_str or "ranks of" in input_str:
-        return input_str.replace("ranks to", "to").replace("ranks of", "to")
+    if "ranks to" in input_str or "ranks of" in input_str or "ranks" in input_str:
+        return input_str.replace("ranks to", "to").replace("ranks of", "to").replace("ranks", "to")
     return input_str
 
 
