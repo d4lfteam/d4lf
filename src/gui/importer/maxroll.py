@@ -319,7 +319,10 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int]:
         raise MaxrollException(msg)
     try:
         planner_id = embed[0].get("data-d4-profile")
-        data_id = int(embed[0].get("data-d4-id").split(",")[0]) - 1
+        if "data-d4-id" in embed[0]:
+            data_id = int(embed[0].get("data-d4-id").split(",")[0]) - 1
+        else:
+            data_id = int(embed[0].get("data-d4-data").split(",")[0]) - 1
     except Exception as ex:
         LOGGER.exception(msg)
         raise MaxrollException(msg) from ex
