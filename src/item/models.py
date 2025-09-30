@@ -17,6 +17,7 @@ class Item:
     codex_upgrade: bool = False
     cosmetic_upgrade: bool = False
     inherent: list[Affix] = field(default_factory=list)
+    is_chaos: bool = False
     is_in_shop: bool = False
     item_type: ItemType | None = None
     name: str | None = None
@@ -55,6 +56,8 @@ class Item:
             # LOGGER.debug("Rarity not the same")
             res = False
         if self.is_in_shop != other.is_in_shop:
+            res = False
+        if self.is_chaos != other.is_chaos:
             res = False
         return res
 

@@ -226,7 +226,10 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         item.rarity = _get_item_rarity(search_string_split[0])
         return item
 
-    search_string = tts_item[1].lower().replace("ancestral", "").strip()
+    if "chaos" in tts_item[1].lower():
+        item.is_chaos = True
+
+    search_string = tts_item[1].lower().replace("ancestral", "").replace("chaos", "").strip()
     search_string = _REPLACE_COMPARE_RE.sub("", search_string).strip()
     search_string_split = search_string.split(" ")
     item.rarity = _get_item_rarity(search_string_split[0])
