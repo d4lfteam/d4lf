@@ -237,7 +237,9 @@ class Filter:
                 if not self._match_item_power(min_power=filter_item.minPower, item_power=item.power):
                     continue
                 # check aspect
-                if not self._match_item_aspect_or_affix(expected_aspect=filter_item.aspect, item_aspect=item.aspect):
+                if not self._match_item_aspect_or_affix(
+                    expected_aspect=filter_item.aspect, item_aspect=item.aspect, is_chaos=item.is_chaos
+                ):
                     continue
                 # check affixes
                 if not self._match_affixes_uniques(expected_affixes=filter_item.affix, item_affixes=item.affixes):
@@ -327,14 +329,18 @@ class Filter:
         return (item_aspect.value - item_aspect.max_value) / (item_aspect.min_value - item_aspect.max_value) <= percent_float
 
     @staticmethod
-    def _match_item_aspect_or_affix(expected_aspect: AffixAspectFilterModel | None, item_aspect: Aspect | Affix) -> bool:
+    def _match_item_aspect_or_affix(
+        expected_aspect: AffixAspectFilterModel | None, item_aspect: Aspect | Affix, is_chaos: bool = False
+    ) -> bool:
         if expected_aspect is None:
             return True
         if expected_aspect.name != item_aspect.name:
             return False
+
         if expected_aspect.value is not None:
             if item_aspect.value is None:
-                return False
+                # Chaos uniques have a fixed aspect number. There is no reason to compare it, it is always at max
+                return bool(is_chaos)
             if (expected_aspect.comparison == ComparisonType.larger and item_aspect.value < expected_aspect.value) or (
                 expected_aspect.comparison == ComparisonType.smaller and item_aspect.value > expected_aspect.value
             ):
