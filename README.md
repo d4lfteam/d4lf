@@ -417,7 +417,7 @@ Tributes:
 </details>
 
 Tribute names are lower case and spaces are replaced by underscore. Parentheses are removed. Note that United and
-Resolute identifiers are part of the names in [assets/lang/enUS/tributes.json](assets/lang/enUS/sigils.json). You can find the list of item rarities
+Resolute identifiers are part of the names in [assets/lang/enUS/tributes.json](assets/lang/enUS/tributes.json). You can find the list of item rarities
 in [rarity.py](src/item/data/rarity.py)
 
 ### Uniques
