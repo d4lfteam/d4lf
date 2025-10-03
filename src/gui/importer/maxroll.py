@@ -56,21 +56,20 @@ def import_maxroll(config: ImportConfig):
     unique_filters = []
     aspect_upgrade_filters = []
     for item_id in active_profile["items"].values():
-        item_filter = ItemFilterModel()
         resolved_item = items[str(item_id)]
-        if (item_type := _find_item_type(mapping_data=mapping_data["items"], value=resolved_item["id"])) is None:
-            LOGGER.warning(f"Couldn't find item type for {resolved_item['id']} from mapping data provided by Maxroll. Skipping item.")
-            continue
-        item_filter.itemType = [item_type]
+        resolved_item_id = resolved_item["id"]
+        # Hack to handle chaos uniques in S10. It's unclear at this time where maxroll stores data on them
+        if resolved_item_id.startswith("S10") and "Unique" in resolved_item_id:
+            resolved_item_id = "_".join(resolved_item_id.split("_")[1:-1])
         # magic/rare = 0, legendary = 1, unique = 2, mythic = 4
         # Unique aspect handling
         if (
-            resolved_item["id"] in mapping_data["items"]
-            and mapping_data["items"][resolved_item["id"]]["magicType"] in [2, 4]
+            resolved_item_id in mapping_data["items"]
+            and mapping_data["items"][resolved_item_id]["magicType"] in [2, 4]
             and config.import_uniques
         ):
             unique_model = UniqueModel()
-            unique_name = mapping_data["items"][resolved_item["id"]]["name"]
+            unique_name = mapping_data["items"][resolved_item_id]["name"]
             try:
                 unique_name = _unique_name_special_handling(unique_name)
                 unique_model.aspect = AspectUniqueFilterModel(name=unique_name)
@@ -84,6 +83,12 @@ def import_maxroll(config: ImportConfig):
             except Exception:
                 LOGGER.exception(f"Unexpected error importing unique {unique_name}, please report a bug.")
             continue
+
+        item_filter = ItemFilterModel()
+        if (item_type := _find_item_type(mapping_data=mapping_data["items"], value=resolved_item["id"])) is None:
+            LOGGER.warning(f"Couldn't find item type for {resolved_item['id']} from mapping data provided by Maxroll. Skipping item.")
+            continue
+        item_filter.itemType = [item_type]
 
         # Legendary aspect upgrade handling
         if (
