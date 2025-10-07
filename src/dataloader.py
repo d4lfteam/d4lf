@@ -17,6 +17,7 @@ class Dataloader:
     affix_sigil_dict_all = {}
     aspect_list = []
     aspect_unique_dict = {}
+    bad_tts_uniques = {}
     error_map = {}
     filter_after_keyword = []
     filter_words = []
@@ -48,6 +49,7 @@ class Dataloader:
             self.error_map = data["error_map"]
             self.filter_after_keyword = data["filter_after_keyword"]
             self.filter_words = data["filter_words"]
+            self.bad_tts_uniques = data["bad_tts_uniques"]
 
         with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/item_types.json", encoding="utf-8") as f:
             data = json.load(f)

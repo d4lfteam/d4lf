@@ -41,9 +41,6 @@
     "bane_of_ahjad-den": {
         "num_inherents": 0
     },
-    "bane_ofahjad-den": {
-        "num_inherents": 0
-    },
     "banished_lords_talisman": {
         "num_inherents": 1
     },
@@ -144,9 +141,6 @@
         "num_inherents": 1
     },
     "galvanic_azurite": {
-        "num_inherents": 2
-    },
-    "galvanicazurite": {
         "num_inherents": 2
     },
     "gathlens_birthright": {
@@ -390,9 +384,6 @@
         "num_inherents": 1
     },
     "sunstained_war-crozier": {
-        "num_inherents": 1
-    },
-    "sunstainedwar-crozier": {
         "num_inherents": 1
     },
     "tal_rashas_iridescent_loop": {

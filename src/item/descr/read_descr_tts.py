@@ -240,6 +240,8 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         starting_item_type_index = 0
     item.item_type = _get_item_type(" ".join(search_string_split[starting_item_type_index:]))
     item.name = correct_name(tts_item[0])
+    if item.name in Dataloader().bad_tts_uniques:
+        item.name = Dataloader().bad_tts_uniques[item.name]
     for _i, line in enumerate(tts_item):
         if "item power" in line.lower():
             item.power = int(find_number(line))
