@@ -12,4 +12,6 @@ If you do not see the new data you're expecting to see, you need to add it to th
 
 You can find the custom files in [src/tools/data](/src/tools/data). For example, if you need to add a new aspect, you can add it to custom_aspects_enUS.json.
 
+The only exception is corrections.json, which can be modified directly. If you find a bad TTS name for a unique that is where you fix it.
+
 After adding your custom data, run gen_data again and ensure your asset file looks how you expect. Open a PR after.
