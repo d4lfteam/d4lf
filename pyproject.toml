@@ -1,7 +1,61 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.3.0",
+    "pyinstaller>=6.16.0",
+    "pytest-env>=1.2.0",
+    "pytest-mock>=3.15.1",
+    "pytest-pythonpath>=0.7.3",
+    "pytest-xdist>=3.8.0",
+    "pytest>=8.4.2",
+    "typing-extensions>=4.15.0"
+]
+
+[project]
+dependencies = [
+    "beautifultable>=1.1.0",
+    "colorama>=0.4.6",
+    "httpx>=0.28.1",
+    "keyboard>=0.13.5",
+    "lxml>=6.0.2",
+    "mouse>=0.7.1",
+    "mss>=10.1.0",
+    "natsort>=8.4.0",
+    "numpy>=2.3.4",
+    "opencv-python==4.11.0.86",
+    "pillow>=12.0.0",
+    "psutil>=7.1.0",
+    "pydantic>=2.12.3",
+    "pydantic-numpy>=8.0.1",
+    "pydantic-yaml>=1.6.0",
+    "pyqt6>=6.9.1",
+    "pytweening>=1.2.0",
+    "pywin32>=311 ; sys_platform == 'win32'",
+    "pyyaml>=6.0.3",
+    "rapidfuzz>=3.14.1",
+    "ruamel-yaml~=0.18.0",
+    "ruff>=0.14.1",
+    "selenium>=4.36.0",
+    "seleniumbase>=4.42.6",
+    "tk>=0.1.0",
+    "webdriver-manager>=4.0.2"
+]
+dynamic = ["version"]
+name = "d4lf"
+requires-python = ">=3.14"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.hatch.version]
+path = "src/__init__.py"
+
 [tool.ruff]
 indent-width = 4
 line-length = 140
-target-version = "py313"
 
 [tool.ruff.format]
 docstring-code-format = true

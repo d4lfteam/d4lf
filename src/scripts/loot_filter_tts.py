@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import TYPE_CHECKING
 
 import src.item.descr.read_descr_tts
 from src.cam import Cam
@@ -10,9 +11,11 @@ from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter
 from src.scripts.common import ASPECT_UPGRADES_LABEL, is_ignored_item, is_junk_rarity, mark_as_favorite, mark_as_junk, reset_item_status
-from src.ui.inventory_base import InventoryBase
 from src.utils.custom_mouse import mouse
 from src.utils.window import screenshot
+
+if TYPE_CHECKING:
+    from src.ui.inventory_base import InventoryBase
 
 LOGGER = logging.getLogger(__name__)
 

@@ -1,12 +1,16 @@
 import logging
 import time
 from enum import Enum
+from typing import TYPE_CHECKING
 
 import keyboard
-import numpy as np
 
-from src.template_finder import SearchArgs, SearchResult
 from src.utils.misc import run_until_condition
+
+if TYPE_CHECKING:
+    import numpy as np
+
+    from src.template_finder import SearchArgs, SearchResult
 
 LOGGER = logging.getLogger(__name__)
 

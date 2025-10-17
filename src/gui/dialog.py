@@ -18,9 +18,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.models import AffixFilterCountModel, AffixFilterModel, DynamicItemFilterModel, ItemFilterModel, ItemType, TributeFilterModel
+from src.config.models import AffixFilterCountModel, AffixFilterModel, DynamicItemFilterModel, ItemFilterModel, TributeFilterModel
 from src.dataloader import Dataloader
 from src.gui.config_tab import IgnoreScrollWheelComboBox
+from src.item.data.item_type import ItemType
 
 
 class IgnoreScrollWheelSpinBox(QSpinBox):

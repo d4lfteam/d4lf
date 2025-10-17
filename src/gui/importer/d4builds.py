@@ -2,9 +2,9 @@ import datetime
 import logging
 import re
 import time
+from typing import TYPE_CHECKING
 
 import lxml.html
-from selenium.webdriver.chromium.webdriver import ChromiumDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -21,11 +21,15 @@ from src.gui.importer.common import (
     retry_importer,
     save_as_profile,
 )
-from src.gui.importer.importer_config import ImportConfig
 from src.item.data.affix import Affix
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.scripts.common import correct_name
+
+if TYPE_CHECKING:
+    from selenium.webdriver.chromium.webdriver import ChromiumDriver
+
+    from src.gui.importer.importer_config import ImportConfig
 
 LOGGER = logging.getLogger(__name__)
 

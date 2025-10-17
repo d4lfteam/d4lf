@@ -1,6 +1,5 @@
 !config/bnip/.gitkeep
 *.bak
-*.lock
 *.log
 *.pyc
 *.pyo
@@ -13,6 +12,7 @@
 .pytest_cache/
 .venv
 .vs/
+*.egg-info/
 /tts/saapi
 /tts/x64
 __pycache__/

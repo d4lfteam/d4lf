@@ -3,6 +3,7 @@ import os
 import sys
 import time
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import yaml
 from pydantic import ValidationError
@@ -26,11 +27,13 @@ from src.config.models import (
     UniqueModel,
 )
 from src.item.data.affix import Affix, AffixType
-from src.item.data.aspect import Aspect
 from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity
-from src.item.models import Item
 from src.scripts.common import ASPECT_UPGRADES_LABEL, is_junk_rarity
+
+if TYPE_CHECKING:
+    from src.item.data.aspect import Aspect
+    from src.item.models import Item
 
 LOGGER = logging.getLogger(__name__)
 

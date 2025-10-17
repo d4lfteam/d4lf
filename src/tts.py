@@ -96,7 +96,7 @@ def read_pipe() -> None:
                 print(f"Error while reading data: {e}")
 
         win32file.CloseHandle(handle)
-        print("TTS client disconnected")
+        LOGGER.debug("TTS client disconnected")
         CONNECTED = False
 
 
@@ -117,7 +117,7 @@ def find_item_start(data: list[str]) -> int | None:
     return None
 
 
-def filter_data(data: str) -> True:
+def filter_data(data: str) -> bool:
     return any(word in data for word in TO_FILTER)
 
 

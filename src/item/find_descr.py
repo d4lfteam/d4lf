@@ -1,12 +1,14 @@
 from copy import copy
-
-import numpy as np
+from typing import TYPE_CHECKING
 
 from src.config.ui import ResManager
 from src.item.data.rarity import ItemRarity
 from src.template_finder import SearchResult, search
 from src.utils.image_operations import crop
 from src.utils.roi_operations import fit_roi_to_window_size
+
+if TYPE_CHECKING:
+    import numpy as np
 
 map_template_rarity = {
     "item_common_top_left": ItemRarity.Common,

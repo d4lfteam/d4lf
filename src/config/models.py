@@ -3,15 +3,18 @@
 import enum
 import logging
 import sys
+from typing import TYPE_CHECKING
 
-import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
-from pydantic_numpy import np_array_pydantic_annotated_typing
+from pydantic_numpy import np_array_pydantic_annotated_typing  # noqa: TC002
 from pydantic_numpy.model import NumpyModel
 
 from src.config.helper import check_greater_than_zero, validate_hotkey
-from src.item.data.item_type import ItemType
+from src.item.data.item_type import ItemType  # noqa: TC001
 from src.item.data.rarity import ItemRarity
+
+if TYPE_CHECKING:
+    import numpy as np
 
 MODULE_LOGGER = logging.getLogger(__name__)
 HIDE_FROM_GUI_KEY = "hide_from_gui"
@@ -126,7 +129,7 @@ class AffixFilterCountModel(BaseModel):
         return check_greater_than_zero(v)
 
     @model_validator(mode="after")
-    def model_validator(self) -> "AffixFilterCountModel":
+    def model_validator(self) -> AffixFilterCountModel:
         # If minCount and maxCount are not set, we assume that the lengths of the count list is the only thing that matters.
         # To not show up in the model.dict() we need to remove them from the model_fields_set property
         if "minCount" not in self.model_fields_set and "maxCount" not in self.model_fields_set:
@@ -189,7 +192,7 @@ class AdvancedOptionsModel(_IniBaseModel):
     )
 
     @model_validator(mode="after")
-    def key_must_be_unique(self) -> "AdvancedOptionsModel":
+    def key_must_be_unique(self) -> AdvancedOptionsModel:
         keys = [
             self.exit_key,
             self.force_refresh_only,
@@ -229,9 +232,9 @@ class CharModel(_IniBaseModel):
 
 
 class ColorsModel(_IniBaseModel):
-    material_color: "HSVRangeModel"
-    unique_gold: "HSVRangeModel"
-    unusable_red: "HSVRangeModel"
+    material_color: HSVRangeModel
+    unique_gold: HSVRangeModel
+    unusable_red: HSVRangeModel
 
 
 class BrowserType(enum.StrEnum):
@@ -368,7 +371,7 @@ class HSVRangeModel(_IniBaseModel):
         raise IndexError("Index out of range")
 
     @model_validator(mode="after")
-    def check_interval_sanity(self) -> "HSVRangeModel":
+    def check_interval_sanity(self) -> HSVRangeModel:
         if self.h_s_v_min[0] > self.h_s_v_max[0]:
             raise ValueError(f"invalid hue range [{self.h_s_v_min[0]}, {self.h_s_v_max[0]}]")
         if self.h_s_v_min[1] > self.h_s_v_max[1]:
@@ -459,7 +462,7 @@ class SigilFilterModel(BaseModel):
     whitelist: list[SigilConditionModel] = []
 
     @model_validator(mode="after")
-    def data_integrity(self) -> "SigilFilterModel":
+    def data_integrity(self) -> SigilFilterModel:
         errors = [item for item in self.blacklist if item in self.whitelist]
         if errors:
             raise ValueError(f"blacklist and whitelist must not overlap: {errors}")
@@ -549,7 +552,7 @@ class ProfileModel(BaseModel):
     Uniques: list[UniqueModel] = []
 
     @model_validator(mode="before")
-    def aspects_must_exist(self) -> "ProfileModel":
+    def aspects_must_exist(self) -> ProfileModel:
         from src.dataloader import Dataloader  # This on module level would be a circular import, so we do it lazy for now
 
         if "AspectUpgrades" not in self:

@@ -4,15 +4,18 @@ import os
 import threading
 import time
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import cv2
-import numpy as np
 import psutil
 from win32gui import ClientToScreen, EnumWindows, GetClientRect, GetWindowText
 from win32process import GetWindowThreadProcessId
 
 from src.cam import Cam
 from src.logger import LOG_DIR
+
+if TYPE_CHECKING:
+    import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 

@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import TYPE_CHECKING
 
 import keyboard
 
@@ -7,8 +8,10 @@ from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.item.data.item_type import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
 from src.item.data.rarity import ItemRarity
-from src.item.models import Item
 from src.utils.custom_mouse import mouse
+
+if TYPE_CHECKING:
+    from src.item.models import Item
 
 LOGGER = logging.getLogger(__name__)
 
