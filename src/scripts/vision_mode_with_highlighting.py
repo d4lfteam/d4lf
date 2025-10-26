@@ -181,7 +181,7 @@ class VisionModeWithHighlighting:
                 if item_desc == self.current_item:
                     self.is_cleared = False
                     if task[0] == "empty":
-                        self.draw_empty_outline(task[2], task[3])
+                        self.draw_empty_outline(task[2], task[3], task[4])
                     if task[0] == "match":
                         self.draw_match_outline(task[2], task[3], task[4])
                     if task[0] == "codex_upgrade":
@@ -193,13 +193,16 @@ class VisionModeWithHighlighting:
 
         self.canvas.after(10, self.draw_from_queue)
 
-    def draw_empty_outline(self, item_roi, color):
+    def draw_empty_outline(self, item_roi, color, text: str | None):
         reset_canvas(self.root, self.canvas)
 
         # Make the canvas gray for "found the item"
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
         self.canvas.config(height=h, width=w)
         self.create_signal_rect(self.canvas, w, self.thick, color)
+
+        if text:
+            self.draw_text(self.canvas, text, color, h, 5, w // 2)
 
         self.root.geometry(f"{w}x{h}+{x + self.screen_off_x}+{y + self.screen_off_y}")
         self.root.update_idletasks()
@@ -319,7 +322,10 @@ class VisionModeWithHighlighting:
                         ignored_item = is_ignored_item(item_descr)
                         # Make the canvas gray for "found the item" or blue for "ignored this item"
                         if ignored_item:
-                            self.request_empty_outline(item_descr, item_roi, COLOR_BLUE)
+                            if item_descr.sanctified:
+                                self.request_empty_outline(item_descr, item_roi, COLOR_BLUE, "Sanctified (Not Supported)")
+                            else:
+                                self.request_empty_outline(item_descr, item_roi, COLOR_BLUE)
                         else:
                             self.request_empty_outline(item_descr, item_roi, COLOR_GREY)
 
@@ -390,8 +396,8 @@ class VisionModeWithHighlighting:
     def request_clear(self):
         self.queue.put(("clear",))
 
-    def request_empty_outline(self, item_descr, item_roi, color):
-        self.queue.put(("empty", item_descr, item_roi, color))
+    def request_empty_outline(self, item_descr, item_roi, color, text: str | None = None):
+        self.queue.put(("empty", item_descr, item_roi, color, text))
 
     def request_match_box(self, item_descr, item_roi, should_keep_res, item_descr_with_affix):
         self.queue.put(("match", item_descr, item_roi, should_keep_res, item_descr_with_affix))
