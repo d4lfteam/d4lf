@@ -1,8 +1,8 @@
 import copy
 import logging
 import re
+from typing import TYPE_CHECKING
 
-import numpy as np
 import rapidfuzz
 
 import src.tts
@@ -17,8 +17,12 @@ from src.item.descr.text import find_number
 from src.item.descr.texture import find_affix_bullets, find_aspect_bullet, find_seperator_short, find_seperators_long
 from src.item.models import Item
 from src.scripts.common import correct_name
-from src.template_finder import TemplateMatch
 from src.utils.window import screenshot
+
+if TYPE_CHECKING:
+    import numpy as np
+
+    from src.template_finder import TemplateMatch
 
 _AFFIX_RE = re.compile(
     r"(?P<affixvalue1>[0-9]+)[^0-9]+\[(?P<minvalue1>[0-9]+) - (?P<maxvalue1>[0-9]+)]|"

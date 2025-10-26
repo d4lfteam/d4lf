@@ -1,6 +1,9 @@
-from pytest_mock import MockerFixture
+import typing
 
 from src.utils.roi_operations import bounding_box, get_center, intersect, is_in_roi
+
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 
 def test_get_center():

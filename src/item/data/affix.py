@@ -20,7 +20,7 @@ class Affix:
     type: AffixType = AffixType.normal
     value: float | None = None
 
-    def __eq__(self, other: "Affix") -> bool:
+    def __eq__(self, other: Affix) -> bool:
         if not isinstance(other, Affix):
             return False
         return (

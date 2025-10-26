@@ -23,7 +23,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.models import AffixFilterCountModel, AffixFilterModel, ComparisonType, DynamicItemFilterModel, ItemType
+from src.config.models import AffixFilterCountModel, AffixFilterModel, ComparisonType, DynamicItemFilterModel
 from src.dataloader import Dataloader
 from src.gui.collapsible_widget import Container
 from src.gui.dialog import (
@@ -35,7 +35,7 @@ from src.gui.dialog import (
     MinGreaterDialog,
     MinPowerDialog,
 )
-from src.item.data.item_type import is_armor, is_jewelry, is_weapon
+from src.item.data.item_type import ItemType, is_armor, is_jewelry, is_weapon
 
 LOGGER = logging.getLogger(__name__)
 

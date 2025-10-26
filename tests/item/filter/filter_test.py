@@ -1,16 +1,21 @@
+import typing
+
 import pytest
 from natsort import natsorted
-from pytest_mock import MockerFixture
 
 import tests.item.filter.data.filters as filters
 from src.config.models import SigilPriority
 from src.item.filter import Filter, FilterResult
-from src.item.models import Item
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.aspects import aspects
 from tests.item.filter.data.sigils import sigil_jalal, sigil_priority, sigils
 from tests.item.filter.data.tributes import tributes
 from tests.item.filter.data.uniques import aspect_only_mythic_tests, simple_mythics, uniques
+
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
+
+    from src.item.models import Item
 
 
 def _create_mocked_filter(mocker: MockerFixture) -> Filter:

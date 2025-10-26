@@ -4,14 +4,12 @@ import logging
 import re
 import shutil
 import time
-from collections.abc import Callable
-from typing import Literal, TypeVar
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 import httpx
 from ruamel.yaml import YAML, StringIO
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.chromium.webdriver import ChromiumDriver
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
@@ -21,6 +19,11 @@ from src import __version__
 from src.config.loader import IniConfigLoader
 from src.config.models import BrowserType, ProfileModel
 from src.item.data.item_type import ItemType
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from selenium.webdriver.chromium.webdriver import ChromiumDriver
 
 LOGGER = logging.getLogger(__name__)
 

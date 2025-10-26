@@ -8,10 +8,8 @@ jobs:
   github-releases-to-discord:
     runs-on: ubuntu-latest
     steps:
-      # From: https://github.com/SethCohen/github-releases-to-discord
-      - uses: actions/checkout@v4
-
-      - uses: SethCohen/github-releases-to-discord@v1.16.2
+      - uses: actions/checkout@v5
+      - uses: SethCohen/github-releases-to-discord@v1.19
         with:
           webhook_url: ${{ secrets.DISCORD_WEBHOOK }}
           color: "2105893"

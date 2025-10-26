@@ -5,6 +5,7 @@ import threading
 import time
 import tkinter as tk
 from tkinter.font import Font
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -18,7 +19,6 @@ from src.config.ui import ResManager
 from src.item.data.item_type import is_sigil
 from src.item.filter import Filter, FilterResult
 from src.item.find_descr import find_descr
-from src.item.models import Item
 from src.scripts.common import (
     ASPECT_UPGRADES_LABEL,
     COLOR_BLUE,
@@ -38,6 +38,9 @@ from src.utils.custom_mouse import mouse
 from src.utils.image_operations import compare_histograms
 from src.utils.process_handler import kill_thread
 from src.utils.window import screenshot
+
+if TYPE_CHECKING:
+    from src.item.models import Item
 
 LOGGER = logging.getLogger(__name__)
 

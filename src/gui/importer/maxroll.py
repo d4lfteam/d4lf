@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from typing import TYPE_CHECKING
 
 import lxml.html
 
@@ -8,11 +9,13 @@ import src.logger
 from src.config.models import AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel, ItemFilterModel, ProfileModel, UniqueModel
 from src.dataloader import Dataloader
 from src.gui.importer.common import add_to_profiles, get_with_retry, match_to_enum, retry_importer, save_as_profile
-from src.gui.importer.importer_config import ImportConfig
 from src.item.data.affix import Affix
 from src.item.data.item_type import ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.scripts.common import correct_name
+
+if TYPE_CHECKING:
+    from src.gui.importer.importer_config import ImportConfig
 
 LOGGER = logging.getLogger(__name__)
 

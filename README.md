@@ -28,7 +28,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 ### Installation and quick start guide
 
-- Download and extract the latest version (.zip) from the releases: https://github.com/aeon0/d4lf/releases
+- Download and extract the latest version (.zip) from the releases: https://github.com/d4lfteam/d4lf/releases
 - Copy `saapi64.dll` from the downloaded folder to your "Diablo IV" directory
   - To find your D4 directory:
     - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
@@ -99,41 +99,41 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 
 ### params.ini
 
-| [general] | Description |
-|---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| profiles | A set of profiles separated by comma. d4lf will look for these yaml files in config/profiles and in C:/Users/WINDOWS_USER/.d4lf/profiles |
-| auto_use_temper_manuals | When using the loot filter, should found temper manuals be automatically used? Note: Will not work with stash open. |
-| browser | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported. |
-| check_chest_tabs | Which chest tabs will be checked and filtered for items in case chest is open when starting the filter. You need to buy all slots. Counting is done left to right. E.g. 1,2,4 will check tab 1, tab 2, tab 4 |
-| full_dump | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not |
-| handle_cosmetics | How to handle new cosmetics that do not match any filter and are not aspect upgrades. `ignore` will ignore them, `junk` will mark them as junk |
-| handle_uniques | How to handle uniques that do not match any filter. This property does not apply to filtered uniques. All mythics are favorited regardless of filter. <br/>- `favorite`: Mark the unique as favorite and vision mode will show it as green (default)<br/>- `ignore`: Do nothing with the unique and vision mode will show it as green<br/>- `junk`: Mark any uniques that don't match any filters as junk and show as red in vision mode |
-| ignore_escalation_sigils | When filtering Sigils, should escalation sigils be ignored? |
-| junk_rares | When filtering rares, should they be automatically makred as junk? Note: If set to false, rares with socketed gems may have unexpected results when being filtered |
-| keep_aspects | - `all`: Keep all legendary items <br>- `upgrade`: Keep all legendary items that upgrade your codex of power. If the item matches no profile, it will be highlighted in orange <br>- `none`: Keep no legendary items based on aspect (they are still filtered!) <br>- |
-| mark_as_favorite | Whether to favorite matched items or not. Defaults to true |
-| minimum_overlay_font_size | The minimum font size for the vision overlay, specifically the green text that shows which filter(s) are matching. Note: For small profile names, the font may actually be larger than this size but will never go below this size. |
-| move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything |
-| run_vision_mode_on_startup | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey |
-| s7_do_not_junk_ancestral_legendaries | Do not mark ancestral legendaries as junk. This is to help with the season 7 Slayer seasonal challenge "Precious Shards" |
-| vision_mode_type | Which vision mode you would like to use?. `highlight_matches` does the classic green highlighting of affixes on screen, but is slightly slower. `fast` just puts green text on screen but is very fast and works with controllers. |
+| [general]                                         | Description                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| profiles                                          | A set of profiles separated by comma. d4lf will look for these yaml files in config/profiles and in C:/Users/WINDOWS_USER/.d4lf/profiles                                                                                                                                                                                                                                                                                                 |
+| auto_use_temper_manuals                           | When using the loot filter, should found temper manuals be automatically used? Note: Will not work with stash open.                                                                                                                                                                                                                                                                                                                      |
+| browser                                           | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported.                                                                                                                                                                                                                                                                                                     |
+| check_chest_tabs                                  | Which chest tabs will be checked and filtered for items in case chest is open when starting the filter. You need to buy all slots. Counting is done left to right. E.g. 1,2,4 will check tab 1, tab 2, tab 4                                                                                                                                                                                                                             |
+| full_dump                                         | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not                                                                                                                                                                                                                                                                                                                                |
+| handle_cosmetics                                  | How to handle new cosmetics that do not match any filter and are not aspect upgrades. `ignore` will ignore them, `junk` will mark them as junk                                                                                                                                                                                                                                                                                           |
+| handle_uniques                                    | How to handle uniques that do not match any filter. This property does not apply to filtered uniques. All mythics are favorited regardless of filter. <br/>- `favorite`: Mark the unique as favorite and vision mode will show it as green (default)<br/>- `ignore`: Do nothing with the unique and vision mode will show it as green<br/>- `junk`: Mark any uniques that don't match any filters as junk and show as red in vision mode |
+| ignore_escalation_sigils                          | When filtering Sigils, should escalation sigils be ignored?                                                                                                                                                                                                                                                                                                                                                                              |
+| junk_rares                                        | When filtering rares, should they be automatically makred as junk? Note: If set to false, rares with socketed gems may have unexpected results when being filtered                                                                                                                                                                                                                                                                       |
+| keep_aspects                                      | - `all`: Keep all legendary items <br>- `upgrade`: Keep all legendary items that upgrade your codex of power. If the item matches no profile, it will be highlighted in orange <br>- `none`: Keep no legendary items based on aspect (they are still filtered!) <br>-                                                                                                                                                                    |
+| mark_as_favorite                                  | Whether to favorite matched items or not. Defaults to true                                                                                                                                                                                                                                                                                                                                                                               |
+| minimum_overlay_font_size                         | The minimum font size for the vision overlay, specifically the green text that shows which filter(s) are matching. Note: For small profile names, the font may actually be larger than this size but will never go below this size.                                                                                                                                                                                                      |
+| move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything                                                                                                             |
+| run_vision_mode_on_startup                        | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey                                                                                                                                                                                                                                                                                              |
+| s7_do_not_junk_ancestral_legendaries              | Do not mark ancestral legendaries as junk. This is to help with the season 7 Slayer seasonal challenge "Precious Shards"                                                                                                                                                                                                                                                                                                                 |
+| vision_mode_type                                  | Which vision mode you would like to use?. `highlight_matches` does the classic green highlighting of affixes on screen, but is slightly slower. `fast` just puts green text on screen but is very fast and works with controllers.                                                                                                                                                                                                       |
 
-| [char] | Description |
-|-----------|-----------------------------------|
+| [char]    | Description                       |
+| --------- | --------------------------------- |
 | inventory | Your hotkey for opening inventory |
 
-| [advanced_options] | Description |
-|------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| move_to_inv | Hotkey for moving items from stash to inventory |
-| move_to_chest | Hotkey for moving items from inventory to stash |
-| run_filter | Hotkey to start/stop filtering items |
-| run_filter_force_refresh | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset |
-| run_vision_mode | Hotkey to start/stop vision mode |
-| force_refresh_only | Hotkey to reset all item statuses without running a filter after |
-| exit_key | Hotkey to exit d4lf.exe |
-| log_lvl | Logging level. Can be any of [debug, info, warning, error, critical] |
-| process_name | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted |
-| vision_mode_only | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled. |
+| [advanced_options]       | Description                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| move_to_inv              | Hotkey for moving items from stash to inventory                                                                          |
+| move_to_chest            | Hotkey for moving items from inventory to stash                                                                          |
+| run_filter               | Hotkey to start/stop filtering items                                                                                     |
+| run_filter_force_refresh | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                               |
+| run_vision_mode          | Hotkey to start/stop vision mode                                                                                         |
+| force_refresh_only       | Hotkey to reset all item statuses without running a filter after                                                         |
+| exit_key                 | Hotkey to exit d4lf.exe                                                                                                  |
+| log_lvl                  | Logging level. Can be any of [debug, info, warning, error, critical]                                                     |
+| process_name             | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted |
+| vision_mode_only         | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.            |
 
 ### GUI
 
@@ -545,33 +545,20 @@ in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json). Occasionally 
 
 ## Develop
 
-### Python Setup
-
-- You can use plain python or something like [miniconda](https://docs.conda.io/projects/miniconda/en/latest/).
-
-Python setup (windows, linux venv activation differs):
+### Setup using uv
 
 If you intend to submit PRs, create your own fork of d4lf and clone that in the steps below.
 
-```bash
-git clone https://github.com/d4lfteam/d4lf
-cd d4lf
-python -m venv venv
-venv\Scripts\activate
-python -m pip install -r requirements.txt
-python -m src.main
-```
-
-Conda setup:
+Before beginning, [install uv](https://docs.astral.sh/uv/getting-started/installation/#winget).
 
 ```bash
 git clone https://github.com/d4lfteam/d4lf
 cd d4lf
-conda env create -f environment.yml
-conda activate d4lf
-python -m pip install -r requirements.txt
+uv sync
 python -m src.main
 ```
+
+If you receive an error about missing Visual Studio code, follow the link it provides. Install Visual Studio Build Tools 2022 with the defaults selected and also select "MSVC VS 2022 C++ ..." and "Windows 11 SDK ...". Restart your terminal and try again.
 
 ### Formatting & Linting
 

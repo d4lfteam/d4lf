@@ -18,11 +18,9 @@ jobs:
         )
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@v5
       - name: Setup env
         uses: ./.github/actions/setup_env
-
       - name: Build & Zip exe
         id: build_zip
         shell: powershell
@@ -33,13 +31,11 @@ jobs:
           $folderName = "d4lf"
           $zipName = "d4lf_v" + $version
           Compress-Archive -Path $folderName -DestinationPath "$zipName.zip"
-
       - name: Create Tag
         shell: powershell
         run: |
           git tag "v${{ env.VERSION }}"
           git push origin "v${{ env.VERSION }}"
-
       - name: Check if beta
         id: check_beta
         shell: powershell
@@ -49,7 +45,6 @@ jobs:
           } else {
             echo "IS_BETA=false" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
           }
-
       - uses: softprops/action-gh-release@v2
         with:
           files: d4lf_v*.zip

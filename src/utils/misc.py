@@ -5,12 +5,14 @@ import re
 import string
 import time
 import unicodedata
-from collections.abc import Callable
 from functools import wraps
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 import cv2
 import numpy as np
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 T = TypeVar("T")
 

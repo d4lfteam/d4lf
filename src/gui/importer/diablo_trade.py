@@ -2,11 +2,10 @@ import dataclasses
 import datetime
 import json
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import lxml.html
-import seleniumbase
 from pydantic import ValidationError
 
 import src.logger
@@ -23,6 +22,9 @@ from src.item.data.affix import Affix
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
 from src.item.descr.text import clean_str, closest_match
+
+if TYPE_CHECKING:
+    import seleniumbase
 
 LOGGER = logging.getLogger(__name__)
 

@@ -1,12 +1,14 @@
 import os
+import typing
 
 import pytest
-from pytest_mock import MockerFixture
 
 from src.dataloader import Dataloader
 from src.gui.importer.d4builds import import_d4builds
 from src.gui.importer.importer_config import ImportConfig
 
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 URLS = [

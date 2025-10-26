@@ -1,5 +1,6 @@
 import logging
 import re
+from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import lxml.html
@@ -17,11 +18,13 @@ from src.gui.importer.common import (
     retry_importer,
     save_as_profile,
 )
-from src.gui.importer.importer_config import ImportConfig
 from src.item.data.affix import Affix
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.scripts.common import correct_name
+
+if TYPE_CHECKING:
+    from src.gui.importer.importer_config import ImportConfig
 
 LOGGER = logging.getLogger(__name__)
 

@@ -1,12 +1,15 @@
 import logging
+from typing import TYPE_CHECKING
 
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import MoveItemsType
 from src.ui.char_inventory import CharInventory
-from src.ui.inventory_base import ItemSlot
 from src.ui.stash import Stash
 from src.utils.custom_mouse import mouse
+
+if TYPE_CHECKING:
+    from src.ui.inventory_base import ItemSlot
 
 LOGGER = logging.getLogger(__name__)
 

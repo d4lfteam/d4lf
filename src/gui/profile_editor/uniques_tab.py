@@ -21,11 +21,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.models import AffixFilterModel, AspectUniqueFilterModel, ComparisonType, ItemType, UniqueModel
+from src.config.models import AffixFilterModel, AspectUniqueFilterModel, ComparisonType, UniqueModel
 from src.dataloader import Dataloader
 from src.gui.dialog import DeleteItem, IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox, MinGreaterDialog, MinPowerDialog
 from src.gui.profile_editor.affixes_tab import AffixWidget
-from src.item.data.item_type import is_armor, is_jewelry, is_weapon
+from src.item.data.item_type import ItemType, is_armor, is_jewelry, is_weapon
 
 UNIQUES_TABNAME = "Uniques"
 

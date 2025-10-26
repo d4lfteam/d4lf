@@ -29,7 +29,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
 void InitPipe() { hPipe = CreateFile(_T("\\\\.\\pipe\\d4lf"), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL); }
 
-extern "C" bool SA_SayW(const wchar_t *str) {
+extern "C" bool SA_SayW(const wchar_t* str) {
     if (!str) return false;
 
     std::string narrowStr;
@@ -43,7 +43,7 @@ extern "C" bool SA_SayW(const wchar_t *str) {
     return true;
 }
 
-extern "C" bool SA_BrlShowTextW(const wchar_t *str) { return true; }
+extern "C" bool SA_BrlShowTextW(const wchar_t* str) { return true; }
 
 extern "C" bool SA_IsRunning() { return true; }
 

@@ -1,11 +1,13 @@
 import os
+import typing
 
 import pytest
-from pytest_mock import MockerFixture
 
 from src.dataloader import Dataloader
 from src.gui.importer.diablo_trade import import_diablo_trade
 
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 URLS = [
