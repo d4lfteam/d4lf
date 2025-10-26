@@ -28,7 +28,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 ### Installation and quick start guide
 
-- Download and extract the latest version (.zip) from the releases: https://github.com/aeon0/d4lf/releases
+- Download and extract the latest version (.zip) from the releases: https://github.com/d4lfteam/d4lf/releases
 - Copy `saapi64.dll` from the downloaded folder to your "Diablo IV" directory
   - To find your D4 directory:
     - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
@@ -545,33 +545,20 @@ in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json). Occasionally 
 
 ## Develop
 
-### Python Setup
-
-- You can use plain python or something like [miniconda](https://docs.conda.io/projects/miniconda/en/latest/).
-
-Python setup (windows, linux venv activation differs):
+### Setup using uv
 
 If you intend to submit PRs, create your own fork of d4lf and clone that in the steps below.
 
-```bash
-git clone https://github.com/d4lfteam/d4lf
-cd d4lf
-python -m venv venv
-venv\Scripts\activate
-python -m pip install -r requirements.txt
-python -m src.main
-```
-
-Conda setup:
+Before beginning, [install uv](https://docs.astral.sh/uv/getting-started/installation/#winget).
 
 ```bash
 git clone https://github.com/d4lfteam/d4lf
 cd d4lf
-conda env create -f environment.yml
-conda activate d4lf
-python -m pip install -r requirements.txt
+uv sync
 python -m src.main
 ```
+
+If you receive an error about missing Visual Studio code, follow the link it provides. Install Visual Studio Build Tools 2022 with the defaults selected and also select "MSVC VS 2022 C++ ..." and "Windows 11 SDK ...". Restart your terminal and try again.
 
 ### Formatting & Linting
 
