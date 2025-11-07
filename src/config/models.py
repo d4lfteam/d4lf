@@ -547,7 +547,7 @@ class ProfileModel(BaseModel):
     name: str
     Affixes: list[DynamicItemFilterModel] = []
     AspectUpgrades: list[str] = []
-    Sigils: SigilFilterModel | None = None
+    Sigils: SigilFilterModel = SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist)
     Tributes: list[TributeFilterModel] = []
     Uniques: list[UniqueModel] = []
 
