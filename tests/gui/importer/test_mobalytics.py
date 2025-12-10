@@ -12,21 +12,18 @@ if typing.TYPE_CHECKING:
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 URLS = [
-    "https://mobalytics.gg/diablo-4/builds/barbarian/barbarian-leveling-guide",
-    "https://mobalytics.gg/diablo-4/builds/barbarian/bash?coreTab=assigned-skills&equipmentTab=aspects-and-uniques&variantTab=1",
-    "https://mobalytics.gg/diablo-4/builds/barbarian/bash?coreTab=assigned-skills&equipmentTab=aspects-and-uniques&variantTab=2",
-    "https://mobalytics.gg/diablo-4/builds/barbarian/ron-array-bash-fury-barb?coreTab=assigned-skills&equipmentTab=aspects-and-uniques&variantTab=0",
-    "https://mobalytics.gg/diablo-4/builds/druid/screamhearts-quickshift-tornado",
-    "https://mobalytics.gg/diablo-4/builds/druid/wind-shear",
-    "https://mobalytics.gg/diablo-4/builds/druid/wind-shear?coreTab=assigned-skills&equipmentTab=aspects-and-uniques&variantTab=1",
-    "https://mobalytics.gg/diablo-4/builds/necromancer/p4wnyhof-golem-slammer",
-    "https://mobalytics.gg/diablo-4/builds/necromancer/ramping-minions",
-    "https://mobalytics.gg/diablo-4/builds/rogue/heartseeker",
-    "https://mobalytics.gg/diablo-4/builds/sorcerer/firewall-scorched-earth",
-    "https://mobalytics.gg/diablo-4/builds/sorcerer/kripp-s-ultimate-fire-sorc",
-    "https://mobalytics.gg/diablo-4/builds/sorcerer/nicktew-s4-blizzard",
-    "https://mobalytics.gg/diablo-4/profile/3aeadb5c-522e-47b9-9a17-cdeaaa58909c/builds/4bb9a04e-da1e-449f-91ab-ca29e5727a20",
-    "https://mobalytics.gg/diablo-4/profile/bd7d970b-813c-4f98-b8b5-d5ca637f7ec0/builds/9ed37972-f738-4d1e-a231-e9f0f367c848",
+    # No frills and no uniques
+    "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb",
+    # Is a variant of the one above
+    "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb?ws-ngf5-1=activeVariantId%2C7a9c6d51-18e9-4090-a804-7b73ff00879d",
+    # A standard build with uniques
+    "https://mobalytics.gg/diablo-4/builds/necromancer-skeletal-warrior-minions",
+    # This one has no variants at all, just to make sure that works too
+    "https://mobalytics.gg/diablo-4/profile/screamheart/builds/15x-thrash-out-of-date",
+    # This one has an item type for the weapon
+    "https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
+    # This has two rogue offhand weapons
+    "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
 ]
 
 

@@ -1,8 +1,9 @@
+import json
 import logging
 import re
-from typing import TYPE_CHECKING
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import unquote
 
+import jsonpath
 import lxml.html
 
 import src.logger
@@ -12,33 +13,22 @@ from src.gui.importer.common import (
     add_to_profiles,
     fix_offhand_type,
     fix_weapon_type,
-    get_class_name,
     get_with_retry,
     match_to_enum,
     retry_importer,
     save_as_profile,
 )
+from src.gui.importer.importer_config import ImportConfig
 from src.item.data.affix import Affix
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.scripts.common import correct_name
 
-if TYPE_CHECKING:
-    from src.gui.importer.importer_config import ImportConfig
-
 LOGGER = logging.getLogger(__name__)
 
-BUILD_GUIDE_ACTIVE_LOADOUT_XPATH = "//*[@class='m-fsuco1']"
 BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
-BUILD_GUIDE_NAME_XPATH = "//*[@class='m-a53mf3']"
-IMAGE_XPATH = ".//img"
-ITEM_AFFIXES_EMPTY_XPATH = ".//*[@class='m-19epikr']"
-ITEM_EMPTY_XPATH = ".//*[@class='m-16arb5z']"
-ITEM_NAME_XPATH = ".//*[@class='m-ndz0o2']"
-STATS_GRID_OCCUPIED_XPATH = ".//*[@class='m-0']"
-STATS_GRID_XPATH = "//*[@class='m-4tf4x5']"
-STATS_LIST_XPATH = ".//*[@class='m-qodgh2']"
-TEMPERING_ICON_XPATH = ".//*[contains(@src, 'Tempreing.svg')]"
+SCRIPT_XPATH = "//script"
+BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
 
 
 class MobalyticsException(Exception):
@@ -58,17 +48,46 @@ def import_mobalytics(config: ImportConfig):
     except ConnectionError as exc:
         LOGGER.exception(msg := "Couldn't get build")
         raise MobalyticsException(msg) from exc
-    data = lxml.html.fromstring(r.text)
-    build_elem = data.xpath(BUILD_GUIDE_NAME_XPATH)
-    if not build_elem:
-        LOGGER.error(msg := "No build found")
+    variant_id = url.split(",")[1] if "activeVariantId" in url else None
+    raw_html_data = lxml.html.fromstring(r.text)
+    # The build is shoved in a massive JSON in one of the script tags. We find that json now.
+    scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
+    full_script_data_json = None
+    for script in scripts_elem:
+        if script.text and script.text.strip().startswith(BUILD_SCRIPT_PREFIX):
+            full_script_data_json = json.loads(script.text.strip().replace(BUILD_SCRIPT_PREFIX, "")[:-1])
+            break
+
+    if not full_script_data_json:
+        LOGGER.error(
+            msg
+            := "No script containing build data was found. This means Mobalytics has changed how they present data, please submit a bung."
+        )
         raise MobalyticsException(msg)
-    build_name = build_elem[0].tail
-    class_name = get_class_name(input_str=build_elem[0].text)
-    if not (stats_grid := data.xpath(STATS_GRID_XPATH)):
-        LOGGER.error(msg := "No stats grid found")
+
+    # This gets the name of the root document, ie the one that will contain the name of the build
+    root_document_name = jsonpath.findall("$..['Diablo4Query:{}'].documents..data.__ref", full_script_data_json)[0]
+    build_name = jsonpath.findall(f"$..['{root_document_name}'].data.name", full_script_data_json)[0]
+    if not build_name:
+        LOGGER.error(msg := "No build name found")
         raise MobalyticsException(msg)
-    if not (items := stats_grid[0].xpath(STATS_GRID_OCCUPIED_XPATH)):
+    class_name = jsonpath.findall(f"$..['{root_document_name}'].tags.data[?@.groupSlug=='class'].name", full_script_data_json)[0].lower()
+    if not class_name:
+        LOGGER.error(msg := "No class name found")
+        raise MobalyticsException(msg)
+    if variant_id:
+        items = jsonpath.findall(
+            f"$..['{root_document_name}'].data.buildVariants.values[?@.id=='{variant_id}'].genericBuilder.slots", full_script_data_json
+        )[0]
+    else:
+        items = jsonpath.findall(f"$..['{root_document_name}'].data.buildVariants.values[0].genericBuilder.slots", full_script_data_json)[0]
+        variant_id = jsonpath.findall(f"$..['{root_document_name}'].data.buildVariants.values[0].id", full_script_data_json)[0]
+
+    variant_name = jsonpath.findall(f"..['NgfDocumentCmWidgetContentVariantsV1DataChildVariant:{variant_id}'].title", full_script_data_json)
+    if variant_name:
+        build_name = f"{build_name} {variant_name[0]}"
+
+    if not items:
         LOGGER.error(msg := "No items found")
         raise MobalyticsException(msg)
     finished_filters = []
@@ -76,75 +95,71 @@ def import_mobalytics(config: ImportConfig):
     aspect_upgrade_filters = []
     for item in items:
         item_filter = ItemFilterModel()
-        if not (name := item.xpath(ITEM_NAME_XPATH)):
-            if item.xpath(ITEM_EMPTY_XPATH):
-                continue
+        entity_type = jsonpath.findall(".gameEntity.type", item)[0]
+        if entity_type not in ["aspects", "uniqueItems"]:
+            continue
+        is_unique = entity_type == "uniqueItems"
+        if not (item_name := str(jsonpath.findall(".gameEntity.entity.name", item)[0])):
             LOGGER.error(msg := "No item name found")
             raise MobalyticsException(msg)
-        if not (slot_elem := item.xpath(IMAGE_XPATH)):
-            LOGGER.error(msg := "No item_type found")
+        if not (slot_type := str(jsonpath.findall(".gameSlotSlug", item)[0])):
+            LOGGER.error(msg := "No slot type found")
             raise MobalyticsException(msg)
-        slot = slot_elem[0].attrib["alt"]
-        unique_name = name[0].text if "aspect" not in name[0].text.lower() else ""
-        legendary_aspect = _get_legendary_aspect(name[0].text)
-        if legendary_aspect:
-            aspect_upgrade_filters.append(legendary_aspect)
-        if not (stats := item.xpath(STATS_LIST_XPATH)):
-            if item.xpath(ITEM_AFFIXES_EMPTY_XPATH):
-                if unique_name:
-                    LOGGER.warning(f"Unique {unique_name} had no affixes listed for it, only the aspect will be imported.")
-                else:
-                    continue
-            else:
-                LOGGER.error(msg := "No stats found")
-                raise MobalyticsException(msg)
-        item_type = None
-        affixes = []
-        inherents = []
-        is_weapon = "weapon" in slot.lower()
-        for stat in stats:
-            if stat.xpath(TEMPERING_ICON_XPATH):
-                continue
-            affix_name = stat.xpath("./span")[0].text
-            if is_weapon and (x := fix_weapon_type(input_str=affix_name)) is not None:
-                item_type = x
-                continue
-            if "offhand" in slot.lower() and (x := fix_offhand_type(input_str=affix_name, class_str=class_name)) is not None:
-                item_type = x
-                if any(
-                    substring in affix_name.lower() for substring in ["focus", "offhand", "shield", "totem"]
-                ):  # special line indicating the item type
-                    continue
-            affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=affix_name)), Dataloader().affix_dict))
-            if affix_obj.name is None:
-                LOGGER.error(f"Couldn't match {affix_name=}")
-                continue
-            if (x := stat.xpath("./span/span")) and "implicit" in x[0].text.lower():
-                inherents.append(affix_obj)
-            else:
-                affixes.append(affix_obj)
+        if not is_unique:
+            legendary_aspect = _get_legendary_aspect(item_name)
+            if legendary_aspect:
+                aspect_upgrade_filters.append(legendary_aspect)
+        raw_affixes = jsonpath.findall(".gameEntity.modifiers.gearStats[*].__ref", item)
+        raw_inherents = jsonpath.findall(".gameEntity.modifiers.implicitStats[*].__ref", item)
+        if is_unique and not raw_affixes:
+            LOGGER.warning(f"Unique {item_name} had no affixes listed for it, only the aspect will be imported.")
+        elif not raw_affixes and not raw_inherents:
+            LOGGER.debug(f"Skipping {slot_type} because it had no stats provided.")
+            continue
 
-        if unique_name:
+        item_type = None
+        # Item type is hidden in the inherents. If it's in there, then we assume there are no further inherents
+        is_weapon = "weapon" in slot_type
+        for inherent in raw_inherents:
+            affix_name = str(inherent).split(":")[1]
+            potential_item_type = " ".join(affix_name.split("-")[:2]).lower()
+            if is_weapon and (x := fix_weapon_type(input_str=potential_item_type)) is not None:
+                item_type = x
+                break
+            if "offhand" in slot_type and (x := fix_offhand_type(input_str=affix_name.replace("-", " "), class_str=class_name)) is not None:
+                item_type = x
+                break
+        if item_type:
+            raw_inherents.clear()
+
+        # Druid and sorc have a default offhand item type that we may have missed if there were no inherents
+        if not item_type and "offhand" in slot_type:
+            item_type = fix_offhand_type("", class_name)
+
+        item_type = match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot_type)) if item_type is None else item_type
+        if item_type is None:
+            if is_weapon:
+                LOGGER.warning(f"Couldn't find an item_type for weapon slot {slot_type}, defaulting to all weapon types instead.")
+                item_filter.itemType = WEAPON_TYPES
+            else:
+                item_filter.itemType = []
+                LOGGER.warning(f"Couldn't match item_type: {slot_type}. Please edit manually")
+        else:
+            item_filter.itemType = [item_type]
+
+        affixes = _convert_raw_to_affixes(raw_affixes)
+        inherents = _convert_raw_to_affixes(raw_inherents)
+
+        if is_unique:
             unique_model = UniqueModel()
             try:
-                unique_model.aspect = AspectUniqueFilterModel(name=unique_name)
+                unique_model.aspect = AspectUniqueFilterModel(name=item_name)
                 if affixes:
                     unique_model.affix = [AffixFilterModel(name=x.name) for x in affixes]
                 unique_filters.append(unique_model)
             except Exception:
-                LOGGER.exception(f"Unexpected error importing unique {unique_name}, please report a bug.")
+                LOGGER.exception(f"Unexpected error importing unique {item_name}, please report a bug.")
             continue
-
-        item_type = match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot.lower())) if item_type is None else item_type
-        if item_type is None:
-            if is_weapon:
-                LOGGER.warning(f"Couldn't find an item_type for weapon slot {slot}, defaulting to all weapon types instead.")
-                item_filter.itemType = WEAPON_TYPES
-            else:
-                item_filter.itemType = []
-                LOGGER.warning(f"Couldn't match item_type: {slot}. Please edit manually")
-        else:
-            item_filter.itemType = [item_type]
 
         item_filter.affixPool = [
             AffixFilterCountModel(
@@ -156,7 +171,7 @@ def import_mobalytics(config: ImportConfig):
         item_filter.minPower = 100
         if inherents:
             item_filter.inherentPool = [AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])]
-        filter_name_template = item_filter.itemType[0].name if item_type else slot.replace(" ", "")
+        filter_name_template = item_filter.itemType[0].name if item_type else slot_type.replace(" ", "")
         filter_name = filter_name_template
         i = 2
         while any(filter_name == next(iter(x)) for x in finished_filters):
@@ -172,7 +187,6 @@ def import_mobalytics(config: ImportConfig):
     if config.custom_file_name:
         build_name = config.custom_file_name
 
-    build_name = build_name if build_name else f"{class_name}_{data.xpath(BUILD_GUIDE_ACTIVE_LOADOUT_XPATH)[0].text()}"
     corrected_file_name = save_as_profile(file_name=build_name, profile=profile, url=url)
 
     if config.add_to_profiles:
@@ -189,13 +203,7 @@ def _corrections(input_str: str) -> str:
 
 
 def _fix_input_url(url: str) -> str:
-    parsed_url = urlparse(url)
-    query_dict = parse_qs(parsed_url.query)
-    new_query_dict = {"equipmentTab": ["gear-stats"]}
-    if "variantTab" in query_dict:
-        new_query_dict["variantTab"] = query_dict["variantTab"]
-    new_query_string = urlencode(new_query_dict, doseq=True)
-    return urlunparse((parsed_url.scheme, parsed_url.netloc, parsed_url.path, parsed_url.params, new_query_string, parsed_url.fragment))
+    return unquote(url)
 
 
 def _get_legendary_aspect(name: str) -> str:
@@ -209,11 +217,36 @@ def _get_legendary_aspect(name: str) -> str:
     return ""
 
 
+def _convert_raw_to_affixes(raw_stats: list[str]) -> list[Affix]:
+    result = []
+    for stat in raw_stats:
+        affix_name = stat.split(":")[1].replace("-", "_")
+        affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=affix_name)), Dataloader().affix_dict))
+        if affix_obj.name is None:
+            LOGGER.error(f"Couldn't match {affix_name=}")
+            continue
+        result.append(affix_obj)
+    return result
+
+
 if __name__ == "__main__":
     src.logger.setup()
     URLS = [
-        "https://mobalytics.gg/diablo-4/builds/barbarian/bash",
-        "https://mobalytics.gg/diablo-4/profile/3aeadb5c-522e-47b9-9a17-cdeaaa58909c/builds/4bb9a04e-da1e-449f-91ab-ca29e5727a20",
+        # No frills and no uniques
+        "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb",
+        # Is a variant of the one above
+        "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb?ws-ngf5-1=activeVariantId%2C7a9c6d51-18e9-4090-a804-7b73ff00879d",
+        # A standard build with uniques
+        "https://mobalytics.gg/diablo-4/builds/necromancer-skeletal-warrior-minions",
+        # This one has no variants at all, just to make sure that works too
+        "https://mobalytics.gg/diablo-4/profile/screamheart/builds/15x-thrash-out-of-date",
+        # This one has an item type for the weapon
+        "https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
+        # This has a necro offhand
+        "https://mobalytics.gg/diablo-4/builds/necromancer-kripp-golem-summoner",
+        # This has two rogue offhand weapons
+        "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
     ]
     for X in URLS:
-        import_mobalytics(url=X)
+        config = ImportConfig(X, True, True, False, None)
+        import_mobalytics(config)

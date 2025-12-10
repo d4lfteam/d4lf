@@ -151,10 +151,7 @@ class SigilWidget(Container):
 class SigilsTab(QWidget):
     def __init__(self, sigil_model: SigilFilterModel, parent=None):
         super().__init__(parent)
-        if sigil_model is None:
-            self.sigil_model = SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.whitelist)
-        else:
-            self.sigil_model = sigil_model
+        self.sigil_model = sigil_model
         self.loaded = False
 
     def load(self):
