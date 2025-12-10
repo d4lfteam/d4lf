@@ -43,7 +43,7 @@ dependencies = [
     "selenium>=4.36.0",
     "seleniumbase>=4.42.6",
     "tk>=0.1.0",
-    "webdriver-manager>=4.0.2",
+    "webdriver-manager>=4.0.2"
 ]
 dynamic = ["version"]
 name = "d4lf"
