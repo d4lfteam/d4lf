@@ -19,6 +19,7 @@ dependencies = [
     "beautifultable>=1.1.0",
     "colorama>=0.4.6",
     "httpx>=0.28.1",
+    "jsonpath>=0.82.2",
     "keyboard>=0.13.5",
     "lxml>=6.0.2",
     "mouse>=0.7.1",
@@ -32,6 +33,7 @@ dependencies = [
     "pydantic-numpy>=8.0.1",
     "pydantic-yaml>=1.6.0",
     "pyqt6>=6.9.1",
+    "python-jsonpath>=2.0.1",
     "pytweening>=1.2.0",
     "pywin32>=311 ; sys_platform == 'win32'",
     "pyyaml>=6.0.3",
@@ -41,7 +43,7 @@ dependencies = [
     "selenium>=4.36.0",
     "seleniumbase>=4.42.6",
     "tk>=0.1.0",
-    "webdriver-manager>=4.0.2"
+    "webdriver-manager>=4.0.2",
 ]
 dynamic = ["version"]
 name = "d4lf"

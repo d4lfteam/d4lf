@@ -83,7 +83,7 @@ def fix_offhand_type(input_str: str, class_str: str) -> ItemType | None:
     if "druid" in class_str:
         return ItemType.OffHandTotem
     if "necro" in class_str:
-        if "focus" in input_str or ("offhand" in input_str and "cooldown reduction" in input_str):
+        if "focus" in input_str or ("offhand" in input_str and "lucky hit chance" in input_str):
             return ItemType.Focus
         if "shield" in input_str:
             return ItemType.Shield
