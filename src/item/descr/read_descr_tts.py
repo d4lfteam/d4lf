@@ -233,6 +233,9 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     if "chaos" in tts_item[1].lower():
         item.is_chaos = True
 
+    if "sanctified" in tts_item[3].lower() or "sanctified" in tts_item[4].lower():
+        item.sanctified = True
+
     search_string = tts_item[1].lower().replace("ancestral", "").replace("chaos", "").strip()
     search_string = _REPLACE_COMPARE_RE.sub("", search_string).strip()
     search_string_split = search_string.split(" ")
@@ -453,6 +456,7 @@ def read_descr() -> Item | None:
             is_non_sigil_mapping(item.item_type),
             is_socketable(item.item_type),
             item.item_type in [ItemType.Material, ItemType.Tribute, ItemType.Cache, ItemType.LairBossKey],
+            item.sanctified,
         ]
     ):
         return item

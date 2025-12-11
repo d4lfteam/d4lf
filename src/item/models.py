@@ -25,6 +25,7 @@ class Item:
     name: str | None = None
     power: int | None = None
     rarity: ItemRarity | None = None
+    sanctified: bool = False
 
     def __eq__(self, other):
         if not isinstance(other, Item):
