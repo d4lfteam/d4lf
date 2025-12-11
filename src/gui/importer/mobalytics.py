@@ -133,7 +133,7 @@ def import_mobalytics(config: ImportConfig):
             raw_inherents.clear()
 
         # Druid and sorc have a default offhand item type that we may have missed if there were no inherents
-        if not item_type:
+        if not item_type and "offhand" in slot_type:
             item_type = fix_offhand_type("", class_name)
 
         item_type = match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot_type)) if item_type is None else item_type
