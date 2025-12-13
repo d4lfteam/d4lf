@@ -14,6 +14,12 @@
     "andariels_visage": {
         "num_inherents": 1
     },
+    "arcadia": {
+        "num_inherents": 0
+    },
+    "argent_veil": {
+        "num_inherents": 0
+    },
     "arreats_bearing": {
         "num_inherents": 0
     },
@@ -44,6 +50,9 @@
     "banished_lords_talisman": {
         "num_inherents": 0
     },
+    "bastion_of_sir_matthias": {
+        "num_inherents": 3
+    },
     "battle_trance": {
         "num_inherents": 1
     },
@@ -65,6 +74,9 @@
     "blue_rose": {
         "num_inherents": 0
     },
+    "cathedrals_song": {
+        "num_inherents": 3
+    },
     "chainscourged_mail": {
         "num_inherents": 0
     },
@@ -81,6 +93,9 @@
         "num_inherents": 0
     },
     "cruors_embrace": {
+        "num_inherents": 0
+    },
+    "dawnfire": {
         "num_inherents": 0
     },
     "deathless_visage": {
@@ -149,6 +164,9 @@
     "galvanic_azurite": {
         "num_inherents": 0
     },
+    "gate_of_the_red_dawn": {
+        "num_inherents": 3
+    },
     "gathlens_birthright": {
         "num_inherents": 1
     },
@@ -176,6 +194,9 @@
     "greaves_of_the_empty_tomb": {
         "num_inherents": 2
     },
+    "griswolds_opus": {
+        "num_inherents": 1
+    },
     "hail_of_verglas": {
         "num_inherents": 1
     },
@@ -189,6 +210,12 @@
         "num_inherents": 1
     },
     "hellhammer": {
+        "num_inherents": 1
+    },
+    "herald_of_zakarum": {
+        "num_inherents": 4
+    },
+    "heralds_morningstar": {
         "num_inherents": 1
     },
     "hesha_e_kesungi": {
@@ -213,6 +240,12 @@
         "num_inherents": 0
     },
     "jacinth_shell": {
+        "num_inherents": 0
+    },
+    "judgment_of_auriel": {
+        "num_inherents": 0
+    },
+    "judicants_glaivehelm": {
         "num_inherents": 0
     },
     "kessimes_legacy": {
@@ -242,8 +275,14 @@
     "mantle_of_mountains_fury": {
         "num_inherents": 1
     },
+    "mantle_of_the_grey": {
+        "num_inherents": 0
+    },
+    "march_of_the_stalwart_soul": {
+        "num_inherents": 1
+    },
     "melted_heart_of_selig": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "mjölnic_ryng": {
         "num_inherents": 0
@@ -308,6 +347,9 @@
     "razorplate": {
         "num_inherents": 0
     },
+    "red_sermon": {
+        "num_inherents": 1
+    },
     "ring_of_mendeln": {
         "num_inherents": 0
     },
@@ -344,6 +386,9 @@
     "sabre_of_tsasgal": {
         "num_inherents": 1
     },
+    "sanctis_of_kethamar": {
+        "num_inherents": 0
+    },
     "sanguivor_blade_of_zir": {
         "num_inherents": 1
     },
@@ -355,6 +400,9 @@
     },
     "scoundrels_leathers": {
         "num_inherents": 1
+    },
+    "seal_of_the_second_trumpet": {
+        "num_inherents": 0
     },
     "sepazontec": {
         "num_inherents": 1
@@ -401,7 +449,13 @@
     "sunbirds_gorget": {
         "num_inherents": 0
     },
+    "sundered_night": {
+        "num_inherents": 2
+    },
     "sunstained_war-crozier": {
+        "num_inherents": 1
+    },
+    "supplication": {
         "num_inherents": 1
     },
     "tal_rashas_iridescent_loop": {
@@ -473,6 +527,9 @@
     "vox_omnium": {
         "num_inherents": 1
     },
+    "ward_of_the_white_dove": {
+        "num_inherents": 3
+    },
     "waxing_gibbous": {
         "num_inherents": 1
     },
@@ -488,6 +545,9 @@
     "wound_drinker": {
         "num_inherents": 0
     },
+    "wreath_of_auric_laurel": {
+        "num_inherents": 0
+    },
     "writhing_band_of_trickery": {
         "num_inherents": 0
     },
@@ -498,6 +558,9 @@
         "num_inherents": 0
     },
     "yens_blessing": {
+        "num_inherents": 1
+    },
+    "yens_blessing_(legacy)": {
         "num_inherents": 1
     }
 }
