@@ -161,64 +161,6 @@ items = [
             rarity=ItemRarity.Unique,
         ),
     ),
-    # I broke barbarian weapons so this should ensure that doesn't happen again
-    (
-        [
-            "ELDER MACE OF INNER CALM",
-            "Legendary Two-Handed Mace (Bludgeoning)",
-            "212 Item Power",
-            "36 Damage Per Second  (-90)",
-            "[33 - 49] Damage per Hit",
-            "0.90 Attacks per Second (Slow)",
-            "+33.0% Overpower Damage [33.0]%",
-            "+10 Maximum Life [9 - 11]",
-            "+10.0% Damage [10.0 - 11.0]%",
-            "Lucky Hit: Up to a 15% Chance to Heal +3 Life [2 - 4]",
-            "Deal 19%[x] [10 - 20]% increased damage. Triple this bonus after standing still for 3 seconds.",
-            "Requires Level 17Barbarian. Only. Vessel of Hatred Item",
-            "Sell Value: 7,833 Gold",
-            "Durability: 100/100. Tempers: 5/5",
-            "Right mouse button",
-        ],
-        Item(
-            affixes=[
-                Affix(
-                    max_value=11.0, min_value=9.0, name="maximum_life", text="+10 Maximum Life [9 - 11]", type=AffixType.normal, value=10.0
-                ),
-                Affix(
-                    max_value=11.0, min_value=10.0, name="damage", text="+10.0% Damage [10.0 - 11.0]%", type=AffixType.normal, value=10.0
-                ),
-                Affix(
-                    max_value=4.0,
-                    min_value=2.0,
-                    name="lucky_hit_up_to_a_chance_to_heal_life",
-                    text="Lucky Hit: Up to a 15% Chance to Heal +3 Life [2 - 4]",
-                    type=AffixType.normal,
-                    value=3.0,
-                ),
-            ],
-            aspect=Aspect(
-                name="of_inner_calm", text="Deal 19%[x] [10 - 20]% increased damage. Triple this bonus after standing still for 3 seconds."
-            ),
-            codex_upgrade=False,
-            cosmetic_upgrade=False,
-            inherent=[
-                Affix(
-                    max_value=33.0,
-                    min_value=33.0,
-                    name="overpower_damage",
-                    text="+33.0% Overpower Damage [33.0]%",
-                    type=AffixType.inherent,
-                    value=33.0,
-                )
-            ],
-            is_in_shop=False,
-            item_type=ItemType.Mace2H,
-            name="elder_mace_of_inner_calm",
-            power=212,
-            rarity=ItemRarity.Legendary,
-        ),
-    ),
 ]
 
 
