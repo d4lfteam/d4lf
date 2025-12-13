@@ -49,11 +49,9 @@ LOGGER = logging.getLogger(__name__)
 # Returns a tuple with the number of affixes.  It's in the format (inherent_num, affixes_num)
 def _get_affix_counts(item: Item) -> (int, int):
     inherent_num = 0
-    affixes_num = 3 if item.rarity in [ItemRarity.Legendary, ItemRarity.Rare] else 4
-    if is_weapon(item.item_type) or item.item_type in [ItemType.Amulet, ItemType.Boots]:
+    affixes_num = 3 if item.rarity in [ItemRarity.Rare] else 4
+    if is_weapon(item.item_type) or item.item_type in [ItemType.Boots]:
         inherent_num = 1
-    elif item.item_type in [ItemType.Ring]:
-        inherent_num = 2
     elif item.item_type in [ItemType.Shield]:
         inherent_num = 4
 
@@ -280,18 +278,17 @@ def _get_affixes_from_tts_section(tts_section: list[str], item: Item, length: in
     base_value = armory if armory else masterwork if masterwork else legacy_item if legacy_item else item_power
     if is_weapon(item.item_type):
         start = dps + 2
-    elif is_jewelry(item.item_type):
-        start = base_value
-    elif is_armor(item.item_type):
+    elif is_jewelry(item.item_type) or is_armor(item.item_type):
         start = base_value + 1
     start += 1
 
     # Rares have either 2 or 3 affixes so we have to do special handling to figure out where exactly the affixes end.
     # This will also grab up slotted gems but we really don't have much choice
-    if item.rarity == ItemRarity.Rare and any(
-        tts_section[start + length - 1].lower().startswith(x) for x in ["empty socket", "requires level", "properties lost when equipped"]
-    ):
-        length = length - 1
+    # As of Season 11 I don't think this is true anymore but temporarily leaving this here
+    # if item.rarity == ItemRarity.Rare and any(
+    #     tts_section[start + length - 1].lower().startswith(x) for x in ["empty socket", "requires level", "properties lost when equipped"]
+    # ):
+    #     length = length - 1
 
     return tts_section[start : start + length]
 
