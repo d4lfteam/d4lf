@@ -98,22 +98,36 @@ def import_mobalytics(config: ImportConfig):
         entity_type = jsonpath.findall(".gameEntity.type", item)[0]
         if entity_type not in ["aspects", "uniqueItems"]:
             continue
-        is_unique = entity_type == "uniqueItems"
         if not (item_name := str(jsonpath.findall(".gameEntity.entity.name", item)[0])):
             LOGGER.error(msg := "No item name found")
             raise MobalyticsException(msg)
         if not (slot_type := str(jsonpath.findall(".gameSlotSlug", item)[0])):
             LOGGER.error(msg := "No slot type found")
             raise MobalyticsException(msg)
-        if not is_unique:
-            legendary_aspect = _get_legendary_aspect(item_name)
-            if legendary_aspect:
-                aspect_upgrade_filters.append(legendary_aspect)
-        raw_affixes = jsonpath.findall(".gameEntity.modifiers.gearStats[*].__ref", item)
-        raw_inherents = jsonpath.findall(".gameEntity.modifiers.implicitStats[*].__ref", item)
-        if is_unique and not raw_affixes:
-            LOGGER.warning(f"Unique {item_name} had no affixes listed for it, only the aspect will be imported.")
-        elif not raw_affixes and not raw_inherents:
+
+        raw_affixes = jsonpath.findall(".gameEntity.modifiers.gearStats[*].id", item)
+        raw_inherents = jsonpath.findall(".gameEntity.modifiers.implicitStats[*].id", item)
+
+        is_unique = entity_type == "uniqueItems"
+        if is_unique:
+            if not raw_affixes:
+                LOGGER.warning(f"Unique {item_name} had no affixes listed for it, only the aspect will be imported.")
+            affixes = _convert_raw_to_affixes(raw_affixes)
+            unique_model = UniqueModel()
+            try:
+                unique_model.aspect = AspectUniqueFilterModel(name=item_name)
+                if affixes:
+                    unique_model.affix = [AffixFilterModel(name=x.name) for x in affixes]
+                unique_filters.append(unique_model)
+            except Exception:
+                LOGGER.exception(f"Unexpected error importing unique {item_name}, please report a bug.")
+            continue
+
+        legendary_aspect = _get_legendary_aspect(item_name)
+        if legendary_aspect:
+            aspect_upgrade_filters.append(legendary_aspect)
+
+        if not raw_affixes and not raw_inherents:
             LOGGER.debug(f"Skipping {slot_type} because it had no stats provided.")
             continue
 
@@ -121,12 +135,11 @@ def import_mobalytics(config: ImportConfig):
         # Item type is hidden in the inherents. If it's in there, then we assume there are no further inherents
         is_weapon = "weapon" in slot_type
         for inherent in raw_inherents:
-            affix_name = str(inherent).split(":")[1]
-            potential_item_type = " ".join(affix_name.split("-")[:2]).lower()
+            potential_item_type = " ".join(inherent.split("-")[:2]).lower()
             if is_weapon and (x := fix_weapon_type(input_str=potential_item_type)) is not None:
                 item_type = x
                 break
-            if "offhand" in slot_type and (x := fix_offhand_type(input_str=affix_name.replace("-", " "), class_str=class_name)) is not None:
+            if "offhand" in slot_type and (x := fix_offhand_type(input_str=inherent.replace("-", " "), class_str=class_name)) is not None:
                 item_type = x
                 break
         if item_type:
@@ -149,17 +162,6 @@ def import_mobalytics(config: ImportConfig):
 
         affixes = _convert_raw_to_affixes(raw_affixes)
         inherents = _convert_raw_to_affixes(raw_inherents)
-
-        if is_unique:
-            unique_model = UniqueModel()
-            try:
-                unique_model.aspect = AspectUniqueFilterModel(name=item_name)
-                if affixes:
-                    unique_model.affix = [AffixFilterModel(name=x.name) for x in affixes]
-                unique_filters.append(unique_model)
-            except Exception:
-                LOGGER.exception(f"Unexpected error importing unique {item_name}, please report a bug.")
-            continue
 
         item_filter.affixPool = [
             AffixFilterCountModel(
@@ -220,10 +222,9 @@ def _get_legendary_aspect(name: str) -> str:
 def _convert_raw_to_affixes(raw_stats: list[str]) -> list[Affix]:
     result = []
     for stat in raw_stats:
-        affix_name = stat.split(":")[1].replace("-", "_")
-        affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=affix_name)), Dataloader().affix_dict))
+        affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=stat)), Dataloader().affix_dict))
         if affix_obj.name is None:
-            LOGGER.error(f"Couldn't match {affix_name=}")
+            LOGGER.error(f"Couldn't match {stat=}")
             continue
         result.append(affix_obj)
     return result
@@ -236,8 +237,6 @@ if __name__ == "__main__":
         "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb",
         # Is a variant of the one above
         "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb?ws-ngf5-1=activeVariantId%2C7a9c6d51-18e9-4090-a804-7b73ff00879d",
-        # A standard build with uniques
-        "https://mobalytics.gg/diablo-4/builds/necromancer-skeletal-warrior-minions",
         # This one has no variants at all, just to make sure that works too
         "https://mobalytics.gg/diablo-4/profile/screamheart/builds/15x-thrash-out-of-date",
         # This one has an item type for the weapon
