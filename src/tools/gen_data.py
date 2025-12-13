@@ -64,7 +64,8 @@ def get_random_number_idx(s: str) -> list[int]:
 
 def is_placeholder_or_test_name(name) -> bool:
     if any(
-        x in name for x in ["(ph)", "[ph]", "[wip]", "(ptr)", "(debug)", "[_ph_]", "[ph_", "bucranis_", "boost_", "_test_", "(not_used"]
+        x in name
+        for x in ["(ph)", "[ph]", "[wip]", "(ptr)", "(debug)", "[_ph_]", "[ph_", "bucranis_", "boost_", "_test_", "(not_used", "(dns)"]
     ):
         return True
 
