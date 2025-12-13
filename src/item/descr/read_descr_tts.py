@@ -53,7 +53,7 @@ def _get_affix_counts(item: Item) -> (int, int):
     if is_weapon(item.item_type) or item.item_type in [ItemType.Boots]:
         inherent_num = 1
     elif item.item_type in [ItemType.Shield]:
-        inherent_num = 4
+        inherent_num = 3
 
     if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
         # Uniques can have variable amounts of inherents.

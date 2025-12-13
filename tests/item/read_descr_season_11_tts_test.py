@@ -1,6 +1,8 @@
 import pytest
 
 import src.tts
+from src.item.data.affix import Affix, AffixType
+from src.item.data.aspect import Aspect
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
 from src.item.descr.read_descr_tts import read_descr
@@ -82,6 +84,111 @@ items = [
             power=800,
             rarity=ItemRarity.Legendary,
             sanctified=True,
+        ),
+    ),
+    (
+        [
+            "ACCELERATING BONESCALE SHIELD",
+            "Legendary Shield",
+            "750 Item Power",
+            "844 Armor (-22.7% Toughness)",
+            "41% Blocked Damage Reduction [41]% (+41%)",
+            "20% Block Chance [20]% (+20%)",
+            "+100% Main Hand Weapon Damage [100]% (+100%)",
+            "+261 Maximum Life [244 - 272] (-1,109)",
+            "+1 Essence On Kill +[1] (+1)",
+            "+10.0% Fortify Generation [7.0 - 12.0]% (+10.0%)",
+            "+322 Lightning Resistance [321 - 350] (+322)",
+            "Critical Strikes with Core Skills increase your Attack Speed by 18.0%[+] [10.0 - 25.0]% for 5 seconds.",
+            "Properties lost when equipped:",
+            "+2 to Finality",
+            "+188.0% Critical Strike Damage",
+            "+124.0% Shadow Damage",
+            "+236 Intelligence",
+            "Legendary Power",
+            "Socket (2)",
+            "Requires Level 60",
+            "Sell Value: 23,647 Gold",
+            "Durability: 100/100. Tempers: 3/3",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(
+                    max_value=272.0,
+                    min_value=244.0,
+                    name="maximum_life",
+                    text="+261 Maximum Life [244 - 272] (-1,109)",
+                    type=AffixType.normal,
+                    value=261.0,
+                ),
+                Affix(
+                    max_value=1.0,
+                    min_value=1.0,
+                    name="essence_on_kill",
+                    text="+1 Essence On Kill +[1] (+1)",
+                    type=AffixType.normal,
+                    value=1.0,
+                ),
+                Affix(
+                    max_value=12.0,
+                    min_value=7.0,
+                    name="fortify_generation",
+                    text="+10.0% Fortify Generation [7.0 - 12.0]% (+10.0%)",
+                    type=AffixType.normal,
+                    value=10.0,
+                ),
+                Affix(
+                    max_value=350.0,
+                    min_value=321.0,
+                    name="lightning_resistance",
+                    text="+322 Lightning Resistance [321 - 350] (+322)",
+                    type=AffixType.normal,
+                    value=322.0,
+                ),
+            ],
+            aspect=Aspect(
+                name="accelerating",
+                min_value=None,
+                max_value=None,
+                text="Critical Strikes with Core Skills increase your Attack Speed by 18.0%[+] [10.0 - 25.0]% for 5 seconds.",
+                value=None,
+            ),
+            codex_upgrade=False,
+            cosmetic_upgrade=False,
+            inherent=[
+                Affix(
+                    max_value=41.0,
+                    min_value=41.0,
+                    name="blocked_damage_reduction",
+                    text="41% Blocked Damage Reduction [41]% (+41%)",
+                    type=AffixType.inherent,
+                    value=41.0,
+                ),
+                Affix(
+                    max_value=20.0,
+                    min_value=20.0,
+                    name="block_chance",
+                    text="20% Block Chance [20]% (+20%)",
+                    type=AffixType.inherent,
+                    value=20.0,
+                ),
+                Affix(
+                    max_value=100.0,
+                    min_value=100.0,
+                    name="main_hand_weapon_damage",
+                    text="+100% Main Hand Weapon Damage [100]% (+100%)",
+                    type=AffixType.inherent,
+                    value=100.0,
+                ),
+            ],
+            is_chaos=False,
+            is_in_shop=False,
+            item_type=ItemType.Shield,
+            name="accelerating_bonescale_shield",
+            power=750,
+            rarity=ItemRarity.Legendary,
+            sanctified=False,
         ),
     ),
 ]
