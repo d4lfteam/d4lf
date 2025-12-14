@@ -25,7 +25,7 @@ class Stash(InventoryBase):
         LOGGER.info(f"Switch Stash Tab to: {tab_idx}")
         if tab_idx > (number_tabs - 1):
             return False
-        x, y, w, h = ResManager().roi.tab_slots_6
+        x, y, w, h = ResManager().roi.tab_slots
         section_length = w // number_tabs
         centers = [(x + (i + 0.5) * section_length, y + h // 2) for i in range(number_tabs)]
         mouse.move(*Cam().window_to_monitor(centers[tab_idx]), randomize=2)

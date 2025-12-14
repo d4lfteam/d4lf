@@ -590,5 +590,5 @@ class UiRoiModel(NumpyModel):
     slots_5x10: np_array_pydantic_annotated_typing(dimensions=1)
     sort_icon: np_array_pydantic_annotated_typing(dimensions=1)
     stash_menu_icon: np_array_pydantic_annotated_typing(dimensions=1)
-    tab_slots_6: np_array_pydantic_annotated_typing(dimensions=1)
+    tab_slots: np_array_pydantic_annotated_typing(dimensions=1)
     vendor_menu_icon: np_array_pydantic_annotated_typing(dimensions=1)
