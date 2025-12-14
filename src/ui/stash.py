@@ -21,13 +21,13 @@ class Stash(InventoryBase):
 
     @staticmethod
     def switch_to_tab(tab_idx) -> bool:
-        NUMBER_TABS = 6
+        number_tabs = 7
         LOGGER.info(f"Switch Stash Tab to: {tab_idx}")
-        if tab_idx > (NUMBER_TABS - 1):
+        if tab_idx > (number_tabs - 1):
             return False
         x, y, w, h = ResManager().roi.tab_slots_6
-        section_length = w // NUMBER_TABS
-        centers = [(x + (i + 0.5) * section_length, y + h // 2) for i in range(NUMBER_TABS)]
+        section_length = w // number_tabs
+        centers = [(x + (i + 0.5) * section_length, y + h // 2) for i in range(number_tabs)]
         mouse.move(*Cam().window_to_monitor(centers[tab_idx]), randomize=2)
         time.sleep(0.1)
         mouse.click("left")
