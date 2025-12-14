@@ -7,8 +7,8 @@ from tkinter.font import Font
 import src.item.descr.read_descr_tts
 import src.logger
 import src.tts
-from config.helper import singleton
-from config.loader import IniConfigLoader
+from src.config.helper import singleton
+from src.config.loader import IniConfigLoader
 from src.cam import Cam
 from src.config.ui import ResManager
 from src.item.data.rarity import ItemRarity
@@ -66,8 +66,13 @@ class VisionModeFast:
         minimum_font_size = IniConfigLoader().general.minimum_overlay_font_size
         minimum_font = Font(family="Courier New", size=minimum_font_size)
         self.textbox = tk.Text(self.root, bg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0, font=minimum_font)
-        x, y = ResManager().resolution
-        self.textbox.place(x=x / 2, y=y / 5)
+        if IniConfigLoader().general.vision_mode_coordinates is None:
+            x=ResManager().resolution[0] / 2
+            y=ResManager().resolution[2] / 5
+        else:
+            x=IniConfigLoader().general.vision_mode_coordinates[0]
+            y=IniConfigLoader().general.vision_mode_coordinates[1]
+        self.textbox.place(x=x, y=y)
         self.textbox.config(state=tk.DISABLED)
 
     def draw_from_queue(self):
