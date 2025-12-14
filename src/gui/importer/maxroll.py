@@ -1,7 +1,6 @@
 import json
 import logging
 import re
-from typing import TYPE_CHECKING
 
 import lxml.html
 
@@ -9,20 +8,18 @@ import src.logger
 from src.config.models import AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel, ItemFilterModel, ProfileModel, UniqueModel
 from src.dataloader import Dataloader
 from src.gui.importer.common import add_to_profiles, get_with_retry, match_to_enum, retry_importer, save_as_profile
+from src.gui.importer.importer_config import ImportConfig
 from src.item.data.affix import Affix
 from src.item.data.item_type import ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.scripts.common import correct_name
-
-if TYPE_CHECKING:
-    from src.gui.importer.importer_config import ImportConfig
 
 LOGGER = logging.getLogger(__name__)
 
 BUILD_GUIDE_BASE_URL = "https://maxroll.gg/d4/build-guides/"
 BUILD_GUIDE_PLANNER_EMBED_XPATH = "//*[contains(@class, 'd4-embed')]"
 PLANNER_API_BASE_URL = "https://planners.maxroll.gg/profiles/d4/"
-PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json"
+PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?63f9a9bf"
 PLANNER_BASE_URL = "https://maxroll.gg/d4/planner/"
 
 
@@ -111,7 +108,7 @@ def import_maxroll(config: ImportConfig):
             else:
                 msg = f"Unable to find legendary aspect in maxroll data for {item_type}, can not automatically add to AspectUpgrades."
                 # MaxRoll reports all rares as legendaries so this is an attempt to reduce false warnings for rares
-                if len(resolved_item["explicits"]) == 2:
+                if len(resolved_item["explicits"]) == 3:
                     LOGGER.debug(
                         msg + " We suspect this item is actually a rare and maxroll is falsely reporting it as a "
                         "legendary, please double check."
@@ -200,7 +197,9 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
                     if affix["attributes"][0]["formula"] in ["Affix40%_SingleResist", "AffixSingleResist"]:
                         attr_desc = mapping_data["uiStrings"]["damageType"][str(affix["attributes"][0]["param"])] + " Resistance"
                     elif affix["attributes"][0]["formula"] in ["AffixFlatResourceUpto4"]:
-                        attr_desc = mapping_data["uiStrings"]["resourceType"][str(affix["attributes"][0]["param"])] + " per Second"
+                        param = str(affix["attributes"][0]["param"])
+                        # Maxroll doesn't have Faith in their data
+                        attr_desc = "Faith per Second" if param == "9" else mapping_data["uiStrings"]["resourceType"][param] + " per Second"
                     elif affix["attributes"][0]["formula"] in ["AffixResourceOnKill"]:
                         attr_desc = mapping_data["uiStrings"]["resourceType"][str(affix["attributes"][0]["param"])] + " On Kill"
                 elif "param" not in affix["attributes"][0]:
@@ -343,7 +342,9 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int]:
 if __name__ == "__main__":
     src.logger.setup()
     URLS = [
-        "https://maxroll.gg/d4/build-guides/quill-volley-spiritborn-guide",
+        # "https://maxroll.gg/d4/build-guides/blessed-hammer-paladin-guide"
+        "https://maxroll.gg/d4/planner/19390ugy#2",
     ]
     for X in URLS:
-        import_maxroll(url=X)
+        config = ImportConfig(X, True, True, False, None)
+        import_maxroll(config)
