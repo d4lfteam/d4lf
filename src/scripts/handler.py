@@ -1,10 +1,11 @@
 import logging
+import sys
 import threading
 import time
 import typing
 
-import keyboard
-
+if sys.platform != "darwin":
+    import keyboard
 import src.item.descr.read_descr_tts
 import src.logger
 import src.scripts.loot_filter_tts
