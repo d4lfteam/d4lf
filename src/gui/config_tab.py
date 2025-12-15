@@ -136,7 +136,7 @@ class ConfigTab(QWidget):
         elif config_key == "max_stash_tabs":
             parameter_value_widget = IgnoreScrollWheelComboBox()
             parameter_value_widget.addItems(["6", "7"])
-            parameter_value_widget.setCurrentText(config_value)
+            parameter_value_widget.setCurrentText(str(config_value))
             parameter_value_widget.currentTextChanged.connect(
                 lambda: _validate_and_save_changes(model, section_config_header, config_key, parameter_value_widget.currentText())
             )
@@ -206,7 +206,7 @@ class ConfigTab(QWidget):
             if isinstance(parameter_value_widget, QChestTabWidget | QProfilesWidget | QHotkeyWidget | QMoveItemsWidget):
                 parameter_value_widget.reset_values(config_value)
             elif isinstance(parameter_value_widget, IgnoreScrollWheelComboBox):
-                parameter_value_widget.setCurrentText(config_value)
+                parameter_value_widget.setCurrentText(str(config_value))
             elif isinstance(parameter_value_widget, QCheckBox):
                 parameter_value_widget.setChecked(config_value)
             else:
@@ -236,7 +236,7 @@ class QChestTabWidget(QWidget):
         self.all_checkboxes: list[QCheckBox] = []
         stash_checkbox_layout = QHBoxLayout()
         stash_checkbox_layout.setContentsMargins(0, 0, 0, 0)
-        for x in range(int(max_chest_tabs)):
+        for x in range(max_chest_tabs):
             stash_checkbox = QCheckBox(self)
             stash_checkbox.setText(str(x + 1))
             self.all_checkboxes.append(stash_checkbox)

@@ -164,7 +164,7 @@ class AdvancedOptionsModel(_IniBaseModel):
     exit_key: str = Field(default="f12", description="Hotkey to exit d4lf", json_schema_extra={IS_HOTKEY_KEY: "True"})
     fast_vision_mode_coordinates: tuple[int, int] | None = Field(
         default=None,
-        description="The top left coordinates of the desired location of the fast vision mode overlay in pixels. For example: (300, 500) ",
+        description="The top left coordinates of the desired location of the fast vision mode overlay in pixels. For example: (300, 500). Set to blank for default behavior.",
     )
     force_refresh_only: str = Field(
         default="ctrl+shift+f11",
@@ -217,7 +217,9 @@ class AdvancedOptionsModel(_IniBaseModel):
         return validate_hotkey(k)
 
     @field_validator("fast_vision_mode_coordinates", mode="before")
-    def convert_fast_vision_mode_coordinates(cls, v: str) -> tuple[int, int]:
+    def convert_fast_vision_mode_coordinates(cls, v: str) -> tuple[int, int] | None:
+        if not v:
+            return None
         if isinstance(v, str):
             v = v.strip("()")
             parts = [int(part.strip()) for part in v.replace(",", " ").split()]
@@ -230,7 +232,7 @@ class AdvancedOptionsModel(_IniBaseModel):
             for x in v:
                 check_greater_than_zero(x)
             return v[0], v[1]
-        raise ValueError("vision_mode_coordinates must be a tuple of two integers")
+        raise ValueError("vision_mode_coordinates must be a tuple of two integers or blank")
 
     @model_validator(mode="before")
     def check_deprecation(cls, data) -> dict:
@@ -295,8 +297,8 @@ class GeneralModel(_IniBaseModel):
         default=True,
         description="Whether to favorite matched items or not",
     )
-    max_stash_tabs: str = Field(
-        default="6",
+    max_stash_tabs: int = Field(
+        default=6,
         description="The maximum number of stash tabs you have available to you if you bought them all. If you own the Lord of Hatred expansion you should choose 7. You will need to restart the gui after changing this.",
     )
     minimum_overlay_font_size: int = Field(
@@ -335,8 +337,8 @@ class GeneralModel(_IniBaseModel):
         return sorted([int(x) - 1 for x in v])
 
     @field_validator("max_stash_tabs")
-    def check_max_stash_tabs(cls, v: str):
-        if v != "6" and v != "7":
+    def check_max_stash_tabs(cls, v: int):
+        if v not in (6, 7):
             raise ValueError("must be 6 or 7")
         return v
 

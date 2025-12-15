@@ -36,10 +36,10 @@ class Publisher:
         while True:
             data = fix_data(_DATA_QUEUE.get())
             local_cache.append(data)
-            if max_stash_tabs != "7" and data == "Chest 7":
+            if max_stash_tabs != 7 and data == "Chest 7":
                 LOGGER.warning("7th stash tab detected, automatically changing max_stash_tabs config to 7")
-                IniConfigLoader().save_value("general", "max_stash_tabs", "7")
-                max_stash_tabs = "7"
+                IniConfigLoader().save_value("general", "max_stash_tabs", 7)
+                max_stash_tabs = 7
             if not filter_data(data) and (
                 any(word in data.lower() for word in ["mouse button", "action button"])
                 and (start := find_item_start(local_cache)) is not None

@@ -22,7 +22,7 @@ class Stash(InventoryBase):
 
     @staticmethod
     def switch_to_tab(tab_idx) -> bool:
-        number_tabs = int(IniConfigLoader().general.max_stash_tabs)
+        number_tabs = IniConfigLoader().general.max_stash_tabs
         LOGGER.info(f"Switch Stash Tab to: {tab_idx}")
         if tab_idx > (number_tabs - 1):
             return False
