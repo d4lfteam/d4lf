@@ -89,7 +89,8 @@ class _ResTransformer:
             slots_5x10=self._transform_array(value=POSITIONS[3].slots_5x10),
             sort_icon=self._transform_array(value=POSITIONS[3].sort_icon),
             stash_menu_icon=self._transform_array(value=POSITIONS[3].stash_menu_icon),
-            tab_slots=self._transform_array(value=POSITIONS[3].tab_slots),
+            tab_slots_6=self._transform_array(value=POSITIONS[3].tab_slots_6),
+            tab_slots_7=self._transform_array(value=POSITIONS[3].tab_slots_7),
             vendor_menu_icon=self._transform_array(value=POSITIONS[3].vendor_menu_icon),
         )
         templates = self._transform_templates(load_templates())

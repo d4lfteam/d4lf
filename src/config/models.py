@@ -162,6 +162,10 @@ class AdvancedOptionsModel(_IniBaseModel):
         default=False, description="If TTS is working for you but you are still receiving the warning, check this box to disable it."
     )
     exit_key: str = Field(default="f12", description="Hotkey to exit d4lf", json_schema_extra={IS_HOTKEY_KEY: "True"})
+    fast_vision_mode_coordinates: tuple[int, int] | None = Field(
+        default=None,
+        description="The top left coordinates of the desired location of the fast vision mode overlay in pixels. For example: (300, 500) ",
+    )
     force_refresh_only: str = Field(
         default="ctrl+shift+f11",
         description="Hotkey to refresh the junk/favorite status of all items in your inventory/stash. A filter is not run after.",
@@ -212,6 +216,22 @@ class AdvancedOptionsModel(_IniBaseModel):
     def key_must_exist(cls, k: str) -> str:
         return validate_hotkey(k)
 
+    @field_validator("fast_vision_mode_coordinates", mode="before")
+    def convert_fast_vision_mode_coordinates(cls, v: str) -> tuple[int, int]:
+        if isinstance(v, str):
+            v = v.strip("()")
+            parts = [int(part.strip()) for part in v.replace(",", " ").split()]
+            if len(parts) != 2:
+                raise ValueError("Expected two integers for coordinates.")
+            for x in parts:
+                check_greater_than_zero(x)
+            return parts[0], parts[1]
+        if isinstance(v, tuple) and len(v) == 2 and all(isinstance(x, int) for x in v):
+            for x in v:
+                check_greater_than_zero(x)
+            return v[0], v[1]
+        raise ValueError("vision_mode_coordinates must be a tuple of two integers")
+
     @model_validator(mode="before")
     def check_deprecation(cls, data) -> dict:
         if "run_scripts" in data:
@@ -249,7 +269,9 @@ class GeneralModel(_IniBaseModel):
         description="When using the loot filter, should found temper manuals be automatically used? Note: Will not work with stash open.",
     )
     browser: BrowserType = Field(default=BrowserType.chrome, description="Which browser to use to get builds")
-    check_chest_tabs: list[int] = Field(default=[0, 1], description="Which stash tabs to check. Note: All 7 Tabs must be unlocked!")
+    check_chest_tabs: list[int] = Field(
+        default=[0, 1], description="Which stash tabs to check. Note: All tabs available (6 or 7) must be unlocked!"
+    )
     full_dump: bool = Field(
         default=False,
         description="When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not",
@@ -272,6 +294,10 @@ class GeneralModel(_IniBaseModel):
     mark_as_favorite: bool = Field(
         default=True,
         description="Whether to favorite matched items or not",
+    )
+    max_stash_tabs: str = Field(
+        default="6",
+        description="The maximum number of stash tabs you have available to you if you bought them all. If you own the Lord of Hatred expansion you should choose 7. You will need to restart the gui after changing this.",
     )
     minimum_overlay_font_size: int = Field(
         default=12,
@@ -299,9 +325,6 @@ class GeneralModel(_IniBaseModel):
         default=VisionModeType.highlight_matches,
         description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
     )
-    vision_mode_coordinates: tuple[int, int] | None = Field(
-        default=(0, 0), description="The top left coordinates of the vision mode overlay in pixels"
-    )
 
     @field_validator("check_chest_tabs", mode="before")
     def check_chest_tabs_index(cls, v: str) -> list[int]:
@@ -310,6 +333,12 @@ class GeneralModel(_IniBaseModel):
         elif not isinstance(v, list):
             raise ValueError("must be a list or a string")
         return sorted([int(x) - 1 for x in v])
+
+    @field_validator("max_stash_tabs")
+    def check_max_stash_tabs(cls, v: str):
+        if v != "6" and v != "7":
+            raise ValueError("must be 6 or 7")
+        return v
 
     @field_validator("profiles", mode="before")
     def check_profiles_is_list(cls, v: str) -> list[str]:
@@ -338,22 +367,6 @@ class GeneralModel(_IniBaseModel):
         elif not isinstance(v, list):
             raise ValueError("must be a list or a string")
         return [MoveItemsType[v.strip()] for v in v]
-
-    @field_validator("vision_mode_coordinates", mode="before")
-    def convert_vision_mode_coordinates(cls, v: str) -> tuple[int, int]:
-        if isinstance(v, str):
-            v = v.strip("()")
-            parts = [int(part.strip()) for part in v.replace(",", " ").split()]
-            if len(parts) != 2:
-                raise ValueError("Expected two integers for coordinates.")
-            for x in parts:
-                check_greater_than_zero(x)
-            return parts[0], parts[1]
-        if isinstance(v, tuple) and len(v) == 2 and all(isinstance(x, int) for x in v):
-            for x in v:
-                check_greater_than_zero(x)
-            return v[0], v[1]
-        raise ValueError("vision_mode_coordinates must be a tuple of two integers")
 
     @model_validator(mode="before")
     def check_deprecation(cls, data) -> dict:
@@ -609,5 +622,6 @@ class UiRoiModel(NumpyModel):
     slots_5x10: np_array_pydantic_annotated_typing(dimensions=1)
     sort_icon: np_array_pydantic_annotated_typing(dimensions=1)
     stash_menu_icon: np_array_pydantic_annotated_typing(dimensions=1)
-    tab_slots: np_array_pydantic_annotated_typing(dimensions=1)
+    tab_slots_6: np_array_pydantic_annotated_typing(dimensions=1)
+    tab_slots_7: np_array_pydantic_annotated_typing(dimensions=1)
     vendor_menu_icon: np_array_pydantic_annotated_typing(dimensions=1)

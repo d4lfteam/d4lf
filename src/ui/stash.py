@@ -2,6 +2,7 @@ import logging
 import time
 
 from src.cam import Cam
+from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
 from src.template_finder import SearchArgs
 from src.ui.inventory_base import InventoryBase
@@ -21,11 +22,14 @@ class Stash(InventoryBase):
 
     @staticmethod
     def switch_to_tab(tab_idx) -> bool:
-        number_tabs = 7
+        number_tabs = int(IniConfigLoader().general.max_stash_tabs)
         LOGGER.info(f"Switch Stash Tab to: {tab_idx}")
         if tab_idx > (number_tabs - 1):
             return False
-        x, y, w, h = ResManager().roi.tab_slots
+        if number_tabs == 6:
+            x, y, w, h = ResManager().roi.tab_slots_6
+        else:
+            x, y, w, h = ResManager().roi.tab_slots_7
         section_length = w // number_tabs
         centers = [(x + (i + 0.5) * section_length, y + h // 2) for i in range(number_tabs)]
         mouse.move(*Cam().window_to_monitor(centers[tab_idx]), randomize=2)

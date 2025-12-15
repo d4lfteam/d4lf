@@ -58,7 +58,8 @@ POSITIONS = (
         slots_5x10=np.array([92, 538, 1224, 972]),
         sort_icon=np.array([2440, 1332, 126, 124]),
         stash_menu_icon=np.array([592, 144, 218, 96]),
-        tab_slots=np.array([240, 292, 930, 106]),
+        tab_slots_6=np.array([300, 284, 800, 102]),
+        tab_slots_7=np.array([240, 292, 930, 106]),
         vendor_menu_icon=np.array([182, 757, 220, 90]),
     ),
 )
