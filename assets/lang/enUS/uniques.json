@@ -48,7 +48,7 @@
         "num_inherents": 0
     },
     "banished_lords_talisman": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "bastion_of_sir_matthias": {
         "num_inherents": 3
@@ -72,7 +72,7 @@
         "num_inherents": 1
     },
     "blue_rose": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "cathedrals_song": {
         "num_inherents": 3
@@ -111,7 +111,7 @@
         "num_inherents": 0
     },
     "dolmen_stone": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "doombringer": {
         "num_inherents": 1
@@ -129,7 +129,7 @@
         "num_inherents": 0
     },
     "esadoras_overflowing_cameo": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "esus_heirloom": {
         "num_inherents": 1
@@ -153,7 +153,7 @@
         "num_inherents": 1
     },
     "flickerstep": {
-        "num_inherents": 2
+        "num_inherents": 1
     },
     "fractured_winterglass": {
         "num_inherents": 1
@@ -162,7 +162,7 @@
         "num_inherents": 1
     },
     "galvanic_azurite": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "gate_of_the_red_dawn": {
         "num_inherents": 3
@@ -228,7 +228,7 @@
         "num_inherents": 0
     },
     "hunters_zenith": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "iceheart_brais": {
         "num_inherents": 0
@@ -261,7 +261,7 @@
         "num_inherents": 4
     },
     "locrans_talisman": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "loyaltys_mantle": {
         "num_inherents": 0
@@ -285,10 +285,10 @@
         "num_inherents": 0
     },
     "mjölnic_ryng": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "mothers_embrace": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "mutilator_plate": {
         "num_inherents": 0
@@ -321,7 +321,7 @@
         "num_inherents": 1
     },
     "peacemongers_signet": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "penitent_greaves": {
         "num_inherents": 2
@@ -354,22 +354,22 @@
         "num_inherents": 0
     },
     "ring_of_red_furor": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "ring_of_starless_skies": {
         "num_inherents": 2
     },
     "ring_of_the_midday_hunt": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "ring_of_the_midnight_sun": {
         "num_inherents": 0
     },
     "ring_of_the_ravenous": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "ring_of_the_sacrilegious_soul": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "ring_of_writhing_moon": {
         "num_inherents": 0
@@ -381,7 +381,7 @@
         "num_inherents": 1
     },
     "saboteurs_signet": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "sabre_of_tsasgal": {
         "num_inherents": 1
@@ -396,7 +396,7 @@
         "num_inherents": 2
     },
     "scoundrels_kiss": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "scoundrels_leathers": {
         "num_inherents": 1
@@ -447,7 +447,7 @@
         "num_inherents": 1
     },
     "sunbirds_gorget": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "sundered_night": {
         "num_inherents": 2
@@ -516,7 +516,7 @@
         "num_inherents": 1
     },
     "unbroken_chain": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "unsung_ascetics_wraps": {
         "num_inherents": 0
@@ -555,7 +555,7 @@
         "num_inherents": 1
     },
     "xfals_corroded_signet": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "yens_blessing": {
         "num_inherents": 1
