@@ -28,6 +28,7 @@ dependencies = [
     "numpy",
     "opencv-python",
     "pillow",
+    "prek>=0.2.22",
     "psutil",
     "pydantic",
     "pydantic-numpy",
