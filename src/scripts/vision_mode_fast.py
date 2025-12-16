@@ -66,12 +66,12 @@ class VisionModeFast:
         minimum_font_size = IniConfigLoader().general.minimum_overlay_font_size
         minimum_font = Font(family="Courier New", size=minimum_font_size)
         self.textbox = tk.Text(self.root, bg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0, font=minimum_font)
-        if IniConfigLoader().general.vision_mode_coordinates is None:
+        if IniConfigLoader().advanced_options.fast_vision_mode_coordinates is None:
             x = ResManager().resolution[0] / 2
             y = ResManager().resolution[1] / 5
         else:
-            x = IniConfigLoader().general.vision_mode_coordinates[0]
-            y = IniConfigLoader().general.vision_mode_coordinates[1]
+            x = IniConfigLoader().advanced_options.fast_vision_mode_coordinates[0]
+            y = IniConfigLoader().advanced_options.fast_vision_mode_coordinates[1]
         self.textbox.place(x=x, y=y)
         self.textbox.config(state=tk.DISABLED)
 
