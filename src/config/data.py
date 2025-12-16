@@ -67,7 +67,7 @@ POSITIONS = (
         slots_5x10=np.array([92, 538, 1224, 972]),
         sort_icon=np.array([2440, 1332, 126, 124]),
         stash_menu_icon=np.array([592, 144, 218, 96]),
-        tab_slots=TAB_SLOTS_COORDS[IniConfigLoader().general.number_of_stash_tabs],
+        tab_slots=TAB_SLOTS_COORDS[IniConfigLoader().general.max_stash_tabs],
         vendor_menu_icon=np.array([182, 757, 220, 90]),
     ),
 )

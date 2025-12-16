@@ -6,7 +6,6 @@ import time
 import mouse as _mouse
 import numpy as np
 import pytweening
-from mouse import _winmouse
 
 
 def isNumeric(val):
@@ -176,50 +175,7 @@ class HumanCurve:
 
 
 class mouse:
-    @staticmethod
-    def sleep(duration, get_now=time.perf_counter):
-        time.sleep(duration)
-        # now = get_now()
-        # end = now + duration
-        # while now < end:
-        #     now = get_now()
-
-    @staticmethod
-    def _move_to(x, y, absolute=True, duration=0):
-        """
-        Moves the mouse. If `absolute`, to position (x, y), otherwise move relative
-        to the current position. If `duration` is non-zero, animates the movement.
-        """
-        x = int(x)
-        y = int(y)
-
-        # Requires an extra system call on Linux, but `move_relative` is measured
-        # in millimiters so we would lose precision.
-        position_x, position_y = _mouse.get_position()
-
-        if not absolute:
-            x = position_x + x
-            y = position_y + y
-
-        if duration:
-            start_x = position_x
-            start_y = position_y
-            dx = x - start_x
-            dy = y - start_y
-
-            if dx == 0 and dy == 0:
-                mouse.sleep(duration)
-            else:
-                # 120 movements per second.
-                # Round and keep float to ensure float division in Python 2
-                steps = max(1.0, float(int(duration * 120.0)))
-                for i in range(int(steps) + 1):
-                    mouse.move(start_x + dx * i / steps, start_y + dy * i / steps)
-                    mouse.sleep(duration / steps)
-        else:
-            _winmouse.move_to(x, y)
-
-    def move(x: int, y: int, absolute: bool = True, randomize: int | tuple[int, int] = 5, delay_factor: tuple[float, float] = (0.4, 0.6)):
+    def move(x: int, y: int, absolute: bool = True, randomize: int | tuple[int, int] = 5, delay_factor: tuple[float, float] = (0.2, 0.3)):
         from_point = _mouse.get_position()
         dist = math.dist((x, y), from_point)
         offsetBoundaryX = max(10, int(0.08 * dist))
@@ -244,7 +200,7 @@ class mouse:
             from_point, (x, y), offsetBoundaryX=offsetBoundaryX, offsetBoundaryY=offsetBoundaryY, targetPoints=targetPoints
         )
 
-        duration = min(0.5, max(0.05, dist * 0.0004) * random.uniform(delay_factor[0], delay_factor[1]))
+        duration = min(0.3, max(0.05, dist * 0.0004) * random.uniform(delay_factor[0], delay_factor[1]))
         delta = duration / len(human_curve.points)
 
         for point in human_curve.points:
@@ -261,22 +217,5 @@ class mouse:
             _mouse.click(button)
 
     @staticmethod
-    def press(button):
-        if button != "left" or mouse._is_clicking_safe():
-            _mouse.press(button)
-
-    @staticmethod
-    def release(button):
-        _mouse.release(button)
-
-    @staticmethod
     def get_position():
         return _mouse.get_position()
-
-    @staticmethod
-    def wheel(delta):
-        _mouse.wheel(delta)
-
-    @staticmethod
-    def is_pressed(button):
-        return _mouse.is_pressed(button)

@@ -112,6 +112,7 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | junk_rares                                        | When filtering rares, should they be automatically makred as junk? Note: If set to false, rares with socketed gems may have unexpected results when being filtered                                                                                                                                                                                                                                                                       |
 | keep_aspects                                      | - `all`: Keep all legendary items <br>- `upgrade`: Keep all legendary items that upgrade your codex of power. If the item matches no profile, it will be highlighted in orange <br>- `none`: Keep no legendary items based on aspect (they are still filtered!) <br>-                                                                                                                                                                    |
 | mark_as_favorite                                  | Whether to favorite matched items or not. Defaults to true                                                                                                                                                                                                                                                                                                                                                                               |
+| max_stash_tabs                                    | The maximum number of stash tabs you have available to you if you bought them all. If you own the Lord of Hatred expansion you should choose 7.                                                                                                                                                                                                                                                                                          |
 | minimum_overlay_font_size                         | The minimum font size for the vision overlay, specifically the green text that shows which filter(s) are matching. Note: For small profile names, the font may actually be larger than this size but will never go below this size.                                                                                                                                                                                                      |
 | move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything                                                                                                             |
 | run_vision_mode_on_startup                        | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey                                                                                                                                                                                                                                                                                              |
@@ -122,18 +123,19 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | --------- | --------------------------------- |
 | inventory | Your hotkey for opening inventory |
 
-| [advanced_options]       | Description                                                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| move_to_inv              | Hotkey for moving items from stash to inventory                                                                          |
-| move_to_chest            | Hotkey for moving items from inventory to stash                                                                          |
-| run_filter               | Hotkey to start/stop filtering items                                                                                     |
-| run_filter_force_refresh | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                               |
-| run_vision_mode          | Hotkey to start/stop vision mode                                                                                         |
-| force_refresh_only       | Hotkey to reset all item statuses without running a filter after                                                         |
-| exit_key                 | Hotkey to exit d4lf.exe                                                                                                  |
-| log_lvl                  | Logging level. Can be any of [debug, info, warning, error, critical]                                                     |
-| process_name             | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted |
-| vision_mode_only         | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.            |
+| [advanced_options]           | Description                                                                                                                                       |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| move_to_inv                  | Hotkey for moving items from stash to inventory                                                                                                   |
+| move_to_chest                | Hotkey for moving items from inventory to stash                                                                                                   |
+| run_filter                   | Hotkey to start/stop filtering items                                                                                                              |
+| run_filter_force_refresh     | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                                                        |
+| run_vision_mode              | Hotkey to start/stop vision mode                                                                                                                  |
+| force_refresh_only           | Hotkey to reset all item statuses without running a filter after                                                                                  |
+| exit_key                     | Hotkey to exit d4lf.exe                                                                                                                           |
+| log_lvl                      | Logging level. Can be any of [debug, info, warning, error, critical]                                                                              |
+| process_name                 | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted                          |
+| vision_mode_only             | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.                                     |
+| fast_vision_mode_coordinates | If you are using fast vision mode, provide the location on screen where you want the overlay to appear. For example, you could provide (500, 800) |
 
 ### GUI
 
