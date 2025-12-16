@@ -120,7 +120,7 @@ def main(d4data_dir: Path, companion_app_dir: Path):
 
         # Add others automatically
         pattern = f"json/{language}_Text/meta/StringList/World_DGN_*.stl.json"
-        json_files = list(d4data_dir.glob(pattern, case_sensitive=False))
+        json_files = sorted(d4data_dir.glob(pattern, case_sensitive=False))
         for json_file in json_files:
             with open(json_file, encoding="utf-8") as file:
                 data = json.load(file)
@@ -129,7 +129,7 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                 sigil_dict["dungeons"][dungeon_name.replace(" ", "_")] = dungeon_name
 
         pattern = f"json/{language}_Text/meta/StringList/DungeonAffix_*.stl.json"
-        json_files = list(d4data_dir.glob(pattern, case_sensitive=False))
+        json_files = sorted(d4data_dir.glob(pattern, case_sensitive=False))
         for json_file in json_files:
             affix_type = json_file.stem.split("_")[1].lower().strip()
             if affix_type in sigil_dict:
@@ -173,7 +173,7 @@ def main(d4data_dir: Path, companion_app_dir: Path):
 
         # Add others automatically
         pattern = f"json/{language}_Text/meta/StringList/Item_*_TributeKeySigil_*.stl.json"
-        json_files = list(d4data_dir.glob(pattern, case_sensitive=False))
+        json_files = sorted(d4data_dir.glob(pattern, case_sensitive=False))
         for json_file in json_files:
             with open(json_file, encoding="utf-8") as file:
                 data = json.load(file)
@@ -190,7 +190,7 @@ def main(d4data_dir: Path, companion_app_dir: Path):
         whitelist_types.extend(["Elixir", "TemperManual", "Tome"])
         item_typ_dict = {"Material": "custom type material", "Sigil": "custom type sigil", "Incense": "custom type incense"}
         pattern = f"json/{language}_Text/meta/StringList/ItemType_*.stl.json"
-        json_files = list(d4data_dir.glob(pattern, case_sensitive=False))
+        json_files = sorted(d4data_dir.glob(pattern, case_sensitive=False))
         for json_file in json_files:
             item_type = json_file.stem.split("_")[1].split(".")[0].strip()
             with open(json_file, encoding="utf-8") as file:
@@ -249,7 +249,7 @@ def generate_aspects(d4data_dir, language):
     print(f"Gen Aspects for {language}")
     aspects_list = []
     aspect_pattern = "json/base/meta/Aspect/*.json"
-    aspect_files = list(d4data_dir.glob(aspect_pattern, case_sensitive=False))
+    aspect_files = sorted(d4data_dir.glob(aspect_pattern, case_sensitive=False))
 
     for core_aspect_file in aspect_files:
         if core_aspect_file.name.endswith("Axe Bad Data.asp.json"):
@@ -287,7 +287,7 @@ def generate_uniques(d4data_dir, language):
     print(f"Gen Uniques for {language}")
     unique_dict = {}
     unique_pattern = "json/base/meta/Item/*nique*.itm.json"
-    unique_files = list(d4data_dir.glob(unique_pattern, case_sensitive=False))
+    unique_files = sorted(d4data_dir.glob(unique_pattern, case_sensitive=False))
 
     for core_unique_file in unique_files:
         # Get inherent count and item type from this file. Beyond that, we need the file name to find the enUS strings file.
