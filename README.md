@@ -564,16 +564,10 @@ If you receive an error about missing Visual Studio code, follow the link it pro
 
 ### Formatting & Linting
 
-Just use pre-commit.
+Just use prek.
 
 ```bash
-pre-commit install
-```
-
-or directly via
-
-```bash
-pre-commit run -a
+prek run -a
 ```
 
 ## Credits

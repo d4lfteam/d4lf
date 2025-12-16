@@ -16,12 +16,8 @@ jobs:
       - uses: actions/checkout@v6
       - name: Setup env
         uses: ./.github/actions/setup_env
-      - uses: actions/cache@v5
-        with:
-          path: ~/.cache/pre-commit
-          key: ${{ format('pre-commit-{0}',hashFiles('.pre-commit-config.yaml')) }}
-      - name: Run pre-commit
-        run: pre-commit run -a
+      - name: Run prek
+        uses: j178/prek-action@v1
       - name: Pytest
         shell: powershell
         run: pytest . -m "not selenium" -v -n logical
