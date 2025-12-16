@@ -285,6 +285,10 @@ class GeneralModel(_IniBaseModel):
         default=[MoveItemsType.everything],
         description="When doing stash/inventory transfer, what types of items should be moved",
     )
+    number_of_stash_tabs: int = Field(
+        default=6,
+        description="The number of stash tabs you currently have. For now, only 6 and 7 are supported.",
+    )
     profiles: list[str] = Field(
         default=[],
         description='Which filter profiles should be run. All .yaml files with "AspectUpgrades", '
@@ -300,7 +304,7 @@ class GeneralModel(_IniBaseModel):
         description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
     )
     vision_mode_coordinates: tuple[int, int] | None = Field(
-        default=(0, 0), description="The top left coordinates of the vision mode overlay in pixels"
+        default=None, description="The top left coordinates of the vision mode overlay in pixels"
     )
 
     @field_validator("check_chest_tabs", mode="before")
@@ -338,6 +342,12 @@ class GeneralModel(_IniBaseModel):
         elif not isinstance(v, list):
             raise ValueError("must be a list or a string")
         return [MoveItemsType[v.strip()] for v in v]
+
+    @field_validator("number_of_stash_tabs")
+    def check_number_of_stash_tabs(cls, v: int) -> int:
+        if not 6 <= v <= 7:
+            raise ValueError("Number of stash tabs must be 6 or 7")
+        return v
 
     @field_validator("vision_mode_coordinates", mode="before")
     def convert_vision_mode_coordinates(cls, v: str) -> tuple[int, int]:

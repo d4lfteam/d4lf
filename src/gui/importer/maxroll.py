@@ -12,7 +12,7 @@ from src.gui.importer.importer_config import ImportConfig
 from src.item.data.affix import Affix
 from src.item.data.item_type import ItemType
 from src.item.descr.text import clean_str, closest_match
-from src.scripts.common import correct_name
+from src.scripts import correct_name
 
 LOGGER = logging.getLogger(__name__)
 
@@ -159,8 +159,9 @@ def import_maxroll(config: ImportConfig):
 
     if not build_name:
         build_name = all_data["class"]
-        if active_profile["name"]:
-            build_name += f"_{active_profile['name']}"
+
+    if active_profile["name"]:
+        build_name += f"_{active_profile['name']}"
     corrected_file_name = save_as_profile(file_name=build_name, profile=profile, url=url)
 
     if config.add_to_profiles:
@@ -193,8 +194,13 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
                     "AffixFlatResourceUpto4",
                     "AffixResourceOnKill",
                     "AffixSingleResist",
+                    "S04_AffixResistance_Single_Flat",
                 ]:
-                    if affix["attributes"][0]["formula"] in ["Affix40%_SingleResist", "AffixSingleResist"]:
+                    if affix["attributes"][0]["formula"] in [
+                        "Affix40%_SingleResist",
+                        "AffixSingleResist",
+                        "S04_AffixResistance_Single_Flat",
+                    ]:
                         attr_desc = mapping_data["uiStrings"]["damageType"][str(affix["attributes"][0]["param"])] + " Resistance"
                     elif affix["attributes"][0]["formula"] in ["AffixFlatResourceUpto4"]:
                         param = str(affix["attributes"][0]["param"])
@@ -221,6 +227,8 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
                             attr_desc = "to mastery skills"
                         elif affix["attributes"][0]["param"] == -954965341 and affix["attributes"][0]["id"] == 1091:
                             attr_desc = "to basic skills"
+                        elif affix["attributes"][0]["param"] == -1460608310 and affix["attributes"][0]["id"] == 1138:
+                            attr_desc = "to aura skills"
             clean_desc = re.sub(r"\[.*?\]|[^a-zA-Z ]", "", attr_desc)
             clean_desc = clean_desc.replace("SecondSeconds", "seconds")
             affix_obj = Affix(name=closest_match(clean_str(clean_desc), Dataloader().affix_dict))
@@ -342,8 +350,7 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int]:
 if __name__ == "__main__":
     src.logger.setup()
     URLS = [
-        # "https://maxroll.gg/d4/build-guides/blessed-hammer-paladin-guide"
-        "https://maxroll.gg/d4/planner/19390ugy#2",
+        "https://maxroll.gg/d4/planner/19390ugy#1",
     ]
     for X in URLS:
         config = ImportConfig(X, True, True, False, None)
