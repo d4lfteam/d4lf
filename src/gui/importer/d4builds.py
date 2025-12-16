@@ -24,7 +24,7 @@ from src.gui.importer.common import (
 from src.item.data.affix import Affix
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
-from src.scripts.common import correct_name
+from src.scripts import correct_name
 
 if TYPE_CHECKING:
     from selenium.webdriver.chromium.webdriver import ChromiumDriver

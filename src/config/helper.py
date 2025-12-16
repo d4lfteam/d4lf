@@ -1,8 +1,10 @@
 """New config loading and verification using pydantic. For now, both will exist in parallel hence _new."""
 
+import sys
 import threading
 
-import keyboard
+if sys.platform != "darwin":
+    import keyboard
 
 
 def check_greater_than_zero(v: int) -> int:

@@ -1,9 +1,12 @@
 import enum
 import os
+import sys
 import typing
 from pathlib import Path
 
-import keyboard
+if sys.platform != "darwin":
+    import keyboard
+
 from pydantic import BaseModel, ValidationError
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (

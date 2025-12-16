@@ -12,11 +12,14 @@ if typing.TYPE_CHECKING:
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 URLS = [
+    "https://maxroll.gg/d4/build-guides/auradin-guide",
+    "https://maxroll.gg/d4/build-guides/blessed-hammer-paladin-guide",
     "https://maxroll.gg/d4/build-guides/double-swing-barbarian-guide",
     "https://maxroll.gg/d4/build-guides/evade-spiritborn-build-guide",
     "https://maxroll.gg/d4/build-guides/frozen-orb-sorcerer-guide",
     "https://maxroll.gg/d4/build-guides/minion-necromancer-guide",
     "https://maxroll.gg/d4/build-guides/quill-volley-spiritborn-guide",
+    "https://maxroll.gg/d4/build-guides/shield-of-retribution-paladin-guide",
     "https://maxroll.gg/d4/build-guides/touch-of-death-spiritborn-guide",
 ]
 

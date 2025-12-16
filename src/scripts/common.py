@@ -1,8 +1,10 @@
 import logging
+import sys
 import time
 from typing import TYPE_CHECKING
 
-import keyboard
+if sys.platform != "darwin":
+    import keyboard
 
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
@@ -99,9 +101,3 @@ def is_junk_rarity(item_rarity: ItemRarity) -> bool:
     if IniConfigLoader().general.junk_rares:
         return item_rarity in [ItemRarity.Common, ItemRarity.Magic, ItemRarity.Rare]
     return item_rarity in [ItemRarity.Common, ItemRarity.Magic]
-
-
-def correct_name(name: str) -> str | None:
-    if name:
-        return name.lower().replace("'", "").replace(" ", "_").replace(",", "").replace("(", "").replace(")", "")
-    return name

@@ -338,7 +338,7 @@ class GeneralModel(_IniBaseModel):
 
     @field_validator("max_stash_tabs")
     def check_max_stash_tabs(cls, v: int):
-        if v not in (6, 7):
+        if not 6 <= v <= 7:
             raise ValueError("must be 6 or 7")
         return v
 
@@ -624,6 +624,5 @@ class UiRoiModel(NumpyModel):
     slots_5x10: np_array_pydantic_annotated_typing(dimensions=1)
     sort_icon: np_array_pydantic_annotated_typing(dimensions=1)
     stash_menu_icon: np_array_pydantic_annotated_typing(dimensions=1)
-    tab_slots_6: np_array_pydantic_annotated_typing(dimensions=1)
-    tab_slots_7: np_array_pydantic_annotated_typing(dimensions=1)
+    tab_slots: np_array_pydantic_annotated_typing(dimensions=1)
     vendor_menu_icon: np_array_pydantic_annotated_typing(dimensions=1)

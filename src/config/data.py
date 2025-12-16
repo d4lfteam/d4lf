@@ -9,7 +9,14 @@ import cv2
 import numpy as np
 
 from src.config import BASE_DIR
-from src.config.models import ColorsModel, HSVRangeModel, UiOffsetsModel, UiPosModel, UiRoiModel
+from src.config.loader import IniConfigLoader
+from src.config.models import (
+    ColorsModel,
+    HSVRangeModel,
+    UiOffsetsModel,
+    UiPosModel,
+    UiRoiModel,
+)
 from src.utils.image_operations import alpha_to_mask
 
 LOGGER = logging.getLogger("d4lf")
@@ -19,6 +26,8 @@ COLORS = ColorsModel(
     unique_gold=HSVRangeModel(h_s_v_min=np.array([4, 45, 125]), h_s_v_max=np.array([26, 155, 250])),
     unusable_red=HSVRangeModel(h_s_v_min=np.array([0, 210, 110]), h_s_v_max=np.array([10, 255, 210])),
 )
+
+TAB_SLOTS_COORDS = {6: np.array([300, 284, 800, 102]), 7: np.array([240, 292, 930, 106])}
 
 POSITIONS = (
     (3840, 2160),
@@ -58,8 +67,7 @@ POSITIONS = (
         slots_5x10=np.array([92, 538, 1224, 972]),
         sort_icon=np.array([2440, 1332, 126, 124]),
         stash_menu_icon=np.array([592, 144, 218, 96]),
-        tab_slots_6=np.array([300, 284, 800, 102]),
-        tab_slots_7=np.array([240, 292, 930, 106]),
+        tab_slots=TAB_SLOTS_COORDS[IniConfigLoader().general.number_of_stash_tabs],
         vendor_menu_icon=np.array([182, 757, 220, 90]),
     ),
 )

@@ -16,7 +16,7 @@ from src.item.descr import keep_letters_and_spaces
 from src.item.descr.text import find_number
 from src.item.descr.texture import find_affix_bullets, find_aspect_bullet, find_seperator_short, find_seperators_long
 from src.item.models import Item
-from src.scripts.common import correct_name
+from src.scripts import correct_name
 from src.utils.window import screenshot
 
 if TYPE_CHECKING:
@@ -231,7 +231,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     if "chaos" in tts_item[1].lower():
         item.is_chaos = True
 
-    if "sanctified" in tts_item[3].lower() or "sanctified" in tts_item[4].lower():
+    if (len(tts_item) > 3 and "sanctified" in tts_item[3].lower()) or (len(tts_item) > 4 and "sanctified" in tts_item[4].lower()):
         item.sanctified = True
 
     search_string = tts_item[1].lower().replace("ancestral", "").replace("chaos", "").strip()

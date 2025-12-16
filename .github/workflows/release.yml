@@ -18,7 +18,7 @@ jobs:
         )
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup env
         uses: ./.github/actions/setup_env
       - name: Build & Zip exe

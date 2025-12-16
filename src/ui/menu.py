@@ -1,10 +1,11 @@
 import logging
+import sys
 import time
 from enum import Enum
 from typing import TYPE_CHECKING
 
-import keyboard
-
+if sys.platform != "darwin":
+    import keyboard
 from src.utils.misc import run_until_condition
 
 if TYPE_CHECKING:
