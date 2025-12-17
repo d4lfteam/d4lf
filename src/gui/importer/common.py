@@ -60,6 +60,8 @@ def fix_weapon_type(input_str: str) -> ItemType | None:
         return ItemType.Crossbow2H
     if "dagger" in input_str:
         return ItemType.Dagger
+    if "flail" in input_str:
+        return ItemType.Flail
     if "glaive" in input_str:
         return ItemType.Glaive
     if "polearm" in input_str:

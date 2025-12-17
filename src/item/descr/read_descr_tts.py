@@ -186,7 +186,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         return Item(rarity=ItemRarity.Common, item_type=ItemType.Sigil)
     if tts_item[0].startswith(src.tts.ItemIdentifiers.ESCALATION_SIGIL.value):
         return Item(rarity=ItemRarity.Common, item_type=ItemType.EscalationSigil)
-    if tts_item[0].startswith(src.tts.ItemIdentifiers.TRIBUTE.value):
+    if src.tts.ItemIdentifiers.TRIBUTE.value in tts_item[0]:
         item = Item(item_type=ItemType.Tribute)
         search_string_split = tts_item[1].split(" ")
         item.rarity = _get_item_rarity(search_string_split[0])
