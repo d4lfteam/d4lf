@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-# The values will be overwritte depending on which language is loaded
+# The values will be overwritten depending on which language is loaded
 class ItemType(Enum):
     Amulet = "amulet"
     Axe = "axe"
@@ -12,6 +12,7 @@ class ItemType(Enum):
     Crossbow2H = "crossbow"
     Dagger = "dagger"
     Elixir = "elixir"
+    Flail = "flail"
     Focus = "focus"
     Glaive = "glaive"
     Gloves = "gloves"
@@ -93,6 +94,7 @@ WEAPON_TYPES = [
     ItemType.Bow,
     ItemType.Crossbow2H,
     ItemType.Dagger,
+    ItemType.Flail,
     ItemType.Focus,
     ItemType.Glaive,
     ItemType.Mace,
