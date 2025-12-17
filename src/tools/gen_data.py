@@ -15,6 +15,7 @@ GEAR_TYPES = [
     "ChestArmor",
     "Crossbow2H",
     "Dagger",
+    "Flail",
     "Focus",
     "Glaive",
     "Gloves",

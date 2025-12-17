@@ -260,6 +260,9 @@
     "lidless_wall": {
         "num_inherents": 4
     },
+    "lights_rebuke": {
+        "num_inherents": 1
+    },
     "locrans_talisman": {
         "num_inherents": 0
     },
@@ -448,6 +451,9 @@
     },
     "sunbirds_gorget": {
         "num_inherents": 0
+    },
+    "sunbrand": {
+        "num_inherents": 1
     },
     "sundered_night": {
         "num_inherents": 2
