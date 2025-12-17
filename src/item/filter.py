@@ -414,7 +414,7 @@ class Filter:
                 if data.AspectUpgrades:
                     self.aspect_upgrade_filters[data.name] = data.AspectUpgrades
                     info_str += f"{ASPECT_UPGRADES_LABEL} "
-                if data.Sigils:
+                if data.Sigils and (data.Sigils.blacklist or data.Sigils.whitelist):
                     self.sigil_filters[data.name] = data.Sigils
                     info_str += "Sigils "
                 if data.Tributes:
