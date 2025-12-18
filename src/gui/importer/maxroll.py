@@ -123,7 +123,7 @@ def import_maxroll(config: ImportConfig):
                     AffixFilterModel(name=x.name)
                     for x in _find_item_affixes(mapping_data=mapping_data, item_affixes=resolved_item["explicits"])
                 ],
-                minCount=2,
+                minCount=3,
                 minGreaterAffixCount=0,
             )
         ]
