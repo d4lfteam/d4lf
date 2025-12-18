@@ -152,7 +152,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         item_filter.affixPool = [
             AffixFilterCountModel(
                 count=[AffixFilterModel(name=x.name) for x in affixes],
-                minCount=2,
+                minCount=3,
                 minGreaterAffixCount=0,
             )
         ]

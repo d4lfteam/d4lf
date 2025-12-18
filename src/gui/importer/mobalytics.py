@@ -166,7 +166,7 @@ def import_mobalytics(config: ImportConfig):
         item_filter.affixPool = [
             AffixFilterCountModel(
                 count=[AffixFilterModel(name=x.name) for x in affixes],
-                minCount=2,
+                minCount=3,
                 minGreaterAffixCount=0,
             )
         ]
