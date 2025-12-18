@@ -4,14 +4,14 @@ requires = ["hatchling"]
 
 [dependency-groups]
 dev = [
-    "pre-commit",
     "pyinstaller",
     "pytest-env",
     "pytest-mock",
     "pytest-pythonpath",
     "pytest-xdist",
     "pytest",
-    "typing-extensions"
+    "typing-extensions",
+    "prek>=0.2.22"
 ]
 
 [project]
@@ -28,7 +28,6 @@ dependencies = [
     "numpy",
     "opencv-python",
     "pillow",
-    "prek>=0.2.22",
     "psutil",
     "pydantic",
     "pydantic-numpy",

@@ -13,6 +13,7 @@ from src.config.ui import ResManager
 from src.utils.image_operations import alpha_to_mask, color_filter, crop
 from src.utils.misc import run_until_condition
 from src.utils.roi_operations import get_center
+from utils.window import screenshot
 
 LOGGER = logging.getLogger(__name__)
 
@@ -129,6 +130,7 @@ def _get_cv_result(
     roi: list[float] | None = None,
     color_match: list[float] | None = None,
     use_grayscale: bool = False,
+    take_debug_screenshot: bool = False,
 ) -> list[np.ndarray]:
     # crop image to roi
     if roi is None:
@@ -139,6 +141,8 @@ def _get_cv_result(
     img = inp_img[ry : ry + rh, rx : rx + rw]
     if img.shape[0] == 0 or img.shape[1] == 0:
         return None, template.img_bgr, roi
+    if take_debug_screenshot:
+        screenshot("template_finder", img=img)
 
     # filter for desired color or make grayscale
     if color_match:
@@ -171,6 +175,7 @@ def search(
     timeout: int = 0,
     suppress_debug: bool = True,
     do_multi_process: bool = True,
+    take_debug_screenshot: bool = False,
 ) -> SearchResult:
     """
     Search for templates in an image
@@ -203,9 +208,9 @@ def search(
             LOGGER.error(f"Invalid color_match key: {color_match}")
             LOGGER.error(e)
 
-    def _process_cv_result(template: Template, img: np.ndarray) -> bool:
+    def _process_cv_result(template: Template, img: np.ndarray, take_debug_screenshot: bool = False) -> bool:
         new_match = False
-        res, template_img, new_roi = _get_cv_result(template, img, roi, color_match, use_grayscale)
+        res, template_img, new_roi = _get_cv_result(template, img, roi, color_match, use_grayscale, take_debug_screenshot)
 
         while True and not (matches and mode == "first") and res is not None:
             _, max_val, _, max_pos = cv2.minMaxLoc(res)
@@ -250,14 +255,14 @@ def search(
         img = Cam().grab() if inp_img is None else inp_img
         if do_multi_process:
             for template in templates:
-                future = TP.submit(_process_cv_result, template, img)
+                future = TP.submit(_process_cv_result, template, img, take_debug_screenshot)
                 future_list.append(future)
 
                 for i in future_list:
                     _ = i.result()
         else:
             for template in templates:
-                res = _process_cv_result(template, img)
+                res = _process_cv_result(template, img, take_debug_screenshot)
                 if mode == "first" and res:
                     break
 
