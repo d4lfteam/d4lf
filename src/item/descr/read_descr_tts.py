@@ -331,7 +331,9 @@ def _get_affix_from_text(text: str) -> Affix:
         result.min_value = float(matched_groups.get("onlyvalue"))
         result.max_value = float(matched_groups.get("onlyvalue"))
     result.name = rapidfuzz.process.extractOne(
-        keep_letters_and_spaces(result.text), list(Dataloader().affix_dict), scorer=rapidfuzz.distance.Levenshtein.distance
+        keep_letters_and_spaces(_REPLACE_COMPARE_RE.sub("", result.text).strip()),
+        list(Dataloader().affix_dict),
+        scorer=rapidfuzz.distance.Levenshtein.distance,
     )[0]
     return result
 
