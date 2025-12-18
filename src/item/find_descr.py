@@ -30,12 +30,19 @@ def _choose_best_result(res_left: SearchResult, res_right: SearchResult) -> Sear
     return SearchResult(success=False)
 
 
-def _template_search(img: np.ndarray, anchor: int, roi: np.ndarray):
+def _template_search(img: np.ndarray, anchor: int, roi: np.ndarray, take_debug_screenshot: bool = False):
     roi_copy = copy(roi)
     roi_copy[0] += anchor
     ok, roi_left = fit_roi_to_window_size(roi_copy, ResManager().pos.window_dimensions)
     if ok:
-        return search(ref=list(map_template_rarity.keys()), inp_img=img, roi=roi_left, threshold=0.8, mode="all")
+        return search(
+            ref=list(map_template_rarity.keys()),
+            inp_img=img,
+            roi=roi_left,
+            threshold=0.8,
+            mode="all",
+            take_debug_screenshot=take_debug_screenshot,
+        )
     return SearchResult(success=False)
 
 
