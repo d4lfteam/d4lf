@@ -291,7 +291,7 @@ def _unique_name_special_handling(unique_name: str) -> str:
         case "[PH] Season 7 Barb Chest":
             return "mantle_of_mountains_fury"
         case _:
-            return unique_name
+            return unique_name.replace("\xa0", " ")
 
 
 def _find_item_type(mapping_data: dict, value: str) -> ItemType | None:
