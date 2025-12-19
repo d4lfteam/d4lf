@@ -3,7 +3,6 @@ import logging
 import os
 import threading
 import time
-import zoneinfo
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -132,7 +131,7 @@ def screenshot(
     img = img if img is not None else Cam().grab()
 
     os.makedirs(path, exist_ok=True)
-    file_path = f"{path}/{name}{'_' + datetime.now(zoneinfo.ZoneInfo('localtime')).strftime('%Y%m%d_%H%M%S.%f') if timestamp else ''}.png"
+    file_path = f"{path}/{name}{'_' + datetime.now(tz=None).strftime('%Y%m%d_%H%M%S.%f') if timestamp else ''}.png"  # noqa: DTZ005
 
     if os.path.exists(file_path):
         if overwrite:
