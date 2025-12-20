@@ -70,8 +70,12 @@ class ProfileEditor(QTabWidget):
         model = ProfileModel.model_validate(self.profile_model)
         if model != self.profile_model:
             if self.show_warning():
-                save_as_profile(self.profile_model.name, self.profile_model, "custom", exclude={"name"}, backup_file=True)
-                QMessageBox.information(self, "Info", f"Profile saved successfully to {self.profile_model.name + '.yaml'}")
+                save_as_profile(
+                    self.profile_model.name, self.profile_model, "custom", exclude={"name"}, backup_file=True
+                )
+                QMessageBox.information(
+                    self, "Info", f"Profile saved successfully to {self.profile_model.name + '.yaml'}"
+                )
             else:
                 QMessageBox.information(self, "Info", "Profile not saved.")
         else:

@@ -43,7 +43,9 @@ class D4LFItem(QGroupBox):
 
         self.item_type_label = QLabel("Item Types:")
         self.item_type_label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        self.item_type_label_info = QLabel(", ".join([self.find_item_from_value(item_type.value) for item_type in self.item_types]))
+        self.item_type_label_info = QLabel(
+            ", ".join([self.find_item_from_value(item_type.value) for item_type in self.item_types])
+        )
         self.item_type_label_info.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.form_layout.addRow(self.item_type_label, self.item_type_label_info)
 
@@ -207,7 +209,9 @@ class D4LFItem(QGroupBox):
             layout = self.affixListLayout.itemAt(i).layout()
             if widget is not None:
                 if isinstance(widget, IgnoreScrollWheelComboBox):
-                    affix_filter_count_list.append(AffixFilterModel(name=self.find_affix_from_value(widget.currentText())))
+                    affix_filter_count_list.append(
+                        AffixFilterModel(name=self.find_affix_from_value(widget.currentText()))
+                    )
             elif layout is not None and isinstance(layout, QFormLayout):
                 minCount = layout.itemAt(1).widget().value()
                 minGreaterAffixCount = layout.itemAt(3).widget().value()
@@ -221,7 +225,9 @@ class D4LFItem(QGroupBox):
             for i in range(self.inherentListLayout.count()):
                 widget = self.inherentListLayout.itemAt(i).widget()
                 if isinstance(widget, IgnoreScrollWheelComboBox):
-                    inherent_filter_count_list.append(AffixFilterModel(name=self.find_affix_from_value(widget.currentText())))
+                    inherent_filter_count_list.append(
+                        AffixFilterModel(name=self.find_affix_from_value(widget.currentText()))
+                    )
             inherent_filter_count = AffixFilterCountModel(count=inherent_filter_count_list)
             new_item.inherentPool.append(inherent_filter_count)
 

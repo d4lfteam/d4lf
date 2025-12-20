@@ -20,7 +20,14 @@ MODULE_LOGGER = logging.getLogger(__name__)
 HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
 
-DEPRECATED_INI_KEYS = ["hidden_transparency", "import_build", "local_prefs_path", "move_item_type", "handle_rares", "scripts"]
+DEPRECATED_INI_KEYS = [
+    "hidden_transparency",
+    "import_build",
+    "local_prefs_path",
+    "move_item_type",
+    "handle_rares",
+    "scripts",
+]
 
 
 class AspectFilterType(enum.StrEnum):
@@ -110,7 +117,8 @@ class AffixAspectFilterModel(BaseModel):
 class AffixFilterModel(AffixAspectFilterModel):
     @field_validator("name")
     def name_must_exist(cls, name: str) -> str:
-        from src.dataloader import Dataloader  # This on module level would be a circular import, so we do it lazy for now
+        # This on module level would be a circular import, so we do it lazy for now
+        from src.dataloader import Dataloader  # noqa: PLC0415
 
         if name not in Dataloader().affix_dict:
             raise ValueError(f"affix {name} does not exist")
@@ -147,7 +155,8 @@ class AffixFilterCountModel(BaseModel):
 class AspectUniqueFilterModel(AffixAspectFilterModel):
     @field_validator("name")
     def name_must_exist(cls, name: str) -> str:
-        from src.dataloader import Dataloader  # This on module level would be a circular import, so we do it lazy for now
+        # This on module level would be a circular import, so we do it lazy for now
+        from src.dataloader import Dataloader  # noqa: PLC0415
 
         # Ensure name is in format we expect
         name = name.lower().replace("'", "").replace(" ", "_").replace(",", "")
@@ -159,7 +168,8 @@ class AspectUniqueFilterModel(AffixAspectFilterModel):
 
 class AdvancedOptionsModel(_IniBaseModel):
     disable_tts_warning: bool = Field(
-        default=False, description="If TTS is working for you but you are still receiving the warning, check this box to disable it."
+        default=False,
+        description="If TTS is working for you but you are still receiving the warning, check this box to disable it.",
     )
     exit_key: str = Field(default="f12", description="Hotkey to exit d4lf", json_schema_extra={IS_HOTKEY_KEY: "True"})
     fast_vision_mode_coordinates: tuple[int, int] | None = Field(
@@ -173,16 +183,22 @@ class AdvancedOptionsModel(_IniBaseModel):
     )
     log_lvl: LogLevels = Field(default=LogLevels.info, description="The level at which logs are written")
     move_to_chest: str = Field(
-        default="f8", description="Hotkey to move configured items from inventory to stash", json_schema_extra={IS_HOTKEY_KEY: "True"}
+        default="f8",
+        description="Hotkey to move configured items from inventory to stash",
+        json_schema_extra={IS_HOTKEY_KEY: "True"},
     )
     move_to_inv: str = Field(
-        default="f7", description="Hotkey to move configured items from stash to inventory", json_schema_extra={IS_HOTKEY_KEY: "True"}
+        default="f7",
+        description="Hotkey to move configured items from stash to inventory",
+        json_schema_extra={IS_HOTKEY_KEY: "True"},
     )
     process_name: str = Field(
         default="Diablo IV.exe",
         description="The process that is running Diablo 4. Could help usage when playing through a streaming service like GeForce Now",
     )
-    run_filter: str = Field(default="f11", description="Hotkey to run the filter process", json_schema_extra={IS_HOTKEY_KEY: "True"})
+    run_filter: str = Field(
+        default="f11", description="Hotkey to run the filter process", json_schema_extra={IS_HOTKEY_KEY: "True"}
+    )
     run_filter_force_refresh: str = Field(
         default="shift+f11",
         description="Hotkey to run the filter process with a force refresh. The status of all junk/favorite items will be reset",
@@ -211,7 +227,13 @@ class AdvancedOptionsModel(_IniBaseModel):
         return self
 
     @field_validator(
-        "exit_key", "force_refresh_only", "move_to_chest", "move_to_inv", "run_filter", "run_filter_force_refresh", "run_vision_mode"
+        "exit_key",
+        "force_refresh_only",
+        "move_to_chest",
+        "move_to_inv",
+        "run_filter",
+        "run_filter_force_refresh",
+        "run_vision_mode",
     )
     def key_must_exist(cls, k: str) -> str:
         return validate_hotkey(k)
@@ -246,7 +268,9 @@ class AdvancedOptionsModel(_IniBaseModel):
 
 
 class CharModel(_IniBaseModel):
-    inventory: str = Field(default="i", description="Hotkey in Diablo IV to open inventory", json_schema_extra={IS_HOTKEY_KEY: "True"})
+    inventory: str = Field(
+        default="i", description="Hotkey in Diablo IV to open inventory", json_schema_extra={IS_HOTKEY_KEY: "True"}
+    )
 
     @field_validator("inventory")
     def key_must_exist(cls, k: str) -> str:
@@ -279,24 +303,28 @@ class GeneralModel(_IniBaseModel):
         description="When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not",
     )
     handle_cosmetics: CosmeticFilterType = Field(
-        default=CosmeticFilterType.ignore, description="What should be done with cosmetic upgrades that do not match any filter"
+        default=CosmeticFilterType.ignore,
+        description="What should be done with cosmetic upgrades that do not match any filter",
     )
     handle_uniques: UnfilteredUniquesType = Field(
         default=UnfilteredUniquesType.favorite,
         description="What should be done with uniques that do not match any profile. Mythics are always favorited. If mark_as_favorite is unchecked then uniques that match a profile will not be favorited.",
     )
-    ignore_escalation_sigils: bool = Field(default=True, description="When filtering Sigils, should escalation sigils be ignored?")
-    junk_rares: bool = Field(default=False, description="Should rares be automatically marked as junk even if they match a filter?")
+    ignore_escalation_sigils: bool = Field(
+        default=True, description="When filtering Sigils, should escalation sigils be ignored?"
+    )
+    junk_rares: bool = Field(
+        default=False, description="Should rares be automatically marked as junk even if they match a filter?"
+    )
     keep_aspects: AspectFilterType = Field(
         default=AspectFilterType.upgrade, description="Whether to keep aspects that didn't match a filter"
     )
     language: str = Field(
-        default="enUS", description="Do not change. Only English is supported at this time", json_schema_extra={HIDE_FROM_GUI_KEY: "True"}
+        default="enUS",
+        description="Do not change. Only English is supported at this time",
+        json_schema_extra={HIDE_FROM_GUI_KEY: "True"},
     )
-    mark_as_favorite: bool = Field(
-        default=True,
-        description="Whether to favorite matched items or not",
-    )
+    mark_as_favorite: bool = Field(default=True, description="Whether to favorite matched items or not")
     max_stash_tabs: int = Field(
         default=6,
         description="The maximum number of stash tabs you have available to you if you bought them all. If you own the Lord of Hatred expansion you should choose 7. You will need to restart the gui after changing this.",
@@ -480,7 +508,8 @@ class SigilConditionModel(BaseModel):
 
     @field_validator("condition", "name")
     def name_must_exist(cls, names_in: str | list[str]) -> str | list[str]:
-        from src.dataloader import Dataloader  # This on module level would be a circular import, so we do it lazy for now
+        # This on module level would be a circular import, so we do it lazy for now
+        from src.dataloader import Dataloader  # noqa: PLC0415
 
         names = [names_in] if isinstance(names_in, str) else names_in
         errors = [name for name in names if name not in Dataloader().affix_sigil_dict]
@@ -510,7 +539,8 @@ class TributeFilterModel(BaseModel):
 
     @field_validator("name")
     def name_must_exist(cls, name: str) -> str:
-        from src.dataloader import Dataloader  # This on module level would be a circular import, so we do it lazy for now
+        # This on module level would be a circular import, so we do it lazy for now
+        from src.dataloader import Dataloader  # noqa: PLC0415
 
         if not name:
             return name
@@ -587,7 +617,8 @@ class ProfileModel(BaseModel):
 
     @model_validator(mode="before")
     def aspects_must_exist(self) -> ProfileModel:
-        from src.dataloader import Dataloader  # This on module level would be a circular import, so we do it lazy for now
+        # This on module level would be a circular import, so we do it lazy for now
+        from src.dataloader import Dataloader  # noqa: PLC0415
 
         if "AspectUpgrades" not in self:
             return self
@@ -595,7 +626,9 @@ class ProfileModel(BaseModel):
         all_aspects_list = Dataloader().aspect_list
         aspects_not_in_all_aspects = [x for x in self["AspectUpgrades"] if x not in all_aspects_list]
         if aspects_not_in_all_aspects:
-            raise ValueError(f"The following aspects in AspectUpgrades do not exist in our data: {', '.join(aspects_not_in_all_aspects)}")
+            raise ValueError(
+                f"The following aspects in AspectUpgrades do not exist in our data: {', '.join(aspects_not_in_all_aspects)}"
+            )
 
         return self
 

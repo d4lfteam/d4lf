@@ -45,18 +45,16 @@ def fit_roi_to_window_size(roi, size):
 
 
 def get_center(roi: tuple[int, int, int, int]) -> tuple[int, int]:
-    """
-    Finds the center of a region of interest.
+    """Finds the center of a region of interest.
     :param roi: Region of interest in the format (x, y, w, h).
     :return: Coordinates of the center.
     """
     x, y, w, h = roi
-    return int(round(x + w / 2)), int(round(y + h / 2))
+    return round(x + w / 2), round(y + h / 2)
 
 
 def intersect(*rects: list[tuple[int, int, int, int]] | tuple[int, int, int, int]) -> tuple[int, int, int, int] | None:
-    """
-    Finds the intersection of multiple rectangles.
+    """Finds the intersection of multiple rectangles.
     :param rects: The rectangles to intersect. Each rectangle is represented as a tuple of four integers (x_min, y_min, width, height).
     :return: The intersection of all rectangles, represented as (x_min, y_min, width, height), or None if there is no intersection.
     """
@@ -77,8 +75,7 @@ def intersect(*rects: list[tuple[int, int, int, int]] | tuple[int, int, int, int
 def bounding_box(
     *args: list[tuple[int, int, int, int]] | tuple[int, int, int, int] | list[tuple[int, int]] | tuple[int, int],
 ) -> tuple[int, int, int, int] | None:
-    """
-    Finds the bounding rectangle of a set of rectangles or coordinates.
+    """Finds the bounding rectangle of a set of rectangles or coordinates.
     :param args: The rectangles or coordinates to bound.
         Each rectangle is represented as a tuple of four integers (x_min, y_min, width, height).
         Each coordinate is represented as a tuple of two integers (x, y).
@@ -99,15 +96,16 @@ def bounding_box(
             min_x, max_x = min(min_x, x), max(max_x, x + w)
             min_y, max_y = min(min_y, y), max(max_y, y + h)
         else:
-            LOGGER.error(f"Invalid argument: {arg}. Each argument should be either a coordinate (2 integers) or a rectangle (4 integers).")
+            LOGGER.error(
+                f"Invalid argument: {arg}. Each argument should be either a coordinate (2 integers) or a rectangle (4 integers)."
+            )
             return None
 
     return min_x, min_y, max_x - min_x, max_y - min_y
 
 
 def to_grid(roi: tuple[int, int, int, int], rows: int, columns: int) -> set[tuple[int, int, int, int]]:
-    """
-    Splits a rectangle of interest (ROI) into a grid of smaller rectangles.
+    """Splits a rectangle of interest (ROI) into a grid of smaller rectangles.
     :param roi: The rectangle to split, represented as (x_min, y_min, width, height).
     :param rows: The number of rows in the grid.
     :param columns: The number of columns in the grid.
@@ -139,9 +137,10 @@ class Condition(Enum):
     ALIGN_X = "align_x"
 
 
-def is_in_roi(coor: tuple[int, int], roi: tuple[int, int, int, int], condition: Condition | str = Condition.WITHIN) -> bool:
-    """
-    Checks the position of a given coordinate relative to a given rectangle of interest (ROI).
+def is_in_roi(
+    coor: tuple[int, int], roi: tuple[int, int, int, int], condition: Condition | str = Condition.WITHIN
+) -> bool:
+    """Checks the position of a given coordinate relative to a given rectangle of interest (ROI).
 
     :param coor: The coordinate to check, represented as (x, y).
     :param roi: The rectangle to check against, represented as (x_min, y_min, width, height).

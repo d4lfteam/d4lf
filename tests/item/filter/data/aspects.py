@@ -12,9 +12,5 @@ class TestItem(Item):
 aspects = [
     ("codex upgrade no profile", ["AspectUpgrades"], TestItem(aspect=Aspect(name="no_profile_aspect"))),
     ("no codex no profile", [], TestItem(aspect=Aspect(name="no_profile_aspect"), is_codex_upgrade=False)),
-    (
-        "codex upgrade match profile",
-        ["aspect_profile.AspectUpgrades"],
-        TestItem(aspect=Aspect(name="accelerating")),
-    ),
+    ("codex upgrade match profile", ["aspect_profile.AspectUpgrades"], TestItem(aspect=Aspect(name="accelerating"))),
 ]

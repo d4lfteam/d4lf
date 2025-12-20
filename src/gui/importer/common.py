@@ -1,6 +1,7 @@
 import datetime
 import functools
 import logging
+import pathlib
 import re
 import shutil
 import time
@@ -30,7 +31,7 @@ LOGGER = logging.getLogger(__name__)
 D = TypeVar("D", bound=WebDriver | WebElement)
 T = TypeVar("T")
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 }
 
 
@@ -132,7 +133,9 @@ def get_with_retry(url: str, custom_headers: dict[str, str] | None = None) -> ht
     raise ConnectionError(msg)
 
 
-def handle_popups[D: WebDriver | WebElement, T](driver: ChromiumDriver, method: Callable[[D], Literal[False] | T], timeout: int = 10):
+def handle_popups[D: WebDriver | WebElement, T](
+    driver: ChromiumDriver, method: Callable[[D], Literal[False] | T], timeout: int = 10
+):
     LOGGER.info("Handling cookie / adblock popups")
     wait = WebDriverWait(driver, timeout)
     for _ in range(3):
@@ -188,17 +191,11 @@ def save_as_profile(file_name: str, profile: ProfileModel, url: str, exclude=Non
         if not backup_path.exists():  # If already backed up don't overwrite
             shutil.copyfile(save_path, backup_path)
 
-    exclude = exclude if exclude else {"name", "Sigils"}
-    with open(save_path, "w", encoding="utf-8") as file:
+    exclude = exclude or {"name", "Sigils"}
+    with pathlib.Path(save_path).open("w", encoding="utf-8") as file:
         file.write(f"# {url}\n")
         file.write(f"# {datetime.datetime.now(tz=datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')} (v{__version__})\n")
-        file.write(
-            _to_yaml_str(
-                profile,
-                exclude_defaults=not IniConfigLoader().general.full_dump,
-                exclude=exclude,
-            )
-        )
+        file.write(_to_yaml_str(profile, exclude_defaults=not IniConfigLoader().general.full_dump, exclude=exclude))
     LOGGER.info(f"Created profile {save_path}")
     return file_name
 
@@ -257,4 +254,4 @@ def setup_webdriver(uc: bool = False) -> ChromiumDriver:
             options.add_argument("--headless")
             options.add_argument("log-level=3")
             driver = webdriver.Firefox(options=options)
-    return driver  # noqa # It must be one of the 3 browsers due to ini validation
+    return driver  # It must be one of the 3 browsers due to ini validation

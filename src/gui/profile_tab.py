@@ -1,6 +1,7 @@
 import copy
 import logging
 import os
+import pathlib
 
 import yaml
 from pydantic import ValidationError
@@ -121,7 +122,9 @@ class ProfileTab(QWidget):
 
     def open_file(self):
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open YAML File", str(custom_profile_path), "YAML Files (*.yaml *.yml)")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Open YAML File", str(custom_profile_path), "YAML Files (*.yaml *.yml)"
+        )
         if file_path:
             self.file_path = file_path
             return self.load_yaml()
@@ -156,7 +159,7 @@ class ProfileTab(QWidget):
         filename_without_extension = filename.rsplit(".", 1)[0]  # Remove the extension
         profile_str = filename_without_extension.replace("_", " ")  # Replace underscores with spaces
         self.root = None
-        with open(self.file_path, encoding="utf-8") as f:
+        with pathlib.Path(self.file_path).open(encoding="utf-8") as f:
             try:
                 config = yaml.load(stream=f, Loader=_UniqueKeyLoader)
             except Exception as e:

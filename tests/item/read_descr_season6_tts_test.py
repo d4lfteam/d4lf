@@ -253,7 +253,11 @@ items = [
                     value=1000.0,
                 ),
             ],
-            aspect=Aspect(name="frostburn", text="Lucky Hit: Up to a 40% [20 - 60]% chance to Freeze enemies for 3 seconds.", value=40.0),
+            aspect=Aspect(
+                name="frostburn",
+                text="Lucky Hit: Up to a 40% [20 - 60]% chance to Freeze enemies for 3 seconds.",
+                value=40.0,
+            ),
             codex_upgrade=False,
             inherent=[
                 Affix(
@@ -376,7 +380,9 @@ items = [
                     type=AffixType.normal,
                     value=26.0,
                 ),
-                Affix(max_value=None, min_value=None, name="armor", text="+682 Armor", type=AffixType.greater, value=682.0),
+                Affix(
+                    max_value=None, min_value=None, name="armor", text="+682 Armor", type=AffixType.greater, value=682.0
+                ),
                 Affix(
                     max_value=29.0,
                     min_value=29.0,
@@ -386,7 +392,11 @@ items = [
                     value=29.0,
                 ),
             ],
-            aspect=Aspect(name="harlequin_crest", text="Gain 20% Damage Reduction. In addition, gain +4 Ranks to all Skills.", value=20.0),
+            aspect=Aspect(
+                name="harlequin_crest",
+                text="Gain 20% Damage Reduction. In addition, gain +4 Ranks to all Skills.",
+                value=20.0,
+            ),
             codex_upgrade=False,
             cosmetic_upgrade=False,
             inherent=[],

@@ -1,4 +1,5 @@
 default_install_hook_types: [pre-push]
+minimum_prek_version: '0.2.3'
 repos:
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: 0.9.18
@@ -18,7 +19,7 @@ repos:
       - id: pretty-format-yaml
         args: [--autofix, --preserve-quotes, --offset, "2"]
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v21.1.7
+    rev: v21.1.8
     hooks:
       - id: clang-format
         files: \.(cpp|h)$
@@ -38,7 +39,7 @@ repos:
         args: [--autofix, --indent=4, --no-ensure-ascii]
       - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.9
+    rev: v0.14.10
     hooks:
       - id: ruff-format
       - id: ruff-check

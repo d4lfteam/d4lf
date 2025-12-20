@@ -68,7 +68,9 @@ class AffixGroupEditor(QWidget):
         self.item_type_combo.setEditable(True)
         self.item_type_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.item_type_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        item_types_names = [item.name for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)]
+        item_types_names = [
+            item.name for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)
+        ]
         self.item_type_combo.addItems(item_types_names)
         self.item_type_combo.setCurrentText(self.config.itemType[0].name)
         self.item_type_combo.setMaximumWidth(150)
@@ -195,7 +197,9 @@ class AffixGroupEditor(QWidget):
             to_delete_list = []
             for i in range(layout_widget.count()):
                 item = layout_widget.itemAt(i)
-                if item and item.widget() is not None and item.widget().header.name in to_delete:  # Check if the item is a widget
+                if (
+                    item and item.widget() is not None and item.widget().header.name in to_delete
+                ):  # Check if the item is a widget
                     to_delete_list.append((item.widget(), i))
             to_delete_list.reverse()
             for widget, index in to_delete_list:
@@ -245,7 +249,7 @@ class AffixPoolWidget(QWidget):
         max_count_label.setMaximumWidth(100)
         config_layout.addWidget(max_count_label)
         self.max_count = IgnoreScrollWheelSpinBox()
-        self.max_count.setValue(2147483647 if self.pool.maxCount > 2147483647 else self.pool.maxCount)
+        self.max_count.setValue(min(self.pool.maxCount, 2147483647))
         self.max_count.setMaximumWidth(100)
         self.max_count.valueChanged.connect(self.update_max_count)
         config_layout.addWidget(self.max_count)
@@ -303,7 +307,9 @@ class AffixPoolWidget(QWidget):
         self.affix_list.setItemWidget(item, widget)
 
     def add_affix(self):
-        new_affix = AffixFilterModel(name=list(Dataloader().affix_dict.keys())[0], value=None, comparison=ComparisonType.larger)
+        new_affix = AffixFilterModel(
+            name=list(Dataloader().affix_dict.keys())[0], value=None, comparison=ComparisonType.larger
+        )
         self.pool.count.append(new_affix)
         self.add_affix_item(new_affix)
 
@@ -421,7 +427,9 @@ class AffixesTab(QWidget):
         for affix_group in self.affixes_model:
             for item_name in affix_group.root:
                 if item_name in self.item_names:
-                    QMessageBox.warning(self, "Warning", f"Item name already exist please rename {item_name} in the profile file.")
+                    QMessageBox.warning(
+                        self, "Warning", f"Item name already exist please rename {item_name} in the profile file."
+                    )
                     continue
                 group = AffixGroupEditor(affix_group)
                 self.item_names.append(item_name)

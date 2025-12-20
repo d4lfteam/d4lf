@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import json
 import logging
+import pathlib
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
@@ -12,12 +13,7 @@ import src.logger
 from src.config.loader import IniConfigLoader
 from src.config.models import AffixFilterCountModel, AffixFilterModel, ItemFilterModel, ProfileModel
 from src.dataloader import Dataloader
-from src.gui.importer.common import (
-    format_number_as_short_string,
-    match_to_enum,
-    retry_importer,
-    save_as_profile,
-)
+from src.gui.importer.common import format_number_as_short_string, match_to_enum, retry_importer, save_as_profile
 from src.item.data.affix import Affix
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
@@ -111,16 +107,18 @@ def import_diablo_trade(url: str, max_listings: int, driver: seleniumbase.Driver
         profile = ProfileModel(name="diablo_trade", Affixes=_create_filters_from_items(items=all_listings))
     except Exception as exc:
         LOGGER.exception(msg := "Failed to validate profile. Dumping data for debugging.")
-        with open(
-            IniConfigLoader().user_dir / f"diablo_trade_dump_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}.json",
-            "w",
-        ) as f:
+        with pathlib.Path(
+            IniConfigLoader().user_dir
+            / f"diablo_trade_dump_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}.json"
+        ).open("w") as f:
             json.dump(all_listings, f, indent=4, sort_keys=True)
         raise DiabloTradeException(msg) from exc
 
     LOGGER.info(f"Saving profile with {len(profile.Affixes)} filters")
     save_as_profile(
-        file_name=f"diablo_trade_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}", profile=profile, url=url
+        file_name=f"diablo_trade_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}",
+        profile=profile,
+        url=url,
     )
     LOGGER.info("Finished")
 
@@ -130,7 +128,14 @@ def _construct_api_url(listing_url: str, cursor: int = 1) -> str:
     query_dict = parse_qs(parsed_url.query)
     query_dict["cursor"] = [str(cursor)]
     new_query_string = urlencode(query_dict, doseq=True)
-    return urlunparse((parsed_url.scheme, parsed_url.netloc, "api/items/search", parsed_url.params, new_query_string, parsed_url.fragment))
+    return urlunparse((
+        parsed_url.scheme,
+        parsed_url.netloc,
+        "api/items/search",
+        parsed_url.params,
+        new_query_string,
+        parsed_url.fragment,
+    ))
 
 
 def _create_affixes_from_api_dict(affixes: list[dict[str, Any]]) -> list[Affix]:
@@ -162,7 +167,11 @@ def _create_filters_from_items(items: list[_Listing]) -> list[dict[str, ItemFilt
                 filter=ItemFilterModel(
                     minPower=item.item_power,
                     itemType=[item.item_type],
-                    affixPool=[AffixFilterCountModel(count=[AffixFilterModel(name=x.name, value=x.value) for x in item.affixes])],
+                    affixPool=[
+                        AffixFilterCountModel(
+                            count=[AffixFilterModel(name=x.name, value=x.value) for x in item.affixes]
+                        )
+                    ],
                 ),
             )
         except ValidationError:
@@ -187,7 +196,9 @@ def _create_filters_from_items(items: list[_Listing]) -> list[dict[str, ItemFilt
         result.append(annotated_filter)
     converted_result = []
     for annotated_filter in result:
-        name = f"{annotated_filter.filter.itemType[0].value}_{format_number_as_short_string(annotated_filter.min_price)}"
+        name = (
+            f"{annotated_filter.filter.itemType[0].value}_{format_number_as_short_string(annotated_filter.min_price)}"
+        )
         if annotated_filter.min_price != annotated_filter.max_price:
             name += f"_{format_number_as_short_string(annotated_filter.max_price)}"
         # if there is a dict with this key name already in the list, append a number to the key name using change_key_of_dict

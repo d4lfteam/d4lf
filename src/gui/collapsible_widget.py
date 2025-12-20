@@ -87,7 +87,9 @@ class Container(QWidget):
         layout = QVBoxLayout(self)  # Create a QVBoxLayout instance and pass the current object as the parent
         layout.setContentsMargins(0, 0, 0, 0)  # Set the margins of the layout to 0
 
-        self._content_widget = QWidget()  # Create a QWidget instance and assign it to the instance variable _content_widget
+        self._content_widget = (
+            QWidget()
+        )  # Create a QWidget instance and assign it to the instance variable _content_widget
         if color_background:
             # If color_background is True, set the stylesheet of _content_widget to have a lighter background color
             self._content_widget.setStyleSheet(
@@ -96,16 +98,22 @@ class Container(QWidget):
                 ".QLabel{background-color: rgb(73, 73, 73)}"
             )
 
-        self.header = Header(name, self._content_widget)  # Create a Header instance and pass the name and _content_widget as arguments
+        self.header = Header(
+            name, self._content_widget
+        )  # Create a Header instance and pass the name and _content_widget as arguments
         layout.addWidget(self.header)  # Add the header to the layout
         layout.addWidget(self._content_widget)  # Add the _content_widget to the layout
 
         self._content_initialized = False  # Track initialization state
         self.header.firstExpansion.connect(self.first_expansion)
         # assign header methods to instance attributes so they can be called outside of this class
-        self.collapse = self.header.collapse  # Assign the collapse method of the header to the instance attribute collapse
+        self.collapse = (
+            self.header.collapse
+        )  # Assign the collapse method of the header to the instance attribute collapse
         self.expand = self.header.expand  # Assign the expand method of the header to the instance attribute expand
-        self.toggle = self.header.mousePressEvent  # Assign the mousePressEvent method of the header to the instance attribute toggle
+        self.toggle = (
+            self.header.mousePressEvent
+        )  # Assign the mousePressEvent method of the header to the instance attribute toggle
 
     @property
     def contentWidget(self):

@@ -23,7 +23,13 @@ from PyQt6.QtWidgets import (
 
 from src.config.models import AffixFilterModel, AspectUniqueFilterModel, ComparisonType, UniqueModel
 from src.dataloader import Dataloader
-from src.gui.dialog import DeleteItem, IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox, MinGreaterDialog, MinPowerDialog
+from src.gui.dialog import (
+    DeleteItem,
+    IgnoreScrollWheelComboBox,
+    IgnoreScrollWheelSpinBox,
+    MinGreaterDialog,
+    MinPowerDialog,
+)
 from src.gui.profile_editor.affixes_tab import AffixWidget
 from src.item.data.item_type import ItemType, is_armor, is_jewelry, is_weapon
 
@@ -100,7 +106,9 @@ class UniqueWidget(QWidget):
         self.item_type_combo.setEditable(True)
         self.item_type_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.item_type_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        item_types_names = [item.name for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)]
+        item_types_names = [
+            item.name for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)
+        ]
         item_types_names.append("None")
         self.item_type_combo.addItems(item_types_names)
         if len(self.unique_model.itemType) == 0:
@@ -191,7 +199,9 @@ class UniqueWidget(QWidget):
         self.affix_list.setItemWidget(item, widget)
 
     def add_affix(self):
-        new_affix = AffixFilterModel(name=list(Dataloader().affix_dict.keys())[0], value=None, comparison=ComparisonType.larger)
+        new_affix = AffixFilterModel(
+            name=list(Dataloader().affix_dict.keys())[0], value=None, comparison=ComparisonType.larger
+        )
         self.unique_model.affix.append(new_affix)
         self.add_affix_item(new_affix)
 
@@ -300,7 +310,9 @@ class UniquesTab(QWidget):
         dialog = DeleteItem([self.tab_widget.tabText(i) for i in range(self.tab_widget.count())], self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             item_names_to_delete = dialog.get_value()
-            to_delete_index = [i for i in range(self.tab_widget.count()) if self.tab_widget.tabText(i) in item_names_to_delete]
+            to_delete_index = [
+                i for i in range(self.tab_widget.count()) if self.tab_widget.tabText(i) in item_names_to_delete
+            ]
             to_delete_index.reverse()
             for index in to_delete_index:
                 self.tab_widget.removeTab(index)
@@ -321,17 +333,23 @@ class UniquesTab(QWidget):
     def add_aspect_to_current_unique(self):
         current_unique: UniqueWidget = self.tab_widget.currentWidget()
         if current_unique.unique_model.aspect:
-            QMessageBox.warning(self, "Warn", "An aspect already exist for the current unique. Please modify the existing one.")
+            QMessageBox.warning(
+                self, "Warn", "An aspect already exist for the current unique. Please modify the existing one."
+            )
         else:
-            current_unique.unique_model.aspect = AspectUniqueFilterModel(name=sorted(Dataloader().aspect_unique_dict.keys())[0])
+            current_unique.unique_model.aspect = AspectUniqueFilterModel(
+                name=min(Dataloader().aspect_unique_dict.keys())
+            )
             current_unique.create_aspect_groupbox()
 
     def add_affixes_to_current_unique(self):
         current_unique: UniqueWidget = self.tab_widget.currentWidget()
         if current_unique.unique_model.affix:
-            QMessageBox.warning(self, "Warn", "An affix already exist for the current unique. Please modify the existing one.")
+            QMessageBox.warning(
+                self, "Warn", "An affix already exist for the current unique. Please modify the existing one."
+            )
         else:
-            current_unique.unique_model.affix = [AffixFilterModel(name=sorted(Dataloader().affix_dict.keys())[0])]
+            current_unique.unique_model.affix = [AffixFilterModel(name=min(Dataloader().affix_dict.keys()))]
             current_unique.create_affix_groupbox()
 
     def remove_aspect_from_current_unique(self):

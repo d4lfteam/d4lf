@@ -5,7 +5,6 @@ from tkinter import font
 from tkinter.font import Font
 
 import src.item.descr.read_descr_tts
-import src.logger
 import src.tts
 from src.cam import Cam
 from src.config.helper import singleton
@@ -65,7 +64,9 @@ class VisionModeFast:
         self.clear_textbox()
         minimum_font_size = IniConfigLoader().general.minimum_overlay_font_size
         minimum_font = Font(family="Courier New", size=minimum_font_size)
-        self.textbox = tk.Text(self.root, bg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0, font=minimum_font)
+        self.textbox = tk.Text(
+            self.root, bg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0, font=minimum_font
+        )
         if IniConfigLoader().advanced_options.fast_vision_mode_coordinates is None:
             x = ResManager().resolution[0] / 2
             y = ResManager().resolution[1] / 5

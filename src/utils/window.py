@@ -1,6 +1,6 @@
 import ctypes
 import logging
-import os
+import pathlib
 import threading
 import time
 from dataclasses import dataclass
@@ -26,10 +26,10 @@ DETECT_WINDOW_THREAD = None
 # Set the process DPI aware
 try:
     ctypes.windll.shcore.SetProcessDpiAwareness(1)
-except Exception as e:
-    print(f"Exception: {e}")
-    print("This program requires Windows 8.1 or higher.")
-    print("The program will try to continue to run, but results may be inaccurate.")
+except Exception:
+    LOGGER.exception(
+        "This program requires Windows 10 or higher. The program will try to continue to run, but results may be inaccurate."
+    )
     ctypes.windll.user32.SetProcessDPIAware()
 
 
@@ -130,10 +130,10 @@ def screenshot(
     name = name if name is not None else "screenshot"
     img = img if img is not None else Cam().grab()
 
-    os.makedirs(path, exist_ok=True)
+    pathlib.Path(path).mkdir(exist_ok=True, parents=True)
     file_path = f"{path}/{name}{'_' + datetime.now(tz=None).strftime('%Y%m%d_%H%M%S.%f') if timestamp else ''}.png"  # noqa: DTZ005
 
-    if os.path.exists(file_path):
+    if pathlib.Path(file_path).exists():
         if overwrite:
             LOGGER.warning(f"{name} already exists, overwriting.")
             cv2.imwrite(file_path, img)
