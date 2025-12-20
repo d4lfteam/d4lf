@@ -190,6 +190,8 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     if tts_item[1].endswith(src.tts.ItemIdentifiers.COMPASS.value):
         return Item(rarity=ItemRarity.Common, item_type=ItemType.Compass)
     if tts_item[0].startswith(src.tts.ItemIdentifiers.NIGHTMARE_SIGIL.value):
+        if "Nightmare Sigil is used" in tts_item[0]:  # This is actually the crafting screen
+            return None
         return Item(rarity=ItemRarity.Common, item_type=ItemType.Sigil)
     if tts_item[0].startswith(src.tts.ItemIdentifiers.ESCALATION_SIGIL.value):
         return Item(rarity=ItemRarity.Common, item_type=ItemType.EscalationSigil)
