@@ -122,7 +122,14 @@ def filter_data(data: str) -> bool:
 
 
 def fix_data(data: str) -> str:
-    to_remove = ["&apos;", "&quot;", "[FAVORITED ITEM]. ", "ￂﾠ", "(Spiritborn Only)", "[MARKED AS JUNK]. "]
+    to_remove = [
+        "&apos;",
+        "&quot;",
+        "[FAVORITED ITEM]. ",
+        "ￂﾠ",
+        "(Spiritborn Only)",
+        "[MARKED AS JUNK]. ",
+    ]
 
     for item in to_remove:
         data = data.replace(item, "")
