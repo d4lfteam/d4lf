@@ -348,7 +348,14 @@ items = [
         ],
         Item(
             affixes=[
-                Affix(max_value=None, min_value=None, name="willpower", text="+212 Willpower", type=AffixType.greater, value=212.0),
+                Affix(
+                    max_value=None,
+                    min_value=None,
+                    name="willpower",
+                    text="+212 Willpower",
+                    type=AffixType.greater,
+                    value=212.0,
+                ),
                 Affix(
                     max_value=457.0,
                     min_value=424.0,
