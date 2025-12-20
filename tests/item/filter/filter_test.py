@@ -3,9 +3,9 @@ import typing
 import pytest
 from natsort import natsorted
 
-import tests.item.filter.data.filters as filters
 from src.config.models import SigilPriority
 from src.item.filter import Filter, FilterResult
+from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.aspects import aspects
 from tests.item.filter.data.sigils import sigil_jalal, sigil_priority, sigils
@@ -25,26 +25,32 @@ def _create_mocked_filter(mocker: MockerFixture) -> Filter:
     return filter_obj
 
 
-@pytest.mark.parametrize(("name", "result", "item"), natsorted(affixes), ids=[name for name, _, _ in natsorted(affixes)])
-def test_affixes(name: str, result: list[str], item: Item, mocker: MockerFixture):
+@pytest.mark.parametrize(
+    ("_name", "result", "item"), natsorted(affixes), ids=[name for name, _, _ in natsorted(affixes)]
+)
+def test_affixes(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
     test_filter.affix_filters = {filters.affix.name: filters.affix.Affixes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
-@pytest.mark.parametrize(("name", "result", "item"), natsorted(aspects), ids=[name for name, _, _ in natsorted(aspects)])
-def test_aspects(name: str, result: list[str], item: Item, mocker: MockerFixture):
+@pytest.mark.parametrize(
+    ("_name", "result", "item"), natsorted(aspects), ids=[name for name, _, _ in natsorted(aspects)]
+)
+def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
     mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
     test_filter.aspect_upgrade_filters = {filters.aspects_filters.name: filters.aspects_filters.AspectUpgrades}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
-@pytest.mark.parametrize(("name", "result", "item"), natsorted(sigils), ids=[name for name, _, _ in natsorted(sigils)])
-def test_sigils(name: str, result: list[str], item: Item, mocker: MockerFixture):
+@pytest.mark.parametrize(("_name", "result", "item"), natsorted(sigils), ids=[name for name, _, _ in natsorted(sigils)])
+def test_sigils(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
     test_filter.sigil_filters = {filters.sigil.name: filters.sigil.Sigils}
-    assert natsorted([match.profile.split(".")[0] for match in test_filter.should_keep(item).matched]) == natsorted(result)
+    assert natsorted([match.profile.split(".")[0] for match in test_filter.should_keep(item).matched]) == natsorted(
+        result
+    )
 
 
 def test_sigil_empty_lists(mocker: MockerFixture):
@@ -66,33 +72,41 @@ def test_sigil_priority(mocker: MockerFixture):
     assert test_filter.should_keep(sigil_priority).matched[0].profile == filters.sigil_priority.name
 
 
-@pytest.mark.parametrize(("name", "result", "item"), natsorted(tributes), ids=[name for name, _, _ in natsorted(tributes)])
-def test_tributes(name: str, result: list[str], item: Item, mocker: MockerFixture):
+@pytest.mark.parametrize(
+    ("_name", "result", "item"), natsorted(tributes), ids=[name for name, _, _ in natsorted(tributes)]
+)
+def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
     test_filter.tribute_filters = {filters.tributes.name: filters.tributes.Tributes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
-@pytest.mark.parametrize(("name", "result", "item"), natsorted(uniques), ids=[name for name, _, _ in natsorted(uniques)])
-def test_uniques(name: str, result: list[str], item: Item, mocker: MockerFixture):
+@pytest.mark.parametrize(
+    ("_name", "result", "item"), natsorted(uniques), ids=[name for name, _, _ in natsorted(uniques)]
+)
+def test_uniques(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
     test_filter.unique_filters = {filters.unique.name: filters.unique.Uniques}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
-@pytest.mark.parametrize(("name", "result", "item"), natsorted(simple_mythics), ids=[name for name, _, _ in natsorted(simple_mythics)])
-def test_mythic_always_kept(name: str, result: bool, item: Item, mocker: MockerFixture):
+@pytest.mark.parametrize(
+    ("_name", "result", "item"), natsorted(simple_mythics), ids=[name for name, _, _ in natsorted(simple_mythics)]
+)
+def test_mythic_always_kept(_name: str, result: bool, item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
     test_filter.unique_filters = {filters.always_keep_mythics.name: filters.always_keep_mythics.Uniques}
     assert test_filter.should_keep(item).keep == result
 
 
 @pytest.mark.parametrize(
-    ("name", "should_keep", "matched", "item"),
+    ("_name", "should_keep", "matched", "item"),
     natsorted(aspect_only_mythic_tests),
     ids=[name for name, _, _, _ in natsorted(aspect_only_mythic_tests)],
 )
-def test_unfiltered_unique_is_kept(name: str, should_keep: bool, matched: list[str], item: Item, mocker: MockerFixture):
+def test_unfiltered_unique_is_kept(
+    _name: str, should_keep: bool, matched: list[str], item: Item, mocker: MockerFixture
+):
     test_filter = _create_mocked_filter(mocker)
     test_filter.unique_filters = {filters.aspect_only_unique_filters.name: filters.aspect_only_unique_filters.Uniques}
     test_filter_result = test_filter.should_keep(item)

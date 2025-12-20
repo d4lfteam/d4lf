@@ -8,7 +8,9 @@ from src.dataloader import Dataloader
 
 def closest_match(target, candidates):
     keys, values = zip(*candidates.items(), strict=False)
-    result = rapidfuzz.process.extractOne(target, values, scorer=rapidfuzz.distance.Levenshtein.distance, score_cutoff=100)
+    result = rapidfuzz.process.extractOne(
+        target, values, scorer=rapidfuzz.distance.Levenshtein.distance, score_cutoff=100
+    )
     return keys[values.index(result[0])] if result else None
 
 
@@ -18,9 +20,15 @@ def closest_to(value, choices):
 
 def find_number(s: str, idx: int = 0) -> float | None:
     s = remove_text_after_first_keyword(s, Dataloader().filter_after_keyword)
-    s = re.sub(r",", "", s)  # remove commas because of large numbers having a comma seperator
+    s = s.replace(r",", "")  # remove commas because of large numbers having a comma seperator
     matches = re.findall(r"[+-]?(\d+\.\d+|\.\d+|\d+\.?|\d+)\%?", s)
-    number = (matches[1] if len(matches) > 1 else None) if "up to a 5%" in s else matches[idx] if matches and len(matches) > idx else None
+    number = (
+        (matches[1] if len(matches) > 1 else None)
+        if "up to a 5%" in s
+        else matches[idx]
+        if matches and len(matches) > idx
+        else None
+    )
     if number is not None:
         number = re.sub(r"[+%]", "", number)
         return float(number)

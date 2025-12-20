@@ -6,8 +6,6 @@ import typing
 
 if sys.platform != "darwin":
     import keyboard
-import src.item.descr.read_descr_tts
-import src.logger
 import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
@@ -82,7 +80,9 @@ class ScriptHandler:
                         self.vision_mode.start()
                 else:
                     self.loot_interaction_thread = threading.Thread(
-                        target=self._wrapper_run_loot_interaction_method, args=(loot_interaction_method, method_args), daemon=True
+                        target=self._wrapper_run_loot_interaction_method,
+                        args=(loot_interaction_method, method_args),
+                        daemon=True,
                     )
                     self.loot_interaction_thread.start()
             finally:

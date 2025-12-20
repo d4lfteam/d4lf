@@ -10,7 +10,11 @@ class TestSigil(Item):
 
 
 sigils = [
-    ("affix in blacklist", [], TestSigil(affixes=[Affix(name="death_pulse"), Affix(name="reduce_cooldowns_on_kill", value=0.25)])),
+    (
+        "affix in blacklist",
+        [],
+        TestSigil(affixes=[Affix(name="death_pulse"), Affix(name="reduce_cooldowns_on_kill", value=0.25)]),
+    ),
     ("inherent in blacklist", [], TestSigil(inherent=[Affix(name="underroot")])),
     ("affix not in whitelist", [], TestSigil(inherent=[Affix(name="lubans_rest")])),
     ("condition not met", [], TestSigil(inherent=[Affix(name="iron_hold")])),
@@ -75,9 +79,6 @@ sigils = [
 sigil_jalal = TestSigil(inherent=[Affix(name="jalals_vigil")])
 
 sigil_priority = TestSigil(
-    affixes=[
-        Affix(name="shadow_damage", value=2.0),
-        Affix(name="reduce_cooldowns_on_kill"),
-    ],
+    affixes=[Affix(name="shadow_damage", value=2.0), Affix(name="reduce_cooldowns_on_kill")],
     inherent=[Affix(name="iron_hold")],
 )

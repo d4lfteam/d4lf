@@ -28,7 +28,7 @@ def copy_additional_resources(release_dir: Path):
 
 def create_batch_for_gui(release_dir: Path, exe_name: str):
     batch_file_path = release_dir / "gui.bat"
-    with open(batch_file_path, "w") as f:
+    with Path(batch_file_path).open("w") as f:
         f.write("@echo off\n")
         f.write('cd /d "%~dp0"\n')
         f.write(f'start "" {exe_name} --gui')

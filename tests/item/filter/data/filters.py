@@ -153,12 +153,7 @@ affix = ProfileModel(
     ],
 )
 
-always_keep_mythics = ProfileModel(
-    name="keep_mythics",
-    Uniques=[
-        UniqueModel(minPower=900),
-    ],
-)
+always_keep_mythics = ProfileModel(name="keep_mythics", Uniques=[UniqueModel(minPower=900)])
 
 aspects_filters = ProfileModel(name="aspect_profile", AspectUpgrades=["accelerating", "of_occult_dominion"])
 
@@ -173,10 +168,7 @@ aspect_only_unique_filters = ProfileModel(
 sigil = ProfileModel(
     name="test",
     Sigils=SigilFilterModel(
-        blacklist=[
-            SigilConditionModel(name="reduce_cooldowns_on_kill"),
-            SigilConditionModel(name="underroot"),
-        ],
+        blacklist=[SigilConditionModel(name="reduce_cooldowns_on_kill"), SigilConditionModel(name="underroot")],
         whitelist=[
             SigilConditionModel(name="jalals_vigil"),
             SigilConditionModel(name="iron_hold", condition=["shadow_damage"]),
@@ -185,32 +177,18 @@ sigil = ProfileModel(
 )
 
 sigil_blacklist_only = ProfileModel(
-    name="blacklist_only",
-    Sigils=SigilFilterModel(
-        blacklist=[
-            SigilConditionModel(name="iron_hold"),
-        ],
-    ),
+    name="blacklist_only", Sigils=SigilFilterModel(blacklist=[SigilConditionModel(name="iron_hold")])
 )
 
 sigil_whitelist_only = ProfileModel(
-    name="whitelist_only",
-    Sigils=SigilFilterModel(
-        whitelist=[
-            SigilConditionModel(name="iron_hold"),
-        ],
-    ),
+    name="whitelist_only", Sigils=SigilFilterModel(whitelist=[SigilConditionModel(name="iron_hold")])
 )
 
 sigil_priority = ProfileModel(
     name="priority",
     Sigils=SigilFilterModel(
-        blacklist=[
-            SigilConditionModel(name="reduce_cooldowns_on_kill"),
-        ],
-        whitelist=[
-            SigilConditionModel(name="iron_hold", condition=["shadow_damage"]),
-        ],
+        blacklist=[SigilConditionModel(name="reduce_cooldowns_on_kill")],
+        whitelist=[SigilConditionModel(name="iron_hold", condition=["shadow_damage"])],
     ),
 )
 
@@ -243,7 +221,9 @@ unique = ProfileModel(
             aspect=AspectUniqueFilterModel(name="soulbrand", value=20),
             minPower=900,
         ),
-        UniqueModel(aspect=AspectUniqueFilterModel(name="soulbrand", value=15, comparison=ComparisonType.smaller), minPower=900),
+        UniqueModel(
+            aspect=AspectUniqueFilterModel(name="soulbrand", value=15, comparison=ComparisonType.smaller), minPower=900
+        ),
         UniqueModel(mythic=True),
         UniqueModel(aspect=AspectUniqueFilterModel(name="wushe_nak_pa", value=50), minPower=900),
     ],

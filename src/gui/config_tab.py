@@ -76,7 +76,9 @@ class ConfigTab(QWidget):
         scrollable_layout.addLayout(button_hbox)
         scrollable_layout.addWidget(self._generate_params_section(IniConfigLoader().general, "General", "general"))
         scrollable_layout.addWidget(self._generate_params_section(IniConfigLoader().char, "Character", "char"))
-        scrollable_layout.addWidget(self._generate_params_section(IniConfigLoader().advanced_options, "Advanced", "advanced_options"))
+        scrollable_layout.addWidget(
+            self._generate_params_section(IniConfigLoader().advanced_options, "Advanced", "advanced_options")
+        )
         scroll_widget.setLayout(scrollable_layout)
         scroll_area.setWidget(scroll_widget)
         layout.addWidget(scroll_area)
@@ -141,7 +143,9 @@ class ConfigTab(QWidget):
             parameter_value_widget.addItems(["6", "7"])
             parameter_value_widget.setCurrentText(str(config_value))
             parameter_value_widget.currentTextChanged.connect(
-                lambda: _validate_and_save_changes(model, section_config_header, config_key, parameter_value_widget.currentText())
+                lambda: _validate_and_save_changes(
+                    model, section_config_header, config_key, parameter_value_widget.currentText()
+                )
             )
         elif config_key == "profiles":
             parameter_value_widget = QProfilesWidget(model, section_config_header, config_key, config_value)
@@ -155,13 +159,17 @@ class ConfigTab(QWidget):
             parameter_value_widget.addItems(list(enum_type))
             parameter_value_widget.setCurrentText(config_value)
             parameter_value_widget.currentTextChanged.connect(
-                lambda: _validate_and_save_changes(model, section_config_header, config_key, parameter_value_widget.currentText())
+                lambda: _validate_and_save_changes(
+                    model, section_config_header, config_key, parameter_value_widget.currentText()
+                )
             )
         elif isinstance(config_value, bool):
             parameter_value_widget = QCheckBox()
             parameter_value_widget.setChecked(config_value)
             parameter_value_widget.stateChanged.connect(
-                lambda: _validate_and_save_changes(model, section_config_header, config_key, str(parameter_value_widget.isChecked()))
+                lambda: _validate_and_save_changes(
+                    model, section_config_header, config_key, str(parameter_value_widget.isChecked())
+                )
             )
         else:
             parameter_value_widget = QLineEdit(str(config_value))
@@ -245,7 +253,9 @@ class QChestTabWidget(QWidget):
             self.all_checkboxes.append(stash_checkbox)
             if x in chest_tab_config:
                 stash_checkbox.setChecked(True)
-            stash_checkbox.stateChanged.connect(lambda: self._save_changes_on_box_change(model, section_header, config_key))
+            stash_checkbox.stateChanged.connect(
+                lambda: self._save_changes_on_box_change(model, section_header, config_key)
+            )
             stash_checkbox_layout.addWidget(stash_checkbox)
 
         self.setLayout(stash_checkbox_layout)
@@ -275,7 +285,9 @@ class QMoveItemsWidget(QWidget):
         open_picker_button.setText("...")
         open_picker_button.setMinimumWidth(20)
         open_picker_button.clicked.connect(
-            lambda: self._launch_picker(model, section_header, config_key, self.current_move_selections_line_edit.text().split(", "))
+            lambda: self._launch_picker(
+                model, section_header, config_key, self.current_move_selections_line_edit.text().split(", ")
+            )
         )
         layout.addWidget(open_picker_button)
 
@@ -290,11 +302,7 @@ class QMoveItemsWidget(QWidget):
             move_types = move_item_type_picker.get_selected_move_types()
             move_types_string = ", ".join([item_type.name for item_type in move_types])
             _validate_and_save_changes(
-                model,
-                section_header,
-                config_key,
-                move_types_string,
-                self.current_move_selections_line_edit.setText,
+                model, section_header, config_key, move_types_string, self.current_move_selections_line_edit.setText
             )
             self.reset_values(move_types)
 
@@ -313,7 +321,9 @@ class QMoveItemsPicker(QDialog):
         self.move_favorite_box.setChecked(
             MoveItemsType.everything.name in move_selections or MoveItemsType.favorites.name in move_selections
         )
-        self.move_junk_box.setChecked(MoveItemsType.everything.name in move_selections or MoveItemsType.junk.name in move_selections)
+        self.move_junk_box.setChecked(
+            MoveItemsType.everything.name in move_selections or MoveItemsType.junk.name in move_selections
+        )
         self.move_unmarked_box.setChecked(
             MoveItemsType.everything.name in move_selections or MoveItemsType.unmarked.name in move_selections
         )
@@ -363,7 +373,9 @@ class QProfilesWidget(QWidget):
         open_picker_button.setText("...")
         open_picker_button.setMinimumWidth(20)
         open_picker_button.clicked.connect(
-            lambda: self._launch_picker(model, section_header, config_key, self.current_profile_line_edit.text().split(", "))
+            lambda: self._launch_picker(
+                model, section_header, config_key, self.current_profile_line_edit.text().split(", ")
+            )
         )
         layout.addWidget(open_picker_button)
 
@@ -377,11 +389,7 @@ class QProfilesWidget(QWidget):
         if profile_picker.exec():
             selected_profiles = ", ".join(profile_picker.get_selected_profiles())
             _validate_and_save_changes(
-                model,
-                section_header,
-                config_key,
-                selected_profiles,
-                self.current_profile_line_edit.setText,
+                model, section_header, config_key, selected_profiles, self.current_profile_line_edit.setText
             )
             self.current_profile_line_edit.setText(selected_profiles)
 
@@ -399,7 +407,9 @@ class QProfilePicker(QDialog):
             Path.mkdir(profile_folder)
 
         all_profile_files = profile_folder.iterdir()
-        all_profiles = [os.path.splitext(profile_file.name)[0] for profile_file in all_profile_files if profile_file.is_file()]
+        all_profiles = [
+            os.path.splitext(profile_file.name)[0] for profile_file in all_profile_files if profile_file.is_file()
+        ]
         all_profiles.sort(key=str.lower)
 
         self.disabled_profiles_list_widget = QListWidget()
@@ -426,9 +436,13 @@ class QProfilePicker(QDialog):
 
         # Create buttons for moving profiles between lists
         enable_button = QPushButton("Enable")
-        enable_button.clicked.connect(lambda: self.move_items(self.disabled_profiles_list_widget, self.enabled_profiles_list_widget))
+        enable_button.clicked.connect(
+            lambda: self.move_items(self.disabled_profiles_list_widget, self.enabled_profiles_list_widget)
+        )
         disable_button = QPushButton("Disable")
-        disable_button.clicked.connect(lambda: self.move_items(self.enabled_profiles_list_widget, self.disabled_profiles_list_widget))
+        disable_button.clicked.connect(
+            lambda: self.move_items(self.enabled_profiles_list_widget, self.disabled_profiles_list_widget)
+        )
 
         list_widget_layout.addWidget(enable_button, 2, 0)
         list_widget_layout.addWidget(disable_button, 2, 1)
@@ -460,7 +474,9 @@ class QProfilePicker(QDialog):
             destination_list.addItem(item)
 
     def get_selected_profiles(self):
-        return [self.enabled_profiles_list_widget.item(x).text() for x in range(self.enabled_profiles_list_widget.count())]
+        return [
+            self.enabled_profiles_list_widget.item(x).text() for x in range(self.enabled_profiles_list_widget.count())
+        ]
 
 
 class QHotkeyWidget(QWidget):

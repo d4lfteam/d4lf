@@ -86,8 +86,7 @@ def move_items_to_inventory():
 def _move_items(
     inv: CharInventory, occupied: list[ItemSlot], num_to_move: int, move_item_types: list[MoveItemsType]
 ) -> tuple[int, list[ItemSlot]]:
-    """
-    Handles actually moving items to or from the stash, based on a parameter
+    """Handles actually moving items to or from the stash, based on a parameter
     :param inv: The Inventory object, used for hovering over the item
     :param occupied: The ItemSlot list of occupied items to move
     :param num_to_move: The maximum number of items to move

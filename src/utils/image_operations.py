@@ -22,8 +22,7 @@ def threshold(
     block_size: int = 1,
     adaptive_thresh_c: int = 10,
 ) -> np.ndarray:
-    """
-    Applies a thresholding method to an input image.
+    """Applies a thresholding method to an input image.
     :param img: Input image to be thresholded. Must be a 3D array representing an RGB image.
     :param method: Thresholding method to use. Options are 'BINARY', 'ADAPTIVE', and 'OTSU'. Default is 'BINARY'.
     :param inverse: Whether to use inverse thresholding. Default is False.
@@ -56,8 +55,7 @@ def threshold(
 
 
 def crop(img: np.ndarray, roi: tuple[int, int, int, int]) -> np.ndarray:
-    """
-    Cuts an image according to a region of interest.
+    """Cuts an image according to a region of interest.
     :param img: Source image.
     :param roi: Region of interest in the format (x, y, w, h).
     :return: Cropped image.
@@ -73,8 +71,7 @@ def crop(img: np.ndarray, roi: tuple[int, int, int, int]) -> np.ndarray:
 
 
 def mask_by_roi(img: np.ndarray, roi: tuple[int, int, int, int], masking_type: str = "regular") -> np.ndarray | None:
-    """
-    Masks an image according to a region of interest.
+    """Masks an image according to a region of interest.
     :param img: Source image.
     :param roi: Region of interest in the format (x, y, w, h).
     :param masking_type: Type of masking, "regular" or "inverse".
@@ -94,8 +91,7 @@ def mask_by_roi(img: np.ndarray, roi: tuple[int, int, int, int], masking_type: s
 
 
 def alpha_to_mask(img: np.ndarray) -> np.ndarray | None:
-    """
-    Creates a mask from an image where alpha == 0.
+    """Creates a mask from an image where alpha == 0.
     :param img: Source image.
     :return: Mask, or None if the image has no alpha channel or the minimum alpha value is not 0.
     """
@@ -106,8 +102,7 @@ def alpha_to_mask(img: np.ndarray) -> np.ndarray | None:
 
 
 def create_mask(size: tuple[int, int], roi: tuple[int, int, int, int]) -> np.ndarray:
-    """
-    Creates a mask with a specific size and region of interest.
+    """Creates a mask with a specific size and region of interest.
     :param size: Size of the mask.
     :param roi: Region of interest in the format (x, y, w, h).
     :return: Created mask.
@@ -118,7 +113,9 @@ def create_mask(size: tuple[int, int], roi: tuple[int, int, int, int]) -> np.nda
     return img
 
 
-def color_filter(img: np.ndarray, color_range: list[np.ndarray], calc_filtered_img: bool = True) -> tuple[np.ndarray, np.ndarray | None]:
+def color_filter(
+    img: np.ndarray, color_range: list[np.ndarray], calc_filtered_img: bool = True
+) -> tuple[np.ndarray, np.ndarray | None]:
     color_ranges = []
     # ex: [array([ -9, 201,  25]), array([ 9, 237,  61])]
     if color_range[0][0] < 0:
@@ -153,8 +150,7 @@ def color_filter(img: np.ndarray, color_range: list[np.ndarray], calc_filtered_i
 
 
 def overlay_image(image1: np.ndarray, image2: np.ndarray, x_offset: int, y_offset: int) -> np.ndarray:
-    """
-    Overlays two images at specified offsets, creating a combined image.
+    """Overlays two images at specified offsets, creating a combined image.
 
     :param image1: The first image to be placed on the canvas.
     :param image2: The second image to be overlaid on top of the first one.
@@ -162,7 +158,6 @@ def overlay_image(image1: np.ndarray, image2: np.ndarray, x_offset: int, y_offse
     :param y_offset: The vertical offset of the second image with respect to the first one.
     :return: Combined image with the second image overlaid on top of the first one at the specified offsets.
     """
-
     # Determine the dimensions of the combined image
     w_combined = max(image1.shape[1] - min(0, x_offset), image2.shape[1] + max(0, x_offset))
     h_combined = max(image1.shape[0] - min(0, y_offset), image2.shape[0] + max(0, y_offset))
@@ -193,8 +188,7 @@ def overlay_image(image1: np.ndarray, image2: np.ndarray, x_offset: int, y_offse
 
 
 def get_typographic_lines(img: np.ndarray, should_invert: bool = False) -> tuple[int, int, int, int]:
-    """
-    Extracts typographic lines from an image containing a single line of text.
+    """Extracts typographic lines from an image containing a single line of text.
     :param img: The input image. Expects an image with light text on a dark background.
     :param should_invert: Whether to invert the image before processing. Set to True if you have dark text on a light background.
     :return: A tuple containing the positions (in y-coordinates) of the topline, baseline, midline, and beardline, respectively.

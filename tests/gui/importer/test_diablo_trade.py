@@ -10,9 +10,7 @@ if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
-URLS = [
-    "https://diablo.trade/listings/items?exactPrice=true&rarity=legendary&sold=true&sort=newest",
-]
+URLS = ["https://diablo.trade/listings/items?exactPrice=true&rarity=legendary&sold=true&sort=newest"]
 
 
 @pytest.mark.parametrize("url", URLS)

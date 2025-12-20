@@ -1,19 +1,14 @@
-import typing
-
 from src.utils.roi_operations import bounding_box, get_center, intersect, is_in_roi
 
-if typing.TYPE_CHECKING:
-    from pytest_mock import MockerFixture
 
-
-def test_get_center():
+def test_get_center() -> None:
     # Test with a rectangle
     roi = (2, 2, 6, 6)
     center = get_center(roi)
     assert center == (5, 5)
 
 
-def test_intersect():
+def test_intersect() -> None:
     # Test with intersecting rectangles
     rects = [(2, 2, 6, 6), (4, 4, 6, 6)]
     intersection = intersect(rects)
@@ -25,7 +20,7 @@ def test_intersect():
     assert intersection is None
 
 
-def test_bounding_box(mocker: MockerFixture):
+def test_bounding_box() -> None:
     # Test with rectangles
     rects = [(2, 2, 2, 2), (4, 4, 2, 2)]
     bounding = bounding_box(rects)
@@ -51,7 +46,7 @@ def test_bounding_box(mocker: MockerFixture):
     assert bounding is None
 
 
-def test_is_coor_in_roi():
+def test_is_coor_in_roi() -> None:
     rectangle = (0, 0, 10, 10)
 
     # Points inside the rectangle

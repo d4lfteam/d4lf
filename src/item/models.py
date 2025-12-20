@@ -75,8 +75,8 @@ class ItemJSONEncoder(json.JSONEncoder):
                 "cosmetic_upgrade": o.cosmetic_upgrade,
                 "inherent": [affix.__dict__ for affix in o.inherent],
                 "item_type": o.item_type.value if o.item_type else None,
-                "name": o.name if o.name else None,
-                "power": o.power if o.power else None,
+                "name": o.name or None,
+                "power": o.power or None,
                 "rarity": o.rarity.value if o.rarity else None,
             }
         return super().default(o)

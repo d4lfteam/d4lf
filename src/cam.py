@@ -60,7 +60,12 @@ class Cam:
         return self.window_offset_set
 
     def grab(self, force_new: bool = False) -> np.ndarray:
-        if not force_new and self.cached_img is not None and self.last_grab is not None and time.perf_counter() - self.last_grab < 0.04:
+        if (
+            not force_new
+            and self.cached_img is not None
+            and self.last_grab is not None
+            and time.perf_counter() - self.last_grab < 0.04
+        ):
             return self.cached_img
 
         # wait for offsets to be found

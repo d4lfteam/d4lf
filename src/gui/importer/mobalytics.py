@@ -7,7 +7,14 @@ import jsonpath
 import lxml.html
 
 import src.logger
-from src.config.models import AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel, ItemFilterModel, ProfileModel, UniqueModel
+from src.config.models import (
+    AffixFilterCountModel,
+    AffixFilterModel,
+    AspectUniqueFilterModel,
+    ItemFilterModel,
+    ProfileModel,
+    UniqueModel,
+)
 from src.dataloader import Dataloader
 from src.gui.importer.common import (
     add_to_profiles,
@@ -71,19 +78,28 @@ def import_mobalytics(config: ImportConfig):
     if not build_name:
         LOGGER.error(msg := "No build name found")
         raise MobalyticsException(msg)
-    class_name = jsonpath.findall(f"$..['{root_document_name}'].tags.data[?@.groupSlug=='class'].name", full_script_data_json)[0].lower()
+    class_name = jsonpath.findall(
+        f"$..['{root_document_name}'].tags.data[?@.groupSlug=='class'].name", full_script_data_json
+    )[0].lower()
     if not class_name:
         LOGGER.error(msg := "No class name found")
         raise MobalyticsException(msg)
     if variant_id:
         items = jsonpath.findall(
-            f"$..['{root_document_name}'].data.buildVariants.values[?@.id=='{variant_id}'].genericBuilder.slots", full_script_data_json
+            f"$..['{root_document_name}'].data.buildVariants.values[?@.id=='{variant_id}'].genericBuilder.slots",
+            full_script_data_json,
         )[0]
     else:
-        items = jsonpath.findall(f"$..['{root_document_name}'].data.buildVariants.values[0].genericBuilder.slots", full_script_data_json)[0]
-        variant_id = jsonpath.findall(f"$..['{root_document_name}'].data.buildVariants.values[0].id", full_script_data_json)[0]
+        items = jsonpath.findall(
+            f"$..['{root_document_name}'].data.buildVariants.values[0].genericBuilder.slots", full_script_data_json
+        )[0]
+        variant_id = jsonpath.findall(
+            f"$..['{root_document_name}'].data.buildVariants.values[0].id", full_script_data_json
+        )[0]
 
-    variant_name = jsonpath.findall(f"..['NgfDocumentCmWidgetContentVariantsV1DataChildVariant:{variant_id}'].title", full_script_data_json)
+    variant_name = jsonpath.findall(
+        f"..['NgfDocumentCmWidgetContentVariantsV1DataChildVariant:{variant_id}'].title", full_script_data_json
+    )
     if variant_name:
         build_name = f"{build_name} {variant_name[0]}"
 
@@ -139,7 +155,10 @@ def import_mobalytics(config: ImportConfig):
             if is_weapon and (x := fix_weapon_type(input_str=potential_item_type)) is not None:
                 item_type = x
                 break
-            if "offhand" in slot_type and (x := fix_offhand_type(input_str=inherent.replace("-", " "), class_str=class_name)) is not None:
+            if (
+                "offhand" in slot_type
+                and (x := fix_offhand_type(input_str=inherent.replace("-", " "), class_str=class_name)) is not None
+            ):
                 item_type = x
                 break
         if item_type:
@@ -149,10 +168,16 @@ def import_mobalytics(config: ImportConfig):
         if not item_type and "offhand" in slot_type:
             item_type = fix_offhand_type("", class_name)
 
-        item_type = match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot_type)) if item_type is None else item_type
+        item_type = (
+            match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot_type))
+            if item_type is None
+            else item_type
+        )
         if item_type is None:
             if is_weapon:
-                LOGGER.warning(f"Couldn't find an item_type for weapon slot {slot_type}, defaulting to all weapon types instead.")
+                LOGGER.warning(
+                    f"Couldn't find an item_type for weapon slot {slot_type}, defaulting to all weapon types instead."
+                )
                 item_filter.itemType = WEAPON_TYPES
             else:
                 item_filter.itemType = []
@@ -165,9 +190,7 @@ def import_mobalytics(config: ImportConfig):
 
         item_filter.affixPool = [
             AffixFilterCountModel(
-                count=[AffixFilterModel(name=x.name) for x in affixes],
-                minCount=3,
-                minGreaterAffixCount=0,
+                count=[AffixFilterModel(name=x.name) for x in affixes], minCount=3, minGreaterAffixCount=0
             )
         ]
         item_filter.minPower = 100
@@ -213,7 +236,9 @@ def _get_legendary_aspect(name: str) -> str:
         aspect_name = correct_name(name.lower().replace("aspect", "").strip())
 
         if aspect_name not in Dataloader().aspect_list:
-            LOGGER.warning(f"Legendary aspect '{aspect_name}' that is not in our aspect data, unable to add to AspectUpgrades.")
+            LOGGER.warning(
+                f"Legendary aspect '{aspect_name}' that is not in our aspect data, unable to add to AspectUpgrades."
+            )
         else:
             return aspect_name
     return ""

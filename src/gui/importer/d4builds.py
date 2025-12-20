@@ -10,7 +10,14 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
-from src.config.models import AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel, ItemFilterModel, ProfileModel, UniqueModel
+from src.config.models import (
+    AffixFilterCountModel,
+    AffixFilterModel,
+    AspectUniqueFilterModel,
+    ItemFilterModel,
+    ProfileModel,
+    UniqueModel,
+)
 from src.dataloader import Dataloader
 from src.gui.importer.common import (
     add_to_profiles,
@@ -42,7 +49,9 @@ ITEM_STATS_XPATH = ".//*[contains(@class, 'dropdown__button__wrapper')]"
 PAPERDOLL_ITEM_SLOT_XPATH = ".//*[contains(@class, 'builder__gear__slot')]"
 PAPERDOLL_ITEM_UNIQUE_NAME_XPATH = ".//*[contains(@class, 'builder__gear__name--')]"
 PAPERDOLL_ITEM_XPATH = ".//*[contains(@class, 'builder__gear__item') and not(contains(@class, 'disabled'))]"
-PAPERDOLL_LEGENDARY_ASPECT_XPATH = "//*[@class='builder__gear__name' and not(contains(@class, 'builder__gear__name--'))]"
+PAPERDOLL_LEGENDARY_ASPECT_XPATH = (
+    "//*[@class='builder__gear__name' and not(contains(@class, 'builder__gear__name--'))]"
+)
 PAPERDOLL_XPATH = "//*[contains(@class, 'builder__gear__items')]"
 TEMPERING_ICON_XPATH = ".//*[contains(@src, 'tempering_02.png')]"
 UNIQUE_ICON_XPATH = ".//*[contains(@src, '/Uniques/')]"
@@ -63,9 +72,11 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     wait = WebDriverWait(driver, 10)
     wait.until(EC.presence_of_element_located((By.XPATH, BUILD_OVERVIEW_XPATH)))
     wait.until(EC.presence_of_element_located((By.XPATH, PAPERDOLL_XPATH)))
-    time.sleep(5)  # super hacky but I didn't find anything else. The page is not fully loaded when the above wait is done
+    time.sleep(
+        5
+    )  # super hacky but I didn't find anything else. The page is not fully loaded when the above wait is done
     data = lxml.html.fromstring(driver.page_source)
-    if (elem := data.xpath(CLASS_XPATH + "/*")) or (elem := data.xpath(CLASS_XPATH)):  # noqa SIM114
+    if (elem := data.xpath(CLASS_XPATH + "/*")) or (elem := data.xpath(CLASS_XPATH)):
         class_name = get_class_name(f"{elem[0].tail} {elem[0].text}")
     else:
         class_name = "Unknown"
@@ -100,22 +111,30 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             if is_weapon and (x := fix_weapon_type(input_str=affix_name)) is not None:
                 item_type = x
                 continue
-            if "offhand" in slot.lower() and (x := fix_offhand_type(input_str=affix_name, class_str=class_name)) is not None:
+            if (
+                "offhand" in slot.lower()
+                and (x := fix_offhand_type(input_str=affix_name, class_str=class_name)) is not None
+            ):
                 item_type = x
                 if any(
                     substring in affix_name.lower() for substring in ["focus", "offhand", "shield", "totem"]
                 ):  # special line indicating the item type
                     continue
-            affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=affix_name)), Dataloader().affix_dict))
+            affix_obj = Affix(
+                name=closest_match(clean_str(_corrections(input_str=affix_name)), Dataloader().affix_dict)
+            )
             if affix_obj.name is None:
                 LOGGER.error(f"Couldn't match {affix_name=}")
                 continue
             if (
                 "ring" in slot.lower()
                 and any(substring in affix_name.lower() for substring in ["resistance"])
-                and not any(substring in affix_name.lower() for substring in ["elements"])  # Exclude resistance to all elements
+                and not any(
+                    substring in affix_name.lower() for substring in ["elements"]
+                )  # Exclude resistance to all elements
             ) or (
-                "boots" in slot.lower() and any(substring in affix_name.lower() for substring in ["max evade charges", "attacks reduce"])
+                "boots" in slot.lower()
+                and any(substring in affix_name.lower() for substring in ["max evade charges", "attacks reduce"])
             ):
                 inherents.append(affix_obj)
             else:
@@ -138,11 +157,15 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             continue
 
         item_type = (
-            match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot.replace(" ", ""))) if item_type is None else item_type
+            match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot.replace(" ", "")))
+            if item_type is None
+            else item_type
         )
         if item_type is None:
             if is_weapon:
-                LOGGER.warning(f"Couldn't find an item_type for weapon slot {slot}, defaulting to all weapon types instead.")
+                LOGGER.warning(
+                    f"Couldn't find an item_type for weapon slot {slot}, defaulting to all weapon types instead."
+                )
                 item_filter.itemType = WEAPON_TYPES
             else:
                 item_filter.itemType = []
@@ -151,9 +174,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             item_filter.itemType = [item_type]
         item_filter.affixPool = [
             AffixFilterCountModel(
-                count=[AffixFilterModel(name=x.name) for x in affixes],
-                minCount=3,
-                minGreaterAffixCount=0,
+                count=[AffixFilterModel(name=x.name) for x in affixes], minCount=3, minGreaterAffixCount=0
             )
         ]
         item_filter.minPower = 100
@@ -174,8 +195,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
 
     file_name = (
         config.custom_file_name
-        if config.custom_file_name
-        else f"d4build_{class_name}_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}"
+        or f"d4build_{class_name}_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}"
     )
     corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
     if config.add_to_profiles:
@@ -224,7 +244,9 @@ def _get_legendary_aspects(data: lxml.html.HtmlElement) -> list[str]:
         aspect_name = correct_name(aspect.text.lower().replace("aspect", "").strip())
 
         if aspect_name not in Dataloader().aspect_list:
-            LOGGER.warning(f"Legendary aspect '{aspect_name}' that is not in our aspect data, unable to add to AspectUpgrades.")
+            LOGGER.warning(
+                f"Legendary aspect '{aspect_name}' that is not in our aspect data, unable to add to AspectUpgrades."
+            )
         else:
             result.append(aspect_name)
 

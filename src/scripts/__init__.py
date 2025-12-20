@@ -1,7 +1,8 @@
 def correct_name(name: str) -> str | None:
     if name:
         return (
-            name.lower()
+            name
+            .lower()
             .replace("'", "")
             .replace(" ", "_")
             .replace("\xa0", "_")

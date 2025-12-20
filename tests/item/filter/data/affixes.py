@@ -53,7 +53,10 @@ affixes = [
     (
         "res boots 2 res",
         [],
-        TestItem(item_type=ItemType.Boots, affixes=[Affix(name="cold_resistance", value=5), Affix(name="shadow_resistance", value=5)]),
+        TestItem(
+            item_type=ItemType.Boots,
+            affixes=[Affix(name="cold_resistance", value=5), Affix(name="shadow_resistance", value=5)],
+        ),
     ),
     (
         "res boots 2 res+ms",
