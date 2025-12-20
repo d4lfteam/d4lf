@@ -47,7 +47,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 # Returns a tuple with the number of affixes.  It's in the format (inherent_num, affixes_num)
-def _get_affix_counts(item: Item) -> (int, int):
+def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> (int, int):
     inherent_num = 0
     affixes_num = 4
     if is_weapon(item.item_type) or item.item_type in [ItemType.Boots]:
@@ -61,13 +61,24 @@ def _get_affix_counts(item: Item) -> (int, int):
         if unique_inherents is not None:
             inherent_num = unique_inherents
 
+    # Rares have either 3 or 4 affixes so we have to do special handling to figure out where exactly the affixes end.
+    # This will also grab up slotted gems but we really don't have much choice
+    if item.rarity == ItemRarity.Rare and any(
+        tts_section[start + inherent_num + affixes_num - 1].lower().startswith(x)
+        for x in ["empty socket", "requires level", "properties lost when equipped"]
+    ):
+        affixes_num = 3
+    elif item.rarity == ItemRarity.Legendary and tts_section[start + inherent_num + affixes_num - 1].lower().startswith("imprinted:"):
+        # Additionally, if someone imprinted a 3 affix rare we'd think it was a legendary so we need to catch those here
+        affixes_num = 3
+
     return inherent_num, affixes_num
 
 
 def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
-    inherent_num, affixes_num = _get_affix_counts(item)
-
-    affixes = _get_affixes_from_tts_section(tts_section, item, inherent_num + affixes_num)
+    starting_index = _get_affix_starting_location_from_tts_section(tts_section, item)
+    inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
+    affixes = _get_affixes_from_tts_section(tts_section, item, starting_index, inherent_num + affixes_num)
     for i, affix_text in enumerate(affixes):
         if i < inherent_num:
             affix = _get_affix_from_text(affix_text)
@@ -97,15 +108,11 @@ def _add_affixes_from_tts_mixed(
     img_item_descr: np.ndarray,
     aspect_bullet: TemplateMatch | None,
 ) -> Item:
+    starting_index = _get_affix_starting_location_from_tts_section(tts_section, item)
+    inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
+    affixes = _get_affixes_from_tts_section(tts_section, item, starting_index, inherent_num + affixes_num)
+
     # With advanced item compare on we'll actually find more bullets than we need, so we don't rely on them for number of affixes
-    inherent_num, affixes_num = _get_affix_counts(item)
-
-    affixes = _get_affixes_from_tts_section(
-        tts_section,
-        item,
-        inherent_num + affixes_num,
-    )
-
     if len(affixes) - 1 > len(affix_bullets):
         _raise_index_error(affixes, affix_bullets, item, img_item_descr)
 
@@ -254,9 +261,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     return item
 
 
-def _get_affixes_from_tts_section(tts_section: list[str], item: Item, length: int):
-    if item.rarity in [ItemRarity.Mythic, ItemRarity.Unique, ItemRarity.Legendary]:
-        length += 1
+def _get_affix_starting_location_from_tts_section(tts_section: list[str], item: Item) -> int:
     dps = None
     item_power = None
     masterwork = None
@@ -282,12 +287,13 @@ def _get_affixes_from_tts_section(tts_section: list[str], item: Item, length: in
         start = base_value + 1
     start += 1
 
-    # Rares have either 3 or 4 affixes so we have to do special handling to figure out where exactly the affixes end.
-    # This will also grab up slotted gems but we really don't have much choice
-    if item.rarity == ItemRarity.Rare and any(
-        tts_section[start + length - 1].lower().startswith(x) for x in ["empty socket", "requires level", "properties lost when equipped"]
-    ):
-        length = length - 1
+    return start
+
+
+def _get_affixes_from_tts_section(tts_section: list[str], item: Item, start: int, length: int):
+    # Grab the aspect as well in this case
+    if item.rarity in [ItemRarity.Mythic, ItemRarity.Unique, ItemRarity.Legendary]:
+        length += 1
 
     return tts_section[start : start + length]
 
