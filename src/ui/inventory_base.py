@@ -21,8 +21,7 @@ class ItemSlot:
 
 
 class InventoryBase(Menu):
-    """
-    Base class for all menus with a grid inventory
+    """Base class for all menus with a grid inventory
     Provides methods for identifying occupied and empty slots, item operations, etc.
     """
 
@@ -42,8 +41,7 @@ class InventoryBase(Menu):
         return max(y_size, x_size)
 
     def get_item_slots(self, img: np.ndarray | None = None) -> tuple[list[ItemSlot], list[ItemSlot]]:
-        """
-        Identifies occupied and empty slots in a grid of slots within a given rectangle of interest (ROI).
+        """Identifies occupied and empty slots in a grid of slots within a given rectangle of interest (ROI).
         :param roi: The rectangle to consider, represented as (x_min, y_min, width, height).
         :param rows: The number of rows in the grid.
         :param columns: The number of columns in the grid.
@@ -88,7 +86,10 @@ class InventoryBase(Menu):
     # Needed for double checking a TTS
     def hover_left_of_item(self, item: ItemSlot):
         mouse.move(
-            *Cam().window_to_monitor([item.bounding_box[0] - item.bounding_box[2] / 2, item.bounding_box[1] + item.bounding_box[3] / 2]),
+            *Cam().window_to_monitor([
+                item.bounding_box[0] - item.bounding_box[2] / 2,
+                item.bounding_box[1] + item.bounding_box[3] / 2,
+            ]),
             randomize=15,
         )
 

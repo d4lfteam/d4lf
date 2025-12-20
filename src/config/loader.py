@@ -25,7 +25,7 @@ class IniConfigLoader:
 
     def load(self, clear: bool = False):
         if not (self.user_dir / PARAMS_INI).exists() or clear:
-            with open(self.user_dir / PARAMS_INI, "w", encoding="utf-8"):
+            with Path(self.user_dir / PARAMS_INI).open("w", encoding="utf-8"):
                 pass
 
         self._parser = configparser.ConfigParser()
@@ -77,7 +77,7 @@ class IniConfigLoader:
         if section not in self._parser.sections():
             self._parser.add_section(section)
         self._parser.set(section, key, value)
-        with open(self.user_dir / PARAMS_INI, "w", encoding="utf-8") as config_file:
+        with Path(self.user_dir / PARAMS_INI).open("w", encoding="utf-8") as config_file:
             self._parser.write(config_file)
 
 

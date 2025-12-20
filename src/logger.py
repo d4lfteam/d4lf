@@ -106,5 +106,6 @@ def _log_unhandled_exceptions(args: typing.Any) -> None:
     if len(args) >= 2 and isinstance(args[1], SystemExit):
         return
     LOGGER.critical(
-        f"Unhandled exception caused by thread '{args.thread.name}'", exc_info=(args.exc_type, args.exc_value, args.exc_traceback)
+        f"Unhandled exception caused by thread '{args.thread.name}'",
+        exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
     )

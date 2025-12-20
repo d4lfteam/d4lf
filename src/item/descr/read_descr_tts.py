@@ -10,7 +10,16 @@ from src import TP
 from src.dataloader import Dataloader
 from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect
-from src.item.data.item_type import ItemType, is_armor, is_consumable, is_jewelry, is_non_sigil_mapping, is_sigil, is_socketable, is_weapon
+from src.item.data.item_type import (
+    ItemType,
+    is_armor,
+    is_consumable,
+    is_jewelry,
+    is_non_sigil_mapping,
+    is_sigil,
+    is_socketable,
+    is_weapon,
+)
 from src.item.data.rarity import ItemRarity
 from src.item.descr import keep_letters_and_spaces
 from src.item.descr.text import find_number
@@ -47,12 +56,12 @@ LOGGER = logging.getLogger(__name__)
 
 
 # Returns a tuple with the number of affixes.  It's in the format (inherent_num, affixes_num)
-def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> (int, int):
+def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[int, int]:
     inherent_num = 0
     affixes_num = 4
-    if is_weapon(item.item_type) or item.item_type in [ItemType.Boots]:
+    if is_weapon(item.item_type) or item.item_type == ItemType.Boots:
         inherent_num = 1
-    elif item.item_type in [ItemType.Shield]:
+    elif item.item_type == ItemType.Shield:
         inherent_num = 3
 
     if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
@@ -68,7 +77,9 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> (int, i
         for x in ["empty socket", "requires level", "properties lost when equipped"]
     ):
         affixes_num = 3
-    elif item.rarity == ItemRarity.Legendary and tts_section[start + inherent_num + affixes_num - 1].lower().startswith("imprinted:"):
+    elif item.rarity == ItemRarity.Legendary and tts_section[start + inherent_num + affixes_num - 1].lower().startswith(
+        "imprinted:"
+    ):
         # Additionally, if someone imprinted a 3 affix rare we'd think it was a legendary so we need to catch those here
         affixes_num = 3
 
@@ -87,17 +98,12 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
         elif i < inherent_num + affixes_num:
             affix = _get_affix_from_text(affix_text)
             item.affixes.append(affix)
+        elif item.rarity == ItemRarity.Mythic:
+            item.aspect = Aspect(name=item.name, text=affix_text, value=find_number(affix_text))
+        elif item.rarity == ItemRarity.Unique:
+            item.aspect = _get_aspect_from_text(affix_text, item.name)
         else:
-            if item.rarity == ItemRarity.Mythic:
-                item.aspect = Aspect(
-                    name=item.name,
-                    text=affix_text,
-                    value=find_number(affix_text),
-                )
-            elif item.rarity == ItemRarity.Unique:
-                item.aspect = _get_aspect_from_text(affix_text, item.name)
-            else:
-                item.aspect = _get_aspect_from_name(affix_text, item.name)
+            item.aspect = _get_aspect_from_name(affix_text, item.name)
     return item
 
 
@@ -134,11 +140,7 @@ def _add_affixes_from_tts_mixed(
             item.affixes.append(affix)
         else:
             if item.rarity == ItemRarity.Mythic:
-                item.aspect = Aspect(
-                    name=item.name,
-                    text=affix_text,
-                    value=find_number(affix_text),
-                )
+                item.aspect = Aspect(name=item.name, text=affix_text, value=find_number(affix_text))
             elif item.rarity == ItemRarity.Unique:
                 item.aspect = _get_aspect_from_text(affix_text, item.name)
             else:
@@ -240,7 +242,9 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     if "chaos" in tts_item[1].lower():
         item.is_chaos = True
 
-    if (len(tts_item) > 3 and "sanctified" in tts_item[3].lower()) or (len(tts_item) > 4 and "sanctified" in tts_item[4].lower()):
+    if (len(tts_item) > 3 and "sanctified" in tts_item[3].lower()) or (
+        len(tts_item) > 4 and "sanctified" in tts_item[4].lower()
+    ):
         item.sanctified = True
 
     search_string = tts_item[1].lower().replace("ancestral", "").replace("chaos", "").strip()
@@ -385,7 +389,10 @@ def _get_item_type(data: str):
 
 
 def _is_codex_upgrade(tts_section: list[str]) -> bool:
-    return any("upgrades an aspect in the codex of power" in line.lower() or "unlocks new aspect" in line.lower() for line in tts_section)
+    return any(
+        "upgrades an aspect in the codex of power" in line.lower() or "unlocks new aspect" in line.lower()
+        for line in tts_section
+    )
 
 
 def _is_cosmetic_upgrade(tts_section: list[str]):
@@ -398,15 +405,13 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
         return None
     if (item := _create_base_item_from_tts(tts_section)) is None:
         return None
-    if any(
-        [
-            is_consumable(item.item_type),
-            is_non_sigil_mapping(item.item_type),
-            is_sigil(item.item_type),
-            is_socketable(item.item_type),
-            item.item_type in [ItemType.Material, ItemType.Tribute],
-        ]
-    ):
+    if any([
+        is_consumable(item.item_type),
+        is_non_sigil_mapping(item.item_type),
+        is_sigil(item.item_type),
+        is_socketable(item.item_type),
+        item.item_type in [ItemType.Material, ItemType.Tribute],
+    ]):
         return item
     if all([not is_armor(item.item_type), not is_jewelry(item.item_type), not is_weapon(item.item_type)]):
         return None
@@ -449,20 +454,21 @@ def read_descr() -> Item | None:
     if item.item_type == ItemType.Cosmetic:
         item.cosmetic_upgrade = True
         return item
-    if any(
-        [
-            is_consumable(item.item_type),
-            is_non_sigil_mapping(item.item_type),
-            is_socketable(item.item_type),
-            item.item_type in [ItemType.Material, ItemType.Tribute, ItemType.Cache, ItemType.LairBossKey],
-            item.sanctified,
-        ]
-    ):
+    if any([
+        is_consumable(item.item_type),
+        is_non_sigil_mapping(item.item_type),
+        is_socketable(item.item_type),
+        item.item_type in [ItemType.Material, ItemType.Tribute, ItemType.Cache, ItemType.LairBossKey],
+        item.sanctified,
+    ]):
         return item
 
-    if all(
-        [not is_armor(item.item_type), not is_jewelry(item.item_type), not is_weapon(item.item_type), item.item_type != ItemType.Shield]
-    ):
+    if all([
+        not is_armor(item.item_type),
+        not is_jewelry(item.item_type),
+        not is_weapon(item.item_type),
+        item.item_type != ItemType.Shield,
+    ]):
         return None
 
     if item.rarity not in [ItemRarity.Rare, ItemRarity.Legendary, ItemRarity.Mythic, ItemRarity.Unique]:

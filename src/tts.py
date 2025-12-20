@@ -9,11 +9,12 @@ import win32pipe
 
 from src.config.helper import singleton
 
-LAST_ITEM = []
 CONNECTED = False
-LOGGER = logging.getLogger(__name__)
-_DATA_QUEUE = queue.Queue(maxsize=100)
+LAST_ITEM = []
 TO_FILTER = ["Champions who earn the favor of"]
+_DATA_QUEUE = queue.Queue(maxsize=100)
+
+LOGGER = logging.getLogger(__name__)
 
 
 class ItemIdentifiers(enum.Enum):
@@ -92,8 +93,8 @@ def read_pipe() -> None:
                 if "DISCONNECTED" in data:
                     break
                 _DATA_QUEUE.put(data)
-            except Exception as e:
-                print(f"Error while reading data: {e}")
+            except Exception:
+                LOGGER.exception("Error while reading data")
 
         win32file.CloseHandle(handle)
         LOGGER.debug("TTS client disconnected")
@@ -122,14 +123,7 @@ def filter_data(data: str) -> bool:
 
 
 def fix_data(data: str) -> str:
-    to_remove = [
-        "&apos;",
-        "&quot;",
-        "[FAVORITED ITEM]. ",
-        "ￂﾠ",
-        "(Spiritborn Only)",
-        "[MARKED AS JUNK]. ",
-    ]
+    to_remove = ["&apos;", "&quot;", "[FAVORITED ITEM]. ", "ￂﾠ", "(Spiritborn Only)", "[MARKED AS JUNK]. "]
 
     for item in to_remove:
         data = data.replace(item, "")

@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import src.item.descr.read_descr_tts
-import src.logger
 import src.tts
 from config.helper import singleton
 from src.cam import Cam
@@ -132,8 +131,7 @@ class VisionModeWithHighlighting:
 
         # Create a gray rectangle as the background
         text_width = int(width_per_character * len(text))
-        if text_width > canvas_center_x * 2:
-            text_width = canvas_center_x * 2
+        text_width = min(text_width, canvas_center_x * 2)
         number_of_lines = math.ceil(len(text) / max_text_length_per_line)
         text_height = int(height_of_character * number_of_lines)
 
@@ -147,7 +145,13 @@ class VisionModeWithHighlighting:
             outline="",
         )
         canvas.create_text(
-            canvas_center_x, previous_text_y - offset, text=text, anchor=tk.S, font=("Courier New", font_size), fill=color, width=text_width
+            canvas_center_x,
+            previous_text_y - offset,
+            text=text,
+            anchor=tk.S,
+            font=("Courier New", font_size),
+            fill=color,
+            width=text_width,
         )
         return int(previous_text_y - offset - text_height)
 
@@ -272,7 +276,9 @@ class VisionModeWithHighlighting:
         if self.evaluate_item_thread:
             kill_thread(self.evaluate_item_thread)
 
-        self.evaluate_item_thread = threading.Thread(target=self.evaluate_item_and_queue_draw, args=(item_descr,), daemon=True)
+        self.evaluate_item_thread = threading.Thread(
+            target=self.evaluate_item_and_queue_draw, args=(item_descr,), daemon=True
+        )
         self.evaluate_item_thread.start()
 
     def evaluate_item_and_queue_draw(self, item_descr: Item):
@@ -323,7 +329,9 @@ class VisionModeWithHighlighting:
                         # Make the canvas gray for "found the item" or blue for "ignored this item"
                         if ignored_item:
                             if item_descr.sanctified:
-                                self.request_empty_outline(item_descr, item_roi, COLOR_BLUE, "Sanctified (Not Supported)")
+                                self.request_empty_outline(
+                                    item_descr, item_roi, COLOR_BLUE, "Sanctified (Not Supported)"
+                                )
                             else:
                                 self.request_empty_outline(item_descr, item_roi, COLOR_BLUE)
                         else:
@@ -358,7 +366,9 @@ class VisionModeWithHighlighting:
 
                             # Adapt colors based on config
                             if match:
-                                if any(res_matched.profile.endswith(ASPECT_UPGRADES_LABEL) for res_matched in res.matched):
+                                if any(
+                                    res_matched.profile.endswith(ASPECT_UPGRADES_LABEL) for res_matched in res.matched
+                                ):
                                     self.request_codex_upgrade_box(item_descr, item_roi, res)
                                 else:
                                     self.request_match_box(item_descr, item_roi, res, item_descr_with_loc)

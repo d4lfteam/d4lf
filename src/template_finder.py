@@ -88,12 +88,17 @@ class SearchArgs:
         return result
 
     def wait_until_hidden(self, timeout: float = 3, suppress_debug: bool = False) -> bool:
-        if not (hidden := run_until_condition(lambda: self.detect().success, lambda res: not res, timeout)[1]) and not suppress_debug:
+        if (
+            not (hidden := run_until_condition(lambda: self.detect().success, lambda res: not res, timeout)[1])
+            and not suppress_debug
+        ):
             LOGGER.debug(f"{self.ref} still found after {timeout} seconds")
         return hidden
 
     @staticmethod
-    def wait_for_update(img: np.ndarray, roi: list[int] | None = None, timeout: float = 3, suppress_debug: bool = False) -> bool:
+    def wait_for_update(
+        img: np.ndarray, roi: list[int] | None = None, timeout: float = 3, suppress_debug: bool = False
+    ) -> bool:
         roi = roi if roi is not None else [0, 0, img.shape[0] - 1, img.shape[1] - 1]
         if (
             not (
@@ -120,7 +125,9 @@ def _process_template_refs(ref: str | np.ndarray | list[str]) -> list[Template]:
                 LOGGER.warning(f"Template not defined: {i}")
         # if the reference is an image, append new Template class object
         elif isinstance(i, np.ndarray):
-            templates.append(Template(img_bgr=i, img_gray=cv2.cvtColor(i, cv2.COLOR_BGR2GRAY), alpha_mask=alpha_to_mask(i)))
+            templates.append(
+                Template(img_bgr=i, img_gray=cv2.cvtColor(i, cv2.COLOR_BGR2GRAY), alpha_mask=alpha_to_mask(i))
+            )
     return templates
 
 
@@ -177,8 +184,7 @@ def search(
     do_multi_process: bool = True,
     take_debug_screenshot: bool = False,
 ) -> SearchResult:
-    """
-    Search for templates in an image
+    """Search for templates in an image
     :param ref: Either key of a already loaded template, list of such keys, or a image which is used as template
     :param inp_img: Image in which the template will be searched
     :param threshold: Threshold which determines if a template is found or not
@@ -190,7 +196,6 @@ def search(
     :param do_multi_process: flag if multi process should be used in case there are multiple refs
     :return: SearchResult object containing success and matches
     """
-
     templates = _process_template_refs(ref)
     result = SearchResult()
     matches = []
@@ -210,7 +215,9 @@ def search(
 
     def _process_cv_result(template: Template, img: np.ndarray, take_debug_screenshot: bool = False) -> bool:
         new_match = False
-        res, template_img, new_roi = _get_cv_result(template, img, roi, color_match, use_grayscale, take_debug_screenshot)
+        res, template_img, new_roi = _get_cv_result(
+            template, img, roi, color_match, use_grayscale, take_debug_screenshot
+        )
 
         while True and not (matches and mode == "first") and res is not None:
             _, max_val, _, max_pos = cv2.minMaxLoc(res)
@@ -274,7 +281,10 @@ def search(
         if not suppress_debug and len(matches) > 1 and mode == "all":
             LOGGER.debug(
                 "Found the following matches:\n"
-                + ", ".join([f"  {template_match.name} ({template_match.score * 100:.1f}% confidence)" for template_match in matches])
+                + ", ".join([
+                    f"  {template_match.name} ({template_match.score * 100:.1f}% confidence)"
+                    for template_match in matches
+                ])
             )
     elif not suppress_debug:
         LOGGER.debug(f"Could not find desired templates: {ref}")

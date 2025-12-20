@@ -3,7 +3,17 @@ import os
 import sys
 import threading
 
-from PyQt6.QtCore import QObject, QPoint, QRegularExpression, QRunnable, QSettings, QSize, QThreadPool, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import (
+    QObject,
+    QPoint,
+    QRegularExpression,
+    QRunnable,
+    QSettings,
+    QSize,
+    QThreadPool,
+    pyqtSignal,
+    pyqtSlot,
+)
 from PyQt6.QtGui import QColor, QIcon, QRegularExpressionValidator
 from PyQt6.QtWidgets import (
     QApplication,
@@ -120,7 +130,9 @@ class Gui(QMainWindow):
         layout.addLayout(hbox)
 
         def generate_button_click():
-            worker = _Worker(name="diablo.trade", fn=import_diablo_trade, url=input_box.text(), max_listings=int(input_box2.text()))
+            worker = _Worker(
+                name="diablo.trade", fn=import_diablo_trade, url=input_box.text(), max_listings=int(input_box2.text())
+            )
             worker.signals.finished.connect(on_worker_finished)
             generate_button.setEnabled(False)
             generate_button.setText("Generating...")
@@ -218,7 +230,9 @@ class Gui(QMainWindow):
 
         checkbox_hbox = QHBoxLayout()
         import_uniques_checkbox = generate_checkbox(
-            "Import Uniques", "import_uniques", "Should uniques be included in the profile if they exist on the build page?"
+            "Import Uniques",
+            "import_uniques",
+            "Should uniques be included in the profile if they exist on the build page?",
         )
         import_aspect_upgrades_checkbox = generate_checkbox(
             "Import Aspect Upgrades",

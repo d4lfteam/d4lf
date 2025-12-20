@@ -50,16 +50,18 @@ class ItemType(Enum):
 
 
 def is_armor(item_type: ItemType) -> bool:
-    return item_type in [ItemType.Boots, ItemType.ChestArmor, ItemType.Gloves, ItemType.Helm, ItemType.Legs, ItemType.Shield]
+    return item_type in [
+        ItemType.Boots,
+        ItemType.ChestArmor,
+        ItemType.Gloves,
+        ItemType.Helm,
+        ItemType.Legs,
+        ItemType.Shield,
+    ]
 
 
 def is_consumable(item_type: ItemType) -> bool:
-    return item_type in [
-        ItemType.Consumable,
-        ItemType.Elixir,
-        ItemType.Incense,
-        ItemType.TemperManual,
-    ]
+    return item_type in [ItemType.Consumable, ItemType.Elixir, ItemType.Incense, ItemType.TemperManual]
 
 
 def is_non_sigil_mapping(item_type: ItemType) -> bool:
@@ -71,17 +73,11 @@ def is_sigil(item_type: ItemType) -> bool:
 
 
 def is_jewelry(item_type: ItemType) -> bool:
-    return item_type in [
-        ItemType.Amulet,
-        ItemType.Ring,
-    ]
+    return item_type in [ItemType.Amulet, ItemType.Ring]
 
 
 def is_socketable(item_type: ItemType) -> bool:
-    return item_type in [
-        ItemType.Gem,
-        ItemType.Rune,
-    ]
+    return item_type in [ItemType.Gem, ItemType.Rune]
 
 
 def is_weapon(item_type: ItemType) -> bool:

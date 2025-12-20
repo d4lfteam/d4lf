@@ -25,5 +25,5 @@ def set_process_name(name, window_spec):
         hwnd = get_window_spec_id(window_spec)
         kernel32 = ctypes.WinDLL("kernel32")
         kernel32.SetConsoleTitleW(hwnd, name)
-    except Exception as e:
-        LOGGER.error("Failed to set process name:", str(e))
+    except Exception:
+        LOGGER.exception("Failed to set process name")

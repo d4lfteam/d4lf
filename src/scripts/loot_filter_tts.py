@@ -10,7 +10,14 @@ from src.item.data.affix import AffixType
 from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter
-from src.scripts.common import ASPECT_UPGRADES_LABEL, is_ignored_item, is_junk_rarity, mark_as_favorite, mark_as_junk, reset_item_status
+from src.scripts.common import (
+    ASPECT_UPGRADES_LABEL,
+    is_ignored_item,
+    is_junk_rarity,
+    mark_as_favorite,
+    mark_as_junk,
+    reset_item_status,
+)
 from src.utils.custom_mouse import mouse
 from src.utils.window import screenshot
 
@@ -60,7 +67,11 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType, stash_is_ope
 
         # Hardcoded filters
         if is_ignored_item(item_descr):
-            if not stash_is_open and item_descr.item_type == ItemType.TemperManual and IniConfigLoader().general.auto_use_temper_manuals:
+            if (
+                not stash_is_open
+                and item_descr.item_type == ItemType.TemperManual
+                and IniConfigLoader().general.auto_use_temper_manuals
+            ):
                 mouse.click("right")
             continue
 
@@ -72,7 +83,9 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType, stash_is_ope
         # Check if we want to keep the item
         res = Filter().should_keep(item_descr)
         matched_any_affixes = len(res.matched) > 0 and len(res.matched[0].matched_affixes) > 0
-        matched_profile_legendary_aspect = any(match.profile.endswith(f".{ASPECT_UPGRADES_LABEL}") for match in res.matched)
+        matched_profile_legendary_aspect = any(
+            match.profile.endswith(f".{ASPECT_UPGRADES_LABEL}") for match in res.matched
+        )
 
         # Uniques have special handling. If they have an aspect specifically called out by a profile they are treated
         # like any other item. If not, and there are no non-aspect filters, then they are handled by the handle_uniques
@@ -88,26 +101,25 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType, stash_is_ope
                         mark_as_favorite()
                 elif IniConfigLoader().general.mark_as_favorite:
                     mark_as_favorite()
-        else:
-            if not res.keep:
-                # Specific functionality for Season 7 to help complete challenge to salvage ancestral legendaries
-                is_greater = any(affix.type == AffixType.greater for affix in item_descr.affixes)
-                if is_greater and IniConfigLoader().general.s7_do_not_junk_ancestral_legendaries:
-                    LOGGER.info("Skipping marking as junk because it is an ancestral legendary.")
-                else:
-                    mark_as_junk()
-            elif (
-                res.keep
-                and (
-                    matched_any_affixes
-                    or matched_profile_legendary_aspect
-                    or item_descr.rarity == ItemRarity.Mythic
-                    or is_sigil(item_descr.item_type)
-                    or item_descr.item_type == ItemType.Tribute
-                )
-                and IniConfigLoader().general.mark_as_favorite
-            ):
-                mark_as_favorite()
+        elif not res.keep:
+            # Specific functionality for Season 7 to help complete challenge to salvage ancestral legendaries
+            is_greater = any(affix.type == AffixType.greater for affix in item_descr.affixes)
+            if is_greater and IniConfigLoader().general.s7_do_not_junk_ancestral_legendaries:
+                LOGGER.info("Skipping marking as junk because it is an ancestral legendary.")
+            else:
+                mark_as_junk()
+        elif (
+            res.keep
+            and (
+                matched_any_affixes
+                or matched_profile_legendary_aspect
+                or item_descr.rarity == ItemRarity.Mythic
+                or is_sigil(item_descr.item_type)
+                or item_descr.item_type == ItemType.Tribute
+            )
+            and IniConfigLoader().general.mark_as_favorite
+        ):
+            mark_as_favorite()
 
     LOGGER.debug(f"  Time to filter all items in stash/inventory tab: {time.time() - start_checking_items:.2f}s")
 

@@ -85,9 +85,10 @@ def convert_args_to_numpy(func):
     return wrapper
 
 
-def run_until_condition(func: Callable[[], T], is_success: Callable[[T], bool], timeout: float = 3) -> tuple[T | None, bool]:
-    """
-    Runs the given function until the specified condition is met or the timeout is reached.
+def run_until_condition(
+    func: Callable[[], T], is_success: Callable[[T], bool], timeout: float = 3
+) -> tuple[T | None, bool]:
+    """Runs the given function until the specified condition is met or the timeout is reached.
 
     :param func: The function to be executed repeatedly.
     :param is_success: A function that takes the result of `func` and returns True if the success condition is met.
@@ -116,8 +117,7 @@ def scale_vector_to_distance(vector, target_distance):
 
 
 def slugify(value, allow_unicode=False, separator="_"):
-    """
-    Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
+    """Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
     dashes to the desired separator. Remove characters that aren't alphanumerics,
     underscores, or hyphens. Convert to lowercase. Also strip leading and
     trailing whitespace, dashes, and underscores.

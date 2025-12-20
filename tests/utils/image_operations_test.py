@@ -1,10 +1,19 @@
 import numpy as np
 import pytest
 
-from src.utils.image_operations import ThresholdTypes, alpha_to_mask, color_filter, create_mask, crop, mask_by_roi, overlay_image, threshold
+from src.utils.image_operations import (
+    ThresholdTypes,
+    alpha_to_mask,
+    color_filter,
+    create_mask,
+    crop,
+    mask_by_roi,
+    overlay_image,
+    threshold,
+)
 
 
-def test_binary_threshold():
+def test_binary_threshold() -> None:
     # Create a dummy 3-channel image
     # Left half is filled with 40s (intensity less than threshold)
     # Right half is filled with 200s (intensity higher than threshold)
@@ -22,7 +31,7 @@ def test_binary_threshold():
     assert np.all(binary_thresh_img[:, 50:] == 255)
 
 
-def test_crop():
+def test_crop() -> None:
     # Test with a valid ROI
     img = np.zeros((10, 10))
     roi = (2, 2, 6, 6)
@@ -35,7 +44,7 @@ def test_crop():
     assert np.array_equal(cropped, img)
 
 
-def test_mask_by_roi():
+def test_mask_by_roi() -> None:
     # Test with type "regular" and an image of zeros
     # We create an image of zeros and a region of interest (ROI) in the middle
     img = np.zeros((10, 10, 3), dtype=np.uint8)
@@ -83,7 +92,7 @@ def test_mask_by_roi():
     assert masked is None
 
 
-def test_alpha_to_mask():
+def test_alpha_to_mask() -> None:
     # Test with an image that has an alpha channel
     img = np.zeros((10, 10, 4), dtype=np.uint8)
     img[0, 0, 3] = 255
@@ -95,7 +104,7 @@ def test_alpha_to_mask():
     assert alpha_to_mask(img) is None
 
 
-def test_create_mask():
+def test_create_mask() -> None:
     size = (10, 10)
     roi = (2, 2, 6, 6)
     mask = create_mask(size, roi)
@@ -103,31 +112,31 @@ def test_create_mask():
 
 
 @pytest.fixture
-def filter_img():
+def filter_img() -> np.ndarray:
     return np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
 
 
 @pytest.fixture
-def color_range():
+def color_range() -> list[np.ndarray]:
     return [np.array([0, 0, 0]), np.array([180, 255, 255])]
 
 
-def test_color_filter_mask_shape(filter_img, color_range):
+def test_color_filter_mask_shape(filter_img: np.ndarray, color_range: list[np.ndarray]) -> None:
     color_mask, _ = color_filter(filter_img, color_range, calc_filtered_img=False)
     assert color_mask.shape == filter_img.shape[:2]
 
 
-def test_color_filter_no_img(filter_img, color_range):
+def test_color_filter_no_img(filter_img: np.ndarray, color_range: list[np.ndarray]) -> None:
     _, img = color_filter(filter_img, color_range, calc_filtered_img=False)
     assert img is None
 
 
-def test_color_filter_with_img(filter_img, color_range):
+def test_color_filter_with_img(filter_img: np.ndarray, color_range: list[np.ndarray]) -> None:
     _, img = color_filter(filter_img, color_range, calc_filtered_img=True)
     assert isinstance(img, np.ndarray)
 
 
-def test_overlay_image():
+def test_overlay_image() -> None:
     # Create two sample images of size 10x10
     image1 = np.zeros((10, 10, 3), dtype=np.uint8)
     image2 = np.ones((10, 10, 3), dtype=np.uint8) * 255

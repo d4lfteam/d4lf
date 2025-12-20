@@ -5,7 +5,14 @@ import re
 import lxml.html
 
 import src.logger
-from src.config.models import AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel, ItemFilterModel, ProfileModel, UniqueModel
+from src.config.models import (
+    AffixFilterCountModel,
+    AffixFilterModel,
+    AspectUniqueFilterModel,
+    ItemFilterModel,
+    ProfileModel,
+    UniqueModel,
+)
 from src.dataloader import Dataloader
 from src.gui.importer.common import add_to_profiles, get_with_retry, match_to_enum, retry_importer, save_as_profile
 from src.gui.importer.importer_config import ImportConfig
@@ -35,7 +42,9 @@ def import_maxroll(config: ImportConfig):
         return
     LOGGER.info(f"Loading {url}")
     api_url, build_id = (
-        _extract_planner_url_and_id_from_guide(url) if BUILD_GUIDE_BASE_URL in url else _extract_planner_url_and_id_from_planner(url)
+        _extract_planner_url_and_id_from_guide(url)
+        if BUILD_GUIDE_BASE_URL in url
+        else _extract_planner_url_and_id_from_planner(url)
     )
     try:
         r = get_with_retry(url=api_url)
@@ -86,7 +95,9 @@ def import_maxroll(config: ImportConfig):
 
         item_filter = ItemFilterModel()
         if (item_type := _find_item_type(mapping_data=mapping_data["items"], value=resolved_item["id"])) is None:
-            LOGGER.warning(f"Couldn't find item type for {resolved_item['id']} from mapping data provided by Maxroll. Skipping item.")
+            LOGGER.warning(
+                f"Couldn't find item type for {resolved_item['id']} from mapping data provided by Maxroll. Skipping item."
+            )
             continue
         item_filter.itemType = [item_type]
 
@@ -96,7 +107,9 @@ def import_maxroll(config: ImportConfig):
             and mapping_data["items"][resolved_item["id"]]["magicType"] == 1
             and config.import_aspect_upgrades
         ):
-            legendary_aspect = _find_legendary_aspect(mapping_data, resolved_item.get("legendaryPower", resolved_item.get("aspects", {})))
+            legendary_aspect = _find_legendary_aspect(
+                mapping_data, resolved_item.get("legendaryPower", resolved_item.get("aspects", {}))
+            )
             if legendary_aspect:
                 if legendary_aspect not in Dataloader().aspect_list:
                     LOGGER.warning(
@@ -145,10 +158,7 @@ def import_maxroll(config: ImportConfig):
             i += 1
 
         finished_filters.append({filter_name: item_filter})
-    profile = ProfileModel(
-        name="imported profile",
-        Affixes=sorted(finished_filters, key=lambda x: next(iter(x))),
-    )
+    profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))))
     if config.import_uniques and unique_filters:
         profile.Uniques = unique_filters
     if config.import_aspect_upgrades and aspect_upgrade_filters:
@@ -201,13 +211,22 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
                         "AffixSingleResist",
                         "S04_AffixResistance_Single_Flat",
                     ]:
-                        attr_desc = mapping_data["uiStrings"]["damageType"][str(affix["attributes"][0]["param"])] + " Resistance"
+                        attr_desc = (
+                            mapping_data["uiStrings"]["damageType"][str(affix["attributes"][0]["param"])]
+                            + " Resistance"
+                        )
                     elif affix["attributes"][0]["formula"] in ["AffixFlatResourceUpto4"]:
                         param = str(affix["attributes"][0]["param"])
                         # Maxroll doesn't have Faith in their data
-                        attr_desc = "Faith per Second" if param == "9" else mapping_data["uiStrings"]["resourceType"][param] + " per Second"
+                        attr_desc = (
+                            "Faith per Second"
+                            if param == "9"
+                            else mapping_data["uiStrings"]["resourceType"][param] + " per Second"
+                        )
                     elif affix["attributes"][0]["formula"] in ["AffixResourceOnKill"]:
-                        attr_desc = mapping_data["uiStrings"]["resourceType"][str(affix["attributes"][0]["param"])] + " On Kill"
+                        attr_desc = (
+                            mapping_data["uiStrings"]["resourceType"][str(affix["attributes"][0]["param"])] + " On Kill"
+                        )
                 elif "param" not in affix["attributes"][0]:
                     attr_id = affix["attributes"][0]["id"]
                     attr_obj = mapping_data["attributes"][str(attr_id)]
@@ -221,7 +240,10 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
                     else:
                         if affix["attributes"][0]["param"] == -1460542966 and affix["attributes"][0]["id"] == 1033:
                             attr_desc = "to core skills"
-                        elif affix["attributes"][0]["param"] == -755407686 and affix["attributes"][0]["id"] in [1034, 1091]:
+                        elif affix["attributes"][0]["param"] == -755407686 and affix["attributes"][0]["id"] in [
+                            1034,
+                            1091,
+                        ]:
                             attr_desc = "to defensive skills"
                         elif affix["attributes"][0]["param"] == 746476422 and affix["attributes"][0]["id"] == 1034:
                             attr_desc = "to mastery skills"
@@ -234,7 +256,9 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
             affix_obj = Affix(name=closest_match(clean_str(clean_desc), Dataloader().affix_dict))
             if affix_obj.name is not None:
                 res.append(affix_obj)
-            elif "formula" in affix["attributes"][0] and affix["attributes"][0]["formula"] in ["InherentAffixAnyResist_Ring"]:
+            elif "formula" in affix["attributes"][0] and affix["attributes"][0]["formula"] in [
+                "InherentAffixAnyResist_Ring"
+            ]:
                 LOGGER.info("Skipping InherentAffixAnyResist_Ring")
             else:
                 LOGGER.error(f"Couldn't match {affix_id=}")
@@ -349,9 +373,7 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int]:
 
 if __name__ == "__main__":
     src.logger.setup()
-    URLS = [
-        "https://maxroll.gg/d4/planner/19390ugy#1",
-    ]
+    URLS = ["https://maxroll.gg/d4/planner/19390ugy#1"]
     for X in URLS:
         config = ImportConfig(X, True, True, False, None)
         import_maxroll(config)

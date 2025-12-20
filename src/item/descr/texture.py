@@ -59,12 +59,7 @@ def _find_bullets(
     img_height = img_item_descr.shape[0]
     roi_bullets = [0, sep_short_match.center[1], ResManager().offsets.find_bullet_points_width, img_height]
     all_bullets = search(
-        ref=template_list,
-        inp_img=img_item_descr,
-        threshold=threshold,
-        roi=roi_bullets,
-        use_grayscale=True,
-        mode=mode,
+        ref=template_list, inp_img=img_item_descr, threshold=threshold, roi=roi_bullets, use_grayscale=True, mode=mode
     )
     if not all_bullets.success:
         return []
@@ -115,7 +110,7 @@ def find_aspect_bullet(img_item_descr: np.ndarray, sep_short_match: TemplateMatc
         mode="all",
     )
     if aspect_bullets:
-        return [match for match in aspect_bullets if match.score == max([match.score for match in aspect_bullets])][0]
+        return [match for match in aspect_bullets if match.score == max(match.score for match in aspect_bullets)][0]
     return None
 
 

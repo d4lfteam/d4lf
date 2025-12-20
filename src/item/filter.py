@@ -1,5 +1,5 @@
 import logging
-import os
+import pathlib
 import sys
 import time
 from dataclasses import dataclass, field
@@ -108,13 +108,17 @@ class Filter:
                 # check affixes
                 matched_affixes = []
                 if filter_spec.affixPool:
-                    matched_affixes = self._match_affixes_count(expected_affixes=filter_spec.affixPool, item_affixes=non_tempered_affixes)
+                    matched_affixes = self._match_affixes_count(
+                        expected_affixes=filter_spec.affixPool, item_affixes=non_tempered_affixes
+                    )
                     if not matched_affixes:
                         continue
                 # check inherent
                 matched_inherents = []
                 if filter_spec.inherentPool:
-                    matched_inherents = self._match_affixes_count(expected_affixes=filter_spec.inherentPool, item_affixes=item.inherent)
+                    matched_inherents = self._match_affixes_count(
+                        expected_affixes=filter_spec.inherentPool, item_affixes=item.inherent
+                    )
                     if not matched_inherents:
                         continue
                 all_matches = matched_affixes + matched_inherents
@@ -129,7 +133,9 @@ class Filter:
         if item.codex_upgrade and self.aspect_upgrade_filters:
             # See if the item matches any legendary aspects that were in the profile
             for profile_name, profile_filter in self.aspect_upgrade_filters.items():
-                if item.aspect and any(legendary_aspect_name == item.aspect.name for legendary_aspect_name in profile_filter):
+                if item.aspect and any(
+                    legendary_aspect_name == item.aspect.name for legendary_aspect_name in profile_filter
+                ):
                     LOGGER.info("Matched build-specific aspects that updates codex")
                     res.keep = True
                     res.matched.append(MatchedFilter(f"{profile_name}.{ASPECT_UPGRADES_LABEL}", did_match_aspect=True))
@@ -167,16 +173,22 @@ class Filter:
         for profile_name, profile_filter in self.sigil_filters.items():
             blacklist_empty = not profile_filter.blacklist
             is_in_blacklist = self._match_affixes_sigils(
-                expected_affixes=profile_filter.blacklist, sigil_name=item.name, sigil_affixes=item.affixes + item.inherent
+                expected_affixes=profile_filter.blacklist,
+                sigil_name=item.name,
+                sigil_affixes=item.affixes + item.inherent,
             )
             blacklist_ok = True if blacklist_empty else not is_in_blacklist
             whitelist_empty = not profile_filter.whitelist
             is_in_whitelist = self._match_affixes_sigils(
-                expected_affixes=profile_filter.whitelist, sigil_name=item.name, sigil_affixes=item.affixes + item.inherent
+                expected_affixes=profile_filter.whitelist,
+                sigil_name=item.name,
+                sigil_affixes=item.affixes + item.inherent,
             )
             whitelist_ok = True if whitelist_empty else is_in_whitelist
 
-            if blacklist_empty and not whitelist_empty and not whitelist_ok or whitelist_empty and not blacklist_empty and not blacklist_ok:
+            if (blacklist_empty and not whitelist_empty and not whitelist_ok) or (
+                whitelist_empty and not blacklist_empty and not blacklist_ok
+            ):
                 continue
             if not blacklist_empty and not whitelist_empty:
                 if not blacklist_ok and not whitelist_ok:
@@ -186,7 +198,7 @@ class Filter:
                         continue
                     if profile_filter.priority == SigilPriority.blacklist and not blacklist_ok:
                         continue
-                elif is_in_blacklist and not blacklist_ok or not is_in_whitelist and not whitelist_ok:
+                elif (is_in_blacklist and not blacklist_ok) or (not is_in_whitelist and not whitelist_ok):
                     continue
             LOGGER.info(f"Matched {profile_name}.Sigils")
             res.keep = True
@@ -222,7 +234,10 @@ class Filter:
         res = FilterResult(False, [])
         all_filters_are_aspect = True
         if not self.unique_filters:
-            keep = IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk or item.rarity == ItemRarity.Mythic
+            keep = (
+                IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
+                or item.rarity == ItemRarity.Mythic
+            )
             return FilterResult(keep, [])
         for profile_name, profile_filter in self.unique_filters.items():
             for filter_item in profile_filter:
@@ -248,10 +263,14 @@ class Filter:
                 if not self._match_affixes_uniques(expected_affixes=filter_item.affix, item_affixes=item.affixes):
                     continue
                 # check greater affixes
-                if not self._match_greater_affix_count(expected_min_count=filter_item.minGreaterAffixCount, item_affixes=item.affixes):
+                if not self._match_greater_affix_count(
+                    expected_min_count=filter_item.minGreaterAffixCount, item_affixes=item.affixes
+                ):
                     continue
                 # check aspect is in percent range
-                if not self._match_aspect_is_in_percent_range(expected_percent=filter_item.minPercentOfAspect, item_aspect=item.aspect):
+                if not self._match_aspect_is_in_percent_range(
+                    expected_percent=filter_item.minPercentOfAspect, item_aspect=item.aspect
+                ):
                     continue
                 LOGGER.info(f"Matched {profile_name}.Uniques: {item.aspect.name}")
                 res.keep = True
@@ -278,9 +297,11 @@ class Filter:
     def _did_files_change(self) -> bool:
         if self.last_loaded is None:
             return True
-        return any(os.path.getmtime(file_path) > self.last_loaded for file_path in self.all_file_paths)
+        return any(pathlib.Path(file_path).stat().st_mtime > self.last_loaded for file_path in self.all_file_paths)
 
-    def _match_affixes_count(self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix]) -> list[Affix]:
+    def _match_affixes_count(
+        self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix]
+    ) -> list[Affix]:
         result = []
         for count_group in expected_affixes:
             greater_affix_count = 0
@@ -291,16 +312,23 @@ class Filter:
                     group_res.append(matched_item_affix)
                     if matched_item_affix.type == AffixType.greater:
                         greater_affix_count += 1
-            if count_group.minCount <= len(group_res) <= count_group.maxCount and greater_affix_count >= count_group.minGreaterAffixCount:
+            if (
+                count_group.minCount <= len(group_res) <= count_group.maxCount
+                and greater_affix_count >= count_group.minGreaterAffixCount
+            ):
                 result.extend(group_res)
             else:  # if one group fails, everything fails
                 return []
         return result
 
     @staticmethod
-    def _match_affixes_sigils(expected_affixes: list[SigilConditionModel], sigil_name: str, sigil_affixes: list[Affix]) -> bool:
+    def _match_affixes_sigils(
+        expected_affixes: list[SigilConditionModel], sigil_name: str, sigil_affixes: list[Affix]
+    ) -> bool:
         for expected_affix in expected_affixes:
-            if sigil_name != expected_affix.name and not [affix for affix in sigil_affixes if affix.name == expected_affix.name]:
+            if sigil_name != expected_affix.name and not [
+                affix for affix in sigil_affixes if affix.name == expected_affix.name
+            ]:
                 continue
             if expected_affix.condition and not any(affix.name in expected_affix.condition for affix in sigil_affixes):
                 continue
@@ -325,11 +353,15 @@ class Filter:
 
         if item_aspect.max_value > item_aspect.min_value:
             percent_float = expected_percent / 100.0
-            return (item_aspect.value - item_aspect.min_value) / (item_aspect.max_value - item_aspect.min_value) >= percent_float
+            return (item_aspect.value - item_aspect.min_value) / (
+                item_aspect.max_value - item_aspect.min_value
+            ) >= percent_float
 
         # This is the case where a smaller number is better
         percent_float = (100 - expected_percent) / 100.0
-        return (item_aspect.value - item_aspect.max_value) / (item_aspect.min_value - item_aspect.max_value) <= percent_float
+        return (item_aspect.value - item_aspect.max_value) / (
+            item_aspect.min_value - item_aspect.max_value
+        ) <= percent_float
 
     @staticmethod
     def _match_item_aspect_or_affix(
@@ -388,7 +420,7 @@ class Filter:
                 continue
 
             self.all_file_paths.append(profile_path)
-            with open(profile_path, encoding="utf-8") as f:
+            with pathlib.Path(profile_path).open(encoding="utf-8") as f:
                 try:
                     config = yaml.load(stream=f, Loader=_UniqueKeyLoader)
                 except Exception as e:

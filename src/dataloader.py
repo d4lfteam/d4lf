@@ -1,5 +1,6 @@
 import json
 import logging
+import pathlib
 import threading
 
 from src.config import BASE_DIR
@@ -38,20 +39,28 @@ class Dataloader:
         return cls._instance
 
     def load_data(self):
-        with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/affixes.json", encoding="utf-8") as f:
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/affixes.json").open(
+            encoding="utf-8"
+        ) as f:
             self.affix_dict: dict = json.load(f)
 
-        with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/aspects.json", encoding="utf-8") as f:
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/aspects.json").open(
+            encoding="utf-8"
+        ) as f:
             self.aspect_list = json.load(f)
 
-        with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/corrections.json", encoding="utf-8") as f:
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/corrections.json").open(
+            encoding="utf-8"
+        ) as f:
             data = json.load(f)
             self.error_map = data["error_map"]
             self.filter_after_keyword = data["filter_after_keyword"]
             self.filter_words = data["filter_words"]
             self.bad_tts_uniques = data["bad_tts_uniques"]
 
-        with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/item_types.json", encoding="utf-8") as f:
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/item_types.json").open(
+            encoding="utf-8"
+        ) as f:
             data = json.load(f)
             self.item_types_dict = data
             for item, value in data.items():
@@ -61,7 +70,9 @@ class Dataloader:
                 else:
                     LOGGER.warning(f"{item} type not in item_type.py")
 
-        with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/sigils.json", encoding="utf-8") as f:
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/sigils.json").open(
+            encoding="utf-8"
+        ) as f:
             self.affix_sigil_dict_all = json.load(f)
             self.affix_sigil_dict = {
                 **self.affix_sigil_dict_all["dungeons"],
@@ -70,11 +81,17 @@ class Dataloader:
                 **self.affix_sigil_dict_all["positive"],
             }
 
-        with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/tributes.json", encoding="utf-8") as f:
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/tributes.json").open(
+            encoding="utf-8"
+        ) as f:
             self.tribute_dict: dict = json.load(f)
 
-        with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/tooltips.json", encoding="utf-8") as f:
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/tooltips.json").open(
+            encoding="utf-8"
+        ) as f:
             self.tooltips = json.load(f)
 
-        with open(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/uniques.json", encoding="utf-8") as f:
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/uniques.json").open(
+            encoding="utf-8"
+        ) as f:
             self.aspect_unique_dict = json.load(f)

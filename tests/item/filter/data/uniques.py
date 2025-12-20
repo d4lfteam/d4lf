@@ -19,7 +19,11 @@ aspect_only_mythic_tests = [
 
 simple_mythics = [
     ("matches filter", True, TestUnique(aspect=Aspect(name="black_river"), power=925, rarity=ItemRarity.Mythic)),
-    ("does not match but should keep", True, TestUnique(aspect=Aspect(name="black_river"), power=800, rarity=ItemRarity.Mythic)),
+    (
+        "does not match but should keep",
+        True,
+        TestUnique(aspect=Aspect(name="black_river"), power=800, rarity=ItemRarity.Mythic),
+    ),
 ]
 
 uniques = [
@@ -67,8 +71,16 @@ uniques = [
             ],
         ),
     ),
-    ("ok_2", ["test.black_river", "test.black_river"], TestUnique(item_type=ItemType.Scythe, aspect=Aspect(name="black_river", value=128))),
+    (
+        "ok_2",
+        ["test.black_river", "test.black_river"],
+        TestUnique(item_type=ItemType.Scythe, aspect=Aspect(name="black_river", value=128)),
+    ),
     ("ok_3", ["test.soulbrand"], TestUnique(aspect=Aspect(name="soulbrand", value=11))),
     ("mythic", ["test.black_river"], TestUnique(aspect=Aspect(name="black_river"), rarity=ItemRarity.Mythic)),
-    ("chaos_with_no_value", ["test.wushe_nak_pa"], TestUnique(aspect=Aspect(name="wushe_nak_pa"), rarity=ItemRarity.Unique, is_chaos=True)),
+    (
+        "chaos_with_no_value",
+        ["test.wushe_nak_pa"],
+        TestUnique(aspect=Aspect(name="wushe_nak_pa"), rarity=ItemRarity.Unique, is_chaos=True),
+    ),
 ]

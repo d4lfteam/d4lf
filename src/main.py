@@ -1,5 +1,4 @@
 import logging
-import os
 import pathlib
 import sys
 import time
@@ -27,7 +26,7 @@ LOGGER = logging.getLogger(__name__)
 def main():
     # Create folders for logging stuff
     for dir_name in [LOG_DIR / "screenshots", IniConfigLoader().user_dir, IniConfigLoader().user_dir / "profiles"]:
-        os.makedirs(dir_name, exist_ok=True)
+        Path(dir_name).mkdir(exist_ok=True, parents=True)
 
     LOGGER.info(f"Adapt your configs via gui.bat or directly in: {IniConfigLoader().user_dir}")
 
@@ -42,8 +41,14 @@ def main():
     table.rows.append([IniConfigLoader().advanced_options.run_vision_mode, "Run/Stop Vision Mode"])
     if not IniConfigLoader().advanced_options.vision_mode_only:
         table.rows.append([IniConfigLoader().advanced_options.run_filter, "Run/Stop Auto Filter"])
-        table.rows.append([IniConfigLoader().advanced_options.run_filter_force_refresh, "Force Run/Stop Filter, Resetting Item Status"])
-        table.rows.append([IniConfigLoader().advanced_options.force_refresh_only, "Reset Item Statuses Without A Filter After"])
+        table.rows.append([
+            IniConfigLoader().advanced_options.run_filter_force_refresh,
+            "Force Run/Stop Filter, Resetting Item Status",
+        ])
+        table.rows.append([
+            IniConfigLoader().advanced_options.force_refresh_only,
+            "Reset Item Statuses Without A Filter After",
+        ])
         table.rows.append([IniConfigLoader().advanced_options.move_to_inv, "Move Items From Chest To Inventory"])
         table.rows.append([IniConfigLoader().advanced_options.move_to_chest, "Move Items From Inventory To Chest"])
     table.rows.append([IniConfigLoader().advanced_options.exit_key, "Exit"])
@@ -78,13 +83,17 @@ def check_for_proper_tts_configuration():
             d4_dir = Path(proc.exe()).parent
             tts_dll = d4_dir / "saapi64.dll"
             if not tts_dll.exists():
-                LOGGER.warning(f"TTS DLL was not found in {d4_dir}. Have you followed the instructions in {SETUP_INSTRUCTIONS_URL} ?")
+                LOGGER.warning(
+                    f"TTS DLL was not found in {d4_dir}. Have you followed the instructions in {SETUP_INSTRUCTIONS_URL} ?"
+                )
             else:
                 LOGGER.debug(f"TTS DLL found at {tts_dll}")
             d4_process_found = True
             break
     if not d4_process_found:
-        LOGGER.warning("No process named Diablo IV.exe was found and unable to automatically determine if TTS DLL is installed.")
+        LOGGER.warning(
+            "No process named Diablo IV.exe was found and unable to automatically determine if TTS DLL is installed."
+        )
 
     if IniConfigLoader().advanced_options.disable_tts_warning:
         LOGGER.debug("Disable TTS warning is enabled, skipping TTS local prefs check")
@@ -92,7 +101,7 @@ def check_for_proper_tts_configuration():
         # Check if everything is set up properly in Diablo 4 settings
         local_prefs = get_d4_local_prefs_file()
         if local_prefs:
-            with open(local_prefs) as file:
+            with Path(local_prefs).open() as file:
                 prefs = file.read()
                 if 'UseScreenReader "1"' not in prefs:
                     LOGGER.error(
