@@ -89,7 +89,7 @@ def find_affix_bullets(img_item_descr: np.ndarray, sep_short_match: TemplateMatc
     affix_icons = [f"affix_bullet_point_{x}" for x in range(1, 3)]
     rerolled_icons = [f"rerolled_bullet_point_{x}" for x in range(1, 3)]
     tempered_icons = [f"tempered_affix_bullet_point_{x}" for x in range(1, 7)]
-    template_list = ["greater_affix_bullet_point_1"] + affix_icons + rerolled_icons + tempered_icons
+    template_list = ["greater_affix_bullet_point_1", "masterworking_affix_bullet"] + affix_icons + rerolled_icons + tempered_icons
     all_templates = [f"{x}_medium" for x in template_list] + template_list
     if ResManager().resolution[1] <= 1200:
         all_templates += ["greater_affix_bullet_point_1080p_special"]

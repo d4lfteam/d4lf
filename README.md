@@ -23,6 +23,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 - Game Language must be English
 - IMPORTANT: Advanced Tooltip Information must be enabled in Options > Gameplay > Gameplay. If you don't do this then item parsing will be very inconsistent and you will receive no warning something is wrong.
+- Font scale in Graphics settings must be small or medium
 - Use Screen Reader must be enabled in Options > Accessibility
 - 3rd Party Screen Reader must be enabled in Options > Accessibility
 

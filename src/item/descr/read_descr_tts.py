@@ -264,32 +264,25 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
 
 
 def _get_affix_starting_location_from_tts_section(tts_section: list[str], item: Item) -> int:
-    dps = None
-    item_power = None
-    masterwork = None
-    armory = None
-    legacy_item = None
     start = 0
-    for i, line in enumerate(tts_section):
-        if "armory loadout" in line.lower():
-            armory = i
-        if "masterwork" in line.lower():
-            masterwork = i
-        if "item power" in line.lower():
-            item_power = i
-        if "legacy item" in line.lower():
-            legacy_item = i
-        if "damage per second" in line.lower():
-            dps = i
-            break  # this will always be the last line of the 5
-    base_value = armory if armory else masterwork if masterwork else legacy_item if legacy_item else item_power
+
     if is_weapon(item.item_type):
-        start = dps + 2
-    elif is_jewelry(item.item_type) or is_armor(item.item_type):
-        start = base_value + 1
+        start = _get_index_of_armor_dps_or_all_resist(tts_section, "damage per second") + 2
+    elif is_jewelry(item.item_type):
+        start = _get_index_of_armor_dps_or_all_resist(tts_section, "all resist")
+    elif is_armor(item.item_type):
+        start = _get_index_of_armor_dps_or_all_resist(tts_section, "armor")
     start += 1
 
     return start
+
+
+def _get_index_of_armor_dps_or_all_resist(tts_section: list[str], indicator: str) -> int:
+    for i, line in enumerate(tts_section):
+        if indicator == keep_letters_and_spaces(_REPLACE_COMPARE_RE.sub("", line.lower())).strip():
+            return i
+
+    return 0
 
 
 def _get_affixes_from_tts_section(tts_section: list[str], item: Item, start: int, length: int):
