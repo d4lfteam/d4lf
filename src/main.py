@@ -12,6 +12,7 @@ import src.logger
 from src import __version__, tts
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
+from src.config.models import VisionModeType
 from src.gui.qt_gui import start_gui
 from src.item.filter import Filter
 from src.logger import LOG_DIR
@@ -110,6 +111,13 @@ def check_for_proper_tts_configuration():
                 if 'UseThirdPartyReader "1"' not in prefs:
                     LOGGER.error(
                         f"3rd Party Screen Reader is not enabled in Accessibility Settings in D4. No items will be read. Read more about initial setup here: {SETUP_INSTRUCTIONS_URL}"
+                    )
+                if (
+                    'FontScale "2"' in prefs
+                    and IniConfigLoader().general.vision_mode_type == VisionModeType.highlight_matches
+                ):
+                    LOGGER.error(
+                        "A font scale set to Large is not supported when using the highlight matches vision mode. Change to medium or small in the graphics options, or use the fast vision mode."
                     )
         else:
             LOGGER.warning(
