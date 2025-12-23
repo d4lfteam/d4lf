@@ -5,12 +5,16 @@ from pathlib import Path
 from src import __version__
 
 EXE_NAME = "d4lf.exe"
+AUTOUPDATER_EXE_NAME = "d4lf_autoupdater.exe"
 
 
 def build(release_dir: Path):
     installer_cmd = f"pyinstaller --clean --onefile --distpath {release_dir} --paths src src\\main.py"
     os.system(installer_cmd)
     (release_dir / "main.exe").rename(release_dir / EXE_NAME)
+    autoupdater_cmd = f"pyinstaller --clean --onefile --distpath {release_dir} --paths src src\\autoupdater.py"
+    os.system(autoupdater_cmd)
+    (release_dir / "autoupdater.exe").rename(release_dir / AUTOUPDATER_EXE_NAME)
 
 
 def clean_up():
@@ -34,6 +38,11 @@ def create_batch_for_gui(release_dir: Path, exe_name: str):
         f.write(f'start "" {exe_name} --gui')
 
 
+def create_version_file(release_dir: Path):
+    version_file_path = release_dir / "assets" / "version"
+    Path(version_file_path).write_text(f"{__version__}")
+
+
 if __name__ == "__main__":
     os.chdir(Path(__file__).parent)
     print(f"Building version: {__version__}")
@@ -45,4 +54,5 @@ if __name__ == "__main__":
     build(release_dir=RELEASE_DIR)
     copy_additional_resources(RELEASE_DIR)
     create_batch_for_gui(release_dir=RELEASE_DIR, exe_name=EXE_NAME)
+    create_version_file(release_dir=RELEASE_DIR)
     clean_up()
