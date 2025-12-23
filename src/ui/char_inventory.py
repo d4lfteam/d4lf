@@ -12,4 +12,4 @@ class CharInventory(InventoryBase):
             ref=["sort_icon", "sort_icon_hover"], threshold=0.8, roi=ResManager().roi.sort_icon, use_grayscale=False
         )
         self.open_hotkey = IniConfigLoader().char.inventory
-        self.delay = 1  # Needed as they added a "fad-in" for the items
+        self.delay = 1  # Needed as they added a "fade-in" for the items

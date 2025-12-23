@@ -126,14 +126,15 @@ def import_mobalytics(config: ImportConfig):
 
         is_unique = entity_type == "uniqueItems"
         if is_unique:
-            if not raw_affixes:
-                LOGGER.warning(f"Unique {item_name} had no affixes listed for it, only the aspect will be imported.")
-            affixes = _convert_raw_to_affixes(raw_affixes)
+            # This has proven unreliable, just like MaxRoll, so the affix portion is getting removed
+            # if not raw_affixes:
+            #     LOGGER.warning(f"Unique {item_name} had no affixes listed for it, only the aspect will be imported.")
+            # affixes = _convert_raw_to_affixes(raw_affixes)
             unique_model = UniqueModel()
             try:
                 unique_model.aspect = AspectUniqueFilterModel(name=item_name)
-                if affixes:
-                    unique_model.affix = [AffixFilterModel(name=x.name) for x in affixes]
+                # if affixes:
+                #     unique_model.affix = [AffixFilterModel(name=x.name) for x in affixes]
                 unique_filters.append(unique_model)
             except Exception:
                 LOGGER.exception(f"Unexpected error importing unique {item_name}, please report a bug.")
