@@ -34,6 +34,28 @@ def create_batch_for_gui(release_dir: Path, exe_name: str):
         f.write(f'start "" {exe_name} --gui')
 
 
+def create_batch_for_autoupdater(release_dir: Path, exe_name: str):
+    batch_file_path = release_dir / "autoupdater.bat"
+    Path(batch_file_path).write_text(f"""
+@echo off
+cd /d "%~dp0"
+echo Starting D4LF auto update preprocessing
+start /WAIT {exe_name} --autoupdate
+if %errorlevel% == 1 (
+    echo Process did not complete successfully, check logs for more information.
+) else if %errorlevel% == 2 (
+	echo D4Lf is already up to date!
+) else (
+    echo Killing all existing d4lf processes to perform update
+    taskkill /f /im d4lf.exe
+    timeout /t 1 /nobreak
+    echo Updating files
+    robocopy "./temp_update/d4lf" "." /E /XF "autoupdater.bat"
+    echo Running postprocessing to verify update and clean up files
+    start /WAIT {exe_name} --autoupdatepost
+)""")
+
+
 if __name__ == "__main__":
     os.chdir(Path(__file__).parent)
     print(f"Building version: {__version__}")
@@ -45,4 +67,5 @@ if __name__ == "__main__":
     build(release_dir=RELEASE_DIR)
     copy_additional_resources(RELEASE_DIR)
     create_batch_for_gui(release_dir=RELEASE_DIR, exe_name=EXE_NAME)
+    create_batch_for_autoupdater(release_dir=RELEASE_DIR, exe_name=EXE_NAME)
     clean_up()
