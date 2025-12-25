@@ -26,7 +26,7 @@ LOGGER = logging.getLogger(__name__)
 BUILD_GUIDE_BASE_URL = "https://maxroll.gg/d4/build-guides/"
 BUILD_GUIDE_PLANNER_EMBED_XPATH = "//*[contains(@class, 'd4-embed')]"
 PLANNER_API_BASE_URL = "https://planners.maxroll.gg/profiles/d4/"
-PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?63f9a9bf"
+PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?7659ec67"
 PLANNER_BASE_URL = "https://maxroll.gg/d4/planner/"
 
 
@@ -230,7 +230,12 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
                 elif "param" not in affix["attributes"][0]:
                     attr_id = affix["attributes"][0]["id"]
                     attr_obj = mapping_data["attributes"][str(attr_id)]
-                    attr_desc = mapping_data["attributeDescriptions"][_corrections(attr_obj["name"])]
+                    # Maxroll continues to not know what faith per second is
+                    attr_desc = (
+                        "Faith per Second"
+                        if attr_obj["name"] == "Affix_Value_1"
+                        else mapping_data["attributeDescriptions"][_corrections(attr_obj["name"])]
+                    )
                 else:  # must be + to talent or skill
                     attr_param = affix["attributes"][0]["param"]
                     for skill_data in mapping_data["skills"].values():
