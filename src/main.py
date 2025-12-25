@@ -10,7 +10,7 @@ from beautifultable import BeautifulTable
 
 import src.logger
 from src import __version__, tts
-from src.autoupdater import D4LFUpdater
+from src.autoupdater import notify_if_update, start_auto_update
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import VisionModeType
@@ -32,7 +32,11 @@ def main():
 
     LOGGER.info(f"Adapt your configs via gui.bat or directly in: {IniConfigLoader().user_dir}")
 
-    check_for_update()
+    # Detect if we're running locally and skip the autoupdate
+    if Path(Path.cwd() / "main.py").exists():
+        LOGGER.debug("Running from source detected, skipping autoupdate check.")
+    else:
+        notify_if_update()
 
     if IniConfigLoader().advanced_options.vision_mode_only:
         LOGGER.info("Vision mode only is enabled. All functionality that clicks the screen is disabled.")
@@ -150,29 +154,19 @@ def get_d4_local_prefs_file() -> Path | None:
     return most_recently_modified_file
 
 
-def check_for_update():
-    updater = D4LFUpdater()
-    current_version = updater.normalize_version(__version__)
-    release = updater.get_latest_release(silent=True)
-    if not release:
-        LOGGER.warning("Unable to find latest release of d4lf on github, skipping check for updates.")
-        return
-
-    latest_version = updater.normalize_version(release.get("tag_name"))
-    if current_version != latest_version:
-        LOGGER.info(
-            f"An update has been detected. Run d4lf_autoupdater.exe to automatically update. Version {current_version} → {latest_version}"
-        )
-        updater.print_changes_between_releases(current_version=current_version, latest_version=latest_version)
-
-
 if __name__ == "__main__":
     src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
     if len(sys.argv) > 1 and sys.argv[1] == "--gui":
         start_gui()
-    try:
-        main()
-    except Exception:
-        traceback.print_exc()
-        print("Press Enter to exit ...")
-        input()
+    elif len(sys.argv) > 1 and sys.argv[1] == "--autoupdate":
+        start_auto_update()
+    elif len(sys.argv) > 1 and sys.argv[1] == "--autoupdatepost":
+        start_auto_update(postprocess=True)
+    else:
+        try:
+            main()
+        except Exception:
+            traceback.print_exc()
+            print("Press Enter to exit ...")
+            input()
+            sys.exit(1)

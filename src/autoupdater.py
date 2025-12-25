@@ -8,7 +8,6 @@ import requests
 
 import src.logger
 from src import __version__
-from src.config.loader import IniConfigLoader
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,6 +20,8 @@ class D4LFUpdater:
         self.api_url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/releases/latest"
         self.changes_base_url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/compare/"
         self.current_dir = Path.cwd()
+        self.temp_dir = self.current_dir / "temp_update"
+        self.version_file = self.temp_dir / "version"
 
     @staticmethod
     def normalize_version(version):
@@ -72,70 +73,43 @@ class D4LFUpdater:
                         if total_size > 0:
                             percent = (downloaded / total_size) * 100
                             print(f"\rProgress: {percent:.1f}%", end="")
+                print("\n")
 
-            LOGGER.info("\nDownload complete!")
+            LOGGER.info("Download complete!")
             return True
         except requests.exceptions.RequestException as e:
             LOGGER.error(f"\nError downloading file: {e}")
             return False
 
-    def extract_and_update(self, zip_path):
-        """Extract zip and move files to current directory"""
+    def extract_release(self, zip_path, latest_version):
+        """Extract zip so batch process can copy files"""
         LOGGER.info("Extracting files...")
-        temp_dir = self.current_dir / "temp_update"
 
         try:
-            # Create temp directory
-            temp_dir.mkdir(exist_ok=True)
-
             # Extract zip
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                zip_ref.extractall(temp_dir)
+                zip_ref.extractall(self.temp_dir)
 
-            LOGGER.info("Moving files to installation directory...")
+            # Also create an update file with information post processing will need
+            # with Path(self.update_file).open("w") as f:
+            #     update_data = {"version": latest_version, "zip_path": zip_path}
+            #     json.dump(update_data, f)
+            Path(self.version_file).write_text(latest_version)
 
-            # Check if files are in a subfolder (common with GitHub releases)
-            extracted_items = list(temp_dir.iterdir())
-
-            # If there's only one folder, use that as the source
-            if len(extracted_items) == 1 and extracted_items[0].is_dir():
-                source_dir = extracted_items[0]
-                LOGGER.info(f"Found subfolder: {source_dir.name}")
-            else:
-                source_dir = temp_dir
-
-            # Move all files from source to current directory
-            for item in source_dir.rglob("*"):
-                if item.is_file():
-                    relative_path = item.relative_to(source_dir)
-                    dest_path = self.current_dir / relative_path
-
-                    # Create parent directories if needed
-                    dest_path.parent.mkdir(parents=True, exist_ok=True)
-
-                    # Move and overwrite
-                    shutil.copy2(item, dest_path)
-                    LOGGER.info(f"Updated: {relative_path}")
-
-            LOGGER.info("Files updated successfully!")
+            LOGGER.info("Files extracted successfully!")
             return True
-
         except Exception as e:
             LOGGER.error(f"Error during extraction: {e}")
             return False
-        finally:
-            # Cleanup
-            if temp_dir.exists():
-                shutil.rmtree(temp_dir, ignore_errors=True)
-            if zip_path.exists():
-                Path(zip_path).unlink()
 
-    def run(self):
-        """Main update process"""
-        LOGGER.info("=" * 50)
-        LOGGER.info("D4LF Auto-Updater")
-        LOGGER.info("=" * 50)
-        LOGGER.info("")
+    def preprocess(self):
+        """Main update process. This will:
+        - Check if update is needed
+        - Download new release
+        - Extract files to a temp directory
+        Additional updating and cleanup will be handled by the post process
+        """
+        self._print_header()
 
         # Get current installed version
         current_version = self.normalize_version(__version__)
@@ -152,10 +126,11 @@ class D4LFUpdater:
 
         # Check if update needed
         if current_version == latest_version:
-            LOGGER.info("\n✓ You're already on the latest version!")
-            return True
+            LOGGER.info("✓ You're already on the latest version!")
+            input("\nPress Enter to exit...")
+            sys.exit(2)
 
-        LOGGER.info(f"\n→ Update available: {current_version} → {latest_version}")
+        LOGGER.info(f"→ Update available: {current_version} → {latest_version}")
         self.print_changes_between_releases(current_version, latest_version)
 
         # Find the d4lf zip asset
@@ -171,29 +146,70 @@ class D4LFUpdater:
             LOGGER.error("Could not find d4lf zip file in release assets.")
             return False
 
+        # Create temp directory
+        self.temp_dir.mkdir(exist_ok=True)
+
         download_url = zip_asset["browser_download_url"]
-        zip_filename = self.current_dir / zip_asset["name"]
+        zip_filename = self.temp_dir / zip_asset["name"]
 
         LOGGER.info("")
         # Download
         if not self.download_file(download_url, zip_filename):
             return False
 
-        # Extract and update
-        if not self.extract_and_update(zip_filename):
+        # Extract the zip
+        if not self.extract_release(zip_filename, latest_version):
             return False
 
-        LOGGER.info("\n" + "=" * 50)
-        LOGGER.info(f"✓ Successfully updated to {latest_version}!")
+        LOGGER.info("=" * 50)
+        LOGGER.info("✓ Preprocessing is done, shutting down to allow update to happen. A new window will open shortly.")
         LOGGER.info("=" * 50)
         return True
 
+    def postprocess(self):
+        """Post process will handle the cleanup. It will:
+        - Delete the temporary files that were extracted
+        - Verify the version is truly updated
+        """
+        self._print_header()
+        with self.version_file.open("r") as f:
+            updated_to_version = f.read().strip()
 
-if __name__ == "__main__":
-    src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
+        if not updated_to_version:
+            LOGGER.error(
+                "Pre-processing update data was missing! Try to update manually by downloading the newest D4LF release."
+            )
+            return False
+
+        current_version = self.normalize_version(__version__)
+        if updated_to_version != current_version:
+            LOGGER.error(
+                f"Current version is {current_version} but we attempted to update to {updated_to_version}. Check logs for errors and update manually."
+            )
+            return False
+
+        LOGGER.info("Cleaning up temporary files")
+        if self.temp_dir.exists():
+            shutil.rmtree(self.temp_dir, ignore_errors=True)
+        LOGGER.info("Temporary files are removed")
+
+        LOGGER.info("=" * 50)
+        LOGGER.info(f"✓ Successfully updated to {updated_to_version}!")
+        LOGGER.info("=" * 50)
+        return True
+
+    @staticmethod
+    def _print_header():
+        LOGGER.info("=" * 50)
+        LOGGER.info("D4LF Auto-Updater")
+        LOGGER.info("=" * 50)
+        LOGGER.info("")
+
+
+def start_auto_update(postprocess=False):
     updater = D4LFUpdater()
     try:
-        success = updater.run()
+        success = updater.postprocess() if postprocess else updater.preprocess()
         input("\nPress Enter to exit...")
         sys.exit(0 if success else 1)
     except KeyboardInterrupt:
@@ -203,3 +219,26 @@ if __name__ == "__main__":
         LOGGER.error(f"\n\nUnexpected error: {e}")
         input("\nPress Enter to exit...")
         sys.exit(1)
+
+
+def notify_if_update():
+    updater = D4LFUpdater()
+    current_version = updater.normalize_version(__version__)
+    release = updater.get_latest_release(silent=True)
+    if not release:
+        LOGGER.warning("Unable to find latest release of d4lf on github, skipping check for updates.")
+        return
+
+    latest_version = updater.normalize_version(release.get("tag_name"))
+    if current_version != latest_version:
+        LOGGER.info(
+            f"An update has been detected. Run d4lf_autoupdater.exe to automatically update. Version {current_version} → {latest_version}"
+        )
+        updater.print_changes_between_releases(current_version=current_version, latest_version=latest_version)
+
+
+# Main is only used for testing as files will not actually be copied
+if __name__ == "__main__":
+    src.logger.setup(log_level="debug")
+    start_auto_update()
+    # start_auto_update(postprocess=True)
