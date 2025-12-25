@@ -24,6 +24,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Game Language must be English
 - IMPORTANT: Advanced Tooltip Information must be enabled in Options > Gameplay > Gameplay. If you don't do this then item parsing will be very inconsistent and you will receive no warning something is wrong.
 - Font scale in Graphics settings must be small or medium
+- HDR makes the screen too bright and D4LF is unable to read the state of some items on screen. It must be disabled.
 - Use Screen Reader must be enabled in Options > Accessibility
 - 3rd Party Screen Reader must be enabled in Options > Accessibility
 
@@ -49,7 +50,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 ### Updating an existing installation
 
-All configurations are stored in a separate location so all you need to do is download the newest version and delete your old version.
+All configurations are stored in a separate location so all you need to do is download the newest version and delete your old version. This can be done manually by downloading from the [releases page](https://github.com/d4lfteam/d4lf/releases) or by running autoupdater.bat.
 
 Your profiles and configuration should continue to work. The only exception to this is if the major version of the release changes. In that case, a change was made that will make previous profiles no longer work.
 
@@ -62,13 +63,6 @@ Example 2: You're on version 5.1.14 and updating to 6.0.0. Your profiles will no
 - The GUI crashes immediately upon opening, with no error message given
   - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
     your params.ini through the config tab. Using the GUI for configuration will ensure the file is always accurate.
-- I'm used to my profiles being in the downloaded d4lf folder, where are they?
-  - This was never the recommended place to keep the profiles. They should now be placed in your Windows user folder
-    so that you don't need to move them around for every update. Use the GUI to open up that folder directly.
-- I'm used to affix fields looking like this: `[ dexterity, 33 ]`
-  - Formats like `[ dexterity, 33 ]` are still completely valid. The importer creates affix fields which look
-    like `{name: dexterity, value: 33}`. These are identical and either format can be used interchangeably. We
-    recommend starting all new builds through the importer, so examples show the format the importer uses.
 - Mouse control isn't possible
   - Due to your local windows settings, the tool might not be able to control the mouse. Just run the tool as admin
     and it should work. If you don't want to run it as admin, you can disable the mouse control in the params.ini
@@ -565,7 +559,13 @@ If you receive an error about missing Visual Studio code, follow the link it pro
 
 ### Formatting & Linting
 
-Just use prek.
+Just use prek. If it's your first setup, run:
+
+```bash
+prek install
+```
+
+Otherwise just run:
 
 ```bash
 prek run -a
