@@ -102,6 +102,10 @@ class D4LFUpdater:
             LOGGER.error(f"Error during extraction: {e}")
             return False
 
+    @staticmethod
+    def _get_major_version_number(version: str) -> int:
+        return int(version.replace("v", "").split(".")[0])
+
     def preprocess(self):
         """Main update process. This will:
         - Check if update is needed
@@ -132,6 +136,16 @@ class D4LFUpdater:
 
         LOGGER.info(f"→ Update available: {current_version} → {latest_version}")
         self.print_changes_between_releases(current_version, latest_version)
+
+        # Check if it's an update to a major version and warn of the consequences
+        if self._get_major_version_number(latest_version) > self._get_major_version_number(current_version):
+            LOGGER.warning(
+                "You are upgrading a major version. This means your existing profiles might no longer work and will need to be reimported or recreated. Do you want to proceed?"
+            )
+            proceed = input("Enter yes or y to proceed, all other inputs will cancel: ")
+            if proceed.lower() not in ["yes", "y"]:
+                LOGGER.info("Cancelling update.")
+                return False
 
         # Find the d4lf zip asset
         assets = release_data.get("assets", [])
