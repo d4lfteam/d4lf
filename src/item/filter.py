@@ -101,19 +101,9 @@ class Filter:
                 if not self._match_item_power(min_power=filter_spec.minPower, item_power=item.power):
                     continue
                 # check greater affixes
-                # If any affixes in the pool are marked is_greater, we use pool-based GA validation
-                # Otherwise, check total GA count here
-                has_pool_ga_requirements = False
-                if filter_spec.affixPool:
-                    has_pool_ga_requirements = any(
-                        getattr(affix, 'is_greater', False)
-                        for count_group in filter_spec.affixPool
-                        for affix in count_group.count
-                    )
-
-                # Only check total GA count if no affixes are marked as needing to be GA
-                if not has_pool_ga_requirements and not self._match_greater_affix_count(
-                        expected_min_count=filter_spec.minGreaterAffixCount, item_affixes=non_tempered_affixes
+                # Always check item-level GA count
+                if not self._match_greater_affix_count(
+                    expected_min_count=filter_spec.minGreaterAffixCount, item_affixes=non_tempered_affixes
                 ):
                     continue
                 # check affixes
