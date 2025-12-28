@@ -119,7 +119,7 @@ class AffixAspectFilterModel(BaseModel):
 
 
 class AffixFilterModel(AffixAspectFilterModel):
-    want_greater: bool = False
+    is_greater: bool = False
 
     @field_validator("name")
     def name_must_exist(cls, name: str) -> str:

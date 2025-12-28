@@ -361,7 +361,7 @@ class AffixWidget(QWidget):
     def create_greater_checkbox(self):
         # Greater Affix Checkbox
         self.greater_checkbox = QCheckBox("Greater")
-        self.greater_checkbox.setChecked(getattr(self.affix, 'want_greater', False))
+        self.greater_checkbox.setChecked(getattr(self.affix, 'is_greater', False))
         self.greater_checkbox.setFixedWidth(80)
         self.greater_checkbox.setStyleSheet("QCheckBox { background-color: transparent; }")  # ADD THIS LINE
         self.greater_checkbox.stateChanged.connect(self.update_greater)
@@ -403,7 +403,7 @@ class AffixWidget(QWidget):
         self.affix.comparison = ComparisonType(comparison)
 
     def update_greater(self):
-        self.affix.want_greater = self.greater_checkbox.isChecked()
+        self.affix.is_greater = self.greater_checkbox.isChecked()
 
 
 class AffixesTab(QWidget):
