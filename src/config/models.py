@@ -17,6 +17,10 @@ if TYPE_CHECKING:
     import numpy as np
 
 MODULE_LOGGER = logging.getLogger(__name__)
+
+# Track which deprecation warnings have been shown
+_shown_deprecation_warnings = set()
+
 HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
 

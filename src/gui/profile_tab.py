@@ -57,9 +57,9 @@ class ProfileTab(QWidget):
 
         tools_groupbox = QGroupBox("Tools")
         tools_groupbox_layout = QHBoxLayout()
-        self.file_button = QPushButton("File")
+        self.file_button = QPushButton("Open")
         self.save_button = QPushButton("Save")
-        self.refresh_button = QPushButton("Refresh")
+        self.refresh_button = QPushButton("Undo Changes")
         self.file_button.clicked.connect(self.load_file)
         self.save_button.clicked.connect(self.save_yaml)
         self.refresh_button.clicked.connect(self.refresh)
@@ -82,7 +82,7 @@ class ProfileTab(QWidget):
 
         instructions_text = QTextBrowser()
         instructions_text.append(
-            "You load a profile by clicking the 'File' button. Click 'Save' to save your changes. Click 'Refresh' to undo your changes."
+            "You load a profile by clicking the 'Open' button. Click 'Save' to save your changes. Click 'Undo Changes' to revert your changes."
         )
 
         instructions_text.setFixedHeight(50)
