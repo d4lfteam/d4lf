@@ -314,8 +314,8 @@ class Filter:
         for count_group in expected_affixes:
             group_res = []
 
-            # Count how many affixes marked want_greater are actually GAs on the item
-            required_ga_affixes = [affix for affix in count_group.count if getattr(affix, 'want_greater', False)]
+            # Count how many affixes marked is_greater are actually GAs on the item
+            required_ga_affixes = [affix for affix in count_group.count if getattr(affix, 'is_greater', False)]
             actual_ga_count = 0
 
             for affix in required_ga_affixes:
