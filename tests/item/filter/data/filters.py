@@ -137,8 +137,8 @@ affix = ProfileModel(
                 affixPool=[
                     AffixFilterCountModel(
                         count=[
-                            AffixFilterModel(name="intelligence", is_greater=True),
-                            AffixFilterModel(name="movement_speed", is_greater=True),
+                            AffixFilterModel(name="intelligence", want_greater=True),
+                            AffixFilterModel(name="movement_speed", want_greater=True),
                             AffixFilterModel(name="lightning_resistance"),
                             AffixFilterModel(name="maximum_life"),
                             AffixFilterModel(name="poison_resistance"),
