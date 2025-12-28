@@ -1,6 +1,7 @@
 import logging
 import shutil
 import sys
+import time
 import zipfile
 from pathlib import Path
 
@@ -236,8 +237,13 @@ def start_auto_update(postprocess=False):
 
 
 def notify_if_update():
+    if not _should_check_for_update():
+        LOGGER.debug("Still within 4 hours of previous update check, skipping automatic update check.")
+        return
+
     updater = D4LFUpdater()
     current_version = updater.normalize_version(__version__)
+
     release = updater.get_latest_release(silent=True)
     if not release:
         LOGGER.warning("Unable to find latest release of d4lf on github, skipping check for updates.")
@@ -245,10 +251,34 @@ def notify_if_update():
 
     latest_version = updater.normalize_version(release.get("tag_name"))
     if current_version != latest_version:
+        LOGGER.info("=" * 50)
         LOGGER.info(
             f"An update has been detected. Run d4lf_autoupdater.exe to automatically update. Version {current_version} → {latest_version}"
         )
         updater.print_changes_between_releases(current_version=current_version, latest_version=latest_version)
+        LOGGER.info("=" * 50)
+
+
+def _should_check_for_update(check_interval_hours=4):
+    """Check if it's time to check for updates based on a cooldown period."""
+    check_file = Path.cwd() / "assets" / "last_update"
+    current_time = time.time()
+    last_check_time = 0
+
+    # Read the last check time from file if it exists
+    if Path.exists(check_file):
+        with Path(check_file).open("r") as f:
+            last_check_time = float(f.read().strip())
+
+    # Calculate elapsed time since last check
+    elapsed_time = current_time - last_check_time
+
+    # Check if enough time has passed
+    if elapsed_time >= (check_interval_hours * 3600):
+        # Update the last check time
+        Path(check_file).write_text(str(current_time))
+        return True
+    return False
 
 
 # Main is only used for testing as files will not actually be copied
