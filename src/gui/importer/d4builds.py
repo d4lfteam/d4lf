@@ -28,6 +28,7 @@ from src.gui.importer.common import (
     retry_importer,
     save_as_profile,
 )
+from src.gui.importer.importer_config import ImportConfig
 from src.item.data.affix import Affix
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
@@ -36,7 +37,6 @@ from src.scripts import correct_name
 if TYPE_CHECKING:
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
 
-    from src.gui.importer.importer_config import ImportConfig
 
 LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +54,7 @@ PAPERDOLL_LEGENDARY_ASPECT_XPATH = (
 )
 PAPERDOLL_XPATH = "//*[contains(@class, 'builder__gear__items')]"
 TEMPERING_ICON_XPATH = ".//*[contains(@src, 'tempering_02.png')]"
+SANCTIFIED_ICON_XPATH = ".//*[contains(@src, 'sanctified_icon.png')]"
 UNIQUE_ICON_XPATH = ".//*[contains(@src, '/Uniques/')]"
 
 
@@ -101,9 +102,24 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         item_type = None
         affixes = []
         inherents = []
+
+        if slot_to_unique_name_map[slot]:
+            unique_model = UniqueModel()
+            unique_name = slot_to_unique_name_map[slot]
+            try:
+                unique_model.aspect = AspectUniqueFilterModel(name=unique_name)
+                # We just can't trust their data well enough so removing this just like the other importers.
+                # unique_model.affix = [AffixFilterModel(name=x.name) for x in affixes]
+                unique_filters.append(unique_model)
+            except Exception:
+                LOGGER.exception(
+                    f"Unexpected error importing unique {unique_name}, please report a bug and include a link to the build you were trying to import."
+                )
+            continue
+
         is_weapon = "weapon" in slot.lower()
         for stat in stats:
-            if stat.xpath(TEMPERING_ICON_XPATH):
+            if stat.xpath(TEMPERING_ICON_XPATH) or stat.xpath(SANCTIFIED_ICON_XPATH):
                 continue
             if "filled" not in stat.xpath("../..")[0].attrib["class"]:
                 continue
@@ -142,19 +158,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 inherents.append(affix_obj)
             else:
                 affixes.append(affix_obj)
-
-        if slot_to_unique_name_map[slot]:
-            unique_model = UniqueModel()
-            unique_name = slot_to_unique_name_map[slot]
-            try:
-                unique_model.aspect = AspectUniqueFilterModel(name=unique_name)
-                unique_model.affix = [AffixFilterModel(name=x.name) for x in affixes]
-                unique_filters.append(unique_model)
-            except Exception:
-                LOGGER.exception(
-                    f"Unexpected error importing unique {unique_name}, please report a bug and include a link to the build you were trying to import."
-                )
-            continue
 
         if not affixes:
             continue
@@ -258,9 +261,7 @@ def _get_legendary_aspects(data: lxml.html.HtmlElement) -> list[str]:
 
 if __name__ == "__main__":
     src.logger.setup()
-    URLS = [
-        "https://d4builds.gg/builds/463e7337-8fa9-491f-99a0-cbd6c65fc6f4/?var=1",
-        "https://d4builds.gg/builds/b5d603bb-4442-42e8-a84d-962e6e42344c?var=0",
-    ]
+    URLS = ["https://d4builds.gg/builds/e3aab60e-15a0-47ee-99ec-648788901104/?var=1"]
     for X in URLS:
-        import_d4builds(url=X)
+        config = ImportConfig(X, True, True, False, None)
+        import_d4builds(config)
