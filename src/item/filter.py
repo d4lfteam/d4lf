@@ -122,7 +122,14 @@ class Filter:
                     if not matched_inherents:
                         continue
                 all_matches = matched_affixes + matched_inherents
-                LOGGER.info(f"Matched {profile_name}.Affixes.{filter_name}: {[x.name for x in all_matches]}")
+                # Build a detailed string showing which affixes are GAs
+                match_details = []
+                for affix in all_matches:
+                    if affix.type == AffixType.greater:
+                        match_details.append(f"{affix.name} (GA)")
+                    else:
+                        match_details.append(affix.name)
+                LOGGER.info(f"Matched {profile_name}.Affixes.{filter_name}: {match_details}")
                 res.keep = True
                 res.matched.append(MatchedFilter(f"{profile_name}.{filter_name}", all_matches))
         return res
@@ -304,18 +311,24 @@ class Filter:
     ) -> list[Affix]:
         result = []
         for count_group in expected_affixes:
-            greater_affix_count = 0
             group_res = []
+            
+            # First check that all required greater affixes are present and are actually GAs
+            for affix in count_group.count:
+                if getattr(affix, 'is_greater', False):
+                    # This affix MUST be present and MUST be a GA
+                    matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
+                    if matched_item_affix is None or matched_item_affix.type != AffixType.greater:
+                        # Required GA affix is either missing or not a GA, fail this group
+                        return []
+            
+            # Now do the normal matching
             for affix in count_group.count:
                 matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
                 if matched_item_affix is not None and self._match_item_aspect_or_affix(affix, matched_item_affix):
                     group_res.append(matched_item_affix)
-                    if matched_item_affix.type == AffixType.greater:
-                        greater_affix_count += 1
-            if (
-                count_group.minCount <= len(group_res) <= count_group.maxCount
-                and greater_affix_count >= count_group.minGreaterAffixCount
-            ):
+                    
+            if count_group.minCount <= len(group_res) <= count_group.maxCount:
                 result.extend(group_res)
             else:  # if one group fails, everything fails
                 return []
