@@ -101,8 +101,19 @@ class Filter:
                 if not self._match_item_power(min_power=filter_spec.minPower, item_power=item.power):
                     continue
                 # check greater affixes
-                if not self._match_greater_affix_count(
-                    expected_min_count=filter_spec.minGreaterAffixCount, item_affixes=non_tempered_affixes
+                # If any affixes in the pool are marked is_greater, we use pool-based GA validation
+                # Otherwise, check total GA count here
+                has_pool_ga_requirements = False
+                if filter_spec.affixPool:
+                    has_pool_ga_requirements = any(
+                        getattr(affix, 'is_greater', False)
+                        for count_group in filter_spec.affixPool
+                        for affix in count_group.count
+                    )
+
+                # Only check total GA count if no affixes are marked as needing to be GA
+                if not has_pool_ga_requirements and not self._match_greater_affix_count(
+                        expected_min_count=filter_spec.minGreaterAffixCount, item_affixes=non_tempered_affixes
                 ):
                     continue
                 # check affixes
@@ -141,7 +152,7 @@ class Filter:
             # See if the item matches any legendary aspects that were in the profile
             for profile_name, profile_filter in self.aspect_upgrade_filters.items():
                 if item.aspect and any(
-                    legendary_aspect_name == item.aspect.name for legendary_aspect_name in profile_filter
+                        legendary_aspect_name == item.aspect.name for legendary_aspect_name in profile_filter
                 ):
                     LOGGER.info("Matched build-specific aspects that updates codex")
                     res.keep = True
@@ -151,7 +162,7 @@ class Filter:
                 return res
 
         if IniConfigLoader().general.keep_aspects == AspectFilterType.none or (
-            IniConfigLoader().general.keep_aspects == AspectFilterType.upgrade and not item.codex_upgrade
+                IniConfigLoader().general.keep_aspects == AspectFilterType.upgrade and not item.codex_upgrade
         ):
             return res
         LOGGER.info("Matched Aspects that updates codex")
@@ -163,7 +174,7 @@ class Filter:
     def _check_cosmetic(item: Item) -> FilterResult:
         res = FilterResult(False, [])
         if IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.junk or (
-            IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.ignore and not item.cosmetic_upgrade
+                IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.ignore and not item.cosmetic_upgrade
         ):
             return res
         LOGGER.info("Matched new cosmetic")
@@ -194,7 +205,7 @@ class Filter:
             whitelist_ok = True if whitelist_empty else is_in_whitelist
 
             if (blacklist_empty and not whitelist_empty and not whitelist_ok) or (
-                whitelist_empty and not blacklist_empty and not blacklist_ok
+                    whitelist_empty and not blacklist_empty and not blacklist_ok
             ):
                 continue
             if not blacklist_empty and not whitelist_empty:
@@ -242,8 +253,8 @@ class Filter:
         all_filters_are_aspect = True
         if not self.unique_filters:
             keep = (
-                IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
-                or item.rarity == ItemRarity.Mythic
+                    IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
+                    or item.rarity == ItemRarity.Mythic
             )
             return FilterResult(keep, [])
         for profile_name, profile_filter in self.unique_filters.items():
@@ -263,7 +274,7 @@ class Filter:
                     continue
                 # check aspect
                 if not self._match_item_aspect_or_affix(
-                    expected_aspect=filter_item.aspect, item_aspect=item.aspect, is_chaos=item.is_chaos
+                        expected_aspect=filter_item.aspect, item_aspect=item.aspect, is_chaos=item.is_chaos
                 ):
                     continue
                 # check affixes
@@ -271,12 +282,12 @@ class Filter:
                     continue
                 # check greater affixes
                 if not self._match_greater_affix_count(
-                    expected_min_count=filter_item.minGreaterAffixCount, item_affixes=item.affixes
+                        expected_min_count=filter_item.minGreaterAffixCount, item_affixes=item.affixes
                 ):
                     continue
                 # check aspect is in percent range
                 if not self._match_aspect_is_in_percent_range(
-                    expected_percent=filter_item.minPercentOfAspect, item_aspect=item.aspect
+                        expected_percent=filter_item.minPercentOfAspect, item_aspect=item.aspect
                 ):
                     continue
                 LOGGER.info(f"Matched {profile_name}.Uniques: {item.aspect.name}")
@@ -290,12 +301,12 @@ class Filter:
         # Always keep mythics no matter what
         # If all filters are for aspects specifically and none apply to this item, we default to handle_uniques config
         if not res.keep and (
-            item.rarity == ItemRarity.Mythic
-            or (
-                res.all_unique_filters_are_aspects
-                and not res.unique_aspect_in_profile
-                and IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
-            )
+                item.rarity == ItemRarity.Mythic
+                or (
+                        res.all_unique_filters_are_aspects
+                        and not res.unique_aspect_in_profile
+                        and IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
+                )
         ):
             res.keep = True
 
@@ -307,27 +318,33 @@ class Filter:
         return any(pathlib.Path(file_path).stat().st_mtime > self.last_loaded for file_path in self.all_file_paths)
 
     def _match_affixes_count(
-        self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix]
+            self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix]
     ) -> list[Affix]:
         result = []
         for count_group in expected_affixes:
             group_res = []
-            
-            # First check that all required greater affixes are present and are actually GAs
-            for affix in count_group.count:
-                if getattr(affix, 'is_greater', False):
-                    # This affix MUST be present and MUST be a GA
-                    matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
-                    if matched_item_affix is None or matched_item_affix.type != AffixType.greater:
-                        # Required GA affix is either missing or not a GA, fail this group
-                        return []
-            
+
+            # Count how many affixes marked is_greater are actually GAs on the item
+            required_ga_affixes = [affix for affix in count_group.count if getattr(affix, 'is_greater', False)]
+            actual_ga_count = 0
+
+            for affix in required_ga_affixes:
+                matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
+                if matched_item_affix is not None and matched_item_affix.type == AffixType.greater:
+                    actual_ga_count += 1
+
+            # Check if we have enough GAs from the pool (only if minGreaterAffixCount is specified)
+            pool_min_ga = getattr(count_group, 'minGreaterAffixCount', None)
+            if pool_min_ga is not None and actual_ga_count < pool_min_ga:
+                # Not enough GAs from the marked affixes, fail this group
+                return []
+
             # Now do the normal matching
             for affix in count_group.count:
                 matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
                 if matched_item_affix is not None and self._match_item_aspect_or_affix(affix, matched_item_affix):
                     group_res.append(matched_item_affix)
-                    
+
             if count_group.minCount <= len(group_res) <= count_group.maxCount:
                 result.extend(group_res)
             else:  # if one group fails, everything fails
@@ -336,7 +353,7 @@ class Filter:
 
     @staticmethod
     def _match_affixes_sigils(
-        expected_affixes: list[SigilConditionModel], sigil_name: str, sigil_affixes: list[Affix]
+            expected_affixes: list[SigilConditionModel], sigil_name: str, sigil_affixes: list[Affix]
     ) -> bool:
         for expected_affix in expected_affixes:
             if sigil_name != expected_affix.name and not [
@@ -367,18 +384,18 @@ class Filter:
         if item_aspect.max_value > item_aspect.min_value:
             percent_float = expected_percent / 100.0
             return (item_aspect.value - item_aspect.min_value) / (
-                item_aspect.max_value - item_aspect.min_value
+                    item_aspect.max_value - item_aspect.min_value
             ) >= percent_float
 
         # This is the case where a smaller number is better
         percent_float = (100 - expected_percent) / 100.0
         return (item_aspect.value - item_aspect.max_value) / (
-            item_aspect.min_value - item_aspect.max_value
+                item_aspect.min_value - item_aspect.max_value
         ) <= percent_float
 
     @staticmethod
     def _match_item_aspect_or_affix(
-        expected_aspect: AffixAspectFilterModel | None, item_aspect: Aspect | Affix, is_chaos: bool = False
+            expected_aspect: AffixAspectFilterModel | None, item_aspect: Aspect | Affix, is_chaos: bool = False
     ) -> bool:
         if expected_aspect is None:
             return True
@@ -390,7 +407,7 @@ class Filter:
                 # Chaos uniques have a fixed aspect number. There is no reason to compare it, it is always at max
                 return bool(is_chaos)
             if (expected_aspect.comparison == ComparisonType.larger and item_aspect.value < expected_aspect.value) or (
-                expected_aspect.comparison == ComparisonType.smaller and item_aspect.value > expected_aspect.value
+                    expected_aspect.comparison == ComparisonType.smaller and item_aspect.value > expected_aspect.value
             ):
                 return False
         return True

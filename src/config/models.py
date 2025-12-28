@@ -17,6 +17,10 @@ if TYPE_CHECKING:
     import numpy as np
 
 MODULE_LOGGER = logging.getLogger(__name__)
+
+# Track which deprecation warnings have been shown
+_shown_deprecation_warnings = set()
+
 HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
 
@@ -154,10 +158,13 @@ class AffixFilterCountModel(BaseModel):
 
         # Warn if deprecated field is used
         if self.minGreaterAffixCount is not None:
-            MODULE_LOGGER.warning(
-                "minGreaterAffixCount at pool level is deprecated and will be ignored. "
-                "Use item-level minGreaterAffixCount and per-affix is_greater checkboxes instead."
-            )
+            warning_key = "minGreaterAffixCount_pool_level"
+            if warning_key not in _shown_deprecation_warnings:
+                MODULE_LOGGER.warning(
+                    "minGreaterAffixCount at pool level is deprecated and will be ignored. "
+                    "Use item-level minGreaterAffixCount and per-affix is_greater checkboxes instead."
+                )
+                _shown_deprecation_warnings.add(warning_key)
 
         return self
 

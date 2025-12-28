@@ -1,5 +1,6 @@
 import logging
 
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -130,6 +131,10 @@ class AffixGroupEditor(QWidget):
         main_layout.addWidget(scroll_area)
         self.setLayout(main_layout)
 
+        # Expand containers after a short delay to ensure everything is loaded
+        QTimer.singleShot(100, self.affix_pool_container.expand)
+        QTimer.singleShot(100, self.inherent_pool_container.expand)
+
     def init_affix_pool(self):
         """Initialize affix pool content on first expansion"""
         for pool in self.config.affixPool:
@@ -148,6 +153,7 @@ class AffixGroupEditor(QWidget):
             widget = AffixPoolWidget(pool)
             container_layout.addWidget(widget)
             self.inherent_pool_layout.addWidget(container)
+            QTimer.singleShot(50, container.expand)
         else:
             nb_count = self.affix_pool_layout.count()
             container = Container(f"Count {nb_count}", True)
@@ -155,6 +161,7 @@ class AffixGroupEditor(QWidget):
             widget = AffixPoolWidget(pool)
             container_layout.addWidget(widget)
             self.affix_pool_layout.addWidget(container)
+            QTimer.singleShot(50, container.expand)
 
     def add_affix_pool(self):
         # Create a default valid affix
@@ -265,9 +272,9 @@ class AffixPoolWidget(QWidget):
         title_layout.addWidget(affix_label)
         title_layout.addSpacing(400)
         title_layout.addWidget(greater_label)
-        title_layout.addSpacing(65)
+        title_layout.addSpacing(95)
         title_layout.addWidget(value_label)
-        title_layout.addSpacing(85)
+        title_layout.addSpacing(95)
         title_layout.addWidget(comparison_label)
 
         # Affix List
