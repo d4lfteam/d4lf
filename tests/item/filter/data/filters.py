@@ -137,16 +137,18 @@ affix = ProfileModel(
                 affixPool=[
                     AffixFilterCountModel(
                         count=[
-                            AffixFilterModel(name="intelligence"),
+                            AffixFilterModel(name="intelligence", is_greater=True),
+                            AffixFilterModel(name="movement_speed", is_greater=True),
                             AffixFilterModel(name="lightning_resistance"),
                             AffixFilterModel(name="maximum_life"),
-                            AffixFilterModel(name="movement_speed"),
                             AffixFilterModel(name="poison_resistance"),
                             AffixFilterModel(name="shadow_resistance"),
                         ],
                         minCount=3,
-                        minGreaterAffixCount=2,
                     )
+                ],
+                minGreaterAffixCount=2,  # Move to item level
+            ),
                 ],
             )
         },
