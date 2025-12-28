@@ -2,6 +2,7 @@ import logging
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QCompleter,
     QDialog,
@@ -167,7 +168,6 @@ class AffixGroupEditor(QWidget):
             count=[default_affix],  # Start with at least one valid affix
             minCount=1,
             maxCount=3,
-            minGreaterAffixCount=0,
         )
         self.config.affixPool.append(new_pool)
         self.add_affix_pool_item(new_pool)
@@ -184,7 +184,6 @@ class AffixGroupEditor(QWidget):
             count=[default_affix],  # Start with at least one valid affix
             minCount=1,
             maxCount=3,
-            minGreaterAffixCount=0,
         )
         self.config.affixPool.append(new_pool)
         self.add_affix_pool_item(new_pool, True)
@@ -253,29 +252,22 @@ class AffixPoolWidget(QWidget):
         self.max_count.setMaximumWidth(100)
         self.max_count.valueChanged.connect(self.update_max_count)
         config_layout.addWidget(self.max_count)
-        config_layout.addSpacing(150)
-
-        min_greater_label = QLabel("Min Greater Affixes:")
-        min_greater_label.setMaximumWidth(100)
-        config_layout.addWidget(min_greater_label)
-        self.min_greater = IgnoreScrollWheelSpinBox()
-        self.min_greater.setValue(self.pool.minGreaterAffixCount)
-        self.min_greater.setMaximumWidth(100)
-        self.min_greater.valueChanged.connect(self.update_min_greater)
-        config_layout.addWidget(self.min_greater)
 
         layout.addLayout(config_layout)
 
         title_layout = QHBoxLayout()
         title_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         affix_label = QLabel("Affixes")
+        greater_label = QLabel("Greater")
         value_label = QLabel("Value")
         comparison_label = QLabel("Comparison")
         title_layout.addSpacing(250)
         title_layout.addWidget(affix_label)
         title_layout.addSpacing(400)
+        title_layout.addWidget(greater_label)
+        title_layout.addSpacing(65)
         title_layout.addWidget(value_label)
-        title_layout.addSpacing(100)
+        title_layout.addSpacing(85)
         title_layout.addWidget(comparison_label)
 
         # Affix List
@@ -325,9 +317,6 @@ class AffixPoolWidget(QWidget):
     def update_max_count(self):
         self.pool.maxCount = self.max_count.value()
 
-    def update_min_greater(self):
-        self.pool.minGreaterAffixCount = self.min_greater.value()
-
 
 class AffixWidget(QWidget):
     def __init__(self, affix: AffixFilterModel, parent=None):
@@ -340,9 +329,11 @@ class AffixWidget(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         layout.setSpacing(50)
         self.create_affix_name_combobox()
+        self.create_greater_checkbox()
         self.create_value_input()
         self.create_comparison_combobox()
         layout.addWidget(self.name_combo)
+        layout.addWidget(self.greater_checkbox)
         layout.addWidget(self.value_edit)
         layout.addWidget(self.comparison_combo)
         self.setLayout(layout)
@@ -359,6 +350,13 @@ class AffixWidget(QWidget):
         if self.affix.name in Dataloader().affix_dict:
             self.name_combo.setCurrentText(Dataloader().affix_dict[self.affix.name])
         self.name_combo.currentIndexChanged.connect(self.update_name)
+
+    def create_greater_checkbox(self):
+        # Greater Affix Checkbox
+        self.greater_checkbox = QCheckBox("Greater")
+        self.greater_checkbox.setChecked(getattr(self.affix, 'is_greater', False))
+        self.greater_checkbox.setFixedWidth(80)
+        self.greater_checkbox.stateChanged.connect(self.update_greater)
 
     def create_value_input(self):
         # Value Input
@@ -395,6 +393,9 @@ class AffixWidget(QWidget):
     def update_comparison(self):
         comparison = self.comparison_combo.currentText()
         self.affix.comparison = ComparisonType(comparison)
+
+    def update_greater(self):
+        self.affix.is_greater = self.greater_checkbox.isChecked()
 
 
 class AffixesTab(QWidget):

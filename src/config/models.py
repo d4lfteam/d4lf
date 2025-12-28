@@ -117,6 +117,8 @@ class AffixAspectFilterModel(BaseModel):
 
 
 class AffixFilterModel(AffixAspectFilterModel):
+    is_greater: bool = False
+
     @field_validator("name")
     def name_must_exist(cls, name: str) -> str:
         # This on module level would be a circular import, so we do it lazy for now
@@ -133,9 +135,9 @@ class AffixFilterCountModel(BaseModel):
     count: list[AffixFilterModel] = []
     maxCount: int = sys.maxsize
     minCount: int = 0
-    minGreaterAffixCount: int = 0
+    minGreaterAffixCount: int | None = None  # DEPRECATED: Kept for backward compatibility with old YAML files, but ignored by filtering logic
 
-    @field_validator("minCount", "minGreaterAffixCount", "maxCount")
+    @field_validator("minCount", "maxCount")
     def count_validator(cls, v: int) -> int:
         return check_greater_than_zero(v)
 
