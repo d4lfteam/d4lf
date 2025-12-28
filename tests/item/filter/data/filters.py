@@ -147,13 +147,9 @@ affix = ProfileModel(
                         minCount=3,
                     )
                 ],
-                minGreaterAffixCount=2,  # Move to item level
-            ),
-                ],
+                minGreaterAffixCount=2,
             )
         },
-    ],
-)
 
 always_keep_mythics = ProfileModel(name="keep_mythics", Uniques=[UniqueModel(minPower=900)])
 
