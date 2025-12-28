@@ -26,7 +26,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Font scale in Graphics settings must be small or medium
 - HDR makes the screen too bright and D4LF is unable to read the state of some items on screen. It must be disabled.
 - Use Screen Reader must be enabled in Options > Accessibility
-- 3rd Party Screen Reader must be enabled in Options > Accessibility
+- 3rd Party Screen Reader must be enabled in Options > Accessibility (The voice will go away when DLL is installed, see quick start guide below)
 
 ### Installation and quick start guide
 
@@ -295,7 +295,7 @@ Affixes:
 Affix names are lower case and spaces are replaced by underscore. You can find the full list of names
 in [assets/lang/enUS/affixes.json](assets/lang/enUS/affixes.json).
 
-### AspectUpgrades (Experimental)
+### AspectUpgrades
 
 Legendary Aspects that you want to be notified of receiving upgrades for can be placed in your profile.
 They are defined in the top-level key `AspectUpgrades`.
