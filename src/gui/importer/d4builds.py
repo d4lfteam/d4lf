@@ -108,6 +108,9 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             if "filled" not in stat.xpath("../..")[0].attrib["class"]:
                 continue
             affix_name = stat.xpath("./span")[0].text
+            if not affix_name:
+                LOGGER.warning(f"Slot {slot} is missing an affix, skipping import of that affix.")
+                continue
             if is_weapon and (x := fix_weapon_type(input_str=affix_name)) is not None:
                 item_type = x
                 continue
