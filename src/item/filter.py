@@ -314,20 +314,14 @@ class Filter:
         for count_group in expected_affixes:
             group_res = []
 
-            # Count how many affixes marked want_greater are actually GAs on the item
-            required_ga_affixes = [affix for affix in count_group.count if getattr(affix, 'want_greater', False)]
-            actual_ga_count = 0
-
-            for affix in required_ga_affixes:
-                matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
-                if matched_item_affix is not None and matched_item_affix.type == AffixType.greater:
-                    actual_ga_count += 1
-
-            # Check if we have enough GAs from the pool (only if minGreaterAffixCount is specified)
-            pool_min_ga = getattr(count_group, 'minGreaterAffixCount', None)
-            if pool_min_ga is not None and actual_ga_count < pool_min_ga:
-                # Not enough GAs from the marked affixes, fail this group
-                return []
+            # Check that affixes marked want_greater are actually GAs on the item
+            for affix in count_group.count:
+                if getattr(affix, 'want_greater', False):
+                    # This affix MUST be a greater affix on the item
+                    matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
+                    if matched_item_affix is None or matched_item_affix.type != AffixType.greater:
+                        # Required GA affix is missing or not a GA, fail this group
+                        return []
 
             # Now do the normal matching
             for affix in count_group.count:
