@@ -135,11 +135,10 @@ class AffixFilterModel(AffixAspectFilterModel):
 
 
 class AffixFilterCountModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
     count: list[AffixFilterModel] = []
     maxCount: int = sys.maxsize
     minCount: int = 0
-    minGreaterAffixCount: int | None = None  # DEPRECATED: Kept for backward compatibility with old YAML files, but ignored by filtering logic
 
     @field_validator("minCount", "maxCount")
     def count_validator(cls, v: int) -> int:
