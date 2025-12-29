@@ -150,6 +150,40 @@ affix = ProfileModel(
                 minGreaterAffixCount=2,
             )
         },
+        {
+            "CountBootsMatch": ItemFilterModel(
+                itemType=[ItemType.Boots],
+                affixPool=[
+                    AffixFilterCountModel(
+                        count=[
+                            AffixFilterModel(name="intelligence", want_greater=True),
+                            AffixFilterModel(name="movement_speed", want_greater=True),
+                            AffixFilterModel(name="lightning_resistance"),
+                            AffixFilterModel(name="maximum_life"),
+                        ],
+                        minCount=3,
+                    )
+                ],
+                minGreaterAffixCount=1,  # Should match - only needs 1 greater, has 2
+            )
+        },
+        {
+            "CountBootsNoMatch": ItemFilterModel(
+                itemType=[ItemType.Boots],
+                affixPool=[
+                    AffixFilterCountModel(
+                        count=[
+                            AffixFilterModel(name="intelligence", want_greater=True),
+                            AffixFilterModel(name="movement_speed", want_greater=True),
+                            AffixFilterModel(name="lightning_resistance"),
+                            AffixFilterModel(name="maximum_life"),
+                        ],
+                        minCount=3,
+                    )
+                ],
+                minGreaterAffixCount=3,  # Should NOT match - needs 3 greater, only has 2
+            )
+        },
     ],
 )
 
