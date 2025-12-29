@@ -132,11 +132,10 @@ class AffixFilterModel(AffixAspectFilterModel):
 
 
 class AffixFilterCountModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
     count: list[AffixFilterModel] = []
     maxCount: int = sys.maxsize
     minCount: int = 0
-    minGreaterAffixCount: int | None = None  # DEPRECATED: Kept for backward compatibility with old YAML files, but ignored by filtering logic
 
     @field_validator("minCount", "maxCount")
     def count_validator(cls, v: int) -> int:
@@ -155,16 +154,6 @@ class AffixFilterCountModel(BaseModel):
             raise ValueError("minCount must be smaller than maxCount")
         if not self.count:
             raise ValueError("count must not be empty")
-
-        # Warn if deprecated field is used
-        if self.minGreaterAffixCount is not None:
-            warning_key = "minGreaterAffixCount_pool_level"
-            if warning_key not in _shown_deprecation_warnings:
-                MODULE_LOGGER.warning(
-                    "minGreaterAffixCount at pool level is deprecated and will be ignored. "
-                    "Use item-level minGreaterAffixCount and per-affix is_greater checkboxes instead."
-                )
-                _shown_deprecation_warnings.add(warning_key)
 
         return self
 
