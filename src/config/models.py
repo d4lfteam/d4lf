@@ -494,14 +494,30 @@ class ItemFilterModel(BaseModel):
 
     @field_validator("minGreaterAffixCount")
     def min_greater_affix_in_range(cls, v: int) -> int:
-        if not 0 <= v <= 3:
-            msg = "must be in [0, 3]"
+        if not 0 <= v <= 4:
+            msg = "must be in [0, 4]"
             raise ValueError(msg)
         return v
 
     @field_validator("itemType", mode="before")
     def parse_item_type(cls, data: str | list[str]) -> list[str]:
         return _parse_item_type_or_rarities(data)
+
+    @model_validator(mode="after")
+    def set_default_min_greater_affix_count(self) -> "ItemFilterModel":
+        # Count want_greater affixes
+        want_greater_count = 0
+        for pool in self.affixPool:
+            for affix in pool.count:
+                if getattr(affix, 'want_greater', False):
+                    want_greater_count += 1
+
+        # If any want_greater checkboxes are set, always use that count
+        if want_greater_count > 0:
+            self.minGreaterAffixCount = want_greater_count
+        # Otherwise, use the user's explicit minGreaterAffixCount (or default 0)
+
+        return self
 
 
 DynamicItemFilterModel = RootModel[dict[str, ItemFilterModel]]
@@ -627,7 +643,9 @@ class UniqueModel(BaseModel):
 
     @field_validator("minGreaterAffixCount")
     def count_validator(cls, v: int) -> int:
-        return check_greater_than_zero(v)
+        if not 0 <= v <= 4:  # Changed to match ItemFilterModel
+            raise ValueError("must be in [0, 4]")
+        return v
 
     @field_validator("minPercentOfAspect")
     def percent_validator(cls, v: int) -> int:
@@ -640,6 +658,21 @@ class UniqueModel(BaseModel):
     @field_validator("itemType", mode="before")
     def parse_item_type(cls, data: str | list[str]) -> list[str]:
         return _parse_item_type_or_rarities(data)
+
+    @model_validator(mode="after")
+    def set_default_min_greater_affix_count(self) -> "UniqueModel":
+        # Count want_greater affixes
+        want_greater_count = 0
+        for affix in self.affix:
+            if getattr(affix, 'want_greater', False):
+                want_greater_count += 1
+
+        # If any want_greater checkboxes are set, always use that count
+        if want_greater_count > 0:
+            self.minGreaterAffixCount = want_greater_count
+        # Otherwise, use the user's explicit minGreaterAffixCount (or default 0)
+
+        return self
 
 
 class ProfileModel(BaseModel):

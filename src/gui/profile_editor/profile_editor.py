@@ -67,17 +67,52 @@ class ProfileEditor(QTabWidget):
 
     def save_all(self):
         """Save all tabs' configurations."""
-        model = ProfileModel.model_validate(self.profile_model)
-        if model != self.profile_model:
-            if self.show_warning():
-                save_as_profile(
-                    self.profile_model.name, self.profile_model, "custom", exclude={"name"}, backup_file=True
-                )
-                QMessageBox.information(
-                    self, "Info", f"Profile saved successfully to {self.profile_model.name + '.yaml'}"
-                )
+        # Manually sync minGreaterAffixCount before saving
+        for affix_filter in self.profile_model.Affixes:
+            for item_name, item_filter in affix_filter.root.items():
+                want_greater_count = 0
+                for pool in item_filter.affixPool:
+                    for affix in pool.count:
+                        if getattr(affix, 'want_greater', False):
+                            want_greater_count += 1
+
+                # If checkboxes are used, use checkbox count
+                if want_greater_count > 0:
+                    item_filter.minGreaterAffixCount = want_greater_count
+                else:
+                    # No checkboxes - need to read the current UI spinner value
+                    # Find the corresponding tab
+                    for i in range(self.affixes_tab.tab_widget.count()):
+                        tab = self.affixes_tab.tab_widget.widget(i)
+                        if tab.item_name == item_name:
+                            item_filter.minGreaterAffixCount = tab.min_greater.value()
+                            break
+
+        # Same for Uniques
+        for unique in self.profile_model.Uniques:
+            want_greater_count = sum(1 for affix in unique.affix if getattr(affix, 'want_greater', False))
+            if want_greater_count > 0:
+                unique.minGreaterAffixCount = want_greater_count
+            # For uniques, we'd need to access the uniques tab UI similarly if needed
+
+        try:
+            # Validate
+            model = ProfileModel.model_validate(self.profile_model)
+            if model != self.profile_model:
+                if self.show_warning():
+                    save_as_profile(
+                        self.profile_model.name, self.profile_model, "custom", exclude={"name"}, backup_file=True
+                    )
+                    QMessageBox.information(
+                        self, "Info", f"Profile saved successfully to {self.profile_model.name + '.yaml'}"
+                    )
+                else:
+                    QMessageBox.information(self, "Info", "Profile not saved.")
             else:
-                QMessageBox.information(self, "Info", "Profile not saved.")
-        else:
-            save_as_profile(self.profile_model.name, self.profile_model, "custom", exclude={"name"}, backup_file=True)
-            QMessageBox.information(self, "Info", f"Profile saved successfully to {self.profile_model.name + '.yaml'}")
+                save_as_profile(self.profile_model.name, self.profile_model, "custom", exclude={"name"},
+                                backup_file=True)
+                QMessageBox.information(self, "Info",
+                                        f"Profile saved successfully to {self.profile_model.name + '.yaml'}")
+        except Exception as e:
+            LOGGER.error(f"Validation error: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to save profile: {e}")
