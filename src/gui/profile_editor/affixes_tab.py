@@ -405,7 +405,6 @@ class AffixWidget(QWidget):
     def update_greater(self):
         self.affix.want_greater = self.greater_checkbox.isChecked()
 
-
 class AffixesTab(QWidget):
     def __init__(self, affixes_model: list[DynamicItemFilterModel], parent=None):
         super().__init__(parent)
