@@ -490,10 +490,9 @@ class ItemFilterModel(BaseModel):
                 if getattr(affix, 'want_greater', False):
                     want_greater_count += 1
 
-        # If any want_greater checkboxes are set, always use that count
-        if want_greater_count > 0:
+        # If any want_greater checkboxes are set AND minGreaterAffixCount was NOT explicitly set
+        if want_greater_count > 0 and "minGreaterAffixCount" not in self.model_fields_set:
             self.minGreaterAffixCount = want_greater_count
-        # Otherwise, use the user's explicit minGreaterAffixCount (or default 0)
 
         return self
 
@@ -630,17 +629,17 @@ class UniqueModel(BaseModel):
         return _parse_item_type_or_rarities(data)
 
     @model_validator(mode="after")
-    def set_default_min_greater_affix_count(self) -> "UniqueModel":
+    def set_default_min_greater_affix_count(self) -> "ItemFilterModel":
         # Count want_greater affixes
         want_greater_count = 0
-        for affix in self.affix:
-            if getattr(affix, 'want_greater', False):
-                want_greater_count += 1
+        for pool in self.affixPool:
+            for affix in pool.count:
+                if getattr(affix, 'want_greater', False):
+                    want_greater_count += 1
 
-        # If any want_greater checkboxes are set, always use that count
-        if want_greater_count > 0:
+        # If any want_greater checkboxes are set AND minGreaterAffixCount was NOT explicitly set
+        if want_greater_count > 0 and "minGreaterAffixCount" not in self.model_fields_set:
             self.minGreaterAffixCount = want_greater_count
-        # Otherwise, use the user's explicit minGreaterAffixCount (or default 0)
 
         return self
 
