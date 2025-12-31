@@ -55,7 +55,7 @@ def import_mobalytics(config: ImportConfig):
     except ConnectionError as exc:
         LOGGER.exception(msg := "Couldn't get build")
         raise MobalyticsException(msg) from exc
-    variant_id = url.split(",")[1] if "activeVariantId" in url else None
+    variant_id = url.split(",")[1].split("#")[0] if "activeVariantId" in url else None
     raw_html_data = lxml.html.fromstring(r.text)
     # The build is shoved in a massive JSON in one of the script tags. We find that json now.
     scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
