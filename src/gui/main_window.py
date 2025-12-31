@@ -402,6 +402,16 @@ class MainWindow(QMainWindow):
         if self.editor_window and self.editor_window.isVisible():
             self.editor_window.setStyleSheet(self.styleSheet())
 
+    def closeEvent(self, event):  # ← ADD THIS METHOD
+        """Handle window close - signal main process to shutdown"""
+        from src.config.loader import IniConfigLoader
+
+        # Create shutdown flag to tell main process to exit
+        shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
+        shutdown_flag.touch()
+
+        LOGGER.info("Main window closed - signaling shutdown")
+        event.accept()
 
 # Example usage for testing
 if __name__ == "__main__":
