@@ -295,9 +295,11 @@ class BrowserType(enum.StrEnum):
     chrome = enum.auto()
     firefox = enum.auto()
 
+
 class ThemeType(enum.StrEnum):
     dark = enum.auto()
     light = enum.auto()
+
 
 class GeneralModel(_IniBaseModel):
     auto_use_temper_manuals: bool = Field(
@@ -362,8 +364,7 @@ class GeneralModel(_IniBaseModel):
         default=False, description="Season 7 Specific: Do not mark ancestral legendaries as junk for seasonal challenge"
     )
     theme: ThemeType = Field(  # ADD THIS FIELD
-        default=ThemeType.dark,
-        description="Choose between light and dark theme for the GUI"
+        default=ThemeType.dark, description="Choose between light and dark theme for the GUI"
     )
     vision_mode_type: VisionModeType = Field(
         default=VisionModeType.highlight_matches,
@@ -488,6 +489,7 @@ class ItemFilterModel(BaseModel):
     @field_validator("itemType", mode="before")
     def parse_item_type(cls, data: str | list[str]) -> list[str]:
         return _parse_item_type_or_rarities(data)
+
 
 DynamicItemFilterModel = RootModel[dict[str, ItemFilterModel]]
 
@@ -619,6 +621,7 @@ class UniqueModel(BaseModel):
     @field_validator("itemType", mode="before")
     def parse_item_type(cls, data: str | list[str]) -> list[str]:
         return _parse_item_type_or_rarities(data)
+
 
 class ProfileModel(BaseModel):
     model_config = ConfigDict(extra="forbid")

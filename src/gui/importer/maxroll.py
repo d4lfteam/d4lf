@@ -5,6 +5,7 @@ import re
 import lxml.html
 
 import src.logger
+from gui.importer.common import update_mingreateraffixcount
 from src.config.models import (
     AffixFilterCountModel,
     AffixFilterModel,
@@ -16,7 +17,7 @@ from src.config.models import (
 from src.dataloader import Dataloader
 from src.gui.importer.common import add_to_profiles, get_with_retry, match_to_enum, retry_importer, save_as_profile
 from src.gui.importer.importer_config import ImportConfig
-from src.item.data.affix import Affix
+from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
@@ -133,14 +134,19 @@ def import_maxroll(config: ImportConfig):
         item_filter.affixPool = [
             AffixFilterCountModel(
                 count=[
-                    AffixFilterModel(name=x.name)
-                    for x in _find_item_affixes(mapping_data=mapping_data, item_affixes=resolved_item["explicits"])
+                    AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater)
+                    for x in _find_item_affixes(
+                        mapping_data=mapping_data,
+                        item_affixes=resolved_item["explicits"],
+                        import_greater_affixes=config.import_greater_affixes,
+                    )
                 ],
                 minCount=3,
-                minGreaterAffixCount=0,
             )
         ]
         item_filter.minPower = 100
+        update_mingreateraffixcount(item_filter, config.require_greater_affixes)
+
         # maxroll has some outdated data, so we need to clean it up by using item_type
         if "implicits" in resolved_item and item_type in [ItemType.Boots]:
             item_filter.inherentPool = [
@@ -189,7 +195,7 @@ def _corrections(input_str: str) -> str:
     return input_str
 
 
-def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
+def _find_item_affixes(mapping_data: dict, item_affixes: dict, import_greater_affixes=False) -> list[Affix]:
     res = []
     for affix_id in item_affixes:
         for affix in mapping_data["affixes"].values():
@@ -259,6 +265,8 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
             clean_desc = re.sub(r"\[.*?\]|[^a-zA-Z ]", "", attr_desc)
             clean_desc = clean_desc.replace("SecondSeconds", "seconds")
             affix_obj = Affix(name=closest_match(clean_str(clean_desc), Dataloader().affix_dict))
+            if import_greater_affixes and affix_id.get("greater", False):
+                affix_obj.type = AffixType.greater
             if affix_obj.name is not None:
                 res.append(affix_obj)
             elif "formula" in affix["attributes"][0] and affix["attributes"][0]["formula"] in [
