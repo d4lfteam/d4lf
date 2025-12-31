@@ -198,17 +198,47 @@ if __name__ == "__main__":
         # Normal launch - setup logger and start overlay
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
 
+        # Hide console for end users, keep visible for developers
+        if sys.platform == "win32" and not os.environ.get("PYCHARM_HOSTED"):
+            import ctypes
+
+            ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
+
+        # Create shutdown flag file path
+        shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
+
+        # Create shutdown flag file path
+        shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
+        if shutdown_flag.exists():
+            shutdown_flag.unlink()  # Remove old flag
+
         # Launch main window as separate process
         import subprocess
 
         try:
-            subprocess.Popen([sys.executable, __file__, "--mainwindow"])
+            main_window_process = subprocess.Popen([sys.executable, __file__, "--mainwindow"])
             LOGGER.info("Main window launched in separate process")
         except Exception as e:
             LOGGER.warning(f"Could not launch main window: {e}")
+            main_window_process = None
 
         # Run overlay in main thread (as it always did)
         try:
+            # Check periodically if shutdown was requested
+            import threading
+
+
+            def check_shutdown():
+                while not shutdown_flag.exists():
+                    time.sleep(0.5)
+                LOGGER.info("Shutdown requested via main window")
+                import os
+                os._exit(0)  # Force exit entire process
+
+
+            shutdown_thread = threading.Thread(target=check_shutdown, daemon=True)
+            shutdown_thread.start()
+
             main()
         except Exception:
             traceback.print_exc()
