@@ -124,7 +124,7 @@ affixes = [
     ),
     (
         "greater affix",
-        ["test.GreaterAffixes"],
+        ["test.CountBootsMatch", "test.GreaterAffixes"],  # ← Changed this line
         TestItem(
             item_type=ItemType.Boots,
             affixes=[
