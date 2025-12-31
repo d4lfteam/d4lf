@@ -497,8 +497,44 @@ class Filter:
                     data = ProfileModel(name=profile_str, **config)
                 except ValidationError as e:
                     errors = True
-                    LOGGER.error(f"Validation errors in {profile_path}")
-                    LOGGER.error(e)
+
+                    # Build error message as single string
+                    error_lines = []
+                    error_lines.append("=" * 80)
+                    error_lines.append(f"❌ PROFILE VALIDATION FAILED: {profile_path}")
+                    error_lines.append("=" * 80)
+                    error_lines.append("")
+
+                    # Show what's wrong
+                    for error in e.errors():
+                        field_path = " → ".join(str(loc) for loc in error['loc'])
+                        error_msg = error['msg']
+                        error_type = error['type']
+
+                        error_lines.append(f"Field: {field_path}")
+                        error_lines.append(f"Error: {error_msg}")
+
+                        # Provide specific fix guidance
+                        if "extra" in error_type.lower() or "forbidden" in error_msg.lower():
+                            error_lines.append(
+                                "❗ FIX: This field is no longer valid and must be removed from your YAML file")
+                            if "minGreaterAffixCount" in field_path:
+                                error_lines.append(
+                                    "   → 'minGreaterAffixCount' was moved from affix pool level to item level")
+                                error_lines.append("   → Remove it from individual affix pools in your profile")
+                        elif "missing" in error_type.lower():
+                            error_lines.append(f"❗ FIX: Add the required field '{field_path}' to your profile")
+                        else:
+                            error_lines.append(f"❗ FIX: Check the value and format for '{field_path}'")
+
+                        error_lines.append("-" * 80)
+
+                    error_lines.append(f"🛠️  ACTION REQUIRED: Fix the errors above in: {profile_path}")
+                    error_lines.append(f"📖 Documentation: https://github.com/aeon0/d4lf#profile-configuration")
+                    error_lines.append("=" * 80)
+
+                    # Log as single message
+                    LOGGER.error("\n" + "\n".join(error_lines))
                     continue
 
                 if data.Affixes:
@@ -518,10 +554,15 @@ class Filter:
                     info_str += "Uniques"
 
                 LOGGER.info(info_str)
-        if errors:
-            LOGGER.error("Errors occurred while loading profiles, please check the log for details")
-            sys.exit(1)
-        self.last_loaded = time.time()
+            if errors:
+                fatal_msg = "\n".join([
+                    "=" * 80,
+                    "❌ FATAL: Cannot continue with invalid profiles",
+                    "=" * 80
+                ])
+                LOGGER.error("\n" + fatal_msg)
+                sys.exit(1)
+            self.last_loaded = time.time()
 
     def should_keep(self, item: Item) -> FilterResult:
         if not self.files_loaded or self._did_files_change():

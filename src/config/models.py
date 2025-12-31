@@ -132,10 +132,11 @@ class AffixFilterModel(AffixAspectFilterModel):
 
 
 class AffixFilterCountModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     count: list[AffixFilterModel] = []
     maxCount: int = sys.maxsize
     minCount: int = 0
+    auto_sync_ga: bool = False
 
     @field_validator("minCount", "maxCount")
     def count_validator(cls, v: int) -> int:
@@ -467,12 +468,12 @@ class HSVRangeModel(_IniBaseModel):
 
 
 class ItemFilterModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    itemType: list[ItemType] = []
+    minPower: int = 0
+    minGreaterAffixCount: int = 0
+    auto_sync_ga: bool = False  # ← ADD THIS LINE
     affixPool: list[AffixFilterCountModel] = []
     inherentPool: list[AffixFilterCountModel] = []
-    itemType: list[ItemType] = []
-    minGreaterAffixCount: int = 0
-    minPower: int = 0
 
     @field_validator("minPower")
     def check_min_power(cls, v: int) -> int:
