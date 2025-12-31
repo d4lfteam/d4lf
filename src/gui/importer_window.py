@@ -1,6 +1,7 @@
 import logging
 import threading
 
+from PyQt6.QtCore import QObject, QRunnable, QSettings, QThreadPool, pyqtSignal, pyqtSlot
 from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, QThreadPool, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -72,28 +73,52 @@ class ImporterWindow(QMainWindow):
         layout.addLayout(filename_hbox)
 
         # Checkboxes
+        self.import_uniques_checkbox = self._generate_checkbox(
+            "Import Uniques",
+            "import_uniques",
+            "Should uniques be included in the profile if they exist on the build page?",
+        )
+        self.import_aspect_upgrades_checkbox = self._generate_checkbox(
+            "Import Aspect Upgrades",
+            "import_aspect_upgrades",
+            "If legendary aspects are in the build, do you want an aspect upgrades section generated for them?",
+        )
+        self.add_to_profiles_checkbox = self._generate_checkbox(
+            "Auto-add To Profiles",
+            "import_add_to_profiles",
+            "After import, should the imported file be automatically added to your active profiles?",
+        )
+        self.import_gas_checkbox = self._generate_checkbox(
+            "Import GAs",
+            "import_gas",
+            "If a build has greater affixes, should they be included in the imported profile?",
+        )
+        self.require_all_gas_checkbox = self._generate_checkbox(
+            "Require all GAs",
+            "require_all_gas",
+            "If a build has greater affixes, should an item have all of them to be kept?",
+            "false",
+        )
+
+        def disable_require_if_import_disabled():
+            if not self.import_gas_checkbox.isChecked():
+                self.require_all_gas_checkbox.setChecked(False)
+                self.require_all_gas_checkbox.setEnabled(False)
+            else:
+                self.require_all_gas_checkbox.setEnabled(True)
+
+        self.require_all_gas_checkbox.setEnabled(self.import_gas_checkbox.isChecked())
+        self.import_gas_checkbox.stateChanged.connect(lambda: disable_require_if_import_disabled())
+
         checkbox_hbox = QHBoxLayout()
-        self.import_uniques_checkbox = QCheckBox("Import Uniques")
-        self.import_uniques_checkbox.setChecked(True)
-        self.import_uniques_checkbox.setToolTip(
-            "Should uniques be included in the profile if they exist on the build page?"
-        )
-
-        self.import_aspect_upgrades_checkbox = QCheckBox("Import Aspect Upgrades")
-        self.import_aspect_upgrades_checkbox.setChecked(True)
-        self.import_aspect_upgrades_checkbox.setToolTip(
-            "If legendary aspects are in the build, do you want an aspect upgrades section generated for them?"
-        )
-
-        self.add_to_profiles_checkbox = QCheckBox("Auto-add To Profiles")
-        self.add_to_profiles_checkbox.setChecked(True)
-        self.add_to_profiles_checkbox.setToolTip(
-            "After import, should the imported file be automatically added to your active profiles?"
-        )
-
         checkbox_hbox.addWidget(self.import_uniques_checkbox)
         checkbox_hbox.addWidget(self.import_aspect_upgrades_checkbox)
         checkbox_hbox.addWidget(self.add_to_profiles_checkbox)
+        layout.addLayout(checkbox_hbox)
+        # Second row of checkboxes, probably need a better solution for this one day
+        checkbox_hbox = QHBoxLayout()
+        checkbox_hbox.addWidget(self.import_gas_checkbox)
+        checkbox_hbox.addWidget(self.require_all_gas_checkbox)
         layout.addLayout(checkbox_hbox)
 
         # Generate button
@@ -142,6 +167,16 @@ class ImporterWindow(QMainWindow):
         instructions_text.setFixedHeight(text_height)
         layout.addWidget(instructions_text)
 
+    def _generate_checkbox(self, name, settings_value, desc, default_value="true") -> QCheckBox:
+        def save_setting_change(settings_value, value):
+            self.settings.setValue(settings_value, value)
+
+        checkbox = QCheckBox(name)
+        checkbox.setChecked(self.settings.value(settings_value, default_value) == "true")
+        checkbox.setToolTip(desc)
+        checkbox.stateChanged.connect(lambda: save_setting_change(settings_value, checkbox.isChecked()))
+        return checkbox
+
     def _apply_theme(self):
         """Apply theme from settings"""
         config = IniConfigLoader()
@@ -168,6 +203,8 @@ class ImporterWindow(QMainWindow):
             self.import_uniques_checkbox.isChecked(),
             self.import_aspect_upgrades_checkbox.isChecked(),
             self.add_to_profiles_checkbox.isChecked(),
+            self.import_gas_checkbox.isChecked(),
+            self.require_all_gas_checkbox.isChecked(),
             custom_filename,
         )
 

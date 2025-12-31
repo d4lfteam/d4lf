@@ -5,14 +5,22 @@ Shows log output and provides access to Import, Settings, and Profile Editor.
 import logging
 from pathlib import Path
 
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
