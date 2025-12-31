@@ -1,7 +1,7 @@
 import logging
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QMessageBox, QTabWidget
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QMessageBox, QPushButton, QTabWidget
 
 from src.config.models import ProfileModel
 from src.gui.importer.common import save_as_profile
@@ -15,8 +15,12 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ProfileEditor(QTabWidget):
+    # Signal emitted when profile is saved (passes profile name)
+    profile_saved = pyqtSignal(str)
+
     def __init__(self, profile_model: ProfileModel, parent=None):
         super().__init__(parent)
+
         self.profile_model = profile_model
         # Create main tabs
         self.affixes_tab = AffixesTab(self.profile_model.Affixes)
@@ -67,34 +71,6 @@ class ProfileEditor(QTabWidget):
 
     def save_all(self):
         """Save all tabs' configurations"""
-        # Manually sync minGreaterAffixCount before saving
-        for affix_filter in self.profile_model.Affixes:
-            for item_name, item_filter in affix_filter.root.items():
-                want_greater_count = 0
-                for pool in item_filter.affixPool:
-                    for affix in pool.count:
-                        if getattr(affix, 'want_greater', False):
-                            want_greater_count += 1
-
-                # If checkboxes are used, use checkbox count
-                if want_greater_count > 0:
-                    item_filter.minGreaterAffixCount = want_greater_count
-                else:
-                    # No checkboxes - need to read the current UI spinner value
-                    # Find the corresponding tab
-                    for i in range(self.affixes_tab.tab_widget.count()):
-                        tab = self.affixes_tab.tab_widget.widget(i)
-                        if tab.item_name == item_name:
-                            item_filter.minGreaterAffixCount = tab.min_greater.value()
-                            break
-
-        # Same for Uniques
-        for unique in self.profile_model.Uniques:
-            want_greater_count = sum(1 for affix in unique.affix if getattr(affix, 'want_greater', False))
-            if want_greater_count > 0:
-                unique.minGreaterAffixCount = want_greater_count
-            # For uniques, we'd need to access the uniques tab UI similarly if needed
-
         try:
             # Validate
             model = ProfileModel.model_validate(self.profile_model)
@@ -103,6 +79,8 @@ class ProfileEditor(QTabWidget):
                     save_as_profile(
                         self.profile_model.name, self.profile_model, "custom", exclude={"name"}, backup_file=True
                     )
+                    # Emit signal for hot reload
+                    self.profile_saved.emit(self.profile_model.name)
                     QMessageBox.information(
                         self, "Info", f"Profile saved successfully to {self.profile_model.name + '.yaml'}"
                     )
@@ -111,6 +89,8 @@ class ProfileEditor(QTabWidget):
             else:
                 save_as_profile(self.profile_model.name, self.profile_model, "custom", exclude={"name"},
                                 backup_file=True)
+                # Emit signal for hot reload
+                self.profile_saved.emit(self.profile_model.name)
                 QMessageBox.information(self, "Info",
                                         f"Profile saved successfully to {self.profile_model.name + '.yaml'}")
         except Exception as e:

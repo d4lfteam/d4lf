@@ -15,12 +15,22 @@ from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import VisionModeType
 from src.gui.qt_gui import start_gui
+from src.gui.main_window import MainWindow
 from src.item.filter import Filter
 from src.logger import LOG_DIR
 from src.overlay import Overlay
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
+
+# Set DPI awareness before Qt loads
+if sys.platform == "win32":
+    try:
+        import ctypes
+        import os
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)  # PROCESS_SYSTEM_DPI_AWARE
+    except:
+        pass
 
 LOGGER = logging.getLogger(__name__)
 
@@ -30,7 +40,7 @@ def main():
     for dir_name in [LOG_DIR / "screenshots", IniConfigLoader().user_dir, IniConfigLoader().user_dir / "profiles"]:
         Path(dir_name).mkdir(exist_ok=True, parents=True)
 
-    LOGGER.info(f"Adapt your configs via gui.bat or directly in: {IniConfigLoader().user_dir}")
+    LOGGER.info(f"Change configurations via the Settings button below or directly in: {IniConfigLoader().user_dir}")
 
     # Detect if we're running locally and skip the autoupdate
     if Path(Path.cwd() / "main.py").exists():
@@ -155,14 +165,49 @@ def get_d4_local_prefs_file() -> Path | None:
 
 
 if __name__ == "__main__":
-    src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
-    if len(sys.argv) > 1 and sys.argv[1] == "--gui":
-        start_gui()
-    elif len(sys.argv) > 1 and sys.argv[1] == "--autoupdate":
+    if len(sys.argv) > 1 and sys.argv[1] == "--autoupdate":
+        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
         start_auto_update()
     elif len(sys.argv) > 1 and sys.argv[1] == "--autoupdatepost":
+        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
         start_auto_update(postprocess=True)
+    elif len(sys.argv) > 1 and sys.argv[1] == "--mainwindow":
+        # Suppress Qt warnings BEFORE any other imports
+        import os
+
+        os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
+
+        # Set DPI awareness for Qt subprocess only
+        if sys.platform == "win32":
+            try:
+                import ctypes
+
+                ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
+            except:
+                pass
+
+        # Launch just the Qt main window (called as subprocess)
+        # NO logger setup - we'll tail the main process log file
+        from PyQt6.QtWidgets import QApplication
+
+        app = QApplication(sys.argv)
+        main_window = MainWindow()
+        main_window.show()
+        sys.exit(app.exec())
     else:
+        # Normal launch - setup logger and start overlay
+        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
+
+        # Launch main window as separate process
+        import subprocess
+
+        try:
+            subprocess.Popen([sys.executable, __file__, "--mainwindow"])
+            LOGGER.info("Main window launched in separate process")
+        except Exception as e:
+            LOGGER.warning(f"Could not launch main window: {e}")
+
+        # Run overlay in main thread (as it always did)
         try:
             main()
         except Exception:

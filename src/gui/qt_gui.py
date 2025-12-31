@@ -42,6 +42,7 @@ from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.maxroll import import_maxroll
 from src.gui.importer.mobalytics import import_mobalytics
 from src.gui.open_user_config_button import OpenUserConfigButton
+from src.gui.themes import DARK_THEME, LIGHT_THEME
 
 LOGGER = logging.getLogger(__name__)
 
@@ -81,13 +82,15 @@ class Gui(QMainWindow):
         self._maxroll_or_d4builds_tab()
         # diablo trade changed search to be login only, so this no longer works
         # self._diablo_trade_tab()
-        self.config_tab = config_tab.ConfigTab()
+        self.config_tab = config_tab.ConfigTab(theme_changed_callback=self._apply_theme)
         self.tab_widget.addTab(self.config_tab, config_tab.CONFIG_TABNAME)
         self.profile_tab_widget = profile_tab.ProfileTab()
         self.tab_widget.addTab(self.profile_tab_widget, profile_tab.PROFILE_TABNAME)
         LOGGER.root.addHandler(self.maxroll_log_handler)
         self.tab_widget.currentChanged.connect(self._handle_tab_changed)
-        self._toggle_dark_mode()
+
+        # Apply theme on startup
+        self._apply_theme()
 
     def closeEvent(self, e):
         # Write window size, position, and maximized status to config
@@ -182,11 +185,12 @@ class Gui(QMainWindow):
         tab_diablo_trade.setLayout(layout)
 
     def _handle_tab_changed(self, index):
+        # Apply theme whenever tab changes (in case it was changed in config)
+        self._apply_theme()
+
         if self.tab_widget.tabText(index) == MAXROLL_D4B_MOBALYTICS_TABNAME:
             LOGGER.root.addHandler(self.maxroll_log_handler)
-            # LOGGER.root.removeHandler(self.diablo_trade_log_handler)
         elif self.tab_widget.tabText(index) == D4TRADE_TABNAME:
-            # LOGGER.root.addHandler(self.diablo_trade_log_handler)
             LOGGER.root.removeHandler(self.maxroll_log_handler)
         elif self.tab_widget.tabText(index) == config_tab.CONFIG_TABNAME:
             self.config_tab.show_tab()
@@ -324,110 +328,17 @@ class Gui(QMainWindow):
 
         tab_maxroll.setLayout(layout)
 
-    def _toggle_dark_mode(self):
-        if QApplication.instance().styleSheet():
-            QApplication.instance().setStyleSheet("")
+    def _apply_theme(self):
+        """Apply the theme from config settings"""
+        # Force reload the config to get latest theme value
+        config = IniConfigLoader()
+        config.load()  # Reload from disk
+
+        theme = config.general.theme.value
+        if theme == "dark":
+            self.setStyleSheet(DARK_THEME)
         else:
-            QApplication.instance().setStyleSheet("""
-                QWidget {
-                    background-color: #121212;
-                    color: #e0e0e0;
-                }
-                QPushButton {
-                    background-color: #1f1f1f;
-                    border: 1px solid #3c3c3c;
-                    border-radius: 5px;
-                    padding: 3px 8px;
-                    font-size: 14px;
-                }
-                QPushButton:hover {
-                    background-color: #2c2c2c;
-                    border: 1px solid #5c5c5c;
-                }
-                QPushButton:pressed {
-                    background-color: #3c3c3c;
-                }
-                QTextEdit {
-                    background-color: #1e1e1e;
-                    color: #e0e0e0;
-                    border: 1px solid #3c3c3c;
-                    border-radius: 5px;
-                    padding: 8px;
-                }
-                QLineEdit {
-                    background-color: #1e1e1e;
-                    color: #e0e0e0;
-                    border: 1px solid #3c3c3c;
-                    border-radius: 5px;
-                    padding: 3px;
-                }
-                QTabBar::tab {
-                    background-color: #1f1f1f;
-                    color: #e0e0e0;
-                    padding: 5px 15px;
-                    margin: 2px;
-                    border-top-left-radius: 5px;
-                    border-top-right-radius: 5px;
-                    min-width: 80px;
-                }
-                QTabBar::tab:selected {
-                    background-color: #3c3c3c;
-                    border: 1px solid #5c5c5c;
-                    border-bottom: none;
-                    border-top-left-radius: 5px;
-                    border-top-right-radius: 5px;
-                }
-                QTabBar::tab:hover {
-                    background-color: #2c2c2c;
-                    border: 1px solid #5c5c5c;
-                }
-                QTabBar::tab:!selected {
-                    margin-top: 3px;
-                }
-                QScrollBar:vertical {
-                    background-color: #1f1f1f;
-                    width: 16px;
-                    margin: 16px 0 16px 0;
-                    border: 1px solid #3c3c3c;
-                }
-                QScrollBar::handle:vertical {
-                    background-color: #3c3c3c;
-                    min-height: 20px;
-                    border-radius: 4px;
-                }
-                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                    background-color: #1f1f1f;
-                    height: 16px;
-                    subcontrol-origin: margin;
-                    border: 1px solid #3c3c3c;
-                }
-                QScrollBar::add-line:vertical:hover, QScrollBar::sub-line:vertical:hover {
-                    background-color: #3c3c3c;
-                }
-                QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-                    background: none;
-                }
-                QComboBox {
-                    background-color: #1f1f1f;
-                    color: #e0e0e0;
-                    border: 1px solid #3c3c3c;
-                    border-radius: 5px;
-                    padding: 3px;
-                }
-                QComboBox QAbstractItemView {
-                    background-color: #1f1f1f;
-                    color: #e0e0e0;
-                    border: 1px solid #3c3c3c;
-                    selection-background-color: #3c3c3c;
-                }
-                QToolTip {
-                    background-color: #1f1f1f;
-                    color: #e0e0e0;
-                    border: 1px solid #3c3c3c;
-                    padding: 3px;
-                    border-radius: 5px;
-                }
-            """)
+            self.setStyleSheet(LIGHT_THEME)
 
 
 class _CustomTabBar(QTabBar):

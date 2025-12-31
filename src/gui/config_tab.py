@@ -60,8 +60,9 @@ def _validate_and_save_changes(model, header, key, value, method_to_reset_value:
 
 
 class ConfigTab(QWidget):
-    def __init__(self):
+    def __init__(self, theme_changed_callback=None):
         super().__init__()
+        self.theme_changed_callback = theme_changed_callback
         self.model_to_parameter_value_map = {}
         layout = QVBoxLayout(self)
         scrollable_layout = QVBoxLayout()
@@ -132,8 +133,7 @@ class ConfigTab(QWidget):
         group_box.setLayout(form_layout)
         return group_box
 
-    @staticmethod
-    def _generate_parameter_value_widget(model: BaseModel, section_config_header, config_key, config_value, is_hotkey):
+    def _generate_parameter_value_widget(self, model: BaseModel, section_config_header, config_key, config_value, is_hotkey):
         if config_key == "check_chest_tabs":
             parameter_value_widget = QChestTabWidget(
                 model, section_config_header, config_key, config_value, IniConfigLoader().general.max_stash_tabs
@@ -158,11 +158,16 @@ class ConfigTab(QWidget):
             enum_type = type(config_value)
             parameter_value_widget.addItems(list(enum_type))
             parameter_value_widget.setCurrentText(config_value)
-            parameter_value_widget.currentTextChanged.connect(
-                lambda: _validate_and_save_changes(
+
+            def on_enum_changed():
+                _validate_and_save_changes(
                     model, section_config_header, config_key, parameter_value_widget.currentText()
                 )
-            )
+                # If this is the theme setting, apply it immediately
+                if config_key == "theme" and self.theme_changed_callback:
+                    self.theme_changed_callback()
+
+            parameter_value_widget.currentTextChanged.connect(on_enum_changed)
         elif isinstance(config_value, bool):
             parameter_value_widget = QCheckBox()
             parameter_value_widget.setChecked(config_value)

@@ -138,7 +138,7 @@ affixes = [
     ),
     (
         "greater affix 2",
-        ["test.CountBoots", "test.CountBootsMatch", "test.GreaterAffixes"],
+        ["test.CountBoots", "test.CountBootsMatch", "test.GreaterAffixes"],  # Added CountBootsMatch
         TestItem(
             item_type=ItemType.Boots,
             affixes=[
