@@ -3,6 +3,7 @@ import logging
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
+    QSpinBox,
     QCheckBox,
     QComboBox,
     QCompleter,
@@ -85,11 +86,47 @@ class AffixGroupEditor(QWidget):
         self.min_power.valueChanged.connect(self.update_min_power)
         general_form.addRow("Minimum Power:", self.min_power)
 
-        self.min_greater = IgnoreScrollWheelSpinBox()
+        # Min Greater Affixes with auto-sync checkbox
+        min_greater_layout = QHBoxLayout()
+
+        self.min_greater = QSpinBox()  # Changed from IgnoreScrollWheelSpinBox()
         self.min_greater.setValue(self.config.minGreaterAffixCount)
-        self.min_greater.setMaximumWidth(150)
+        self.min_greater.setMaximum(4)
+        self.min_greater.setMinimum(0)
+        self.min_greater.setMaximumWidth(80)
+        self.min_greater.setToolTip(
+            "Minimum number of checked affixes that must be Greater Affixes.\n"
+            "0 = Accept items even without GAs (for leveling)\n"
+            "1-4 = At least this many checked affixes must be GA"
+        )
         self.min_greater.valueChanged.connect(self.update_min_greater_affix)
-        general_form.addRow("Min Greater Affixes:", self.min_greater)
+
+        # Auto-sync checkbox
+        self.auto_sync_checkbox = QCheckBox("Auto-Sync")
+        self.auto_sync_checkbox.setToolTip(
+            "When checked: Min Greater Affixes automatically matches the number of affixes marked as 'want greater'\n"
+            "When unchecked: You can manually set Min Greater Affixes to any value"
+        )
+        # Set initial state - check if current value matches checkbox count
+        initial_count = self.count_want_greater_affixes()
+        self.auto_sync_checkbox.setChecked(
+            self.config.minGreaterAffixCount == initial_count if initial_count > 0 else False)
+        self.auto_sync_checkbox.stateChanged.connect(self.toggle_auto_sync)
+
+        # Helper text showing current checkbox count
+        self.greater_count_label = QLabel()
+        self.greater_count_label.setStyleSheet("color: gray; font-style: italic;")
+        self.update_greater_count_label()
+
+        min_greater_layout.addWidget(self.min_greater)
+        min_greater_layout.addWidget(self.auto_sync_checkbox)
+        min_greater_layout.addWidget(self.greater_count_label)
+        min_greater_layout.addStretch()
+
+        # Set initial enabled state based on auto-sync
+        self.min_greater.setEnabled(not self.auto_sync_checkbox.isChecked())
+
+        general_form.addRow("Min Greater Affixes:", min_greater_layout)
 
         self.content_layout.addLayout(general_form)
 
@@ -139,11 +176,15 @@ class AffixGroupEditor(QWidget):
         """Initialize affix pool content on first expansion."""
         for pool in self.config.affixPool:
             self.add_affix_pool_item(pool)
+        # Update count label after pools are loaded
+        QTimer.singleShot(50, self.update_greater_count_label)
 
     def init_inherent_pool(self):
         """Initialize inherent pool content on first expansion."""
         for pool in self.config.inherentPool:
             self.add_affix_pool_item(pool, True)
+        # Update count label after pools are loaded
+        QTimer.singleShot(50, self.update_greater_count_label)
 
     def add_affix_pool_item(self, pool: AffixFilterCountModel, inherent: bool = False):
         if inherent:
@@ -228,6 +269,72 @@ class AffixGroupEditor(QWidget):
     def update_min_greater_affix(self):
         self.config.minGreaterAffixCount = self.min_greater.value()
 
+    def toggle_auto_sync(self):
+        """Enable/disable auto-sync mode for min_greater spinner"""
+        is_auto_sync = self.auto_sync_checkbox.isChecked()
+
+        # Enable/disable the spinner
+        self.min_greater.setEnabled(not is_auto_sync)
+
+        # Add visual indicator when locked
+        if is_auto_sync:
+            self.min_greater.setStyleSheet("QSpinBox { background-color: #3c3c3c; color: #888888; }")
+            count = self.count_want_greater_affixes()
+            self.min_greater.setValue(count)
+        else:
+            self.min_greater.setStyleSheet("")  # Clear custom styling
+
+    def sync_min_greater_from_checkboxes(self):
+        """Update min_greater spinner to match checkbox count (only if auto-sync is enabled)"""
+        if self.auto_sync_checkbox.isChecked():
+            count = self.count_want_greater_affixes()
+            self.min_greater.setValue(count)
+
+    def count_want_greater_affixes(self):
+        """Count how many affixes across all pools have want_greater checked"""
+        want_greater_count = 0
+
+        # Check if layouts exist yet
+        if not hasattr(self, 'affix_pool_layout') or not hasattr(self, 'inherent_pool_layout'):
+            return 0
+
+        # Count checked boxes in affix pools
+        for i in range(self.affix_pool_layout.count()):
+            container = self.affix_pool_layout.itemAt(i).widget()
+            if container and hasattr(container, 'contentWidget'):
+                pool_widget = container.contentWidget.layout().itemAt(0).widget()
+                if isinstance(pool_widget, AffixPoolWidget):
+                    for j in range(pool_widget.affix_list.count()):
+                        list_item = pool_widget.affix_list.item(j)
+                        affix_widget = pool_widget.affix_list.itemWidget(list_item)
+                        if isinstance(affix_widget, AffixWidget):
+                            if affix_widget.greater_checkbox.isChecked():
+                                want_greater_count += 1
+
+        # Count checked boxes in inherent pools
+        for i in range(self.inherent_pool_layout.count()):
+            container = self.inherent_pool_layout.itemAt(i).widget()
+            if container and hasattr(container, 'contentWidget'):
+                pool_widget = container.contentWidget.layout().itemAt(0).widget()
+                if isinstance(pool_widget, AffixPoolWidget):
+                    for j in range(pool_widget.affix_list.count()):
+                        list_item = pool_widget.affix_list.item(j)
+                        affix_widget = pool_widget.affix_list.itemWidget(list_item)
+                        if isinstance(affix_widget, AffixWidget):
+                            if affix_widget.greater_checkbox.isChecked():
+                                want_greater_count += 1
+
+        return want_greater_count
+
+    def update_greater_count_label(self):
+        """Update the helper text showing how many affixes are marked as 'want greater'"""
+        count = self.count_want_greater_affixes()
+        if count == 0:
+            self.greater_count_label.setText("(no greater affixes marked)")
+        elif count == 1:
+            self.greater_count_label.setText("(1 greater affix marked)")
+        else:
+            self.greater_count_label.setText(f"({count} greater affixes marked)")
 
 class AffixPoolWidget(QWidget):
     def __init__(self, pool: AffixFilterCountModel, parent=None):
@@ -363,8 +470,19 @@ class AffixWidget(QWidget):
         self.greater_checkbox = QCheckBox("Greater")
         self.greater_checkbox.setChecked(getattr(self.affix, 'want_greater', False))
         self.greater_checkbox.setFixedWidth(80)
-        self.greater_checkbox.setStyleSheet("QCheckBox { background-color: transparent; }")  # ADD THIS LINE
+        self.greater_checkbox.setStyleSheet("QCheckBox { background-color: transparent; }")
         self.greater_checkbox.stateChanged.connect(self.update_greater)
+        self.greater_checkbox.stateChanged.connect(self.update_parent_count_label)
+
+    def update_parent_count_label(self):
+        """Notify parent AffixGroupEditor to update its count label and sync if enabled"""
+        parent = self.parent()
+        while parent:
+            if isinstance(parent, AffixGroupEditor):
+                parent.update_greater_count_label()
+                parent.sync_min_greater_from_checkboxes()  # Also trigger sync if enabled
+                break
+            parent = parent.parent()
 
     def create_value_input(self):
         # Value Input
@@ -423,8 +541,7 @@ class AffixesTab(QWidget):
         self.tab_widget = QTabWidget(self)
         self.tab_widget.setTabsClosable(True)
         self.tab_widget.tabCloseRequested.connect(self.close_tab)
-        self.add_button = QToolButton()
-        self.add_button.setText("+")
+        self.add_button = QPushButton("Create New Item")
         self.add_button.clicked.connect(self.add_item_type)
         self.tab_widget.setCornerWidget(self.add_button)
         self.toolbar = QToolBar("MyToolBar", self)

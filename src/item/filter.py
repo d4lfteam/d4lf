@@ -110,7 +110,9 @@ class Filter:
                 matched_affixes = []
                 if filter_spec.affixPool:
                     matched_affixes = self._match_affixes_count(
-                        expected_affixes=filter_spec.affixPool, item_affixes=non_tempered_affixes
+                        expected_affixes=filter_spec.affixPool,
+                        item_affixes=non_tempered_affixes,
+                        min_greater_affix_count=filter_spec.minGreaterAffixCount
                     )
                     if not matched_affixes:
                         continue
@@ -118,7 +120,9 @@ class Filter:
                 matched_inherents = []
                 if filter_spec.inherentPool:
                     matched_inherents = self._match_affixes_count(
-                        expected_affixes=filter_spec.inherentPool, item_affixes=item.inherent
+                        expected_affixes=filter_spec.inherentPool,
+                        item_affixes=item.inherent,
+                        min_greater_affix_count=filter_spec.minGreaterAffixCount
                     )
                     if not matched_inherents:
                         continue
@@ -268,9 +272,14 @@ class Filter:
                 ):
                     continue
                 # check affixes
-                if not self._match_affixes_uniques(expected_affixes=filter_item.affix, item_affixes=item.affixes):
+                if not self._match_affixes_uniques(
+                        expected_affixes=filter_item.affix,
+                        item_affixes=item.affixes,
+                        min_greater_affix_count=filter_item.minGreaterAffixCount  # ADD THIS
+                ):
                     continue
-                # check greater affixes
+
+                # check greater affixes - Checks total item-level GAs
                 if not self._match_greater_affix_count(
                         expected_min_count=filter_item.minGreaterAffixCount, item_affixes=item.affixes
                 ):
@@ -308,31 +317,45 @@ class Filter:
         return any(pathlib.Path(file_path).stat().st_mtime > self.last_loaded for file_path in self.all_file_paths)
 
     def _match_affixes_count(
-            self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix]
+            self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix],
+            min_greater_affix_count: int = 0
     ) -> list[Affix]:
         result = []
         for count_group in expected_affixes:
             group_res = []
 
-            # Check that affixes marked want_greater are actually GAs on the item
-            for affix in count_group.count:
-                if getattr(affix, 'want_greater', False):
-                    # This affix MUST be a greater affix on the item
-                    matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
-                    if matched_item_affix is None or matched_item_affix.type != AffixType.greater:
-                        # Required GA affix is missing or not a GA, fail this group
-                        return []
-
-            # Now do the normal matching
+            # Do the normal affix matching first
             for affix in count_group.count:
                 matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
                 if matched_item_affix is not None and self._match_item_aspect_or_affix(affix, matched_item_affix):
                     group_res.append(matched_item_affix)
 
-            if count_group.minCount <= len(group_res) <= count_group.maxCount:
-                result.extend(group_res)
-            else:  # if one group fails, everything fails
-                return []
+            # Check minCount and maxCount
+            if not (count_group.minCount <= len(group_res) <= count_group.maxCount):
+                return []  # if one group fails, everything fails
+
+            # Check want_greater requirements (2-mode system)
+            want_greater_affixes = [a for a in count_group.count if getattr(a, 'want_greater', False)]
+            want_greater_count = len(want_greater_affixes)
+
+            if want_greater_count > 0 and min_greater_affix_count > 0:
+                if min_greater_affix_count > want_greater_count:
+                    # Mode 1: ALL flagged affixes MUST be GA (hard requirement)
+                    for affix in want_greater_affixes:
+                        matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
+                        if matched_item_affix is None or matched_item_affix.type != AffixType.greater:
+                            return []  # Flagged affix is missing or not GA, fail
+                else:
+                    # Mode 2: At least min_greater_affix_count of the flagged affixes must be GA (flexible)
+                    flagged_ga_count = sum(
+                        1 for affix in want_greater_affixes
+                        if (matched := next((a for a in item_affixes if a.name == affix.name), None))
+                        and matched.type == AffixType.greater
+                    )
+                    if flagged_ga_count < min_greater_affix_count:
+                        return []  # Not enough flagged affixes are GA
+
+            result.extend(group_res)
         return result
 
     @staticmethod
@@ -349,11 +372,35 @@ class Filter:
             return True
         return False
 
-    def _match_affixes_uniques(self, expected_affixes: list[AffixFilterModel], item_affixes: list[Affix]) -> bool:
+    def _match_affixes_uniques(self, expected_affixes: list[AffixFilterModel], item_affixes: list[Affix],
+                               min_greater_affix_count: int = 0) -> bool:
+        # First, check if all expected affixes are present with correct values
         for expected_affix in expected_affixes:
             matched_item_affix = next((a for a in item_affixes if a.name == expected_affix.name), None)
             if matched_item_affix is None or not self._match_item_aspect_or_affix(expected_affix, matched_item_affix):
                 return False
+
+        # Then, check want_greater requirements (2-mode system)
+        want_greater_affixes = [a for a in expected_affixes if getattr(a, 'want_greater', False)]
+        want_greater_count = len(want_greater_affixes)
+
+        if want_greater_count > 0 and min_greater_affix_count > 0:
+            if min_greater_affix_count > want_greater_count:
+                # Mode 1: ALL flagged affixes MUST be GA (hard requirement)
+                for affix in want_greater_affixes:
+                    matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
+                    if matched_item_affix is None or matched_item_affix.type != AffixType.greater:
+                        return False  # Flagged affix is missing or not GA
+            else:
+                # Mode 2: At least min_greater_affix_count of the flagged affixes must be GA (flexible)
+                flagged_ga_count = sum(
+                    1 for affix in want_greater_affixes
+                    if (matched := next((a for a in item_affixes if a.name == affix.name), None))
+                    and matched.type == AffixType.greater
+                )
+                if flagged_ga_count < min_greater_affix_count:
+                    return False  # Not enough flagged affixes are GA
+
         return True
 
     @staticmethod
