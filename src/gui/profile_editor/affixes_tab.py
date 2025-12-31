@@ -102,16 +102,18 @@ class AffixGroupEditor(QWidget):
         self.min_greater.valueChanged.connect(self.update_min_greater_affix)
 
         # Auto-sync checkbox
-        self.auto_sync_checkbox = QCheckBox("Auto-Sync")
+        self.auto_sync_checkbox = QCheckBox("Auto Sync")
         self.auto_sync_checkbox.setToolTip(
             "When checked: Min Greater Affixes automatically matches the number of affixes marked as 'want greater'\n"
             "When unchecked: You can manually set Min Greater Affixes to any value"
         )
-        # Set initial state - check if current value matches checkbox count
-        initial_count = self.count_want_greater_affixes()
-        self.auto_sync_checkbox.setChecked(
-            self.config.minGreaterAffixCount == initial_count if initial_count > 0 else False)
+        # Load saved auto-sync state from model
+        self.auto_sync_checkbox.setChecked(getattr(self.config, 'auto_sync_ga', False))
         self.auto_sync_checkbox.stateChanged.connect(self.toggle_auto_sync)
+
+        # Apply initial styling if auto-sync is enabled
+        if self.auto_sync_checkbox.isChecked():
+            self.min_greater.setStyleSheet("QSpinBox { background-color: #3c3c3c; color: #888888; }")
 
         # Helper text showing current checkbox count
         self.greater_count_label = QLabel()
@@ -273,16 +275,32 @@ class AffixGroupEditor(QWidget):
         """Enable/disable auto-sync mode for min_greater spinner"""
         is_auto_sync = self.auto_sync_checkbox.isChecked()
 
+        # Save state to model
+        self.config.auto_sync_ga = is_auto_sync
+
         # Enable/disable the spinner
         self.min_greater.setEnabled(not is_auto_sync)
 
-        # Add visual indicator when locked
         if is_auto_sync:
+            # Apply gray styling
             self.min_greater.setStyleSheet("QSpinBox { background-color: #3c3c3c; color: #888888; }")
+
+            # Expand pools
+            self.affix_pool_container.expand()
+            self.inherent_pool_container.expand()
+
+            # Count and update
             count = self.count_want_greater_affixes()
             self.min_greater.setValue(count)
+            self.update_greater_count_label()
         else:
-            self.min_greater.setStyleSheet("")  # Clear custom styling
+            self.min_greater.setStyleSheet("")
+
+    def _update_auto_sync_count(self):
+        """Helper to update count after pools are loaded"""
+        count = self.count_want_greater_affixes()
+        self.min_greater.setValue(count)
+        self.update_greater_count_label()
 
     def sync_min_greater_from_checkboxes(self):
         """Update min_greater spinner to match checkbox count (only if auto-sync is enabled)"""
@@ -541,9 +559,6 @@ class AffixesTab(QWidget):
         self.tab_widget = QTabWidget(self)
         self.tab_widget.setTabsClosable(True)
         self.tab_widget.tabCloseRequested.connect(self.close_tab)
-        self.add_button = QPushButton("Create New Item")
-        self.add_button.clicked.connect(self.add_item_type)
-        self.tab_widget.setCornerWidget(self.add_button)
         self.toolbar = QToolBar("MyToolBar", self)
         self.toolbar.setMinimumHeight(50)
         self.toolbar.setContentsMargins(10, 10, 10, 10)
@@ -566,7 +581,7 @@ class AffixesTab(QWidget):
         remove_item_button = QPushButton()
         remove_item_button.setText("Remove Item")
         remove_item_button.clicked.connect(self.remove_item_type)
-        set_all_minGreaterAffix_button = QPushButton("Set all minGreaterAffix")
+        set_all_minGreaterAffix_button = QPushButton("Set All Min GA's (Excludes Auto Synced Items)")
         set_all_minPower_button = QPushButton("Set all minPower")
         set_all_minGreaterAffix_button.clicked.connect(self.set_all_minGreaterAffix)
         set_all_minPower_button.clicked.connect(self.set_all_minPower)
@@ -613,6 +628,9 @@ class AffixesTab(QWidget):
             minGreaterAffix = dialog.get_value()
             for i in range(self.tab_widget.count()):
                 tab: AffixGroupEditor = self.tab_widget.widget(i)
+                # Skip if auto-sync is enabled
+                if tab.auto_sync_checkbox.isChecked():
+                    continue
                 tab.min_greater.setValue(minGreaterAffix)
                 tab.update_min_greater_affix()
 

@@ -279,11 +279,30 @@ class MainWindow(QMainWindow):
         except Exception as e:
             # File might be locked, try again next time
             pass
-        
+
     def append_log(self, message):
         """Append message to log viewer (thread-safe slot)"""
-        self.log_viewer.appendPlainText(message)
-        
+        # Strip timestamp, thread, and source location from log messages
+        # Format: "2025-12-31 | 07:16:43.047 | MainThread | INFO | src.item.filter:537 | actual message"
+        # Keep only: "INFO | actual message" (or just "actual message" for INFO)
+
+        parts = message.split(" | ", 5)  # Split into max 6 parts
+        if len(parts) >= 5:
+            # parts[0] = date, parts[1] = time, parts[2] = thread, parts[3] = level, parts[4] = source, parts[5] = message
+            level = parts[3]  # INFO, ERROR, WARNING, etc.
+            actual_message = parts[5] if len(parts) == 6 else parts[4]  # Message might be in parts[4] if no source
+
+            # For INFO, just show the message. For errors/warnings, show level too
+            if level == "INFO":
+                clean_message = actual_message
+            else:
+                clean_message = f"{level} | {actual_message}"
+        else:
+            # If format doesn't match, show original
+            clean_message = message
+
+        self.log_viewer.appendPlainText(clean_message)
+
         # Auto-scroll to bottom
         scrollbar = self.log_viewer.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
