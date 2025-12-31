@@ -199,11 +199,19 @@ if __name__ == "__main__":
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
 
         # Hide console for end users, keep visible for developers
-        if sys.platform == "win32" and not os.environ.get("PYCHARM_HOSTED"):
+        # Check for common IDE environment variables
+        is_in_ide = any([
+            os.environ.get("PYCHARM_HOSTED"),
+            os.environ.get("IDEA_INITIAL_DIRECTORY"),
+            os.environ.get("INTELLIJ_ENVIRONMENT_READER"),
+            os.environ.get("TERM_PROGRAM") == "vscode",
+            sys.gettrace() is not None  # Debugger attached
+        ])
+
+        if sys.platform == "win32" and not is_in_ide:
             import ctypes
 
             ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
-
         # Create shutdown flag file path
         shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
 
