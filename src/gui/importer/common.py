@@ -22,6 +22,7 @@ from src.config.models import BrowserType, ItemFilterModel, ProfileModel
 from src.item.data.item_type import ItemType
 
 if TYPE_CHECKING:
+
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
 
     from config.models import ItemFilterModel
