@@ -5,7 +5,7 @@ import pathlib
 import re
 import shutil
 import time
-from typing import TYPE_CHECKING, Literal, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 import httpx
 from ruamel.yaml import YAML, StringIO
@@ -22,7 +22,6 @@ from src.config.models import BrowserType, ItemFilterModel, ProfileModel
 from src.item.data.item_type import ItemType
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
 
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
 

@@ -2,6 +2,7 @@ import enum
 import logging
 import queue
 import re
+import sys
 import threading
 
 import pywintypes
@@ -80,7 +81,6 @@ def create_pipe():
             LOGGER.error("[CLEAN]" + "Please close your windows and re-launch.")
             LOGGER.error("[CLEAN]")
             LOGGER.error("[CLEAN]" + "=" * 80)
-            import sys
 
             sys.exit(1)
         else:

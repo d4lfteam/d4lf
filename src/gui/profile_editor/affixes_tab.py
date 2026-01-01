@@ -323,9 +323,8 @@ class AffixGroupEditor(QWidget):
                     for j in range(pool_widget.affix_list.count()):
                         list_item = pool_widget.affix_list.item(j)
                         affix_widget = pool_widget.affix_list.itemWidget(list_item)
-                        if isinstance(affix_widget, AffixWidget):
-                            if affix_widget.greater_checkbox.isChecked():
-                                want_greater_count += 1
+                        if isinstance(affix_widget, AffixWidget) and affix_widget.greater_checkbox.isChecked():
+                            want_greater_count += 1
 
         # Count checked boxes in inherent pools
         for i in range(self.inherent_pool_layout.count()):
@@ -336,9 +335,8 @@ class AffixGroupEditor(QWidget):
                     for j in range(pool_widget.affix_list.count()):
                         list_item = pool_widget.affix_list.item(j)
                         affix_widget = pool_widget.affix_list.itemWidget(list_item)
-                        if isinstance(affix_widget, AffixWidget):
-                            if affix_widget.greater_checkbox.isChecked():
-                                want_greater_count += 1
+                        if isinstance(affix_widget, AffixWidget) and affix_widget.greater_checkbox.isChecked():
+                            want_greater_count += 1
 
         return want_greater_count
 
