@@ -39,7 +39,7 @@ def safe_exit(error_code=0):
                 ):
                     if proc.pid != current_pid:
                         processes_to_kill.append(proc)
-            except psutil.NoSuchProcess, psutil.AccessDenied:
+            except psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
     except:
         pass
