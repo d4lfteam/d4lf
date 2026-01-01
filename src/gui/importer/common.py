@@ -18,7 +18,7 @@ from seleniumbase import SB
 
 from src import __version__
 from src.config.loader import IniConfigLoader
-from src.config.models import BrowserType, ProfileModel
+from src.config.models import BrowserType, ItemFilterModel, ProfileModel
 from src.item.data.item_type import ItemType
 
 if TYPE_CHECKING:
