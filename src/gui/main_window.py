@@ -454,7 +454,7 @@ class MainWindow(QMainWindow):
                         LOGGER.info(f"Killed D4LF process (PID: {proc.pid})")
                     except:
                         pass
-            except psutil.NoSuchProcess, psutil.AccessDenied:
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
 
         if terminated_count > 0:

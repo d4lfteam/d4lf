@@ -147,9 +147,7 @@ def get_with_retry(url: str, custom_headers: dict[str, str] | None = None) -> ht
     raise ConnectionError(msg)
 
 
-def handle_popups[D: WebDriver | WebElement, T](
-    driver: ChromiumDriver, method: Callable[[D], Literal[False] | T], timeout: int = 10
-):
+def handle_popups(driver, method, timeout: int = 10):
     LOGGER.info("Handling cookie / adblock popups")
     wait = WebDriverWait(driver, timeout)
     for _ in range(3):
