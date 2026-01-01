@@ -16,10 +16,9 @@ from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
 from seleniumbase import SB
 
-from config.models import ItemFilterModel
 from src import __version__
 from src.config.loader import IniConfigLoader
-from src.config.models import BrowserType, ProfileModel
+from src.config.models import BrowserType, ItemFilterModel, ProfileModel
 from src.item.data.item_type import ItemType
 
 if TYPE_CHECKING:

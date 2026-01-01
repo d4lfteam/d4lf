@@ -5,7 +5,6 @@ import re
 import lxml.html
 
 import src.logger
-from gui.importer.common import update_mingreateraffixcount
 from src.config.models import (
     AffixFilterCountModel,
     AffixFilterModel,
@@ -15,7 +14,14 @@ from src.config.models import (
     UniqueModel,
 )
 from src.dataloader import Dataloader
-from src.gui.importer.common import add_to_profiles, get_with_retry, match_to_enum, retry_importer, save_as_profile
+from src.gui.importer.common import (
+    add_to_profiles,
+    get_with_retry,
+    match_to_enum,
+    retry_importer,
+    save_as_profile,
+    update_mingreateraffixcount,
+)
 from src.gui.importer.importer_config import ImportConfig
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
