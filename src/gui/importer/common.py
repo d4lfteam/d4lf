@@ -16,7 +16,6 @@ from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
 from seleniumbase import SB
 
-from config.models import ItemFilterModel
 from src import __version__
 from src.config.loader import IniConfigLoader
 from src.config.models import BrowserType, ProfileModel
@@ -26,6 +25,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
+
+    from config.models import ItemFilterModel
 
 LOGGER = logging.getLogger(__name__)
 

@@ -297,10 +297,7 @@ class MainWindow(QMainWindow):
                 clean_message = "| " + actual_message[7:]  # Remove [CLEAN] marker
             else:
                 level = parts[3]
-                if level == "INFO":
-                    clean_message = actual_message
-                else:
-                    clean_message = f"{level} | {actual_message}"
+                clean_message = actual_message if level == "INFO" else f"{level} | {actual_message}"
         else:
             clean_message = message
 
@@ -437,16 +434,17 @@ class MainWindow(QMainWindow):
         for proc in psutil.process_iter(["pid", "name", "cmdline"]):
             try:
                 # Check if it's a Python process running main.py or d4lf
-                if proc.info["cmdline"] and (
-                    "main.py" in str(proc.info["cmdline"]) or "d4lf" in str(proc.info["cmdline"]).lower()
+                if (
+                    proc.info["cmdline"]
+                    and ("main.py" in str(proc.info["cmdline"]) or "d4lf" in str(proc.info["cmdline"]).lower())
+                    and proc.pid != current_pid
                 ):
-                    if proc.pid != current_pid:
-                        try:
-                            proc.kill()
-                            terminated_count += 1
-                            LOGGER.info(f"Killed D4LF process (PID: {proc.pid})")
-                        except:
-                            pass
+                    try:
+                        proc.kill()
+                        terminated_count += 1
+                        LOGGER.info(f"Killed D4LF process (PID: {proc.pid})")
+                    except:
+                        pass
             except psutil.NoSuchProcess, psutil.AccessDenied:
                 pass
 
