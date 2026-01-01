@@ -406,11 +406,13 @@ def supplement_uniques_from_companion(companion_app_dir, language):
 
         # Create same internal name as d4data
         internal_name = (
-            display_name.strip()
+            display_name
+            .strip()
             .replace(" ", "_")
             .replace("\xa0", "_")
             .lower()
-            .replace("'", "").replace("'", "")
+            .replace("'", "")
+            .replace("'", "")
             .replace(",", "")
         )
         internal_name = check_ms(internal_name)
@@ -471,6 +473,7 @@ def supplement_uniques_from_companion(companion_app_dir, language):
         json_file.write("\n")
 
     print(f"Supplemented {matched} uniques with Diablo4Companion data")
+
 
 if __name__ == "__main__":
     import argparse

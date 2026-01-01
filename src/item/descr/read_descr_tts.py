@@ -242,7 +242,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     if "chaos" in tts_item[1].lower():
         item.is_chaos = True
 
-    #changed code to any instead of checking lines as i encountered items that had longer named and it failed to find they were sanctified
+    # changed code to any instead of checking lines as i encountered items that had longer named and it failed to find they were sanctified
     if any("sanctified" in line.lower() for line in tts_item):
         item.sanctified = True
 

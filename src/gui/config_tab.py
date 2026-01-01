@@ -133,7 +133,9 @@ class ConfigTab(QWidget):
         group_box.setLayout(form_layout)
         return group_box
 
-    def _generate_parameter_value_widget(self, model: BaseModel, section_config_header, config_key, config_value, is_hotkey):
+    def _generate_parameter_value_widget(
+        self, model: BaseModel, section_config_header, config_key, config_value, is_hotkey
+    ):
         if config_key == "check_chest_tabs":
             parameter_value_widget = QChestTabWidget(
                 model, section_config_header, config_key, config_value, IniConfigLoader().general.max_stash_tabs

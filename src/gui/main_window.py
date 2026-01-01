@@ -1,30 +1,27 @@
-"""
-Main Window for d4lf - integrates scanning overlay with GUI controls.
+"""Main Window for d4lf - integrates scanning overlay with GUI controls.
 Shows log output and provides access to Import, Settings, and Profile Editor.
 """
 
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
-    QPushButton,
-    QPlainTextEdit,
-    QTextEdit,
-    QFileDialog,
-    QMessageBox,
+    QHeaderView,
     QLabel,
+    QMainWindow,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
+    QVBoxLayout,
+    QWidget,
 )
 
-from src.gui.themes import DARK_THEME, LIGHT_THEME
 from src.config.loader import IniConfigLoader
+from src.gui.themes import DARK_THEME, LIGHT_THEME
 from src.logger import LOG_DIR
 
 LOGGER = logging.getLogger(__name__)
@@ -32,34 +29,33 @@ LOGGER = logging.getLogger(__name__)
 
 class LogHandler(logging.Handler):
     """Custom logging handler that emits log records to Qt signal"""
-    
+
     def __init__(self, signal):
         super().__init__()
         self.signal = signal
-        
+
     def emit(self, record):
         msg = self.format(record)
         self.signal.emit(msg)
 
 
 class MainWindow(QMainWindow):
-    """
-    Main window that houses:
+    """Main window that houses:
     - Top: Real-time log viewer showing d4lf scanning output
     - Bottom: Three buttons for Import Profile, Settings, and Edit Profile
     """
-    
+
     # Signal for thread-safe log updates
     log_message = pyqtSignal(str)
-    
+
     # Signal emitted when profile is saved (for hot reload)
     profile_updated = pyqtSignal(str)
-    
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("d4lf - Loot Filter")
         self.setMinimumSize(800, 600)
-        
+
         # References to child windows (so they don't get garbage collected)
         self.settings_window = None
         self.editor_window = None
@@ -67,25 +63,25 @@ class MainWindow(QMainWindow):
 
         # Apply theme based on settings
         self.apply_current_theme()
-        
+
         # Setup UI
         self.setup_ui()
-        
+
         # Connect log handler to capture d4lf output
         self.setup_logging()
-        
+
     def apply_current_theme(self):
         """Apply the theme from settings (dark or light)"""
         try:
             # Load current theme setting
             config = IniConfigLoader()
             theme_mode = config.general.theme  # Assuming this is how you store it
-            
+
             if theme_mode.lower() == "light":
                 self.setStyleSheet(LIGHT_THEME)
             else:
                 self.setStyleSheet(DARK_THEME)
-                
+
         except Exception as e:
             # Default to dark theme if settings can't be loaded
             LOGGER.warning(f"Could not load theme setting, using dark theme: {e}")
@@ -103,6 +99,7 @@ class MainWindow(QMainWindow):
 
         # === VERSION HEADER ===
         from src import __version__
+
         version_label = QLabel(f"D4LF - Diablo 4 Loot Filter v{__version__}")
         version_label.setStyleSheet("font-size: 14pt; font-weight: bold; padding: 5px;")
         version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -148,8 +145,10 @@ class MainWindow(QMainWindow):
         if not config.advanced_options.vision_mode_only:
             hotkey_data.append((config.advanced_options.run_vision_mode, "Run/Stop Vision Mode"))
             hotkey_data.append((config.advanced_options.run_filter, "Run/Stop Auto Filter"))
-            hotkey_data.append(
-                (config.advanced_options.run_filter_force_refresh, "Force Run/Stop Filter (Reset Item Status)"))
+            hotkey_data.append((
+                config.advanced_options.run_filter_force_refresh,
+                "Force Run/Stop Filter (Reset Item Status)",
+            ))
             hotkey_data.append((config.advanced_options.force_refresh_only, "Reset Item Statuses Without Filter"))
             hotkey_data.append((config.advanced_options.move_to_inv, "Move Items: Chest → Inventory"))
             hotkey_data.append((config.advanced_options.move_to_chest, "Move Items: Inventory → Chest"))
@@ -226,7 +225,7 @@ class MainWindow(QMainWindow):
         # Read all existing content first
         if self.log_file_path.exists():
             try:
-                with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                with Path(self.log_file_path).open(encoding="utf-8", errors="ignore") as f:
                     existing_content = f.read()
                     for line in existing_content.splitlines():
                         if line.strip():  # Skip empty lines
@@ -267,7 +266,7 @@ class MainWindow(QMainWindow):
             if current_size <= self.log_file_position:
                 return  # No new data
 
-            with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            with Path(self.log_file_path).open(encoding="utf-8", errors="ignore") as f:
                 f.seek(self.log_file_position)
                 new_lines = f.readlines()
                 self.log_file_position = f.tell()
@@ -276,7 +275,7 @@ class MainWindow(QMainWindow):
                     # Remove trailing newline and add to log viewer
                     self.append_log(line.rstrip())
 
-        except Exception as e:
+        except Exception:
             # File might be locked, try again next time
             pass
 
@@ -361,8 +360,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Editor Error", str(e))
 
     def on_profile_saved(self, profile_name):
-        """
-        Called when profile is saved in Profile Editor.
+        """Called when profile is saved in Profile Editor.
         Triggers hot reload of filters without restarting.
         """
         LOGGER.info(f"Profile '{profile_name}' saved - triggering reload...")
@@ -370,10 +368,12 @@ class MainWindow(QMainWindow):
         try:
             # Reload the profile configuration
             from src.config.loader import ProfileLoader
+
             ProfileLoader.reload_profile(profile_name)
 
             # Reload item filters
             from src.item.filter import Filter
+
             Filter.reload()  # or whatever your reload mechanism is
 
             self.profile_updated.emit(profile_name)
@@ -383,19 +383,16 @@ class MainWindow(QMainWindow):
         except Exception as e:
             LOGGER.error(f"Failed to reload profile: {e}")
             QMessageBox.warning(
-                self,
-                "Reload Failed",
-                f"Profile saved but reload failed:\n{str(e)}\n\nPlease restart d4lf."
+                self, "Reload Failed", f"Profile saved but reload failed:\n{e!s}\n\nPlease restart d4lf."
             )
-    
+
     def on_settings_changed(self):
-        """
-        Called when settings are changed (e.g., theme switch).
+        """Called when settings are changed (e.g., theme switch).
         Reloads the theme without restarting.
         """
         LOGGER.info("Settings changed - reloading theme...")
         self.apply_current_theme()
-        
+
         # Also update child windows if they're open
         if self.settings_window and self.settings_window.isVisible():
             self.settings_window.setStyleSheet(self.styleSheet())
@@ -413,27 +410,27 @@ class MainWindow(QMainWindow):
         LOGGER.info("Main window closed - signaling shutdown")
         event.accept()
 
+
 # Example usage for testing
 if __name__ == "__main__":
     import sys
+
     from PyQt6.QtWidgets import QApplication
-    
+
     # Setup basic logging
     logging.basicConfig(
-        level=logging.INFO,
-        format='[%(asctime)s] %(name)s - %(levelname)s - %(message)s',
-        datefmt='%H:%M:%S'
+        level=logging.INFO, format="[%(asctime)s] %(name)s - %(levelname)s - %(message)s", datefmt="%H:%M:%S"
     )
-    
+
     app = QApplication(sys.argv)
-    
+
     window = MainWindow()
     window.show()
-    
+
     # Simulate some log messages
     LOGGER.info("d4lf starting...")
     LOGGER.info("Loading profiles...")
     LOGGER.info("Starting item scanner...")
     LOGGER.info("Ready to scan!")
-    
+
     sys.exit(app.exec())
