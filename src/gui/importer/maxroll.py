@@ -392,5 +392,13 @@ if __name__ == "__main__":
     src.logger.setup()
     URLS = ["https://maxroll.gg/d4/planner/19390ugy#1"]
     for X in URLS:
-        config = ImportConfig(X, True, True, False, None)
+        config = ImportConfig(
+            url=X,
+            import_uniques=True,
+            import_aspect_upgrades=True,
+            add_to_profiles=False,
+            import_greater_affixes=True,
+            require_greater_affixes=True,
+            custom_file_name=None,
+        )
         import_maxroll(config)
