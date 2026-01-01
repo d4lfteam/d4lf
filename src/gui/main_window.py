@@ -1,30 +1,25 @@
-"""
-Main Window for d4lf - integrates scanning overlay with GUI controls.
+"""Main Window for d4lf - integrates scanning overlay with GUI controls.
 Shows log output and provides access to Import, Settings, and Profile Editor.
 """
 
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
-    QPushButton,
-    QPlainTextEdit,
-    QTextEdit,
-    QFileDialog,
-    QMessageBox,
     QLabel,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
+    QMainWindow,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
-from src.gui.themes import DARK_THEME, LIGHT_THEME
 from src.config.loader import IniConfigLoader
+from src.gui.themes import DARK_THEME, LIGHT_THEME
 from src.logger import LOG_DIR
 
 LOGGER = logging.getLogger(__name__)
@@ -32,34 +27,53 @@ LOGGER = logging.getLogger(__name__)
 
 class LogHandler(logging.Handler):
     """Custom logging handler that emits log records to Qt signal"""
-    
+
     def __init__(self, signal):
         super().__init__()
         self.signal = signal
-        
+
     def emit(self, record):
         msg = self.format(record)
         self.signal.emit(msg)
 
 
 class MainWindow(QMainWindow):
-    """
-    Main window that houses:
+    """Main window that houses:
     - Top: Real-time log viewer showing d4lf scanning output
     - Bottom: Three buttons for Import Profile, Settings, and Edit Profile
     """
-    
+
     # Signal for thread-safe log updates
     log_message = pyqtSignal(str)
-    
+
     # Signal emitted when profile is saved (for hot reload)
     profile_updated = pyqtSignal(str)
-    
+
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("d4lf - Loot Filter")
+
+        # Settings for persistent window geometry
+        self.settings = QSettings("d4lf", "MainWindow")
+
+        self.setWindowTitle("D4LF")
         self.setMinimumSize(800, 600)
-        
+
+        # Restore window geometry
+        self.resize(self.settings.value("size", QSize(800, 600)))
+        self.move(self.settings.value("pos", QPoint(100, 100)))
+
+        if self.settings.value("maximized", "false") == "true":
+            self.showMaximized()
+
+        # Set window icon
+        import pathlib
+
+        from PyQt6.QtGui import QIcon
+
+        icon_path = pathlib.Path(__file__).parent.parent.parent / "assets" / "logo.png"
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
+
         # References to child windows (so they don't get garbage collected)
         self.settings_window = None
         self.editor_window = None
@@ -67,25 +81,25 @@ class MainWindow(QMainWindow):
 
         # Apply theme based on settings
         self.apply_current_theme()
-        
+
         # Setup UI
         self.setup_ui()
-        
+
         # Connect log handler to capture d4lf output
         self.setup_logging()
-        
+
     def apply_current_theme(self):
         """Apply the theme from settings (dark or light)"""
         try:
             # Load current theme setting
             config = IniConfigLoader()
             theme_mode = config.general.theme  # Assuming this is how you store it
-            
+
             if theme_mode.lower() == "light":
                 self.setStyleSheet(LIGHT_THEME)
             else:
                 self.setStyleSheet(DARK_THEME)
-                
+
         except Exception as e:
             # Default to dark theme if settings can't be loaded
             LOGGER.warning(f"Could not load theme setting, using dark theme: {e}")
@@ -103,6 +117,7 @@ class MainWindow(QMainWindow):
 
         # === VERSION HEADER ===
         from src import __version__
+
         version_label = QLabel(f"D4LF - Diablo 4 Loot Filter v{__version__}")
         version_label.setStyleSheet("font-size: 14pt; font-weight: bold; padding: 5px;")
         version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -120,60 +135,48 @@ class MainWindow(QMainWindow):
 
         # Add some initial welcome message
         self.log_viewer.appendPlainText("═" * 80)
-        self.log_viewer.appendPlainText("d4lf - Diablo 4 Loot Filter")
+        self.log_viewer.appendPlainText("D4LF - Diablo 4 Loot Filter")
         self.log_viewer.appendPlainText("═" * 80)
         self.log_viewer.appendPlainText("")
 
         main_layout.addWidget(self.log_viewer, stretch=1)
 
-        # === HOTKEYS PANEL (Fixed - doesn't scroll away) ===
+        # === HOTKEYS PANEL (Compact 2-line) ===
         hotkeys_label = QLabel("Hotkeys:")
         hotkeys_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         main_layout.addWidget(hotkeys_label)
 
-        # Create hotkeys table
-        hotkeys_table = QTableWidget()
-        hotkeys_table.setColumnCount(2)
-        hotkeys_table.setHorizontalHeaderLabels(["Hotkey", "Action"])
-        hotkeys_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        hotkeys_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        hotkeys_table.verticalHeader().setVisible(False)
-        hotkeys_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        hotkeys_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
-
-        # Build hotkey data from config
+        # Build hotkey display from config
         config = IniConfigLoader()
-        hotkey_data = []
+
+        # Create a formatted text block
+        hotkey_text = QLabel()
+        hotkey_text.setMaximumHeight(65)
+        hotkey_text.setWordWrap(True)
+        hotkey_text.setTextFormat(Qt.TextFormat.RichText)
+        hotkey_text.setStyleSheet("margin-left: 5px;")
+
+        hotkeys_html = "<div style='font-size: 9pt; line-height: 1.5; font-weight: normal;'>"
 
         if not config.advanced_options.vision_mode_only:
-            hotkey_data.append((config.advanced_options.run_vision_mode, "Run/Stop Vision Mode"))
-            hotkey_data.append((config.advanced_options.run_filter, "Run/Stop Auto Filter"))
-            hotkey_data.append(
-                (config.advanced_options.run_filter_force_refresh, "Force Run/Stop Filter (Reset Item Status)"))
-            hotkey_data.append((config.advanced_options.force_refresh_only, "Reset Item Statuses Without Filter"))
-            hotkey_data.append((config.advanced_options.move_to_inv, "Move Items: Chest → Inventory"))
-            hotkey_data.append((config.advanced_options.move_to_chest, "Move Items: Inventory → Chest"))
+            # Line 1: Main hotkeys
+            hotkeys_html += f"<u><b>{config.advanced_options.run_vision_mode.upper()}</b></u>: Run/Stop Vision Mode&nbsp;&nbsp;&nbsp;"
+            hotkeys_html += f"<u><b>{config.advanced_options.run_filter.upper()}</b></u>: Run/Stop Auto Filter&nbsp;&nbsp;&nbsp;"
+            hotkeys_html += f"<u><b>{config.advanced_options.move_to_inv.upper()}</b></u>: Move Chest → Inventory&nbsp;&nbsp;&nbsp;"
+            hotkeys_html += f"<u><b>{config.advanced_options.move_to_chest.upper()}</b></u>: Move Inventory → Chest<br>"
+
+            # Line 2: Secondary hotkeys
+            hotkeys_html += f"<u><b>{config.advanced_options.run_filter_force_refresh.upper()}</b></u>: Force Filter (Reset Item Status)&nbsp;&nbsp;&nbsp;"
+            hotkeys_html += f"<u><b>{config.advanced_options.force_refresh_only.upper()}</b></u>: Reset Items (No Filter)&nbsp;&nbsp;&nbsp;"
         else:
-            hotkey_data.append((config.advanced_options.run_vision_mode, "Run/Stop Vision Mode"))
-            hotkey_data.append(("N/A", "Vision Mode Only - clicking disabled"))
+            hotkeys_html += f"<u><b>{config.advanced_options.run_vision_mode.upper()}</b></u>: Run/Stop Vision Mode<br>"
+            hotkeys_html += "<span style='font-style: italic;'>Vision Mode Only - clicking functionality disabled</span>&nbsp;&nbsp;&nbsp;"
 
-        hotkey_data.append((config.advanced_options.exit_key, "Exit d4lf"))
+        hotkeys_html += f"<u><b>{config.advanced_options.exit_key.upper()}</b></u>: Exit d4lf"
+        hotkeys_html += "</div>"
 
-        # Populate table
-        hotkeys_table.setRowCount(len(hotkey_data))
-        for row, (hotkey, action) in enumerate(hotkey_data):
-            hotkeys_table.setItem(row, 0, QTableWidgetItem(hotkey))
-            hotkeys_table.setItem(row, 1, QTableWidgetItem(action))
-
-        # Set table to fit content exactly
-        hotkeys_table.resizeRowsToContents()
-        table_height = hotkeys_table.horizontalHeader().height() + 2  # header + borders
-        for i in range(hotkeys_table.rowCount()):
-            table_height += hotkeys_table.rowHeight(i)
-        hotkeys_table.setMaximumHeight(table_height)
-        hotkeys_table.setMinimumHeight(table_height)
-
-        main_layout.addWidget(hotkeys_table)
+        hotkey_text.setText(hotkeys_html)
+        main_layout.addWidget(hotkey_text)
 
         # === CONTROL BUTTONS (Bottom) ===
         button_layout = QHBoxLayout()
@@ -226,7 +229,7 @@ class MainWindow(QMainWindow):
         # Read all existing content first
         if self.log_file_path.exists():
             try:
-                with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                with Path(self.log_file_path).open(encoding="utf-8", errors="ignore") as f:
                     existing_content = f.read()
                     for line in existing_content.splitlines():
                         if line.strip():  # Skip empty lines
@@ -267,7 +270,7 @@ class MainWindow(QMainWindow):
             if current_size <= self.log_file_position:
                 return  # No new data
 
-            with open(self.log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            with Path(self.log_file_path).open(encoding="utf-8", errors="ignore") as f:
                 f.seek(self.log_file_position)
                 new_lines = f.readlines()
                 self.log_file_position = f.tell()
@@ -276,34 +279,29 @@ class MainWindow(QMainWindow):
                     # Remove trailing newline and add to log viewer
                     self.append_log(line.rstrip())
 
-        except Exception as e:
+        except Exception:
             # File might be locked, try again next time
             pass
 
     def append_log(self, message):
         """Append message to log viewer (thread-safe slot)"""
-        # Strip timestamp, thread, and source location from log messages
-        # Format: "2025-12-31 | 07:16:43.047 | MainThread | INFO | src.item.filter:537 | actual message"
-        # Keep only: "INFO | actual message" (or just "actual message" for INFO)
-
-        parts = message.split(" | ", 5)  # Split into max 6 parts
+        parts = message.split(" | ", 5)
         if len(parts) >= 5:
-            # parts[0] = date, parts[1] = time, parts[2] = thread, parts[3] = level, parts[4] = source, parts[5] = message
-            level = parts[3]  # INFO, ERROR, WARNING, etc.
-            actual_message = parts[5] if len(parts) == 6 else parts[4]  # Message might be in parts[4] if no source
+            actual_message = parts[5] if len(parts) == 6 else parts[4]
 
-            # For INFO, just show the message. For errors/warnings, show level too
-            if level == "INFO":
-                clean_message = actual_message
+            # Check for [CLEAN] marker - show only pipe without level
+            if actual_message.startswith("[CLEAN]"):
+                clean_message = "| " + actual_message[7:]  # Remove [CLEAN] marker
             else:
-                clean_message = f"{level} | {actual_message}"
+                level = parts[3]
+                if level == "INFO":
+                    clean_message = actual_message
+                else:
+                    clean_message = f"{level} | {actual_message}"
         else:
-            # If format doesn't match, show original
             clean_message = message
 
         self.log_viewer.appendPlainText(clean_message)
-
-        # Auto-scroll to bottom
         scrollbar = self.log_viewer.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 
@@ -361,8 +359,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Editor Error", str(e))
 
     def on_profile_saved(self, profile_name):
-        """
-        Called when profile is saved in Profile Editor.
+        """Called when profile is saved in Profile Editor.
         Triggers hot reload of filters without restarting.
         """
         LOGGER.info(f"Profile '{profile_name}' saved - triggering reload...")
@@ -370,10 +367,12 @@ class MainWindow(QMainWindow):
         try:
             # Reload the profile configuration
             from src.config.loader import ProfileLoader
+
             ProfileLoader.reload_profile(profile_name)
 
             # Reload item filters
             from src.item.filter import Filter
+
             Filter.reload()  # or whatever your reload mechanism is
 
             self.profile_updated.emit(profile_name)
@@ -383,57 +382,97 @@ class MainWindow(QMainWindow):
         except Exception as e:
             LOGGER.error(f"Failed to reload profile: {e}")
             QMessageBox.warning(
-                self,
-                "Reload Failed",
-                f"Profile saved but reload failed:\n{str(e)}\n\nPlease restart d4lf."
+                self, "Reload Failed", f"Profile saved but reload failed:\n{e!s}\n\nPlease restart d4lf."
             )
-    
+
     def on_settings_changed(self):
-        """
-        Called when settings are changed (e.g., theme switch).
+        """Called when settings are changed (e.g., theme switch).
         Reloads the theme without restarting.
         """
         LOGGER.info("Settings changed - reloading theme...")
         self.apply_current_theme()
-        
+
         # Also update child windows if they're open
         if self.settings_window and self.settings_window.isVisible():
             self.settings_window.setStyleSheet(self.styleSheet())
         if self.editor_window and self.editor_window.isVisible():
             self.editor_window.setStyleSheet(self.styleSheet())
+        if self.import_window and self.import_window.isVisible():
+            self.import_window.setStyleSheet(self.styleSheet())
 
-    def closeEvent(self, event):  # ← ADD THIS METHOD
-        """Handle window close - signal main process to shutdown"""
+    def closeEvent(self, event):
+        """Handle window close - shutdown ALL D4LF instances"""
+        import os
+
+        import psutil
+
         from src.config.loader import IniConfigLoader
 
-        # Create shutdown flag to tell main process to exit
+        # Close all child windows first
+        if self.settings_window and self.settings_window.isVisible():
+            self.settings_window.close()
+        if self.editor_window and self.editor_window.isVisible():
+            self.editor_window.close()
+        if self.import_window and self.import_window.isVisible():
+            self.import_window.close()
+
+        # Save window geometry
+        self.settings.setValue("size", self.size())
+        self.settings.setValue("pos", self.pos())
+        self.settings.setValue("maximized", "true" if self.isMaximized() else "false")
+
+        # Create shutdown flag for current instance
         shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
         shutdown_flag.touch()
 
-        LOGGER.info("Main window closed - signaling shutdown")
+        LOGGER.info("Main window closed - shutting down all D4LF instances")
+
+        # Find and terminate all D4LF processes
+        current_pid = os.getpid()
+        terminated_count = 0
+
+        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+            try:
+                # Check if it's a Python process running main.py or d4lf
+                if proc.info["cmdline"] and (
+                    "main.py" in str(proc.info["cmdline"]) or "d4lf" in str(proc.info["cmdline"]).lower()
+                ):
+                    if proc.pid != current_pid:
+                        try:
+                            proc.kill()
+                            terminated_count += 1
+                            LOGGER.info(f"Killed D4LF process (PID: {proc.pid})")
+                        except:
+                            pass
+            except psutil.NoSuchProcess, psutil.AccessDenied:
+                pass
+
+        if terminated_count > 0:
+            LOGGER.info(f"Closed {terminated_count} additional D4LF instance(s)")
+
         event.accept()
+
 
 # Example usage for testing
 if __name__ == "__main__":
     import sys
+
     from PyQt6.QtWidgets import QApplication
-    
+
     # Setup basic logging
     logging.basicConfig(
-        level=logging.INFO,
-        format='[%(asctime)s] %(name)s - %(levelname)s - %(message)s',
-        datefmt='%H:%M:%S'
+        level=logging.INFO, format="[%(asctime)s] %(name)s - %(levelname)s - %(message)s", datefmt="%H:%M:%S"
     )
-    
+
     app = QApplication(sys.argv)
-    
+
     window = MainWindow()
     window.show()
-    
+
     # Simulate some log messages
     LOGGER.info("d4lf starting...")
     LOGGER.info("Loading profiles...")
     LOGGER.info("Starting item scanner...")
     LOGGER.info("Ready to scan!")
-    
+
     sys.exit(app.exec())

@@ -1,7 +1,7 @@
 import logging
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QMessageBox, QPushButton, QTabWidget
+from PyQt6.QtWidgets import QMessageBox, QTabWidget
 
 from src.config.models import ProfileModel
 from src.gui.importer.common import save_as_profile
@@ -87,12 +87,14 @@ class ProfileEditor(QTabWidget):
                 else:
                     QMessageBox.information(self, "Info", "Profile not saved.")
             else:
-                save_as_profile(self.profile_model.name, self.profile_model, "custom", exclude={"name"},
-                                backup_file=True)
+                save_as_profile(
+                    self.profile_model.name, self.profile_model, "custom", exclude={"name"}, backup_file=True
+                )
                 # Emit signal for hot reload
                 self.profile_saved.emit(self.profile_model.name)
-                QMessageBox.information(self, "Info",
-                                        f"Profile saved successfully to {self.profile_model.name + '.yaml'}")
+                QMessageBox.information(
+                    self, "Info", f"Profile saved successfully to {self.profile_model.name + '.yaml'}"
+                )
         except Exception as e:
             LOGGER.error(f"Validation error: {e}")
             QMessageBox.critical(self, "Error", f"Failed to save profile: {e}")

@@ -1,9 +1,7 @@
 import logging
-import sys
 import threading
 
-from PyQt6.QtCore import QObject, QRunnable, QThreadPool, pyqtSignal, pyqtSlot, QRegularExpression
-from PyQt6.QtGui import QRegularExpressionValidator
+from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, QThreadPool, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -33,8 +31,19 @@ class ImporterWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+
+        # Settings for persistent window geometry
+        self.settings = QSettings("d4lf", "ImporterWindow")
+
         self.setWindowTitle("Profile Importer - Maxroll / D4Builds / Mobalytics")
         self.setMinimumSize(700, 600)
+
+        # Restore window geometry
+        self.resize(self.settings.value("size", QSize(700, 600)))
+        self.move(self.settings.value("pos", QPoint(100, 100)))
+
+        if self.settings.value("maximized", "false") == "true":
+            self.showMaximized()
 
         # Apply theme
         self._apply_theme()
@@ -67,17 +76,20 @@ class ImporterWindow(QMainWindow):
         self.import_uniques_checkbox = QCheckBox("Import Uniques")
         self.import_uniques_checkbox.setChecked(True)
         self.import_uniques_checkbox.setToolTip(
-            "Should uniques be included in the profile if they exist on the build page?")
+            "Should uniques be included in the profile if they exist on the build page?"
+        )
 
         self.import_aspect_upgrades_checkbox = QCheckBox("Import Aspect Upgrades")
         self.import_aspect_upgrades_checkbox.setChecked(True)
         self.import_aspect_upgrades_checkbox.setToolTip(
-            "If legendary aspects are in the build, do you want an aspect upgrades section generated for them?")
+            "If legendary aspects are in the build, do you want an aspect upgrades section generated for them?"
+        )
 
         self.add_to_profiles_checkbox = QCheckBox("Auto-add To Profiles")
         self.add_to_profiles_checkbox.setChecked(True)
         self.add_to_profiles_checkbox.setToolTip(
-            "After import, should the imported file be automatically added to your active profiles?")
+            "After import, should the imported file be automatically added to your active profiles?"
+        )
 
         checkbox_hbox.addWidget(self.import_uniques_checkbox)
         checkbox_hbox.addWidget(self.import_aspect_upgrades_checkbox)
@@ -178,20 +190,48 @@ class ImporterWindow(QMainWindow):
         self.filename_input_box.clear()
 
     def closeEvent(self, event):
-        """Cleanup when window closes"""
+        """Cleanup when window closes and save geometry"""
+        # Save window geometry
+        if not self.isMaximized():
+            self.settings.setValue("size", self.size())
+            self.settings.setValue("pos", self.pos())
+        self.settings.setValue("maximized", "true" if self.isMaximized() else "false")
+
+        # Cleanup log handler
         LOGGER.root.removeHandler(self.log_handler)
         event.accept()
 
 
 class _GuiLogHandler(logging.Handler):
+    """Thread-safe log handler that emits signals for GUI updates"""
+
     def __init__(self, text_widget: QTextEdit):
         super().__init__()
         self.text_widget = text_widget
+        self.signals = _LogSignals()
+        # Connect signal to slot in main thread
+        self.signals.log_message.connect(self._append_log)
+        # Set log level to DEBUG to capture everything
+        self.setLevel(logging.DEBUG)
 
     def emit(self, record):
-        log_entry = self.format(record)
-        self.text_widget.append(log_entry)
+        """Called from any thread - emit signal instead of direct GUI update"""
+        try:
+            log_entry = self.format(record)
+            self.signals.log_message.emit(log_entry)
+        except Exception:
+            self.handleError(record)
+
+    def _append_log(self, message):
+        """Slot that runs in main thread - safe to update GUI"""
+        self.text_widget.append(message)
         self.text_widget.ensureCursorVisible()
+
+
+class _LogSignals(QObject):
+    """Signals for thread-safe logging"""
+
+    log_message = pyqtSignal(str)
 
 
 class _Worker(QRunnable):

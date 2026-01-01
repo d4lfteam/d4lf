@@ -1,6 +1,5 @@
 """Original simple gray theme with dynamic asset paths"""
 
-from pathlib import Path
 from src.config import BASE_DIR
 
 # Convert paths to use forward slashes for Qt

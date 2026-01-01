@@ -303,9 +303,11 @@ class BrowserType(enum.StrEnum):
     chrome = enum.auto()
     firefox = enum.auto()
 
+
 class ThemeType(enum.StrEnum):
     dark = enum.auto()
     light = enum.auto()
+
 
 class GeneralModel(_IniBaseModel):
     auto_use_temper_manuals: bool = Field(
@@ -365,13 +367,17 @@ class GeneralModel(_IniBaseModel):
         '"Affixes", "Uniques", "Sigils", etc sections will be used from '
         "C:/Users/USERNAME/.d4lf/profiles/*.yaml",
     )
+    last_opened_profile: str = Field(
+        default="",
+        description="Last opened profile in the profile editor (internal)",
+        json_schema_extra={HIDE_FROM_GUI_KEY: "True"},
+    )
     run_vision_mode_on_startup: bool = Field(default=True, description="Whether to run vision mode on startup or not")
     s7_do_not_junk_ancestral_legendaries: bool = Field(
         default=False, description="Season 7 Specific: Do not mark ancestral legendaries as junk for seasonal challenge"
     )
     theme: ThemeType = Field(  # ADD THIS FIELD
-        default=ThemeType.dark,
-        description="Choose between light and dark theme for the GUI"
+        default=ThemeType.dark, description="Choose between light and dark theme for the GUI"
     )
     vision_mode_type: VisionModeType = Field(
         default=VisionModeType.highlight_matches,
@@ -511,6 +517,7 @@ class ItemFilterModel(BaseModel):
     def parse_item_type(cls, data: str | list[str]) -> list[str]:
         return _parse_item_type_or_rarities(data)
 
+
 DynamicItemFilterModel = RootModel[dict[str, ItemFilterModel]]
 
 
@@ -649,6 +656,7 @@ class UniqueModel(BaseModel):
     @field_validator("itemType", mode="before")
     def parse_item_type(cls, data: str | list[str]) -> list[str]:
         return _parse_item_type_or_rarities(data)
+
 
 class ProfileModel(BaseModel):
     model_config = ConfigDict(extra="forbid")

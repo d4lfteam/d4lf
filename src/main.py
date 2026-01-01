@@ -14,7 +14,6 @@ from src.autoupdater import notify_if_update, start_auto_update
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import VisionModeType
-from src.gui.qt_gui import start_gui
 from src.gui.main_window import MainWindow
 from src.item.filter import Filter
 from src.logger import LOG_DIR
@@ -28,6 +27,7 @@ if sys.platform == "win32":
     try:
         import ctypes
         import os
+
         ctypes.windll.shcore.SetProcessDpiAwareness(1)  # PROCESS_SYSTEM_DPI_AWARE
     except:
         pass
@@ -205,7 +205,7 @@ if __name__ == "__main__":
             os.environ.get("IDEA_INITIAL_DIRECTORY"),
             os.environ.get("INTELLIJ_ENVIRONMENT_READER"),
             os.environ.get("TERM_PROGRAM") == "vscode",
-            sys.gettrace() is not None  # Debugger attached
+            sys.gettrace() is not None,  # Debugger attached
         ])
 
         if sys.platform == "win32" and not is_in_ide:
@@ -235,14 +235,13 @@ if __name__ == "__main__":
             # Check periodically if shutdown was requested
             import threading
 
-
             def check_shutdown():
                 while not shutdown_flag.exists():
                     time.sleep(0.5)
                 LOGGER.info("Shutdown requested via main window")
                 import os
-                os._exit(0)  # Force exit entire process
 
+                os._exit(0)  # Force exit entire process
 
             shutdown_thread = threading.Thread(target=check_shutdown, daemon=True)
             shutdown_thread.start()

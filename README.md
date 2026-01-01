@@ -319,10 +319,10 @@ Affixes:
           minCount: 3
 ```
 
-**Example item that would match:** Boots with movement_speed (normal), maximum_life (GA), cold_resistance (normal), fire_resistance (GA)  
+**Example item that would match:** Boots with movement_speed (normal), maximum_life (GA), cold_resistance (normal), fire_resistance (GA)\
 **Why:** The item has at least 2 Greater Affixes total (maximum_life and fire_resistance in this case), and at least 3 affixes from the pool (all 4 are present)
 
-**Another example that would match:** Boots with movement_speed (GA), maximum_life (normal), cold_resistance (GA), fire_resistance (normal)  
+**Another example that would match:** Boots with movement_speed (GA), maximum_life (normal), cold_resistance (GA), fire_resistance (normal)\
 **Why:** The item has at least 2 Greater Affixes total (movement_speed and cold_resistance in this case), and at least 3 affixes from the pool
 
 **Key point:** Since no affixes have `want_greater: true`, ANY 2 affixes on the item can be Greater Affixes to satisfy the requirement
@@ -349,10 +349,10 @@ Affixes:
       minGreaterAffixCount: 2  # Auto-set by GUI because 2 checkboxes are checked
 ```
 
-**This item would match:** Boots with movement_speed (GA), maximum_life (GA), cold_resistance (normal), fire_resistance (normal)  
+**This item would match:** Boots with movement_speed (GA), maximum_life (GA), cold_resistance (normal), fire_resistance (normal)\
 **Why:** movement_speed and maximum_life are both Greater Affixes as required, and item has 4 affixes (meets minCount of 3)
 
-**This item would NOT match:** Boots with movement_speed (normal), maximum_life (GA), cold_resistance (normal), fire_resistance (normal)  
+**This item would NOT match:** Boots with movement_speed (normal), maximum_life (GA), cold_resistance (normal), fire_resistance (normal)\
 **Why:** movement_speed is marked as `want_greater: true` but is not a Greater Affix on the item
 
 </details>
@@ -381,10 +381,10 @@ Affixes:
           minCount: 3
 ```
 
-**This item would match:** Boots with movement_speed (GA), maximum_life (GA), cold_resistance (normal), fire_resistance (normal)  
+**This item would match:** Boots with movement_speed (GA), maximum_life (GA), cold_resistance (normal), fire_resistance (normal)\
 **Why:** Both movement_speed and maximum_life are GAs as required, item has 2 total GAs (meets minGreaterAffixCount), and 4 affixes (meets minCount)
 
-**This item would NOT match:** Boots with movement_speed (normal), maximum_life (GA), cold_resistance (GA), fire_resistance (normal)  
+**This item would NOT match:** Boots with movement_speed (normal), maximum_life (GA), cold_resistance (GA), fire_resistance (normal)\
 **Why:** Even though item has 2 total GAs, movement_speed is not a GA (violates the `want_greater: true` hard requirement)
 
 </details>
@@ -392,6 +392,7 @@ Affixes:
 ### Automatic minGreaterAffixCount Behavior
 
 When using the GUI Profile Editor:
+
 - **If you check ANY "Greater" checkboxes:** `minGreaterAffixCount` automatically sets to match the number of checked boxes
 - **If you check NO "Greater" checkboxes:** `minGreaterAffixCount` uses whatever value you manually set (or 0 if not set)
 
@@ -418,18 +419,19 @@ This ensures your item always has enough Greater Affixes to satisfy all the `wan
 
 ### Key Differences
 
-| Feature | `minGreaterAffixCount` | `want_greater` |
-|---------|------------------------|----------------|
-| Scope | Entire item | Specific affixes |
-| Requirement | Minimum total count | Specific affixes must be Greater |
-| GUI Control | Manual spinner (or auto-set from checkboxes) | Per-affix checkbox |
-| Flexibility | Any affixes can be Greater | Only marked affixes must be Greater |
+| Feature     | `minGreaterAffixCount`                       | `want_greater`                      |
+| ----------- | -------------------------------------------- | ----------------------------------- |
+| Scope       | Entire item                                  | Specific affixes                    |
+| Requirement | Minimum total count                          | Specific affixes must be Greater    |
+| GUI Control | Manual spinner (or auto-set from checkboxes) | Per-affix checkbox                  |
+| Flexibility | Any affixes can be Greater                   | Only marked affixes must be Greater |
 
 ### Common Use Cases
 
 <details><summary>Examples</summary>
 
 **"I want boots with at least 2 Greater Affixes, don't care which ones"**
+
 ```yaml
 - itemType: boots
   minGreaterAffixCount: 2
@@ -443,6 +445,7 @@ This ensures your item always has enough Greater Affixes to satisfy all the `wan
 ```
 
 **"I want boots where movement_speed MUST be a Greater Affix"**
+
 ```yaml
 - itemType: boots
   minGreaterAffixCount: 1  # Auto-set by GUI when you check 1 box
@@ -456,6 +459,7 @@ This ensures your item always has enough Greater Affixes to satisfy all the `wan
 ```
 
 **"I want boots where both movement_speed AND maximum_life MUST be Greater Affixes"**
+
 ```yaml
 - itemType: boots
   minGreaterAffixCount: 2  # Auto-set by GUI when you check 2 boxes
