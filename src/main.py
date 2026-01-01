@@ -1,17 +1,17 @@
+import ctypes
 import logging
+import os
 import pathlib
 import sys
 import time
 import traceback
 from pathlib import Path
 
-import os
-import __main__
-import ctypes
-
 import psutil
 from beautifultable import BeautifulTable
 
+import __main__
+import src.item.filter as Filter
 import src.logger
 from src import __version__, tts
 from src.autoupdater import notify_if_update, start_auto_update
@@ -19,7 +19,6 @@ from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import VisionModeType
 from src.gui.main_window import MainWindow
-import src.item.filter as Filter
 from src.logger import LOG_DIR
 from src.overlay import Overlay
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
@@ -34,6 +33,7 @@ if sys.platform == "win32":
         ctypes.windll.shcore.SetProcessDpiAwareness(1)  # PROCESS_SYSTEM_DPI_AWARE
     except Exception:
         LOGGER.exception("Failed to set DPI awareness")
+
 
 def main():
     # Create folders for logging stuff
