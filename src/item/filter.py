@@ -76,6 +76,7 @@ class Filter:
     files_loaded = False
     all_file_paths = []
     last_loaded = None
+    last_profile_list = None
 
     _initialized: bool = False
     _instance = None
@@ -112,7 +113,7 @@ class Filter:
                     matched_affixes = self._match_affixes_count(
                         expected_affixes=filter_spec.affixPool,
                         item_affixes=non_tempered_affixes,
-                        min_greater_affix_count=filter_spec.minGreaterAffixCount
+                        min_greater_affix_count=filter_spec.minGreaterAffixCount,
                     )
                     if not matched_affixes:
                         continue
@@ -122,7 +123,7 @@ class Filter:
                     matched_inherents = self._match_affixes_count(
                         expected_affixes=filter_spec.inherentPool,
                         item_affixes=item.inherent,
-                        min_greater_affix_count=filter_spec.minGreaterAffixCount
+                        min_greater_affix_count=filter_spec.minGreaterAffixCount,
                     )
                     if not matched_inherents:
                         continue
@@ -146,7 +147,7 @@ class Filter:
             # See if the item matches any legendary aspects that were in the profile
             for profile_name, profile_filter in self.aspect_upgrade_filters.items():
                 if item.aspect and any(
-                        legendary_aspect_name == item.aspect.name for legendary_aspect_name in profile_filter
+                    legendary_aspect_name == item.aspect.name for legendary_aspect_name in profile_filter
                 ):
                     LOGGER.info("Matched build-specific aspects that updates codex")
                     res.keep = True
@@ -156,7 +157,7 @@ class Filter:
                 return res
 
         if IniConfigLoader().general.keep_aspects == AspectFilterType.none or (
-                IniConfigLoader().general.keep_aspects == AspectFilterType.upgrade and not item.codex_upgrade
+            IniConfigLoader().general.keep_aspects == AspectFilterType.upgrade and not item.codex_upgrade
         ):
             return res
         LOGGER.info("Matched Aspects that updates codex")
@@ -168,7 +169,7 @@ class Filter:
     def _check_cosmetic(item: Item) -> FilterResult:
         res = FilterResult(False, [])
         if IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.junk or (
-                IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.ignore and not item.cosmetic_upgrade
+            IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.ignore and not item.cosmetic_upgrade
         ):
             return res
         LOGGER.info("Matched new cosmetic")
@@ -199,7 +200,7 @@ class Filter:
             whitelist_ok = True if whitelist_empty else is_in_whitelist
 
             if (blacklist_empty and not whitelist_empty and not whitelist_ok) or (
-                    whitelist_empty and not blacklist_empty and not blacklist_ok
+                whitelist_empty and not blacklist_empty and not blacklist_ok
             ):
                 continue
             if not blacklist_empty and not whitelist_empty:
@@ -247,8 +248,8 @@ class Filter:
         all_filters_are_aspect = True
         if not self.unique_filters:
             keep = (
-                    IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
-                    or item.rarity == ItemRarity.Mythic
+                IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
+                or item.rarity == ItemRarity.Mythic
             )
             return FilterResult(keep, [])
         for profile_name, profile_filter in self.unique_filters.items():
@@ -268,25 +269,25 @@ class Filter:
                     continue
                 # check aspect
                 if not self._match_item_aspect_or_affix(
-                        expected_aspect=filter_item.aspect, item_aspect=item.aspect, is_chaos=item.is_chaos
+                    expected_aspect=filter_item.aspect, item_aspect=item.aspect, is_chaos=item.is_chaos
                 ):
                     continue
                 # check affixes
                 if not self._match_affixes_uniques(
-                        expected_affixes=filter_item.affix,
-                        item_affixes=item.affixes,
-                        min_greater_affix_count=filter_item.minGreaterAffixCount  # ADD THIS
+                    expected_affixes=filter_item.affix,
+                    item_affixes=item.affixes,
+                    min_greater_affix_count=filter_item.minGreaterAffixCount,  # ADD THIS
                 ):
                     continue
 
                 # check greater affixes - Checks total item-level GAs
                 if not self._match_greater_affix_count(
-                        expected_min_count=filter_item.minGreaterAffixCount, item_affixes=item.affixes
+                    expected_min_count=filter_item.minGreaterAffixCount, item_affixes=item.affixes
                 ):
                     continue
                 # check aspect is in percent range
                 if not self._match_aspect_is_in_percent_range(
-                        expected_percent=filter_item.minPercentOfAspect, item_aspect=item.aspect
+                    expected_percent=filter_item.minPercentOfAspect, item_aspect=item.aspect
                 ):
                     continue
                 LOGGER.info(f"Matched {profile_name}.Uniques: {item.aspect.name}")
@@ -300,12 +301,12 @@ class Filter:
         # Always keep mythics no matter what
         # If all filters are for aspects specifically and none apply to this item, we default to handle_uniques config
         if not res.keep and (
-                item.rarity == ItemRarity.Mythic
-                or (
-                        res.all_unique_filters_are_aspects
-                        and not res.unique_aspect_in_profile
-                        and IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
-                )
+            item.rarity == ItemRarity.Mythic
+            or (
+                res.all_unique_filters_are_aspects
+                and not res.unique_aspect_in_profile
+                and IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
+            )
         ):
             res.keep = True
 
@@ -314,11 +315,21 @@ class Filter:
     def _did_files_change(self) -> bool:
         if self.last_loaded is None:
             return True
+
+        # Force reload config from disk to get latest profile list
+        IniConfigLoader().load()
+
+        # Check if profile list changed (filter out empty strings)
+        current_profiles = [p.strip() for p in IniConfigLoader().general.profiles if p.strip()]
+        if self.last_profile_list != current_profiles:
+            LOGGER.info(f"Profile list changed: {self.last_profile_list} → {current_profiles}")
+            return True
+
+        # Check if any profile files were modified
         return any(pathlib.Path(file_path).stat().st_mtime > self.last_loaded for file_path in self.all_file_paths)
 
     def _match_affixes_count(
-            self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix],
-            min_greater_affix_count: int = 0
+        self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix], min_greater_affix_count: int = 0
     ) -> list[Affix]:
         result = []
         for count_group in expected_affixes:
@@ -335,7 +346,7 @@ class Filter:
                 return []  # if one group fails, everything fails
 
             # Check want_greater requirements (2-mode system)
-            want_greater_affixes = [a for a in count_group.count if getattr(a, 'want_greater', False)]
+            want_greater_affixes = [a for a in count_group.count if getattr(a, "want_greater", False)]
             want_greater_count = len(want_greater_affixes)
 
             if want_greater_count > 0 and min_greater_affix_count > 0:
@@ -348,7 +359,8 @@ class Filter:
                 else:
                     # Mode 2: At least min_greater_affix_count of the flagged affixes must be GA (flexible)
                     flagged_ga_count = sum(
-                        1 for affix in want_greater_affixes
+                        1
+                        for affix in want_greater_affixes
                         if (matched := next((a for a in item_affixes if a.name == affix.name), None))
                         and matched.type == AffixType.greater
                     )
@@ -360,7 +372,7 @@ class Filter:
 
     @staticmethod
     def _match_affixes_sigils(
-            expected_affixes: list[SigilConditionModel], sigil_name: str, sigil_affixes: list[Affix]
+        expected_affixes: list[SigilConditionModel], sigil_name: str, sigil_affixes: list[Affix]
     ) -> bool:
         for expected_affix in expected_affixes:
             if sigil_name != expected_affix.name and not [
@@ -372,8 +384,9 @@ class Filter:
             return True
         return False
 
-    def _match_affixes_uniques(self, expected_affixes: list[AffixFilterModel], item_affixes: list[Affix],
-                               min_greater_affix_count: int = 0) -> bool:
+    def _match_affixes_uniques(
+        self, expected_affixes: list[AffixFilterModel], item_affixes: list[Affix], min_greater_affix_count: int = 0
+    ) -> bool:
         # First, check if all expected affixes are present with correct values
         for expected_affix in expected_affixes:
             matched_item_affix = next((a for a in item_affixes if a.name == expected_affix.name), None)
@@ -381,7 +394,7 @@ class Filter:
                 return False
 
         # Then, check want_greater requirements (2-mode system)
-        want_greater_affixes = [a for a in expected_affixes if getattr(a, 'want_greater', False)]
+        want_greater_affixes = [a for a in expected_affixes if getattr(a, "want_greater", False)]
         want_greater_count = len(want_greater_affixes)
 
         if want_greater_count > 0 and min_greater_affix_count > 0:
@@ -394,7 +407,8 @@ class Filter:
             else:
                 # Mode 2: At least min_greater_affix_count of the flagged affixes must be GA (flexible)
                 flagged_ga_count = sum(
-                    1 for affix in want_greater_affixes
+                    1
+                    for affix in want_greater_affixes
                     if (matched := next((a for a in item_affixes if a.name == affix.name), None))
                     and matched.type == AffixType.greater
                 )
@@ -415,18 +429,18 @@ class Filter:
         if item_aspect.max_value > item_aspect.min_value:
             percent_float = expected_percent / 100.0
             return (item_aspect.value - item_aspect.min_value) / (
-                    item_aspect.max_value - item_aspect.min_value
+                item_aspect.max_value - item_aspect.min_value
             ) >= percent_float
 
         # This is the case where a smaller number is better
         percent_float = (100 - expected_percent) / 100.0
         return (item_aspect.value - item_aspect.max_value) / (
-                item_aspect.min_value - item_aspect.max_value
+            item_aspect.min_value - item_aspect.max_value
         ) <= percent_float
 
     @staticmethod
     def _match_item_aspect_or_affix(
-            expected_aspect: AffixAspectFilterModel | None, item_aspect: Aspect | Affix, is_chaos: bool = False
+        expected_aspect: AffixAspectFilterModel | None, item_aspect: Aspect | Affix, is_chaos: bool = False
     ) -> bool:
         if expected_aspect is None:
             return True
@@ -438,7 +452,7 @@ class Filter:
                 # Chaos uniques have a fixed aspect number. There is no reason to compare it, it is always at max
                 return bool(is_chaos)
             if (expected_aspect.comparison == ComparisonType.larger and item_aspect.value < expected_aspect.value) or (
-                    expected_aspect.comparison == ComparisonType.smaller and item_aspect.value > expected_aspect.value
+                expected_aspect.comparison == ComparisonType.smaller and item_aspect.value > expected_aspect.value
             ):
                 return False
         return True
@@ -462,10 +476,15 @@ class Filter:
         self.unique_filters: dict[str, list[UniqueModel]] = {}
         profiles: list[str] = IniConfigLoader().general.profiles
 
+        # Filter out empty strings
+        profiles = [p.strip() for p in profiles if p.strip()]
+
         if not profiles:
             LOGGER.warning(
-                "No profiles have been configured so no filtering will be done. If this is a mistake, use the profiles section of the config tab of gui.bat to activate the profiles you want to use."
+                "No profiles are currently loaded. Please load a profile via the Importer, Settings, or Edit Profile sections to begin using the tool."
             )
+            self.last_loaded = time.time()
+            self.last_profile_list = []
             return
 
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
@@ -498,43 +517,44 @@ class Filter:
                 except ValidationError as e:
                     errors = True
 
-                    # Build error message as single string
-                    error_lines = []
-                    error_lines.append("=" * 80)
-                    error_lines.append(f"❌ PROFILE VALIDATION FAILED: {profile_path}")
-                    error_lines.append("=" * 80)
-                    error_lines.append("")
+                    if "minGreaterAffixCount" in str(e):
+                        LOGGER.error("[CLEAN]" + "=" * 80)
+                        LOGGER.error("[CLEAN]" + f"PROFILE VALIDATION FAILED: {profile_path}")
+                        LOGGER.error("[CLEAN]" + "=" * 80)
+                        LOGGER.error("[CLEAN]")
+                        LOGGER.error(
+                            "[CLEAN]" + "You are using an old, outdated field that must be removed from your profile."
+                        )
+                        LOGGER.error("[CLEAN]")
+                        LOGGER.error("[CLEAN]" + "WRONG (old way - pool level):")
+                        LOGGER.error("[CLEAN]" + "- Ring:")
+                        LOGGER.error("[CLEAN]" + "    itemType: [ring]")
+                        LOGGER.error("[CLEAN]" + "    minPower: 100")
+                        LOGGER.error("[CLEAN]" + "    affixPool:")
+                        LOGGER.error("[CLEAN]" + "    - count:")
+                        LOGGER.error("[CLEAN]" + "      - {name: strength}")
+                        LOGGER.error("[CLEAN]" + "      minCount: 2")
+                        LOGGER.error("[CLEAN]" + "      minGreaterAffixCount: 1  ← DELETE THIS LINE")
+                        LOGGER.error("[CLEAN]")
+                        LOGGER.error("[CLEAN]" + "CORRECT (new way - item level):")
+                        LOGGER.error("[CLEAN]" + "- Ring:")
+                        LOGGER.error("[CLEAN]" + "    itemType: [ring]")
+                        LOGGER.error("[CLEAN]" + "    minPower: 100")
+                        LOGGER.error("[CLEAN]" + "    minGreaterAffixCount: 1  ← PUT IT HERE INSTEAD")
+                        LOGGER.error("[CLEAN]" + "    affixPool:")
+                        LOGGER.error("[CLEAN]" + "    - count:")
+                        LOGGER.error("[CLEAN]" + "      - {name: strength}")
+                        LOGGER.error("[CLEAN]" + "      minCount: 2")
+                        LOGGER.error("[CLEAN]" + "      # NO minGreaterAffixCount here anymore!")
+                        LOGGER.error("[CLEAN]")
+                        LOGGER.error("[CLEAN]" + "=" * 80)
+                        LOGGER.error(
+                            "[CLEAN]" + f"ACTION REQUIRED: Please make the above adjustments in: {profile_path}"
+                        )
+                        LOGGER.error("[CLEAN]" + "=" * 80)
+                    else:
+                        LOGGER.error(f"Validation error in {profile_path}: {e}")
 
-                    # Show what's wrong
-                    for error in e.errors():
-                        field_path = " → ".join(str(loc) for loc in error['loc'])
-                        error_msg = error['msg']
-                        error_type = error['type']
-
-                        error_lines.append(f"Field: {field_path}")
-                        error_lines.append(f"Error: {error_msg}")
-
-                        # Provide specific fix guidance
-                        if "extra" in error_type.lower() or "forbidden" in error_msg.lower():
-                            error_lines.append(
-                                "❗ FIX: This field is no longer valid and must be removed from your YAML file")
-                            if "minGreaterAffixCount" in field_path:
-                                error_lines.append(
-                                    "   → 'minGreaterAffixCount' was moved from affix pool level to item level")
-                                error_lines.append("   → Remove it from individual affix pools in your profile")
-                        elif "missing" in error_type.lower():
-                            error_lines.append(f"❗ FIX: Add the required field '{field_path}' to your profile")
-                        else:
-                            error_lines.append(f"❗ FIX: Check the value and format for '{field_path}'")
-
-                        error_lines.append("-" * 80)
-
-                    error_lines.append(f"🛠️  ACTION REQUIRED: Fix the errors above in: {profile_path}")
-                    error_lines.append(f"📖 Documentation: https://github.com/aeon0/d4lf#profile-configuration")
-                    error_lines.append("=" * 80)
-
-                    # Log as single message
-                    LOGGER.error("\n" + "\n".join(error_lines))
                     continue
 
                 if data.Affixes:
@@ -554,15 +574,16 @@ class Filter:
                     info_str += "Uniques"
 
                 LOGGER.info(info_str)
-            if errors:
-                fatal_msg = "\n".join([
-                    "=" * 80,
-                    "❌ FATAL: Cannot continue with invalid profiles",
-                    "=" * 80
-                ])
-                LOGGER.error("\n" + fatal_msg)
-                sys.exit(1)
-            self.last_loaded = time.time()
+
+        if errors:
+            LOGGER.error("[CLEAN]")
+            LOGGER.error("[CLEAN]" + "=" * 80)
+            LOGGER.error("[CLEAN]" + "You will not be able to continue with invalid profiles.")
+            LOGGER.error("[CLEAN]" + "=" * 80)
+            sys.exit(1)
+
+        self.last_loaded = time.time()
+        self.last_profile_list = IniConfigLoader().general.profiles.copy()
 
     def should_keep(self, item: Item) -> FilterResult:
         if not self.files_loaded or self._did_files_change():

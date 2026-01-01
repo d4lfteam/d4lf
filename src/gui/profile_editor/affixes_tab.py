@@ -1,9 +1,7 @@
 import logging
 
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QSpinBox,
     QCheckBox,
     QComboBox,
     QCompleter,
@@ -19,9 +17,9 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QSpinBox,
     QTabWidget,
     QToolBar,
-    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -108,7 +106,7 @@ class AffixGroupEditor(QWidget):
             "When unchecked: You can manually set Min Greater Affixes to any value"
         )
         # Load saved auto-sync state from model
-        self.auto_sync_checkbox.setChecked(getattr(self.config, 'auto_sync_ga', False))
+        self.auto_sync_checkbox.setChecked(getattr(self.config, "auto_sync_ga", False))
         self.auto_sync_checkbox.stateChanged.connect(self.toggle_auto_sync)
 
         # Apply initial styling if auto-sync is enabled
@@ -313,13 +311,13 @@ class AffixGroupEditor(QWidget):
         want_greater_count = 0
 
         # Check if layouts exist yet
-        if not hasattr(self, 'affix_pool_layout') or not hasattr(self, 'inherent_pool_layout'):
+        if not hasattr(self, "affix_pool_layout") or not hasattr(self, "inherent_pool_layout"):
             return 0
 
         # Count checked boxes in affix pools
         for i in range(self.affix_pool_layout.count()):
             container = self.affix_pool_layout.itemAt(i).widget()
-            if container and hasattr(container, 'contentWidget'):
+            if container and hasattr(container, "contentWidget"):
                 pool_widget = container.contentWidget.layout().itemAt(0).widget()
                 if isinstance(pool_widget, AffixPoolWidget):
                     for j in range(pool_widget.affix_list.count()):
@@ -332,7 +330,7 @@ class AffixGroupEditor(QWidget):
         # Count checked boxes in inherent pools
         for i in range(self.inherent_pool_layout.count()):
             container = self.inherent_pool_layout.itemAt(i).widget()
-            if container and hasattr(container, 'contentWidget'):
+            if container and hasattr(container, "contentWidget"):
                 pool_widget = container.contentWidget.layout().itemAt(0).widget()
                 if isinstance(pool_widget, AffixPoolWidget):
                     for j in range(pool_widget.affix_list.count()):
@@ -354,6 +352,7 @@ class AffixGroupEditor(QWidget):
         else:
             self.greater_count_label.setText(f"({count} greater affixes marked)")
 
+
 class AffixPoolWidget(QWidget):
     def __init__(self, pool: AffixFilterCountModel, parent=None):
         super().__init__(parent)
@@ -368,6 +367,7 @@ class AffixPoolWidget(QWidget):
         config_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         min_count_label = QLabel("Min Count:")
         min_count_label.setMaximumWidth(100)
+        min_count_label.setStyleSheet("QLabel { color: #e0e0e0; }")  # ← ADD THIS
         config_layout.addWidget(min_count_label)
         self.min_count = IgnoreScrollWheelSpinBox()
         self.min_count.setValue(self.pool.minCount)
@@ -378,6 +378,7 @@ class AffixPoolWidget(QWidget):
 
         max_count_label = QLabel("Max Count:")
         max_count_label.setMaximumWidth(100)
+        max_count_label.setStyleSheet("QLabel { color: #e0e0e0; }")  # ← ADD THIS
         config_layout.addWidget(max_count_label)
         self.max_count = IgnoreScrollWheelSpinBox()
         self.max_count.setValue(min(self.pool.maxCount, 2147483647))
@@ -390,9 +391,13 @@ class AffixPoolWidget(QWidget):
         title_layout = QHBoxLayout()
         title_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         affix_label = QLabel("Affixes")
+        affix_label.setStyleSheet("QLabel { color: #e0e0e0; }")  # ← ADD THIS
         greater_label = QLabel("Greater")
+        greater_label.setStyleSheet("QLabel { color: #e0e0e0; }")  # ← ADD THIS
         value_label = QLabel("Value")
+        value_label.setStyleSheet("QLabel { color: #e0e0e0; }")  # ← ADD THIS
         comparison_label = QLabel("Comparison")
+        comparison_label.setStyleSheet("QLabel { color: #e0e0e0; }")  # ← ADD THIS
         title_layout.addSpacing(250)
         title_layout.addWidget(affix_label)
         title_layout.addSpacing(400)
@@ -486,7 +491,7 @@ class AffixWidget(QWidget):
     def create_greater_checkbox(self):
         # Greater Affix Checkbox
         self.greater_checkbox = QCheckBox("Greater")
-        self.greater_checkbox.setChecked(getattr(self.affix, 'want_greater', False))
+        self.greater_checkbox.setChecked(getattr(self.affix, "want_greater", False))
         self.greater_checkbox.setFixedWidth(80)
         self.greater_checkbox.setStyleSheet("QCheckBox { background-color: transparent; }")
         self.greater_checkbox.stateChanged.connect(self.update_greater)
@@ -540,6 +545,7 @@ class AffixWidget(QWidget):
 
     def update_greater(self):
         self.affix.want_greater = self.greater_checkbox.isChecked()
+
 
 class AffixesTab(QWidget):
     def __init__(self, affixes_model: list[DynamicItemFilterModel], parent=None):
