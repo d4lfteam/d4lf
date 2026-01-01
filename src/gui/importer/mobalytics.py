@@ -56,7 +56,7 @@ def import_mobalytics(config: ImportConfig):
     except ConnectionError as exc:
         LOGGER.exception(msg := "Couldn't get build")
         raise MobalyticsException(msg) from exc
-    variant_id = url.split(",")[1] if "activeVariantId" in url else None
+    variant_id = url.split(",")[1].split("#")[0] if "activeVariantId" in url else None
     raw_html_data = lxml.html.fromstring(r.text)
     # The build is shoved in a massive JSON in one of the script tags. We find that json now.
     scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
@@ -281,5 +281,13 @@ if __name__ == "__main__":
         "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
     ]
     for X in URLS:
-        config = ImportConfig(X, True, True, False, None)
+        config = ImportConfig(
+            url=X,
+            import_uniques=True,
+            import_aspect_upgrades=True,
+            add_to_profiles=False,
+            import_greater_affixes=True,
+            require_greater_affixes=True,
+            custom_file_name=None,
+        )
         import_mobalytics(config)
