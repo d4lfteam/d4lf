@@ -16,6 +16,7 @@ from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
 from seleniumbase import SB
 
+from config.models import ItemFilterModel
 from src import __version__
 from src.config.loader import IniConfigLoader
 from src.config.models import BrowserType, ProfileModel
@@ -118,6 +119,16 @@ def get_class_name(input_str: str) -> str:
         return "Paladin"
     LOGGER.error(f"Couldn't match class name {input_str=}")
     return "Unknown"
+
+
+def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool):
+    if require_gas:
+        num_greater = 0
+        for affix in item_filter.affixPool[0].count:
+            num_greater += 1 if affix.want_greater else 0
+        item_filter.minGreaterAffixCount = num_greater
+    else:
+        item_filter.minGreaterAffixCount = 0
 
 
 def get_with_retry(url: str, custom_headers: dict[str, str] | None = None) -> httpx.Response:

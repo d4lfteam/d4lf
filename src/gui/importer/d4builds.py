@@ -27,9 +27,10 @@ from src.gui.importer.common import (
     match_to_enum,
     retry_importer,
     save_as_profile,
+    update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
-from src.item.data.affix import Affix
+from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
@@ -46,6 +47,7 @@ CLASS_XPATH = "//*[contains(@class, 'builder__header__description')]"
 ITEM_GROUP_XPATH = ".//*[contains(@class, 'builder__stats__group')]"
 ITEM_SLOT_XPATH = ".//*[contains(@class, 'builder__stats__slot')]"
 ITEM_STATS_XPATH = ".//*[contains(@class, 'dropdown__button__wrapper')]"
+GA_XPATH = ".//*[contains(@class, 'greater__affix__button--filled')]"
 PAPERDOLL_ITEM_SLOT_XPATH = ".//*[contains(@class, 'builder__gear__slot')]"
 PAPERDOLL_ITEM_UNIQUE_NAME_XPATH = ".//*[contains(@class, 'builder__gear__name--')]"
 PAPERDOLL_ITEM_XPATH = ".//*[contains(@class, 'builder__gear__item') and not(contains(@class, 'disabled'))]"
@@ -145,6 +147,8 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             if affix_obj.name is None:
                 LOGGER.error(f"Couldn't match {affix_name=}")
                 continue
+            if config.import_greater_affixes and stat.xpath("../../../..")[0].xpath(GA_XPATH):
+                affix_obj.type = AffixType.greater
             if (
                 "ring" in slot.lower()
                 and any(substring in affix_name.lower() for substring in ["resistance"])
@@ -180,10 +184,12 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             item_filter.itemType = [item_type]
         item_filter.affixPool = [
             AffixFilterCountModel(
-                count=[AffixFilterModel(name=x.name) for x in affixes], minCount=3, minGreaterAffixCount=0
+                count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
+                minCount=3,
             )
         ]
         item_filter.minPower = 100
+        update_mingreateraffixcount(item_filter, config.require_greater_affixes)
         if inherents:
             item_filter.inherentPool = [AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])]
         filter_name_template = item_filter.itemType[0].name if item_type else slot.replace(" ", "")
