@@ -43,9 +43,11 @@ def main():
     LOGGER.info(f"Change configurations via the Settings button below or directly in: {IniConfigLoader().user_dir}")
 
     # Detect if we're running locally and skip the autoupdate
-    if Path(Path.cwd() / "main.py").exists():
-        LOGGER.debug("Running from source detected, skipping autoupdate check.")
-    else:
+    import __main__
+    from pathlib import Path
+    main_path = Path(__main__.__file__)
+    if main_path.name == "main.py":
+        LOGGER.debug("Running from source detected, skipping autoupdate check.") else:
         notify_if_update()
 
     if IniConfigLoader().advanced_options.vision_mode_only:
