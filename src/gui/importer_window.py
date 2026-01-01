@@ -1,5 +1,4 @@
 import logging
-import sys
 import threading
 
 from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, QThreadPool, pyqtSignal, pyqtSlot

@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -161,8 +160,12 @@ class MainWindow(QMainWindow):
         if not config.advanced_options.vision_mode_only:
             # Line 1: Main hotkeys
             hotkeys_html += f"<u><b>{config.advanced_options.run_vision_mode.upper()}</b></u>: Run/Stop Vision Mode&nbsp;&nbsp;&nbsp;"
-            hotkeys_html += f"<u><b>{config.advanced_options.run_filter.upper()}</b></u>: Run/Stop Auto Filter&nbsp;&nbsp;&nbsp;"
-            hotkeys_html += f"<u><b>{config.advanced_options.move_to_inv.upper()}</b></u>: Move Chest → Inventory&nbsp;&nbsp;&nbsp;"
+            hotkeys_html += (
+                f"<u><b>{config.advanced_options.run_filter.upper()}</b></u>: Run/Stop Auto Filter&nbsp;&nbsp;&nbsp;"
+            )
+            hotkeys_html += (
+                f"<u><b>{config.advanced_options.move_to_inv.upper()}</b></u>: Move Chest → Inventory&nbsp;&nbsp;&nbsp;"
+            )
             hotkeys_html += f"<u><b>{config.advanced_options.move_to_chest.upper()}</b></u>: Move Inventory → Chest<br>"
 
             # Line 2: Secondary hotkeys
@@ -444,7 +447,7 @@ class MainWindow(QMainWindow):
                             LOGGER.info(f"Killed D4LF process (PID: {proc.pid})")
                         except:
                             pass
-            except psutil.NoSuchProcess, psutil.AccessDenied:
+            except psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
 
         if terminated_count > 0:
