@@ -5,6 +5,10 @@ import time
 import traceback
 from pathlib import Path
 
+import os
+import __main__
+import ctypes
+
 import psutil
 from beautifultable import BeautifulTable
 
@@ -15,25 +19,21 @@ from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import VisionModeType
 from src.gui.main_window import MainWindow
-from src.item.filter import Filter
+import src.item.filter as Filter
 from src.logger import LOG_DIR
 from src.overlay import Overlay
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
 
+LOGGER = logging.getLogger(__name__)
+
 # Set DPI awareness before Qt loads
 if sys.platform == "win32":
     try:
-        import ctypes
-        import os
-
         ctypes.windll.shcore.SetProcessDpiAwareness(1)  # PROCESS_SYSTEM_DPI_AWARE
-    except:
-        pass
-
-LOGGER = logging.getLogger(__name__)
-
+    except Exception:
+        LOGGER.exception("Failed to set DPI awareness")
 
 def main():
     # Create folders for logging stuff
@@ -43,9 +43,6 @@ def main():
     LOGGER.info(f"Change configurations via the Settings button below or directly in: {IniConfigLoader().user_dir}")
 
     # Detect if we're running locally and skip the autoupdate
-
-    import __main__
-    from pathlib import Path
     main_path = Path(__main__.__file__)
     if main_path.name == "main.py":
         LOGGER.debug("Running from source detected, skipping autoupdate check.")
@@ -177,8 +174,6 @@ if __name__ == "__main__":
         start_auto_update(postprocess=True)
     elif len(sys.argv) > 1 and sys.argv[1] == "--mainwindow":
         # Suppress Qt warnings BEFORE any other imports
-        import os
-
         os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
 
         # Set DPI awareness for Qt subprocess only
@@ -187,8 +182,8 @@ if __name__ == "__main__":
                 import ctypes
 
                 ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
-            except:
-                pass
+            except Exception:
+                LOGGER.exception("Failed to set DPI awareness")
 
         # Launch just the Qt main window (called as subprocess)
         # NO logger setup - we'll tail the main process log file
@@ -213,8 +208,6 @@ if __name__ == "__main__":
         ])
 
         if sys.platform == "win32" and not is_in_ide:
-            import ctypes
-
             ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
         # Create shutdown flag file path
         shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
@@ -243,7 +236,6 @@ if __name__ == "__main__":
                 while not shutdown_flag.exists():
                     time.sleep(0.5)
                 LOGGER.info("Shutdown requested via main window")
-                import os
 
                 os._exit(0)  # Force exit entire process
 
