@@ -34,11 +34,12 @@ def safe_exit(error_code=0):
                 cmdline_str = " ".join(proc.info["cmdline"])
 
                 # Look for python processes with d4lf or main.py
-                if "python" in proc.info["name"].lower() and (
-                    "main.py" in cmdline_str or "d4lf" in cmdline_str.lower()
+                if (
+                    "python" in proc.info["name"].lower()
+                    and ("main.py" in cmdline_str or "d4lf" in cmdline_str.lower())
+                    and proc.pid != current_pid
                 ):
-                    if proc.pid != current_pid:
-                        processes_to_kill.append(proc)
+                    processes_to_kill.append(proc)
             except psutil.NoSuchProcess, psutil.AccessDenied:
                 pass
     except:
