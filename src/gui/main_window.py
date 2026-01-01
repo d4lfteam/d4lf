@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src import __version__
-from src.config.loader import IniConfigLoader
+from src.config.loader import IniConfigLoader, ProfileLoader
 from src.gui.config_window import ConfigWindow
 from src.gui.importer_window import ImporterWindow
 from src.gui.profile_editor_window import ProfileEditorWindow
@@ -362,8 +362,6 @@ class MainWindow(QMainWindow):
 
         try:
             # Reload the profile configuration
-            from src.config.loader import ProfileLoader
-
             ProfileLoader.reload_profile(profile_name)
 
             # Reload item filters
