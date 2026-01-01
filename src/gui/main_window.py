@@ -30,7 +30,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src import __version__
-from src.config.loader import IniConfigLoader, ProfileLoader
+from src.config.loader import IniConfigLoader
 from src.gui.config_window import ConfigWindow
 from src.gui.importer_window import ImporterWindow
 from src.gui.profile_editor_window import ProfileEditorWindow
@@ -371,7 +371,7 @@ class MainWindow(QMainWindow):
 
         try:
             # Reload the profile configuration
-            ProfileLoader.reload_profile(profile_name)
+            Filter.reload()
 
             # Reload item filters
             Filter.reload()
