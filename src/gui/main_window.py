@@ -3,10 +3,13 @@ Shows log output and provides access to Import, Settings, and Profile Editor.
 """
 
 import logging
+import os
 from pathlib import Path
 
+import psutil
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
@@ -26,8 +29,13 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src import __version__
 from src.config.loader import IniConfigLoader
+from src.gui.config_window import ConfigWindow
+from src.gui.importer_window import ImporterWindow
+from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.themes import DARK_THEME, LIGHT_THEME
+from src.item.filter import Filter
 from src.logger import LOG_DIR
 
 LOGGER = logging.getLogger(__name__)
@@ -74,11 +82,7 @@ class MainWindow(QMainWindow):
             self.showMaximized()
 
         # Set window icon
-        import pathlib
-
-        from PyQt6.QtGui import QIcon
-
-        icon_path = pathlib.Path(__file__).parent.parent.parent / "assets" / "logo.png"
+        icon_path = Path(__file__).parent.parent.parent / "assets" / "logo.png"
         if icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))
 
@@ -124,8 +128,6 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(10)
 
         # === VERSION HEADER ===
-        from src import __version__
-
         version_label = QLabel(f"D4LF - Diablo 4 Loot Filter v{__version__}")
         version_label.setStyleSheet("font-size: 14pt; font-weight: bold; padding: 5px;")
         version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -291,9 +293,9 @@ class MainWindow(QMainWindow):
                     # Remove trailing newline and add to log viewer
                     self.append_log(line.rstrip())
 
-        except Exception:
+        except Exception as e:
             # File might be locked, try again next time
-            pass
+            LOGGER.debug(f"Error reading log file: {e}")
 
     def append_log(self, message):
         """Append message to log viewer (thread-safe slot)"""
@@ -319,8 +321,6 @@ class MainWindow(QMainWindow):
         LOGGER.info("Opening profile importer...")
 
         try:
-            from src.gui.importer_window import ImporterWindow
-
             if self.import_window is None or not self.import_window.isVisible():
                 self.import_window = ImporterWindow()
                 self.import_window.show()
@@ -336,8 +336,6 @@ class MainWindow(QMainWindow):
         LOGGER.info("Opening settings window...")
 
         try:
-            from src.gui.config_window import ConfigWindow
-
             if self.settings_window is None or not self.settings_window.isVisible():
                 # Pass the theme reload callback
                 self.settings_window = ConfigWindow(theme_changed_callback=self.on_settings_changed)
@@ -355,8 +353,6 @@ class MainWindow(QMainWindow):
         LOGGER.info("Opening profile editor...")
 
         try:
-            from src.gui.profile_editor_window import ProfileEditorWindow
-
             if self.editor_window is None or not self.editor_window.isVisible():
                 self.editor_window = ProfileEditorWindow()
                 self.editor_window.show()
@@ -380,8 +376,6 @@ class MainWindow(QMainWindow):
             ProfileLoader.reload_profile(profile_name)
 
             # Reload item filters
-            from src.item.filter import Filter
-
             Filter.reload()  # or whatever your reload mechanism is
 
             self.profile_updated.emit(profile_name)
@@ -411,12 +405,6 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         """Handle window close - shutdown ALL D4LF instances"""
-        import os
-
-        import psutil
-
-        from src.config.loader import IniConfigLoader
-
         # Close all child windows first
         if self.settings_window and self.settings_window.isVisible():
             self.settings_window.close()
@@ -452,10 +440,10 @@ class MainWindow(QMainWindow):
                         proc.kill()
                         terminated_count += 1
                         LOGGER.info(f"Killed D4LF process (PID: {proc.pid})")
-                    except:
-                        pass
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
+                    except (psutil.NoSuchProcess, psutil.AccessDenied, Exception) as e:
+                        LOGGER.debug(f"Could not kill process {proc.pid}: {e}")
+            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                LOGGER.debug(f"Error accessing process: {e}")
 
         if terminated_count > 0:
             LOGGER.info(f"Closed {terminated_count} additional D4LF instance(s)")
