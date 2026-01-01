@@ -43,6 +43,7 @@ def main():
     LOGGER.info(f"Change configurations via the Settings button below or directly in: {IniConfigLoader().user_dir}")
 
     # Detect if we're running locally and skip the autoupdate
+
     import __main__
     from pathlib import Path
     main_path = Path(__main__.__file__)
