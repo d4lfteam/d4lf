@@ -3,10 +3,8 @@ Shows log output and provides access to Import, Settings, and Profile Editor.
 """
 
 import logging
-import os
 from pathlib import Path
 
-import psutil
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
@@ -411,6 +409,7 @@ class MainWindow(QMainWindow):
         shutdown_flag.touch()
 
         event.accept()
+
 
 # Example usage for testing
 if __name__ == "__main__":
