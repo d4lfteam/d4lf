@@ -105,24 +105,6 @@ class ImporterWindow(QMainWindow):
         self.require_all_gas_checkbox.setEnabled(self.import_gas_checkbox.isChecked())
         self.import_gas_checkbox.stateChanged.connect(lambda: disable_require_if_import_disabled())
 
-        self.import_uniques_checkbox = QCheckBox("Import Uniques")
-        self.import_uniques_checkbox.setChecked(True)
-        self.import_uniques_checkbox.setToolTip(
-            "Should uniques be included in the profile if they exist on the build page?"
-        )
-
-        self.import_aspect_upgrades_checkbox = QCheckBox("Import Aspect Upgrades")
-        self.import_aspect_upgrades_checkbox.setChecked(True)
-        self.import_aspect_upgrades_checkbox.setToolTip(
-            "If legendary aspects are in the build, do you want an aspect upgrades section generated for them?"
-        )
-
-        self.add_to_profiles_checkbox = QCheckBox("Auto-add To Profiles")
-        self.add_to_profiles_checkbox.setChecked(True)
-        self.add_to_profiles_checkbox.setToolTip(
-            "After import, should the imported file be automatically added to your active profiles?"
-        )
-
         checkbox_hbox = QHBoxLayout()
         checkbox_hbox.addWidget(self.import_uniques_checkbox)
         checkbox_hbox.addWidget(self.import_aspect_upgrades_checkbox)

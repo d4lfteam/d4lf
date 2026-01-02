@@ -9,6 +9,7 @@ from pathlib import Path
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -423,8 +424,6 @@ class MainWindow(QMainWindow):
 # Example usage for testing
 if __name__ == "__main__":
     import sys
-
-    from PyQt6.QtWidgets import QApplication
 
     # Setup basic logging
     logging.basicConfig(
