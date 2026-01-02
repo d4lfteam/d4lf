@@ -145,10 +145,7 @@ class CreateItem(QDialog):
         item = ItemFilterModel()
         item.itemType = [item_type]
         item.affixPool = [
-            AffixFilterCountModel(
-                count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())))],
-                minCount=2,
-            )
+            AffixFilterCountModel(count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())))], minCount=2)
         ]
         item.minPower = 100
         return DynamicItemFilterModel(**{item_name: item})

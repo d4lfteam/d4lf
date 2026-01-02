@@ -1,7 +1,6 @@
 import logging
 import threading
 
-from PyQt6.QtCore import QObject, QRunnable, QSettings, QThreadPool, pyqtSignal, pyqtSlot
 from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, QThreadPool, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -27,7 +26,7 @@ THREADPOOL = QThreadPool()
 
 
 class ImporterWindow(QMainWindow):
-    """Standalone window for Maxroll/D4Builds/Mobalytics importer"""
+    """Standalone window for Maxroll/D4Builds/Mobalytics importer."""
 
     def __init__(self):
         super().__init__()
@@ -202,7 +201,7 @@ class ImporterWindow(QMainWindow):
         return checkbox
 
     def _handle_text_changed(self, text):
-        """Enable/disable generate button based on input"""
+        """Enable/disable generate button based on input."""
         self.generate_button.setEnabled(bool(text.strip()))
 
     def _generate_button_click(self):
@@ -237,13 +236,13 @@ class ImporterWindow(QMainWindow):
         THREADPOOL.start(worker)
 
     def _on_worker_finished(self):
-        """Handle worker completion"""
+        """Handle worker completion."""
         self.generate_button.setEnabled(True)
         self.generate_button.setText("Generate")
         self.filename_input_box.clear()
 
     def closeEvent(self, event):
-        """Cleanup when window closes and save geometry"""
+        """Cleanup when window closes and save geometry."""
         # Save window geometry
         if not self.isMaximized():
             self.settings.setValue("size", self.size())
@@ -259,7 +258,7 @@ class ImporterWindow(QMainWindow):
 
 
 class _GuiLogHandler(logging.Handler):
-    """Thread-safe log handler that emits signals for GUI updates"""
+    """Thread-safe log handler that emits signals for GUI updates."""
 
     def __init__(self, text_widget: QTextEdit):
         super().__init__()
@@ -271,7 +270,7 @@ class _GuiLogHandler(logging.Handler):
         self.setLevel(logging.DEBUG)
 
     def emit(self, record):
-        """Called from any thread - emit signal instead of direct GUI update"""
+        """Called from any thread - emit signal instead of direct GUI update."""
         try:
             log_entry = self.format(record)
             self.signals.log_message.emit(log_entry)
@@ -279,13 +278,13 @@ class _GuiLogHandler(logging.Handler):
             self.handleError(record)
 
     def _append_log(self, message):
-        """Slot that runs in main thread - safe to update GUI"""
+        """Slot that runs in main thread - safe to update GUI."""
         self.text_widget.append(message)
         self.text_widget.ensureCursorVisible()
 
 
 class _LogSignals(QObject):
-    """Signals for thread-safe logging"""
+    """Signals for thread-safe logging."""
 
     log_message = pyqtSignal(str)
 

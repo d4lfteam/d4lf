@@ -381,7 +381,7 @@ def generate_uniques(d4data_dir, language):
 
 
 def supplement_uniques_from_companion(companion_app_dir, language):
-    """Supplement uniques with data from Diablo4Companion"""
+    """Supplement uniques with data from Diablo4Companion."""
     print(f"Supplementing Uniques with Diablo4Companion data for {language}")
 
     # Load our existing uniques from d4data

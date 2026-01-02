@@ -10,7 +10,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ProfileEditorWindow(QMainWindow):
-    """Standalone window for Profile Editor"""
+    """Standalone window for Profile Editor."""
 
     def __init__(self):
         super().__init__()
@@ -34,7 +34,7 @@ class ProfileEditorWindow(QMainWindow):
         self.profile_tab.show_tab()
 
     def closeEvent(self, event):
-        """Save window size/position and check if profile needs saving"""
+        """Save window size/position and check if profile needs saving."""
         if not self.isMaximized():
             self.settings.setValue("size", self.size())
             self.settings.setValue("pos", self.pos())

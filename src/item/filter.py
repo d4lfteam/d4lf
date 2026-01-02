@@ -519,10 +519,7 @@ class Filter:
 
                     # Build error message as single string
                     error_lines = []
-                    error_lines.append("=" * 80)
-                    error_lines.append(f"❌ PROFILE VALIDATION FAILED: {profile_path}")
-                    error_lines.append("=" * 80)
-                    error_lines.append("")
+                    error_lines.extend(("=" * 80, f"❌ PROFILE VALIDATION FAILED: {profile_path}", "=" * 80, ""))
 
                     # Show what's wrong
                     for error in e.errors():
@@ -530,8 +527,7 @@ class Filter:
                         error_msg = error["msg"]
                         error_type = error["type"]
 
-                        error_lines.append(f"Field: {field_path}")
-                        error_lines.append(f"Error: {error_msg}")
+                        error_lines.extend((f"Field: {field_path}", f"Error: {error_msg}"))
 
                         # Provide specific fix guidance
                         if "extra" in error_type.lower() or "forbidden" in error_msg.lower():
@@ -539,10 +535,10 @@ class Filter:
                                 "❗ FIX: This field is no longer valid and must be removed from your YAML file"
                             )
                             if "minGreaterAffixCount" in field_path:
-                                error_lines.append(
-                                    "   → 'minGreaterAffixCount' was moved from affix pool level to item level"
-                                )
-                                error_lines.append("   → Remove it from individual affix pools in your profile")
+                                error_lines.extend((
+                                    "   → 'minGreaterAffixCount' was moved from affix pool level to item level",
+                                    "   → Remove it from individual affix pools in your profile",
+                                ))
                         elif "missing" in error_type.lower():
                             error_lines.append(f"❗ FIX: Add the required field '{field_path}' to your profile")
                         else:
@@ -550,12 +546,14 @@ class Filter:
 
                         error_lines.append("-" * 80)
 
-                    error_lines.append(f"🛠️  ACTION REQUIRED: Fix the errors above in: {profile_path}")
-                    error_lines.append("📖 Documentation: https://github.com/aeon0/d4lf#profile-configuration")
-                    error_lines.append("=" * 80)
+                    error_lines.extend((
+                        f"🛠️  ACTION REQUIRED: Fix the errors above in: {profile_path}",
+                        "📖 Documentation: https://github.com/aeon0/d4lf#profile-configuration",
+                        "=" * 80,
+                    ))
 
                     # Log as single message
-                    LOGGER.error("\n" + "\n".join(error_lines))
+                    LOGGER.error("\n\n".join(error_lines))
                     continue
 
                 if data.Affixes:
@@ -576,8 +574,8 @@ class Filter:
 
                 LOGGER.info(info_str)
             if errors:
-                fatal_msg = "\n".join(["=" * 80, "❌ FATAL: Cannot continue with invalid profiles", "=" * 80])
-                LOGGER.error("\n" + fatal_msg)
+                fatal_msg = "\n" + "\n".join(["=" * 80, "❌ FATAL: Cannot continue with invalid profiles", "=" * 80])
+                LOGGER.error(fatal_msg)
                 sys.exit(1)
             self.last_loaded = time.time()
             self.last_profile_list = IniConfigLoader().general.profiles.copy()

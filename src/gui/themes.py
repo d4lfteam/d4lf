@@ -1,4 +1,4 @@
-"""Original simple gray theme with dynamic asset paths"""
+"""Original simple gray theme with dynamic asset paths."""
 
 from src.config import BASE_DIR
 

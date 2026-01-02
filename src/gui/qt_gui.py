@@ -329,7 +329,7 @@ class Gui(QMainWindow):
         tab_maxroll.setLayout(layout)
 
     def _apply_theme(self):
-        """Apply the theme from config settings"""
+        """Apply the theme from config settings."""
         # Force reload the config to get latest theme value
         config = IniConfigLoader()
         config.load()  # Reload from disk

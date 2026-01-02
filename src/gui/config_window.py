@@ -10,7 +10,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ConfigWindow(QMainWindow):
-    """Standalone window for Config/Settings"""
+    """Standalone window for Config/Settings."""
 
     def __init__(self, theme_changed_callback=None):
         super().__init__()
@@ -40,7 +40,7 @@ class ConfigWindow(QMainWindow):
         old_tab.deleteLater()
 
     def closeEvent(self, event):
-        """Save window size/position"""
+        """Save window size/position."""
         if not self.isMaximized():
             self.settings.setValue("size", self.size())
             self.settings.setValue("pos", self.pos())

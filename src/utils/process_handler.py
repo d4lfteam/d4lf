@@ -19,7 +19,7 @@ def kill_thread(thread):
 
 
 def safe_exit(error_code=0):
-    """Shutdown ALL D4LF instances"""
+    """Shutdown ALL D4LF instances."""
     # Find and terminate all D4LF processes
     current_pid = os.getpid()
     processes_to_kill = []

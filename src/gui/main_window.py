@@ -1,30 +1,20 @@
 """Main Window for d4lf - integrates scanning overlay with GUI controls.
+
 Shows log output and provides access to Import, Settings, and Profile Editor.
 """
 
 import logging
 from pathlib import Path
 
-import psutil
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
-    QApplication,
-    QHBoxLayout,
-    QHeaderView,
-    QLabel,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
-    QTableWidget,
-    QTableWidgetItem,
-    QVBoxLayout,
-    QWidget,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -42,7 +32,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class LogHandler(logging.Handler):
-    """Custom logging handler that emits log records to Qt signal"""
+    """Custom logging handler that emits log records to Qt signal."""
 
     def __init__(self, signal):
         super().__init__()
@@ -54,7 +44,9 @@ class LogHandler(logging.Handler):
 
 
 class MainWindow(QMainWindow):
-    """Main window that houses:
+    """The full main window object.
+
+    The main window houses:
     - Top: Real-time log viewer showing d4lf scanning output
     - Bottom: Three buttons for Import Profile, Settings, and Edit Profile
     """
@@ -118,7 +110,7 @@ class MainWindow(QMainWindow):
             QApplication.instance().setStyleSheet(DARK_THEME)
 
     def setup_ui(self):
-        """Create the main UI layout"""
+        """Create the main UI layout."""
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
@@ -220,7 +212,7 @@ class MainWindow(QMainWindow):
         self.log_message.connect(self.append_log)
 
     def setup_logging(self):
-        """Setup log file monitoring"""
+        """Setup log file monitoring."""
         # Find the most recent log file in the logs directory
         logs_dir = LOG_DIR
 
@@ -263,7 +255,7 @@ class MainWindow(QMainWindow):
         LOGGER.info("Main window initialized")
 
     def read_log_file(self):
-        """Read new lines from log file"""
+        """Read new lines from log file."""
         try:
             # Check if a newer log file exists
             logs_dir = LOG_DIR
@@ -298,7 +290,7 @@ class MainWindow(QMainWindow):
             LOGGER.debug(f"Error reading log file: {e}")
 
     def append_log(self, message):
-        """Append message to log viewer (thread-safe slot)"""
+        """Append message to log viewer (thread-safe slot)."""
         parts = message.split(" | ", 5)
         if len(parts) >= 5:
             actual_message = parts[5] if len(parts) == 6 else parts[4]
@@ -317,7 +309,7 @@ class MainWindow(QMainWindow):
         scrollbar.setValue(scrollbar.maximum())
 
     def open_import_dialog(self):
-        """Open maxroll/d4builds/mobalytics importer"""
+        """Open maxroll/d4builds/mobalytics importer."""
         LOGGER.info("Opening profile importer...")
 
         try:
@@ -332,7 +324,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Import Error", str(e))
 
     def open_settings(self):
-        """Open settings/config window"""
+        """Open settings/config window."""
         LOGGER.info("Opening settings window...")
 
         try:
@@ -349,7 +341,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Settings Error", str(e))
 
     def open_profile_editor(self):
-        """Open profile editor window"""
+        """Open profile editor window."""
         LOGGER.info("Opening profile editor...")
 
         try:
@@ -366,6 +358,7 @@ class MainWindow(QMainWindow):
 
     def on_profile_saved(self, profile_name):
         """Called when profile is saved in Profile Editor.
+
         Triggers hot reload of filters without restarting.
         """
         LOGGER.info(f"Profile '{profile_name}' saved - triggering reload...")

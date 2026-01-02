@@ -642,7 +642,8 @@ class UniqueModel(BaseModel):
     @field_validator("minGreaterAffixCount")
     def count_validator(cls, v: int) -> int:
         if not 0 <= v <= 4:  # Changed to match ItemFilterModel
-            raise ValueError("must be in [0, 4]")
+            msg = "must be in [0, 4]"
+            raise ValueError(msg)
         return v
 
     @field_validator("minPercentOfAspect")
