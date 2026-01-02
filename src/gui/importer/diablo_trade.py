@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     import seleniumbase
 
 LOGGER = logging.getLogger(__name__)
-
+LOGGER.propagate = True
 BASE_URL = "diablo.trade/listings/"
 
 

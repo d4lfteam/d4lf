@@ -33,7 +33,7 @@ from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
 
 LOGGER = logging.getLogger(__name__)
-
+LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
 SCRIPT_XPATH = "//script"
 BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="

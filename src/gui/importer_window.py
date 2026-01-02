@@ -151,7 +151,17 @@ class ImporterWindow(QMainWindow):
 
         # Setup logging
         self.log_handler = _GuiLogHandler(self.log_output)
-        LOGGER.root.addHandler(self.log_handler)
+
+        # Attach directly to each importer logger AND common.py
+        for name in (
+            "src.gui.importer.mobalytics",
+            "src.gui.importer.maxroll",
+            "src.gui.importer.d4builds",
+            "src.gui.importer.common",
+        ):
+            logger = logging.getLogger(name)
+            logger.setLevel(logging.DEBUG)
+            logger.addHandler(self.log_handler)
 
         # Instructions
         instructions_label = QLabel("Instructions:")
@@ -191,6 +201,7 @@ class ImporterWindow(QMainWindow):
         self.generate_button.setEnabled(bool(text.strip()))
 
     def _generate_button_click(self):
+        self.log_output.clear()
         """Handle generate button click"""
         url = self.input_box.text().strip()
         custom_filename = self.filename_input_box.text()
@@ -235,7 +246,10 @@ class ImporterWindow(QMainWindow):
         self.settings.setValue("maximized", "true" if self.isMaximized() else "false")
 
         # Cleanup log handler
-        LOGGER.root.removeHandler(self.log_handler)
+        logging.getLogger("src.gui.importer.mobalytics").removeHandler(self.log_handler)
+        logging.getLogger("src.gui.importer.maxroll").removeHandler(self.log_handler)
+        logging.getLogger("src.gui.importer.d4builds").removeHandler(self.log_handler)
+        logging.getLogger("src.gui.importer.common").removeHandler(self.log_handler)
         event.accept()
 
 

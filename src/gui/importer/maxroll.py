@@ -29,7 +29,7 @@ from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
 
 LOGGER = logging.getLogger(__name__)
-
+LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://maxroll.gg/d4/build-guides/"
 BUILD_GUIDE_PLANNER_EMBED_XPATH = "//*[contains(@class, 'd4-embed')]"
 PLANNER_API_BASE_URL = "https://planners.maxroll.gg/profiles/d4/"
