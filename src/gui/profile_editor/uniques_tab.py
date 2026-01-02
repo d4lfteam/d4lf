@@ -200,7 +200,7 @@ class UniqueWidget(QWidget):
 
     def add_affix(self):
         new_affix = AffixFilterModel(
-            name=list(Dataloader().affix_dict.keys())[0], value=None, comparison=ComparisonType.larger
+            name=next(iter(Dataloader().affix_dict.keys())), value=None, comparison=ComparisonType.larger
         )
         self.unique_model.affix.append(new_affix)
         self.add_affix_item(new_affix)

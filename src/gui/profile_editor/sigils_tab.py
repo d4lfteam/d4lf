@@ -88,7 +88,7 @@ class SigilWidget(Container):
         self.condition_list.setMinimumHeight(50)
         self.condition_list.setAlternatingRowColors(True)
         for condition in self.sigil.condition:
-            if condition == "":
+            if not condition:
                 continue
             self.add_condition_to_list(Dataloader().affix_sigil_dict[condition])
 
@@ -115,8 +115,8 @@ class SigilWidget(Container):
         self.condition_list.setItemWidget(widget_item, widget)
 
     def add_condition(self):
-        self.add_condition_to_list(list(Dataloader().affix_sigil_dict_all["minor"].values())[0])
-        self.sigil.condition.append(list(Dataloader().affix_sigil_dict_all["minor"].keys())[0])
+        self.add_condition_to_list(next(iter(Dataloader().affix_sigil_dict_all["minor"].values())))
+        self.sigil.condition.append(next(iter(Dataloader().affix_sigil_dict_all["minor"].keys())))
 
     def remove_selected(self):
         for item in self.condition_list.selectedItems():
@@ -160,7 +160,7 @@ class SigilsTab(QWidget):
             self.loaded = True
 
     def setup_ui(self):
-        """Populate the grid layout with existing groups"""
+        """Populate the grid layout with existing groups."""
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 20, 0, 20)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)

@@ -52,7 +52,7 @@ def _setup_log_filename(fmt: str) -> str:
     current_datetime = datetime.datetime.now(tz=datetime.UTC)
 
     filename = fmt.format(date=current_datetime.strftime("%Y-%m-%d"), time=current_datetime.strftime("%H-%M-%S"))
-    if not filename.lower().endswith(".log") and filename != "":
+    if filename and not filename.lower().endswith(".log"):
         filename += ".log"
     return filename
 

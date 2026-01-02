@@ -130,7 +130,7 @@ class CreateItem(QDialog):
         self.setLayout(self.main_layout)
 
     def accept(self):
-        if self.name_input.text() == "":
+        if not self.name_input.text():
             QMessageBox.warning(self, "Warning", "Item name cannot be empty")
             return
         if self.name_input.text() in self.item_list:
@@ -146,7 +146,7 @@ class CreateItem(QDialog):
         item.itemType = [item_type]
         item.affixPool = [
             AffixFilterCountModel(
-                count=[AffixFilterModel(name=list(Dataloader().affix_dict.keys())[0])],
+                count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())))],
                 minCount=2,
                 minGreaterAffixCount=0,
             )

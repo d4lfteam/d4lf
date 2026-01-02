@@ -26,13 +26,13 @@ class D4LFUpdater:
 
     @staticmethod
     def normalize_version(version):
-        """Ensure version has 'v' prefix"""
+        """Ensure version has 'v' prefix."""
         if version and not version.startswith("v"):
             return f"v{version.strip()}"
         return version
 
     def get_latest_release(self, silent=False):
-        """Fetch latest release info from GitHub API"""
+        """Fetch latest release info from GitHub API."""
         if not silent:
             LOGGER.info("Checking for latest release...")
         try:
@@ -57,7 +57,7 @@ class D4LFUpdater:
 
     @staticmethod
     def download_file(url, filename):
-        """Download file with progress indication"""
+        """Download file with progress indication."""
         LOGGER.info(f"Downloading {filename}...")
         try:
             response = requests.get(url, stream=True, timeout=30)
@@ -75,15 +75,14 @@ class D4LFUpdater:
                             percent = (downloaded / total_size) * 100
                             print(f"\rProgress: {percent:.1f}%", end="")
                 print("\n")
-
-            LOGGER.info("Download complete!")
-            return True
         except requests.exceptions.RequestException as e:
             LOGGER.error(f"\nError downloading file: {e}")
             return False
+        LOGGER.info("Download complete!")
+        return True
 
     def extract_release(self, zip_path, latest_version):
-        """Extract zip so batch process can copy files"""
+        """Extract zip so batch process can copy files."""
         LOGGER.info("Extracting files...")
 
         try:
@@ -95,20 +94,21 @@ class D4LFUpdater:
             # with Path(self.update_file).open("w") as f:
             #     update_data = {"version": latest_version, "zip_path": zip_path}
             #     json.dump(update_data, f)
-            Path(self.version_file).write_text(latest_version)
-
-            LOGGER.info("Files extracted successfully!")
-            return True
+            Path(self.version_file).write_text(latest_version, encoding="utf-8")
         except Exception as e:
             LOGGER.error(f"Error during extraction: {e}")
             return False
+        LOGGER.info("Files extracted successfully!")
+        return True
 
     @staticmethod
     def _get_major_version_number(version: str) -> int:
         return int(version.replace("v", "").split(".")[0])
 
     def preprocess(self):
-        """Main update process. This will:
+        """Main update process.
+
+        This will:
         - Check if update is needed
         - Download new release
         - Extract files to a temp directory
@@ -182,7 +182,9 @@ class D4LFUpdater:
         return True
 
     def postprocess(self):
-        """Post process will handle the cleanup. It will:
+        """Post process will handle the cleanup.
+
+        It will:
         - Delete the temporary files that were extracted
         - Verify the version is truly updated
         """
@@ -267,7 +269,7 @@ def _should_check_for_update(check_interval_hours=4):
 
     # Read the last check time from file if it exists
     if Path.exists(check_file):
-        with Path(check_file).open("r") as f:
+        with Path(check_file).open("r", encoding="utf-8") as f:
             last_check_time = float(f.read().strip())
 
     # Calculate elapsed time since last check
@@ -276,7 +278,7 @@ def _should_check_for_update(check_interval_hours=4):
     # Check if enough time has passed
     if elapsed_time >= (check_interval_hours * 3600):
         # Update the last check time
-        Path(check_file).write_text(str(current_time))
+        Path(check_file).write_text(str(current_time), encoding="utf-8")
         return True
     return False
 

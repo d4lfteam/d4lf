@@ -102,7 +102,8 @@ class AffixAspectFilterModel(BaseModel):
             return {"name": data}
         if isinstance(data, list):
             if not data or len(data) > 3:
-                raise ValueError("list, cannot be empty or larger than 3 items")
+                msg = "list, cannot be empty or larger than 3 items"
+                raise ValueError(msg)
             result = {}
             if len(data) >= 1:
                 result["name"] = data[0]
@@ -111,7 +112,8 @@ class AffixAspectFilterModel(BaseModel):
             if len(data) == 3:
                 result["comparison"] = data[2]
             return result
-        raise ValueError("must be str or list")
+        msg = "must be str or list"
+        raise ValueError(msg)
 
 
 class AffixFilterModel(AffixAspectFilterModel):
@@ -121,7 +123,8 @@ class AffixFilterModel(AffixAspectFilterModel):
         from src.dataloader import Dataloader  # noqa: PLC0415
 
         if name not in Dataloader().affix_dict:
-            raise ValueError(f"affix {name} does not exist")
+            msg = f"affix {name} does not exist"
+            raise ValueError(msg)
         return name
 
 
@@ -146,9 +149,11 @@ class AffixFilterCountModel(BaseModel):
             self.model_fields_set.remove("minCount")
             self.model_fields_set.remove("maxCount")
         if self.minCount > self.maxCount:
-            raise ValueError("minCount must be smaller than maxCount")
+            msg = "minCount must be smaller than maxCount"
+            raise ValueError(msg)
         if not self.count:
-            raise ValueError("count must not be empty")
+            msg = "count must not be empty"
+            raise ValueError(msg)
         return self
 
 
@@ -162,7 +167,8 @@ class AspectUniqueFilterModel(AffixAspectFilterModel):
         name = name.lower().replace("'", "").replace(" ", "_").replace(",", "")
 
         if name not in Dataloader().aspect_unique_dict:
-            raise ValueError(f"aspect {name} does not exist")
+            msg = f"aspect {name} does not exist"
+            raise ValueError(msg)
         return name
 
 
@@ -223,7 +229,8 @@ class AdvancedOptionsModel(_IniBaseModel):
             self.run_vision_mode,
         ]
         if len(set(keys)) != len(keys):
-            raise ValueError("hotkeys must be unique")
+            msg = "hotkeys must be unique"
+            raise ValueError(msg)
         return self
 
     @field_validator(
@@ -246,7 +253,8 @@ class AdvancedOptionsModel(_IniBaseModel):
             v = v.strip("()")
             parts = [int(part.strip()) for part in v.replace(",", " ").split()]
             if len(parts) != 2:
-                raise ValueError("Expected two integers for coordinates.")
+                msg = "Expected two integers for coordinates."
+                raise ValueError(msg)
             for x in parts:
                 check_greater_than_zero(x)
             return parts[0], parts[1]
@@ -254,7 +262,8 @@ class AdvancedOptionsModel(_IniBaseModel):
             for x in v:
                 check_greater_than_zero(x)
             return v[0], v[1]
-        raise ValueError("vision_mode_coordinates must be a tuple of two integers or blank")
+        msg = "vision_mode_coordinates must be a tuple of two integers or blank"
+        raise ValueError(msg)
 
     @model_validator(mode="before")
     def check_deprecation(cls, data) -> dict:
@@ -361,13 +370,15 @@ class GeneralModel(_IniBaseModel):
         if isinstance(v, str):
             v = v.split(",")
         elif not isinstance(v, list):
-            raise ValueError("must be a list or a string")
+            msg = "must be a list or a string"
+            raise ValueError(msg)
         return sorted([int(x) - 1 for x in v])
 
     @field_validator("max_stash_tabs")
     def check_max_stash_tabs(cls, v: int):
         if not 6 <= v <= 7:
-            raise ValueError("must be 6 or 7")
+            msg = "must be 6 or 7"
+            raise ValueError(msg)
         return v
 
     @field_validator("profiles", mode="before")
@@ -375,19 +386,22 @@ class GeneralModel(_IniBaseModel):
         if isinstance(v, str):
             v = v.split(",")
         elif not isinstance(v, list):
-            raise ValueError("must be a list or a string")
+            msg = "must be a list or a string"
+            raise ValueError(msg)
         return [v.strip() for v in v]
 
     @field_validator("language")
     def language_must_exist(cls, v: str) -> str:
         if v not in ["enUS"]:
-            raise ValueError("language not supported")
+            msg = "language not supported"
+            raise ValueError(msg)
         return v
 
     @field_validator("minimum_overlay_font_size")
     def font_size_in_range(cls, v: int) -> int:
         if not 10 <= v <= 20:
-            raise ValueError("Font size must be between 10 and 20, inclusive")
+            msg = "Font size must be between 10 and 20, inclusive"
+            raise ValueError(msg)
         return v
 
     @field_validator("move_to_inv_item_type", "move_to_stash_item_type", mode="before")
@@ -395,7 +409,8 @@ class GeneralModel(_IniBaseModel):
         if isinstance(v, str):
             v = v.split(",")
         elif not isinstance(v, list):
-            raise ValueError("must be a list or a string")
+            msg = "must be a list or a string"
+            raise ValueError(msg)
         return [MoveItemsType[v.strip()] for v in v]
 
     @model_validator(mode="before")
@@ -412,7 +427,7 @@ class GeneralModel(_IniBaseModel):
                 "use_tts is deprecated. Setting vision_mode to the equivalent value instead. Remove use_tts from your params.ini to remove this message."
             )
             use_tts_mode = data["use_tts"]
-            if use_tts_mode == "mixed" or use_tts_mode == "off":
+            if use_tts_mode in {"mixed", "off"}:
                 data["vision_mode_type"] = VisionModeType.highlight_matches
             else:
                 data["vision_mode_type"] = VisionModeType.fast
@@ -430,26 +445,33 @@ class HSVRangeModel(_IniBaseModel):
             return self.h_s_v_min
         if index == 1:
             return self.h_s_v_max
-        raise IndexError("Index out of range")
+        msg = "Index out of range"
+        raise IndexError(msg)
 
     @model_validator(mode="after")
     def check_interval_sanity(self) -> HSVRangeModel:
         if self.h_s_v_min[0] > self.h_s_v_max[0]:
-            raise ValueError(f"invalid hue range [{self.h_s_v_min[0]}, {self.h_s_v_max[0]}]")
+            msg = f"invalid hue range [{self.h_s_v_min[0]}, {self.h_s_v_max[0]}]"
+            raise ValueError(msg)
         if self.h_s_v_min[1] > self.h_s_v_max[1]:
-            raise ValueError(f"invalid saturation range [{self.h_s_v_min[1]}, {self.h_s_v_max[1]}]")
+            msg = f"invalid saturation range [{self.h_s_v_min[1]}, {self.h_s_v_max[1]}]"
+            raise ValueError(msg)
         if self.h_s_v_min[2] > self.h_s_v_max[2]:
-            raise ValueError(f"invalid value range [{self.h_s_v_min[2]}, {self.h_s_v_max[2]}]")
+            msg = f"invalid value range [{self.h_s_v_min[2]}, {self.h_s_v_max[2]}]"
+            raise ValueError(msg)
         return self
 
     @field_validator("h_s_v_min", "h_s_v_max")
     def values_in_range(cls, v: np.ndarray) -> np.ndarray:
-        if not len(v) == 3:
-            raise ValueError("must be h,s,v")
+        if len(v) != 3:
+            msg = "must be h,s,v"
+            raise ValueError(msg)
         if not -179 <= v[0] <= 179:
-            raise ValueError("must be in [-179, 179]")
+            msg = "must be in [-179, 179]"
+            raise ValueError(msg)
         if not all(0 <= x <= 255 for x in v[1:3]):
-            raise ValueError("must be in [0, 255]")
+            msg = "must be in [0, 255]"
+            raise ValueError(msg)
         return v
 
 
@@ -468,7 +490,8 @@ class ItemFilterModel(BaseModel):
     @field_validator("minGreaterAffixCount")
     def min_greater_affix_in_range(cls, v: int) -> int:
         if not 0 <= v <= 3:
-            raise ValueError("must be in [0, 3]")
+            msg = "must be in [0, 3]"
+            raise ValueError(msg)
         return v
 
     @field_validator("itemType", mode="before")
@@ -497,14 +520,16 @@ class SigilConditionModel(BaseModel):
             return {"name": data}
         if isinstance(data, list):
             if not data:
-                raise ValueError("list cannot be empty")
+                msg = "list cannot be empty"
+                raise ValueError(msg)
             result = {}
             if len(data) >= 1:
                 result["name"] = data[0]
             if len(data) >= 2:
                 result["condition"] = data[1:]
             return result
-        raise ValueError("must be str or list")
+        msg = "must be str or list"
+        raise ValueError(msg)
 
     @field_validator("condition", "name")
     def name_must_exist(cls, names_in: str | list[str]) -> str | list[str]:
@@ -514,7 +539,8 @@ class SigilConditionModel(BaseModel):
         names = [names_in] if isinstance(names_in, str) else names_in
         errors = [name for name in names if name not in Dataloader().affix_sigil_dict]
         if errors:
-            raise ValueError(f"The following affixes/dungeons do not exist: {errors}")
+            msg = f"The following affixes/dungeons do not exist: {errors}"
+            raise ValueError(msg)
         return names_in
 
 
@@ -528,7 +554,8 @@ class SigilFilterModel(BaseModel):
     def data_integrity(self) -> SigilFilterModel:
         errors = [item for item in self.blacklist if item in self.whitelist]
         if errors:
-            raise ValueError(f"blacklist and whitelist must not overlap: {errors}")
+            msg = f"blacklist and whitelist must not overlap: {errors}"
+            raise ValueError(msg)
         return self
 
 
@@ -549,7 +576,8 @@ class TributeFilterModel(BaseModel):
         # Allow people to shorthand and leave off "tribute_of_"
         name_with_tribute = "tribute_of_" + name
         if name not in tribute_dict and name_with_tribute not in tribute_dict:
-            raise ValueError(f"No tribute named {name} or {name_with_tribute} exists")
+            msg = f"No tribute named {name} or {name_with_tribute} exists"
+            raise ValueError(msg)
 
         if name_with_tribute in tribute_dict:
             name = name_with_tribute
@@ -566,9 +594,11 @@ class TributeFilterModel(BaseModel):
             return {"name": data}
         if isinstance(data, list):
             if not data:
-                raise ValueError("list cannot be empty")
+                msg = "list cannot be empty"
+                raise ValueError(msg)
             return {"rarities": data}
-        raise ValueError("must be str or list")
+        msg = "must be str or list"
+        raise ValueError(msg)
 
     @field_validator("rarities", mode="before")
     def parse_rarities(cls, data: str | list[str]) -> list[str]:
@@ -598,7 +628,8 @@ class UniqueModel(BaseModel):
     def percent_validator(cls, v: int) -> int:
         check_greater_than_zero(v)
         if v > 100:
-            raise ValueError("must be less than or equal to 100")
+            msg = "must be less than or equal to 100"
+            raise ValueError(msg)
         return v
 
     @field_validator("itemType", mode="before")
@@ -626,9 +657,8 @@ class ProfileModel(BaseModel):
         all_aspects_list = Dataloader().aspect_list
         aspects_not_in_all_aspects = [x for x in self["AspectUpgrades"] if x not in all_aspects_list]
         if aspects_not_in_all_aspects:
-            raise ValueError(
-                f"The following aspects in AspectUpgrades do not exist in our data: {', '.join(aspects_not_in_all_aspects)}"
-            )
+            msg = f"The following aspects in AspectUpgrades do not exist in our data: {', '.join(aspects_not_in_all_aspects)}"
+            raise ValueError(msg)
 
         return self
 

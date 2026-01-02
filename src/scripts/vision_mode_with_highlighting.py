@@ -103,7 +103,7 @@ class VisionModeWithHighlighting:
         self.canvas.create_rectangle(x1, y1, x2, y2, fill=color)
 
     def draw_text(self, canvas, text, color, previous_text_y, offset, canvas_center_x) -> int:
-        if text is None or text == "":
+        if not text:
             return None
 
         font_name = "Courier New"

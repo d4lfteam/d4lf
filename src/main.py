@@ -109,7 +109,7 @@ def check_for_proper_tts_configuration():
         # Check if everything is set up properly in Diablo 4 settings
         local_prefs = get_d4_local_prefs_file()
         if local_prefs:
-            with Path(local_prefs).open() as file:
+            with Path(local_prefs).open(encoding="utf-8") as file:
                 prefs = file.read()
                 if 'UseScreenReader "1"' not in prefs:
                     LOGGER.error(

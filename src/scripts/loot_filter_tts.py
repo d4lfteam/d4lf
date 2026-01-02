@@ -30,7 +30,7 @@ LOGGER = logging.getLogger(__name__)
 def check_items(inv: InventoryBase, force_refresh: ItemRefreshType, stash_is_open=False):
     occupied, _ = inv.get_item_slots()
 
-    if force_refresh == ItemRefreshType.force_with_filter or force_refresh == ItemRefreshType.force_without_filter:
+    if force_refresh in {ItemRefreshType.force_with_filter, ItemRefreshType.force_without_filter}:
         reset_item_status(occupied, inv)
         occupied, _ = inv.get_item_slots()
 

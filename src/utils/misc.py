@@ -117,8 +117,9 @@ def scale_vector_to_distance(vector, target_distance):
 
 
 def slugify(value, allow_unicode=False, separator="_"):
-    """Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
-    dashes to the desired separator. Remove characters that aren't alphanumerics,
+    """Convert to ASCII if 'allow_unicode' is False.
+
+    Convert spaces or repeated dashes to the desired separator. Remove characters that aren't alphanumerics,
     underscores, or hyphens. Convert to lowercase. Also strip leading and
     trailing whitespace, dashes, and underscores.
     """

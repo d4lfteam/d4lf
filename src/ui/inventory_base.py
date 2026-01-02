@@ -21,7 +21,8 @@ class ItemSlot:
 
 
 class InventoryBase(Menu):
-    """Base class for all menus with a grid inventory
+    """Base class for all menus with a grid inventory.
+
     Provides methods for identifying occupied and empty slots, item operations, etc.
     """
 
@@ -42,6 +43,7 @@ class InventoryBase(Menu):
 
     def get_item_slots(self, img: np.ndarray | None = None) -> tuple[list[ItemSlot], list[ItemSlot]]:
         """Identifies occupied and empty slots in a grid of slots within a given rectangle of interest (ROI).
+
         :param roi: The rectangle to consider, represented as (x_min, y_min, width, height).
         :param rows: The number of rows in the grid.
         :param columns: The number of columns in the grid.
@@ -56,7 +58,7 @@ class InventoryBase(Menu):
         occupied_slots = []
         empty_slots = []
 
-        for _, slot_roi in enumerate(grid):
+        for slot_roi in grid:
             item_slot = ItemSlot(bounding_box=slot_roi, center=get_center(slot_roi))
             slot_img = crop(img, slot_roi)
 
