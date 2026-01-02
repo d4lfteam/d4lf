@@ -175,10 +175,21 @@ def _raise_index_error(affixes, affix_bullets, item, img_item_descr: np.ndarray)
 
 
 def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
-    name = tts_section[2].split(" in ")[0]
+    name_index = 3 if item.item_type == ItemType.EscalationSigil else 2
+    name = tts_section[name_index].split(" in ")[0]
     item.name = correct_name(name)
 
-    affixes = [tts_section[4], tts_section[6]]
+    start = next((i for i, s in enumerate(tts_section) if "AFFIXES" in s), None)
+    if start:
+        first_affix_index = start + 1
+        second_affix_index = start + 3
+    else:
+        msg = f"Could not find string AFFIXES in TTS provided by Diablo. Sigil filtering may be unstable, please open a bug with this info: {tts_section}"
+        LOGGER.error(msg)
+        first_affix_index = 4
+        second_affix_index = 6
+
+    affixes = [tts_section[first_affix_index], tts_section[second_affix_index]]
 
     for affix_name in affixes:
         affix = Affix(name=correct_name(keep_letters_and_spaces(affix_name)))
