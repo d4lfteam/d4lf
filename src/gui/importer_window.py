@@ -21,7 +21,6 @@ from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.maxroll import import_maxroll
 from src.gui.importer.mobalytics import import_mobalytics
 from src.gui.open_user_config_button import OpenUserConfigButton
-from src.gui.themes import DARK_THEME, LIGHT_THEME
 
 LOGGER = logging.getLogger(__name__)
 THREADPOOL = QThreadPool()

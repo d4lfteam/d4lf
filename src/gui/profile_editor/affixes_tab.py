@@ -203,11 +203,7 @@ class AffixGroupEditor(QWidget):
             comparison=ComparisonType.larger,
         )
 
-        new_pool = AffixFilterCountModel(
-            count=[default_affix],
-            minCount=1,
-            maxCount=3,
-        )
+        new_pool = AffixFilterCountModel(count=[default_affix], minCount=1, maxCount=3)
         self.config.affixPool.append(new_pool)
         self.add_affix_pool_item(new_pool)
 
@@ -218,11 +214,7 @@ class AffixGroupEditor(QWidget):
             comparison=ComparisonType.larger,
         )
 
-        new_pool = AffixFilterCountModel(
-            count=[default_affix],
-            minCount=1,
-            maxCount=3,
-        )
+        new_pool = AffixFilterCountModel(count=[default_affix], minCount=1, maxCount=3)
         self.config.affixPool.append(new_pool)
         self.add_affix_pool_item(new_pool, True)
 
