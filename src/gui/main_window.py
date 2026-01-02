@@ -101,21 +101,25 @@ class MainWindow(QMainWindow):
         self.setup_logging()
 
     def apply_current_theme(self):
-        """Apply the theme from settings (dark or light)"""
-        try:
-            # Load current theme setting
-            config = IniConfigLoader()
-            theme_mode = config.general.theme  # Assuming this is how you store it
+        from PyQt6.QtWidgets import QApplication
 
-            if theme_mode.lower() == "light":
-                self.setStyleSheet(LIGHT_THEME)
+        try:
+            config = IniConfigLoader()
+            theme_enum = config.general.theme
+
+            # FIX: use .value to get the actual string
+            theme_mode = theme_enum.value.lower()
+
+            if theme_mode == "light":
+                stylesheet = LIGHT_THEME
             else:
-                self.setStyleSheet(DARK_THEME)
+                stylesheet = DARK_THEME
+
+            QApplication.instance().setStyleSheet(stylesheet)
 
         except Exception as e:
-            # Default to dark theme if settings can't be loaded
             LOGGER.warning(f"Could not load theme setting, using dark theme: {e}")
-            self.setStyleSheet(DARK_THEME)
+            QApplication.instance().setStyleSheet(DARK_THEME)
 
     def setup_ui(self):
         """Create the main UI layout"""
@@ -355,6 +359,7 @@ class MainWindow(QMainWindow):
         try:
             if self.editor_window is None or not self.editor_window.isVisible():
                 self.editor_window = ProfileEditorWindow()
+                self.editor_window.destroyed.connect(lambda: setattr(self, "editor_window", None))
                 self.editor_window.show()
             else:
                 self.editor_window.activateWindow()
@@ -362,6 +367,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             LOGGER.error(f"Failed to open profile editor: {e}")
             QMessageBox.critical(self, "Editor Error", str(e))
+
 
     def on_profile_saved(self, profile_name):
         """Called when profile is saved in Profile Editor.
@@ -387,19 +393,26 @@ class MainWindow(QMainWindow):
             )
 
     def on_settings_changed(self):
-        """Called when settings are changed (e.g., theme switch).
-        Reloads the theme without restarting.
-        """
         LOGGER.info("Settings changed - reloading theme...")
+
+        from PyQt6.QtWidgets import QApplication
+
+        app = QApplication.instance()
+
+        # Pause Profile Editor updates
+        if self.editor_window and self.editor_window.isVisible():
+            self.editor_window._ignore_theme_updates = True
+
+        # Apply the theme globally
         self.apply_current_theme()
 
-        # Also update child windows if they're open
-        if self.settings_window and self.settings_window.isVisible():
-            self.settings_window.setStyleSheet(self.styleSheet())
+        # Force Qt to re-polish the entire application
+        app.style().unpolish(app)
+        app.style().polish(app)
+
+        # Resume Profile Editor updates
         if self.editor_window and self.editor_window.isVisible():
-            self.editor_window.setStyleSheet(self.styleSheet())
-        if self.import_window and self.import_window.isVisible():
-            self.import_window.setStyleSheet(self.styleSheet())
+            QTimer.singleShot(0, lambda: setattr(self.editor_window, "_ignore_theme_updates", False))
 
     def closeEvent(self, event):
         if self.settings_window and self.settings_window.isVisible():

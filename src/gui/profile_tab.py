@@ -130,9 +130,6 @@ class ProfileTab(QWidget):
         return False
 
     def load(self):
-        # Force reload config to get latest last_opened_profile
-        IniConfigLoader().load()
-
         profiles: list[str] = IniConfigLoader().general.profiles
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
 
