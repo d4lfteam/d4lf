@@ -6,6 +6,7 @@ from src.config import BASE_DIR
 CHECKMARK_DARK = str(BASE_DIR / "assets" / "checkmark_dark.svg").replace("\\", "/")
 CHECKMARK_LIGHT = str(BASE_DIR / "assets" / "checkmark_light.svg").replace("\\", "/")
 
+
 DARK_THEME = f"""
 QWidget {{
     background-color: #121212;
@@ -132,7 +133,33 @@ QToolTip {{
     padding: 3px;
     border-radius: 5px;
 }}
+
+/* Affix editor / GA helper styling */
+QLabel[greaterCountLabel="true"] {{
+    color: gray;
+    font-style: italic;
+}}
+
+QSpinBox[autoSyncSpin="true"] {{
+    background-color: #3c3c3c;
+    color: #888888;
+}}
+
+QLabel[affixHeaderLabel="true"] {{
+    color: #e0e0e0;
+}}
+
+QCheckBox[greaterCheckbox="true"] {{
+    background-color: transparent;
+}}
+
+/* Hotkey button styling */
+QPushButton[hotkeyButton="true"] {{
+    text-align: left;
+    padding-left: 5px;
+}}
 """
+
 
 LIGHT_THEME = f"""
 QWidget {{
@@ -259,5 +286,30 @@ QToolTip {{
     border: 1px solid #c3c3c3;
     padding: 3px;
     border-radius: 5px;
+}}
+
+/* Affix editor / GA helper styling */
+QLabel[greaterCountLabel="true"] {{
+    color: gray;
+    font-style: italic;
+}}
+
+QSpinBox[autoSyncSpin="true"] {{
+    background-color: #d3d3d3;
+    color: #555555;
+}}
+
+QLabel[affixHeaderLabel="true"] {{
+    color: #1f1f1f;
+}}
+
+QCheckBox[greaterCheckbox="true"] {{
+    background-color: transparent;
+}}
+
+/* Hotkey button styling */
+QPushButton[hotkeyButton="true"] {{
+    text-align: left;
+    padding-left: 5px;
 }}
 """

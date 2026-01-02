@@ -1,12 +1,11 @@
 import logging
 
-from PyQt6.QtCore import QPoint, QSettings, QSize
+from PyQt6.QtCore import QPoint, QSettings, QSize, QTimer
 from PyQt6.QtWidgets import QMainWindow
 
 from src import __version__
 from src.config.loader import IniConfigLoader
 from src.gui.config_tab import ConfigTab
-from src.gui.themes import DARK_THEME, LIGHT_THEME
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,30 +26,19 @@ class ConfigWindow(QMainWindow):
         if self.settings.value("maximized", "false") == "true":
             self.showMaximized()
 
-        # Apply theme
-        self._apply_theme()
-
-        # Create config tab and set as central widget
+        # Create initial config tab
         self.config_tab = ConfigTab(theme_changed_callback=self._on_theme_changed)
         self.setCentralWidget(self.config_tab)
 
-    def _apply_theme(self):
-        """Apply theme from settings"""
-        config = IniConfigLoader()
-        theme = config.general.theme.value
-        if theme == "dark":
-            self.setStyleSheet(DARK_THEME)
-        else:
-            self.setStyleSheet(LIGHT_THEME)
-
     def _on_theme_changed(self):
-        """Called when theme changes in config tab"""
-        # Reload theme for this window
-        self._apply_theme()
-
-        # Notify main window if callback provided
         if self.theme_changed_callback:
             self.theme_changed_callback()
+
+    def _rebuild_tab(self):
+        old_tab = self.config_tab
+        self.config_tab = ConfigTab(theme_changed_callback=self._on_theme_changed)
+        self.setCentralWidget(self.config_tab)
+        old_tab.deleteLater()
 
     def closeEvent(self, event):
         """Save window size/position"""

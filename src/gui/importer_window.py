@@ -45,9 +45,6 @@ class ImporterWindow(QMainWindow):
         if self.settings.value("maximized", "false") == "true":
             self.showMaximized()
 
-        # Apply theme
-        self._apply_theme()
-
         # Create main widget
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
@@ -189,15 +186,6 @@ class ImporterWindow(QMainWindow):
         checkbox.setToolTip(desc)
         checkbox.stateChanged.connect(lambda: save_setting_change(settings_value, checkbox.isChecked()))
         return checkbox
-
-    def _apply_theme(self):
-        """Apply theme from settings"""
-        config = IniConfigLoader()
-        theme = config.general.theme.value
-        if theme == "dark":
-            self.setStyleSheet(DARK_THEME)
-        else:
-            self.setStyleSheet(LIGHT_THEME)
 
     def _handle_text_changed(self, text):
         """Enable/disable generate button based on input"""
