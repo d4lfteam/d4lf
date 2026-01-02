@@ -196,31 +196,19 @@ class AffixGroupEditor(QWidget):
 
     def add_affix_pool(self):
         default_affix = AffixFilterModel(
-            name=list(Dataloader().affix_dict.keys())[0],
-            value=None,
-            comparison=ComparisonType.larger,
+            name=list(Dataloader().affix_dict.keys())[0], value=None, comparison=ComparisonType.larger
         )
 
-        new_pool = AffixFilterCountModel(
-            count=[default_affix],
-            minCount=1,
-            maxCount=3,
-        )
+        new_pool = AffixFilterCountModel(count=[default_affix], minCount=1, maxCount=3)
         self.config.affixPool.append(new_pool)
         self.add_affix_pool_item(new_pool)
 
     def add_inherent_pool(self):
         default_affix = AffixFilterModel(
-            name=list(Dataloader().affix_dict.keys())[0],
-            value=None,
-            comparison=ComparisonType.larger,
+            name=list(Dataloader().affix_dict.keys())[0], value=None, comparison=ComparisonType.larger
         )
 
-        new_pool = AffixFilterCountModel(
-            count=[default_affix],
-            minCount=1,
-            maxCount=3,
-        )
+        new_pool = AffixFilterCountModel(count=[default_affix], minCount=1, maxCount=3)
         self.config.affixPool.append(new_pool)
         self.add_affix_pool_item(new_pool, True)
 
@@ -426,9 +414,7 @@ class AffixPoolWidget(QWidget):
 
     def add_affix(self):
         new_affix = AffixFilterModel(
-            name=list(Dataloader().affix_dict.keys())[0],
-            value=None,
-            comparison=ComparisonType.larger,
+            name=list(Dataloader().affix_dict.keys())[0], value=None, comparison=ComparisonType.larger
         )
         self.pool.count.append(new_affix)
         self.add_affix_item(new_affix)

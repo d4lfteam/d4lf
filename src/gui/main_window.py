@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer, pyqtSignal
+from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QHBoxLayout,
@@ -91,8 +92,6 @@ class MainWindow(QMainWindow):
         self.setup_logging()
 
     def apply_current_theme(self):
-        from PyQt6.QtWidgets import QApplication
-
         try:
             config = IniConfigLoader()
             theme_enum = config.general.theme
@@ -358,7 +357,6 @@ class MainWindow(QMainWindow):
             LOGGER.error(f"Failed to open profile editor: {e}")
             QMessageBox.critical(self, "Editor Error", str(e))
 
-
     def on_profile_saved(self, profile_name):
         """Called when profile is saved in Profile Editor.
         Triggers hot reload of filters without restarting.
@@ -384,8 +382,6 @@ class MainWindow(QMainWindow):
 
     def on_settings_changed(self):
         LOGGER.info("Settings changed - reloading theme...")
-
-        from PyQt6.QtWidgets import QApplication
 
         app = QApplication.instance()
 

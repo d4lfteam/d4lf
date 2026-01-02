@@ -5,7 +5,7 @@ import typing
 from pathlib import Path
 
 if sys.platform != "darwin":
-    import keyboard
+    pass
 
 from pydantic import BaseModel, ValidationError
 from PyQt6.QtCore import Qt, QTimer
@@ -62,6 +62,7 @@ def _validate_and_save_changes(model, header, key, value, method_to_reset_value:
         msg.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg.exec()
         return False
+
 
 class ConfigTab(QWidget):
     def __init__(self, theme_changed_callback=None):
@@ -268,6 +269,7 @@ class IgnoreScrollWheelComboBox(QComboBox):
         self.blockSignals(True)
         self.setCurrentText(str(value))
         self.blockSignals(False)
+
 
 class QChestTabWidget(QWidget):
     def __init__(self, model, section_header, config_key, chest_tab_config: list[int], max_chest_tabs):
@@ -541,10 +543,7 @@ class HotkeyListenerDialog(QDialog):
 
         self.layout = QVBoxLayout(self)
 
-        self.label = QLabel(
-            "Press the key or combination of keys you\nwant to use as a hotkey, then click save.",
-            self
-        )
+        self.label = QLabel("Press the key or combination of keys you\nwant to use as a hotkey, then click save.", self)
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.hotkey_label = QLabel(self.hotkey, self)
@@ -575,7 +574,6 @@ class HotkeyListenerDialog(QDialog):
         if event.modifiers() & Qt.KeyboardModifier.AltModifier:
             parts.append("alt")
 
-        key = event.key()
         key_text = event.text().lower()
 
         # Ignore modifier-only presses

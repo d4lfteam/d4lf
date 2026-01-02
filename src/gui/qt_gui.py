@@ -193,6 +193,7 @@ class Gui(QMainWindow):
         elif self.tab_widget.tabText(index) == D4TRADE_TABNAME:
             LOGGER.root.removeHandler(self.maxroll_log_handler)
         elif self.tab_widget.tabText(index) == config_tab.CONFIG_TABNAME:
+            self.config_tab_widget.show_tab()
         elif self.tab_widget.tabText(index) == profile_tab.PROFILE_TABNAME:
             self.profile_tab_widget.show_tab()
 

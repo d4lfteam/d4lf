@@ -1,10 +1,9 @@
 import logging
 
-from PyQt6.QtCore import QPoint, QSettings, QSize, QTimer
+from PyQt6.QtCore import QPoint, QSettings, QSize
 from PyQt6.QtWidgets import QMainWindow
 
 from src import __version__
-from src.config.loader import IniConfigLoader
 from src.gui.config_tab import ConfigTab
 
 LOGGER = logging.getLogger(__name__)
