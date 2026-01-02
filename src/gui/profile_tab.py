@@ -1,6 +1,5 @@
 import copy
 import logging
-import os
 import pathlib
 
 import yaml
@@ -155,7 +154,7 @@ class ProfileTab(QWidget):
         if not self.file_path:
             LOGGER.debug("No profile loaded, cannot refresh.")
             return False
-        filename = os.path.basename(self.file_path)  # Get the filename from the full path
+        filename = pathlib.Path(self.file_path).name  # Get the filename from the full path
         filename_without_extension = filename.rsplit(".", 1)[0]  # Remove the extension
         profile_str = filename_without_extension.replace("_", " ")  # Replace underscores with spaces
         self.root = None
@@ -181,7 +180,7 @@ class ProfileTab(QWidget):
 
     def update_filename_label(self):
         if self.file_path:
-            filename = os.path.basename(self.file_path)  # Get the filename from the full path
+            filename = pathlib.Path(self.file_path).name  # Get the filename from the full path
             filename_without_extension = filename.rsplit(".", 1)[0]  # Remove the extension
             display_name = filename_without_extension.replace("_", " ")  # Replace underscores with spaces
             self.filenameLabel.setText(display_name)

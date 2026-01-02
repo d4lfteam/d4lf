@@ -19,7 +19,7 @@ from src.gui.dialog import IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox
 class D4LFItem(QGroupBox):
     def __init__(self, item: DynamicItemFilterModel, affixesNames, allItemTypes):
         super().__init__()
-        self.item_name = list(item.root.keys())[0]
+        self.item_name = next(iter(item.root.keys()))
         self.item = item
         self.item_types = self.item.root[self.item_name].itemType
         self.affix_pool = self.item.root[self.item_name].affixPool

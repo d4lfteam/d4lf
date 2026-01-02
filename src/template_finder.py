@@ -184,7 +184,8 @@ def search(
     do_multi_process: bool = True,
     take_debug_screenshot: bool = False,
 ) -> SearchResult:
-    """Search for templates in an image
+    """Search for templates in an image.
+
     :param ref: Either key of a already loaded template, list of such keys, or a image which is used as template
     :param inp_img: Image in which the template will be searched
     :param threshold: Threshold which determines if a template is found or not
@@ -279,13 +280,13 @@ def search(
         result.success = True
         result.matches = sorted(matches, key=lambda obj: obj.score, reverse=True)
         if not suppress_debug and len(matches) > 1 and mode == "all":
-            LOGGER.debug(
-                "Found the following matches:\n"
-                + ", ".join([
-                    f"  {template_match.name} ({template_match.score * 100:.1f}% confidence)"
+            msg = f"Found the following matches:\n{
+                ', '.join([
+                    f'  {template_match.name} ({template_match.score * 100:.1f}% confidence)'
                     for template_match in matches
                 ])
-            )
+            }"
+            LOGGER.debug(msg)
     elif not suppress_debug:
         LOGGER.debug(f"Could not find desired templates: {ref}")
 

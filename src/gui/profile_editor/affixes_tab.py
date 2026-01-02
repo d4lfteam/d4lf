@@ -130,12 +130,12 @@ class AffixGroupEditor(QWidget):
         self.setLayout(main_layout)
 
     def init_affix_pool(self):
-        """Initialize affix pool content on first expansion"""
+        """Initialize affix pool content on first expansion."""
         for pool in self.config.affixPool:
             self.add_affix_pool_item(pool)
 
     def init_inherent_pool(self):
-        """Initialize inherent pool content on first expansion"""
+        """Initialize inherent pool content on first expansion."""
         for pool in self.config.inherentPool:
             self.add_affix_pool_item(pool, True)
 
@@ -158,7 +158,7 @@ class AffixGroupEditor(QWidget):
     def add_affix_pool(self):
         # Create a default valid affix
         default_affix = AffixFilterModel(
-            name=list(Dataloader().affix_dict.keys())[0],  # First valid affix name
+            name=next(iter(Dataloader().affix_dict.keys())),  # First valid affix name
             value=None,
             comparison=ComparisonType.larger,
         )
@@ -175,7 +175,7 @@ class AffixGroupEditor(QWidget):
     def add_inherent_pool(self):
         # Create a default valid affix
         default_affix = AffixFilterModel(
-            name=list(Dataloader().affix_dict.keys())[0],  # First valid affix name
+            name=next(iter(Dataloader().affix_dict.keys())),  # First valid affix name
             value=None,
             comparison=ComparisonType.larger,
         )
@@ -308,7 +308,7 @@ class AffixPoolWidget(QWidget):
 
     def add_affix(self):
         new_affix = AffixFilterModel(
-            name=list(Dataloader().affix_dict.keys())[0], value=None, comparison=ComparisonType.larger
+            name=next(iter(Dataloader().affix_dict.keys())), value=None, comparison=ComparisonType.larger
         )
         self.pool.count.append(new_affix)
         self.add_affix_item(new_affix)
@@ -409,7 +409,7 @@ class AffixesTab(QWidget):
             self.loaded = True
 
     def setup_ui(self):
-        """Populate the grid layout with existing groups"""
+        """Populate the grid layout with existing groups."""
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 20, 0, 20)
         self.tab_widget = QTabWidget(self)
