@@ -105,7 +105,6 @@ class ImporterWindow(QMainWindow):
         self.require_all_gas_checkbox.setEnabled(self.import_gas_checkbox.isChecked())
         self.import_gas_checkbox.stateChanged.connect(lambda: disable_require_if_import_disabled())
 
-        checkbox_hbox = QHBoxLayout()
         self.import_uniques_checkbox = QCheckBox("Import Uniques")
         self.import_uniques_checkbox.setChecked(True)
         self.import_uniques_checkbox.setToolTip(
@@ -124,6 +123,11 @@ class ImporterWindow(QMainWindow):
             "After import, should the imported file be automatically added to your active profiles?"
         )
 
+        checkbox_hbox = QHBoxLayout()
+        checkbox_hbox.addWidget(self.import_uniques_checkbox)
+        checkbox_hbox.addWidget(self.import_aspect_upgrades_checkbox)
+        checkbox_hbox.addWidget(self.add_to_profiles_checkbox)
+        layout.addLayout(checkbox_hbox)
         # Second row of checkboxes, probably need a better solution for this one day
         checkbox_hbox = QHBoxLayout()
         checkbox_hbox.addWidget(self.import_gas_checkbox)
