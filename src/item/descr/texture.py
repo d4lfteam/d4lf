@@ -112,7 +112,7 @@ def find_aspect_bullet(img_item_descr: np.ndarray, sep_short_match: TemplateMatc
         mode="all",
     )
     if aspect_bullets:
-        return [match for match in aspect_bullets if match.score == max(match.score for match in aspect_bullets)][0]
+        return next(match for match in aspect_bullets if match.score == max(match.score for match in aspect_bullets))
     return None
 
 

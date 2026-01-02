@@ -66,7 +66,7 @@ class ProfileEditor(QTabWidget):
         return response == QMessageBox.StandardButton.Save
 
     def save_all(self):
-        """Save all tabs' configurations"""
+        """Save all tabs' configurations."""
         model = ProfileModel.model_validate(self.profile_model)
         if model != self.profile_model:
             if self.show_warning():

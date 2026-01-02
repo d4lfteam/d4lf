@@ -56,12 +56,12 @@ class Header(QWidget):
         self.first_expansion = True
 
     def mousePressEvent(self, *args):
-        """Handle mouse events, call the function to toggle groups"""
+        """Handle mouse events, call the function to toggle groups."""
         # Toggle between expand and collapse based on the visibility of the content widget
         self.expand() if not self.content.isVisible() else self.collapse()
 
     def expand(self):
-        """Expand the collapsible group"""
+        """Expand the collapsible group."""
         if self.first_expansion:
             self.firstExpansion.emit()
             self.first_expansion = False
@@ -69,7 +69,7 @@ class Header(QWidget):
         self.icon.setText(self.collapse_ico)  # Set text instead of pixmap
 
     def collapse(self):
-        """Collapse the collapsible group"""
+        """Collapse the collapsible group."""
         self.content.setVisible(False)
         self.icon.setText(self.expand_ico)
 
@@ -117,12 +117,12 @@ class Container(QWidget):
 
     @property
     def contentWidget(self):
-        """Getter for the content widget
+        """Getter for the content widget.
 
         Returns: Content widget
         """
         return self._content_widget  # Return the _content_widget when the contentWidget property is accessed
 
     def first_expansion(self):
-        """Handle first expansion event"""
+        """Handle first expansion event."""
         self.firstExpansion.emit()  # Notify about first expansion

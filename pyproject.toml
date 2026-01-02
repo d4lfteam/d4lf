@@ -92,15 +92,10 @@ ignore = [
     "D105",
     "D106",
     "D107",
-    "D205",  # fix more in the future, this is doc
-    "D210",  # fix more in the future, this is doc
-    "D415",  # fix more in the future, this is doc
     "DOC201",  # fix more in the future, this is doc
     "DOC501",  # fix more in the future, this is docs
     "DOC502",  # fix more in the future, this is docs
     "E501",
-    "EM101",  # fix more in the future
-    "EM102",  # fix more in the future
     "ERA001",  # fix more in the future
     "FBT001",
     "FBT002",
@@ -109,9 +104,7 @@ ignore = [
     "FIX004",  # fix more in the future
     "FURB101",  # fix more in the future
     "FURB118",  # fix more in the future
-    "FURB148",  # fix more in the future
     "FURB171",  # fix more in the future
-    "G003",  # fix more in the future
     "G004",
     "LOG014",
     "N801",  # fix more in the future
@@ -124,7 +117,6 @@ ignore = [
     "N818",  # fix more in the future
     "NPY002",  # fix more in the future
     "PLC0206",  # fix more in the future
-    "PLC1901",  # fix more in the future
     "PLR0904",  # fix more in the future
     "PLR0911",  # fix more in the future
     "PLR0912",  # fix more in the future
@@ -135,7 +127,6 @@ ignore = [
     "PLR0917",
     "PLR1702",  # fix more in the future
     "PLR1704",  # fix more in the future
-    "PLR1714",  # fix more in the future
     "PLR2004",  # fix more in the future
     "PLR6104",  # fix more in the future
     "PLR6201",  # fix more in the future
@@ -143,15 +134,11 @@ ignore = [
     "PLW0108",  # fix more in the future
     "PLW0602",  # fix more in the future
     "PLW0603",  # fix more in the future
-    "PLW1514",  # fix more in the future
     "PLW1641",  # fix more in the future
-    "PTH119",  # fix more in the future
     "PTH122",  # fix more in the future
     "RUF001",  # fix more in the future
     "RUF005",  # fix more in the future
     "RUF012",  # fix more in the future
-    "RUF013",  # fix more in the future
-    "RUF015",  # fix more in the future
     "RUF043",  # fix more in the future
     "RUF045",  # fix more in the future
     "RUF059",  # fix more in the future
@@ -171,7 +158,6 @@ ignore = [
     "TRY002",  # fix more in the future
     "TRY003",  # fix more in the future
     "TRY004",  # fix more in the future
-    "TRY300",  # fix more in the future
     "TRY400"  # fix more in the future
 ]
 select = ["ALL"]

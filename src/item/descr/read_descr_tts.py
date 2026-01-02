@@ -165,13 +165,14 @@ def _raise_index_error(affixes, affix_bullets, item, img_item_descr: np.ndarray)
     LOGGER.error("Placed screenshot of item in screenshot folder. Screenshot will start with 'not_enough_bullets'")
     screenshot("not_enough_bullets", img=img_item_descr)
 
-    raise IndexError(
+    msg = (
         "Found more affixes than we found bullets to represent those affixes. "
         "This could be a temporary issue finding bullet positions on the screen, "
         "but if it happens consistently please open a bug report with a full screen "
         "screenshot with the item hovered on and vision mode disabled. Additionally, "
         "include the ~10 log lines above this message and the screenshot in the screenshot folder."
     )
+    raise IndexError(msg)
 
 
 def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
@@ -271,7 +272,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     item.name = correct_name(tts_item[0])
     if item.name in Dataloader().bad_tts_uniques:
         item.name = Dataloader().bad_tts_uniques[item.name]
-    for _i, line in enumerate(tts_item):
+    for line in tts_item:
         if "item power" in line.lower():
             item.power = int(find_number(line))
             break
@@ -324,7 +325,8 @@ def _get_affix_from_text(text: str) -> Affix:
     for match in _AFFIX_RE.finditer(text):
         matched_groups = {name: value for name, value in match.groupdict().items() if value is not None}
     if not matched_groups and _has_numbers(text):
-        raise Exception(f"Could not match affix text: {text}")
+        msg = f"Could not match affix text: {text}"
+        raise Exception(msg)
     for x in ["minvalue1", "minvalue2"]:
         if matched_groups.get(x) is not None:
             result.min_value = float(matched_groups[x])
@@ -369,7 +371,8 @@ def _get_aspect_from_text(text: str, name: str) -> Aspect:
     if match:  # No match means the aspect is text only, there are no values to filter on
         matched_groups = {name: value for name, value in match.groupdict().items() if value is not None}
         if not matched_groups:
-            raise Exception(f"Could not match aspect text: {text}")
+            msg = f"Could not match aspect text: {text}"
+            raise Exception(msg)
 
         if matched_groups.get("minvalue") is not None:
             result.min_value = float(matched_groups["minvalue"])
@@ -443,10 +446,11 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
     affix_bullets = find_affix_bullets(img_item_descr, sep_short_match)
 
     if item.rarity == ItemRarity.Unique and item.name not in Dataloader().aspect_unique_dict:
-        raise IndexError(
+        msg = (
             f"Unrecognized unique {item.name}. This most likely means the name of it reported "
             f"from Diablo 4 is wrong. Please report a bug with this message."
         )
+        raise IndexError(msg)
 
     item.codex_upgrade = _is_codex_upgrade(tts_section)
     item.cosmetic_upgrade = _is_cosmetic_upgrade(tts_section)
@@ -486,10 +490,8 @@ def read_descr() -> Item | None:
         return item
 
     if item.rarity == ItemRarity.Unique and item.name not in Dataloader().aspect_unique_dict:
-        raise IndexError(
-            f"Unrecognized unique {item.name}. This most likely means the name of it reported "
-            f"from Diablo 4 is wrong. Please report a bug with this message."
-        )
+        msg = f"Unrecognized unique {item.name}. This most likely means the name of it reported from Diablo 4 is wrong. Please report a bug with this message."
+        raise IndexError(msg)
 
     item.codex_upgrade = _is_codex_upgrade(tts_section)
     item.cosmetic_upgrade = _is_cosmetic_upgrade(tts_section)

@@ -122,10 +122,8 @@ def import_maxroll(config: ImportConfig):
                 msg = f"Unable to find legendary aspect in maxroll data for {item_type}, can not automatically add to AspectUpgrades."
                 # MaxRoll reports all rares as legendaries so this is an attempt to reduce false warnings for rares
                 if len(resolved_item["explicits"]) == 3:
-                    LOGGER.debug(
-                        msg + " We suspect this item is actually a rare and maxroll is falsely reporting it as a "
-                        "legendary, please double check."
-                    )
+                    msg += " We suspect this item is actually a rare and maxroll is falsely reporting it as a legendary, please double check."
+                    LOGGER.debug(msg)
                 else:
                     LOGGER.warning(msg)
 

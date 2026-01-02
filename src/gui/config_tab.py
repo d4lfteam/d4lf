@@ -39,11 +39,10 @@ from src.gui.open_user_config_button import OpenUserConfigButton
 CONFIG_TABNAME = "config"
 
 
-def _validate_and_save_changes(model, header, key, value, method_to_reset_value: typing.Callable = None):
+def _validate_and_save_changes(model, header, key, value, method_to_reset_value: typing.Callable | None = None):
     try:
         setattr(model, key, value)
         IniConfigLoader().save_value(header, key, value)
-        return True
     except ValidationError as e:
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Icon.Critical)
@@ -57,6 +56,7 @@ def _validate_and_save_changes(model, header, key, value, method_to_reset_value:
         msg.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg.exec()
         return False
+    return True
 
 
 class ConfigTab(QWidget):
@@ -149,7 +149,7 @@ class ConfigTab(QWidget):
             )
         elif config_key == "profiles":
             parameter_value_widget = QProfilesWidget(model, section_config_header, config_key, config_value)
-        elif config_key == "move_to_inv_item_type" or config_key == "move_to_stash_item_type":
+        elif config_key in {"move_to_inv_item_type", "move_to_stash_item_type"}:
             parameter_value_widget = QMoveItemsWidget(model, section_config_header, config_key, config_value)
         elif is_hotkey:
             parameter_value_widget = QHotkeyWidget(model, section_config_header, config_key, config_value)

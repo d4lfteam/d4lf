@@ -31,6 +31,7 @@ class Menu:
 
     def open(self) -> bool:
         """Opens the menu by clicking the open button.
+
         :return: True if the menu is successfully opened, False otherwise.
         """
         # Open parent menu if there is one to be opened
@@ -46,6 +47,7 @@ class Menu:
 
     def _check_match(self, res: SearchResult) -> bool:
         """Checks if the given TemplateMatch is a match for the menu.
+
         :param res: The TemplateMatch to check.
         """
         if self.is_open_search_args.mode == "best":
@@ -54,6 +56,7 @@ class Menu:
 
     def is_open(self, img: np.ndarray = None) -> bool:
         """Checks if the menu is open.
+
         :return: True if the menu is open, False otherwise.
         """
         res = self.is_open_search_args.detect(img)
@@ -63,6 +66,7 @@ class Menu:
 
     def wait_until_open(self, timeout: float = 10) -> bool:
         """Waits until the menu is open.
+
         :param timeout: The number of seconds to wait before timing out.
         :return: True if the menu is open, False otherwise.
         """

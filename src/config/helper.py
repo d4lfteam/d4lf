@@ -9,7 +9,8 @@ if sys.platform != "darwin":
 
 def check_greater_than_zero(v: int) -> int:
     if v < 0:
-        raise ValueError("must be greater than zero")
+        msg = "must be greater than zero"
+        raise ValueError(msg)
     return v
 
 

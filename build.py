@@ -28,7 +28,7 @@ def copy_additional_resources(release_dir: Path):
 
 def create_batch_for_gui(release_dir: Path, exe_name: str):
     batch_file_path = release_dir / "gui.bat"
-    with Path(batch_file_path).open("w") as f:
+    with Path(batch_file_path).open("w", encoding="utf-8") as f:
         f.write("@echo off\n")
         f.write('cd /d "%~dp0"\n')
         f.write(f'start "" {exe_name} --gui')
@@ -36,7 +36,8 @@ def create_batch_for_gui(release_dir: Path, exe_name: str):
 
 def create_batch_for_autoupdater(release_dir: Path, exe_name: str):
     batch_file_path = release_dir / "autoupdater.bat"
-    Path(batch_file_path).write_text(f"""
+    Path(batch_file_path).write_text(
+        f"""
 @echo off
 cd /d "%~dp0"
 echo Starting D4LF auto update preprocessing
@@ -53,7 +54,9 @@ if %errorlevel% == 1 (
     robocopy "./temp_update/d4lf" "." /E /XF "autoupdater.bat"
     echo Running postprocessing to verify update and clean up files
     start /WAIT {exe_name} --autoupdatepost
-)""")
+)""",
+        encoding="utf-8",
+    )
 
 
 if __name__ == "__main__":
