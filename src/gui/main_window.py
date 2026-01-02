@@ -8,9 +8,9 @@ from pathlib import Path
 import psutil
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer, pyqtSignal
-from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -109,10 +109,7 @@ class MainWindow(QMainWindow):
             # FIX: use .value to get the actual string
             theme_mode = theme_enum.value.lower()
 
-            if theme_mode == "light":
-                stylesheet = LIGHT_THEME
-            else:
-                stylesheet = DARK_THEME
+            stylesheet = LIGHT_THEME if theme_mode == "light" else DARK_THEME
 
             QApplication.instance().setStyleSheet(stylesheet)
 
