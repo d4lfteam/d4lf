@@ -517,43 +517,44 @@ class Filter:
                 except ValidationError as e:
                     errors = True
 
-                    # Build error message as single string
-                    error_lines = []
-                    error_lines.extend(("=" * 80, f"❌ PROFILE VALIDATION FAILED: {profile_path}", "=" * 80, ""))
+                    if "minGreaterAffixCount" in str(e):
+                        LOGGER.error("[CLEAN]" + "=" * 80)
+                        LOGGER.error("[CLEAN]" + f"PROFILE VALIDATION FAILED: {profile_path}")
+                        LOGGER.error("[CLEAN]" + "=" * 80)
+                        LOGGER.error("[CLEAN]")
+                        LOGGER.error(
+                            "[CLEAN]" + "You are using an old, outdated field that must be removed from your profile."
+                        )
+                        LOGGER.error("[CLEAN]")
+                        LOGGER.error("[CLEAN]" + "WRONG (old way - pool level):")
+                        LOGGER.error("[CLEAN]" + "- Ring:")
+                        LOGGER.error("[CLEAN]" + "    itemType: [ring]")
+                        LOGGER.error("[CLEAN]" + "    minPower: 100")
+                        LOGGER.error("[CLEAN]" + "    affixPool:")
+                        LOGGER.error("[CLEAN]" + "    - count:")
+                        LOGGER.error("[CLEAN]" + "      - {name: strength}")
+                        LOGGER.error("[CLEAN]" + "      minCount: 2")
+                        LOGGER.error("[CLEAN]" + "      minGreaterAffixCount: 1  ← DELETE THIS LINE")
+                        LOGGER.error("[CLEAN]")
+                        LOGGER.error("[CLEAN]" + "CORRECT (new way - item level):")
+                        LOGGER.error("[CLEAN]" + "- Ring:")
+                        LOGGER.error("[CLEAN]" + "    itemType: [ring]")
+                        LOGGER.error("[CLEAN]" + "    minPower: 100")
+                        LOGGER.error("[CLEAN]" + "    minGreaterAffixCount: 1  ← PUT IT HERE INSTEAD")
+                        LOGGER.error("[CLEAN]" + "    affixPool:")
+                        LOGGER.error("[CLEAN]" + "    - count:")
+                        LOGGER.error("[CLEAN]" + "      - {name: strength}")
+                        LOGGER.error("[CLEAN]" + "      minCount: 2")
+                        LOGGER.error("[CLEAN]" + "      # NO minGreaterAffixCount here anymore!")
+                        LOGGER.error("[CLEAN]")
+                        LOGGER.error("[CLEAN]" + "=" * 80)
+                        LOGGER.error(
+                            "[CLEAN]" + f"ACTION REQUIRED: Please make the above adjustments in: {profile_path}"
+                        )
+                        LOGGER.error("[CLEAN]" + "=" * 80)
+                    else:
+                        LOGGER.error(f"Validation error in {profile_path}: {e}")
 
-                    # Show what's wrong
-                    for error in e.errors():
-                        field_path = " → ".join(str(loc) for loc in error["loc"])
-                        error_msg = error["msg"]
-                        error_type = error["type"]
-
-                        error_lines.extend((f"Field: {field_path}", f"Error: {error_msg}"))
-
-                        # Provide specific fix guidance
-                        if "extra" in error_type.lower() or "forbidden" in error_msg.lower():
-                            error_lines.append(
-                                "❗ FIX: This field is no longer valid and must be removed from your YAML file"
-                            )
-                            if "minGreaterAffixCount" in field_path:
-                                error_lines.extend((
-                                    "   → 'minGreaterAffixCount' was moved from affix pool level to item level",
-                                    "   → Remove it from individual affix pools in your profile",
-                                ))
-                        elif "missing" in error_type.lower():
-                            error_lines.append(f"❗ FIX: Add the required field '{field_path}' to your profile")
-                        else:
-                            error_lines.append(f"❗ FIX: Check the value and format for '{field_path}'")
-
-                        error_lines.append("-" * 80)
-
-                    error_lines.extend((
-                        f"🛠️  ACTION REQUIRED: Fix the errors above in: {profile_path}",
-                        "📖 Documentation: https://github.com/aeon0/d4lf#profile-configuration",
-                        "=" * 80,
-                    ))
-
-                    # Log as single message
-                    LOGGER.error("\n\n".join(error_lines))
                     continue
 
                 if data.Affixes:
