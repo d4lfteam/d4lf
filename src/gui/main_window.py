@@ -3,7 +3,6 @@ Shows log output and provides access to Import, Settings, and Profile Editor.
 """
 
 import logging
-import os
 from pathlib import Path
 
 import psutil
@@ -420,6 +419,7 @@ class MainWindow(QMainWindow):
         shutdown_flag.touch()
 
         event.accept()
+
 
 # Example usage for testing
 if __name__ == "__main__":

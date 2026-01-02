@@ -39,9 +39,6 @@ class ScriptHandler:
             self.run_vision_mode()
 
     def _graceful_exit(self):
-        from src.config.loader import IniConfigLoader
-        from src.utils.process_handler import safe_exit
-
         shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
         shutdown_flag.touch()
 
@@ -49,10 +46,7 @@ class ScriptHandler:
 
     def setup_key_binds(self):
         keyboard.add_hotkey(IniConfigLoader().advanced_options.run_vision_mode, lambda: self.run_vision_mode())
-        keyboard.add_hotkey(
-            IniConfigLoader().advanced_options.exit_key,
-            lambda: self._graceful_exit()
-        )
+        keyboard.add_hotkey(IniConfigLoader().advanced_options.exit_key, lambda: self._graceful_exit())
         if not IniConfigLoader().advanced_options.vision_mode_only:
             keyboard.add_hotkey(IniConfigLoader().advanced_options.run_filter, lambda: self.filter_items())
             keyboard.add_hotkey(
