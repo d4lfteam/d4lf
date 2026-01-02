@@ -58,6 +58,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.setObjectName("MainWindow")
 
         # Settings for persistent window geometry
         self.settings = QSettings("d4lf", "MainWindow")
@@ -393,52 +394,23 @@ class MainWindow(QMainWindow):
             self.import_window.setStyleSheet(self.styleSheet())
 
     def closeEvent(self, event):
-        """Handle window close - shutdown ALL D4LF instances"""
-        # Close all child windows first
         if self.settings_window and self.settings_window.isVisible():
             self.settings_window.close()
+
         if self.editor_window and self.editor_window.isVisible():
             self.editor_window.close()
+
         if self.import_window and self.import_window.isVisible():
             self.import_window.close()
 
-        # Save window geometry
         self.settings.setValue("size", self.size())
         self.settings.setValue("pos", self.pos())
         self.settings.setValue("maximized", "true" if self.isMaximized() else "false")
 
-        # Create shutdown flag for current instance
         shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
         shutdown_flag.touch()
 
-        LOGGER.info("Main window closed - shutting down all D4LF instances")
-
-        # Find and terminate all D4LF processes
-        current_pid = os.getpid()
-        terminated_count = 0
-
-        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
-            try:
-                # Check if it's a Python process running main.py or d4lf
-                if (
-                    proc.info["cmdline"]
-                    and ("main.py" in str(proc.info["cmdline"]) or "d4lf" in str(proc.info["cmdline"]).lower())
-                    and proc.pid != current_pid
-                ):
-                    try:
-                        proc.kill()
-                        terminated_count += 1
-                        LOGGER.info(f"Killed D4LF process (PID: {proc.pid})")
-                    except (psutil.NoSuchProcess, psutil.AccessDenied, Exception) as e:
-                        LOGGER.debug(f"Could not kill process {proc.pid}: {e}")
-            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
-                LOGGER.debug(f"Error accessing process: {e}")
-
-        if terminated_count > 0:
-            LOGGER.info(f"Closed {terminated_count} additional D4LF instance(s)")
-
         event.accept()
-
 
 # Example usage for testing
 if __name__ == "__main__":

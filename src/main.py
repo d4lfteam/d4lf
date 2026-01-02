@@ -11,7 +11,7 @@ import psutil
 from beautifultable import BeautifulTable
 
 import __main__
-import src.item.filter as Filter
+from src.item.filter import Filter
 import src.logger
 from src import __version__, tts
 from src.autoupdater import notify_if_update, start_auto_update
@@ -36,6 +36,11 @@ if sys.platform == "win32":
 
 
 def main():
+    # Clear stale shutdown flag if it exists
+    shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
+    if shutdown_flag.exists():
+        shutdown_flag.unlink()
+
     # Create folders for logging stuff
     for dir_name in [LOG_DIR / "screenshots", IniConfigLoader().user_dir, IniConfigLoader().user_dir / "profiles"]:
         Path(dir_name).mkdir(exist_ok=True, parents=True)
@@ -173,51 +178,53 @@ if __name__ == "__main__":
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
         start_auto_update(postprocess=True)
     elif len(sys.argv) > 1 and sys.argv[1] == "--mainwindow":
-        # Suppress Qt warnings BEFORE any other imports
         os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
 
-        # Set DPI awareness for Qt subprocess only
         if sys.platform == "win32":
             try:
                 import ctypes
-
-                ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
+                ctypes.windll.shcore.SetProcessDpiAwareness(2)
             except Exception:
                 LOGGER.exception("Failed to set DPI awareness")
 
-        # Launch just the Qt main window (called as subprocess)
-        # NO logger setup - we'll tail the main process log file
         from PyQt6.QtWidgets import QApplication
+        from PyQt6.QtCore import QTimer
+        from src.config.loader import IniConfigLoader
 
         app = QApplication(sys.argv)
         main_window = MainWindow()
         main_window.show()
+
+        shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
+
+        def check_shutdown():
+            if shutdown_flag.exists():
+                main_window.close()
+
+        timer = QTimer()
+        timer.timeout.connect(check_shutdown)
+        timer.start(500)
+
         sys.exit(app.exec())
+
     else:
-        # Normal launch - setup logger and start overlay
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
 
-        # Hide console for end users, keep visible for developers
-        # Check for common IDE environment variables
         is_in_ide = any([
             os.environ.get("PYCHARM_HOSTED"),
             os.environ.get("IDEA_INITIAL_DIRECTORY"),
             os.environ.get("INTELLIJ_ENVIRONMENT_READER"),
             os.environ.get("TERM_PROGRAM") == "vscode",
-            sys.gettrace() is not None,  # Debugger attached
+            sys.gettrace() is not None,
         ])
 
         if sys.platform == "win32" and not is_in_ide:
             ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
-        # Create shutdown flag file path
-        shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
 
-        # Create shutdown flag file path
         shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
         if shutdown_flag.exists():
-            shutdown_flag.unlink()  # Remove old flag
+            shutdown_flag.unlink()
 
-        # Launch main window as separate process
         import subprocess
 
         try:
@@ -227,22 +234,20 @@ if __name__ == "__main__":
             LOGGER.warning(f"Could not launch main window: {e}")
             main_window_process = None
 
-        # Run overlay in main thread (as it always did)
         try:
-            # Check periodically if shutdown was requested
             import threading
 
             def check_shutdown():
                 while not shutdown_flag.exists():
                     time.sleep(0.5)
                 LOGGER.info("Shutdown requested via main window")
-
-                os._exit(0)  # Force exit entire process
+                os._exit(0)
 
             shutdown_thread = threading.Thread(target=check_shutdown, daemon=True)
             shutdown_thread.start()
 
             main()
+
         except Exception:
             traceback.print_exc()
             print("Press Enter to exit ...")
