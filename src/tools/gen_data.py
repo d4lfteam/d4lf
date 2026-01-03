@@ -369,10 +369,6 @@ def generate_uniques(d4data_dir, language):
             if name_clean in items_to_ignore or is_placeholder_or_test_name(name_clean):
                 continue
 
-            # S10 This is a bit of a hack to handle some chaos uniques which for some reason report fewer inherents than they actually have
-            if name_clean in unique_dict:
-                continue
-
             unique_dict[name_clean] = {"num_inherents": num_inherents}
 
     with Path(D4LF_BASE_DIR / f"assets/lang/{language}/uniques.json").open("w", encoding="utf-8") as json_file:

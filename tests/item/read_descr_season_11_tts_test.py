@@ -400,6 +400,78 @@ items = [
             sanctified=False,
         ),
     ),
+    # Escalation sigil that is also a whisper
+    (
+        [
+            "HAUNTED REFUGE ESCALATION SIGIL",
+            "Legendary Escalation Sigil",
+            "Brave a series of dungeons, each one deadlier than the last, in search of Astaroths Lair.",
+            "Haunted Refuge in Hawezar",
+            "Grants Grim Favor for 17m",
+            "AFFIXES",
+            "Hidden Armory",
+            "Exceptional items are kept here, granting elite monsters a powerful loot affix.",
+            "Deathly Shadows",
+            "Killing a monster has a chance to unleash a volatile pulse after a short delay, dealing heavy area damage.",
+            "Account Bound",
+            "Sell Value: 1 Gold",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(max_value=None, min_value=None, name="hidden_armory", text="", type=AffixType.normal, value=None),
+                Affix(
+                    max_value=None, min_value=None, name="deathly_shadows", text="", type=AffixType.normal, value=None
+                ),
+            ],
+            aspect=None,
+            codex_upgrade=False,
+            cosmetic_upgrade=False,
+            inherent=[],
+            is_chaos=False,
+            is_in_shop=False,
+            item_type=ItemType.EscalationSigil,
+            name="haunted_refuge",
+            power=None,
+            rarity=ItemRarity.Legendary,
+            sanctified=False,
+        ),
+    ),
+    # Regular sigil
+    (
+        [
+            "Nightmare Sigil",
+            "Transform this dungeon into. aNightmare Dungeon",
+            "Mercys Reach in Fractured Peaks",
+            "DUNGEON AFFIXES",
+            "Hidden Armory",
+            "Exceptional items are kept here, granting elite monsters a powerful loot affix.",
+            "Deathly Shadows",
+            "Killing a monster has a chance to unleash a volatile pulse after a short delay, dealing heavy area damage.",
+            "Account Bound",
+            "Sell Value: 1 Gold",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(max_value=None, min_value=None, name="hidden_armory", text="", type=AffixType.normal, value=None),
+                Affix(
+                    max_value=None, min_value=None, name="deathly_shadows", text="", type=AffixType.normal, value=None
+                ),
+            ],
+            aspect=None,
+            codex_upgrade=False,
+            cosmetic_upgrade=False,
+            inherent=[],
+            is_chaos=False,
+            is_in_shop=False,
+            item_type=ItemType.Sigil,
+            name="mercys_reach",
+            power=None,
+            rarity=ItemRarity.Common,
+            sanctified=False,
+        ),
+    ),
 ]
 
 
