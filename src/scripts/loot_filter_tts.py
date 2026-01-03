@@ -102,9 +102,9 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType, stash_is_ope
                 elif IniConfigLoader().general.mark_as_favorite:
                     mark_as_favorite()
         elif not res.keep:
-            # Specific functionality for Season 7 to help complete challenge to salvage ancestral legendaries
-            is_greater = any(affix.type == AffixType.greater for affix in item_descr.affixes)
-            if is_greater and IniConfigLoader().general.s7_do_not_junk_ancestral_legendaries:
+            if IniConfigLoader().general.do_not_junk_ancestral_legendaries and any(
+                affix.type == AffixType.greater for affix in item_descr.affixes
+            ):
                 LOGGER.info("Skipping marking as junk because it is an ancestral legendary.")
             else:
                 mark_as_junk()
@@ -121,7 +121,7 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType, stash_is_ope
         ):
             mark_as_favorite()
 
-    LOGGER.debug(f"  Time to filter all items in stash/inventory tab: {time.time() - start_checking_items:.2f}s")
+    LOGGER.debug(f"Time to filter all items in stash/inventory tab: {time.time() - start_checking_items:.2f}s")
 
     # If more than 80% of the items had all greater affixes that means something is probably wrong
     if num_of_affixed_items_checked > 2 and (num_of_items_with_all_ga / num_of_affixed_items_checked > 0.8):
