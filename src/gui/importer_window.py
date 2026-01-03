@@ -95,14 +95,30 @@ class ImporterWindow(QMainWindow):
             "false",
         )
 
+        # GA dependency logic
         def disable_require_if_import_disabled():
             if not self.import_gas_checkbox.isChecked():
                 self.require_all_gas_checkbox.setChecked(False)
                 self.require_all_gas_checkbox.setEnabled(False)
+                self.require_all_gas_checkbox.setStyleSheet(
+                    "QCheckBox:disabled { color: gray; }"
+                    "QCheckBox::indicator:disabled { background-color: #555; border: 1px solid #444; }"
+                )
             else:
                 self.require_all_gas_checkbox.setEnabled(True)
+                self.require_all_gas_checkbox.setStyleSheet("")
 
+        # Apply initial enabled/disabled state
         self.require_all_gas_checkbox.setEnabled(self.import_gas_checkbox.isChecked())
+
+        # Apply initial gray-out if Import GAs starts off
+        if not self.import_gas_checkbox.isChecked():
+            self.require_all_gas_checkbox.setStyleSheet(
+                "QCheckBox:disabled { color: gray; }"
+                "QCheckBox::indicator:disabled { background-color: #555; border: 1px solid #444; }"
+            )
+
+        # Connect toggle logic
         self.import_gas_checkbox.stateChanged.connect(lambda: disable_require_if_import_disabled())
 
         checkbox_hbox = QHBoxLayout()

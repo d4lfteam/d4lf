@@ -73,14 +73,14 @@ def create_pipe():
     except pywintypes.error as e:  # ← Move this LEFT (same level as try)
         if e.args[0] == 231:  # ERROR_PIPE_BUSY
             LOGGER.error("[CLEAN]")
-            LOGGER.error("[CLEAN]" + "=" * 80)
-            LOGGER.error("[CLEAN]" + "D4LF IS ALREADY RUNNING")
-            LOGGER.error("[CLEAN]" + "=" * 80)
+            LOGGER.error("[CLEAN]%s", "=" * 80)
+            LOGGER.error("[CLEAN]%s", "D4LF IS ALREADY RUNNING")
+            LOGGER.error("[CLEAN]%s", "=" * 80)
             LOGGER.error("[CLEAN]")
-            LOGGER.error("[CLEAN]" + "You already have D4LF running in another window.")
-            LOGGER.error("[CLEAN]" + "Please close your windows and re-launch.")
+            LOGGER.error("[CLEAN]%s", "You already have D4LF running in another window.")
+            LOGGER.error("[CLEAN]%s", "Please close your windows and re-launch.")
             LOGGER.error("[CLEAN]")
-            LOGGER.error("[CLEAN]" + "=" * 80)
+            LOGGER.error("[CLEAN]%s", "=" * 80)
 
             sys.exit(1)
         else:

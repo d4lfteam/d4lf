@@ -102,7 +102,6 @@ class Filter:
                 if not self._match_item_power(min_power=filter_spec.minPower, item_power=item.power):
                     continue
                 # check greater affixes
-                # Always check item-level GA count
                 if not self._match_greater_affix_count(
                     expected_min_count=filter_spec.minGreaterAffixCount, item_affixes=non_tempered_affixes
                 ):
@@ -276,7 +275,7 @@ class Filter:
                 if not self._match_affixes_uniques(
                     expected_affixes=filter_item.affix,
                     item_affixes=item.affixes,
-                    min_greater_affix_count=filter_item.minGreaterAffixCount,  # ADD THIS
+                    min_greater_affix_count=filter_item.minGreaterAffixCount,
                 ):
                     continue
 
@@ -518,40 +517,40 @@ class Filter:
                     errors = True
 
                     if "minGreaterAffixCount" in str(e):
-                        LOGGER.error("[CLEAN]" + "=" * 80)
-                        LOGGER.error("[CLEAN]" + f"PROFILE VALIDATION FAILED: {profile_path}")
-                        LOGGER.error("[CLEAN]" + "=" * 80)
+                        LOGGER.error("[CLEAN]%s", "=" * 80)
+                        LOGGER.error("[CLEAN]%s", f"PROFILE VALIDATION FAILED: {profile_path}")
+                        LOGGER.error("[CLEAN]%s", "=" * 80)
                         LOGGER.error("[CLEAN]")
                         LOGGER.error(
-                            "[CLEAN]" + "You are using an old, outdated field that must be removed from your profile."
+                            "[CLEAN]%s", "You are using an old, outdated field that must be removed from your profile."
                         )
                         LOGGER.error("[CLEAN]")
-                        LOGGER.error("[CLEAN]" + "WRONG (old way - pool level):")
-                        LOGGER.error("[CLEAN]" + "- Ring:")
-                        LOGGER.error("[CLEAN]" + "    itemType: [ring]")
-                        LOGGER.error("[CLEAN]" + "    minPower: 100")
-                        LOGGER.error("[CLEAN]" + "    affixPool:")
-                        LOGGER.error("[CLEAN]" + "    - count:")
-                        LOGGER.error("[CLEAN]" + "      - {name: strength}")
-                        LOGGER.error("[CLEAN]" + "      minCount: 2")
-                        LOGGER.error("[CLEAN]" + "      minGreaterAffixCount: 1  ← DELETE THIS LINE")
+                        LOGGER.error("[CLEAN]%s", "WRONG (old way - pool level):")
+                        LOGGER.error("[CLEAN]%s", "- Ring:")
+                        LOGGER.error("[CLEAN]%s", "    itemType: [ring]")
+                        LOGGER.error("[CLEAN]%s", "    minPower: 100")
+                        LOGGER.error("[CLEAN]%s", "    affixPool:")
+                        LOGGER.error("[CLEAN]%s", "    - count:")
+                        LOGGER.error("[CLEAN]%s", "      - {name: strength}")
+                        LOGGER.error("[CLEAN]%s", "      minCount: 2")
+                        LOGGER.error("[CLEAN]%s", "      minGreaterAffixCount: 1  ← DELETE THIS LINE")
                         LOGGER.error("[CLEAN]")
-                        LOGGER.error("[CLEAN]" + "CORRECT (new way - item level):")
-                        LOGGER.error("[CLEAN]" + "- Ring:")
-                        LOGGER.error("[CLEAN]" + "    itemType: [ring]")
-                        LOGGER.error("[CLEAN]" + "    minPower: 100")
-                        LOGGER.error("[CLEAN]" + "    minGreaterAffixCount: 1  ← PUT IT HERE INSTEAD")
-                        LOGGER.error("[CLEAN]" + "    affixPool:")
-                        LOGGER.error("[CLEAN]" + "    - count:")
-                        LOGGER.error("[CLEAN]" + "      - {name: strength}")
-                        LOGGER.error("[CLEAN]" + "      minCount: 2")
-                        LOGGER.error("[CLEAN]" + "      # NO minGreaterAffixCount here anymore!")
+                        LOGGER.error("[CLEAN]%s", "CORRECT (new way - item level):")
+                        LOGGER.error("[CLEAN]%s", "- Ring:")
+                        LOGGER.error("[CLEAN]%s", "    itemType: [ring]")
+                        LOGGER.error("[CLEAN]%s", "    minPower: 100")
+                        LOGGER.error("[CLEAN]%s", "    minGreaterAffixCount: 1  ← PUT IT HERE INSTEAD")
+                        LOGGER.error("[CLEAN]%s", "    affixPool:")
+                        LOGGER.error("[CLEAN]%s", "    - count:")
+                        LOGGER.error("[CLEAN]%s", "      - {name: strength}")
+                        LOGGER.error("[CLEAN]%s", "      minCount: 2")
+                        LOGGER.error("[CLEAN]%s", "      # NO minGreaterAffixCount here anymore!")
                         LOGGER.error("[CLEAN]")
-                        LOGGER.error("[CLEAN]" + "=" * 80)
+                        LOGGER.error("[CLEAN]%s", "=" * 80)
                         LOGGER.error(
-                            "[CLEAN]" + f"ACTION REQUIRED: Please make the above adjustments in: {profile_path}"
+                            "[CLEAN]%s", f"ACTION REQUIRED: Please make the above adjustments in: {profile_path}"
                         )
-                        LOGGER.error("[CLEAN]" + "=" * 80)
+                        LOGGER.error("[CLEAN]%s", "=" * 80)
                     else:
                         LOGGER.error(f"Validation error in {profile_path}: {e}")
 

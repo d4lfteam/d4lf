@@ -179,7 +179,7 @@ class MainWindow(QMainWindow):
             hotkeys_html += f"<u><b>{config.advanced_options.run_vision_mode.upper()}</b></u>: Run/Stop Vision Mode<br>"
             hotkeys_html += "<span style='font-style: italic;'>Vision Mode Only - clicking functionality disabled</span>&nbsp;&nbsp;&nbsp;"
 
-        hotkeys_html += f"<u><b>{config.advanced_options.exit_key.upper()}</b></u>: Exit d4lf"
+        hotkeys_html += f"<u><b>{config.advanced_options.exit_key.upper()}</b></u>: Exit D4LF"
         hotkeys_html += "</div>"
 
         hotkey_text.setText(hotkeys_html)

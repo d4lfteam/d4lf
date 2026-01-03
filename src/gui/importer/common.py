@@ -221,6 +221,7 @@ def add_to_profiles(build_name):
         LOGGER.info(f"Added {build_name} to active profiles configuration")
 
 
+# Built in to_yaml_str does not preserve the order of the attributes of the model, which is important for uniques
 def _to_yaml_str(profile: ProfileModel, exclude_defaults: bool, exclude: set[str]) -> str:
     str_val = profile.model_dump_json(exclude_defaults=exclude_defaults, exclude=exclude)
     yaml = YAML()

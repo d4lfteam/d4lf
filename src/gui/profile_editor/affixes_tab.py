@@ -1,6 +1,6 @@
 import logging
 
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import QSettings, Qt, QTimer
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -103,7 +103,8 @@ class AffixGroupEditor(QWidget):
             "When checked: Min Greater Affixes automatically matches the number of affixes marked as 'want greater'\n"
             "When unchecked: You can manually set Min Greater Affixes to any value"
         )
-        self.auto_sync_checkbox.setChecked(getattr(self.config, "auto_sync_ga", False))
+        settings = QSettings("d4lf", "profile_editor")
+        self.auto_sync_checkbox.setChecked(settings.value(f"auto_sync_ga_{self.item_name}", False, type=bool))
         self.auto_sync_checkbox.stateChanged.connect(self.toggle_auto_sync)
 
         self.greater_count_label = QLabel()
@@ -251,7 +252,12 @@ class AffixGroupEditor(QWidget):
 
     def toggle_auto_sync(self):
         is_auto_sync = self.auto_sync_checkbox.isChecked()
-        self.config.auto_sync_ga = is_auto_sync
+
+        # Save UI-only state (replaces writing to config)
+        settings = QSettings("d4lf", "profile_editor")
+        settings.setValue(f"auto_sync_ga_{self.item_name}", is_auto_sync)
+
+        # Keep your existing behavior
         self.min_greater.setEnabled(not is_auto_sync)
 
         if is_auto_sync:

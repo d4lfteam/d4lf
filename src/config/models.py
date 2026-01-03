@@ -139,7 +139,6 @@ class AffixFilterCountModel(BaseModel):
     count: list[AffixFilterModel] = []
     maxCount: int = sys.maxsize
     minCount: int = 0
-    auto_sync_ga: bool = False
 
     @field_validator("minCount", "maxCount")
     def count_validator(cls, v: int) -> int:
@@ -376,9 +375,7 @@ class GeneralModel(_IniBaseModel):
     s7_do_not_junk_ancestral_legendaries: bool = Field(
         default=False, description="Season 7 Specific: Do not mark ancestral legendaries as junk for seasonal challenge"
     )
-    theme: ThemeType = Field(  # ADD THIS FIELD
-        default=ThemeType.dark, description="Choose between light and dark theme for the GUI"
-    )
+    theme: ThemeType = Field(default=ThemeType.dark, description="Choose between light and dark theme for the GUI")
     vision_mode_type: VisionModeType = Field(
         default=VisionModeType.highlight_matches,
         description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
@@ -496,9 +493,8 @@ class HSVRangeModel(_IniBaseModel):
 
 class ItemFilterModel(BaseModel):
     itemType: list[ItemType] = []
-    minPower: int = 0
     minGreaterAffixCount: int = 0
-    auto_sync_ga: bool = False  # ← ADD THIS LINE
+    minPower: int = 0
     affixPool: list[AffixFilterCountModel] = []
     inherentPool: list[AffixFilterCountModel] = []
 
