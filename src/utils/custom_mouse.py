@@ -20,7 +20,7 @@ def is_list_of_points(value):
         return False
     try:
         return all(map(is_point, value))
-    except (KeyError, TypeError):
+    except KeyError, TypeError:
         return False
 
 
