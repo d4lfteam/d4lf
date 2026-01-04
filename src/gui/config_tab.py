@@ -583,6 +583,5 @@ class HotkeyListenerDialog(QDialog):
         self.hotkey = key_str
         self.hotkey_label.setText(key_str)
 
-
     def get_hotkey(self):
         return self.hotkey

@@ -25,6 +25,8 @@ from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
 
+BASE_DIR = Path(__file__).resolve().parent
+
 LOGGER = logging.getLogger(__name__)
 
 # Set DPI awareness before Qt loads

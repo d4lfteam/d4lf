@@ -28,6 +28,8 @@ from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.themes import DARK_THEME, LIGHT_THEME
 from src.logger import LOG_DIR
 
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
 LOGGER = logging.getLogger(__name__)
 
 
