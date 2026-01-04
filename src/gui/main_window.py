@@ -353,25 +353,6 @@ class MainWindow(QMainWindow):
             LOGGER.error(f"Failed to open profile editor: {e}")
             QMessageBox.critical(self, "Editor Error", str(e))
 
-    def on_profile_saved(self, profile_name):
-        """Called when profile is saved in Profile Editor.
-
-        Triggers hot reload of filters without restarting.
-        """
-        LOGGER.info(f"Profile '{profile_name}' saved - triggering reload...")
-
-        try:
-            # No manual reload needed - filters auto-reload on file change
-            self.profile_updated.emit(profile_name)
-
-            LOGGER.info(f"✓ Profile '{profile_name}' reloaded successfully")
-
-        except Exception as e:
-            LOGGER.error(f"Failed to reload profile: {e}")
-            QMessageBox.warning(
-                self, "Reload Failed", f"Profile saved but reload failed:\n{e!s}\n\nPlease restart d4lf."
-            )
-
     def on_settings_changed(self):
         LOGGER.info("Settings changed - reloading theme...")
 
@@ -406,7 +387,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("pos", self.pos())
         self.settings.setValue("maximized", "true" if self.isMaximized() else "false")
 
-        shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
+        shutdown_flag = BASE_DIR / "assets" / ".shutdown"
         shutdown_flag.touch()
 
         event.accept()

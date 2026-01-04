@@ -37,7 +37,7 @@ if sys.platform == "win32":
 
 def main():
     # Clear stale shutdown flag if it exists
-    shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
+    shutdown_flag = BASE_DIR / "assets" / ".shutdown"
     if shutdown_flag.exists():
         shutdown_flag.unlink()
 
@@ -195,7 +195,7 @@ if __name__ == "__main__":
         main_window = MainWindow()
         main_window.show()
 
-        shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
+        shutdown_flag = BASE_DIR / "assets" / ".shutdown"
 
         def check_shutdown():
             if shutdown_flag.exists():
@@ -221,7 +221,7 @@ if __name__ == "__main__":
         if sys.platform == "win32" and not is_in_ide:
             ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
 
-        shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
+        shutdown_flag = BASE_DIR / "assets" / ".shutdown"
         if shutdown_flag.exists():
             shutdown_flag.unlink()
 

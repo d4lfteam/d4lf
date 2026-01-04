@@ -5,7 +5,7 @@ import typing
 from pathlib import Path
 
 if sys.platform != "darwin":
-    pass
+    import keyboard
 
 from pydantic import BaseModel, ValidationError
 from PyQt6.QtCore import Qt, QTimer
@@ -565,23 +565,24 @@ class HotkeyListenerDialog(QDialog):
         self.layout.addLayout(self.button_layout)
 
     def keyPressEvent(self, event):
-        parts = []
+        modifiers_str = []
+        for modifier in event.modifiers():
+            if modifier == Qt.KeyboardModifier.ShiftModifier:
+                modifiers_str.append("shift")
+            elif modifier == Qt.KeyboardModifier.ControlModifier:
+                modifiers_str.append("ctrl")
+            elif modifier == Qt.KeyboardModifier.AltModifier:
+                modifiers_str.append("alt")
 
-        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
-            parts.append("ctrl")
-        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-            parts.append("shift")
-        if event.modifiers() & Qt.KeyboardModifier.AltModifier:
-            parts.append("alt")
+        native_virtual_key = event.nativeVirtualKey()
+        non_mod_key, _ = keyboard._winkeyboard.official_virtual_keys.get(native_virtual_key)
+        if non_mod_key in modifiers_str:
+            non_mod_key = ""
 
-        key_text = event.text().lower()
+        key_str = "+".join(modifiers_str + [non_mod_key])
+        self.hotkey = key_str
+        self.hotkey_label.setText(key_str)
 
-        # Ignore modifier-only presses
-        if key_text and key_text not in ["ctrl", "shift", "alt"]:
-            parts.append(key_text)
-
-        self.hotkey = "+".join(parts)
-        self.hotkey_label.setText(self.hotkey)
 
     def get_hotkey(self):
         return self.hotkey
