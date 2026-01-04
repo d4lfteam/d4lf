@@ -6,6 +6,7 @@ import re
 import shutil
 import time
 from typing import TYPE_CHECKING, TypeVar
+from typing import Literal
 
 import httpx
 from ruamel.yaml import YAML, StringIO
