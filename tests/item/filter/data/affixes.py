@@ -124,7 +124,7 @@ affixes = [
     ),
     (
         "greater affix",
-        ["test.GreaterAffixes"],
+        ["test.CountBootsMatch", "test.GreaterAffixes"],
         TestItem(
             item_type=ItemType.Boots,
             affixes=[
@@ -138,7 +138,7 @@ affixes = [
     ),
     (
         "greater affix 2",
-        ["test.CountBoots", "test.GreaterAffixes"],
+        ["test.CountBoots", "test.CountBootsMatch", "test.GreaterAffixes"],
         TestItem(
             item_type=ItemType.Boots,
             affixes=[

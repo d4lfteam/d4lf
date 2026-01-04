@@ -24,15 +24,16 @@ from src.gui.importer.common import (
     match_to_enum,
     retry_importer,
     save_as_profile,
+    update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
-from src.item.data.affix import Affix
+from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
 
 LOGGER = logging.getLogger(__name__)
-
+LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
 SCRIPT_XPATH = "//script"
 BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
@@ -121,8 +122,10 @@ def import_mobalytics(config: ImportConfig):
             LOGGER.error(msg := "No slot type found")
             raise MobalyticsException(msg)
 
-        raw_affixes = jsonpath.findall(".gameEntity.modifiers.gearStats[*].id", item)
-        raw_inherents = jsonpath.findall(".gameEntity.modifiers.implicitStats[*].id", item)
+        raw_affixes = jsonpath.findall(".gameEntity.modifiers.gearStats[*]", item)
+        raw_inherents = jsonpath.findall(".gameEntity.modifiers.implicitStats[*]", item)
+        if raw_inherents and raw_inherents[0] is None:
+            raw_inherents.clear()
 
         is_unique = entity_type == "uniqueItems"
         if is_unique:
@@ -152,13 +155,14 @@ def import_mobalytics(config: ImportConfig):
         # Item type is hidden in the inherents. If it's in there, then we assume there are no further inherents
         is_weapon = "weapon" in slot_type
         for inherent in raw_inherents:
-            potential_item_type = " ".join(inherent.split("-")[:2]).lower()
+            potential_item_type = " ".join(inherent["id"].split("-")[:2]).lower()
             if is_weapon and (x := fix_weapon_type(input_str=potential_item_type)) is not None:
                 item_type = x
                 break
             if (
                 "offhand" in slot_type
-                and (x := fix_offhand_type(input_str=inherent.replace("-", " "), class_str=class_name)) is not None
+                and (x := fix_offhand_type(input_str=inherent["id"].replace("-", " "), class_str=class_name))
+                is not None
             ):
                 item_type = x
                 break
@@ -186,15 +190,17 @@ def import_mobalytics(config: ImportConfig):
         else:
             item_filter.itemType = [item_type]
 
-        affixes = _convert_raw_to_affixes(raw_affixes)
+        affixes = _convert_raw_to_affixes(raw_affixes, config.import_greater_affixes)
         inherents = _convert_raw_to_affixes(raw_inherents)
 
         item_filter.affixPool = [
             AffixFilterCountModel(
-                count=[AffixFilterModel(name=x.name) for x in affixes], minCount=3, minGreaterAffixCount=0
+                count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
+                minCount=3,
             )
         ]
         item_filter.minPower = 100
+        update_mingreateraffixcount(item_filter, config.require_greater_affixes)
         if inherents:
             item_filter.inherentPool = [AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])]
         filter_name_template = item_filter.itemType[0].name if item_type else slot_type.replace(" ", "")
@@ -245,13 +251,15 @@ def _get_legendary_aspect(name: str) -> str:
     return ""
 
 
-def _convert_raw_to_affixes(raw_stats: list[str]) -> list[Affix]:
+def _convert_raw_to_affixes(raw_stats: list[dict], import_greater_affixes=False) -> list[Affix]:
     result = []
     for stat in raw_stats:
-        affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=stat)), Dataloader().affix_dict))
+        affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=stat["id"])), Dataloader().affix_dict))
         if affix_obj.name is None:
             LOGGER.error(f"Couldn't match {stat=}")
             continue
+        if import_greater_affixes and stat.get("isGreater", False):
+            affix_obj.type = AffixType.greater
         result.append(affix_obj)
     return result
 
@@ -273,5 +281,13 @@ if __name__ == "__main__":
         "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
     ]
     for X in URLS:
-        config = ImportConfig(X, True, True, False, None)
+        config = ImportConfig(
+            url=X,
+            import_uniques=True,
+            import_aspect_upgrades=True,
+            add_to_profiles=False,
+            import_greater_affixes=True,
+            require_greater_affixes=True,
+            custom_file_name=None,
+        )
         import_mobalytics(config)

@@ -33,5 +33,13 @@ URLS = [
 def test_import_mobalytics(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
     Dataloader()  # need to load data first or the mock will make it impossible
     mocker.patch("builtins.open", new=mocker.mock_open())
-    config = ImportConfig(url, True, True, False, "")
+    config = ImportConfig(
+        url=url,
+        import_uniques=True,
+        import_aspect_upgrades=True,
+        add_to_profiles=False,
+        import_greater_affixes=True,
+        require_greater_affixes=True,
+        custom_file_name=None,
+    )
     import_mobalytics(config=config)

@@ -7,4 +7,6 @@ class ImportConfig:
     import_uniques: bool
     import_aspect_upgrades: bool
     add_to_profiles: bool
+    import_greater_affixes: bool
+    require_greater_affixes: bool
     custom_file_name: str | None
