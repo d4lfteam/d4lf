@@ -5,8 +5,7 @@ import pathlib
 import re
 import shutil
 import time
-from typing import TYPE_CHECKING, TypeVar
-from typing import Literal
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 import httpx
 from ruamel.yaml import YAML, StringIO
