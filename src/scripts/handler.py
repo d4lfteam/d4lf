@@ -11,6 +11,7 @@ import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
 import src.tts
 from src.cam import Cam
+from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
 from src.config.models import ItemRefreshType, VisionModeType
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
@@ -39,7 +40,8 @@ class ScriptHandler:
             self.run_vision_mode()
 
     def _graceful_exit(self):
-        shutdown_flag = IniConfigLoader().user_dir / ".shutdown"
+        # Store shutdown flag inside the app's assets directory (not user_dir)
+        shutdown_flag = BASE_DIR / "assets" / ".shutdown"
         shutdown_flag.touch()
 
         safe_exit()

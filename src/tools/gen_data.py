@@ -129,7 +129,6 @@ def main(d4data_dir: Path, companion_app_dir: Path):
 
         # Create Uniques
         generate_uniques(d4data_dir, language)
-        supplement_uniques_from_companion(companion_app_dir, language)
 
         print(f"Gen Sigils for {language}")
         sigil_dict = {"dungeons": {}, "minor": {}, "major": {}, "positive": {}}
@@ -378,101 +377,6 @@ def generate_uniques(d4data_dir, language):
     with Path(D4LF_BASE_DIR / f"assets/lang/{language}/uniques.json").open("w", encoding="utf-8") as json_file:
         json.dump(unique_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
         json_file.write("\n")
-
-
-def supplement_uniques_from_companion(companion_app_dir, language):
-    """Supplement uniques with data from Diablo4Companion."""
-    print(f"Supplementing Uniques with Diablo4Companion data for {language}")
-
-    # Load our existing uniques from d4data
-    d4lf_uniques_file = D4LF_BASE_DIR / f"assets/lang/{language}/uniques.json"
-    with d4lf_uniques_file.open(encoding="utf-8") as file:
-        unique_dict = json.load(file)
-
-    # Load Diablo4Companion's uniques
-    companion_uniques_file = companion_app_dir / f"D4Companion/Data/Uniques.{language}.json"
-    if not companion_uniques_file.exists():
-        print(f"WARNING: {companion_uniques_file} not found. Skipping supplement.")
-        return
-
-    with companion_uniques_file.open(encoding="utf-8") as file:
-        companion_data = json.load(file)
-
-    matched = 0
-    for unique in companion_data:
-        display_name = unique.get("Name", "")
-        if not display_name:
-            continue
-
-        # Create same internal name as d4data
-        internal_name = (
-            display_name
-            .strip()
-            .replace(" ", "_")
-            .replace("\xa0", "_")
-            .lower()
-            .replace("'", "")
-            .replace("'", "")
-            .replace(",", "")
-        )
-        internal_name = check_ms(internal_name)
-
-        # Only supplement items we already have from d4data
-        if internal_name not in unique_dict:
-            continue
-
-        matched += 1
-
-        # Add display name
-        unique_dict[internal_name]["name"] = display_name
-
-        # Add item type
-        item_type = unique.get("Type", unique.get("ItemType", ""))
-        if item_type:
-            unique_dict[internal_name]["type"] = item_type
-
-        # Check if mythic
-        is_mythic = unique.get("IsMythic", False) or unique.get("IsUberUnique", False)
-        if is_mythic:
-            unique_dict[internal_name]["is_mythic"] = True
-
-        # Process affixes
-        if "Affixes" in unique:
-            affixes_list = []
-            affix_data = unique["Affixes"]
-
-            if isinstance(affix_data, list):
-                for affix_entry in affix_data:
-                    affix_text = ""
-                    if isinstance(affix_entry, str):
-                        affix_text = affix_entry
-                    elif isinstance(affix_entry, dict):
-                        affix_text = affix_entry.get("Description", affix_entry.get("Name", ""))
-
-                    if affix_text:
-                        affix_text = affix_text.lower().strip().replace("'", "").replace("'", "").replace(".", "")
-                        affix_text = remove_content_in_braces(affix_text)
-                        affix_name = affix_text.replace(",", "").replace(" ", "_")
-
-                        if len(affix_name) > 2:
-                            affixes_list.append(affix_name)
-
-            if affixes_list:
-                unique_dict[internal_name]["affixes"] = affixes_list
-
-        # Add unique affix description
-        unique_affix = unique.get("UniqueAffix", unique.get("Effect", unique.get("Description", "")))
-        if unique_affix:
-            unique_affix_clean = unique_affix.lower().strip()
-            unique_affix_clean = remove_content_in_braces(unique_affix_clean)
-            unique_dict[internal_name]["unique_affix"] = unique_affix_clean
-
-    # Save
-    with d4lf_uniques_file.open("w", encoding="utf-8") as json_file:
-        json.dump(unique_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
-        json_file.write("\n")
-
-    print(f"Supplemented {matched} uniques with Diablo4Companion data")
 
 
 if __name__ == "__main__":

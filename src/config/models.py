@@ -366,11 +366,6 @@ class GeneralModel(_IniBaseModel):
         '"Affixes", "Uniques", "Sigils", etc sections will be used from '
         "C:/Users/USERNAME/.d4lf/profiles/*.yaml",
     )
-    last_opened_profile: str = Field(
-        default="",
-        description="Last opened profile in the profile editor (internal)",
-        json_schema_extra={HIDE_FROM_GUI_KEY: "True"},
-    )
     run_vision_mode_on_startup: bool = Field(default=True, description="Whether to run vision mode on startup or not")
     s7_do_not_junk_ancestral_legendaries: bool = Field(
         default=False, description="Season 7 Specific: Do not mark ancestral legendaries as junk for seasonal challenge"
@@ -492,11 +487,12 @@ class HSVRangeModel(_IniBaseModel):
 
 
 class ItemFilterModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    affixPool: list[AffixFilterCountModel] = []
+    inherentPool: list[AffixFilterCountModel] = []
     itemType: list[ItemType] = []
     minGreaterAffixCount: int = 0
     minPower: int = 0
-    affixPool: list[AffixFilterCountModel] = []
-    inherentPool: list[AffixFilterCountModel] = []
 
     @field_validator("minPower")
     def check_min_power(cls, v: int) -> int:

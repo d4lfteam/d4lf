@@ -22,9 +22,9 @@ from src.config.models import BrowserType, ItemFilterModel, ProfileModel
 from src.item.data.item_type import ItemType
 
 if TYPE_CHECKING:
-    from selenium.webdriver.chromium.webdriver import ChromiumDriver
+    from collections.abc import Callable
 
-    from config.models import ItemFilterModel
+    from selenium.webdriver.chromium.webdriver import ChromiumDriver
 
 LOGGER = logging.getLogger(__name__)
 
@@ -145,7 +145,9 @@ def get_with_retry(url: str, custom_headers: dict[str, str] | None = None) -> ht
     raise ConnectionError(msg)
 
 
-def handle_popups(driver, method, timeout: int = 10):
+def handle_popups[D: WebDriver | WebElement, T](
+    driver: ChromiumDriver, method: Callable[[D], Literal[False] | T], timeout: int = 10
+):
     LOGGER.info("Handling cookie / adblock popups")
     wait = WebDriverWait(driver, timeout)
     for _ in range(3):

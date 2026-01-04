@@ -26,7 +26,6 @@ from src.gui.config_window import ConfigWindow
 from src.gui.importer_window import ImporterWindow
 from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.themes import DARK_THEME, LIGHT_THEME
-from src.item.filter import Filter
 from src.logger import LOG_DIR
 
 LOGGER = logging.getLogger(__name__)
@@ -230,9 +229,6 @@ class MainWindow(QMainWindow):
             # No log file yet, create a placeholder path
             self.log_file_path = logs_dir / "d4lf.log"
 
-        print(f"DEBUG: Log file path: {self.log_file_path}")
-        print(f"DEBUG: Log file exists: {self.log_file_path.exists()}")
-
         # Read all existing content first
         if self.log_file_path.exists():
             try:
@@ -315,7 +311,7 @@ class MainWindow(QMainWindow):
 
         try:
             if self.import_window is None or not self.import_window.isVisible():
-                self.import_window = ImporterWindow()
+                self.import_window = ImporterWindow(self)
                 self.import_window.show()
             else:
                 self.import_window.activateWindow()
@@ -331,7 +327,7 @@ class MainWindow(QMainWindow):
         try:
             if self.settings_window is None or not self.settings_window.isVisible():
                 # Pass the theme reload callback
-                self.settings_window = ConfigWindow(theme_changed_callback=self.on_settings_changed)
+                self.settings_window = ConfigWindow(self, theme_changed_callback=self.on_settings_changed)
                 self.settings_window.show()
             else:
                 # Window already open - bring to front
@@ -347,7 +343,7 @@ class MainWindow(QMainWindow):
 
         try:
             if self.editor_window is None or not self.editor_window.isVisible():
-                self.editor_window = ProfileEditorWindow()
+                self.editor_window = ProfileEditorWindow(self)
                 self.editor_window.destroyed.connect(lambda: setattr(self, "editor_window", None))
                 self.editor_window.show()
             else:
@@ -365,12 +361,7 @@ class MainWindow(QMainWindow):
         LOGGER.info(f"Profile '{profile_name}' saved - triggering reload...")
 
         try:
-            # Reload the profile configuration
-            Filter.reload()
-
-            # Reload item filters
-            Filter.reload()
-
+            # No manual reload needed - filters auto-reload on file change
             self.profile_updated.emit(profile_name)
 
             LOGGER.info(f"✓ Profile '{profile_name}' reloaded successfully")

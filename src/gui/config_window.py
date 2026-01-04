@@ -3,7 +3,6 @@ import logging
 from PyQt6.QtCore import QPoint, QSettings, QSize
 from PyQt6.QtWidgets import QMainWindow
 
-from src import __version__
 from src.gui.config_tab import ConfigTab
 
 LOGGER = logging.getLogger(__name__)
@@ -12,12 +11,12 @@ LOGGER = logging.getLogger(__name__)
 class ConfigWindow(QMainWindow):
     """Standalone window for Config/Settings."""
 
-    def __init__(self, theme_changed_callback=None):
-        super().__init__()
+    def __init__(self, parent=None, theme_changed_callback=None):
+        super().__init__(parent)
         self.theme_changed_callback = theme_changed_callback
         self.settings = QSettings("d4lf", "config")
 
-        self.setWindowTitle(f"Settings - D4LF v{__version__}")
+        self.setWindowTitle("Settings")
 
         self.resize(self.settings.value("size", QSize(650, 800)))
         self.move(self.settings.value("pos", QPoint(0, 0)))

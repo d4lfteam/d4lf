@@ -45,8 +45,6 @@ def main():
     for dir_name in [LOG_DIR / "screenshots", IniConfigLoader().user_dir, IniConfigLoader().user_dir / "profiles"]:
         Path(dir_name).mkdir(exist_ok=True, parents=True)
 
-    LOGGER.info(f"Change configurations via the Settings button below or directly in: {IniConfigLoader().user_dir}")
-
     # Detect if we're running locally and skip the autoupdate
     main_path = Path(__main__.__file__)
     if main_path.name == "main.py":

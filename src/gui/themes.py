@@ -82,6 +82,16 @@ QCheckBox::indicator:checked {{
     border: 1px solid #5c5c5c;
     image: url({CHECKMARK_DARK});
 }}
+
+/* Disabled checkbox styling */
+QCheckBox:disabled {{
+    color: gray;
+}}
+QCheckBox::indicator:disabled {{
+    background-color: #555;
+    border: 1px solid #444;
+}}
+
 QScrollBar:vertical {{
     background-color: #1f1f1f;
     width: 16px;
@@ -236,6 +246,16 @@ QCheckBox::indicator:checked {{
     border: 2px solid #1f1f1f;
     image: url({CHECKMARK_LIGHT});
 }}
+
+/* Disabled checkbox styling */
+QCheckBox:disabled {{
+    color: gray;
+}}
+QCheckBox::indicator:disabled {{
+    background-color: #555;
+    border: 1px solid #444;
+}}
+
 QScrollBar:vertical {{
     background-color: #e0e0e0;
     width: 16px;

@@ -3,7 +3,6 @@ import logging
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer
 from PyQt6.QtWidgets import QMainWindow
 
-from src import __version__
 from src.gui.profile_tab import ProfileTab
 
 LOGGER = logging.getLogger(__name__)
@@ -12,12 +11,12 @@ LOGGER = logging.getLogger(__name__)
 class ProfileEditorWindow(QMainWindow):
     """Standalone window for Profile Editor."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.settings = QSettings("d4lf", "profile_editor")
 
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
-        self.setWindowTitle(f"Profile Editor - D4LF v{__version__}")
+        self.setWindowTitle("Profile Editor")
 
         self.resize(self.settings.value("size", QSize(650, 800)))
         self.move(self.settings.value("pos", QPoint(0, 0)))

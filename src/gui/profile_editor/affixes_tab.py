@@ -46,6 +46,7 @@ AFFIXES_TABNAME = "Affixes"
 class AffixGroupEditor(QWidget):
     def __init__(self, dynamic_filter: DynamicItemFilterModel, parent=None):
         super().__init__(parent)
+        self.settings = QSettings("d4lf", "profile_editor")
         for item_name, config in dynamic_filter.root.items():
             self.item_name = item_name
             self.config = config
@@ -103,8 +104,7 @@ class AffixGroupEditor(QWidget):
             "When checked: Min Greater Affixes automatically matches the number of affixes marked as 'want greater'\n"
             "When unchecked: You can manually set Min Greater Affixes to any value"
         )
-        settings = QSettings("d4lf", "profile_editor")
-        self.auto_sync_checkbox.setChecked(settings.value(f"auto_sync_ga_{self.item_name}", False, type=bool))
+        self.auto_sync_checkbox.setChecked(self.settings.value(f"auto_sync_ga_{self.item_name}", False, type=bool))
         self.auto_sync_checkbox.stateChanged.connect(self.toggle_auto_sync)
 
         self.greater_count_label = QLabel()
@@ -254,8 +254,7 @@ class AffixGroupEditor(QWidget):
         is_auto_sync = self.auto_sync_checkbox.isChecked()
 
         # Save UI-only state (replaces writing to config)
-        settings = QSettings("d4lf", "profile_editor")
-        settings.setValue(f"auto_sync_ga_{self.item_name}", is_auto_sync)
+        self.settings.setValue(f"auto_sync_ga_{self.item_name}", is_auto_sync)
 
         # Keep your existing behavior
         self.min_greater.setEnabled(not is_auto_sync)
@@ -584,7 +583,7 @@ class AffixesTab(QWidget):
         remove_item_button.setText("Remove Item")
         remove_item_button.clicked.connect(self.remove_item_type)
 
-        set_all_minGreaterAffix_button = QPushButton("Set All Min GA's (Excludes Auto Synced Items)")
+        set_all_minGreaterAffix_button = QPushButton("Set All Min GAs (Excludes Auto Synced Items)")
         set_all_minPower_button = QPushButton("Set all minPower")
         set_all_minGreaterAffix_button.clicked.connect(self.set_all_minGreaterAffix)
         set_all_minPower_button.clicked.connect(self.set_all_minPower)

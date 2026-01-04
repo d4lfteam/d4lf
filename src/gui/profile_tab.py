@@ -4,7 +4,7 @@ import pathlib
 
 import yaml
 from pydantic import ValidationError
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtWidgets import (
     QFileDialog,
     QGroupBox,
@@ -32,6 +32,7 @@ PROFILE_TABNAME = "edit profile (beta)"
 class ProfileTab(QWidget):
     def __init__(self):
         super().__init__()
+        self.settings = QSettings("d4lf", "profile_editor")
 
         self.root = None
         self.file_path = None
@@ -108,8 +109,7 @@ class ProfileTab(QWidget):
     def show_tab(self):
         if self.first_show:
             self.first_show = False
-            if self.load():
-                self.create_profile_editor()
+            return
 
     def load_file(self):
         if self.open_file():
@@ -134,7 +134,7 @@ class ProfileTab(QWidget):
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
 
         # Try to load last opened profile first
-        last_opened = getattr(IniConfigLoader().general, "last_opened_profile", None)
+        last_opened = self.settings.value("last_opened_profile", None, type=str)
         if last_opened and not self.file_path:
             custom_file_path = custom_profile_path / f"{last_opened}.yaml"
             if custom_file_path.is_file():
@@ -183,7 +183,7 @@ class ProfileTab(QWidget):
                 self.update_filename_label()
 
                 # Save last opened profile
-                IniConfigLoader().save_value("general", "last_opened_profile", filename_without_extension)  # ← ADD THIS
+                self.settings.setValue("last_opened_profile", filename_without_extension)
 
             except ValidationError as e:
                 if "minGreaterAffixCount" in str(e):

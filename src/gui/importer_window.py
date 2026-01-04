@@ -28,8 +28,8 @@ THREADPOOL = QThreadPool()
 class ImporterWindow(QMainWindow):
     """Standalone window for Maxroll/D4Builds/Mobalytics importer."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
         # Settings for persistent window geometry
         self.settings = QSettings("d4lf", "ImporterWindow")
@@ -100,23 +100,16 @@ class ImporterWindow(QMainWindow):
             if not self.import_gas_checkbox.isChecked():
                 self.require_all_gas_checkbox.setChecked(False)
                 self.require_all_gas_checkbox.setEnabled(False)
-                self.require_all_gas_checkbox.setStyleSheet(
-                    "QCheckBox:disabled { color: gray; }"
-                    "QCheckBox::indicator:disabled { background-color: #555; border: 1px solid #444; }"
-                )
             else:
                 self.require_all_gas_checkbox.setEnabled(True)
-                self.require_all_gas_checkbox.setStyleSheet("")
 
         # Apply initial enabled/disabled state
         self.require_all_gas_checkbox.setEnabled(self.import_gas_checkbox.isChecked())
 
         # Apply initial gray-out if Import GAs starts off
         if not self.import_gas_checkbox.isChecked():
-            self.require_all_gas_checkbox.setStyleSheet(
-                "QCheckBox:disabled { color: gray; }"
-                "QCheckBox::indicator:disabled { background-color: #555; border: 1px solid #444; }"
-            )
+            self.require_all_gas_checkbox.setChecked(False)
+            self.require_all_gas_checkbox.setEnabled(False)
 
         # Connect toggle logic
         self.import_gas_checkbox.stateChanged.connect(lambda: disable_require_if_import_disabled())

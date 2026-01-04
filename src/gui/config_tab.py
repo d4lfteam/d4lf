@@ -51,7 +51,7 @@ def _validate_and_save_changes(model, header, key, value, method_to_reset_value:
 
         # Only reset the widget if the field is NOT an enum
         current_value = getattr(model, key)
-        if method_to_reset_value and not isinstance(current_value, enum.Enum):
+        if method_to_reset_value and key != "theme":
             message = message + "Your value has been reset to its previous version.\n\n"
             method_to_reset_value(str(current_value))
 
@@ -98,7 +98,7 @@ class ConfigTab(QWidget):
         instructions_text.append(
             "All values are saved automatically immediately upon changing. Hover over any label/field to see a brief "
             "description of what it is for. To read more about each parameter, please view "
-            "<a href='https://github.com/aeon0/d4lf?tab=readme-ov-file#configs' style='color: #1E90FF;'>the config portion of the readme</a>"
+            "<a href='https://github.com/d4lfteam/d4lf?tab=readme-ov-file#configs' style='color: #1E90FF;'>the config portion of the readme</a>"
         )
         instructions_text.append("")
         instructions_text.append(
