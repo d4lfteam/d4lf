@@ -17,21 +17,10 @@ if TYPE_CHECKING:
     import numpy as np
 
 MODULE_LOGGER = logging.getLogger(__name__)
-
-# Track which deprecation warnings have been shown
-_shown_deprecation_warnings = set()
-
 HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
 
-DEPRECATED_INI_KEYS = [
-    "hidden_transparency",
-    "import_build",
-    "local_prefs_path",
-    "move_item_type",
-    "handle_rares",
-    "scripts",
-]
+DEPRECATED_INI_KEYS = []
 
 
 class AspectFilterType(enum.StrEnum):
@@ -270,16 +259,6 @@ class AdvancedOptionsModel(_IniBaseModel):
         msg = "vision_mode_coordinates must be a tuple of two integers or blank"
         raise ValueError(msg)
 
-    @model_validator(mode="before")
-    def check_deprecation(cls, data) -> dict:
-        if "run_scripts" in data:
-            MODULE_LOGGER.warning(
-                "run_scripts is deprecated. Setting run_vision_mode to the equivalent value instead. Remove run_scripts from your params.ini to remove this message."
-            )
-            data["run_vision_mode"] = data["run_scripts"]
-            data.pop("run_scripts", None)
-        return data
-
 
 class CharModel(_IniBaseModel):
     inventory: str = Field(
@@ -316,6 +295,9 @@ class GeneralModel(_IniBaseModel):
     browser: BrowserType = Field(default=BrowserType.chrome, description="Which browser to use to get builds")
     check_chest_tabs: list[int] = Field(
         default=[0, 1], description="Which stash tabs to check. Note: All tabs available (6 or 7) must be unlocked!"
+    )
+    do_not_junk_ancestral_legendaries: bool = Field(
+        default=False, description="Do not mark ancestral legendaries as junk for seasonal challenge"
     )
     full_dump: bool = Field(
         default=False,
@@ -367,9 +349,6 @@ class GeneralModel(_IniBaseModel):
         "C:/Users/USERNAME/.d4lf/profiles/*.yaml",
     )
     run_vision_mode_on_startup: bool = Field(default=True, description="Whether to run vision mode on startup or not")
-    s7_do_not_junk_ancestral_legendaries: bool = Field(
-        default=False, description="Season 7 Specific: Do not mark ancestral legendaries as junk for seasonal challenge"
-    )
     theme: ThemeType = Field(default=ThemeType.dark, description="Choose between light and dark theme for the GUI")
     vision_mode_type: VisionModeType = Field(
         default=VisionModeType.highlight_matches,
@@ -423,27 +402,6 @@ class GeneralModel(_IniBaseModel):
             msg = "must be a list or a string"
             raise ValueError(msg)
         return [MoveItemsType[v.strip()] for v in v]
-
-    @model_validator(mode="before")
-    def check_deprecation(cls, data) -> dict:
-        # removed non_favorites from MoveItemsType
-        for key in ["move_to_inv_item_type", "move_to_stash_item_type"]:
-            if key in data and data[key] == "non_favorites":
-                data[key] = [MoveItemsType.junk, MoveItemsType.unmarked]
-                MODULE_LOGGER.warning(
-                    f"{key}=non_favorites is deprecated. Changing to equivalent of junk and unmarked instead. Modify this value in the GUI to remove this message."
-                )
-        if "use_tts" in data:
-            MODULE_LOGGER.warning(
-                "use_tts is deprecated. Setting vision_mode to the equivalent value instead. Remove use_tts from your params.ini to remove this message."
-            )
-            use_tts_mode = data["use_tts"]
-            if use_tts_mode in {"mixed", "off"}:
-                data["vision_mode_type"] = VisionModeType.highlight_matches
-            else:
-                data["vision_mode_type"] = VisionModeType.fast
-            data.pop("use_tts", None)
-        return data
 
 
 class HSVRangeModel(_IniBaseModel):

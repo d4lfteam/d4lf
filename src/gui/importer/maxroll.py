@@ -74,9 +74,6 @@ def import_maxroll(config: ImportConfig):
     for item_id in active_profile["items"].values():
         resolved_item = items[str(item_id)]
         resolved_item_id = resolved_item["id"]
-        # Hack to handle chaos uniques in S10. It's unclear at this time where maxroll stores data on them
-        if resolved_item_id.startswith("S10") and "Unique" in resolved_item_id:
-            resolved_item_id = "_".join(resolved_item_id.split("_")[1:-1])
         # magic/rare = 0, legendary = 1, unique = 2, mythic = 4
         # Unique aspect handling
         if (
