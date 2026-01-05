@@ -6,7 +6,8 @@ Shows log output and provides access to Import, Settings, and Profile Editor.
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer, pyqtSignal, QCoreApplication
+import sys
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QApplication,
@@ -28,7 +29,13 @@ from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.themes import DARK_THEME, LIGHT_THEME
 from src.logger import LOG_DIR
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+if getattr(sys, "frozen", False):
+    # Running as a bundled EXE
+    BASE_DIR = Path(sys.executable).resolve().parent
+else:
+    # Running from source → go up 3 levels from src/gui/main_window.py
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -77,7 +84,7 @@ class MainWindow(QMainWindow):
             self.showMaximized()
 
         # Set window icon
-        icon_path = Path(__file__).parent.parent.parent / "assets" / "logo.png"
+        icon_path = BASE_DIR / "assets" / "logo.png"
         if icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))
 
@@ -394,6 +401,9 @@ class MainWindow(QMainWindow):
 
         event.accept()
 
+        # 🔥 REQUIRED: actually exit the GUI process
+        QCoreApplication.quit()
+        sys.exit(0)
 
 # Example usage for testing
 if __name__ == "__main__":

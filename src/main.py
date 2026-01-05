@@ -25,9 +25,16 @@ from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
 
-BASE_DIR = Path(__file__).resolve().parent
+if getattr(sys, "frozen", False):
+    # Running as a bundled EXE
+    BASE_DIR = Path(sys.executable).resolve().parent
+else:
+    # Running from source → go up 3 levels from src/gui/main_window.py
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 LOGGER = logging.getLogger(__name__)
+
+IS_BUNDLED = getattr(sys, "frozen", False)
 
 # Set DPI awareness before Qt loads
 if sys.platform == "win32":
@@ -38,6 +45,8 @@ if sys.platform == "win32":
 
 
 def main():
+    LOGGER.info(f"BASE_DIR resolved to: {BASE_DIR}")
+
     # Clear stale shutdown flag if it exists
     shutdown_flag = BASE_DIR / "assets" / ".shutdown"
     if shutdown_flag.exists():
@@ -196,6 +205,7 @@ if __name__ == "__main__":
         app = QApplication(sys.argv)
         main_window = MainWindow()
         main_window.show()
+        app.aboutToQuit.connect(lambda: (BASE_DIR / "assets" / ".shutdown").touch())
 
         shutdown_flag = BASE_DIR / "assets" / ".shutdown"
 
@@ -229,12 +239,15 @@ if __name__ == "__main__":
 
         import subprocess
 
-        try:
-            main_window_process = subprocess.Popen([sys.executable, __file__, "--mainwindow"])
-            LOGGER.info("Main window launched in separate process")
-        except Exception as e:
-            LOGGER.warning(f"Could not launch main window: {e}")
-            main_window_process = None
+        if IS_BUNDLED:
+            # Running as a built EXE: launch the same EXE with --mainwindow
+            cmd = [sys.executable, "--mainwindow"]
+        else:
+            # Running from source: launch this script with --mainwindow
+            cmd = [sys.executable, __file__, "--mainwindow"]
+
+        main_window_process = subprocess.Popen(cmd)
+        LOGGER.info("Main window launched in separate process")
 
         try:
             import threading
