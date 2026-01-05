@@ -9,10 +9,7 @@ EXE_NAME = "d4lf.exe"
 
 def build(release_dir: Path):
     # Use onedir so the EXE and assets live together
-    installer_cmd = (
-        f"pyinstaller --clean --onedir --windowed "
-        f"--distpath {release_dir} --paths src src\\main.py"
-    )
+    installer_cmd = f"pyinstaller --clean --onedir --windowed --distpath {release_dir} --paths src src\\main.py"
     os.system(installer_cmd)
 
     # PyInstaller creates: release_dir / "main" / "main.exe"

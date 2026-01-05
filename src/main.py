@@ -239,12 +239,7 @@ if __name__ == "__main__":
 
         import subprocess
 
-        if IS_BUNDLED:
-            # Running as a built EXE: launch the same EXE with --mainwindow
-            cmd = [sys.executable, "--mainwindow"]
-        else:
-            # Running from source: launch this script with --mainwindow
-            cmd = [sys.executable, __file__, "--mainwindow"]
+        cmd = [sys.executable, "--mainwindow"] if IS_BUNDLED else [sys.executable, __file__, "--mainwindow"]
 
         main_window_process = subprocess.Popen(cmd)
         LOGGER.info("Main window launched in separate process")

@@ -4,10 +4,10 @@ Shows log output and provides access to Import, Settings, and Profile Editor.
 """
 
 import logging
+import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer, pyqtSignal, QCoreApplication
-import sys
+from PyQt6.QtCore import QCoreApplication, QPoint, QSettings, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QApplication,
@@ -404,6 +404,7 @@ class MainWindow(QMainWindow):
         # 🔥 REQUIRED: actually exit the GUI process
         QCoreApplication.quit()
         sys.exit(0)
+
 
 # Example usage for testing
 if __name__ == "__main__":
