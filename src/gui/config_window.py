@@ -13,6 +13,8 @@ class ConfigWindow(QMainWindow):
 
     def __init__(self, parent=None, theme_changed_callback=None):
         super().__init__(parent)
+
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.theme_changed_callback = theme_changed_callback
         self.settings = QSettings("d4lf", "config")
 
@@ -31,6 +33,9 @@ class ConfigWindow(QMainWindow):
     def _on_theme_changed(self):
         if self.theme_changed_callback:
             self.theme_changed_callback()
+
+        # Rebuild the tab so the settings window updates visually too
+        self._rebuild_tab()
 
     def _rebuild_tab(self):
         old_tab = self.config_tab

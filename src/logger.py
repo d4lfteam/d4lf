@@ -71,7 +71,7 @@ def create_formatter(colored: bool) -> logging.Formatter:
     return logging.Formatter(fmt=log_format, datefmt=date_format)
 
 
-def setup(log_level: str = "DEBUG") -> None:
+def setup(log_level: str = "DEBUG", *, enable_stdout: bool = True) -> None:
     LOG_DIR.mkdir(exist_ok=True)
 
     LOGGER.debug(f"LOG_PATH: {LOG_DIR}")
@@ -87,17 +87,21 @@ def setup(log_level: str = "DEBUG") -> None:
     )
     rotating_handler.set_name("D4LF_FILE")
     rotating_handler.setLevel(log_level.upper())
-    # create StreamHandler for console output
-    stream_handler = logging.StreamHandler(stream=sys.stdout)
-    stream_handler.set_name("D4LF_CONSOLE")
-    stream_handler.setLevel(log_level.upper())
-    # create and set custom log formatter
-    stream_handler.setFormatter(create_formatter(colored=True))
+
+    # create StreamHandler for console output (optional)
+    if enable_stdout:
+        stream_handler = logging.StreamHandler(stream=sys.stdout)
+        stream_handler.set_name("D4LF_CONSOLE")
+        stream_handler.setLevel(log_level.upper())
+        stream_handler.setFormatter(create_formatter(colored=True))
+        logger.addHandler(stream_handler)
+
     rotating_handler.setFormatter(create_formatter(colored=False))
-    # add new handlers to logger
-    logger.addHandler(stream_handler)
+
+    # add rotating file handler
     logger.addHandler(rotating_handler)
-    # Set default log level for root logger. Python will pick the highest level out of root logger and handler
+
+    # Set default log level for root logger
     logger.setLevel("DEBUG")
     LOGGER.info(f"Running version v{__version__}")
 

@@ -32,22 +32,19 @@ LOGGER = logging.getLogger(__name__)
 # Set DPI awareness before Qt loads
 if sys.platform == "win32":
     try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)  # PROCESS_SYSTEM_DPI_AWARE
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
     except Exception:
         LOGGER.exception("Failed to set DPI awareness")
 
 
 def main():
-    # Clear stale shutdown flag if it exists
     shutdown_flag = BASE_DIR / "assets" / ".shutdown"
     if shutdown_flag.exists():
         shutdown_flag.unlink()
 
-    # Create folders for logging stuff
     for dir_name in [LOG_DIR / "screenshots", IniConfigLoader().user_dir, IniConfigLoader().user_dir / "profiles"]:
         Path(dir_name).mkdir(exist_ok=True, parents=True)
 
-    # Detect if we're running locally and skip the autoupdate
     main_path = Path(__main__.__file__)
     if main_path.name == "main.py":
         LOGGER.debug("Running from source detected, skipping autoupdate check.")
@@ -59,10 +56,13 @@ def main():
 
     Filter().load_files()
 
-    print(f"============ D4 Loot Filter {__version__} ============")
+    logger = logging.getLogger(__name__)
+    logger.info(f"============ D4 Loot Filter {__version__} ============")
+
     table = BeautifulTable()
     table.set_style(BeautifulTable.STYLE_BOX_ROUNDED)
     table.rows.append([IniConfigLoader().advanced_options.run_vision_mode, "Run/Stop Vision Mode"])
+
     if not IniConfigLoader().advanced_options.vision_mode_only:
         table.rows.append([IniConfigLoader().advanced_options.run_filter, "Run/Stop Auto Filter"])
         table.rows.append([
@@ -75,18 +75,17 @@ def main():
         ])
         table.rows.append([IniConfigLoader().advanced_options.move_to_inv, "Move Items From Chest To Inventory"])
         table.rows.append([IniConfigLoader().advanced_options.move_to_chest, "Move Items From Inventory To Chest"])
+
     table.rows.append([IniConfigLoader().advanced_options.exit_key, "Exit"])
     table.columns.header = ["hotkey", "action"]
-    print(table)
-    print("\n")
+
+    logger.info("\n" + str(table))
 
     win_spec = WindowSpec(IniConfigLoader().advanced_options.process_name)
     start_detecting_window(win_spec)
     while not Cam().is_offset_set():
         time.sleep(0.2)
 
-    # The code gets ahead of itself and seems to try to start scanning the screen when the resolution isn't
-    # fully set yet, so this small sleep resolves that.
     time.sleep(0.5)
 
     ScriptHandler()
@@ -100,7 +99,6 @@ def main():
 
 
 def check_for_proper_tts_configuration():
-    # Check that the dll has been installed
     d4_process_found = False
     for proc in psutil.process_iter(["name", "exe"]):
         if proc.name().lower() == "diablo iv.exe":
@@ -114,6 +112,7 @@ def check_for_proper_tts_configuration():
                 LOGGER.debug(f"TTS DLL found at {tts_dll}")
             d4_process_found = True
             break
+
     if not d4_process_found:
         LOGGER.warning(
             "No process named Diablo IV.exe was found and unable to automatically determine if TTS DLL is installed."
@@ -122,7 +121,6 @@ def check_for_proper_tts_configuration():
     if IniConfigLoader().advanced_options.disable_tts_warning:
         LOGGER.debug("Disable TTS warning is enabled, skipping TTS local prefs check")
     else:
-        # Check if everything is set up properly in Diablo 4 settings
         local_prefs = get_d4_local_prefs_file()
         if local_prefs:
             with Path(local_prefs).open(encoding="utf-8") as file:
@@ -144,114 +142,65 @@ def check_for_proper_tts_configuration():
                     )
         else:
             LOGGER.warning(
-                'Unable to find a Diablo 4 local prefs file. Can\'t automatically check if TTS is configured properly in-game. If d4lf is working without issue for you, you can disable this warning by enabling "disable_tts_warning" in the Advanced settings.'
+                'Unable to find a Diablo 4 local prefs file. Can\'t automatically check if TTS is configured properly in-game.'
             )
 
 
 def get_d4_local_prefs_file() -> Path | None:
-    all_potential_files: list[Path] = [
+    all_potential_files = [
         pathlib.Path.home() / "Documents" / "Diablo IV" / "LocalPrefs.txt",
         pathlib.Path.home() / "OneDrive" / "Documents" / "Diablo IV" / "LocalPrefs.txt",
         pathlib.Path.home() / "OneDrive" / "MyDocuments" / "Diablo IV" / "LocalPrefs.txt",
     ]
 
-    existing_files: list[Path] = [file for file in all_potential_files if file.exists()]
-
-    if len(existing_files) == 0:
+    existing_files = [file for file in all_potential_files if file.exists()]
+    if not existing_files:
         return None
-
     if len(existing_files) == 1:
         return existing_files[0]
 
-    most_recently_modified_file = existing_files[0]
-    for existing_file in existing_files[1:]:
-        if existing_file.stat().st_mtime > most_recently_modified_file.stat().st_mtime:
-            most_recently_modified_file = existing_file
-    return most_recently_modified_file
+    most_recent = existing_files[0]
+    for f in existing_files[1:]:
+        if f.stat().st_mtime > most_recent.stat().st_mtime:
+            most_recent = f
+    return most_recent
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--autoupdate":
-        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
+        src.logger.setup(
+            log_level=IniConfigLoader().advanced_options.log_lvl.value,
+            enable_stdout=True
+        )
         start_auto_update()
+
     elif len(sys.argv) > 1 and sys.argv[1] == "--autoupdatepost":
-        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
+        src.logger.setup(
+            log_level=IniConfigLoader().advanced_options.log_lvl.value,
+            enable_stdout=True
+        )
         start_auto_update(postprocess=True)
-    elif len(sys.argv) > 1 and sys.argv[1] == "--mainwindow":
-        os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
 
-        if sys.platform == "win32":
-            try:
-                import ctypes
-
-                ctypes.windll.shcore.SetProcessDpiAwareness(2)
-            except Exception:
-                LOGGER.exception("Failed to set DPI awareness")
-
-        from PyQt6.QtCore import QTimer
-        from PyQt6.QtWidgets import QApplication
-
-        from src.config.loader import IniConfigLoader
-
-        app = QApplication(sys.argv)
-        main_window = MainWindow()
-        main_window.show()
-
-        shutdown_flag = BASE_DIR / "assets" / ".shutdown"
-
-        def check_shutdown():
-            if shutdown_flag.exists():
-                main_window.close()
-
-        timer = QTimer()
-        timer.timeout.connect(check_shutdown)
-        timer.start(500)
-
-        sys.exit(app.exec())
+    elif len(sys.argv) > 1 and sys.argv[1] == "--cli":
+        src.logger.setup(
+            log_level=IniConfigLoader().advanced_options.log_lvl.value,
+            enable_stdout=True
+        )
+        main()
 
     else:
-        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
+        os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
 
-        is_in_ide = any([
-            os.environ.get("PYCHARM_HOSTED"),
-            os.environ.get("IDEA_INITIAL_DIRECTORY"),
-            os.environ.get("INTELLIJ_ENVIRONMENT_READER"),
-            os.environ.get("TERM_PROGRAM") == "vscode",
-            sys.gettrace() is not None,
-        ])
+        # Normal GUI startup — no PyCharm logic, no stdout
+        src.logger.setup(
+            log_level=IniConfigLoader().advanced_options.log_lvl.value,
+            enable_stdout=False
+        )
 
-        if sys.platform == "win32" and not is_in_ide:
-            ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
+        from PyQt6.QtWidgets import QApplication
+        from src.unified_window import UnifiedMainWindow
 
-        shutdown_flag = BASE_DIR / "assets" / ".shutdown"
-        if shutdown_flag.exists():
-            shutdown_flag.unlink()
-
-        import subprocess
-
-        try:
-            main_window_process = subprocess.Popen([sys.executable, __file__, "--mainwindow"])
-            LOGGER.info("Main window launched in separate process")
-        except Exception as e:
-            LOGGER.warning(f"Could not launch main window: {e}")
-            main_window_process = None
-
-        try:
-            import threading
-
-            def check_shutdown():
-                while not shutdown_flag.exists():
-                    time.sleep(0.5)
-                LOGGER.info("Shutdown requested via main window")
-                os._exit(0)
-
-            shutdown_thread = threading.Thread(target=check_shutdown, daemon=True)
-            shutdown_thread.start()
-
-            main()
-
-        except Exception:
-            traceback.print_exc()
-            print("Press Enter to exit ...")
-            input()
-            sys.exit(1)
+        app = QApplication(sys.argv)
+        window = UnifiedMainWindow()
+        window.show()
+        sys.exit(app.exec())

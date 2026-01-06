@@ -31,6 +31,8 @@ class ImporterWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+
         # Settings for persistent window geometry
         self.settings = QSettings("d4lf", "ImporterWindow")
 

@@ -68,6 +68,7 @@ class ConfigTab(QWidget):
     def __init__(self, theme_changed_callback=None):
         self._initializing = True
         super().__init__()
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.theme_changed_callback = theme_changed_callback
         self.model_to_parameter_value_map = {}
         layout = QVBoxLayout(self)
