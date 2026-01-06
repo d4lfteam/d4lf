@@ -3,16 +3,12 @@ import re
 
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 from PyQt6.QtGui import QTextCursor
-from PyQt6.QtWidgets import (
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QTabWidget,
-    QPlainTextEdit,
-)
+from PyQt6.QtWidgets import QMainWindow, QPlainTextEdit, QTabWidget, QVBoxLayout, QWidget
 
 from gui.activity_log_widget import ActivityLogWidget
-from src.logger import create_formatter, setup as setup_logging
+from src.logger import create_formatter
+from src.logger import setup as setup_logging
+from src.logger import ThreadNameFilter
 
 
 ANSI_PATTERN = re.compile(r"\x1b\[(\d+)(;\d+)*m")
@@ -72,10 +68,7 @@ class ANSIConsoleWidget(QPlainTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setReadOnly(True)
-        self.setStyleSheet(
-            "background-color: black; color: white; "
-            "font-family: Consolas, monospace; font-size: 12px;"
-        )
+        self.setStyleSheet("background-color: black; color: white; font-family: Consolas, monospace; font-size: 12px;")
 
     def append_ansi_text(self, text: str):
         html = ansi_to_html(text)
@@ -112,14 +105,15 @@ class BackendWorker(QObject):
 
     def run(self):
         import time
-        from src.item.filter import Filter
-        from src.utils.window import WindowSpec, start_detecting_window
-        from src.cam import Cam
-        from src.scripts.handler import ScriptHandler
+
         from src import tts
+        from src.cam import Cam
         from src.config.loader import IniConfigLoader
-        from src.overlay import Overlay
+        from src.item.filter import Filter
         from src.main import check_for_proper_tts_configuration
+        from src.overlay import Overlay
+        from src.scripts.handler import ScriptHandler
+        from src.utils.window import WindowSpec, start_detecting_window
 
         Filter().load_files()
 
@@ -146,9 +140,10 @@ class UnifiedMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        from PyQt6.QtWidgets import QApplication
+
         from src.config.loader import IniConfigLoader
         from src.gui.themes import DARK_THEME, LIGHT_THEME
-        from PyQt6.QtWidgets import QApplication
 
         config = IniConfigLoader()
         theme_name = getattr(config.general, "theme", None) or "dark"
@@ -166,6 +161,7 @@ class UnifiedMainWindow(QMainWindow):
         self.console_handler = QtConsoleHandler()
         self.console_handler.setFormatter(create_formatter(colored=True))
         self.console_handler.setLevel(logging.DEBUG)
+        self.console_handler.addFilter(ThreadNameFilter())
 
         self.activity_handler = QtActivityHandler()
         activity_formatter = logging.Formatter("%(message)s")
@@ -208,8 +204,9 @@ class UnifiedMainWindow(QMainWindow):
         self.thread.start()
 
     def emit_startup_direct_to_console(self):
-        from src import __version__
         from beautifultable import BeautifulTable
+
+        from src import __version__
         from src.config.loader import IniConfigLoader
 
         line = f"============ D4 Loot Filter {__version__} ============"
@@ -250,8 +247,10 @@ class UnifiedMainWindow(QMainWindow):
         return widget
 
     def open_import_dialog(self):
-        from gui.importer_window import ImporterWindow
         import logging
+
+        from gui.importer_window import ImporterWindow
+
         LOGGER = logging.getLogger(__name__)
 
         try:
@@ -265,11 +264,14 @@ class UnifiedMainWindow(QMainWindow):
         except Exception as e:
             LOGGER.error(f"Failed to open importer: {e}")
             from PyQt6.QtWidgets import QMessageBox
+
             QMessageBox.critical(self, "Import Error", str(e))
 
     def open_settings_dialog(self):
-        from gui.config_window import ConfigWindow
         import logging
+
+        from gui.config_window import ConfigWindow
+
         LOGGER = logging.getLogger(__name__)
 
         try:
@@ -283,6 +285,7 @@ class UnifiedMainWindow(QMainWindow):
         except Exception as e:
             LOGGER.error(f"Failed to open settings: {e}")
             from PyQt6.QtWidgets import QMessageBox
+
             QMessageBox.critical(self, "Settings Error", str(e))
 
     def open_profile_editor(self):
@@ -296,7 +299,7 @@ class UnifiedMainWindow(QMainWindow):
             self.editor_window.activateWindow()
 
     def restore_geometry(self):
-        from PyQt6.QtCore import QSettings, QPoint, QSize
+        from PyQt6.QtCore import QPoint, QSettings, QSize
 
         settings = QSettings("d4lf", "mainwindow")
 
@@ -335,8 +338,9 @@ class UnifiedMainWindow(QMainWindow):
 
     def apply_theme(self):
         from PyQt6.QtWidgets import QApplication
-        from src.gui.themes import DARK_THEME, LIGHT_THEME
+
         from src.config.loader import IniConfigLoader
+        from src.gui.themes import DARK_THEME, LIGHT_THEME
 
         theme_name = IniConfigLoader().general.theme
         stylesheet = DARK_THEME if theme_name == "dark" else LIGHT_THEME

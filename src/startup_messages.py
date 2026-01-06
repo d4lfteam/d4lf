@@ -1,8 +1,10 @@
 import logging
+
 from beautifultable import BeautifulTable
+
 from src import __version__
 from src.config.loader import IniConfigLoader
-from src.item.filter import Filter
+
 
 def emit_startup_messages():
     logger = logging.getLogger(__name__)
@@ -54,5 +56,3 @@ def emit_early_startup_logs():
             "If this is a mistake, use the profiles section of the config tab "
             "of gui.bat to activate the profiles you want to use."
         )
-
-

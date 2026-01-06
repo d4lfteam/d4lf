@@ -21,6 +21,11 @@ LOGGER = logging.getLogger(__name__)
 
 LOG_DIR = BASE_DIR / "logs"
 
+class ThreadNameFilter(logging.Filter):
+    def filter(self, record):
+        if record.threadName.startswith("Dummy-"):
+            record.threadName = record.threadName.replace("Dummy-", "Thread-")
+        return True
 
 class ColoredFormatter(logging.Formatter):
     def __init__(
@@ -57,18 +62,11 @@ def _setup_log_filename(fmt: str) -> str:
     return filename
 
 
-def create_formatter(colored: bool) -> logging.Formatter:
-    """Create a formatter for logging.
-
-    :param colored: If true, use colors in output
-    :return: the logging formatter
-    """
-    # log_format = "%(asctime)s.%(msecs)03d | %(processName)s | %(threadName)s | %(levelname)s | %(name)s:%(lineno)d | %(message)s"
-    log_format = "%(asctime)s.%(msecs)03d | %(threadName)s | %(levelname)s | %(name)s:%(lineno)d | %(message)s"
-    date_format = "%Y-%m-%d | %H:%M:%S"
+def create_formatter(colored=False):
+    fmt = "%(asctime)s | %(threadName)s | %(levelname)s | %(name)s:%(lineno)d | %(message)s"
     if colored:
-        return ColoredFormatter(fmt=log_format, datefmt=date_format)
-    return logging.Formatter(fmt=log_format, datefmt=date_format)
+        return ColoredFormatter(fmt)
+    return logging.Formatter(fmt)
 
 
 def setup(log_level: str = "DEBUG", *, enable_stdout: bool = True) -> None:
@@ -91,6 +89,7 @@ def setup(log_level: str = "DEBUG", *, enable_stdout: bool = True) -> None:
     # create StreamHandler for console output (optional)
     if enable_stdout:
         stream_handler = logging.StreamHandler(stream=sys.stdout)
+        stream_handler.addFilter(ThreadNameFilter())
         stream_handler.set_name("D4LF_CONSOLE")
         stream_handler.setLevel(log_level.upper())
         stream_handler.setFormatter(create_formatter(colored=True))

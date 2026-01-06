@@ -1,8 +1,6 @@
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QPlainTextEdit,
-    QHBoxLayout, QPushButton
-)
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget
+
 from src import __version__
 from src.config.loader import IniConfigLoader
 
@@ -55,8 +53,12 @@ class ActivityLogWidget(QWidget):
 
         if not config.advanced_options.vision_mode_only:
             hotkeys_html += f"<u><b>{config.advanced_options.run_vision_mode.upper()}</b></u>: Run/Stop Vision Mode&nbsp;&nbsp;&nbsp;"
-            hotkeys_html += f"<u><b>{config.advanced_options.run_filter.upper()}</b></u>: Run/Stop Auto Filter&nbsp;&nbsp;&nbsp;"
-            hotkeys_html += f"<u><b>{config.advanced_options.move_to_inv.upper()}</b></u>: Move Chest → Inventory&nbsp;&nbsp;&nbsp;"
+            hotkeys_html += (
+                f"<u><b>{config.advanced_options.run_filter.upper()}</b></u>: Run/Stop Auto Filter&nbsp;&nbsp;&nbsp;"
+            )
+            hotkeys_html += (
+                f"<u><b>{config.advanced_options.move_to_inv.upper()}</b></u>: Move Chest → Inventory&nbsp;&nbsp;&nbsp;"
+            )
             hotkeys_html += f"<u><b>{config.advanced_options.move_to_chest.upper()}</b></u>: Move Inventory → Chest<br>"
             hotkeys_html += f"<u><b>{config.advanced_options.run_filter_force_refresh.upper()}</b></u>: Force Filter (Reset Item Status)&nbsp;&nbsp;&nbsp;"
             hotkeys_html += f"<u><b>{config.advanced_options.force_refresh_only.upper()}</b></u>: Reset Items (No Filter)&nbsp;&nbsp;&nbsp;"

@@ -4,7 +4,6 @@ import os
 import pathlib
 import sys
 import time
-import traceback
 from pathlib import Path
 
 import psutil
@@ -17,7 +16,6 @@ from src.autoupdater import notify_if_update, start_auto_update
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import VisionModeType
-from src.gui.main_window import MainWindow
 from src.item.filter import Filter
 from src.logger import LOG_DIR
 from src.overlay import Overlay
@@ -142,7 +140,7 @@ def check_for_proper_tts_configuration():
                     )
         else:
             LOGGER.warning(
-                'Unable to find a Diablo 4 local prefs file. Can\'t automatically check if TTS is configured properly in-game.'
+                "Unable to find a Diablo 4 local prefs file. Can't automatically check if TTS is configured properly in-game."
             )
 
 
@@ -168,36 +166,25 @@ def get_d4_local_prefs_file() -> Path | None:
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--autoupdate":
-        src.logger.setup(
-            log_level=IniConfigLoader().advanced_options.log_lvl.value,
-            enable_stdout=True
-        )
+        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=True)
         start_auto_update()
 
     elif len(sys.argv) > 1 and sys.argv[1] == "--autoupdatepost":
-        src.logger.setup(
-            log_level=IniConfigLoader().advanced_options.log_lvl.value,
-            enable_stdout=True
-        )
+        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=True)
         start_auto_update(postprocess=True)
 
     elif len(sys.argv) > 1 and sys.argv[1] == "--cli":
-        src.logger.setup(
-            log_level=IniConfigLoader().advanced_options.log_lvl.value,
-            enable_stdout=True
-        )
+        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=True)
         main()
 
     else:
         os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
 
         # Normal GUI startup — no PyCharm logic, no stdout
-        src.logger.setup(
-            log_level=IniConfigLoader().advanced_options.log_lvl.value,
-            enable_stdout=False
-        )
+        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=False)
 
         from PyQt6.QtWidgets import QApplication
+
         from src.unified_window import UnifiedMainWindow
 
         app = QApplication(sys.argv)

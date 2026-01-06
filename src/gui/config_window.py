@@ -1,6 +1,6 @@
 import logging
 
-from PyQt6.QtCore import QPoint, QSettings, QSize
+from PyQt6.QtCore import QPoint, QSettings, QSize, Qt
 from PyQt6.QtWidgets import QMainWindow
 
 from src.gui.config_tab import ConfigTab
