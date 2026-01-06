@@ -1,11 +1,10 @@
+import logging
 import enum
 import os
 import sys
 import typing
 from pathlib import Path
 
-if sys.platform != "darwin":
-    import keyboard
 
 from pydantic import BaseModel, ValidationError
 from PyQt6.QtCore import Qt, QTimer
@@ -177,16 +176,25 @@ class ConfigTab(QWidget):
             parameter_value_widget.blockSignals(False)
 
             def on_enum_changed():
-                print(f"[Model update] Theme set to: {parameter_value_widget.currentText()}")
+                logging.getLogger(__name__).debug(
+                    "[Dropdown emitted] New value: %s",
+                    parameter_value_widget.currentText(),
+                )
+                logging.getLogger(__name__).debug(
+                    "[Model update] Theme set to: %s",
+                    parameter_value_widget.currentText(),
+                )
+
                 _validate_and_save_changes(
                     model, section_config_header, config_key, parameter_value_widget.currentText()
                 )
-                # If this is the theme setting, apply it immediately
+
                 if config_key == "theme" and self.theme_changed_callback and not self._initializing:
                     self.theme_changed_callback()
 
-            print(f"[Dropdown emitted] New value: {parameter_value_widget.currentText()}")
             parameter_value_widget.currentTextChanged.connect(on_enum_changed)
+
+
         elif isinstance(config_value, bool):
             parameter_value_widget = QCheckBox()
             parameter_value_widget.setChecked(config_value)
@@ -566,23 +574,32 @@ class HotkeyListenerDialog(QDialog):
         self.layout.addLayout(self.button_layout)
 
     def keyPressEvent(self, event):
-        modifiers_str = []
-        for modifier in event.modifiers():
-            if modifier == Qt.KeyboardModifier.ShiftModifier:
-                modifiers_str.append("shift")
-            elif modifier == Qt.KeyboardModifier.ControlModifier:
-                modifiers_str.append("ctrl")
-            elif modifier == Qt.KeyboardModifier.AltModifier:
-                modifiers_str.append("alt")
+        modifiers = []
 
-        native_virtual_key = event.nativeVirtualKey()
-        non_mod_key, _ = keyboard._winkeyboard.official_virtual_keys.get(native_virtual_key)
-        if non_mod_key in modifiers_str:
-            non_mod_key = ""
+        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            modifiers.append("ctrl")
+        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+            modifiers.append("shift")
+        if event.modifiers() & Qt.KeyboardModifier.AltModifier:
+            modifiers.append("alt")
 
-        key_str = "+".join(modifiers_str + [non_mod_key])
-        self.hotkey = key_str
-        self.hotkey_label.setText(key_str)
+        key = event.key()
+
+        # Handle function keys
+        if Qt.Key.Key_F1 <= key <= Qt.Key.Key_F35:
+            non_mod_key = f"f{key - Qt.Key.Key_F1 + 1}"
+
+        # Handle regular keys
+        else:
+            text = event.text().lower()
+            non_mod_key = text if text else ""
+
+        # Build final hotkey string
+        parts = modifiers + ([non_mod_key] if non_mod_key else [])
+        hotkey_str = "+".join(parts)
+
+        self.hotkey = hotkey_str
+        self.hotkey_label.setText(hotkey_str)
 
     def get_hotkey(self):
         return self.hotkey

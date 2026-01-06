@@ -3,9 +3,19 @@ import re
 import time
 
 from beautifultable import BeautifulTable
+from threading import Thread
 from PyQt6.QtCore import QObject, QPoint, QSettings, QSize, QThread, pyqtSignal
 from PyQt6.QtGui import QTextCursor
-from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox, QPlainTextEdit, QTabWidget, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QMessageBox,
+    QPlainTextEdit,
+    QVBoxLayout,
+    QWidget,
+    QStackedWidget,
+    QTabBar,
+)
 
 from gui.activity_log_widget import ActivityLogWidget
 from gui.config_window import ConfigWindow
@@ -22,6 +32,8 @@ from src.main import check_for_proper_tts_configuration
 from src.overlay import Overlay
 from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
+from src.utils.global_hotkeys import register_hotkey, start_hotkey_listener
+
 
 ANSI_PATTERN = re.compile(r"\x1b\[(\d+)(;\d+)*m")
 
@@ -141,13 +153,14 @@ class UnifiedMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        # --- Theme setup ---
         config = IniConfigLoader()
         theme_name = getattr(config.general, "theme", None) or "dark"
         stylesheet = DARK_THEME if theme_name == "dark" else LIGHT_THEME
         QApplication.instance().setStyleSheet(stylesheet)
 
+        # --- Logging setup ---
         setup_logging(enable_stdout=False)
-
         root_logger = logging.getLogger()
 
         for h in list(root_logger.handlers):
@@ -167,27 +180,63 @@ class UnifiedMainWindow(QMainWindow):
         root_logger.addHandler(self.activity_handler)
         root_logger.setLevel(logging.INFO)
 
-        self.setWindowTitle("D4LF - Unified Window")
+        # --- Window setup ---
+        self.setWindowTitle("D4LF")
         self.setMinimumSize(800, 600)
 
         central = QWidget()
         layout = QVBoxLayout(central)
 
-        self.tabs = QTabWidget()
+        # ActivityLogWidget is the whole page (with buttons + hotkeys)
         self.activity_tab = ActivityLogWidget(parent=self)
-        self.console_tab = self.build_console_tab()
-
-        self.tabs.addTab(self.activity_tab, "Activity Log")
-        self.tabs.addTab(self.console_tab, "Console View")
-
-        layout.addWidget(self.tabs)
+        layout.addWidget(self.activity_tab)
         self.setCentralWidget(central)
 
+        # --- Build console widget and inject stack into ActivityLogWidget ---
+        # 1) Build console widget
+        self.console_output = ANSIConsoleWidget()
+
+        # 2) Get the layout of ActivityLogWidget
+        act_layout = self.activity_tab.layout()
+
+        # 3) Find the index of the existing log_viewer
+        #    (the little log box under "Activity Log:")
+        idx = act_layout.indexOf(self.activity_tab.log_viewer)
+
+        # 4) Remove the original log_viewer from layout
+        act_layout.removeWidget(self.activity_tab.log_viewer)
+
+        # 5) Create a stacked widget that holds:
+        #    - original log_viewer
+        #    - console_output
+        self.log_stack = QStackedWidget()
+        self.log_stack.addWidget(self.activity_tab.log_viewer)  # index 0: Log View
+        self.log_stack.addWidget(self.console_output)           # index 1: Console View
+
+        # 6) Insert the stack back where the log_viewer was
+        act_layout.insertWidget(idx, self.log_stack)
+
+        # 7) Create a small tab bar for Log / Console and put it just above the stack
+        self.log_tabbar = QTabBar()
+        self.log_tabbar.addTab("Log View")
+        self.log_tabbar.addTab("Console View")
+
+        # Insert the tabbar just before the stack
+        act_layout.insertWidget(idx, self.log_tabbar)
+
+        # 8) Wire tabbar to stacked widget
+        self.log_tabbar.currentChanged.connect(self.log_stack.setCurrentIndex)
+
+        # --- Logging connections ---
+        # Console handler → console_output
         self.console_handler.log_signal.connect(self.console_output.append_ansi_text)
+        # Activity handler → original log_viewer
         self.activity_handler.log_signal.connect(self.activity_tab.log_viewer.appendPlainText)
 
+        # --- Startup banner ---
         self.emit_startup_direct_to_console()
 
+        # --- Backend worker thread ---
         self.thread = QThread()
         self.worker = BackendWorker()
         self.worker.moveToThread(self.thread)
@@ -195,46 +244,111 @@ class UnifiedMainWindow(QMainWindow):
         self.thread.started.connect(self.worker.run)
         self.worker.finished.connect(self.thread.quit)
 
+        # --- Final setup ---
         self.restore_geometry()
         self.thread.start()
+        self.start_global_hotkeys()
 
     def emit_startup_direct_to_console(self):
-        line = f"============ D4 Loot Filter {__version__} ============"
-        self.console_output.appendPlainText(line)
+        banner = (
+            "════════════════════════════════════════════════════════════════════════════════\n"
+            "D4LF - Diablo 4 Loot Filter\n"
+            "════════════════════════════════════════════════════════════════════════════════"
+        )
 
-        table = BeautifulTable()
-        table.set_style(BeautifulTable.STYLE_BOX_ROUNDED)
-        table.rows.append([IniConfigLoader().advanced_options.run_vision_mode, "Run/Stop Vision Mode"])
+        self.console_output.appendPlainText(banner)
+        self.console_output.appendPlainText("")  # one blank line for spacing
 
-        if not IniConfigLoader().advanced_options.vision_mode_only:
-            table.rows.append([IniConfigLoader().advanced_options.run_filter, "Run/Stop Auto Filter"])
-            table.rows.append([
-                IniConfigLoader().advanced_options.run_filter_force_refresh,
-                "Force Run/Stop Filter, Resetting Item Status",
-            ])
-            table.rows.append([
-                IniConfigLoader().advanced_options.force_refresh_only,
-                "Reset Item Statuses Without A Filter After",
-            ])
-            table.rows.append([IniConfigLoader().advanced_options.move_to_inv, "Move Items From Chest To Inventory"])
-            table.rows.append([IniConfigLoader().advanced_options.move_to_chest, "Move Items From Inventory To Chest"])
+    def start_global_hotkeys(self):
+        """
+        Register global hotkeys using WinAPI low-level hook with modifier support.
+        """
 
-        table.rows.append([IniConfigLoader().advanced_options.exit_key, "Exit"])
-        table.columns.header = ["hotkey", "action"]
+        # --- Dedicated console-only logger ---
+        hotkey_logger = logging.getLogger("hotkeys")
+        hotkey_logger.setLevel(logging.INFO)
+        hotkey_logger.addHandler(self.console_handler)
+        hotkey_logger.propagate = False
 
-        for line in str(table).splitlines():
-            self.console_output.appendPlainText(line)
+        hotkey_logger.info("Registering global hotkeys from configuration...")
 
-        self.console_output.appendPlainText("")
+        config = IniConfigLoader()
+        advanced = config.advanced_options
 
-    def build_console_tab(self):
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
+        def convert_to_vk(hotkey_str):
+            """
+            Convert config hotkey like:
+                "f11"
+                "shift+f11"
+                "ctrl+shift+f11"
+            into:
+                "shift+vk_122"
+            """
+            parts = hotkey_str.lower().split("+")
+            mods = []
+            key = None
 
-        self.console_output = ANSIConsoleWidget()
-        layout.addWidget(self.console_output)
+            for p in parts:
+                if p in ("ctrl", "shift", "alt"):
+                    mods.append(p)
+                elif p.startswith("f"):
+                    try:
+                        fn = int(p[1:])
+                        vk = 0x70 + (fn - 1)
+                        key = f"vk_{vk}"
+                    except:
+                        return None
+                else:
+                    return None
 
-        return widget
+            if key is None:
+                return None
+
+            return "+".join(mods + [key])
+
+        def register(hotkey_str, callback, description):
+            if not hotkey_str:
+                hotkey_logger.info("No key configured for %s; skipping", description)
+                return
+
+            vk_form = convert_to_vk(hotkey_str)
+            if not vk_form:
+                hotkey_logger.info("Invalid hotkey '%s' for %s", hotkey_str, description)
+                return
+
+            hotkey_logger.info("Registering hotkey %s for %s", hotkey_str.upper(), description)
+            register_hotkey(vk_form, callback)
+
+        register(advanced.run_vision_mode,
+                 lambda: ScriptHandler().toggle_vision_mode(),
+                 "Run/Stop Vision Mode")
+
+        register(advanced.run_filter,
+                 lambda: ScriptHandler().toggle_filter(),
+                 "Run/Stop Auto Filter")
+
+        register(advanced.run_filter_force_refresh,
+                 lambda: ScriptHandler().force_filter(),
+                 "Force Run/Stop Filter, Resetting Item Status")
+
+        register(advanced.force_refresh_only,
+                 lambda: ScriptHandler().reset_statuses(),
+                 "Reset Item Statuses Without A Filter After")
+
+        register(advanced.move_to_inv,
+                 lambda: ScriptHandler().move_chest_to_inv(),
+                 "Move Items From Chest To Inventory")
+
+        register(advanced.move_to_chest,
+                 lambda: ScriptHandler().move_inv_to_chest(),
+                 "Move Items From Inventory To Chest")
+
+        register(advanced.exit_key,
+                 lambda: QApplication.quit(),
+                 "Exit")
+
+        start_hotkey_listener()
+        hotkey_logger.info("Global hotkey listener started.")
 
     def open_import_dialog(self):
         logger = logging.getLogger(__name__)
@@ -287,6 +401,10 @@ class UnifiedMainWindow(QMainWindow):
         if maximized:
             self.showMaximized()
 
+        selected = settings.value("selected_view", 0, int)
+        self.log_tabbar.setCurrentIndex(selected)
+        self.log_stack.setCurrentIndex(selected)
+
     def save_geometry(self):
         settings = QSettings("d4lf", "mainwindow")
 
@@ -295,17 +413,24 @@ class UnifiedMainWindow(QMainWindow):
             settings.setValue("pos", self.pos())
 
         settings.setValue("maximized", self.isMaximized())
+        settings.setValue("selected_view", self.log_tabbar.currentIndex())
 
     def closeEvent(self, event):
         self.save_geometry()
 
         root_logger = logging.getLogger()
-        root_logger.removeHandler(self.console_handler)
-        root_logger.removeHandler(self.activity_handler)
-        self.console_handler.setLevel(logging.CRITICAL + 1)
-        self.activity_handler.setLevel(logging.CRITICAL + 1)
 
-        logging.shutdown()
+        try:
+            root_logger.removeHandler(self.console_handler)
+            root_logger.removeHandler(self.activity_handler)
+        except Exception:
+            pass
+
+        try:
+            logging._handlerList.clear()
+        except Exception:
+            pass
+
         super().closeEvent(event)
 
     def apply_theme(self):

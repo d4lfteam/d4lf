@@ -1,42 +1,33 @@
 import logging
 from pathlib import Path
 
-from beautifultable import BeautifulTable
-
 from src import __version__
 from src.config.loader import IniConfigLoader
 
 
+BANNER = (
+    "════════════════════════════════════════════════════════════════════════════════\n"
+    "D4LF - Diablo 4 Loot Filter\n"
+    "════════════════════════════════════════════════════════════════════════════════"
+)
+
+
 def emit_startup_messages():
+    """
+    Emit the simplified startup banner for the new UI.
+    No hotkey table. No extra formatting.
+    """
     logger = logging.getLogger(__name__)
-
-    logger.info(f"============ D4 Loot Filter {__version__} ============")
-
-    table = BeautifulTable()
-    table.set_style(BeautifulTable.STYLE_BOX_ROUNDED)
-    table.rows.append([IniConfigLoader().advanced_options.run_vision_mode, "Run/Stop Vision Mode"])
-
-    if not IniConfigLoader().advanced_options.vision_mode_only:
-        table.rows.append([IniConfigLoader().advanced_options.run_filter, "Run/Stop Auto Filter"])
-        table.rows.append([
-            IniConfigLoader().advanced_options.run_filter_force_refresh,
-            "Force Run/Stop Filter, Resetting Item Status",
-        ])
-        table.rows.append([
-            IniConfigLoader().advanced_options.force_refresh_only,
-            "Reset Item Statuses Without A Filter After",
-        ])
-        table.rows.append([IniConfigLoader().advanced_options.move_to_inv, "Move Items From Chest To Inventory"])
-        table.rows.append([IniConfigLoader().advanced_options.move_to_chest, "Move Items From Inventory To Chest"])
-
-    table.rows.append([IniConfigLoader().advanced_options.exit_key, "Exit"])
-    table.columns.header = ["hotkey", "action"]
-
-    for line in str(table).splitlines():
-        logger.info(line)
+    logger.info(BANNER)
 
 
 def emit_early_startup_logs():
+    """
+    Emit early startup logs exactly as before:
+    - version
+    - config path
+    - missing profiles warning
+    """
     logger = logging.getLogger(__name__)
 
     # 1. Running version
