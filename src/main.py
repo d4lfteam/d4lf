@@ -77,7 +77,7 @@ def main():
     table.rows.append([IniConfigLoader().advanced_options.exit_key, "Exit"])
     table.columns.header = ["hotkey", "action"]
 
-    logger.info("\n" + str(table))
+    logger.info("\n%s", table)
 
     win_spec = WindowSpec(IniConfigLoader().advanced_options.process_name)
     start_detecting_window(win_spec)

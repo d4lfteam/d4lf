@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 from beautifultable import BeautifulTable
 
@@ -45,8 +46,6 @@ def emit_early_startup_logs():
     logger.info(f"Adapt your configs via gui.bat or directly in: {IniConfigLoader().user_dir}")
 
     # 3. No profiles configured warning (if applicable)
-    from pathlib import Path
-
     profiles_dir = Path(IniConfigLoader().user_dir) / "profiles"
     profile_files = list(profiles_dir.glob("*.ini"))
 

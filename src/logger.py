@@ -21,11 +21,13 @@ LOGGER = logging.getLogger(__name__)
 
 LOG_DIR = BASE_DIR / "logs"
 
+
 class ThreadNameFilter(logging.Filter):
     def filter(self, record):
         if record.threadName.startswith("Dummy-"):
             record.threadName = record.threadName.replace("Dummy-", "Thread-")
         return True
+
 
 class ColoredFormatter(logging.Formatter):
     def __init__(
