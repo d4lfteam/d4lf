@@ -20,10 +20,6 @@ class ActivityLogWidget(QWidget):
         self.main_layout.addWidget(version_label)
 
         # === LOG VIEWER ===
-        log_label = QLabel("Activity Log:")
-        log_label.setStyleSheet("font-weight: bold;")
-        self.main_layout.addWidget(log_label)
-
         self.log_viewer = QPlainTextEdit()
         self.log_viewer.setReadOnly(True)
         self.log_viewer.setMaximumBlockCount(1000)
