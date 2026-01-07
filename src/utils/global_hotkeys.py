@@ -1,5 +1,6 @@
 import ctypes
 import ctypes.wintypes
+from contextlib import suppress
 from threading import Thread
 
 # WinAPI constants
@@ -54,8 +55,6 @@ def _low_level_keyboard_proc(nCode, wParam, lParam):
 
         callback = _hotkey_callbacks.get(hotkey_str)
         if callback:
-            from contextlib import suppress
-
             with suppress(Exception):
                 callback()
 
@@ -69,7 +68,6 @@ def register_hotkey(hotkey_str, callback):
     "ctrl+shift+vk_122"
     "vk_120"        (F9)
     """
-
     _hotkey_callbacks[hotkey_str] = callback
 
 

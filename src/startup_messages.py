@@ -16,7 +16,6 @@ def emit_startup_messages():
 
     No hotkey table. No extra formatting.
     """
-
     logger = logging.getLogger(__name__)
     logger.info(BANNER)
 
@@ -28,7 +27,6 @@ def emit_early_startup_logs():
     - config path
     - missing profiles warning
     """
-
     logger = logging.getLogger(__name__)
 
     # 1. Running version

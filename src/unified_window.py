@@ -1,6 +1,7 @@
 import logging
 import re
 import time
+from contextlib import suppress
 
 from PyQt6.QtCore import QObject, QPoint, QSettings, QSize, QThread, pyqtSignal
 from PyQt6.QtGui import QTextCursor
@@ -258,7 +259,6 @@ class UnifiedMainWindow(QMainWindow):
 
     def start_global_hotkeys(self):
         """Register global hotkeys using WinAPI low-level hook with modifier support."""
-
         # --- Dedicated console-only logger ---
         hotkey_logger = logging.getLogger("hotkeys")
         hotkey_logger.setLevel(logging.INFO)
@@ -271,17 +271,16 @@ class UnifiedMainWindow(QMainWindow):
         advanced = config.advanced_options
 
         def convert_to_vk(hotkey_str):
-            """Convert config hotkey like:
+            """Convert config hotkey formats.
 
+            Examples:
                 "f11"
                 "shift+f11"
                 "ctrl+shift+f11"
 
-            into:
-
+            Converted into:
                 "shift+vk_122".
             """
-
             parts = hotkey_str.lower().split("+")
             mods = []
             key = None
@@ -415,8 +414,6 @@ class UnifiedMainWindow(QMainWindow):
         self.save_geometry()
 
         root_logger = logging.getLogger()
-
-        from contextlib import suppress
 
         with suppress(Exception):
             root_logger.removeHandler(self.console_handler)
