@@ -187,6 +187,7 @@ if __name__ == "__main__":
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=False)
 
         from PyQt6.QtWidgets import QApplication
+
         from src.unified_window import UnifiedMainWindow
 
         app = QApplication(sys.argv)
