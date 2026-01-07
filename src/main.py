@@ -49,13 +49,8 @@ def main():
     else:
         notify_if_update()
 
-    if IniConfigLoader().advanced_options.vision_mode_only:
-        LOGGER.info("Vision mode only is enabled. All functionality that clicks the screen is disabled.")
-
-    Filter().load_files()
-
-    logger = logging.getLogger(__name__)
-    logger.info(f"============ D4 Loot Filter {__version__} ============")
+    # --- OG D4LF STYLE HEADER (printed before other runtime logs) ---
+    print(f"============ D4 Loot Filter {__version__} ============")
 
     table = BeautifulTable()
     table.set_style(BeautifulTable.STYLE_BOX_ROUNDED)
@@ -77,7 +72,14 @@ def main():
     table.rows.append([IniConfigLoader().advanced_options.exit_key, "Exit"])
     table.columns.header = ["hotkey", "action"]
 
-    logger.info("\n%s", table)
+    print(table)
+    print()  # blank line, just like OG D4LF
+    # --- END HEADER ---
+
+    if IniConfigLoader().advanced_options.vision_mode_only:
+        LOGGER.info("Vision mode only is enabled. All functionality that clicks the screen is disabled.")
+
+    Filter().load_files()
 
     win_spec = WindowSpec(IniConfigLoader().advanced_options.process_name)
     start_detecting_window(win_spec)
@@ -173,18 +175,18 @@ if __name__ == "__main__":
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=True)
         start_auto_update(postprocess=True)
 
-    elif len(sys.argv) > 1 and sys.argv[1] == "--cli":
+    elif len(sys.argv) > 1 and sys.argv[1] == "--consoleonly":
+        # Console-only mode: no GUI, just scripts + overlay + logs to stdout
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=True)
         main()
 
     else:
         os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
 
-        # Normal GUI startup — no PyCharm logic, no stdout
+        # Normal GUI startup — no stdout
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=False)
 
         from PyQt6.QtWidgets import QApplication
-
         from src.unified_window import UnifiedMainWindow
 
         app = QApplication(sys.argv)
