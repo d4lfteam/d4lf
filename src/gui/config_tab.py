@@ -1,10 +1,8 @@
-import logging
 import enum
+import logging
 import os
-import sys
 import typing
 from pathlib import Path
-
 
 from pydantic import BaseModel, ValidationError
 from PyQt6.QtCore import Qt, QTimer
@@ -177,12 +175,10 @@ class ConfigTab(QWidget):
 
             def on_enum_changed():
                 logging.getLogger(__name__).debug(
-                    "[Dropdown emitted] New value: %s",
-                    parameter_value_widget.currentText(),
+                    "[Dropdown emitted] New value: %s", parameter_value_widget.currentText()
                 )
                 logging.getLogger(__name__).debug(
-                    "[Model update] Theme set to: %s",
-                    parameter_value_widget.currentText(),
+                    "[Model update] Theme set to: %s", parameter_value_widget.currentText()
                 )
 
                 _validate_and_save_changes(
@@ -193,7 +189,6 @@ class ConfigTab(QWidget):
                     self.theme_changed_callback()
 
             parameter_value_widget.currentTextChanged.connect(on_enum_changed)
-
 
         elif isinstance(config_value, bool):
             parameter_value_widget = QCheckBox()
@@ -592,7 +587,7 @@ class HotkeyListenerDialog(QDialog):
         # Handle regular keys
         else:
             text = event.text().lower()
-            non_mod_key = text if text else ""
+            non_mod_key = text or ""
 
         # Build final hotkey string
         parts = modifiers + ([non_mod_key] if non_mod_key else [])

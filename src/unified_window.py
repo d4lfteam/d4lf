@@ -2,8 +2,6 @@ import logging
 import re
 import time
 
-from beautifultable import BeautifulTable
-from threading import Thread
 from PyQt6.QtCore import QObject, QPoint, QSettings, QSize, QThread, pyqtSignal
 from PyQt6.QtGui import QTextCursor
 from PyQt6.QtWidgets import (
@@ -11,17 +9,17 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
-    QVBoxLayout,
-    QWidget,
     QStackedWidget,
     QTabBar,
+    QVBoxLayout,
+    QWidget,
 )
 
 from gui.activity_log_widget import ActivityLogWidget
 from gui.config_window import ConfigWindow
 from gui.importer_window import ImporterWindow
 from gui.profile_editor_window import ProfileEditorWindow
-from src import __version__, tts
+from src import tts
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.gui.themes import DARK_THEME, LIGHT_THEME
@@ -31,9 +29,8 @@ from src.logger import setup as setup_logging
 from src.main import check_for_proper_tts_configuration
 from src.overlay import Overlay
 from src.scripts.handler import ScriptHandler
-from src.utils.window import WindowSpec, start_detecting_window
 from src.utils.global_hotkeys import register_hotkey, start_hotkey_listener
-
+from src.utils.window import WindowSpec, start_detecting_window
 
 ANSI_PATTERN = re.compile(r"\x1b\[(\d+)(;\d+)*m")
 
@@ -211,7 +208,7 @@ class UnifiedMainWindow(QMainWindow):
         #    - console_output
         self.log_stack = QStackedWidget()
         self.log_stack.addWidget(self.activity_tab.log_viewer)  # index 0: Log View
-        self.log_stack.addWidget(self.console_output)           # index 1: Console View
+        self.log_stack.addWidget(self.console_output)  # index 1: Console View
 
         # 6) Insert the stack back where the log_viewer was
         act_layout.insertWidget(idx, self.log_stack)
@@ -260,9 +257,7 @@ class UnifiedMainWindow(QMainWindow):
         self.console_output.appendPlainText("")  # one blank line for spacing
 
     def start_global_hotkeys(self):
-        """
-        Register global hotkeys using WinAPI low-level hook with modifier support.
-        """
+        """Register global hotkeys using WinAPI low-level hook with modifier support."""
 
         # --- Dedicated console-only logger ---
         hotkey_logger = logging.getLogger("hotkeys")
@@ -276,14 +271,17 @@ class UnifiedMainWindow(QMainWindow):
         advanced = config.advanced_options
 
         def convert_to_vk(hotkey_str):
-            """
-            Convert config hotkey like:
+            """Convert config hotkey like:
+
                 "f11"
                 "shift+f11"
                 "ctrl+shift+f11"
+
             into:
-                "shift+vk_122"
+
+                "shift+vk_122".
             """
+
             parts = hotkey_str.lower().split("+")
             mods = []
             key = None
@@ -296,7 +294,7 @@ class UnifiedMainWindow(QMainWindow):
                         fn = int(p[1:])
                         vk = 0x70 + (fn - 1)
                         key = f"vk_{vk}"
-                    except:
+                    except Exception:
                         return None
                 else:
                     return None
@@ -319,33 +317,31 @@ class UnifiedMainWindow(QMainWindow):
             hotkey_logger.info("Registering hotkey %s for %s", hotkey_str.upper(), description)
             register_hotkey(vk_form, callback)
 
-        register(advanced.run_vision_mode,
-                 lambda: ScriptHandler().toggle_vision_mode(),
-                 "Run/Stop Vision Mode")
+        register(advanced.run_vision_mode, lambda: ScriptHandler().toggle_vision_mode(), "Run/Stop Vision Mode")
 
-        register(advanced.run_filter,
-                 lambda: ScriptHandler().toggle_filter(),
-                 "Run/Stop Auto Filter")
+        register(advanced.run_filter, lambda: ScriptHandler().toggle_filter(), "Run/Stop Auto Filter")
 
-        register(advanced.run_filter_force_refresh,
-                 lambda: ScriptHandler().force_filter(),
-                 "Force Run/Stop Filter, Resetting Item Status")
+        register(
+            advanced.run_filter_force_refresh,
+            lambda: ScriptHandler().force_filter(),
+            "Force Run/Stop Filter, Resetting Item Status",
+        )
 
-        register(advanced.force_refresh_only,
-                 lambda: ScriptHandler().reset_statuses(),
-                 "Reset Item Statuses Without A Filter After")
+        register(
+            advanced.force_refresh_only,
+            lambda: ScriptHandler().reset_statuses(),
+            "Reset Item Statuses Without A Filter After",
+        )
 
-        register(advanced.move_to_inv,
-                 lambda: ScriptHandler().move_chest_to_inv(),
-                 "Move Items From Chest To Inventory")
+        register(
+            advanced.move_to_inv, lambda: ScriptHandler().move_chest_to_inv(), "Move Items From Chest To Inventory"
+        )
 
-        register(advanced.move_to_chest,
-                 lambda: ScriptHandler().move_inv_to_chest(),
-                 "Move Items From Inventory To Chest")
+        register(
+            advanced.move_to_chest, lambda: ScriptHandler().move_inv_to_chest(), "Move Items From Inventory To Chest"
+        )
 
-        register(advanced.exit_key,
-                 lambda: QApplication.quit(),
-                 "Exit")
+        register(advanced.exit_key, lambda: QApplication.quit(), "Exit")
 
         start_hotkey_listener()
         hotkey_logger.info("Global hotkey listener started.")
@@ -420,16 +416,14 @@ class UnifiedMainWindow(QMainWindow):
 
         root_logger = logging.getLogger()
 
-        try:
+        from contextlib import suppress
+
+        with suppress(Exception):
             root_logger.removeHandler(self.console_handler)
             root_logger.removeHandler(self.activity_handler)
-        except Exception:
-            pass
 
-        try:
+        with suppress(Exception):
             logging._handlerList.clear()
-        except Exception:
-            pass
 
         super().closeEvent(event)
 

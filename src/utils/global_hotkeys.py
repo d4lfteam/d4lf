@@ -54,21 +54,22 @@ def _low_level_keyboard_proc(nCode, wParam, lParam):
 
         callback = _hotkey_callbacks.get(hotkey_str)
         if callback:
-            try:
+            from contextlib import suppress
+
+            with suppress(Exception):
                 callback()
-            except Exception:
-                pass
 
     return user32.CallNextHookEx(None, nCode, wParam, lParam)
 
 
 def register_hotkey(hotkey_str, callback):
+    """Hotkey string examples.
+
+    "shift+vk_122"  (Shift+F11)
+    "ctrl+shift+vk_122"
+    "vk_120"        (F9)
     """
-    hotkey_str example:
-        "shift+vk_122"  (Shift+F11)
-        "ctrl+shift+vk_122"
-        "vk_120"        (F9)
-    """
+
     _hotkey_callbacks[hotkey_str] = callback
 
 
@@ -80,21 +81,11 @@ def start_hotkey_listener():
         msg = ctypes.wintypes.MSG()
         user32.PeekMessageW(ctypes.byref(msg), 0, 0, 0, 0)
 
-        HOOKPROC = ctypes.WINFUNCTYPE(
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.wintypes.WPARAM,
-            ctypes.wintypes.LPARAM,
-        )
+        HOOKPROC = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_int, ctypes.wintypes.WPARAM, ctypes.wintypes.LPARAM)
 
         _hook_proc_pointer = HOOKPROC(_low_level_keyboard_proc)
 
-        hook = user32.SetWindowsHookExW(
-            WH_KEYBOARD_LL,
-            _hook_proc_pointer,
-            kernel32.GetModuleHandleW(None),
-            0,
-        )
+        hook = user32.SetWindowsHookExW(WH_KEYBOARD_LL, _hook_proc_pointer, kernel32.GetModuleHandleW(None), 0)
 
         if not hook:
             return

@@ -4,7 +4,6 @@ from pathlib import Path
 from src import __version__
 from src.config.loader import IniConfigLoader
 
-
 BANNER = (
     "════════════════════════════════════════════════════════════════════════════════\n"
     "D4LF - Diablo 4 Loot Filter\n"
@@ -13,21 +12,23 @@ BANNER = (
 
 
 def emit_startup_messages():
-    """
-    Emit the simplified startup banner for the new UI.
+    """Emit the simplified startup banner for the new UI.
+
     No hotkey table. No extra formatting.
     """
+
     logger = logging.getLogger(__name__)
     logger.info(BANNER)
 
 
 def emit_early_startup_logs():
-    """
-    Emit early startup logs exactly as before:
+    """Emit early startup logs exactly as before.
+
     - version
     - config path
     - missing profiles warning
     """
+
     logger = logging.getLogger(__name__)
 
     # 1. Running version
