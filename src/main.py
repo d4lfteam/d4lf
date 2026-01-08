@@ -5,6 +5,7 @@ import pathlib
 import sys
 import time
 from pathlib import Path
+
 from PyQt6.QtGui import QIcon
 
 ICON_PATH = Path(__file__).resolve().parent.parent / "assets" / "logo.png"
@@ -25,7 +26,6 @@ from src.overlay import Overlay
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
-
 
 BASE_DIR = Path(__file__).resolve().parent
 
