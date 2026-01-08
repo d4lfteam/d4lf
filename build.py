@@ -11,13 +11,13 @@ ICON_PATH = "assets/logo.ico"
 
 def run_pyinstaller(release_dir: Path):
     cmd = (
-        f'pyinstaller '
-        f'--clean '
-        f'--onedir '
-        f'--windowed '
-        f'--noconfirm '
+        f"pyinstaller "
+        f"--clean "
+        f"--onedir "
+        f"--windowed "
+        f"--noconfirm "
         f'--distpath "{release_dir}" '
-        f'--paths src '
+        f"--paths src "
         f'--icon "{ICON_PATH}" '
         f'"{ENTRYPOINT}"'
     )
@@ -57,13 +57,7 @@ def copy_manual_resources(exe_root: Path):
 
 def create_consoleonly_batch(exe_root: Path):
     batch_path = exe_root / "consoleonly.bat"
-    batch_path.write_text(
-        "@echo off\n"
-        "cd /d \"%~dp0\"\n"
-        f"{EXE_NAME} --consoleonly\n"
-        "pause\n",
-        encoding="utf-8"
-    )
+    batch_path.write_text(f'@echo off\ncd /d "%~dp0"\n{EXE_NAME} --consoleonly\npause\n', encoding="utf-8")
 
 
 def create_autoupdater_batch(exe_root: Path):
@@ -88,7 +82,7 @@ if %errorlevel% == 1 (
     start /WAIT {EXE_NAME} --autoupdatepost
 )
 """,
-        encoding="utf-8"
+        encoding="utf-8",
     )
 
 
