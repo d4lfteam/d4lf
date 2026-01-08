@@ -1,7 +1,9 @@
 import logging
 import threading
+from pathlib import Path
 
 from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, Qt, QThreadPool, pyqtSignal, pyqtSlot
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -20,8 +22,6 @@ from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.maxroll import import_maxroll
 from src.gui.importer.mobalytics import import_mobalytics
 from src.gui.open_user_config_button import OpenUserConfigButton
-from PyQt6.QtGui import QIcon
-from pathlib import Path
 
 ICON_PATH = Path(__file__).resolve().parent.parent.parent / "assets" / "logo.png"
 

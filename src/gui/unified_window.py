@@ -2,9 +2,10 @@ import logging
 import re
 import time
 from contextlib import suppress
+from pathlib import Path
 
-from PyQt6.QtCore import QObject, QPoint, QSettings, QSize, QThread, pyqtSignal, Qt
-from PyQt6.QtGui import QTextCursor
+from PyQt6.QtCore import QObject, QPoint, QSettings, QSize, Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QIcon, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -16,13 +17,13 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src import tts
+from src.cam import Cam
+from src.config.loader import IniConfigLoader
 from src.gui.activity_log_widget import ActivityLogWidget
 from src.gui.config_window import ConfigWindow
 from src.gui.importer_window import ImporterWindow
 from src.gui.profile_editor_window import ProfileEditorWindow
-from src import tts
-from src.cam import Cam
-from src.config.loader import IniConfigLoader
 from src.gui.themes import DARK_THEME, LIGHT_THEME
 from src.item.filter import Filter
 from src.logger import ThreadNameFilter, create_formatter
@@ -32,8 +33,6 @@ from src.overlay import Overlay
 from src.scripts.handler import ScriptHandler
 from src.utils.global_hotkeys import register_hotkey, start_hotkey_listener
 from src.utils.window import WindowSpec, start_detecting_window
-from PyQt6.QtGui import QIcon
-from pathlib import Path
 
 ICON_PATH = Path(__file__).resolve().parent.parent.parent / "assets" / "logo.png"
 
@@ -430,11 +429,11 @@ class UnifiedMainWindow(QMainWindow):
 
     def closeEvent(self, event):
         # --- NEW: Close all child windows ---
+        from contextlib import suppress
+
         for win in list(self.child_windows):
-            try:
+            with suppress(Exception):
                 win.close()
-            except Exception:
-                pass
 
         # --- Existing behavior ---
         self.save_geometry()
