@@ -8,7 +8,6 @@ from PyQt6.QtWidgets import QMainWindow
 from src.gui.config_tab import ConfigTab
 
 ICON_PATH = Path(__file__).resolve().parent.parent.parent / "assets" / "logo.png"
-
 LOGGER = logging.getLogger(__name__)
 
 
