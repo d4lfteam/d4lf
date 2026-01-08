@@ -4,21 +4,12 @@ from pathlib import Path
 
 from src import __version__
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 EXE_NAME = "d4lf.exe"
 ENTRYPOINT = "src/main.py"
 ICON_PATH = "assets/logo.ico"
-=======
-=======
->>>>>>> Stashed changes
-EXE_BASENAME = "d4lf"  # PyInstaller --name
-EXE_NAME = f"{EXE_BASENAME}.exe"
->>>>>>> Stashed changes
 
 
 def run_pyinstaller(release_dir: Path):
-    # Minimal, stable, predictable PyInstaller call
     cmd = (
         f'pyinstaller '
         f'--clean '
@@ -43,16 +34,12 @@ def clean_pyinstaller_artifacts():
 
 
 def rename_output_folder_and_exe(release_dir: Path):
-    # PyInstaller outputs: release_dir / "main" / "main.exe"
     temp_dir = release_dir / "main"
     temp_exe = temp_dir / "main.exe"
 
-    # Rename EXE
     final_exe = temp_dir / EXE_NAME
     temp_exe.rename(final_exe)
 
-<<<<<<< Updated upstream
-    # Rename folder
     final_dir = release_dir / "d4lf"
     temp_dir.rename(final_dir)
 
@@ -60,7 +47,6 @@ def rename_output_folder_and_exe(release_dir: Path):
 
 
 def copy_manual_resources(exe_root: Path):
-    # Manual, predictable copying — no PyInstaller magic
     shutil.copy("README.md", exe_root)
     shutil.copy("tts/saapi64.dll", exe_root)
 
@@ -74,37 +60,9 @@ def create_consoleonly_batch(exe_root: Path):
     batch_path.write_text(
         "@echo off\n"
         "cd /d \"%~dp0\"\n"
-        f"start \"\" {EXE_NAME} --consoleonly\n",
+        f"{EXE_NAME} --consoleonly\n"
+        "pause\n",
         encoding="utf-8"
-=======
-    cmd = (
-        "pyinstaller "
-        "--clean "
-        "--noconfirm "
-        "--windowed "
-        f"--name {EXE_BASENAME} "
-        f"--distpath {release_dir} "
-        "--workpath build "
-        "--paths src "
-        f"--icon {icon_path} "
-        "--add-data \"assets;assets\" "
-        "--add-data \"tts/saapi64.dll;tts\" "
-        "--exclude-module PyQt6.QtWebEngineWidgets "
-        "--exclude-module PyQt6.QtWebEngineCore "
-        "--exclude-module PyQt6.QtWebEngine "
-        "--exclude-module PyQt6.QtQml "
-        "--exclude-module PyQt6.QtQuick "
-        "--exclude-module PyQt6.QtMultimedia "
-        "--exclude-module PyQt6.QtSensors "
-        "--exclude-module PyQt6.QtLocation "
-        "--exclude-module PyQt6.QtSerialPort "
-        "--exclude-module PyQt6.QtSql "
-        "--exclude-module PyQt6.QtTest "
-        "--exclude-module PyQt6.QtXml "
-        "--exclude-module PyQt6.QtHelp "
-        "--exclude-module PyQt6.QtDesigner "
-        "src/main.py"
->>>>>>> Stashed changes
     )
 
 
@@ -143,7 +101,6 @@ if __name__ == "__main__":
         shutil.rmtree(RELEASE_DIR)
     RELEASE_DIR.mkdir(parents=True, exist_ok=True)
 
-<<<<<<< Updated upstream
     clean_pyinstaller_artifacts()
     run_pyinstaller(RELEASE_DIR)
 
@@ -154,12 +111,3 @@ if __name__ == "__main__":
     create_autoupdater_batch(exe_root)
 
     clean_pyinstaller_artifacts()
-=======
-    clean_up()
-    build(release_dir)
-    create_consoleonly_batch(release_dir)
-    create_autoupdater_batch(release_dir)
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
