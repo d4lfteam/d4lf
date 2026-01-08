@@ -2,6 +2,10 @@ import logging
 
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt
 from PyQt6.QtWidgets import QMainWindow
+from PyQt6.QtGui import QIcon
+from pathlib import Path
+
+ICON_PATH = Path(__file__).resolve().parent.parent.parent / "assets" / "logo.png"
 
 from src.gui.config_tab import ConfigTab
 
@@ -13,6 +17,9 @@ class ConfigWindow(QMainWindow):
 
     def __init__(self, parent=None, theme_changed_callback=None):
         super().__init__(parent)
+
+        if ICON_PATH.exists():
+            self.setWindowIcon(QIcon(str(ICON_PATH)))
 
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.theme_changed_callback = theme_changed_callback

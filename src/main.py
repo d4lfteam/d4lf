@@ -188,7 +188,7 @@ if __name__ == "__main__":
 
         from PyQt6.QtWidgets import QApplication
 
-        from src.unified_window import UnifiedMainWindow
+        from src.gui.unified_window import UnifiedMainWindow
 
         app = QApplication(sys.argv)
         window = UnifiedMainWindow()

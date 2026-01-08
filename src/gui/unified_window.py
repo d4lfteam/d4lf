@@ -3,7 +3,7 @@ import re
 import time
 from contextlib import suppress
 
-from PyQt6.QtCore import QObject, QPoint, QSettings, QSize, QThread, pyqtSignal
+from PyQt6.QtCore import QObject, QPoint, QSettings, QSize, QThread, pyqtSignal, Qt
 from PyQt6.QtGui import QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
@@ -16,10 +16,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from gui.activity_log_widget import ActivityLogWidget
-from gui.config_window import ConfigWindow
-from gui.importer_window import ImporterWindow
-from gui.profile_editor_window import ProfileEditorWindow
+from src.gui.activity_log_widget import ActivityLogWidget
+from src.gui.config_window import ConfigWindow
+from src.gui.importer_window import ImporterWindow
+from src.gui.profile_editor_window import ProfileEditorWindow
 from src import tts
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
@@ -32,6 +32,10 @@ from src.overlay import Overlay
 from src.scripts.handler import ScriptHandler
 from src.utils.global_hotkeys import register_hotkey, start_hotkey_listener
 from src.utils.window import WindowSpec, start_detecting_window
+from PyQt6.QtGui import QIcon
+from pathlib import Path
+
+ICON_PATH = Path(__file__).resolve().parent.parent.parent / "assets" / "logo.png"
 
 ANSI_PATTERN = re.compile(r"\x1b\[(\d+)(;\d+)*m")
 
@@ -150,6 +154,10 @@ class BackendWorker(QObject):
 class UnifiedMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.child_windows = []
+
+        if ICON_PATH.exists():
+            self.setWindowIcon(QIcon(str(ICON_PATH)))
 
         # --- Theme setup ---
         config = IniConfigLoader()
@@ -349,12 +357,14 @@ class UnifiedMainWindow(QMainWindow):
         logger = logging.getLogger(__name__)
 
         try:
-            if not hasattr(self, "import_window") or self.import_window is None:
-                self.import_window = ImporterWindow()
-                self.import_window.destroyed.connect(lambda: setattr(self, "import_window", None))
-                self.import_window.show()
-            else:
-                self.import_window.activateWindow()
+            win = ImporterWindow()
+            win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+
+            # Track window
+            self.child_windows.append(win)
+            win.destroyed.connect(lambda: self.child_windows.remove(win))
+
+            win.show()
 
         except Exception as e:
             logger.error(f"Failed to open importer: {e}")
@@ -364,24 +374,32 @@ class UnifiedMainWindow(QMainWindow):
         logger = logging.getLogger(__name__)
 
         try:
-            if not hasattr(self, "settings_window") or self.settings_window is None:
-                self.settings_window = ConfigWindow(theme_changed_callback=self.apply_theme)
-                self.settings_window.destroyed.connect(lambda: setattr(self, "settings_window", None))
-                self.settings_window.show()
-            else:
-                self.settings_window.activateWindow()
+            win = ConfigWindow(theme_changed_callback=self.apply_theme)
+            win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+
+            # Track window
+            self.child_windows.append(win)
+            win.destroyed.connect(lambda: self.child_windows.remove(win))
+
+            win.show()
 
         except Exception as e:
             logger.error(f"Failed to open settings: {e}")
             QMessageBox.critical(self, "Settings Error", str(e))
 
     def open_profile_editor(self):
-        if not hasattr(self, "editor_window") or self.editor_window is None:
-            self.editor_window = ProfileEditorWindow()
-            self.editor_window.destroyed.connect(lambda: setattr(self, "editor_window", None))
-            self.editor_window.show()
-        else:
-            self.editor_window.activateWindow()
+        try:
+            win = ProfileEditorWindow()
+            win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+
+            # Track window
+            self.child_windows.append(win)
+            win.destroyed.connect(lambda: self.child_windows.remove(win))
+
+            win.show()
+
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to open profile editor: {e}")
 
     def restore_geometry(self):
         settings = QSettings("d4lf", "mainwindow")
@@ -411,6 +429,14 @@ class UnifiedMainWindow(QMainWindow):
         settings.setValue("selected_view", self.log_tabbar.currentIndex())
 
     def closeEvent(self, event):
+        # --- NEW: Close all child windows ---
+        for win in list(self.child_windows):
+            try:
+                win.close()
+            except Exception:
+                pass
+
+        # --- Existing behavior ---
         self.save_geometry()
 
         root_logger = logging.getLogger()

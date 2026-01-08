@@ -20,6 +20,10 @@ from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.maxroll import import_maxroll
 from src.gui.importer.mobalytics import import_mobalytics
 from src.gui.open_user_config_button import OpenUserConfigButton
+from PyQt6.QtGui import QIcon
+from pathlib import Path
+
+ICON_PATH = Path(__file__).resolve().parent.parent.parent / "assets" / "logo.png"
 
 LOGGER = logging.getLogger(__name__)
 THREADPOOL = QThreadPool()
@@ -30,6 +34,9 @@ class ImporterWindow(QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        if ICON_PATH.exists():
+            self.setWindowIcon(QIcon(str(ICON_PATH)))
 
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 

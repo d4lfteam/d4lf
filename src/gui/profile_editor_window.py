@@ -2,6 +2,10 @@ import logging
 
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer
 from PyQt6.QtWidgets import QMainWindow
+from PyQt6.QtGui import QIcon
+from pathlib import Path
+
+ICON_PATH = Path(__file__).resolve().parent.parent.parent / "assets" / "logo.png"
 
 from src.gui.profile_tab import ProfileTab
 
@@ -14,6 +18,9 @@ class ProfileEditorWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.settings = QSettings("d4lf", "profile_editor")
+
+        if ICON_PATH.exists():
+            self.setWindowIcon(QIcon(str(ICON_PATH)))
 
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         self.setWindowTitle("Profile Editor")
