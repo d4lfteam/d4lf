@@ -18,7 +18,7 @@ def clean_up():
 
 
 def build(release_dir: Path):
-    os.makedirs(release_dir, exist_ok=True)
+    Path(release_dir).mkdir(exist_ok=True, parents=True)
 
     icon_path = Path("assets/logo.ico")
 
@@ -32,8 +32,8 @@ def build(release_dir: Path):
         "--workpath build "
         "--paths src "
         f"--icon {icon_path} "
-        "--add-data \"assets;assets\" "
-        "--add-data \"tts/saapi64.dll;tts\" "
+        '--add-data "assets;assets" '
+        '--add-data "tts/saapi64.dll;tts" '
         "--exclude-module PyQt6.QtWebEngineWidgets "
         "--exclude-module PyQt6.QtWebEngineCore "
         "--exclude-module PyQt6.QtWebEngine "
@@ -56,12 +56,7 @@ def build(release_dir: Path):
 
 def create_consoleonly_batch(release_dir: Path):
     batch_file = release_dir / "consoleonly.bat"
-    batch_file.write_text(
-        "@echo off\n"
-        "cd /d \"%~dp0\"\n"
-        f"start \"\" {EXE_NAME} --consoleonly\n",
-        encoding="utf-8",
-    )
+    batch_file.write_text(f'@echo off\ncd /d "%~dp0"\nstart "" {EXE_NAME} --consoleonly\n', encoding="utf-8")
 
 
 def create_autoupdater_batch(release_dir: Path):
