@@ -429,7 +429,6 @@ class UnifiedMainWindow(QMainWindow):
 
     def closeEvent(self, event):
         # --- NEW: Close all child windows ---
-        from contextlib import suppress
 
         for win in list(self.child_windows):
             with suppress(Exception):

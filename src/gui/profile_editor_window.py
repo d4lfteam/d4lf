@@ -4,6 +4,7 @@ from pathlib import Path
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QMainWindow
+
 from src.gui.profile_tab import ProfileTab
 
 ICON_PATH = Path(__file__).resolve().parent.parent.parent / "assets" / "logo.png"
