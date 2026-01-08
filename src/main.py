@@ -6,10 +6,9 @@ import sys
 import time
 from pathlib import Path
 
-from PyQt6.QtGui import QIcon
-
 import psutil
 from beautifultable import BeautifulTable
+from PyQt6.QtGui import QIcon
 
 import __main__
 import src.logger
