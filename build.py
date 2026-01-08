@@ -5,10 +5,13 @@ from pathlib import Path
 from src import __version__
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 EXE_NAME = "d4lf.exe"
 ENTRYPOINT = "src/main.py"
 ICON_PATH = "assets/logo.ico"
 =======
+=======
+>>>>>>> Stashed changes
 EXE_BASENAME = "d4lf"  # PyInstaller --name
 EXE_NAME = f"{EXE_BASENAME}.exe"
 >>>>>>> Stashed changes
@@ -156,4 +159,7 @@ if __name__ == "__main__":
     build(release_dir)
     create_consoleonly_batch(release_dir)
     create_autoupdater_batch(release_dir)
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
