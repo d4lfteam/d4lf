@@ -4,9 +4,14 @@ from pathlib import Path
 
 from src import __version__
 
+<<<<<<< Updated upstream
 EXE_NAME = "d4lf.exe"
 ENTRYPOINT = "src/main.py"
 ICON_PATH = "assets/logo.ico"
+=======
+EXE_BASENAME = "d4lf"  # PyInstaller --name
+EXE_NAME = f"{EXE_BASENAME}.exe"
+>>>>>>> Stashed changes
 
 
 def run_pyinstaller(release_dir: Path):
@@ -43,6 +48,7 @@ def rename_output_folder_and_exe(release_dir: Path):
     final_exe = temp_dir / EXE_NAME
     temp_exe.rename(final_exe)
 
+<<<<<<< Updated upstream
     # Rename folder
     final_dir = release_dir / "d4lf"
     temp_dir.rename(final_dir)
@@ -67,6 +73,35 @@ def create_consoleonly_batch(exe_root: Path):
         "cd /d \"%~dp0\"\n"
         f"start \"\" {EXE_NAME} --consoleonly\n",
         encoding="utf-8"
+=======
+    cmd = (
+        "pyinstaller "
+        "--clean "
+        "--noconfirm "
+        "--windowed "
+        f"--name {EXE_BASENAME} "
+        f"--distpath {release_dir} "
+        "--workpath build "
+        "--paths src "
+        f"--icon {icon_path} "
+        "--add-data \"assets;assets\" "
+        "--add-data \"tts/saapi64.dll;tts\" "
+        "--exclude-module PyQt6.QtWebEngineWidgets "
+        "--exclude-module PyQt6.QtWebEngineCore "
+        "--exclude-module PyQt6.QtWebEngine "
+        "--exclude-module PyQt6.QtQml "
+        "--exclude-module PyQt6.QtQuick "
+        "--exclude-module PyQt6.QtMultimedia "
+        "--exclude-module PyQt6.QtSensors "
+        "--exclude-module PyQt6.QtLocation "
+        "--exclude-module PyQt6.QtSerialPort "
+        "--exclude-module PyQt6.QtSql "
+        "--exclude-module PyQt6.QtTest "
+        "--exclude-module PyQt6.QtXml "
+        "--exclude-module PyQt6.QtHelp "
+        "--exclude-module PyQt6.QtDesigner "
+        "src/main.py"
+>>>>>>> Stashed changes
     )
 
 
@@ -105,6 +140,7 @@ if __name__ == "__main__":
         shutil.rmtree(RELEASE_DIR)
     RELEASE_DIR.mkdir(parents=True, exist_ok=True)
 
+<<<<<<< Updated upstream
     clean_pyinstaller_artifacts()
     run_pyinstaller(RELEASE_DIR)
 
@@ -115,3 +151,9 @@ if __name__ == "__main__":
     create_autoupdater_batch(exe_root)
 
     clean_pyinstaller_artifacts()
+=======
+    clean_up()
+    build(release_dir)
+    create_consoleonly_batch(release_dir)
+    create_autoupdater_batch(release_dir)
+>>>>>>> Stashed changes
