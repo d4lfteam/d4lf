@@ -34,7 +34,14 @@ from src.scripts.handler import ScriptHandler
 from src.utils.global_hotkeys import register_hotkey, start_hotkey_listener
 from src.utils.window import WindowSpec, start_detecting_window
 
-ICON_PATH = Path(__file__).resolve().parent.parent.parent / "assets" / "logo.png"
+import sys
+
+if getattr(sys, 'frozen', False):
+    BASE_DIR = Path(sys.executable).parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+ICON_PATH = BASE_DIR / "assets" / "logo.png"
 
 ANSI_PATTERN = re.compile(r"\x1b\[(\d+)(;\d+)*m")
 

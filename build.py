@@ -5,73 +5,53 @@ from pathlib import Path
 from src import __version__
 
 EXE_NAME = "d4lf.exe"
-ENTRYPOINT = "src/main.py"
-ICON_PATH = "assets/logo.ico"
 
 
-def run_pyinstaller(release_dir: Path):
-    cmd = (
-        f"pyinstaller "
-        f"--clean "
-        f"--onedir "
-        f"--windowed "
-        f"--noconfirm "
-        f'--distpath "{release_dir}" '
+def build(release_dir: Path):
+    installer_cmd = (
+        f"pyinstaller --clean --onefile "
+        f"--icon=assets/logo.ico "
+        f"--distpath {release_dir} "
         f"--paths src "
-        f'--icon "{ICON_PATH}" '
-        f'"{ENTRYPOINT}"'
+        f"src\\main.py"
     )
-    os.system(cmd)
+    os.system(installer_cmd)
+    (release_dir / "main.exe").rename(release_dir / EXE_NAME)
 
 
-def clean_pyinstaller_artifacts():
-    build_dir = Path("build")
-    if build_dir.exists():
+
+def clean_up():
+    if (build_dir := Path("build")).exists():
         shutil.rmtree(build_dir)
-
-    for spec in Path.cwd().glob("*.spec"):
-        spec.unlink()
-
-
-def rename_output_folder_and_exe(release_dir: Path):
-    temp_dir = release_dir / "main"
-    temp_exe = temp_dir / "main.exe"
-
-    final_exe = temp_dir / EXE_NAME
-    temp_exe.rename(final_exe)
-
-    final_dir = release_dir / "d4lf"
-    temp_dir.rename(final_dir)
-
-    return final_dir, final_exe
+    for p in Path.cwd().glob("*.spec"):
+        p.unlink()
 
 
-def copy_manual_resources(exe_root: Path):
-    shutil.copy("README.md", exe_root)
-    shutil.copy("tts/saapi64.dll", exe_root)
-
-    assets_src = Path("assets")
-    assets_dst = exe_root / "assets"
-    shutil.copytree(assets_src, assets_dst)
+def copy_additional_resources(release_dir: Path):
+    shutil.copy("README.md", release_dir)
+    shutil.copy("tts/saapi64.dll", release_dir)
+    shutil.copytree("assets", release_dir / "assets")
 
 
-def create_consoleonly_batch(exe_root: Path):
-    batch_path = exe_root / "consoleonly.bat"
-    batch_path.write_text(f'@echo off\ncd /d "%~dp0"\n{EXE_NAME} --consoleonly\npause\n', encoding="utf-8")
+def create_batch_for_consoleonly(release_dir: Path, exe_name: str):
+    batch_file_path = release_dir / "consoleonly.bat"
+    with Path(batch_file_path).open("w") as f:
+        f.write("@echo off\n")
+        f.write('cd /d "%~dp0"\n')
+        f.write(f'start "" {exe_name} --consoleonly\n')
 
 
-def create_autoupdater_batch(exe_root: Path):
-    batch_path = exe_root / "autoupdater.bat"
-    batch_path.write_text(
-        f"""
+def create_batch_for_autoupdater(release_dir: Path, exe_name: str):
+    batch_file_path = release_dir / "autoupdater.bat"
+    Path(batch_file_path).write_text(f"""
 @echo off
 cd /d "%~dp0"
 echo Starting D4LF auto update preprocessing
-start /WAIT {EXE_NAME} --autoupdate
+start /WAIT {exe_name} --autoupdate
 if %errorlevel% == 1 (
     echo Process did not complete successfully, check logs for more information.
 ) else if %errorlevel% == 2 (
-    echo D4LF is already up to date!
+	echo D4Lf is already up to date!
 ) else (
     echo Killing all existing d4lf processes to perform update
     taskkill /f /im d4lf.exe
@@ -79,29 +59,20 @@ if %errorlevel% == 1 (
     echo Updating files
     robocopy "./temp_update/d4lf" "." /E /XF "autoupdater.bat"
     echo Running postprocessing to verify update and clean up files
-    start /WAIT {EXE_NAME} --autoupdatepost
-)
-""",
-        encoding="utf-8",
-    )
+    start /WAIT {exe_name} --autoupdatepost
+)""")
 
 
 if __name__ == "__main__":
     os.chdir(Path(__file__).parent)
     print(f"Building version: {__version__}")
-
     RELEASE_DIR = Path("d4lf")
     if RELEASE_DIR.exists():
-        shutil.rmtree(RELEASE_DIR)
-    RELEASE_DIR.mkdir(parents=True, exist_ok=True)
-
-    clean_pyinstaller_artifacts()
-    run_pyinstaller(RELEASE_DIR)
-
-    exe_root, exe_path = rename_output_folder_and_exe(RELEASE_DIR)
-
-    copy_manual_resources(exe_root)
-    create_consoleonly_batch(exe_root)
-    create_autoupdater_batch(exe_root)
-
-    clean_pyinstaller_artifacts()
+        shutil.rmtree(RELEASE_DIR.absolute())
+    RELEASE_DIR.mkdir(exist_ok=True, parents=True)
+    clean_up()
+    build(release_dir=RELEASE_DIR)
+    copy_additional_resources(RELEASE_DIR)
+    create_batch_for_consoleonly(release_dir=RELEASE_DIR, exe_name=EXE_NAME)
+    create_batch_for_autoupdater(release_dir=RELEASE_DIR, exe_name=EXE_NAME)
+    clean_up()

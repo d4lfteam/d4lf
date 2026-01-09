@@ -7,7 +7,14 @@ from PyQt6.QtWidgets import QMainWindow
 
 from src.gui.profile_tab import ProfileTab
 
-ICON_PATH = Path(__file__).resolve().parent.parent.parent / "assets" / "logo.png"
+import sys
+
+if getattr(sys, 'frozen', False):
+    BASE_DIR = Path(sys.executable).parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+ICON_PATH = BASE_DIR / "assets" / "logo.png"
 
 LOGGER = logging.getLogger(__name__)
 

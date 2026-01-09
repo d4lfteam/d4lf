@@ -98,4 +98,4 @@ class InventoryBase(Menu):
 
     def hover_item_with_delay(self, item: ItemSlot, delay_factor: tuple[float, float] = (2, 3)):
         mouse.move(*Cam().window_to_monitor(item.center), randomize=15, delay_factor=delay_factor)
-        time.sleep(0.12)  # <-- REAL delay after movement
+        time.sleep(0.20)  # <-- REAL delay after movement
