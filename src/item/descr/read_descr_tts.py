@@ -254,9 +254,8 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     if "chaos" in tts_item[1].lower():
         item.is_chaos = True
 
-    if (len(tts_item) > 3 and "sanctified" in tts_item[3].lower()) or (
-        len(tts_item) > 4 and "sanctified" in tts_item[4].lower()
-    ):
+    # Check lines 3-6 instead of just line 4 (handles variable name lengths and gives us flexibility to search for the sanctified marker)
+    if any("sanctified" in tts_item[i].lower() for i in range(3, min(7, len(tts_item)))):
         item.sanctified = True
 
     search_string = tts_item[1].lower().replace("ancestral", "").replace("chaos", "").strip()

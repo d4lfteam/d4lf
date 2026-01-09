@@ -82,7 +82,7 @@ class MinGreaterDialog(QDialog):
         self.form_layout = QFormLayout()
         self.label = QLabel("Min Greater Affix:")
         self.spinBox = IgnoreScrollWheelSpinBox()
-        self.spinBox.setRange(0, 3)
+        self.spinBox.setRange(0, 4)
         self.spinBox.setValue(0)
         self.form_layout.addRow(self.label, self.spinBox)
         self.main_layout.addLayout(self.form_layout)
@@ -145,11 +145,7 @@ class CreateItem(QDialog):
         item = ItemFilterModel()
         item.itemType = [item_type]
         item.affixPool = [
-            AffixFilterCountModel(
-                count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())))],
-                minCount=2,
-                minGreaterAffixCount=0,
-            )
+            AffixFilterCountModel(count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())))], minCount=2)
         ]
         item.minPower = 100
         return DynamicItemFilterModel(**{item_name: item})

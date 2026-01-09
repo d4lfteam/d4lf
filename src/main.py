@@ -1,4 +1,6 @@
+import ctypes
 import logging
+import os
 import pathlib
 import sys
 import time
@@ -8,13 +10,14 @@ from pathlib import Path
 import psutil
 from beautifultable import BeautifulTable
 
+import __main__
 import src.logger
 from src import __version__, tts
 from src.autoupdater import notify_if_update, start_auto_update
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import VisionModeType
-from src.gui.qt_gui import start_gui
+from src.gui.main_window import MainWindow
 from src.item.filter import Filter
 from src.logger import LOG_DIR
 from src.overlay import Overlay
@@ -22,18 +25,40 @@ from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
 
+if getattr(sys, "frozen", False):
+    # Running as a bundled EXE
+    BASE_DIR = Path(sys.executable).resolve().parent
+else:
+    # Running from source → go up 3 levels from src/gui/main_window.py
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
 LOGGER = logging.getLogger(__name__)
+
+IS_BUNDLED = getattr(sys, "frozen", False)
+
+# Set DPI awareness before Qt loads
+if sys.platform == "win32":
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)  # PROCESS_SYSTEM_DPI_AWARE
+    except Exception:
+        LOGGER.exception("Failed to set DPI awareness")
 
 
 def main():
+    LOGGER.info(f"BASE_DIR resolved to: {BASE_DIR}")
+
+    # Clear stale shutdown flag if it exists
+    shutdown_flag = BASE_DIR / "assets" / ".shutdown"
+    if shutdown_flag.exists():
+        shutdown_flag.unlink()
+
     # Create folders for logging stuff
     for dir_name in [LOG_DIR / "screenshots", IniConfigLoader().user_dir, IniConfigLoader().user_dir / "profiles"]:
         Path(dir_name).mkdir(exist_ok=True, parents=True)
 
-    LOGGER.info(f"Adapt your configs via gui.bat or directly in: {IniConfigLoader().user_dir}")
-
     # Detect if we're running locally and skip the autoupdate
-    if Path(Path.cwd() / "main.py").exists():
+    main_path = Path(__main__.__file__)
+    if main_path.name == "main.py":
         LOGGER.debug("Running from source detected, skipping autoupdate check.")
     else:
         notify_if_update()
@@ -155,16 +180,84 @@ def get_d4_local_prefs_file() -> Path | None:
 
 
 if __name__ == "__main__":
-    src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
-    if len(sys.argv) > 1 and sys.argv[1] == "--gui":
-        start_gui()
-    elif len(sys.argv) > 1 and sys.argv[1] == "--autoupdate":
+    if len(sys.argv) > 1 and sys.argv[1] == "--autoupdate":
+        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
         start_auto_update()
     elif len(sys.argv) > 1 and sys.argv[1] == "--autoupdatepost":
+        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
         start_auto_update(postprocess=True)
+    elif len(sys.argv) > 1 and sys.argv[1] == "--mainwindow":
+        os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
+
+        if sys.platform == "win32":
+            try:
+                import ctypes
+
+                ctypes.windll.shcore.SetProcessDpiAwareness(2)
+            except Exception:
+                LOGGER.exception("Failed to set DPI awareness")
+
+        from PyQt6.QtCore import QTimer
+        from PyQt6.QtWidgets import QApplication
+
+        from src.config.loader import IniConfigLoader
+
+        app = QApplication(sys.argv)
+        main_window = MainWindow()
+        main_window.show()
+        app.aboutToQuit.connect(lambda: (BASE_DIR / "assets" / ".shutdown").touch())
+
+        shutdown_flag = BASE_DIR / "assets" / ".shutdown"
+
+        def check_shutdown():
+            if shutdown_flag.exists():
+                main_window.close()
+
+        timer = QTimer()
+        timer.timeout.connect(check_shutdown)
+        timer.start(500)
+
+        sys.exit(app.exec())
+
     else:
+        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value)
+
+        is_in_ide = any([
+            os.environ.get("PYCHARM_HOSTED"),
+            os.environ.get("IDEA_INITIAL_DIRECTORY"),
+            os.environ.get("INTELLIJ_ENVIRONMENT_READER"),
+            os.environ.get("TERM_PROGRAM") == "vscode",
+            sys.gettrace() is not None,
+        ])
+
+        if sys.platform == "win32" and not is_in_ide:
+            ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
+
+        shutdown_flag = BASE_DIR / "assets" / ".shutdown"
+        if shutdown_flag.exists():
+            shutdown_flag.unlink()
+
+        import subprocess
+
+        cmd = [sys.executable, "--mainwindow"] if IS_BUNDLED else [sys.executable, __file__, "--mainwindow"]
+
+        main_window_process = subprocess.Popen(cmd)
+        LOGGER.info("Main window launched in separate process")
+
         try:
+            import threading
+
+            def check_shutdown():
+                while not shutdown_flag.exists():
+                    time.sleep(0.5)
+                LOGGER.info("Shutdown requested via main window")
+                os._exit(0)
+
+            shutdown_thread = threading.Thread(target=check_shutdown, daemon=True)
+            shutdown_thread.start()
+
             main()
+
         except Exception:
             traceback.print_exc()
             print("Press Enter to exit ...")

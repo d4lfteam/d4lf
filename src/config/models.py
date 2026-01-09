@@ -110,6 +110,8 @@ class AffixAspectFilterModel(BaseModel):
 
 
 class AffixFilterModel(AffixAspectFilterModel):
+    want_greater: bool = False
+
     @field_validator("name")
     def name_must_exist(cls, name: str) -> str:
         # This on module level would be a circular import, so we do it lazy for now
@@ -126,9 +128,8 @@ class AffixFilterCountModel(BaseModel):
     count: list[AffixFilterModel] = []
     maxCount: int = sys.maxsize
     minCount: int = 0
-    minGreaterAffixCount: int = 0
 
-    @field_validator("minCount", "minGreaterAffixCount", "maxCount")
+    @field_validator("minCount", "maxCount")
     def count_validator(cls, v: int) -> int:
         return check_greater_than_zero(v)
 
@@ -281,6 +282,11 @@ class BrowserType(enum.StrEnum):
     firefox = enum.auto()
 
 
+class ThemeType(enum.StrEnum):
+    dark = enum.auto()
+    light = enum.auto()
+
+
 class GeneralModel(_IniBaseModel):
     auto_use_temper_manuals: bool = Field(
         default=True,
@@ -343,6 +349,7 @@ class GeneralModel(_IniBaseModel):
         "C:/Users/USERNAME/.d4lf/profiles/*.yaml",
     )
     run_vision_mode_on_startup: bool = Field(default=True, description="Whether to run vision mode on startup or not")
+    theme: ThemeType = Field(default=ThemeType.dark, description="Choose between light and dark theme for the GUI")
     vision_mode_type: VisionModeType = Field(
         default=VisionModeType.highlight_matches,
         description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
@@ -584,7 +591,10 @@ class UniqueModel(BaseModel):
 
     @field_validator("minGreaterAffixCount")
     def count_validator(cls, v: int) -> int:
-        return check_greater_than_zero(v)
+        if not 0 <= v <= 4:  # Changed to match ItemFilterModel
+            msg = "must be in [0, 4]"
+            raise ValueError(msg)
+        return v
 
     @field_validator("minPercentOfAspect")
     def percent_validator(cls, v: int) -> int:

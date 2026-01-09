@@ -76,6 +76,7 @@ class Filter:
     files_loaded = False
     all_file_paths = []
     last_loaded = None
+    last_profile_list = None
 
     _initialized: bool = False
     _instance = None
@@ -109,7 +110,9 @@ class Filter:
                 matched_affixes = []
                 if filter_spec.affixPool:
                     matched_affixes = self._match_affixes_count(
-                        expected_affixes=filter_spec.affixPool, item_affixes=non_tempered_affixes
+                        expected_affixes=filter_spec.affixPool,
+                        item_affixes=non_tempered_affixes,
+                        min_greater_affix_count=filter_spec.minGreaterAffixCount,
                     )
                     if not matched_affixes:
                         continue
@@ -117,12 +120,21 @@ class Filter:
                 matched_inherents = []
                 if filter_spec.inherentPool:
                     matched_inherents = self._match_affixes_count(
-                        expected_affixes=filter_spec.inherentPool, item_affixes=item.inherent
+                        expected_affixes=filter_spec.inherentPool,
+                        item_affixes=item.inherent,
+                        min_greater_affix_count=filter_spec.minGreaterAffixCount,
                     )
                     if not matched_inherents:
                         continue
                 all_matches = matched_affixes + matched_inherents
-                LOGGER.info(f"Matched {profile_name}.Affixes.{filter_name}: {[x.name for x in all_matches]}")
+                # Build a detailed string showing which affixes are GAs
+                match_details = []
+                for affix in all_matches:
+                    if affix.type == AffixType.greater:
+                        match_details.append(f"{affix.name} (GA)")
+                    else:
+                        match_details.append(affix.name)
+                LOGGER.info(f"Matched {profile_name}.Affixes.{filter_name}: {match_details}")
                 res.keep = True
                 res.matched.append(MatchedFilter(f"{profile_name}.{filter_name}", all_matches))
         return res
@@ -260,9 +272,14 @@ class Filter:
                 ):
                     continue
                 # check affixes
-                if not self._match_affixes_uniques(expected_affixes=filter_item.affix, item_affixes=item.affixes):
+                if not self._match_affixes_uniques(
+                    expected_affixes=filter_item.affix,
+                    item_affixes=item.affixes,
+                    min_greater_affix_count=filter_item.minGreaterAffixCount,
+                ):
                     continue
-                # check greater affixes
+
+                # check greater affixes - Checks total item-level GAs
                 if not self._match_greater_affix_count(
                     expected_min_count=filter_item.minGreaterAffixCount, item_affixes=item.affixes
                 ):
@@ -297,28 +314,59 @@ class Filter:
     def _did_files_change(self) -> bool:
         if self.last_loaded is None:
             return True
+
+        # Force reload config from disk to get latest profile list
+        IniConfigLoader().load()
+
+        # Check if profile list changed (filter out empty strings)
+        current_profiles = [p.strip() for p in IniConfigLoader().general.profiles if p.strip()]
+        if self.last_profile_list != current_profiles:
+            LOGGER.info(f"Profile list changed: {self.last_profile_list} → {current_profiles}")
+            return True
+
+        # Check if any profile files were modified
         return any(pathlib.Path(file_path).stat().st_mtime > self.last_loaded for file_path in self.all_file_paths)
 
     def _match_affixes_count(
-        self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix]
+        self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix], min_greater_affix_count: int = 0
     ) -> list[Affix]:
         result = []
         for count_group in expected_affixes:
-            greater_affix_count = 0
             group_res = []
+
+            # Do the normal affix matching first
             for affix in count_group.count:
                 matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
                 if matched_item_affix is not None and self._match_item_aspect_or_affix(affix, matched_item_affix):
                     group_res.append(matched_item_affix)
-                    if matched_item_affix.type == AffixType.greater:
-                        greater_affix_count += 1
-            if (
-                count_group.minCount <= len(group_res) <= count_group.maxCount
-                and greater_affix_count >= count_group.minGreaterAffixCount
-            ):
-                result.extend(group_res)
-            else:  # if one group fails, everything fails
-                return []
+
+            # Check minCount and maxCount
+            if not (count_group.minCount <= len(group_res) <= count_group.maxCount):
+                return []  # if one group fails, everything fails
+
+            # Check want_greater requirements (2-mode system)
+            want_greater_affixes = [a for a in count_group.count if getattr(a, "want_greater", False)]
+            want_greater_count = len(want_greater_affixes)
+
+            if want_greater_count > 0 and min_greater_affix_count > 0:
+                if min_greater_affix_count > want_greater_count:
+                    # Mode 1: ALL flagged affixes MUST be GA (hard requirement)
+                    for affix in want_greater_affixes:
+                        matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
+                        if matched_item_affix is None or matched_item_affix.type != AffixType.greater:
+                            return []  # Flagged affix is missing or not GA, fail
+                else:
+                    # Mode 2: At least min_greater_affix_count of the flagged affixes must be GA (flexible)
+                    flagged_ga_count = sum(
+                        1
+                        for affix in want_greater_affixes
+                        if (matched := next((a for a in item_affixes if a.name == affix.name), None))
+                        and matched.type == AffixType.greater
+                    )
+                    if flagged_ga_count < min_greater_affix_count:
+                        return []  # Not enough flagged affixes are GA
+
+            result.extend(group_res)
         return result
 
     @staticmethod
@@ -335,11 +383,37 @@ class Filter:
             return True
         return False
 
-    def _match_affixes_uniques(self, expected_affixes: list[AffixFilterModel], item_affixes: list[Affix]) -> bool:
+    def _match_affixes_uniques(
+        self, expected_affixes: list[AffixFilterModel], item_affixes: list[Affix], min_greater_affix_count: int = 0
+    ) -> bool:
+        # First, check if all expected affixes are present with correct values
         for expected_affix in expected_affixes:
             matched_item_affix = next((a for a in item_affixes if a.name == expected_affix.name), None)
             if matched_item_affix is None or not self._match_item_aspect_or_affix(expected_affix, matched_item_affix):
                 return False
+
+        # Then, check want_greater requirements (2-mode system)
+        want_greater_affixes = [a for a in expected_affixes if getattr(a, "want_greater", False)]
+        want_greater_count = len(want_greater_affixes)
+
+        if want_greater_count > 0 and min_greater_affix_count > 0:
+            if min_greater_affix_count > want_greater_count:
+                # Mode 1: ALL flagged affixes MUST be GA (hard requirement)
+                for affix in want_greater_affixes:
+                    matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
+                    if matched_item_affix is None or matched_item_affix.type != AffixType.greater:
+                        return False  # Flagged affix is missing or not GA
+            else:
+                # Mode 2: At least min_greater_affix_count of the flagged affixes must be GA (flexible)
+                flagged_ga_count = sum(
+                    1
+                    for affix in want_greater_affixes
+                    if (matched := next((a for a in item_affixes if a.name == affix.name), None))
+                    and matched.type == AffixType.greater
+                )
+                if flagged_ga_count < min_greater_affix_count:
+                    return False  # Not enough flagged affixes are GA
+
         return True
 
     @staticmethod
@@ -401,10 +475,15 @@ class Filter:
         self.unique_filters: dict[str, list[UniqueModel]] = {}
         profiles: list[str] = IniConfigLoader().general.profiles
 
+        # Filter out empty strings
+        profiles = [p.strip() for p in profiles if p.strip()]
+
         if not profiles:
             LOGGER.warning(
-                "No profiles have been configured so no filtering will be done. If this is a mistake, use the profiles section of the config tab of gui.bat to activate the profiles you want to use."
+                "No profiles are currently loaded. Please load a profile via the Importer, Settings, or Edit Profile sections to begin using the tool."
             )
+            self.last_loaded = time.time()
+            self.last_profile_list = []
             return
 
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
@@ -436,8 +515,45 @@ class Filter:
                     data = ProfileModel(name=profile_str, **config)
                 except ValidationError as e:
                     errors = True
-                    LOGGER.error(f"Validation errors in {profile_path}")
-                    LOGGER.error(e)
+
+                    if "minGreaterAffixCount" in str(e):
+                        LOGGER.error("[CLEAN]%s", "=" * 80)
+                        LOGGER.error("[CLEAN]%s", f"PROFILE VALIDATION FAILED: {profile_path}")
+                        LOGGER.error("[CLEAN]%s", "=" * 80)
+                        LOGGER.error("[CLEAN]")
+                        LOGGER.error(
+                            "[CLEAN]%s", "You are using an old, outdated field that must be removed from your profile."
+                        )
+                        LOGGER.error("[CLEAN]")
+                        LOGGER.error("[CLEAN]%s", "WRONG (old way - pool level):")
+                        LOGGER.error("[CLEAN]%s", "- Ring:")
+                        LOGGER.error("[CLEAN]%s", "    itemType: [ring]")
+                        LOGGER.error("[CLEAN]%s", "    minPower: 100")
+                        LOGGER.error("[CLEAN]%s", "    affixPool:")
+                        LOGGER.error("[CLEAN]%s", "    - count:")
+                        LOGGER.error("[CLEAN]%s", "      - {name: strength}")
+                        LOGGER.error("[CLEAN]%s", "      minCount: 2")
+                        LOGGER.error("[CLEAN]%s", "      minGreaterAffixCount: 1  ← DELETE THIS LINE")
+                        LOGGER.error("[CLEAN]")
+                        LOGGER.error("[CLEAN]%s", "CORRECT (new way - item level):")
+                        LOGGER.error("[CLEAN]%s", "- Ring:")
+                        LOGGER.error("[CLEAN]%s", "    itemType: [ring]")
+                        LOGGER.error("[CLEAN]%s", "    minPower: 100")
+                        LOGGER.error("[CLEAN]%s", "    minGreaterAffixCount: 1  ← PUT IT HERE INSTEAD")
+                        LOGGER.error("[CLEAN]%s", "    affixPool:")
+                        LOGGER.error("[CLEAN]%s", "    - count:")
+                        LOGGER.error("[CLEAN]%s", "      - {name: strength}")
+                        LOGGER.error("[CLEAN]%s", "      minCount: 2")
+                        LOGGER.error("[CLEAN]%s", "      # NO minGreaterAffixCount here anymore!")
+                        LOGGER.error("[CLEAN]")
+                        LOGGER.error("[CLEAN]%s", "=" * 80)
+                        LOGGER.error(
+                            "[CLEAN]%s", f"ACTION REQUIRED: Please make the above adjustments in: {profile_path}"
+                        )
+                        LOGGER.error("[CLEAN]%s", "=" * 80)
+                    else:
+                        LOGGER.error(f"Validation error in {profile_path}: {e}")
+
                     continue
 
                 if data.Affixes:
@@ -457,10 +573,12 @@ class Filter:
                     info_str += "Uniques"
 
                 LOGGER.info(info_str)
-        if errors:
-            LOGGER.error("Errors occurred while loading profiles, please check the log for details")
-            sys.exit(1)
-        self.last_loaded = time.time()
+            if errors:
+                fatal_msg = "\n" + "\n".join(["=" * 80, "❌ FATAL: Cannot continue with invalid profiles", "=" * 80])
+                LOGGER.error(fatal_msg)
+                sys.exit(1)
+            self.last_loaded = time.time()
+            self.last_profile_list = IniConfigLoader().general.profiles.copy()
 
     def should_keep(self, item: Item) -> FilterResult:
         if not self.files_loaded or self._did_files_change():
