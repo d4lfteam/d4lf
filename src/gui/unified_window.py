@@ -1,5 +1,6 @@
 import logging
 import re
+import sys
 import time
 from contextlib import suppress
 from pathlib import Path
@@ -34,12 +35,7 @@ from src.scripts.handler import ScriptHandler
 from src.utils.global_hotkeys import register_hotkey, start_hotkey_listener
 from src.utils.window import WindowSpec, start_detecting_window
 
-import sys
-
-if getattr(sys, 'frozen', False):
-    BASE_DIR = Path(sys.executable).parent
-else:
-    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 
 ICON_PATH = BASE_DIR / "assets" / "logo.png"
 

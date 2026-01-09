@@ -24,10 +24,7 @@ from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
 
-if getattr(sys, 'frozen', False):
-    BASE_DIR = Path(sys.executable).parent
-else:
-    BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 
 ICON_PATH = BASE_DIR / "assets" / "logo.png"
 
@@ -171,12 +168,15 @@ def get_d4_local_prefs_file() -> Path | None:
             most_recent = f
     return most_recent
 
+
 def hide_console():
     """Hide the console window (Windows only)."""
     if sys.platform == "win32":
         ctypes.windll.user32.ShowWindow(
-            ctypes.windll.kernel32.GetConsoleWindow(), 0  # SW_HIDE
+            ctypes.windll.kernel32.GetConsoleWindow(),
+            0,  # SW_HIDE
         )
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--autoupdate":
@@ -198,6 +198,7 @@ if __name__ == "__main__":
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=False)
 
         from PyQt6.QtWidgets import QApplication
+
         from src.gui.unified_window import UnifiedMainWindow
 
         app = QApplication(sys.argv)
@@ -205,4 +206,3 @@ if __name__ == "__main__":
         window = UnifiedMainWindow()
         window.show()
         sys.exit(app.exec())
-

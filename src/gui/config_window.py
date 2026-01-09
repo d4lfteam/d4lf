@@ -1,4 +1,5 @@
 import logging
+import sys
 from pathlib import Path
 
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt
@@ -7,12 +8,7 @@ from PyQt6.QtWidgets import QMainWindow
 
 from src.gui.config_tab import ConfigTab
 
-import sys
-
-if getattr(sys, 'frozen', False):
-    BASE_DIR = Path(sys.executable).parent
-else:
-    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 
 ICON_PATH = BASE_DIR / "assets" / "logo.png"
 LOGGER = logging.getLogger(__name__)

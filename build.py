@@ -9,15 +9,10 @@ EXE_NAME = "d4lf.exe"
 
 def build(release_dir: Path):
     installer_cmd = (
-        f"pyinstaller --clean --onefile "
-        f"--icon=assets/logo.ico "
-        f"--distpath {release_dir} "
-        f"--paths src "
-        f"src\\main.py"
+        f"pyinstaller --clean --onefile --icon=assets/logo.ico --distpath {release_dir} --paths src src\\main.py"
     )
     os.system(installer_cmd)
     (release_dir / "main.exe").rename(release_dir / EXE_NAME)
-
 
 
 def clean_up():
@@ -35,7 +30,7 @@ def copy_additional_resources(release_dir: Path):
 
 def create_batch_for_consoleonly(release_dir: Path, exe_name: str):
     batch_file_path = release_dir / "consoleonly.bat"
-    with Path(batch_file_path).open("w") as f:
+    with Path(batch_file_path).open("w", encoding="utf-8") as f:
         f.write("@echo off\n")
         f.write('cd /d "%~dp0"\n')
         f.write(f'start "" {exe_name} --consoleonly\n')
@@ -43,15 +38,14 @@ def create_batch_for_consoleonly(release_dir: Path, exe_name: str):
 
 def create_batch_for_autoupdater(release_dir: Path, exe_name: str):
     batch_file_path = release_dir / "autoupdater.bat"
-    Path(batch_file_path).write_text(f"""
-@echo off
+    Path(batch_file_path).write_text(f"""@echo off
 cd /d "%~dp0"
 echo Starting D4LF auto update preprocessing
 start /WAIT {exe_name} --autoupdate
 if %errorlevel% == 1 (
     echo Process did not complete successfully, check logs for more information.
 ) else if %errorlevel% == 2 (
-	echo D4Lf is already up to date!
+    echo D4Lf is already up to date!
 ) else (
     echo Killing all existing d4lf processes to perform update
     taskkill /f /im d4lf.exe
@@ -60,8 +54,7 @@ if %errorlevel% == 1 (
     robocopy "./temp_update/d4lf" "." /E /XF "autoupdater.bat"
     echo Running postprocessing to verify update and clean up files
     start /WAIT {exe_name} --autoupdatepost
-)""")
-
+)""", encoding="utf-8")
 
 if __name__ == "__main__":
     os.chdir(Path(__file__).parent)
