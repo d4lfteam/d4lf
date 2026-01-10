@@ -233,7 +233,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         search_string_split = tts_item[1].lower().split(" rune of ")
         item.rarity = _get_item_rarity(search_string_split[0])
         return item
-    if any("Cost : " in value for value in tts_item):
+    if any("Cost : " in value or "Cost:" in value for value in tts_item):
         item.is_in_shop = True
     if any(tts_item[1].lower().endswith(x) for x in ["cache"]):
         item.item_type = ItemType.Cache
@@ -495,10 +495,13 @@ def read_descr() -> Item | None:
     if item.rarity not in [ItemRarity.Rare, ItemRarity.Legendary, ItemRarity.Mythic, ItemRarity.Unique]:
         return item
 
-    if item.rarity == ItemRarity.Unique and item.name not in Dataloader().aspect_unique_dict:
+    if item.rarity == ItemRarity.Mythic and item.is_in_shop:
+        return None
+
+    if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and item.name not in Dataloader().aspect_unique_dict:
         raise IndexError(
             f"Unrecognized unique {item.name}. This most likely means the name of it reported "
-            f"from Diablo 4 is wrong. Please report a bug with this message."
+            f"from Diablo 4 is wrong. Please report a bug with this message. TTS: {tts_section}"
         )
 
     item.codex_upgrade = _is_codex_upgrade(tts_section)
