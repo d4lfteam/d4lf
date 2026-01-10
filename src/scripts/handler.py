@@ -40,10 +40,6 @@ class ScriptHandler:
             self.run_vision_mode()
 
     def _graceful_exit(self):
-        # Store shutdown flag inside the app's assets directory (not user_dir)
-        shutdown_flag = BASE_DIR / "assets" / ".shutdown"
-        shutdown_flag.touch()
-
         safe_exit()
 
     def setup_key_binds(self):

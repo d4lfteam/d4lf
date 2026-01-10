@@ -21,6 +21,8 @@ LOGGER = logging.getLogger(__name__)
 
 LOG_DIR = BASE_DIR / "logs"
 
+_setup_called = False
+
 
 class ThreadNameFilter(logging.Filter):
     def filter(self, record):
@@ -104,7 +106,11 @@ def setup(log_level: str = "DEBUG", *, enable_stdout: bool = True) -> None:
 
     # Set default log level for root logger
     logger.setLevel("DEBUG")
-    LOGGER.info(f"Running version v{__version__}")
+
+    global _setup_called
+    if not _setup_called:
+        LOGGER.info(f"Running version v{__version__}")
+        _setup_called = True
 
 
 def _log_unhandled_exceptions(args: typing.Any) -> None:

@@ -33,7 +33,7 @@ def emit_early_startup_logs():
     logger.info(f"Running version v{__version__}")
 
     # 2. Adapt your configs
-    logger.info(f"Adapt your configs via gui.bat or directly in: {IniConfigLoader().user_dir}")
+    logger.info(f"Adapt your configs in: {IniConfigLoader().user_dir}")
 
     # 3. No profiles configured warning (if applicable)
     profiles_dir = Path(IniConfigLoader().user_dir) / "profiles"
@@ -42,6 +42,6 @@ def emit_early_startup_logs():
     if not profile_files:
         logger.warning(
             "No profiles have been configured so no filtering will be done. "
-            "If this is a mistake, use the profiles section of the config tab "
-            "of gui.bat to activate the profiles you want to use."
+            "If this is a mistake, use the profiles section in Settings "
+            "to activate the profiles you want to use."
         )

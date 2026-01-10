@@ -39,15 +39,12 @@ if sys.platform == "win32":
 
 
 def main():
-    shutdown_flag = BASE_DIR / "assets" / ".shutdown"
-    if shutdown_flag.exists():
-        shutdown_flag.unlink()
-
     for dir_name in [LOG_DIR / "screenshots", IniConfigLoader().user_dir, IniConfigLoader().user_dir / "profiles"]:
         Path(dir_name).mkdir(exist_ok=True, parents=True)
 
+    # Detect if we're running locally and skip the autoupdate
     main_path = Path(__main__.__file__)
-    if main_path.name == "main.py" or (len(sys.argv) > 1 and sys.argv[1] == "--consoleonly"):
+    if main_path.name == "main.py":
         LOGGER.debug("Skipping autoupdate check.")
     else:
         notify_if_update()
@@ -88,7 +85,7 @@ def main():
     start_detecting_window(win_spec)
     while not Cam().is_offset_set():
         time.sleep(0.2)
-
+    # The code gets ahead of itself and seems to try to start scanning the screen when the resolution isn't set yet
     time.sleep(0.5)
 
     ScriptHandler()
@@ -102,6 +99,7 @@ def main():
 
 
 def check_for_proper_tts_configuration():
+    # Check that the dll has been installed
     d4_process_found = False
     for proc in psutil.process_iter(["name", "exe"]):
         if proc.name().lower() == "diablo iv.exe":
@@ -145,28 +143,31 @@ def check_for_proper_tts_configuration():
                     )
         else:
             LOGGER.warning(
-                "Unable to find a Diablo 4 local prefs file. Can't automatically check if TTS is configured properly in-game."
+                "Unable to find a Diablo 4 local prefs file. Can't automatically check if TTS is configured properly in-game. "
+                "If d4lf is working without issue for you, you can disable this warning by enabling 'disable_tts_warning' in the Advanced settings."
             )
 
 
 def get_d4_local_prefs_file() -> Path | None:
-    all_potential_files = [
+    all_potential_files: list[Path] = [
         pathlib.Path.home() / "Documents" / "Diablo IV" / "LocalPrefs.txt",
         pathlib.Path.home() / "OneDrive" / "Documents" / "Diablo IV" / "LocalPrefs.txt",
         pathlib.Path.home() / "OneDrive" / "MyDocuments" / "Diablo IV" / "LocalPrefs.txt",
     ]
 
-    existing_files = [file for file in all_potential_files if file.exists()]
-    if not existing_files:
+    existing_files: list[Path] = [file for file in all_potential_files if file.exists()]
+
+    if len(existing_files) == 0:
         return None
+
     if len(existing_files) == 1:
         return existing_files[0]
 
-    most_recent = existing_files[0]
-    for f in existing_files[1:]:
-        if f.stat().st_mtime > most_recent.stat().st_mtime:
-            most_recent = f
-    return most_recent
+    most_recently_modified_file = existing_files[0]
+    for existing_file in existing_files[1:]:
+        if existing_file.stat().st_mtime > most_recently_modified_file.stat().st_mtime:
+            most_recently_modified_file = existing_file
+    return most_recently_modified_file
 
 
 def hide_console():
@@ -192,10 +193,14 @@ if __name__ == "__main__":
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=True)
         main()
 
+
     else:
-        hide_console()  # <-- Hide console for normal GUI mode
+        # Enable stdout logging when running from source (for IDE terminal), hide console for compiled exe
+        running_from_source = not getattr(sys, "frozen", False)
+        if not running_from_source:
+            hide_console()
         os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
-        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=False)
+        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=running_from_source)
 
         from PyQt6.QtWidgets import QApplication
 

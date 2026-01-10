@@ -32,12 +32,13 @@ from src.logger import setup as setup_logging
 from src.main import check_for_proper_tts_configuration
 from src.overlay import Overlay
 from src.scripts.handler import ScriptHandler
-from src.utils.global_hotkeys import register_hotkey, start_hotkey_listener
 from src.utils.window import WindowSpec, start_detecting_window
 
-BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent.parent
 
 ICON_PATH = BASE_DIR / "assets" / "logo.png"
+
+LOGGER = logging.getLogger(__name__)
 
 ANSI_PATTERN = re.compile(r"\x1b\[(\d+)(;\d+)*m")
 
@@ -168,15 +169,19 @@ class UnifiedMainWindow(QMainWindow):
         QApplication.instance().setStyleSheet(stylesheet)
 
         # --- Logging setup ---
-        setup_logging(enable_stdout=False)
+        running_from_source = not getattr(sys, "frozen", False)
+        setup_logging(enable_stdout=running_from_source)
         root_logger = logging.getLogger()
 
+        # Remove existing handlers, but keep stdout handler if running from source
         for h in list(root_logger.handlers):
+            if running_from_source and isinstance(h, logging.StreamHandler) and h.stream == sys.stdout:
+                continue  # Keep stdout handler for IDE terminal
             root_logger.removeHandler(h)
 
         self.console_handler = QtConsoleHandler()
         self.console_handler.setFormatter(create_formatter(colored=True))
-        self.console_handler.setLevel(logging.DEBUG)
+        self.console_handler.setLevel(config.advanced_options.log_lvl.value.upper())
         self.console_handler.addFilter(ThreadNameFilter())
 
         self.activity_handler = QtActivityHandler()
@@ -186,7 +191,7 @@ class UnifiedMainWindow(QMainWindow):
 
         root_logger.addHandler(self.console_handler)
         root_logger.addHandler(self.activity_handler)
-        root_logger.setLevel(logging.INFO)
+        root_logger.setLevel(config.advanced_options.log_lvl.value.upper())
 
         # --- Window setup ---
         self.setWindowTitle("D4LF")
@@ -255,7 +260,6 @@ class UnifiedMainWindow(QMainWindow):
         # --- Final setup ---
         self.restore_geometry()
         self.thread.start()
-        self.start_global_hotkeys()
 
     def emit_startup_direct_to_console(self):
         banner = (
@@ -267,97 +271,8 @@ class UnifiedMainWindow(QMainWindow):
         self.console_output.appendPlainText(banner)
         self.console_output.appendPlainText("")  # one blank line for spacing
 
-    def start_global_hotkeys(self):
-        """Register global hotkeys using WinAPI low-level hook with modifier support."""
-        # --- Dedicated console-only logger ---
-        hotkey_logger = logging.getLogger("hotkeys")
-        hotkey_logger.setLevel(logging.INFO)
-        hotkey_logger.addHandler(self.console_handler)
-        hotkey_logger.propagate = False
-
-        hotkey_logger.info("Registering global hotkeys from configuration...")
-
-        config = IniConfigLoader()
-        advanced = config.advanced_options
-
-        def convert_to_vk(hotkey_str):
-            """Convert config hotkey formats.
-
-            Examples:
-                "f11"
-                "shift+f11"
-                "ctrl+shift+f11"
-
-            Converted into:
-                "shift+vk_122".
-            """
-            parts = hotkey_str.lower().split("+")
-            mods = []
-            key = None
-
-            for p in parts:
-                if p in ("ctrl", "shift", "alt"):
-                    mods.append(p)
-                elif p.startswith("f"):
-                    try:
-                        fn = int(p[1:])
-                        vk = 0x70 + (fn - 1)
-                        key = f"vk_{vk}"
-                    except Exception:
-                        return None
-                else:
-                    return None
-
-            if key is None:
-                return None
-
-            return "+".join(mods + [key])
-
-        def register(hotkey_str, callback, description):
-            if not hotkey_str:
-                hotkey_logger.info("No key configured for %s; skipping", description)
-                return
-
-            vk_form = convert_to_vk(hotkey_str)
-            if not vk_form:
-                hotkey_logger.info("Invalid hotkey '%s' for %s", hotkey_str, description)
-                return
-
-            hotkey_logger.info("Registering hotkey %s for %s", hotkey_str.upper(), description)
-            register_hotkey(vk_form, callback)
-
-        register(advanced.run_vision_mode, lambda: ScriptHandler().toggle_vision_mode(), "Run/Stop Vision Mode")
-
-        register(advanced.run_filter, lambda: ScriptHandler().toggle_filter(), "Run/Stop Auto Filter")
-
-        register(
-            advanced.run_filter_force_refresh,
-            lambda: ScriptHandler().force_filter(),
-            "Force Run/Stop Filter, Resetting Item Status",
-        )
-
-        register(
-            advanced.force_refresh_only,
-            lambda: ScriptHandler().reset_statuses(),
-            "Reset Item Statuses Without A Filter After",
-        )
-
-        register(
-            advanced.move_to_inv, lambda: ScriptHandler().move_chest_to_inv(), "Move Items From Chest To Inventory"
-        )
-
-        register(
-            advanced.move_to_chest, lambda: ScriptHandler().move_inv_to_chest(), "Move Items From Inventory To Chest"
-        )
-
-        register(advanced.exit_key, lambda: QApplication.quit(), "Exit")
-
-        start_hotkey_listener()
-        hotkey_logger.info("Global hotkey listener started.")
 
     def open_import_dialog(self):
-        logger = logging.getLogger(__name__)
-
         try:
             win = ImporterWindow()
             win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
@@ -369,12 +284,10 @@ class UnifiedMainWindow(QMainWindow):
             win.show()
 
         except Exception as e:
-            logger.error(f"Failed to open importer: {e}")
+            LOGGER.error(f"Failed to open importer: {e}")
             QMessageBox.critical(self, "Import Error", str(e))
 
     def open_settings_dialog(self):
-        logger = logging.getLogger(__name__)
-
         try:
             win = ConfigWindow(theme_changed_callback=self.apply_theme)
             win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
@@ -386,7 +299,7 @@ class UnifiedMainWindow(QMainWindow):
             win.show()
 
         except Exception as e:
-            logger.error(f"Failed to open settings: {e}")
+            LOGGER.error(f"Failed to open settings: {e}")
             QMessageBox.critical(self, "Settings Error", str(e))
 
     def open_profile_editor(self):
@@ -401,7 +314,7 @@ class UnifiedMainWindow(QMainWindow):
             win.show()
 
         except Exception as e:
-            logging.getLogger(__name__).error(f"Failed to open profile editor: {e}")
+            LOGGER.error(f"Failed to open profile editor: {e}")
 
     def restore_geometry(self):
         settings = QSettings("d4lf", "mainwindow")

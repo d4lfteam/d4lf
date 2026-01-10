@@ -29,7 +29,7 @@ def copy_additional_resources(release_dir: Path):
 
 
 def create_batch_for_consoleonly(release_dir: Path, exe_name: str):
-    batch_file_path = release_dir / "consoleonly.bat"
+    batch_file_path = release_dir / "d4lf-consoleonly.bat"
     with Path(batch_file_path).open("w", encoding="utf-8") as f:
         f.write("@echo off\n")
         f.write('cd /d "%~dp0"\n')
