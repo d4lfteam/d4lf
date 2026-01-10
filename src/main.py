@@ -193,7 +193,6 @@ if __name__ == "__main__":
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=True)
         main()
 
-
     else:
         # Enable stdout logging when running from source (for IDE terminal), hide console for compiled exe
         running_from_source = not getattr(sys, "frozen", False)

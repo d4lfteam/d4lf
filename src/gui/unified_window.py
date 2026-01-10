@@ -34,7 +34,9 @@ from src.overlay import Overlay
 from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
 
-BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent.parent
+BASE_DIR = (
+    Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent.parent
+)
 
 ICON_PATH = BASE_DIR / "assets" / "logo.png"
 
@@ -270,7 +272,6 @@ class UnifiedMainWindow(QMainWindow):
 
         self.console_output.appendPlainText(banner)
         self.console_output.appendPlainText("")  # one blank line for spacing
-
 
     def open_import_dialog(self):
         try:
