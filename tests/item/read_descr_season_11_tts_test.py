@@ -435,6 +435,7 @@ items = [
             power=None,
             rarity=ItemRarity.Legendary,
             sanctified=False,
+            original_name="HAUNTED REFUGE ESCALATION SIGIL",
         ),
     ),
     # Regular sigil

@@ -23,6 +23,7 @@ class Item:
     is_in_shop: bool = False
     item_type: ItemType | None = None
     name: str | None = None
+    original_name: str | None = None
     power: int | None = None
     rarity: ItemRarity | None = None
     sanctified: bool = False

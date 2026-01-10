@@ -26,6 +26,7 @@ from src.item.descr.text import find_number
 from src.item.descr.texture import find_affix_bullets, find_aspect_bullet, find_seperator_short, find_seperators_long
 from src.item.models import Item
 from src.scripts import correct_name
+from src.tts import ItemIdentifiers
 from src.utils.window import screenshot
 
 if TYPE_CHECKING:
@@ -200,38 +201,38 @@ def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
 
 
 def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
-    if tts_item[1].endswith(src.tts.ItemIdentifiers.COMPASS.value):
-        return Item(rarity=ItemRarity.Common, item_type=ItemType.Compass)
-    if tts_item[0].startswith(src.tts.ItemIdentifiers.NIGHTMARE_SIGIL.value):
+    item = Item(original_name=tts_item[0])
+    if tts_item[1].endswith(ItemIdentifiers.COMPASS.value):
+        return _update_item_object(item, rarity=ItemRarity.Common, item_type=ItemType.Compass)
+    if tts_item[0].startswith(ItemIdentifiers.NIGHTMARE_SIGIL.value):
         if "Nightmare Sigil is used" in tts_item[0]:  # This is actually the crafting screen
             return None
-        return Item(rarity=ItemRarity.Common, item_type=ItemType.Sigil)
-    if tts_item[0].startswith(src.tts.ItemIdentifiers.ESCALATION_SIGIL.value):
-        return Item(rarity=ItemRarity.Common, item_type=ItemType.EscalationSigil)
-    if src.tts.ItemIdentifiers.TRIBUTE.value in tts_item[0]:
-        item = Item(item_type=ItemType.Tribute)
+        return _update_item_object(item, rarity=ItemRarity.Common, item_type=ItemType.Sigil)
+    if tts_item[0].startswith(ItemIdentifiers.ESCALATION_SIGIL.value):
+        return _update_item_object(item, rarity=ItemRarity.Common, item_type=ItemType.EscalationSigil)
+    if ItemIdentifiers.TRIBUTE.value in tts_item[0]:
+        item.item_type = ItemType.Tribute
         search_string_split = tts_item[1].split(" ")
         item.rarity = _get_item_rarity(search_string_split[0])
         item.name = correct_name(" ".join(search_string_split[1:]))
         return item
-    if tts_item[0].startswith(src.tts.ItemIdentifiers.WHISPERING_KEY.value):
-        return Item(item_type=ItemType.Consumable)
+    if tts_item[0].startswith(ItemIdentifiers.WHISPERING_KEY.value):
+        return _update_item_object(item, item_type=ItemType.Consumable)
     if any(tts_item[1].lower().endswith(x) for x in ["summoning"]):
-        return Item(item_type=ItemType.Material)
+        return _update_item_object(item, item_type=ItemType.Material)
     if any(tts_item[1].lower().endswith(x) for x in ["gem"]):
-        return Item(item_type=ItemType.Gem)
+        return _update_item_object(item, item_type=ItemType.Gem)
     if any(tts_item[1].lower().endswith(x) for x in ["whispering wood"]):
-        return Item(item_type=ItemType.WhisperingWood)
+        return _update_item_object(item, item_type=ItemType.WhisperingWood)
     if any(tts_item[1].lower().startswith(x) for x in ["cosmetic"]):
-        return Item(item_type=ItemType.Cosmetic)
+        return _update_item_object(item, item_type=ItemType.Cosmetic)
     if any(tts_item[1].lower().endswith(x) for x in ["boss key"]):
-        return Item(item_type=ItemType.LairBossKey)
+        return _update_item_object(item, item_type=ItemType.LairBossKey)
     if "rune of" in tts_item[1].lower():
-        item = Item(item_type=ItemType.Rune)
+        item.item_type = ItemType.Rune
         search_string_split = tts_item[1].lower().split(" rune of ")
         item.rarity = _get_item_rarity(search_string_split[0])
         return item
-    item = Item()
     if any("Cost : " in value or "Cost:" in value for value in tts_item):
         item.is_in_shop = True
     if any(tts_item[1].lower().endswith(x) for x in ["cache"]):
@@ -275,6 +276,15 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         if "item power" in line.lower():
             item.power = int(find_number(line))
             break
+    return item
+
+
+def _update_item_object(item: Item, rarity=None, item_type=None) -> Item:
+    if rarity:
+        item.rarity = rarity
+    if item_type:
+        item.item_type = item_type
+
     return item
 
 
