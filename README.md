@@ -36,17 +36,16 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
     - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
     - In Steam, right click the game, select Manage > Browse local files
 - Generate a profile of what you want to filter for. To do so you have a few options:
-  - Open gui.bat and import a profile by pasting a build page from popular planner websites
-  - Take one someone else has generated from our [discord](https://discord.gg/YyzaPhAN6T)
+  - Run d4lf.exe and import a profile using the import window by pasting a build page from popular planner websites
   - Create one yourself by looking at the [examples](#how-to-filter--profiles) below
-- If downloaded or created manually, place the profile in the `C:/Users/<WINDOWS_USER>/.d4lf/profiles` folder. The GUI
-  importer has a button to open this folder directly. If imported they are placed there automatically.
-- Run gui.bat and use the GUI config tab to configure the profiles. Select the '...' next to profiles to activate which
+- If created manually, place the profile in the `C:/Users/<WINDOWS_USER>/.d4lf/profiles` folder. The D4LF
+  importer window has a button to open this folder directly. If imported they are placed there automatically.
+- Run d4lf.exe and use the config button to configure the profiles. Select the '...' next to profiles to activate which
   profiles you want to use.
 - Ensure all [game settings](#game-settings) are configured properly.
-- Execute d4lf.exe and launch Diablo 4.
+- If you made changes, restart d4lf.exe and launch Diablo 4.
 - Use the hotkeys listed in d4lf.exe to run filtering. By default, F11 will run the loot filter and filter your items.
-- For most common issues, if something is wrong, you will see an error or warning when you start d4lf.exe
+- For most common issues, if something is wrong, you will see an error or warning when you start d4lf.exe. Join our [discord](https://discord.gg/YyzaPhAN6T) for more help.
 
 ### Updating an existing installation
 
@@ -90,7 +89,7 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 - **profiles/\*.yaml**: These files determine what should be filtered. Profiles created by the GUI will be placed here
   automatically.
 - **params.ini**: Different hotkey settings and number of chest stashes that should be looked at. Management of this
-  file should be done through the GUI.
+  file should be done through the GUI in the config window.
 
 ### params.ini
 
@@ -134,15 +133,21 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 
 ### GUI
 
-Documentation is not yet finished. For now, it should be self-explanatory. Just start `gui.bat` in the archive.
+d4lf.exe is the one-stop shop for all operations, including running the D4LF process and any configuration changes.
+
+If you prefer a standalone console-only experience, you can run d4lf-consoleonly.bat instead which will not open a GUI
+as well. It is still recommended you open the GUI for any configurations management.
+
+If you make any configuration changes, you will need to restart D4LF. If you make changes to a profile, those will be
+automatically picked up and no restart is necessary.
 
 Current functionality:
 
 - Import builds from maxroll/d4builds/mobalytics
-- Complete management of your params.ini through the config tab
+- Complete management of your settings through the config tab
 - A beta version of a manual profile editor/creator
 
-Each tab gives further instructions on how to use it and what kind of input it expects.
+Each window gives further instructions on how to use it and what kind of input it expects.
 
 ## How to filter / Profiles
 
@@ -202,8 +207,7 @@ has a name and can filter for any combination of the following:
 - `itemType`: The name of the type or a list of multiple types.
   See [assets/lang/enUS/item_types.json](assets/lang/enUS/item_types.json)
 - `minPower`: Minimum item power
-- `minGreaterAffixCount`: Minimum number of greater affixes. Note that this is on the overall item and independent
-  of `affixPool`
+- `minGreaterAffixCount`: Minimum number of greater affixes expected on the overall item. See [Greater Affix Filtering](#greater-affix-filtering) for more information on filtering GAs.
 - `affixPool`: A list of multiple different rulesets to filter for. Each ruleset must be fulfilled or the item is
   discarded
   - `count`: Define a list of affixes (see [syntax](#affix--aspects-filter-syntax)) and
@@ -212,8 +216,6 @@ has a name and can filter for any combination of the following:
       affixes
     - `maxCount` specifies the maximum number of affixes that must match the item. defaults to amount of specified
       affixes
-    - `minGreaterAffixCount`: specifies the minimum number of greater affixes inside this count group. defaults
-      to `0`
 - `inherentPool`: The same rules as for `affixPool` apply, but this is evaluated against the inherent affixes of the
   item
 
@@ -295,11 +297,11 @@ Affixes:
 Affix names are lower case and spaces are replaced by underscore. You can find the full list of names
 in [assets/lang/enUS/affixes.json](assets/lang/enUS/affixes.json).
 
-## Greater Affix Filtering
+### Greater Affix Filtering
 
 D4LF provides two complementary ways to filter items based on Greater Affixes:
 
-### 1. Item-Level Greater Affix Count (`minGreaterAffixCount`)
+#### 1. Item-Level Greater Affix Count (`minGreaterAffixCount`)
 
 This filter requires a minimum total number of Greater Affixes on the entire item, regardless of which affixes they are.
 
@@ -314,24 +316,20 @@ Affixes:
         - count:
             - { name: movement_speed }
             - { name: maximum_life }
-            - { name: cold_resistance }
+            - { name: strength }
             - { name: fire_resistance }
           minCount: 3
 ```
 
-**Example item that would match:** Boots with movement_speed (normal), maximum_life (GA), cold_resistance (normal), fire_resistance (GA)\
-**Why:** The item has at least 2 Greater Affixes total (maximum_life and fire_resistance in this case), and at least 3 affixes from the pool (all 4 are present)
-
-**Another example that would match:** Boots with movement_speed (GA), maximum_life (normal), cold_resistance (GA), fire_resistance (normal)\
-**Why:** The item has at least 2 Greater Affixes total (movement_speed and cold_resistance in this case), and at least 3 affixes from the pool
-
-**Key point:** Since no affixes have `want_greater: true`, ANY 2 affixes on the item can be Greater Affixes to satisfy the requirement
-
 </details>
 
-### 2. Per-Affix Greater Affix Requirements (`want_greater`)
+#### 2. Per-Affix Greater Affix Requirements (`want_greater`)
 
-When using the Profile Editor GUI, you can mark specific affixes with a "Greater" checkbox. This creates a **hard requirement** that those specific affixes MUST be Greater Affixes on the item.
+When using the Profile Editor GUI or when importing affixes using the importer, you can mark/import specific affixes
+with a "Greater" checkbox. This is shown as `want_greater` in the profile. This is a list of affixes that you would prefer
+to be greater affixes. The `minGreaterAffixCount` value on the item is still respected, so if you have two affixes tagged
+as `want_greater` but a `minGreaterAffixCount` of 1, an item with one of those two affixes as GA will be kept. If neither
+of those affixes are GA but a different one is, the item will not be kept.
 
 <details><summary>Example</summary>
 
@@ -343,10 +341,10 @@ Affixes:
         - count:
             - { name: movement_speed, want_greater: true }  # MUST be a Greater Affix
             - { name: maximum_life, want_greater: true }    # MUST be a Greater Affix
-            - { name: cold_resistance }                      # Can be normal or Greater
+            - { name: strength }                            # Can be normal or Greater
             - { name: fire_resistance }                      # Can be normal or Greater
           minCount: 3
-      minGreaterAffixCount: 2  # Auto-set by GUI because 2 checkboxes are checked
+      minGreaterAffixCount: 2  # Auto-set by GUI if Auto-Sync is checked, or Require Greater Affixes is checked on the importer
 ```
 
 **This item would match:** Boots with movement_speed (GA), maximum_life (GA), cold_resistance (normal), fire_resistance (normal)\
@@ -357,76 +355,7 @@ Affixes:
 
 </details>
 
-### 3. How They Work Together (Automatic Behavior)
-
-The two methods work together automatically:
-
-- **When you check "Greater" checkboxes in the GUI:** The `minGreaterAffixCount` is automatically set to match the number of checkboxes
-- **The checked affixes become hard requirements:** Each affix marked with `want_greater: true` MUST be a Greater Affix on the item, or the item is rejected
-- **Both conditions must be met:** The item must have enough total GAs AND the specific marked affixes must be GAs
-
-<details><summary>Example</summary>
-
-```yaml
-Affixes:
-  - SmartBoots:
-      itemType: boots
-      minGreaterAffixCount: 2  # Automatically set to 2 (because 2 checkboxes checked)
-      affixPool:
-        - count:
-            - { name: movement_speed, want_greater: true }  # MUST be GA
-            - { name: maximum_life, want_greater: true }    # MUST be GA
-            - { name: cold_resistance }
-            - { name: fire_resistance }
-          minCount: 3
-```
-
-**This item would match:** Boots with movement_speed (GA), maximum_life (GA), cold_resistance (normal), fire_resistance (normal)\
-**Why:** Both movement_speed and maximum_life are GAs as required, item has 2 total GAs (meets minGreaterAffixCount), and 4 affixes (meets minCount)
-
-**This item would NOT match:** Boots with movement_speed (normal), maximum_life (GA), cold_resistance (GA), fire_resistance (normal)\
-**Why:** Even though item has 2 total GAs, movement_speed is not a GA (violates the `want_greater: true` hard requirement)
-
-</details>
-
-### Automatic minGreaterAffixCount Behavior
-
-When using the GUI Profile Editor:
-
-- **If you check ANY "Greater" checkboxes:** `minGreaterAffixCount` automatically sets to match the number of checked boxes
-- **If you check NO "Greater" checkboxes:** `minGreaterAffixCount` uses whatever value you manually set (or 0 if not set)
-
-<details><summary>Example</summary>
-
-```yaml
-# In the GUI, if you check "Greater" for 3 affixes, this is automatically generated:
-Affixes:
-  - AutoBoots:
-      itemType: boots
-      minGreaterAffixCount: 3  # Automatically set to 3 because 3 checkboxes were checked
-      affixPool:
-        - count:
-            - { name: movement_speed, want_greater: true }
-            - { name: maximum_life, want_greater: true }
-            - { name: cold_resistance, want_greater: true }
-            - { name: fire_resistance }
-          minCount: 3
-```
-
-This ensures your item always has enough Greater Affixes to satisfy all the `want_greater` requirements.
-
-</details>
-
-### Key Differences
-
-| Feature     | `minGreaterAffixCount`                       | `want_greater`                      |
-| ----------- | -------------------------------------------- | ----------------------------------- |
-| Scope       | Entire item                                  | Specific affixes                    |
-| Requirement | Minimum total count                          | Specific affixes must be Greater    |
-| GUI Control | Manual spinner (or auto-set from checkboxes) | Per-affix checkbox                  |
-| Flexibility | Any affixes can be Greater                   | Only marked affixes must be Greater |
-
-### Common Use Cases
+#### Common Use Cases
 
 <details><summary>Examples</summary>
 
@@ -439,7 +368,7 @@ This ensures your item always has enough Greater Affixes to satisfy all the `wan
     - count:
         - { name: movement_speed }
         - { name: maximum_life }
-        - { name: cold_resistance }
+        - { name: strength }
         - { name: fire_resistance }
       minCount: 3
 ```
@@ -448,12 +377,12 @@ This ensures your item always has enough Greater Affixes to satisfy all the `wan
 
 ```yaml
 - itemType: boots
-  minGreaterAffixCount: 1  # Auto-set by GUI when you check 1 box
+  minGreaterAffixCount: 1  # The minGreaterAffixCount is important, if it was 0 then movement_speed would not be required to be GA
   affixPool:
     - count:
         - { name: movement_speed, want_greater: true }
         - { name: maximum_life }
-        - { name: cold_resistance }
+        - { name: strength }
         - { name: fire_resistance }
       minCount: 3
 ```
@@ -462,12 +391,26 @@ This ensures your item always has enough Greater Affixes to satisfy all the `wan
 
 ```yaml
 - itemType: boots
-  minGreaterAffixCount: 2  # Auto-set by GUI when you check 2 boxes
+  minGreaterAffixCount: 2  # minGreaterAffixCount of 2 requires both to be GA
   affixPool:
     - count:
         - { name: movement_speed, want_greater: true }
         - { name: maximum_life, want_greater: true }
-        - { name: cold_resistance }
+        - { name: strength }
+        - { name: fire_resistance }
+      minCount: 3
+```
+
+**"I want boots where either movement_speed OR maximum_life are Greater Affixes"**
+
+```yaml
+- itemType: boots
+  minGreaterAffixCount: 1  # minGreaterAffixCount of 1 requires either to be GA
+  affixPool:
+    - count:
+        - { name: movement_speed, want_greater: true }
+        - { name: maximum_life, want_greater: true }
+        - { name: strength } # If strength on the item was greater and the top two were not, this would not be matched
         - { name: fire_resistance }
       minCount: 3
 ```
@@ -493,7 +436,8 @@ AspectUpgrades:
   # This would mark Snowveiled Adventurer's Pants as a favorite if it's a codex upgrade. It would ignore the pants otherwise.
   - of_singed_extremities
   - snowveiled
-
+```
+```yaml
 # This works exact same as above, it's just a different way to format it
 AspectUpgrades: [of_singed_extremities, snowveiled]
 ```
@@ -713,7 +657,6 @@ in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json). Occasionally 
 
 ## Future Plans
 
-- Evaluate bringing back the small overlay the previous versions used
 - A video explaining the initial setup
 - Evaluate using joystick emulation to further increase speed for users willing to do additional setup
 - Finish GUI documentation

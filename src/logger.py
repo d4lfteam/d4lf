@@ -76,7 +76,6 @@ def create_formatter(colored=False):
 def setup(log_level: str = "DEBUG", *, enable_stdout: bool = True) -> None:
     LOG_DIR.mkdir(exist_ok=True)
 
-    LOGGER.debug(f"LOG_PATH: {LOG_DIR}")
     logger = logging.getLogger()
     threading.excepthook = _log_unhandled_exceptions
     # create rotating file handler
