@@ -437,6 +437,7 @@ AspectUpgrades:
   - of_singed_extremities
   - snowveiled
 ```
+
 ```yaml
 # This works exact same as above, it's just a different way to format it
 AspectUpgrades: [of_singed_extremities, snowveiled]
