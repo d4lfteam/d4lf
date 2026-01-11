@@ -67,31 +67,31 @@ def reset_item_status(occupied, inv):
 
 def is_ignored_item(item_descr: Item):
     if is_consumable(item_descr.item_type):
-        LOGGER.info("Matched: Consumable")
+        LOGGER.info(f"{item_descr.original_name} -- Matched: Consumable")
         return True
     if is_non_sigil_mapping(item_descr.item_type):
-        LOGGER.info("Matched: Non-sigil Mapping")
+        LOGGER.info(f"{item_descr.original_name} -- Matched: Non-sigil Mapping")
         return True
     if item_descr.item_type == ItemType.EscalationSigil and IniConfigLoader().general.ignore_escalation_sigils:
-        LOGGER.info("Matched: Escalation Sigil and configured to be ignored")
+        LOGGER.info(f"{item_descr.original_name} -- Matched: Escalation Sigil and configured to be ignored")
         return True
     if is_socketable(item_descr.item_type):
-        LOGGER.info("Matched: Socketable")
+        LOGGER.info(f"{item_descr.original_name} -- Matched: Socketable")
         return True
     if item_descr.item_type == ItemType.Material:
-        LOGGER.info("Matched: Material")
+        LOGGER.info(f"{item_descr.original_name} -- Matched: Material")
         return True
     if item_descr.item_type == ItemType.Cache:
-        LOGGER.info("Matched: Cache")
+        LOGGER.info(f"{item_descr.original_name} -- Matched: Cache")
         return True
     if item_descr.item_type == ItemType.Cosmetic:
-        LOGGER.info("Matched: Cosmetic only item")
+        LOGGER.info(f"{item_descr.original_name} -- Matched: Cosmetic only item")
         return True
     if item_descr.item_type == ItemType.LairBossKey:
-        LOGGER.info("Matched: Lair Boss Key")
+        LOGGER.info(f"{item_descr.original_name} -- Matched: Lair Boss Key")
         return True
     if item_descr.sanctified:
-        LOGGER.info("Matched: Sanctified item, which is not supported")
+        LOGGER.info(f"{item_descr.original_name} -- Matched: Sanctified item, which is not supported")
         return True
 
     return False

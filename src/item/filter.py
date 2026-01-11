@@ -134,7 +134,7 @@ class Filter:
                         match_details.append(f"{affix.name} (GA)")
                     else:
                         match_details.append(affix.name)
-                LOGGER.info(f"Matched {profile_name}.Affixes.{filter_name}: {match_details}")
+                LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Affixes.{filter_name}: {match_details}")
                 res.keep = True
                 res.matched.append(MatchedFilter(f"{profile_name}.{filter_name}", all_matches))
         return res
@@ -148,7 +148,7 @@ class Filter:
                 if item.aspect and any(
                     legendary_aspect_name == item.aspect.name for legendary_aspect_name in profile_filter
                 ):
-                    LOGGER.info("Matched build-specific aspects that updates codex")
+                    LOGGER.info(f"{item.original_name} -- Matched build-specific aspects that updates codex")
                     res.keep = True
                     res.matched.append(MatchedFilter(f"{profile_name}.{ASPECT_UPGRADES_LABEL}", did_match_aspect=True))
 
@@ -159,7 +159,7 @@ class Filter:
             IniConfigLoader().general.keep_aspects == AspectFilterType.upgrade and not item.codex_upgrade
         ):
             return res
-        LOGGER.info("Matched Aspects that updates codex")
+        LOGGER.info(f"{item.original_name} -- Matched Aspects that updates codex")
         res.keep = True
         res.matched.append(MatchedFilter(ASPECT_UPGRADES_LABEL, did_match_aspect=True))
         return res
@@ -171,7 +171,7 @@ class Filter:
             IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.ignore and not item.cosmetic_upgrade
         ):
             return res
-        LOGGER.info("Matched new cosmetic")
+        LOGGER.info(f"{item.original_name} -- Matched new cosmetic")
         res.keep = True
         res.matched.append(MatchedFilter("Cosmetics"))
         return res
@@ -179,7 +179,7 @@ class Filter:
     def _check_sigil(self, item: Item) -> FilterResult:
         res = FilterResult(False, [])
         if not self.sigil_filters.items():
-            LOGGER.info("Matched Sigils")
+            LOGGER.info(f"{item.original_name} -- Matched Sigils")
             res.keep = True
             res.matched.append(MatchedFilter("Sigils not filtered"))
         for profile_name, profile_filter in self.sigil_filters.items():
@@ -212,7 +212,7 @@ class Filter:
                         continue
                 elif (is_in_blacklist and not blacklist_ok) or (not is_in_whitelist and not whitelist_ok):
                     continue
-            LOGGER.info(f"Matched {profile_name}.Sigils")
+            LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Sigils")
             res.keep = True
             res.matched.append(MatchedFilter(f"{profile_name}"))
         return res
@@ -220,12 +220,12 @@ class Filter:
     def _check_tribute(self, item: Item) -> FilterResult:
         res = FilterResult(False, [])
         if not self.tribute_filters.items():
-            LOGGER.info("Matched Tributes")
+            LOGGER.info(f"{item.original_name} -- Matched Tributes")
             res.keep = True
             res.matched.append(MatchedFilter("Tributes not filtered"))
 
         if item.rarity == ItemRarity.Mythic:
-            LOGGER.info("Matched mythic tribute, always kept")
+            LOGGER.info(f"{item.original_name} -- Matched mythic tribute, always kept")
             res.keep = True
             res.matched.append(MatchedFilter("Mythic Tribute"))
 
@@ -237,7 +237,7 @@ class Filter:
                 if filter_item.rarities and item.rarity not in filter_item.rarities:
                     continue
 
-                LOGGER.info(f"Matched {profile_name}.Tributes")
+                LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Tributes")
                 res.keep = True
                 res.matched.append(MatchedFilter(f"{profile_name}"))
         return res
@@ -289,7 +289,7 @@ class Filter:
                     expected_percent=filter_item.minPercentOfAspect, item_aspect=item.aspect
                 ):
                     continue
-                LOGGER.info(f"Matched {profile_name}.Uniques: {item.aspect.name}")
+                LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Uniques: {item.aspect.name}")
                 res.keep = True
                 matched_full_name = f"{profile_name}.{item.aspect.name}"
                 if filter_item.profileAlias:
