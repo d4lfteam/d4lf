@@ -1,7 +1,10 @@
 import logging
+import sys
 import threading
+from pathlib import Path
 
-from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, QThreadPool, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, Qt, QThreadPool, pyqtSignal, pyqtSlot
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -21,6 +24,10 @@ from src.gui.importer.maxroll import import_maxroll
 from src.gui.importer.mobalytics import import_mobalytics
 from src.gui.open_user_config_button import OpenUserConfigButton
 
+BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+
+ICON_PATH = BASE_DIR / "assets" / "logo.png"
+
 LOGGER = logging.getLogger(__name__)
 THREADPOOL = QThreadPool()
 
@@ -30,6 +37,11 @@ class ImporterWindow(QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        if ICON_PATH.exists():
+            self.setWindowIcon(QIcon(str(ICON_PATH)))
+
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         # Settings for persistent window geometry
         self.settings = QSettings("d4lf", "ImporterWindow")
