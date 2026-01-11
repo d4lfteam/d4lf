@@ -111,12 +111,12 @@ class VisionModeFast:
 
     def on_tts(self, _):
         try:
-            img = Cam().grab()
             item_descr = None
             try:
                 item_descr = src.item.descr.read_descr_tts.read_descr()
                 LOGGER.debug(f"Parsed item based on TTS: {item_descr}")
             except Exception:
+                img = Cam().grab()
                 screenshot("tts_error", img=img)
                 LOGGER.exception(f"Error in TTS read_descr. {src.tts.LAST_ITEM=}")
             if item_descr is None:

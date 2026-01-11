@@ -18,8 +18,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from autoupdater import notify_if_update
 from src import tts
+from src.autoupdater import notify_if_update
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.gui.activity_log_widget import ActivityLogWidget

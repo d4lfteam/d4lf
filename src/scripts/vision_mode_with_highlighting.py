@@ -4,6 +4,7 @@ import queue
 import threading
 import time
 import tkinter as tk
+from threading import Event, Thread
 from tkinter.font import Font
 from typing import TYPE_CHECKING
 
@@ -35,13 +36,16 @@ from src.ui.stash import Stash
 from src.ui.vendor import Vendor
 from src.utils.custom_mouse import mouse
 from src.utils.image_operations import compare_histograms
-from src.utils.process_handler import kill_thread
 from src.utils.window import screenshot
 
 if TYPE_CHECKING:
     from src.item.models import Item
 
 LOGGER = logging.getLogger(__name__)
+
+
+class CancellationRequested(Exception):
+    """Exception raised when a cancellation is requested."""
 
 
 @singleton
@@ -56,7 +60,9 @@ class VisionModeWithHighlighting:
         self.canvas = tk.Canvas(self.root, bg="white", highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True)
         self.clear_when_item_not_selected_thread = None
+        self.clear_when_item_not_selected_thread_cancel_event = None
         self.evaluate_item_thread = None
+        self.evaluate_item_thread_cancel_event = None
         self.current_item = None
         self.is_cleared = True
         self.queue = queue.Queue()
@@ -177,6 +183,7 @@ class VisionModeWithHighlighting:
     def draw_from_queue(self):
         try:
             task = self.queue.get_nowait()
+            LOGGER.debug(f"Queue size: {self.queue.qsize()}, task: {task}")
             if task[0] == "clear":
                 reset_canvas(self.root, self.canvas)
                 self.is_cleared = True
@@ -274,17 +281,21 @@ class VisionModeWithHighlighting:
         # Kick off a thread that will evaluate the item and queue up the appropriate drawings.
         # If one already exists we'll kill it since a new item has come in
         if self.evaluate_item_thread:
-            kill_thread(self.evaluate_item_thread)
+            self.stop_thread_and_wait(self.evaluate_item_thread, self.evaluate_item_thread_cancel_event)
 
+        self.evaluate_item_thread_cancel_event = threading.Event()
         self.evaluate_item_thread = threading.Thread(
             target=self.evaluate_item_and_queue_draw, args=(item_descr,), daemon=True
         )
         self.evaluate_item_thread.start()
 
     def evaluate_item_and_queue_draw(self, item_descr: Item):
-        self.request_clear()
+        if not self.is_cleared:
+            self.request_clear()
         if self.clear_when_item_not_selected_thread:
-            kill_thread(self.clear_when_item_not_selected_thread)
+            self.stop_thread_and_wait(
+                self.clear_when_item_not_selected_thread, self.clear_when_item_not_selected_thread_cancel_event
+            )
             self.clear_when_item_not_selected_thread = None
 
         last_top_left_corner = None
@@ -295,6 +306,7 @@ class VisionModeWithHighlighting:
         retry_count = 0
         try:
             while retry_count < 5 and not is_confirmed:
+                self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
                 retry_count += 1
                 mouse_pos = Cam().monitor_to_window(mouse.get_position())
                 # get closest pos to a item center
@@ -303,6 +315,8 @@ class VisionModeWithHighlighting:
                 distances = np.linalg.norm(delta, axis=1)
                 closest_index = np.argmin(distances)
                 item_center = centers_to_use[closest_index]
+
+                self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
 
                 # Before we get the cropped_descr we need to ensure there is no previous overlay on screen
                 while not self.is_cleared:
@@ -318,6 +332,8 @@ class VisionModeWithHighlighting:
                             if score < 0.99:
                                 continue
                             is_confirmed = True
+
+                    self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
 
                     if (
                         last_top_left_corner is None
@@ -340,7 +356,9 @@ class VisionModeWithHighlighting:
                         # Since we've now drawn something we kick off a thread to remove the drawing
                         # if the item is unselected. It is also automatically removed if a different
                         # TTS item comes in.
+                        self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
                         if not self.clear_when_item_not_selected_thread:
+                            self.clear_when_item_not_selected_thread_cancel_event = threading.Event()
                             self.clear_when_item_not_selected_thread = threading.Thread(
                                 target=self.check_for_item_still_selected, args=(item_center,), daemon=True
                             )
@@ -376,23 +394,40 @@ class VisionModeWithHighlighting:
                                 self.request_no_match_box(item_descr, item_roi)
                 else:
                     self.request_clear()
+                    self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
                     last_center = None
                     last_top_left_corner = None
                     is_confirmed = False
                     time.sleep(0.15)
+        except CancellationRequested:
+            pass
         except Exception:
             LOGGER.exception("Error in vision mode. Please create a bug report")
         finally:
             self.evaluate_item_thread = None
 
+    @staticmethod
+    def check_for_thread_cancellation(cancel_event: Event):
+        if cancel_event.is_set():
+            raise CancellationRequested
+
+    @staticmethod
+    def stop_thread_and_wait(thread: Thread, cancel_event: Event):
+        cancel_event.set()
+        thread.join()
+
     def check_for_item_still_selected(self, item_center):
-        while True:
-            found_check, _, _, _ = find_descr(Cam().grab(), item_center)
-            if not found_check:
-                self.request_clear()
-                self.clear_when_item_not_selected_thread = None
-                break
-            time.sleep(0.15)
+        try:
+            while True:
+                self.check_for_thread_cancellation(self.clear_when_item_not_selected_thread_cancel_event)
+                found_check, _, _, _ = find_descr(Cam().grab(), item_center)
+                if not found_check:
+                    self.request_clear()
+                    self.clear_when_item_not_selected_thread = None
+                    break
+                time.sleep(0.15)
+        except CancellationRequested:
+            self.clear_when_item_not_selected_thread = None
 
     def get_coords_from_roi(self, item_roi):
         x, y, w, h = item_roi
@@ -427,10 +462,12 @@ class VisionModeWithHighlighting:
         LOGGER.info("Stopping Vision Mode")
         self.request_clear()
         if self.evaluate_item_thread:
-            kill_thread(self.evaluate_item_thread)
+            self.stop_thread_and_wait(self.evaluate_item_thread, self.evaluate_item_thread_cancel_event)
             self.evaluate_item_thread = None
         if self.clear_when_item_not_selected_thread:
-            kill_thread(self.clear_when_item_not_selected_thread)
+            self.stop_thread_and_wait(
+                self.clear_when_item_not_selected_thread, self.clear_when_item_not_selected_thread_cancel_event
+            )
             self.clear_when_item_not_selected_thread = None
         Publisher().unsubscribe(self.on_tts)
         self.is_running = False
