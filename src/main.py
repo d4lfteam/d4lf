@@ -10,7 +10,6 @@ import psutil
 from beautifultable import BeautifulTable
 from PyQt6.QtGui import QIcon
 
-import __main__
 import src.logger
 from src import __version__, tts
 from src.autoupdater import notify_if_update, start_auto_update
@@ -43,9 +42,9 @@ def main():
         Path(dir_name).mkdir(exist_ok=True, parents=True)
 
     # Detect if we're running locally and skip the autoupdate
-    main_path = Path(__main__.__file__)
-    if main_path.name == "main.py":
-        LOGGER.debug("Skipping autoupdate check.")
+    running_from_source = not getattr(sys, "frozen", False)
+    if running_from_source:
+        LOGGER.debug("Skipping autoupdate check as code is being run from source.")
     else:
         notify_if_update()
 

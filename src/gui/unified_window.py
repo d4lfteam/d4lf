@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from autoupdater import notify_if_update
 from src import tts
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
@@ -136,6 +137,12 @@ class BackendWorker(QObject):
 
     def run(self):
         Filter().load_files()
+
+        running_from_source = not getattr(sys, "frozen", False)
+        if running_from_source:
+            LOGGER.debug("Skipping autoupdate check as code is being run from source.")
+        else:
+            notify_if_update()
 
         win_spec = WindowSpec(IniConfigLoader().advanced_options.process_name)
         start_detecting_window(win_spec)
