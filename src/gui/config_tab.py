@@ -1,14 +1,11 @@
 import enum
+import logging
 import os
-import sys
 import typing
 from pathlib import Path
 
-if sys.platform != "darwin":
-    import keyboard
-
 from pydantic import BaseModel, ValidationError
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -39,29 +36,37 @@ from src.gui.open_user_config_button import OpenUserConfigButton
 CONFIG_TABNAME = "config"
 
 
-def _validate_and_save_changes(model, header, key, value, method_to_reset_value: typing.Callable = None):
+def _validate_and_save_changes(model, header, key, value, method_to_reset_value: typing.Callable | None = None):
     try:
         setattr(model, key, value)
         IniConfigLoader().save_value(header, key, value)
-        return True
     except ValidationError as e:
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Icon.Critical)
+
         message = f"There was an error setting {key} to {value}. See error below.\n\n"
-        if method_to_reset_value:
+
+        # Only reset the widget if the field is NOT an enum
+        current_value = getattr(model, key)
+        if method_to_reset_value and key != "theme":
             message = message + "Your value has been reset to its previous version.\n\n"
-            method_to_reset_value(str(getattr(model, key)))
+            method_to_reset_value(str(current_value))
+
         message = message + str(e)
         msg.setText(message)
         msg.setWindowTitle("Error validating value")
         msg.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg.exec()
         return False
+    return True
 
 
 class ConfigTab(QWidget):
-    def __init__(self):
+    def __init__(self, theme_changed_callback=None):
+        self._initializing = True
         super().__init__()
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self.theme_changed_callback = theme_changed_callback
         self.model_to_parameter_value_map = {}
         layout = QVBoxLayout(self)
         scrollable_layout = QVBoxLayout()
@@ -91,7 +96,7 @@ class ConfigTab(QWidget):
         instructions_text.append(
             "All values are saved automatically immediately upon changing. Hover over any label/field to see a brief "
             "description of what it is for. To read more about each parameter, please view "
-            "<a href='https://github.com/aeon0/d4lf?tab=readme-ov-file#configs'>the config portion of the readme</a>"
+            "<a href='https://github.com/d4lfteam/d4lf?tab=readme-ov-file#configs' style='color: #1E90FF;'>the config portion of the readme</a>"
         )
         instructions_text.append("")
         instructions_text.append(
@@ -102,6 +107,10 @@ class ConfigTab(QWidget):
         layout.addWidget(instructions_text)
 
         self.setLayout(layout)
+        QTimer.singleShot(0, self._finish_init)
+
+    def _finish_init(self):
+        self._initializing = False
 
     def _generate_params_section(self, model: BaseModel, section_readable_header: str, section_config_header: str):
         group_box = QGroupBox(section_readable_header)
@@ -132,8 +141,9 @@ class ConfigTab(QWidget):
         group_box.setLayout(form_layout)
         return group_box
 
-    @staticmethod
-    def _generate_parameter_value_widget(model: BaseModel, section_config_header, config_key, config_value, is_hotkey):
+    def _generate_parameter_value_widget(
+        self, model: BaseModel, section_config_header, config_key, config_value, is_hotkey
+    ):
         if config_key == "check_chest_tabs":
             parameter_value_widget = QChestTabWidget(
                 model, section_config_header, config_key, config_value, IniConfigLoader().general.max_stash_tabs
@@ -149,20 +159,37 @@ class ConfigTab(QWidget):
             )
         elif config_key == "profiles":
             parameter_value_widget = QProfilesWidget(model, section_config_header, config_key, config_value)
-        elif config_key == "move_to_inv_item_type" or config_key == "move_to_stash_item_type":
+        elif config_key in {"move_to_inv_item_type", "move_to_stash_item_type"}:
             parameter_value_widget = QMoveItemsWidget(model, section_config_header, config_key, config_value)
         elif is_hotkey:
             parameter_value_widget = QHotkeyWidget(model, section_config_header, config_key, config_value)
         elif isinstance(config_value, enum.StrEnum):
             parameter_value_widget = IgnoreScrollWheelComboBox()
             enum_type = type(config_value)
+
+            # Block signals during initialization so we don't fire theme change with the old value
+            parameter_value_widget.blockSignals(True)
             parameter_value_widget.addItems(list(enum_type))
             parameter_value_widget.setCurrentText(config_value)
-            parameter_value_widget.currentTextChanged.connect(
-                lambda: _validate_and_save_changes(
+            parameter_value_widget.blockSignals(False)
+
+            def on_enum_changed():
+                logging.getLogger(__name__).debug(
+                    "[Dropdown emitted] New value: %s", parameter_value_widget.currentText()
+                )
+                logging.getLogger(__name__).debug(
+                    "[Model update] Theme set to: %s", parameter_value_widget.currentText()
+                )
+
+                _validate_and_save_changes(
                     model, section_config_header, config_key, parameter_value_widget.currentText()
                 )
-            )
+
+                if config_key == "theme" and self.theme_changed_callback and not self._initializing:
+                    self.theme_changed_callback()
+
+            parameter_value_widget.currentTextChanged.connect(on_enum_changed)
+
         elif isinstance(config_value, bool):
             parameter_value_widget = QCheckBox()
             parameter_value_widget.setChecked(config_value)
@@ -217,7 +244,9 @@ class ConfigTab(QWidget):
             if isinstance(parameter_value_widget, QChestTabWidget | QProfilesWidget | QHotkeyWidget | QMoveItemsWidget):
                 parameter_value_widget.reset_values(config_value)
             elif isinstance(parameter_value_widget, IgnoreScrollWheelComboBox):
-                parameter_value_widget.setCurrentText(str(config_value))
+                parameter_value_widget.blockSignals(True)
+                parameter_value_widget.reset_values(config_value)
+                parameter_value_widget.blockSignals(False)
             elif isinstance(parameter_value_widget, QCheckBox):
                 parameter_value_widget.setChecked(config_value)
             else:
@@ -239,6 +268,11 @@ class IgnoreScrollWheelComboBox(QComboBox):
             return QComboBox.wheelEvent(self, event)
 
         return event.ignore()
+
+    def reset_values(self, value):
+        self.blockSignals(True)
+        self.setCurrentText(str(value))
+        self.blockSignals(False)
 
 
 class QChestTabWidget(QWidget):
@@ -489,7 +523,7 @@ class QHotkeyWidget(QWidget):
         self.open_picker_button = QPushButton()
         self.reset_values(current_value)
         self.open_picker_button.clicked.connect(lambda: self._launch_hotkey_dialog(model, section_header, config_key))
-        self.open_picker_button.setStyleSheet("text-align:left;padding-left: 5px;")
+        self.open_picker_button.setProperty("hotkeyButton", True)
         layout.addWidget(self.open_picker_button)
 
         self.setLayout(layout)
@@ -535,23 +569,32 @@ class HotkeyListenerDialog(QDialog):
         self.layout.addLayout(self.button_layout)
 
     def keyPressEvent(self, event):
-        modifiers_str = []
-        for modifier in event.modifiers():
-            if modifier == Qt.KeyboardModifier.ShiftModifier:
-                modifiers_str.append("shift")
-            elif modifier == Qt.KeyboardModifier.ControlModifier:
-                modifiers_str.append("ctrl")
-            elif modifier == Qt.KeyboardModifier.AltModifier:
-                modifiers_str.append("alt")
+        modifiers = []
 
-        native_virtual_key = event.nativeVirtualKey()
-        non_mod_key, _ = keyboard._winkeyboard.official_virtual_keys.get(native_virtual_key)
-        if non_mod_key in modifiers_str:
-            non_mod_key = ""
+        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            modifiers.append("ctrl")
+        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+            modifiers.append("shift")
+        if event.modifiers() & Qt.KeyboardModifier.AltModifier:
+            modifiers.append("alt")
 
-        key_str = "+".join(modifiers_str + [non_mod_key])
-        self.hotkey = key_str
-        self.hotkey_label.setText(key_str)
+        key = event.key()
+
+        # Handle function keys
+        if Qt.Key.Key_F1 <= key <= Qt.Key.Key_F35:
+            non_mod_key = f"f{key - Qt.Key.Key_F1 + 1}"
+
+        # Handle regular keys
+        else:
+            text = event.text().lower()
+            non_mod_key = text or ""
+
+        # Build final hotkey string
+        parts = modifiers + ([non_mod_key] if non_mod_key else [])
+        hotkey_str = "+".join(parts)
+
+        self.hotkey = hotkey_str
+        self.hotkey_label.setText(hotkey_str)
 
     def get_hotkey(self):
         return self.hotkey

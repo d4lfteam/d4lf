@@ -27,19 +27,17 @@ def is_list_of_points(value):
 class BezierCurve:
     @staticmethod
     def binomial(n, k):
-        """Returns the binomial coefficient "n choose k" """
+        """Returns the binomial coefficient: n choose k."""
         return math.factorial(n) / float(math.factorial(k) * math.factorial(n - k))
 
     @staticmethod
     def bernsteinPolynomialPoint(x, i, n):
-        """Calculate the i-th component of a bernstein polynomial of degree n"""
+        """Calculate the i-th component of a bernstein polynomial of degree n."""
         return BezierCurve.binomial(n, i) * (x**i) * ((1 - x) ** (n - i))
 
     @staticmethod
     def bernsteinPolynomial(points):
-        """Given list of control points, returns a function, which given a point [0,1] returns
-        a point in the bezier curve described by these points
-        """
+        """Given list of control points, returns a function, which given a point [0,1] returns a point in the bezier curve described by these points."""
 
         def bern(t):
             n = len(points) - 1
@@ -54,9 +52,7 @@ class BezierCurve:
 
     @staticmethod
     def curvePoints(n, points):
-        """Given list of control points, returns n points in the bezier curve,
-        described by these points
-        """
+        """Given list of control points, returns n points in the bezier curve, described by these points."""
         curvePoints = []
         bernstein_polynomial = BezierCurve.bernsteinPolynomial(points)
         for i in range(n):
@@ -66,9 +62,7 @@ class BezierCurve:
 
 
 class HumanCurve:
-    """Generates a human-like mouse curve starting at given source point,
-    and finishing in a given destination point
-    """
+    """Generates a human-like mouse curve starting at given source point, and finishing in a given destination point."""
 
     def __init__(self, fromPoint, toPoint, **kwargs):
         self.fromPoint = fromPoint
@@ -77,6 +71,7 @@ class HumanCurve:
 
     def generateCurve(self, **kwargs):
         """Generates a curve according to the parameters specified below.
+
         You can override any of the below parameters. If no parameter is
         passed, the default value is used.
         """
@@ -99,7 +94,8 @@ class HumanCurve:
         return self.tweenPoints(points, tween, targetPoints)
 
     def generateInternalKnots(self, leftBoundary, rightBoundary, downBoundary, upBoundary, knotsCount):
-        """Generates the internal knots used during generation of bezier curvePoints
+        """Generates the internal knots used during generation of bezier curvePoints.
+
         or any interpolation function. The points are taken at random from
         a surface delimited by given boundaries.
         Exactly knotsCount internal knots are randomly generated.
@@ -107,41 +103,47 @@ class HumanCurve:
         if not (
             isNumeric(leftBoundary) and isNumeric(rightBoundary) and isNumeric(downBoundary) and isNumeric(upBoundary)
         ):
-            raise ValueError("Boundaries must be numeric")
+            msg = "Boundaries must be numeric"
+            raise ValueError(msg)
         if not isinstance(knotsCount, int) or knotsCount < 0:
-            raise ValueError("knotsCount must be non-negative integer")
+            msg = "knotsCount must be non-negative integer"
+            raise ValueError(msg)
         if leftBoundary > rightBoundary:
-            raise ValueError("leftBoundary must be less than or equal to rightBoundary")
+            msg = "leftBoundary must be less than or equal to rightBoundary"
+            raise ValueError(msg)
         if downBoundary > upBoundary:
-            raise ValueError("downBoundary must be less than or equal to upBoundary")
+            msg = "downBoundary must be less than or equal to upBoundary"
+            raise ValueError(msg)
 
         knotsX = np.random.choice(range(leftBoundary, rightBoundary), size=knotsCount)
         knotsY = np.random.choice(range(downBoundary, upBoundary), size=knotsCount)
         return list(zip(knotsX, knotsY, strict=False))
 
     def generatePoints(self, knots):
-        """Generates bezier curve points on a curve, according to the internal
-        knots passed as parameter.
-        """
+        """Generates bezier curve points on a curve, according to the internal knots passed as parameter."""
         if not is_list_of_points(knots):
-            raise ValueError("knots must be valid list of points")
+            msg = "knots must be valid list of points"
+            raise ValueError(msg)
 
         midPtsCnt = max(abs(self.fromPoint[0] - self.toPoint[0]), abs(self.fromPoint[1] - self.toPoint[1]), 2)
         knots = [self.fromPoint, *knots, self.toPoint]
         return BezierCurve.curvePoints(midPtsCnt, knots)
 
     def distortPoints(self, points, distortionMean, distortionStdev, distortionFrequency):
-        """Distorts the curve described by (x,y) points, so that the curve is
-        not ideally smooth.
+        """Distorts the curve described by (x,y) points, so that the curve is not ideally smooth.
+
         Distortion happens by randomly, according to normal distribution,
         adding an offset to some of the points.
         """
         if not (isNumeric(distortionMean) and isNumeric(distortionStdev) and isNumeric(distortionFrequency)):
-            raise ValueError("Distortions must be numeric")
+            msg = "Distortions must be numeric"
+            raise ValueError(msg)
         if not is_list_of_points(points):
-            raise ValueError("points must be valid list of points")
+            msg = "points must be valid list of points"
+            raise ValueError(msg)
         if not (0 <= distortionFrequency <= 1):
-            raise ValueError("distortionFrequency must be in range [0,1]")
+            msg = "distortionFrequency must be in range [0,1]"
+            raise ValueError(msg)
 
         distorted = []
         for i in range(1, len(points) - 1):
@@ -151,14 +153,16 @@ class HumanCurve:
         return [points[0], *distorted, points[-1]]
 
     def tweenPoints(self, points, tween, targetPoints):
-        """Chooses a number of points(targetPoints) from the list(points)
-        according to tweening function(tween).
+        """Chooses a number of points(targetPoints) from the list(points) according to tweening function(tween).
+
         This function in fact controls the velocity of mouse movement
         """
         if not is_list_of_points(points):
-            raise ValueError("points must be valid list of points")
+            msg = "points must be valid list of points"
+            raise ValueError(msg)
         if not isinstance(targetPoints, int) or targetPoints < 2:
-            raise ValueError("targetPoints must be an integer greater or equal to 2")
+            msg = "targetPoints must be an integer greater or equal to 2"
+            raise ValueError(msg)
 
         # tween is a function that takes a float 0..1 and returns a float 0..1
         res = []

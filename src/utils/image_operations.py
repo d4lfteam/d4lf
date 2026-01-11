@@ -23,6 +23,7 @@ def threshold(
     adaptive_thresh_c: int = 10,
 ) -> np.ndarray:
     """Applies a thresholding method to an input image.
+
     :param img: Input image to be thresholded. Must be a 3D array representing an RGB image.
     :param method: Thresholding method to use. Options are 'BINARY', 'ADAPTIVE', and 'OTSU'. Default is 'BINARY'.
     :param inverse: Whether to use inverse thresholding. Default is False.
@@ -56,6 +57,7 @@ def threshold(
 
 def crop(img: np.ndarray, roi: tuple[int, int, int, int]) -> np.ndarray:
     """Cuts an image according to a region of interest.
+
     :param img: Source image.
     :param roi: Region of interest in the format (x, y, w, h).
     :return: Cropped image.
@@ -72,6 +74,7 @@ def crop(img: np.ndarray, roi: tuple[int, int, int, int]) -> np.ndarray:
 
 def mask_by_roi(img: np.ndarray, roi: tuple[int, int, int, int], masking_type: str = "regular") -> np.ndarray | None:
     """Masks an image according to a region of interest.
+
     :param img: Source image.
     :param roi: Region of interest in the format (x, y, w, h).
     :param masking_type: Type of masking, "regular" or "inverse".
@@ -92,6 +95,7 @@ def mask_by_roi(img: np.ndarray, roi: tuple[int, int, int, int], masking_type: s
 
 def alpha_to_mask(img: np.ndarray) -> np.ndarray | None:
     """Creates a mask from an image where alpha == 0.
+
     :param img: Source image.
     :return: Mask, or None if the image has no alpha channel or the minimum alpha value is not 0.
     """
@@ -103,6 +107,7 @@ def alpha_to_mask(img: np.ndarray) -> np.ndarray | None:
 
 def create_mask(size: tuple[int, int], roi: tuple[int, int, int, int]) -> np.ndarray:
     """Creates a mask with a specific size and region of interest.
+
     :param size: Size of the mask.
     :param roi: Region of interest in the format (x, y, w, h).
     :return: Created mask.
@@ -189,6 +194,7 @@ def overlay_image(image1: np.ndarray, image2: np.ndarray, x_offset: int, y_offse
 
 def get_typographic_lines(img: np.ndarray, should_invert: bool = False) -> tuple[int, int, int, int]:
     """Extracts typographic lines from an image containing a single line of text.
+
     :param img: The input image. Expects an image with light text on a dark background.
     :param should_invert: Whether to invert the image before processing. Set to True if you have dark text on a light background.
     :return: A tuple containing the positions (in y-coordinates) of the topline, baseline, midline, and beardline, respectively.

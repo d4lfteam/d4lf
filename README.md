@@ -9,7 +9,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 - Filter items in inventory and stash
 - Filter by item type, item power and greater affix count
-- Filter by affix and their values
+- Filter by affix and their values, with per-affix greater affix requirements
 - Filter uniques by their affix and aspect values
 - Filter sigils by blacklisting and whitelisting locations and affixes
 - Filter tributes by name or rarity
@@ -36,17 +36,16 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
     - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
     - In Steam, right click the game, select Manage > Browse local files
 - Generate a profile of what you want to filter for. To do so you have a few options:
-  - Open gui.bat and import a profile by pasting a build page from popular planner websites
-  - Take one someone else has generated from our [discord](https://discord.gg/YyzaPhAN6T)
+  - Run d4lf.exe and import a profile using the import window by pasting a build page from popular planner websites
   - Create one yourself by looking at the [examples](#how-to-filter--profiles) below
-- If downloaded or created manually, place the profile in the `C:/Users/<WINDOWS_USER>/.d4lf/profiles` folder. The GUI
-  importer has a button to open this folder directly. If imported they are placed there automatically.
-- Run gui.bat and use the GUI config tab to configure the profiles. Select the '...' next to profiles to activate which
+- If created manually, place the profile in the `C:/Users/<WINDOWS_USER>/.d4lf/profiles` folder. The D4LF
+  importer window has a button to open this folder directly. If imported they are placed there automatically.
+- Run d4lf.exe and use the config button to configure the profiles. Select the '...' next to profiles to activate which
   profiles you want to use.
 - Ensure all [game settings](#game-settings) are configured properly.
-- Execute d4lf.exe and launch Diablo 4.
+- If you made changes, restart d4lf.exe and launch Diablo 4.
 - Use the hotkeys listed in d4lf.exe to run filtering. By default, F11 will run the loot filter and filter your items.
-- For most common issues, if something is wrong, you will see an error or warning when you start d4lf.exe
+- For most common issues, if something is wrong, you will see an error or warning when you start d4lf.exe. Join our [discord](https://discord.gg/YyzaPhAN6T) for more help.
 
 ### Updating an existing installation
 
@@ -90,7 +89,7 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 - **profiles/\*.yaml**: These files determine what should be filtered. Profiles created by the GUI will be placed here
   automatically.
 - **params.ini**: Different hotkey settings and number of chest stashes that should be looked at. Management of this
-  file should be done through the GUI.
+  file should be done through the GUI in the config window.
 
 ### params.ini
 
@@ -100,6 +99,7 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | auto_use_temper_manuals                           | When using the loot filter, should found temper manuals be automatically used? Note: Will not work with stash open.                                                                                                                                                                                                                                                                                                                      |
 | browser                                           | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported.                                                                                                                                                                                                                                                                                                     |
 | check_chest_tabs                                  | Which chest tabs will be checked and filtered for items in case chest is open when starting the filter. You need to buy all slots. Counting is done left to right. E.g. 1,2,4 will check tab 1, tab 2, tab 4                                                                                                                                                                                                                             |
+| do_not_junk_ancestral_legendaries                 | Do not mark ancestral legendaries as junk.                                                                                                                                                                                                                                                                                                                                                                                               |
 | full_dump                                         | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not                                                                                                                                                                                                                                                                                                                                |
 | handle_cosmetics                                  | How to handle new cosmetics that do not match any filter and are not aspect upgrades. `ignore` will ignore them, `junk` will mark them as junk                                                                                                                                                                                                                                                                                           |
 | handle_uniques                                    | How to handle uniques that do not match any filter. This property does not apply to filtered uniques. All mythics are favorited regardless of filter. <br/>- `favorite`: Mark the unique as favorite and vision mode will show it as green (default)<br/>- `ignore`: Do nothing with the unique and vision mode will show it as green<br/>- `junk`: Mark any uniques that don't match any filters as junk and show as red in vision mode |
@@ -111,7 +111,6 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | minimum_overlay_font_size                         | The minimum font size for the vision overlay, specifically the green text that shows which filter(s) are matching. Note: For small profile names, the font may actually be larger than this size but will never go below this size.                                                                                                                                                                                                      |
 | move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything                                                                                                             |
 | run_vision_mode_on_startup                        | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey                                                                                                                                                                                                                                                                                              |
-| s7_do_not_junk_ancestral_legendaries              | Do not mark ancestral legendaries as junk. This is to help with the season 7 Slayer seasonal challenge "Precious Shards"                                                                                                                                                                                                                                                                                                                 |
 | vision_mode_type                                  | Which vision mode you would like to use?. `highlight_matches` does the classic green highlighting of affixes on screen, but is slightly slower. `fast` just puts green text on screen but is very fast and works with controllers.                                                                                                                                                                                                       |
 
 | [char]    | Description                       |
@@ -134,15 +133,21 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 
 ### GUI
 
-Documentation is not yet finished. For now, it should be self-explanatory. Just start `gui.bat` in the archive.
+d4lf.exe is the one-stop shop for all operations, including running the D4LF process and any configuration changes.
+
+If you prefer a standalone console-only experience, you can run d4lf-consoleonly.bat instead which will not open a GUI
+as well. It is still recommended you open the GUI for any configurations management.
+
+If you make any configuration changes, you will need to restart D4LF. If you make changes to a profile, those will be
+automatically picked up and no restart is necessary.
 
 Current functionality:
 
 - Import builds from maxroll/d4builds/mobalytics
-- Complete management of your params.ini through the config tab
+- Complete management of your settings through the config tab
 - A beta version of a manual profile editor/creator
 
-Each tab gives further instructions on how to use it and what kind of input it expects.
+Each window gives further instructions on how to use it and what kind of input it expects.
 
 ## How to filter / Profiles
 
@@ -202,8 +207,7 @@ has a name and can filter for any combination of the following:
 - `itemType`: The name of the type or a list of multiple types.
   See [assets/lang/enUS/item_types.json](assets/lang/enUS/item_types.json)
 - `minPower`: Minimum item power
-- `minGreaterAffixCount`: Minimum number of greater affixes. Note that this is on the overall item and independent
-  of `affixPool`
+- `minGreaterAffixCount`: Minimum number of greater affixes expected on the overall item. See [Greater Affix Filtering](#greater-affix-filtering) for more information on filtering GAs.
 - `affixPool`: A list of multiple different rulesets to filter for. Each ruleset must be fulfilled or the item is
   discarded
   - `count`: Define a list of affixes (see [syntax](#affix--aspects-filter-syntax)) and
@@ -212,8 +216,6 @@ has a name and can filter for any combination of the following:
       affixes
     - `maxCount` specifies the maximum number of affixes that must match the item. defaults to amount of specified
       affixes
-    - `minGreaterAffixCount`: specifies the minimum number of greater affixes inside this count group. defaults
-      to `0`
 - `inherentPool`: The same rules as for `affixPool` apply, but this is evaluated against the inherent affixes of the
   item
 
@@ -295,6 +297,126 @@ Affixes:
 Affix names are lower case and spaces are replaced by underscore. You can find the full list of names
 in [assets/lang/enUS/affixes.json](assets/lang/enUS/affixes.json).
 
+### Greater Affix Filtering
+
+D4LF provides two complementary ways to filter items based on Greater Affixes:
+
+#### 1. Item-Level Greater Affix Count (`minGreaterAffixCount`)
+
+This filter requires a minimum total number of Greater Affixes on the entire item, regardless of which affixes they are.
+
+<details><summary>Example</summary>
+
+```yaml
+Affixes:
+  - GreaterAffixBoots:
+      itemType: boots
+      minGreaterAffixCount: 2  # Item must have at least 2 Greater Affixes total
+      affixPool:
+        - count:
+            - { name: movement_speed }
+            - { name: maximum_life }
+            - { name: strength }
+            - { name: fire_resistance }
+          minCount: 3
+```
+
+</details>
+
+#### 2. Per-Affix Greater Affix Requirements (`want_greater`)
+
+When using the Profile Editor GUI or when importing affixes using the importer, you can mark/import specific affixes
+with a "Greater" checkbox. This is shown as `want_greater` in the profile. This is a list of affixes that you would prefer
+to be greater affixes. The `minGreaterAffixCount` value on the item is still respected, so if you have two affixes tagged
+as `want_greater` but a `minGreaterAffixCount` of 1, an item with one of those two affixes as GA will be kept. If neither
+of those affixes are GA but a different one is, the item will not be kept.
+
+<details><summary>Example</summary>
+
+```yaml
+Affixes:
+  - PerfectBoots:
+      itemType: boots
+      affixPool:
+        - count:
+            - { name: movement_speed, want_greater: true }  # MUST be a Greater Affix
+            - { name: maximum_life, want_greater: true }    # MUST be a Greater Affix
+            - { name: strength }                            # Can be normal or Greater
+            - { name: fire_resistance }                      # Can be normal or Greater
+          minCount: 3
+      minGreaterAffixCount: 2  # Auto-set by GUI if Auto-Sync is checked, or Require Greater Affixes is checked on the importer
+```
+
+**This item would match:** Boots with movement_speed (GA), maximum_life (GA), cold_resistance (normal), fire_resistance (normal)\
+**Why:** movement_speed and maximum_life are both Greater Affixes as required, and item has 4 affixes (meets minCount of 3)
+
+**This item would NOT match:** Boots with movement_speed (normal), maximum_life (GA), cold_resistance (normal), fire_resistance (normal)\
+**Why:** movement_speed is marked as `want_greater: true` but is not a Greater Affix on the item
+
+</details>
+
+#### Common Use Cases
+
+<details><summary>Examples</summary>
+
+**"I want boots with at least 2 Greater Affixes, don't care which ones"**
+
+```yaml
+- itemType: boots
+  minGreaterAffixCount: 2
+  affixPool:
+    - count:
+        - { name: movement_speed }
+        - { name: maximum_life }
+        - { name: strength }
+        - { name: fire_resistance }
+      minCount: 3
+```
+
+**"I want boots where movement_speed MUST be a Greater Affix"**
+
+```yaml
+- itemType: boots
+  minGreaterAffixCount: 1  # The minGreaterAffixCount is important, if it was 0 then movement_speed would not be required to be GA
+  affixPool:
+    - count:
+        - { name: movement_speed, want_greater: true }
+        - { name: maximum_life }
+        - { name: strength }
+        - { name: fire_resistance }
+      minCount: 3
+```
+
+**"I want boots where both movement_speed AND maximum_life MUST be Greater Affixes"**
+
+```yaml
+- itemType: boots
+  minGreaterAffixCount: 2  # minGreaterAffixCount of 2 requires both to be GA
+  affixPool:
+    - count:
+        - { name: movement_speed, want_greater: true }
+        - { name: maximum_life, want_greater: true }
+        - { name: strength }
+        - { name: fire_resistance }
+      minCount: 3
+```
+
+**"I want boots where either movement_speed OR maximum_life are Greater Affixes"**
+
+```yaml
+- itemType: boots
+  minGreaterAffixCount: 1  # minGreaterAffixCount of 1 requires either to be GA
+  affixPool:
+    - count:
+        - { name: movement_speed, want_greater: true }
+        - { name: maximum_life, want_greater: true }
+        - { name: strength } # If strength on the item was greater and the top two were not, this would not be matched
+        - { name: fire_resistance }
+      minCount: 3
+```
+
+</details>
+
 ### AspectUpgrades
 
 Legendary Aspects that you want to be notified of receiving upgrades for can be placed in your profile.
@@ -314,7 +436,9 @@ AspectUpgrades:
   # This would mark Snowveiled Adventurer's Pants as a favorite if it's a codex upgrade. It would ignore the pants otherwise.
   - of_singed_extremities
   - snowveiled
+```
 
+```yaml
 # This works exact same as above, it's just a different way to format it
 AspectUpgrades: [of_singed_extremities, snowveiled]
 ```
@@ -534,7 +658,6 @@ in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json). Occasionally 
 
 ## Future Plans
 
-- Evaluate bringing back the small overlay the previous versions used
 - A video explaining the initial setup
 - Evaluate using joystick emulation to further increase speed for users willing to do additional setup
 - Finish GUI documentation

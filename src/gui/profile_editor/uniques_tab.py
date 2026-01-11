@@ -95,7 +95,7 @@ class UniqueWidget(QWidget):
         self.min_percent.valueChanged.connect(self.update_min_percent)
         self.general_form.addRow("Min Percent of Aspect:", self.min_percent)
 
-        self.mythic = QCheckBox()
+        self.mythic = QCheckBox(" ")
         self.mythic.checkStateChanged.connect(self.update_mythic)
         self.general_form.addRow("Mythic:", self.mythic)
         self.general_groupbox.setLayout(self.general_form)
@@ -200,7 +200,7 @@ class UniqueWidget(QWidget):
 
     def add_affix(self):
         new_affix = AffixFilterModel(
-            name=list(Dataloader().affix_dict.keys())[0], value=None, comparison=ComparisonType.larger
+            name=next(iter(Dataloader().affix_dict.keys())), value=None, comparison=ComparisonType.larger
         )
         self.unique_model.affix.append(new_affix)
         self.add_affix_item(new_affix)

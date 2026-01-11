@@ -2,8 +2,10 @@ import enum
 import logging
 import queue
 import re
+import sys
 import threading
 
+import pywintypes
 import win32file
 import win32pipe
 
@@ -56,17 +58,33 @@ class Publisher:
         self._subscribers.remove(subscriber)
 
 
-def create_pipe() -> int:
-    return win32pipe.CreateNamedPipe(
-        r"\\.\pipe\d4lf",
-        win32pipe.PIPE_ACCESS_INBOUND,
-        win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_WAIT,
-        1,
-        2048,
-        10 * 2 ** (10 * 2),
-        0,
-        None,
-    )
+def create_pipe():
+    try:
+        return win32pipe.CreateNamedPipe(
+            r"\\.\pipe\d4lf",
+            win32pipe.PIPE_ACCESS_DUPLEX,
+            win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_READMODE_MESSAGE | win32pipe.PIPE_WAIT,
+            1,
+            65536,
+            65536,
+            0,
+            None,
+        )
+    except pywintypes.error as e:
+        if e.args[0] == 231:  # ERROR_PIPE_BUSY
+            LOGGER.error("")
+            LOGGER.error("=" * 80)
+            LOGGER.error("D4LF IS ALREADY RUNNING")
+            LOGGER.error("=" * 80)
+            LOGGER.error("")
+            LOGGER.error("You already have D4LF running in another window.")
+            LOGGER.error("Please close your windows and re-launch.")
+            LOGGER.error("")
+            LOGGER.error("=" * 80)
+
+            sys.exit(1)
+        else:
+            raise  # Re-raise other errors
 
 
 def read_pipe() -> None:

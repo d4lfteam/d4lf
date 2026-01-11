@@ -46,6 +46,7 @@ def fit_roi_to_window_size(roi, size):
 
 def get_center(roi: tuple[int, int, int, int]) -> tuple[int, int]:
     """Finds the center of a region of interest.
+
     :param roi: Region of interest in the format (x, y, w, h).
     :return: Coordinates of the center.
     """
@@ -55,6 +56,7 @@ def get_center(roi: tuple[int, int, int, int]) -> tuple[int, int]:
 
 def intersect(*rects: list[tuple[int, int, int, int]] | tuple[int, int, int, int]) -> tuple[int, int, int, int] | None:
     """Finds the intersection of multiple rectangles.
+
     :param rects: The rectangles to intersect. Each rectangle is represented as a tuple of four integers (x_min, y_min, width, height).
     :return: The intersection of all rectangles, represented as (x_min, y_min, width, height), or None if there is no intersection.
     """
@@ -76,6 +78,7 @@ def bounding_box(
     *args: list[tuple[int, int, int, int]] | tuple[int, int, int, int] | list[tuple[int, int]] | tuple[int, int],
 ) -> tuple[int, int, int, int] | None:
     """Finds the bounding rectangle of a set of rectangles or coordinates.
+
     :param args: The rectangles or coordinates to bound.
         Each rectangle is represented as a tuple of four integers (x_min, y_min, width, height).
         Each coordinate is represented as a tuple of two integers (x, y).
@@ -106,6 +109,7 @@ def bounding_box(
 
 def to_grid(roi: tuple[int, int, int, int], rows: int, columns: int) -> set[tuple[int, int, int, int]]:
     """Splits a rectangle of interest (ROI) into a grid of smaller rectangles.
+
     :param roi: The rectangle to split, represented as (x_min, y_min, width, height).
     :param rows: The number of rows in the grid.
     :param columns: The number of columns in the grid.
@@ -165,4 +169,5 @@ def is_in_roi(
         return x_min <= x <= x_max and not (y_min <= y <= y_max)
     if condition == Condition.ALIGN_X:
         return not (x_min <= x <= x_max) and y_min <= y <= y_max
-    raise ValueError("Invalid condition specified")
+    msg = "Invalid condition specified"
+    raise ValueError(msg)

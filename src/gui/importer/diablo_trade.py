@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     import seleniumbase
 
 LOGGER = logging.getLogger(__name__)
-
+LOGGER.propagate = True
 BASE_URL = "diablo.trade/listings/"
 
 
@@ -110,7 +110,7 @@ def import_diablo_trade(url: str, max_listings: int, driver: seleniumbase.Driver
         with pathlib.Path(
             IniConfigLoader().user_dir
             / f"diablo_trade_dump_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}.json"
-        ).open("w") as f:
+        ).open("w", encoding="utf-8") as f:
             json.dump(all_listings, f, indent=4, sort_keys=True)
         raise DiabloTradeException(msg) from exc
 

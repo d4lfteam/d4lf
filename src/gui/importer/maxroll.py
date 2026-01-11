@@ -14,15 +14,22 @@ from src.config.models import (
     UniqueModel,
 )
 from src.dataloader import Dataloader
-from src.gui.importer.common import add_to_profiles, get_with_retry, match_to_enum, retry_importer, save_as_profile
+from src.gui.importer.common import (
+    add_to_profiles,
+    get_with_retry,
+    match_to_enum,
+    retry_importer,
+    save_as_profile,
+    update_mingreateraffixcount,
+)
 from src.gui.importer.importer_config import ImportConfig
-from src.item.data.affix import Affix
+from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
 
 LOGGER = logging.getLogger(__name__)
-
+LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://maxroll.gg/d4/build-guides/"
 BUILD_GUIDE_PLANNER_EMBED_XPATH = "//*[contains(@class, 'd4-embed')]"
 PLANNER_API_BASE_URL = "https://planners.maxroll.gg/profiles/d4/"
@@ -67,9 +74,6 @@ def import_maxroll(config: ImportConfig):
     for item_id in active_profile["items"].values():
         resolved_item = items[str(item_id)]
         resolved_item_id = resolved_item["id"]
-        # Hack to handle chaos uniques in S10. It's unclear at this time where maxroll stores data on them
-        if resolved_item_id.startswith("S10") and "Unique" in resolved_item_id:
-            resolved_item_id = "_".join(resolved_item_id.split("_")[1:-1])
         # magic/rare = 0, legendary = 1, unique = 2, mythic = 4
         # Unique aspect handling
         if (
@@ -122,10 +126,8 @@ def import_maxroll(config: ImportConfig):
                 msg = f"Unable to find legendary aspect in maxroll data for {item_type}, can not automatically add to AspectUpgrades."
                 # MaxRoll reports all rares as legendaries so this is an attempt to reduce false warnings for rares
                 if len(resolved_item["explicits"]) == 3:
-                    LOGGER.debug(
-                        msg + " We suspect this item is actually a rare and maxroll is falsely reporting it as a "
-                        "legendary, please double check."
-                    )
+                    msg += " We suspect this item is actually a rare and maxroll is falsely reporting it as a legendary, please double check."
+                    LOGGER.debug(msg)
                 else:
                     LOGGER.warning(msg)
 
@@ -133,14 +135,19 @@ def import_maxroll(config: ImportConfig):
         item_filter.affixPool = [
             AffixFilterCountModel(
                 count=[
-                    AffixFilterModel(name=x.name)
-                    for x in _find_item_affixes(mapping_data=mapping_data, item_affixes=resolved_item["explicits"])
+                    AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater)
+                    for x in _find_item_affixes(
+                        mapping_data=mapping_data,
+                        item_affixes=resolved_item["explicits"],
+                        import_greater_affixes=config.import_greater_affixes,
+                    )
                 ],
                 minCount=3,
-                minGreaterAffixCount=0,
             )
         ]
         item_filter.minPower = 100
+        update_mingreateraffixcount(item_filter, config.require_greater_affixes)
+
         # maxroll has some outdated data, so we need to clean it up by using item_type
         if "implicits" in resolved_item and item_type in [ItemType.Boots]:
             item_filter.inherentPool = [
@@ -189,7 +196,7 @@ def _corrections(input_str: str) -> str:
     return input_str
 
 
-def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
+def _find_item_affixes(mapping_data: dict, item_affixes: dict, import_greater_affixes=False) -> list[Affix]:
     res = []
     for affix_id in item_affixes:
         for affix in mapping_data["affixes"].values():
@@ -259,6 +266,8 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict) -> list[Affix]:
             clean_desc = re.sub(r"\[.*?\]|[^a-zA-Z ]", "", attr_desc)
             clean_desc = clean_desc.replace("SecondSeconds", "seconds")
             affix_obj = Affix(name=closest_match(clean_str(clean_desc), Dataloader().affix_dict))
+            if import_greater_affixes and affix_id.get("greater", False):
+                affix_obj.type = AffixType.greater
             if affix_obj.name is not None:
                 res.append(affix_obj)
             elif "formula" in affix["attributes"][0] and affix["attributes"][0]["formula"] in [
@@ -380,5 +389,13 @@ if __name__ == "__main__":
     src.logger.setup()
     URLS = ["https://maxroll.gg/d4/planner/19390ugy#1"]
     for X in URLS:
-        config = ImportConfig(X, True, True, False, None)
+        config = ImportConfig(
+            url=X,
+            import_uniques=True,
+            import_aspect_upgrades=True,
+            add_to_profiles=False,
+            import_greater_affixes=True,
+            require_greater_affixes=True,
+            custom_file_name=None,
+        )
         import_maxroll(config)

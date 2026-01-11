@@ -1,11 +1,10 @@
 import copy
 import logging
-import os
 import pathlib
 
 import yaml
 from pydantic import ValidationError
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtWidgets import (
     QFileDialog,
     QGroupBox,
@@ -33,6 +32,7 @@ PROFILE_TABNAME = "edit profile (beta)"
 class ProfileTab(QWidget):
     def __init__(self):
         super().__init__()
+        self.settings = QSettings("d4lf", "profile_editor")
 
         self.root = None
         self.file_path = None
@@ -58,9 +58,9 @@ class ProfileTab(QWidget):
 
         tools_groupbox = QGroupBox("Tools")
         tools_groupbox_layout = QHBoxLayout()
-        self.file_button = QPushButton("File")
+        self.file_button = QPushButton("Open")
         self.save_button = QPushButton("Save")
-        self.refresh_button = QPushButton("Refresh")
+        self.refresh_button = QPushButton("Undo Changes")
         self.file_button.clicked.connect(self.load_file)
         self.save_button.clicked.connect(self.save_yaml)
         self.refresh_button.clicked.connect(self.refresh)
@@ -83,7 +83,7 @@ class ProfileTab(QWidget):
 
         instructions_text = QTextBrowser()
         instructions_text.append(
-            "You load a profile by clicking the 'File' button. Click 'Save' to save your changes. Click 'Refresh' to undo your changes."
+            "You load a profile by clicking the 'Open' button. Click 'Save' to save your changes. Click 'Undo Changes' to revert your changes."
         )
 
         instructions_text.setFixedHeight(50)
@@ -109,8 +109,7 @@ class ProfileTab(QWidget):
     def show_tab(self):
         if self.first_show:
             self.first_show = False
-            if self.load():
-                self.create_profile_editor()
+            return
 
     def load_file(self):
         if self.open_file():
@@ -133,6 +132,15 @@ class ProfileTab(QWidget):
     def load(self):
         profiles: list[str] = IniConfigLoader().general.profiles
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
+
+        # Try to load last opened profile first
+        last_opened = self.settings.value("last_opened_profile", None, type=str)
+        if last_opened and not self.file_path:
+            custom_file_path = custom_profile_path / f"{last_opened}.yaml"
+            if custom_file_path.is_file():
+                self.file_path = custom_file_path
+                return self.load_yaml()
+
         if not self.file_path and profiles:  # at start, set default file to build in params.ini
             custom_file_path = custom_profile_path / f"{profiles[0]}.yaml"
             if not custom_file_path.is_file():
@@ -155,7 +163,7 @@ class ProfileTab(QWidget):
         if not self.file_path:
             LOGGER.debug("No profile loaded, cannot refresh.")
             return False
-        filename = os.path.basename(self.file_path)  # Get the filename from the full path
+        filename = pathlib.Path(self.file_path).name  # Get the filename from the full path
         filename_without_extension = filename.rsplit(".", 1)[0]  # Remove the extension
         profile_str = filename_without_extension.replace("_", " ")  # Replace underscores with spaces
         self.root = None
@@ -173,15 +181,45 @@ class ProfileTab(QWidget):
                 self.original_root = copy.deepcopy(self.root)
                 LOGGER.info(f"File {self.file_path} loaded.")
                 self.update_filename_label()
+
+                # Save last opened profile
+                self.settings.setValue("last_opened_profile", filename_without_extension)
+
             except ValidationError as e:
-                LOGGER.error(f"Validation errors in {self.file_path}")
-                LOGGER.error(e)
+                if "minGreaterAffixCount" in str(e):
+                    error_text = (
+                        f"PROFILE VALIDATION FAILED: {self.file_path}\n\n"
+                        "You are using an old, outdated field that must be removed from your profile.\n\n"
+                        "WRONG (old way - pool level):\n"
+                        "- Ring:\n"
+                        "    itemType: [ring]\n"
+                        "    minPower: 100\n"
+                        "    affixPool:\n"
+                        "    - count:\n"
+                        "      - {name: strength}\n"
+                        "      minCount: 2\n"
+                        "      minGreaterAffixCount: 1  ← DELETE THIS LINE\n\n"
+                        "CORRECT (new way - item level):\n"
+                        "- Ring:\n"
+                        "    itemType: [ring]\n"
+                        "    minPower: 100\n"
+                        "    minGreaterAffixCount: 1  ← PUT IT HERE INSTEAD\n"
+                        "    affixPool:\n"
+                        "    - count:\n"
+                        "      - {name: strength}\n"
+                        "      minCount: 2\n"
+                        "      # NO minGreaterAffixCount here anymore!\n\n"
+                        f"ACTION REQUIRED: Please make the above adjustments in:\n{self.file_path}"
+                    )
+                    QMessageBox.critical(self, "Profile Validation Failed", error_text)
+                else:
+                    QMessageBox.critical(self, "Validation Error", f"Validation error in {self.file_path}:\n\n{e}")
                 return False
         return True
 
     def update_filename_label(self):
         if self.file_path:
-            filename = os.path.basename(self.file_path)  # Get the filename from the full path
+            filename = pathlib.Path(self.file_path).name  # Get the filename from the full path
             filename_without_extension = filename.rsplit(".", 1)[0]  # Remove the extension
             display_name = filename_without_extension.replace("_", " ")  # Replace underscores with spaces
             self.filenameLabel.setText(display_name)

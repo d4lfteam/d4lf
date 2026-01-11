@@ -18,7 +18,7 @@ from seleniumbase import SB
 
 from src import __version__
 from src.config.loader import IniConfigLoader
-from src.config.models import BrowserType, ProfileModel
+from src.config.models import BrowserType, ItemFilterModel, ProfileModel
 from src.item.data.item_type import ItemType
 
 if TYPE_CHECKING:
@@ -120,6 +120,16 @@ def get_class_name(input_str: str) -> str:
     return "Unknown"
 
 
+def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool):
+    if require_gas:
+        num_greater = 0
+        for affix in item_filter.affixPool[0].count:
+            num_greater += 1 if affix.want_greater else 0
+        item_filter.minGreaterAffixCount = num_greater
+    else:
+        item_filter.minGreaterAffixCount = 0
+
+
 def get_with_retry(url: str, custom_headers: dict[str, str] | None = None) -> httpx.Response:
     for _ in range(10):
         try:
@@ -170,9 +180,10 @@ def retry_importer(func=None, inject_webdriver: bool = False, uc=False):
                     res = wrap_function(*args, **kwargs)
                     if inject_webdriver:
                         kwargs["driver"].quit()
-                    return res
                 except Exception:
                     LOGGER.exception("An error occurred while importing. Retrying...")
+                else:
+                    return res
             return None
 
         return wrapper
@@ -216,7 +227,7 @@ def add_to_profiles(build_name):
 def _to_yaml_str(profile: ProfileModel, exclude_defaults: bool, exclude: set[str]) -> str:
     str_val = profile.model_dump_json(exclude_defaults=exclude_defaults, exclude=exclude)
     yaml = YAML()
-    yaml.default_flow_style = None
+    yaml.default_flow_style = None  # Back to original
     dict_val = yaml.load(str_val)
     _rm_style_info(dict_val)
     stream = StringIO()

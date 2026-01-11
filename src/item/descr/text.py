@@ -55,5 +55,6 @@ def clean_str(s: str) -> str:
     cleaned_str = remove_text_after_first_keyword(cleaned_str, Dataloader().filter_after_keyword)
     for s in Dataloader().filter_words:
         cleaned_str = cleaned_str.replace(s, "")
-    cleaned_str = cleaned_str[: cleaned_str.rfind("(")]
+    if "(" in cleaned_str:
+        cleaned_str = cleaned_str[: cleaned_str.rfind("(")]
     return " ".join(cleaned_str.split()).strip().lower()  # Remove extra spaces

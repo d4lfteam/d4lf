@@ -8,7 +8,9 @@ EXE_NAME = "d4lf.exe"
 
 
 def build(release_dir: Path):
-    installer_cmd = f"pyinstaller --clean --onefile --distpath {release_dir} --paths src src\\main.py"
+    installer_cmd = (
+        f"pyinstaller --clean --onefile --icon=assets/logo.ico --distpath {release_dir} --paths src src\\main.py"
+    )
     os.system(installer_cmd)
     (release_dir / "main.exe").rename(release_dir / EXE_NAME)
 
@@ -26,34 +28,36 @@ def copy_additional_resources(release_dir: Path):
     shutil.copytree("assets", release_dir / "assets")
 
 
-def create_batch_for_gui(release_dir: Path, exe_name: str):
-    batch_file_path = release_dir / "gui.bat"
-    with Path(batch_file_path).open("w") as f:
+def create_batch_for_consoleonly(release_dir: Path, exe_name: str):
+    batch_file_path = release_dir / "d4lf-consoleonly.bat"
+    with Path(batch_file_path).open("w", encoding="utf-8") as f:
         f.write("@echo off\n")
         f.write('cd /d "%~dp0"\n')
-        f.write(f'start "" {exe_name} --gui')
+        f.write(f'start "" {exe_name} --consoleonly\n')
 
 
 def create_batch_for_autoupdater(release_dir: Path, exe_name: str):
     batch_file_path = release_dir / "autoupdater.bat"
-    Path(batch_file_path).write_text(f"""
-@echo off
+    Path(batch_file_path).write_text(
+        f"""@echo off
 cd /d "%~dp0"
 echo Starting D4LF auto update preprocessing
 start /WAIT {exe_name} --autoupdate
 if %errorlevel% == 1 (
     echo Process did not complete successfully, check logs for more information.
 ) else if %errorlevel% == 2 (
-	echo D4Lf is already up to date!
+    echo D4Lf is already up to date!
 ) else (
     echo Killing all existing d4lf processes to perform update
     taskkill /f /im d4lf.exe
     timeout /t 1 /nobreak
     echo Updating files
-    robocopy "./temp_update/d4lf" "." /E /XF "autoupdater.bat"
+    robocopy "./temp_update/d4lf" "." /MIR /XF "autoupdater.bat" /XD "temp_update" "logs"
     echo Running postprocessing to verify update and clean up files
     start /WAIT {exe_name} --autoupdatepost
-)""")
+)""",
+        encoding="utf-8",
+    )
 
 
 if __name__ == "__main__":
@@ -66,6 +70,6 @@ if __name__ == "__main__":
     clean_up()
     build(release_dir=RELEASE_DIR)
     copy_additional_resources(RELEASE_DIR)
-    create_batch_for_gui(release_dir=RELEASE_DIR, exe_name=EXE_NAME)
+    create_batch_for_consoleonly(release_dir=RELEASE_DIR, exe_name=EXE_NAME)
     create_batch_for_autoupdater(release_dir=RELEASE_DIR, exe_name=EXE_NAME)
     clean_up()
