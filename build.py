@@ -52,7 +52,7 @@ if %errorlevel% == 1 (
     taskkill /f /im d4lf.exe
     timeout /t 1 /nobreak
     echo Updating files
-    robocopy "./temp_update/d4lf" "." /E /XF "autoupdater.bat"
+    robocopy "./temp_update/d4lf" "." /MIR /XF "autoupdater.bat" /XD "temp_update" "logs"
     echo Running postprocessing to verify update and clean up files
     start /WAIT {exe_name} --autoupdatepost
 )""",
