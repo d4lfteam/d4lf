@@ -73,7 +73,7 @@ class AffixGroupEditor(QWidget):
             item.name for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)
         ]
         self.item_type_combo.addItems(item_types_names)
-        self.item_type_combo.setCurrentText(self.config.itemType[0].name)
+        self.item_type_combo.setCurrentText(self.config.itemType[0].name if self.config.itemType else None)
         self.item_type_combo.setMaximumWidth(150)
         self.item_type_combo.currentIndexChanged.connect(self.update_item_type)
         general_form.addRow("Item Type:", self.item_type_combo)
