@@ -1,5 +1,4 @@
 import enum
-import logging
 import os
 import typing
 from pathlib import Path
@@ -173,22 +172,16 @@ class ConfigTab(QWidget):
             parameter_value_widget.setCurrentText(config_value)
             parameter_value_widget.blockSignals(False)
 
-            def on_enum_changed():
-                logging.getLogger(__name__).debug(
-                    "[Dropdown emitted] New value: %s", parameter_value_widget.currentText()
-                )
-                logging.getLogger(__name__).debug(
-                    "[Model update] Theme set to: %s", parameter_value_widget.currentText()
-                )
+            def make_on_enum_changed(key):
+                def on_enum_changed():
+                    _validate_and_save_changes(model, section_config_header, key, parameter_value_widget.currentText())
 
-                _validate_and_save_changes(
-                    model, section_config_header, config_key, parameter_value_widget.currentText()
-                )
+                    if key == "theme" and self.theme_changed_callback and not self._initializing:
+                        self.theme_changed_callback()
 
-                if config_key == "theme" and self.theme_changed_callback and not self._initializing:
-                    self.theme_changed_callback()
+                return on_enum_changed
 
-            parameter_value_widget.currentTextChanged.connect(on_enum_changed)
+            parameter_value_widget.currentTextChanged.connect(make_on_enum_changed(config_key))
 
         elif isinstance(config_value, bool):
             parameter_value_widget = QCheckBox()
