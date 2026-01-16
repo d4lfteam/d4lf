@@ -64,9 +64,6 @@ ANSI_COLORS = {
     "97": "#FFFFFF",
 }
 
-# Version string - consider importing from a central location
-VERSION = "8.0.2"
-
 
 def ansi_to_html(text: str) -> str:
     html = ""
@@ -208,7 +205,7 @@ class UnifiedMainWindow(QMainWindow):
         root_logger.addHandler(self.activity_handler)
         root_logger.setLevel(config.advanced_options.log_lvl.value.upper())
 
-        # --- Window setup: version in title bar) ---
+        # --- Window setup: version in title bar ---
         self.setWindowTitle(f"D4LF - Diablo 4 Loot Filter v{__version__}")
         self.setMinimumSize(800, 600)
 
@@ -260,6 +257,9 @@ class UnifiedMainWindow(QMainWindow):
         self.console_handler.log_signal.connect(self.console_output.append_ansi_text)
         # Activity handler → original log_viewer
         self.activity_handler.log_signal.connect(self.activity_tab.log_viewer.appendPlainText)
+
+        # --- Startup banner ---
+        self.emit_startup_direct_to_console()
 
         # --- Backend worker thread ---
         self.thread = QThread()
@@ -374,6 +374,16 @@ class UnifiedMainWindow(QMainWindow):
             logging._handlerList.clear()
 
         super().closeEvent(event)
+
+    def emit_startup_direct_to_console(self):
+        banner = (
+            "═══════════════════════════════════════════════════════════════════════════════\n"
+            "D4LF - Diablo 4 Loot Filter\n"
+            "═══════════════════════════════════════════════════════════════════════════════"
+        )
+
+        self.console_output.appendPlainText(banner)
+        self.console_output.appendPlainText("")  # one blank line for spacing
 
     def apply_theme(self):
         theme_name = IniConfigLoader().general.theme

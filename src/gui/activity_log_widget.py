@@ -18,6 +18,11 @@ class ActivityLogWidget(QWidget):
         self.log_viewer.setMaximumBlockCount(1000)
         self.log_viewer.setPlaceholderText("Waiting for d4lf to start scanning...")
 
+        self.log_viewer.appendPlainText("═" * 80)
+        self.log_viewer.appendPlainText("D4LF - Diablo 4 Loot Filter")
+        self.log_viewer.appendPlainText("═" * 80)
+        self.log_viewer.appendPlainText("")
+
         self.main_layout.addWidget(self.log_viewer, stretch=1)
 
         # === HOTKEYS PANEL ===
