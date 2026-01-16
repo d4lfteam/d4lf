@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src import tts
+from src import __version__, tts
 from src.autoupdater import notify_if_update
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
@@ -166,7 +166,10 @@ class BackendWorker(QObject):
 class UnifiedMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.child_windows = []
+        # Track child windows by type for singleton behavior
+        self._config_window: ConfigWindow | None = None
+        self._importer_window: ImporterWindow | None = None
+        self._profile_editor_window: ProfileEditorWindow | None = None
 
         if ICON_PATH.exists():
             self.setWindowIcon(QIcon(str(ICON_PATH)))
@@ -202,8 +205,8 @@ class UnifiedMainWindow(QMainWindow):
         root_logger.addHandler(self.activity_handler)
         root_logger.setLevel(config.advanced_options.log_lvl.value.upper())
 
-        # --- Window setup ---
-        self.setWindowTitle("D4LF")
+        # --- Window setup: version in title bar ---
+        self.setWindowTitle(f"D4LF - Diablo 4 Loot Filter v{__version__}")
         self.setMinimumSize(800, 600)
 
         central = QWidget()
@@ -270,57 +273,56 @@ class UnifiedMainWindow(QMainWindow):
         self.restore_geometry()
         self.thread.start()
 
-    def emit_startup_direct_to_console(self):
-        banner = (
-            "════════════════════════════════════════════════════════════════════════════════\n"
-            "D4LF - Diablo 4 Loot Filter\n"
-            "════════════════════════════════════════════════════════════════════════════════"
-        )
+    def _show_singleton_modal(self, window_attr: str, window_class, *args, **kwargs):
+        """Helper to show a singleton modal window.
 
-        self.console_output.appendPlainText(banner)
-        self.console_output.appendPlainText("")  # one blank line for spacing
+        If window already exists and is visible, bring it to front.
+        Otherwise create a new one.
+        """
+        existing_window = getattr(self, window_attr)
+
+        # If window exists and is visible, just bring it to front
+        if existing_window is not None and existing_window.isVisible():
+            existing_window.raise_()
+            existing_window.activateWindow()
+            return existing_window
+
+        # Create new window
+        win = window_class(*args, **kwargs)
+        win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+
+        # Make it modal
+        win.setWindowModality(Qt.WindowModality.ApplicationModal)
+
+        # Track the window
+        setattr(self, window_attr, win)
+
+        # Clear reference when window is destroyed
+        def on_destroyed():
+            setattr(self, window_attr, None)
+
+        win.destroyed.connect(on_destroyed)
+
+        win.show()
+        return win
 
     def open_import_dialog(self):
         try:
-            win = ImporterWindow()
-            win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-
-            # Track window
-            self.child_windows.append(win)
-            win.destroyed.connect(lambda: self.child_windows.remove(win))
-
-            win.show()
-
+            self._show_singleton_modal("_importer_window", ImporterWindow)
         except Exception as e:
             LOGGER.error(f"Failed to open importer: {e}")
             QMessageBox.critical(self, "Import Error", str(e))
 
     def open_settings_dialog(self):
         try:
-            win = ConfigWindow(theme_changed_callback=self.apply_theme)
-            win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-
-            # Track window
-            self.child_windows.append(win)
-            win.destroyed.connect(lambda: self.child_windows.remove(win))
-
-            win.show()
-
+            self._show_singleton_modal("_config_window", ConfigWindow, theme_changed_callback=self.apply_theme)
         except Exception as e:
             LOGGER.error(f"Failed to open settings: {e}")
             QMessageBox.critical(self, "Settings Error", str(e))
 
     def open_profile_editor(self):
         try:
-            win = ProfileEditorWindow()
-            win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-
-            # Track window
-            self.child_windows.append(win)
-            win.destroyed.connect(lambda: self.child_windows.remove(win))
-
-            win.show()
-
+            self._show_singleton_modal("_profile_editor_window", ProfileEditorWindow)
         except Exception as e:
             LOGGER.error(f"Failed to open profile editor: {e}")
 
@@ -352,11 +354,12 @@ class UnifiedMainWindow(QMainWindow):
         settings.setValue("selected_view", self.log_tabbar.currentIndex())
 
     def closeEvent(self, event):
-        # --- NEW: Close all child windows ---
-
-        for win in list(self.child_windows):
-            with suppress(Exception):
-                win.close()
+        # Close all child windows
+        for window_attr in ("_config_window", "_importer_window", "_profile_editor_window"):
+            win = getattr(self, window_attr)
+            if win is not None:
+                with suppress(Exception):
+                    win.close()
 
         # --- Existing behavior ---
         self.save_geometry()
@@ -371,6 +374,16 @@ class UnifiedMainWindow(QMainWindow):
             logging._handlerList.clear()
 
         super().closeEvent(event)
+
+    def emit_startup_direct_to_console(self):
+        banner = (
+            "═══════════════════════════════════════════════════════════════════════════════\n"
+            "D4LF - Diablo 4 Loot Filter\n"
+            "═══════════════════════════════════════════════════════════════════════════════"
+        )
+
+        self.console_output.appendPlainText(banner)
+        self.console_output.appendPlainText("")  # one blank line for spacing
 
     def apply_theme(self):
         theme_name = IniConfigLoader().general.theme
