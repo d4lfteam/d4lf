@@ -1,7 +1,6 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget
 
-from src import __version__
 from src.config.loader import IniConfigLoader
 
 
@@ -12,12 +11,6 @@ class ActivityLogWidget(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(10, 10, 10, 10)
         self.main_layout.setSpacing(10)
-
-        # === VERSION HEADER ===
-        version_label = QLabel(f"D4LF - Diablo 4 Loot Filter v{__version__}")
-        version_label.setStyleSheet("font-size: 14pt; font-weight: bold; padding: 5px;")
-        version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.main_layout.addWidget(version_label)
 
         # === LOG VIEWER ===
         self.log_viewer = QPlainTextEdit()
@@ -84,7 +77,7 @@ class ActivityLogWidget(QWidget):
         self.editor_btn.setMinimumHeight(40)
         button_layout.addWidget(self.editor_btn)
 
-        # ⭐ STEP 3 — CONNECT BUTTONS TO UnifiedMainWindow ⭐
+        # === CONNECT BUTTONS TO UnifiedMainWindow ===
         self.import_btn.clicked.connect(self.parent().open_import_dialog)
         self.settings_btn.clicked.connect(self.parent().open_settings_dialog)
         self.editor_btn.clicked.connect(self.parent().open_profile_editor)
