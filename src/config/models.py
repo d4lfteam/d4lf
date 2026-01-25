@@ -20,7 +20,15 @@ MODULE_LOGGER = logging.getLogger(__name__)
 HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
 
-DEPRECATED_INI_KEYS = ["s7_do_not_junk_ancestral_legendaries"]
+DEPRECATED_INI_KEYS = [
+    "hidden_transparency",
+    "import_build",
+    "local_prefs_path",
+    "move_item_type",
+    "handle_rares",
+    "s7_do_not_junk_ancestral_legendaries",
+    "scripts",
+]
 
 
 class AspectFilterType(enum.StrEnum):
