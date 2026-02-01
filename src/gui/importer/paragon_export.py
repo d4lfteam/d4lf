@@ -5,9 +5,11 @@ import json
 import logging
 import re
 import time
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
 from src import __version__
+from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
 
 try:
@@ -48,221 +50,45 @@ NODES_LEN = GRID * GRID
 
 
 # ---------------------------------------------------------------------------
-# Maxroll ID -> human friendly names (ported from Diablo4Companion data files).
-# Used to export Paragon JSON with readable identifiers (similar to Mobalytics).
+# Maxroll uses internal IDs for boards/glyphs. We keep the exported identifiers stable
+# by resolving IDs to human-friendly names from data files (generated from d4data).
+#
+# Expected file (fallback to enUS):
+#   assets/lang/<language>/paragon_maxroll_ids.json
+# Format:
+#   {"boards": {"<board_id>": "<display_name>", ...}, "glyphs": {"<glyph_id>": "<display_name>", ...}}
 # ---------------------------------------------------------------------------
 
-_MAXROLL_BOARD_ID_TO_NAME = {
-    "Paragon_Barb_00": "Start",
-    "Paragon_Barb_01": "Hemorrhage",
-    "Paragon_Barb_02": "Blood Rage",
-    "Paragon_Barb_03": "Carnage",
-    "Paragon_Barb_04": "Decimator",
-    "Paragon_Barb_05": "Bone Breaker",
-    "Paragon_Barb_06": "Flawless Technique",
-    "Paragon_Barb_07": "Warbringer",
-    "Paragon_Barb_08": "Weapons Master",
-    "Paragon_Barb_10": "Force of Nature",
-    "Paragon_Druid_00": "Start",
-    "Paragon_Druid_01": "Thunderstruck",
-    "Paragon_Druid_02": "Earthen Devastation",
-    "Paragon_Druid_03": "Survival Instincts",
-    "Paragon_Druid_04": "Lust for Carnage",
-    "Paragon_Druid_05": "Heightened Malice",
-    "Paragon_Druid_06": "Inner Beast",
-    "Paragon_Druid_07": "Constricting Tendrils",
-    "Paragon_Druid_08": "Ancestral Guidance",
-    "Paragon_Druid_10": "Untamed",
-    "Paragon_Necro_00": "Start",
-    "Paragon_Necro_01": "Cult Leader",
-    "Paragon_Necro_02": "Hulking Monstrosity",
-    "Paragon_Necro_03": "Flesh-eater",
-    "Paragon_Necro_04": "Scent of Death",
-    "Paragon_Necro_05": "Bone Graft",
-    "Paragon_Necro_06": "Blood Begets Blood",
-    "Paragon_Necro_07": "Bloodbath",
-    "Paragon_Necro_08": "Wither",
-    "Paragon_Necro_10": "Frailty",
-    "Paragon_Paladin_00": "Start",
-    "Paragon_Paladin_01": "Castle",
-    "Paragon_Paladin_02": "Shield Bearer",
-    "Paragon_Paladin_03": "Fervent",
-    "Paragon_Paladin_04": "Preacher",
-    "Paragon_Paladin_05": "Divinity",
-    "Paragon_Paladin_06": "Relentless",
-    "Paragon_Paladin_07": "Sentencing",
-    "Paragon_Paladin_08": "Endure",
-    "Paragon_Paladin_09": "Beacon",
-    "Paragon_Rogue_00": "Start",
-    "Paragon_Rogue_01": "Eldritch Bounty",
-    "Paragon_Rogue_02": "Tricks of the Trade",
-    "Paragon_Rogue_03": "Cheap Shot",
-    "Paragon_Rogue_04": "Deadly Ambush",
-    "Paragon_Rogue_05": "Leyrana's Instinct",
-    "Paragon_Rogue_06": "No Witnesses",
-    "Paragon_Rogue_07": "Exploit Weakness",
-    "Paragon_Rogue_08": "Cunning Stratagem",
-    "Paragon_Rogue_10": "Danse Macabre",
-    "Paragon_Sorc_00": "Start",
-    "Paragon_Sorc_01": "Searing Heat",
-    "Paragon_Sorc_02": "Frigid Fate",
-    "Paragon_Sorc_03": "Static Surge",
-    "Paragon_Sorc_04": "Elemental Summoner",
-    "Paragon_Sorc_05": "Burning Instinct",
-    "Paragon_Sorc_06": "Icefall",
-    "Paragon_Sorc_07": "Ceaseless Conduit",
-    "Paragon_Sorc_08": "Enchantment Master",
-    "Paragon_Sorc_10": "Fundamental Release",
-    "Paragon_Spirit_0": "Start",
-    "Paragon_Spirit_01": "In-Fighter",
-    "Paragon_Spirit_02": "Spiney Skin",
-    "Paragon_Spirit_03": "Viscous Shield",
-    "Paragon_Spirit_04": "Bitter Medicine",
-    "Paragon_Spirit_05": "Revealing",
-    "Paragon_Spirit_06": "Drive",
-    "Paragon_Spirit_07": "Convergence",
-    "Paragon_Spirit_08": "Sapping",
-}
 
-_MAXROLL_GLYPH_ID_TO_NAME = {
-    "Rare_001_Intelligence_Main": "Enchanter",
-    "Rare_002_Intelligence_Main": "Unleash",
-    "Rare_003_Intelligence_Main": "Elementalist",
-    "Rare_004_Intelligence_Main": "Adept",
-    "Rare_005_Intelligence_Main": "Conjurer",
-    "Rare_006_Intelligence_Main": "Charged",
-    "Rare_007_Willpower_Side": "Torch",
-    "Rare_008_Willpower_Side": "Pyromaniac",
-    "Rare_009_Willpower_Side": "Cryopathy",
-    "Rare_010_Dexterity_Main": "Tactician",
-    "Rare_011_Intelligence_Side": "Guzzler",
-    "Rare_011_Willpower_Side": "Imbiber",
-    "Rare_012_Intelligence_Side": "Protector",
-    "Rare_012_Willpower_Side": "Reinforced",
-    "Rare_013_Dexterity_Side": "Poise",
-    "Rare_014_Dexterity_Side": "Territorial",
-    "Rare_014_Strength_Main": "Turf",
-    "Rare_014_Strength_Side": "Turf",
-    "Rare_015_Dexterity_Side": "Flamefeeder",
-    "Rare_016_Dexterity_Side": "Exploit",
-    "Rare_016_Intelligence_Side": "Exploit",
-    "Rare_016_Strength_Side": "Exploit",
-    "Rare_017_Dexterity_Side": "Winter",
-    "Rare_018_Dexterity_Side": "Electrocute",
-    "Rare_019_Dexterity_Side": "Destruction",
-    "Rare_020_Dexterity_Side": "Control",
-    "Rare_020_Intelligence_Main": "Control",
-    "Rare_020_Intelligence_Side": "Control",
-    "Rare_021_Strength_Main": "Ambidextrous",
-    "Rare_022_Strength_Main": "Might",
-    "Rare_023_Strength_Main": "Cleaver",
-    "Rare_024_Strength_Main": "Seething",
-    "Rare_025_Strength_Main": "Crusher",
-    "Rare_026_Strength_Main": "Executioner",
-    "Rare_027_Strength_Main": "Ire",
-    "Rare_028_Strength_Main": "Marshal",
-    "Rare_029_Dexterity_Side": "Bloodfeeder",
-    "Rare_030_Dexterity_Side": "Wrath",
-    "Rare_031_Dexterity_Side": "Weapon Master",
-    "Rare_032_Dexterity_Side": "Mortal Draw",
-    "Rare_033_Intelligence_Side": "Revenge",
-    "Rare_033_Willpower_Side": "Revenge",
-    "Rare_033_Willpower_Side_Necro": "Revenge",
-    "Rare_034_Intelligence_Side": "Undaunted",
-    "Rare_034_Willpower_Side": "Undaunted",
-    "Rare_035_Intelligence_Side": "Dominate",
-    "Rare_035_Willpower_Side": "Dominate",
-    "Rare_035_Willpower_Side_Necro": "Dominate",
-    "Rare_036_Willpower_Side": "Disembowel",
-    "Rare_037_Willpower_Side": "Brawl",
-    "Rare_038_Intelligence_Main": "Corporeal",
-    "Rare_039_Willpower_Main": "Fang and Claw",
-    "Rare_040_Willpower_Main": "Earth and Sky",
-    "Rare_041_Intelligence_Side": "Wilds",
-    "Rare_042_Willpower_Main": "Werebear",
-    "Rare_043_Willpower_Main": "Werewolf",
-    "Rare_044_Willpower_Main": "Human",
-    "Rare_045_Intelligence_Side": "Bane",
-    "Rare_045_Strength_Side": "Bane",
-    "Rare_046_Dexterity_Side": "Abyssal",
-    "Rare_046_Intelligence_Side": "Keeper",
-    "Rare_047_Dexterity_Side": "Fulminate",
-    "Rare_047_Intelligence_Side": "Fulminate",
-    "Rare_048_Dexterity_Side": "Tracker",
-    "Rare_048_Intelligence_Side": "Tracker",
-    "Rare_049_Dexterity_Side": "Outmatch",
-    "Rare_049_Strength_Main": "Outmatch",
-    "Rare_049_Strength_Side": "Outmatch",
-    "Rare_050_Dexterity_Main": "Spirit",
-    "Rare_050_Dexterity_Side": "Spirit",
-    "Rare_050_Willpower_Side": "Spirit",
-    "Rare_051_Dexterity_Side": "Shapeshifter",
-    "Rare_052_Dexterity_Main": "Versatility",
-    "Rare_053_Dexterity_Main": "Closer",
-    "Rare_054_Dexterity_Main": "Ranger",
-    "Rare_055_Dexterity_Main": "Chip",
-    "Rare_055_Dexterity_Side": "Chip",
-    "Rare_055_Willpower_Side": "Chip",
-    "Rare_056_Dexterity_Main": "Frostfeeder",
-    "Rare_057_Dexterity_Main": "Fluidity",
-    "Rare_058_Intelligence_Side": "Infusion",
-    "Rare_059_Dexterity_Main": "Devious",
-    "Rare_060_Dexterity_Side": "Warrior",
-    "Rare_061_Intelligence_Side": "Combat",
-    "Rare_062_Dexterity_Side": "Gravekeeper",
-    "Rare_063_Intelligence_Side": "Canny",
-    "Rare_064_Intelligence_Side": "Efficacy",
-    "Rare_065_Intelligence_Side": "Snare",
-    "Rare_066_Dexterity_Side": "Essence",
-    "Rare_067_Strength_Side": "Pride",
-    "Rare_068_Strength_Side": "Ambush",
-    "Rare_069_Intelligence_Main": "Sacrificial",
-    "Rare_070_Intelligence_Main": "Blood-drinker",
-    "Rare_071_Intelligence_Main": "Deadraiser",
-    "Rare_072_Intelligence_Main": "Mage",
-    "Rare_073_Intelligence_Main": "Amplify",
-    "Rare_074_Willpower_Side": "Golem",
-    "Rare_075_Willpower_Side": "Scourge",
-    "Rare_076_Strength_Main": "Diminish",
-    "Rare_076_Strength_Side": "Diminish",
-    "Rare_077_Willpower_Side": "Warding",
-    "Rare_078_Willpower_Side": "Darkness",
-    "Rare_079_Dexterity_Side": "Exploit",
-    "Rare_080_Strength_Main": "Twister",
-    "Rare_081_Strength_Main": "Rumble",
-    "Rare_082_Dexterity_Main": "Explosive",
-    "Rare_083_Intelligence_Side": "Nightstalker",
-    "Rare_084_Intelligence_Main": "Stalagmite",
-    "Rare_085_Dexterity_Side": "Invocation",
-    "Rare_086_Dexterity_Side": "Tectonic",
-    "Rare_087_Willpower_Main": "Electrocution",
-    "Rare_088_Intelligence_Main": "Exhumation",
-    "Rare_089_Willpower_Side": "Desecration",
-    "Rare_090_Dexterity_Main": "Menagerist",
-    "Rare_091_Strength_Side": "Hone",
-    "Rare_092_Intelligence_Side": "Consumption",
-    "Rare_093_Dexterity_Main": "Fitness",
-    "Rare_094_Intelligence_Side": "Ritual",
-    "Rare_095_Dexterity_Main": "Jagged Plume",
-    "Rare_096_Strength_Side": "Innate",
-    "Rare_097_Dexterity_Main": "Wildfire",
-    "Rare_098_Strength_Side": "Colossal",
-    "Rare_100_Dexterity_Main": "Talon",
-    "Rare_101_Strength_Side": "Hubris",
-    "Rare_102_Dexterity_Main": "Fester",
-    "Rare_103_Strength_Main": "Sentinel",
-    "Rare_104_Dexterity_Side": "Honed",
-    "Rare_105_Strength_Main": "Law",
-    "Rare_106_Willpower_Side": "Arbiter ",
-    "Rare_107_Strength_Main": "Resplendence",
-    "Rare_108_Intelligence_Side": "Judicator",
-    "Rare_109_Dexterity_Side": "Feverous",
-    "Rare_110_Strength_Main": "Apostle",
-    "Rare_Dex_Generic": "Headhunter",
-    "Rare_Int_Generic": "Eliminator",
-    "Rare_Str_Generic": "Challenger",
-    "Rare_Will_Generic": "Headhunter",
-}
+@lru_cache(maxsize=1)
+def _load_maxroll_name_maps() -> tuple[dict[str, str], dict[str, str]]:
+    lang = IniConfigLoader().general.language
+    candidates = (
+        BASE_DIR / f"assets/lang/{lang}/paragon_maxroll_ids.json",
+        BASE_DIR / "assets/lang/enUS/paragon_maxroll_ids.json",
+    )
+
+    for path in candidates:
+        try:
+            with path.open(encoding="utf-8") as f:
+                data = json.load(f)
+        except FileNotFoundError:
+            continue
+        except OSError:
+            LOGGER.debug("Failed to read Maxroll paragon mapping file: %s", path, exc_info=True)
+            continue
+
+        if not isinstance(data, dict):
+            continue
+
+        boards = data.get("boards") or {}
+        glyphs = data.get("glyphs") or {}
+        if isinstance(boards, dict) and isinstance(glyphs, dict):
+            boards_map = {str(k): str(v) for k, v in boards.items()}
+            glyphs_map = {str(k): str(v) for k, v in glyphs.items()}
+            return boards_map, glyphs_map
+
+    return {}, {}
 
 
 def _slugify(s: str) -> str:
@@ -279,7 +105,8 @@ def _maxroll_class_slug(board_id: str) -> str:
 
 def _maxroll_board_slug(board_id: str) -> str:
     cls = _maxroll_class_slug(board_id)
-    name = _MAXROLL_BOARD_ID_TO_NAME.get(board_id, board_id)
+    boards_map, _ = _load_maxroll_name_maps()
+    name = boards_map.get(board_id, board_id)
     name_slug = _slugify(name)
     return f"{cls}-{name_slug}" if cls and name_slug else _slugify(board_id)
 
@@ -287,7 +114,8 @@ def _maxroll_board_slug(board_id: str) -> str:
 def _maxroll_glyph_slug(glyph_id: str, board_id: str) -> str:
     # We prefix with class for consistency with Mobalytics output.
     cls = _maxroll_class_slug(board_id)
-    name = _MAXROLL_GLYPH_ID_TO_NAME.get(glyph_id, glyph_id)
+    _, glyphs_map = _load_maxroll_name_maps()
+    name = glyphs_map.get(glyph_id, glyph_id)
     name_slug = _slugify(name)
     return f"{cls}-{name_slug}" if cls and name_slug else _slugify(glyph_id)
 
@@ -417,13 +245,137 @@ def extract_mobalytics_paragon_steps(variant: dict[str, Any]) -> list[list[dict[
     return [boards_out] if boards_out else []
 
 
-def extract_d4builds_paragon_steps(driver: WebDriver, class_name: str = "") -> list[list[dict[str, Any]]]:
+def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[list[dict[str, Any]]]:
+    """Parse D4Builds paragon boards from the currently loaded page."""
+    boards_out: list[dict[str, Any]] = []
+
+    try:
+        board_elements = driver.find_elements(By.CLASS_NAME, "paragon__board")
+    except Exception:
+        LOGGER.debug("Failed to locate D4Builds paragon boards (continuing).", exc_info=True)
+        board_elements = []
+
+    for board_elem in board_elements:
+        name_raw = ""
+        lines: list[str] = []
+        name_display = ""
+
+        try:
+            name_raw = board_elem.find_element(By.CLASS_NAME, "paragon__board__name").get_attribute("innerText") or ""
+            lines = [ln.strip() for ln in name_raw.splitlines() if ln.strip()]
+            # Prefer a line containing letters (sometimes line 1 is a numeric index)
+            name_display = next((ln for ln in lines if any(ch.isalpha() for ch in ln)), (lines[0] if lines else ""))
+        except Exception:
+            name_display = ""
+
+        # Try to infer a stable board id/slug from element attributes (best effort)
+        board_id = ""
+        try:
+            attrs = driver.execute_script(
+                "var a=arguments[0].attributes; var o={}; for (var i=0;i<a.length;i++){o[a[i].name]=a[i].value}; return o;",
+                board_elem,
+            )
+            if isinstance(attrs, dict):
+                for key in ("data-board", "data-board-id", "data-id", "data-name", "data-board-name", "data-boardname"):
+                    v = attrs.get(key)
+                    if isinstance(v, str) and v.strip():
+                        board_id = v.strip()
+                        break
+
+                if not board_id:
+                    for v in attrs.values():
+                        if isinstance(v, str):
+                            vv = v.strip()
+                            if vv and "-" in vv and re.fullmatch(r"[A-Za-z0-9_-]{3,64}", vv):
+                                board_id = vv
+                                break
+        except Exception:
+            LOGGER.debug("Failed to infer board id (continuing).", exc_info=True)
+
+        name_slug = _prefix_with_class_slug(_slugify(board_id or name_display), class_slug)
+        if not name_slug and lines and str(lines[0]).isdigit():
+            name_slug = f"board-{lines[0]}"
+
+        glyph_raw = ""
+        try:
+            glyph_elems = board_elem.find_elements(By.CLASS_NAME, "paragon__board__name__glyph")
+            if glyph_elems:
+                glyph_raw = (glyph_elems[0].get_attribute("innerText") or "").strip()
+        except Exception:
+            LOGGER.debug("Failed to read glyph name (continuing).", exc_info=True)
+
+        glyph_display = glyph_raw.replace("(", "").replace(")", "").strip()
+        glyph_slug = _prefix_with_class_slug(_slugify(glyph_display), class_slug)
+
+        style_str = board_elem.get_attribute("style") or ""
+        rotate_int = 0
+        if "rotate(" in style_str:
+            mm = re.search(r"rotate\(([-\d]+)deg\)", style_str)
+            if mm:
+                try:
+                    rotate_int = int(mm.group(1)) % 360
+                except Exception:
+                    rotate_int = 0
+
+        nodes = [False] * NODES_LEN
+
+        try:
+            tile_elems = board_elem.find_elements(By.CLASS_NAME, "paragon__board__tile")
+        except Exception:
+            tile_elems = []
+
+        for tile in tile_elems:
+            cls = tile.get_attribute("class") or ""
+            if "active" not in cls:
+                continue
+
+            parts = [pp for pp in cls.split() if pp]
+            # Example: "paragon__board__tile r2 c10 active enabled"
+            r_part = next((x for x in parts if x.startswith("r")), "r0")
+            c_part = next((x for x in parts if x.startswith("c")), "c0")
+
+            try:
+                r = int("".join(ch for ch in r_part if ch.isdigit()) or "0")
+                c = int("".join(ch for ch in c_part if ch.isdigit()) or "0")
+            except ValueError:
+                continue
+
+            # Transform coordinates based on rotation (matching Diablo4Companion)
+            x = c
+            y = r
+            if rotate_int == 0:
+                x = x - 1
+                y = y - 1
+            elif rotate_int == 90:
+                x = GRID - r
+                y = c - 1
+            elif rotate_int == 180:
+                x = GRID - c
+                y = GRID - r
+            elif rotate_int == 270:
+                x = r - 1
+                y = GRID - c
+
+            if 0 <= x < GRID and 0 <= y < GRID:
+                nodes[y * GRID + x] = True
+
+        boards_out.append({
+            "Name": name_slug or "paragon-board",
+            "Glyph": glyph_slug,
+            "Rotation": f"{rotate_int}°" if rotate_int in (0, 90, 180, 270) else "0°",
+            "Nodes": nodes,
+        })
+
+    return [boards_out] if boards_out else []
+
+
+def extract_d4builds_paragon_steps(
+    driver: WebDriver, class_name: str = "", *, wait: WebDriverWait | None = None
+) -> list[list[dict[str, Any]]]:
     """Extract paragon boards from D4Builds using Selenium.
 
-    This mimics Diablo4Companion's approach:
-      - wait until the build name input (renameBuild) is populated
-      - click the Paragon tab via the left navigation links (builder__navigation__link)
-      - parse .paragon__board elements and their active tiles
+    This reuses the existing Selenium session/page state created by the importer. We only
+    click/wait for the Paragon tab if boards are not already present in the DOM.
     """
     class_slug = _class_slug_from_name(class_name)
 
@@ -431,20 +383,21 @@ def extract_d4builds_paragon_steps(driver: WebDriver, class_name: str = "") -> l
         msg = "Selenium not available, cannot export D4Builds paragon"
         raise RuntimeError(msg)
 
-    # Wait until build is loaded (renameBuild has a non-empty value)
+    if wait is None:
+        wait = WebDriverWait(driver, 10)
+
+    # Fast path: if boards are already present, don't click/wait again.
     try:
-        wait = WebDriverWait(driver, 20)
-
-        def _has_build_name(drv):
-            try:
-                el = drv.find_element(By.ID, "renameBuild")
-                return bool((el.get_attribute("value") or "").strip())
-            except Exception:
-                return False
-
-        wait.until(_has_build_name)
+        if driver.find_elements(By.CLASS_NAME, "paragon__board"):
+            return _parse_d4builds_paragon_boards(driver, class_slug)
     except Exception:
-        LOGGER.debug("Unable to confirm D4Builds build name (continuing).", exc_info=True)
+        LOGGER.debug("Could not query for existing D4Builds paragon boards (continuing).", exc_info=True)
+
+    # Best effort: ensure the navigation is present before attempting to click Paragon.
+    try:
+        wait.until(lambda d: len(d.find_elements(By.CLASS_NAME, "builder__navigation__link")) > 0)
+    except Exception:
+        LOGGER.debug("Timed out waiting for D4Builds navigation links (continuing).", exc_info=True)
 
     # Switch to Paragon tab (D4Builds uses left navigation links)
     try:
@@ -459,126 +412,14 @@ def extract_d4builds_paragon_steps(driver: WebDriver, class_name: str = "") -> l
     except Exception:
         # Not fatal: sometimes paragon is already visible or site changed
         LOGGER.debug("Could not click Paragon tab (continuing).", exc_info=True)
+
     # Wait for paragon boards to appear (best effort)
     try:
-        wait = WebDriverWait(driver, 10)
         wait.until(lambda d: len(d.find_elements(By.CLASS_NAME, "paragon__board")) > 0)
     except Exception:
         LOGGER.debug("Timed out waiting for D4Builds paragon boards (continuing).", exc_info=True)
 
-    boards_out: list[dict[str, Any]] = []
-    try:
-        board_elements = driver.find_elements(By.CLASS_NAME, "paragon__board")
-    except Exception:
-        board_elements = []
-
-    for board_elem in board_elements:
-        name_raw = ""
-        lines = []
-        name_display = ""
-        try:
-            name_raw = board_elem.find_element(By.CLASS_NAME, "paragon__board__name").get_attribute("innerText") or ""
-            lines = [ln.strip() for ln in (name_raw or "").splitlines() if ln.strip()]
-            # Prefer first line that contains letters (D4Builds sometimes shows just a numeric index on line 1)
-            name_display = next((ln for ln in lines if any(ch.isalpha() for ch in ln)), (lines[0] if lines else ""))
-        except Exception:
-            name_display = ""
-
-        # Try to detect a stable board id/slug from element attributes (best effort)
-        board_id = ""
-        try:
-            attrs = driver.execute_script(
-                "var a=arguments[0].attributes; var o={}; for (var i=0;i<a.length;i++){o[a[i].name]=a[i].value}; return o;",
-                board_elem,
-            )
-            if isinstance(attrs, dict):
-                for key in ("data-board", "data-board-id", "data-id", "data-name", "data-board-name", "data-boardname"):
-                    v = attrs.get(key)
-                    if isinstance(v, str) and v.strip():
-                        board_id = v.strip()
-                        break
-                if not board_id:
-                    for v in attrs.values():
-                        if isinstance(v, str):
-                            vv = v.strip()
-                            if vv and "-" in vv and re.fullmatch(r"[A-Za-z0-9_-]{3,64}", vv):
-                                board_id = vv
-                                break
-        except Exception:
-            LOGGER.debug("Failed to infer board id (continuing).", exc_info=True)
-
-        name_slug = _slugify(board_id or name_display)
-        name_slug = _prefix_with_class_slug(name_slug, class_slug)
-        if not name_slug and lines and str(lines[0]).isdigit():
-            name_slug = f"board-{lines[0]}"
-
-        glyph_raw = ""
-        try:
-            glyph_elems = board_elem.find_elements(By.CLASS_NAME, "paragon__board__name__glyph")
-            if glyph_elems:
-                glyph_raw = (glyph_elems[0].get_attribute("innerText") or "").strip()
-        except Exception:
-            LOGGER.debug("Failed to read glyph name (continuing).", exc_info=True)
-
-        glyph_display = (glyph_raw or "").replace("(", "").replace(")", "").strip()
-        glyph_slug = _slugify(glyph_display)
-        glyph_slug = _prefix_with_class_slug(glyph_slug, class_slug)
-
-        style_str = board_elem.get_attribute("style") or ""
-        rotate_int = 0
-        if "rotate(" in style_str:
-            mm = re.search(r"rotate\(([-\d]+)deg\)", style_str)
-            if mm:
-                try:
-                    rotate_int = int(mm.group(1)) % 360
-                except Exception:
-                    rotate_int = 0
-
-        nodes = [False] * (21 * 21)
-
-        try:
-            tile_elems = board_elem.find_elements(By.CLASS_NAME, "paragon__board__tile")
-        except Exception:
-            tile_elems = []
-
-        for tile in tile_elems:
-            cls = tile.get_attribute("class") or ""
-            if "active" not in cls:
-                continue
-            parts = [pp for pp in cls.split() if pp]
-            # Example: "paragon__board__tile r2 c10 active enabled"
-            r_part = next((x for x in parts if x.startswith("r")), "r0")
-            c_part = next((x for x in parts if x.startswith("c")), "c0")
-            r = int("".join(ch for ch in r_part if ch.isdigit()) or "0")
-            c = int("".join(ch for ch in c_part if ch.isdigit()) or "0")
-
-            # Transform coordinates based on rotation (matching Diablo4Companion)
-            x = c
-            y = r
-            if rotate_int == 0:
-                x = x - 1
-                y = y - 1
-            elif rotate_int == 90:
-                x = 21 - r
-                y = c - 1
-            elif rotate_int == 180:
-                x = 21 - c
-                y = 21 - r
-            elif rotate_int == 270:
-                x = r - 1
-                y = 21 - c
-
-            if 0 <= x < 21 and 0 <= y < 21:
-                nodes[y * 21 + x] = True
-
-        boards_out.append({
-            "Name": name_slug or "paragon-board",
-            "Glyph": glyph_slug,
-            "Rotation": f"{rotate_int}°" if rotate_int in (0, 90, 180, 270) else "0°",
-            "Nodes": nodes,
-        })
-
-    return [boards_out]
+    return _parse_d4builds_paragon_boards(driver, class_slug)
 
 
 # --- Helper functions (ported from Diablo4Companion) ---
