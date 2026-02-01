@@ -5,13 +5,21 @@ import json
 import logging
 import re
 import time
-from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from src import __version__
 from src.config.loader import IniConfigLoader
 
+try:
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+except ImportError:  # pragma: no cover
+    By = None  # type: ignore[assignment]
+    WebDriverWait = None  # type: ignore[assignment]
+
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from selenium.webdriver.remote.webdriver import WebDriver
 
 
@@ -20,9 +28,7 @@ def _class_slug_from_name(class_name: str) -> str:
     if not class_name or class_name == "unknown":
         return ""
     # normalize spaces/underscores
-    class_name = re.sub(r"[\s_]+", "-", class_name)
-    class_name = re.sub(r"[^a-z0-9\-]", "", class_name)
-    return class_name
+    return re.sub(r"[^a-z0-9\-]", "", re.sub(r"[\s_]+", "-", class_name))
 
 
 def _prefix_with_class_slug(slug: str, class_slug: str) -> str:
@@ -33,6 +39,8 @@ def _prefix_with_class_slug(slug: str, class_slug: str) -> str:
     if slug.startswith(class_slug + "-"):
         return slug
     return f"{class_slug}-{slug}"
+
+
 LOGGER = logging.getLogger(__name__)
 
 GRID = 21
@@ -43,9 +51,6 @@ NODES_LEN = GRID * GRID
 # Maxroll ID -> human friendly names (ported from Diablo4Companion data files).
 # Used to export Paragon JSON with readable identifiers (similar to Mobalytics).
 # ---------------------------------------------------------------------------
-
-# NOTE: These IDs come from Maxroll. If they change, we fall back to using the raw ID.
-# Consider resolving board/glyph metadata via d4data in the future.
 
 _MAXROLL_BOARD_ID_TO_NAME = {
     "Paragon_Barb_00": "Start",
@@ -287,12 +292,8 @@ def _maxroll_glyph_slug(glyph_id: str, board_id: str) -> str:
     return f"{cls}-{name_slug}" if cls and name_slug else _slugify(glyph_id)
 
 
-
 def export_paragon_build_json(
-    file_stem: str,
-    build_name: str,
-    source_url: str,
-    paragon_boards_list: list[list[dict[str, Any]]],
+    file_stem: str, build_name: str, source_url: str, paragon_boards_list: list[list[dict[str, Any]]]
 ) -> Path:
     """Write a D4Companion-compatible JSON containing Name + ParagonBoardsList.
 
@@ -338,25 +339,25 @@ def extract_maxroll_paragon_steps(active_profile: dict[str, Any]) -> list[list[d
             nodes_bool = [False] * NODES_LEN
 
             nodes_dict = (bd or {}).get("nodes") or {}
-            for loc_key in nodes_dict.keys():
+            for loc_key in nodes_dict:
                 try:
                     loc = int(loc_key)
-                except Exception:
+                except TypeError, ValueError:
+                    loc = None
+                if loc is None:
                     continue
                 idx = _transform_maxroll_location(loc=loc, rotation=rotation)
                 if 0 <= idx < NODES_LEN:
                     nodes_bool[idx] = True
 
-            boards_out.append(
-                {
-                    "Name": _maxroll_board_slug(board_id),
-                    "Glyph": _maxroll_glyph_slug(glyph_id, board_id) if glyph_id else "",
-                    "Rotation": _rotation_info_maxroll(rotation),
-                    "Nodes": nodes_bool,
-                    "BoardId": board_id,
-                    "GlyphId": glyph_id,
-                }
-            )
+            boards_out.append({
+                "Name": _maxroll_board_slug(board_id),
+                "Glyph": _maxroll_glyph_slug(glyph_id, board_id) if glyph_id else "",
+                "Rotation": _rotation_info_maxroll(rotation),
+                "Nodes": nodes_bool,
+                "BoardId": board_id,
+                "GlyphId": glyph_id,
+            })
 
         if boards_out:
             steps_out.append(boards_out)
@@ -386,9 +387,7 @@ def extract_mobalytics_paragon_steps(variant: dict[str, Any]) -> list[list[dict[
         board_nodes = [
             n
             for n in nodes_data
-            if isinstance(n, dict)
-            and isinstance(n.get("slug"), str)
-            and n["slug"].startswith(board_slug)
+            if isinstance(n, dict) and isinstance(n.get("slug"), str) and n["slug"].startswith(board_slug)
         ]
 
         for n in board_nodes:
@@ -398,21 +397,22 @@ def extract_mobalytics_paragon_steps(variant: dict[str, Any]) -> list[list[dict[
                 x_part, y_part = node_position.split("-", 1)
                 x = int(x_part.lstrip("x"))
                 y = int(y_part.lstrip("y"))
-            except Exception:
+            except ValueError, IndexError:
+                x = None
+                y = None
+            if x is None or y is None:
                 continue
 
             idx = _transform_xy_common(x=x, y=y, rotation_deg=rotation, base="mobalytics")
             if 0 <= idx < NODES_LEN:
                 nodes_bool[idx] = True
 
-        boards_out.append(
-            {
-                "Name": board_slug,
-                "Glyph": glyph_slug,
-                "Rotation": _rotation_info_degrees(rotation),
-                "Nodes": nodes_bool,
-            }
-        )
+        boards_out.append({
+            "Name": board_slug,
+            "Glyph": glyph_slug,
+            "Rotation": _rotation_info_degrees(rotation),
+            "Nodes": nodes_bool,
+        })
 
     return [boards_out] if boards_out else []
 
@@ -427,12 +427,9 @@ def extract_d4builds_paragon_steps(driver: WebDriver, class_name: str = "") -> l
     """
     class_slug = _class_slug_from_name(class_name)
 
-    try:
-        from selenium.webdriver.common.by import By
-        from selenium.webdriver.support.ui import WebDriverWait
-    except Exception as exc:  # pragma: no cover
-        LOGGER.error("Selenium not available, cannot export D4Builds paragon")
-        raise exc
+    if By is None or WebDriverWait is None:  # pragma: no cover
+        msg = "Selenium not available, cannot export D4Builds paragon"
+        raise RuntimeError(msg)
 
     # Wait until build is loaded (renameBuild has a non-empty value)
     try:
@@ -447,7 +444,7 @@ def extract_d4builds_paragon_steps(driver: WebDriver, class_name: str = "") -> l
 
         wait.until(_has_build_name)
     except Exception:
-        pass
+        LOGGER.debug("Unable to confirm D4Builds build name (continuing).", exc_info=True)
 
     # Switch to Paragon tab (D4Builds uses left navigation links)
     try:
@@ -461,14 +458,13 @@ def extract_d4builds_paragon_steps(driver: WebDriver, class_name: str = "") -> l
         time.sleep(0.25)
     except Exception:
         # Not fatal: sometimes paragon is already visible or site changed
-        pass
-
+        LOGGER.debug("Could not click Paragon tab (continuing).", exc_info=True)
     # Wait for paragon boards to appear (best effort)
     try:
         wait = WebDriverWait(driver, 10)
         wait.until(lambda d: len(d.find_elements(By.CLASS_NAME, "paragon__board")) > 0)
     except Exception:
-        pass
+        LOGGER.debug("Timed out waiting for D4Builds paragon boards (continuing).", exc_info=True)
 
     boards_out: list[dict[str, Any]] = []
     try:
@@ -509,7 +505,7 @@ def extract_d4builds_paragon_steps(driver: WebDriver, class_name: str = "") -> l
                                 board_id = vv
                                 break
         except Exception:
-            pass
+            LOGGER.debug("Failed to infer board id (continuing).", exc_info=True)
 
         name_slug = _slugify(board_id or name_display)
         name_slug = _prefix_with_class_slug(name_slug, class_slug)
@@ -522,7 +518,7 @@ def extract_d4builds_paragon_steps(driver: WebDriver, class_name: str = "") -> l
             if glyph_elems:
                 glyph_raw = (glyph_elems[0].get_attribute("innerText") or "").strip()
         except Exception:
-            pass
+            LOGGER.debug("Failed to read glyph name (continuing).", exc_info=True)
 
         glyph_display = (glyph_raw or "").replace("(", "").replace(")", "").strip()
         glyph_slug = _slugify(glyph_display)
@@ -546,18 +542,15 @@ def extract_d4builds_paragon_steps(driver: WebDriver, class_name: str = "") -> l
             tile_elems = []
 
         for tile in tile_elems:
-            try:
-                cls = tile.get_attribute("class") or ""
-                if "active" not in cls:
-                    continue
-                parts = [pp for pp in cls.split() if pp]
-                # Example: "paragon__board__tile r2 c10 active enabled"
-                r_part = next((x for x in parts if x.startswith("r")), "r0")
-                c_part = next((x for x in parts if x.startswith("c")), "c0")
-                r = int("".join(ch for ch in r_part if ch.isdigit()) or "0")
-                c = int("".join(ch for ch in c_part if ch.isdigit()) or "0")
-            except Exception:
+            cls = tile.get_attribute("class") or ""
+            if "active" not in cls:
                 continue
+            parts = [pp for pp in cls.split() if pp]
+            # Example: "paragon__board__tile r2 c10 active enabled"
+            r_part = next((x for x in parts if x.startswith("r")), "r0")
+            c_part = next((x for x in parts if x.startswith("c")), "c0")
+            r = int("".join(ch for ch in r_part if ch.isdigit()) or "0")
+            c = int("".join(ch for ch in c_part if ch.isdigit()) or "0")
 
             # Transform coordinates based on rotation (matching Diablo4Companion)
             x = c
@@ -578,19 +571,18 @@ def extract_d4builds_paragon_steps(driver: WebDriver, class_name: str = "") -> l
             if 0 <= x < 21 and 0 <= y < 21:
                 nodes[y * 21 + x] = True
 
-        boards_out.append(
-            {
-                "Name": name_slug or "paragon-board",
-                "Glyph": glyph_slug,
-                "Rotation": f"{rotate_int}°" if rotate_int in (0, 90, 180, 270) else "0°",
-                "Nodes": nodes,
-            }
-        )
+        boards_out.append({
+            "Name": name_slug or "paragon-board",
+            "Glyph": glyph_slug,
+            "Rotation": f"{rotate_int}°" if rotate_int in (0, 90, 180, 270) else "0°",
+            "Nodes": nodes,
+        })
 
     return [boards_out]
 
 
 # --- Helper functions (ported from Diablo4Companion) ---
+
 
 def _rotation_info_maxroll(rot: int) -> str:
     return {0: "0°", 1: "90°", 2: "180°", 3: "270°"}.get(rot, "?°")
@@ -671,7 +663,8 @@ def _transform_xy_common(x: int, y: int, rotation_deg: int, base: str) -> int:
 def _fix_mobalytics_starting_board_slug(board_slug: str) -> str:
     # Fix naming inconsistency (ported from Diablo4Companion)
     return (
-        board_slug.replace("barbarian-starter-board", "barbarian-starting-board")
+        board_slug
+        .replace("barbarian-starter-board", "barbarian-starting-board")
         .replace("druid-starter-board", "druid-starting-board")
         .replace("necromancer-starter-board", "necromancer-starting-board")
         .replace("paladin-starter-board", "paladin-starting-board")

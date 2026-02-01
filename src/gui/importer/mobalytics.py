@@ -27,7 +27,7 @@ from src.gui.importer.common import (
     update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import extract_mobalytics_paragon_steps, export_paragon_build_json
+from src.gui.importer.paragon_export import export_paragon_build_json, extract_mobalytics_paragon_steps
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
@@ -39,8 +39,10 @@ BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
 SCRIPT_XPATH = "//script"
 BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
 
+
 class MobalyticsException(Exception):
     pass
+
 
 @retry_importer
 def import_mobalytics(config: ImportConfig):
@@ -101,13 +103,11 @@ def import_mobalytics(config: ImportConfig):
     try:
         if variant_id:
             variant = jsonpath.findall(
-                f"$..['{root_document_name}'].data.buildVariants.values[?@.id=='{variant_id}']",
-                full_script_data_json,
+                f"$..['{root_document_name}'].data.buildVariants.values[?@.id=='{variant_id}']", full_script_data_json
             )[0]
         else:
             variant = jsonpath.findall(
-                f"$..['{root_document_name}'].data.buildVariants.values[0]",
-                full_script_data_json,
+                f"$..['{root_document_name}'].data.buildVariants.values[0]", full_script_data_json
             )[0]
     except Exception:
         variant = {}
@@ -239,7 +239,6 @@ def import_mobalytics(config: ImportConfig):
         add_to_profiles(corrected_file_name)
 
     if config.export_paragon:
-
         steps = extract_mobalytics_paragon_steps(variant if isinstance(variant, dict) else {})
         if steps:
             export_paragon_build_json(
@@ -253,14 +252,17 @@ def import_mobalytics(config: ImportConfig):
 
     LOGGER.info("Finished")
 
+
 def _corrections(input_str: str) -> str:
     match input_str.lower():
         case "max life":
             return "maximum life"
     return input_str
 
+
 def _fix_input_url(url: str) -> str:
     return unquote(url)
+
 
 def _get_legendary_aspect(name: str) -> str:
     if "aspect" in name.lower():
@@ -274,6 +276,7 @@ def _get_legendary_aspect(name: str) -> str:
             return aspect_name
     return ""
 
+
 def _convert_raw_to_affixes(raw_stats: list[dict], import_greater_affixes=False) -> list[Affix]:
     result = []
     for stat in raw_stats:
@@ -285,6 +288,7 @@ def _convert_raw_to_affixes(raw_stats: list[dict], import_greater_affixes=False)
             affix_obj.type = AffixType.greater
         result.append(affix_obj)
     return result
+
 
 if __name__ == "__main__":
     src.logger.setup()

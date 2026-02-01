@@ -1,7 +1,6 @@
 import logging
 import re
 import sys
-import subprocess
 import time
 from contextlib import suppress
 from pathlib import Path
@@ -188,10 +187,7 @@ class UnifiedMainWindow(QMainWindow):
         # Ensure file logging stays enabled. unified_window previously removed all handlers (including the file handler),
         # which stopped live log writing to d4lf/logs.
         if not any(getattr(h, "name", "") == "D4LF_FILE" for h in root_logger.handlers):
-            setup_logging(
-                log_level=config.advanced_options.log_lvl.value,
-                enable_stdout=running_from_source,
-            )
+            setup_logging(log_level=config.advanced_options.log_lvl.value, enable_stdout=running_from_source)
 
         # Remove existing handlers, but keep file handler and (optionally) stdout when running from source
         for h in list(root_logger.handlers):
@@ -350,9 +346,7 @@ class UnifiedMainWindow(QMainWindow):
             default_dir.mkdir(parents=True, exist_ok=True)
 
             folder = QFileDialog.getExistingDirectory(
-                self,
-                "Select Paragon folder (source for Paragon overlay JSON files)",
-                str(default_dir),
+                self, "Select Paragon folder (source for Paragon overlay JSON files)", str(default_dir)
             )
             if not folder:
                 return

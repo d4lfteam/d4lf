@@ -1,10 +1,10 @@
 import logging
+import subprocess
 import sys
 import threading
 import time
 import typing
-import subprocess
-from contextlib import suppress
+from contextlib import ExitStack, contextmanager, suppress
 from pathlib import Path
 
 if sys.platform != "darwin":
@@ -29,11 +29,26 @@ LOGGER = logging.getLogger(__name__)
 LOCK = threading.Lock()
 
 
+@contextmanager
+def _open_append_log(path: Path):
+    """Open a log file for append.
+
+    Args:
+        path: Path to the log file.
+
+    Yields:
+        An open text file handle in append mode.
+    """
+    with path.open("a", encoding="utf-8", errors="ignore") as f:
+        yield f
+
+
 class ScriptHandler:
     def __init__(self):
         self.loot_interaction_thread = None
         self.paragon_overlay_proc = None
         self._paragon_overlay_log = None
+        self._paragon_overlay_log_stack: ExitStack | None = None
         if IniConfigLoader().general.vision_mode_type == VisionModeType.fast:
             self.vision_mode = src.scripts.vision_mode_fast.VisionModeFast()
         else:
@@ -45,7 +60,6 @@ class ScriptHandler:
 
     def _graceful_exit(self):
         safe_exit()
-
 
     def toggle_paragon_overlay(self):
         """Toggle the Paragon overlay process (start if not running, stop if running)."""
@@ -59,14 +73,18 @@ class ScriptHandler:
                     self.paragon_overlay_proc.wait(timeout=2)
                 self.paragon_overlay_proc = None
                 with suppress(Exception):
-                    if self._paragon_overlay_log is not None:
-                        self._paragon_overlay_log.close()
+                    if self._paragon_overlay_log_stack is not None:
+                        self._paragon_overlay_log_stack.close()
+                self._paragon_overlay_log_stack = None
+                self._paragon_overlay_log = None
                 self._paragon_overlay_log = None
                 return
 
             config = IniConfigLoader()
             overlay_dir_str = getattr(config.advanced_options, "paragon_overlay_source_dir", "") or ""
-            overlay_dir = Path(overlay_dir_str).expanduser() if str(overlay_dir_str).strip() else (config.user_dir / "paragon")
+            overlay_dir = (
+                Path(overlay_dir_str).expanduser() if str(overlay_dir_str).strip() else (config.user_dir / "paragon")
+            )
             overlay_dir.mkdir(parents=True, exist_ok=True)
 
             json_files = list(Path(overlay_dir).glob("*.json"))
@@ -98,10 +116,17 @@ class ScriptHandler:
             LOGGER.info(f"Opening Paragon overlay (source: {overlay_dir})")
             # Capture any overlay errors in a log file (important when console is hidden)
             log_path = overlay_dir / "paragon_overlay.log"
+            with suppress(Exception):
+                if self._paragon_overlay_log_stack is not None:
+                    self._paragon_overlay_log_stack.close()
+            self._paragon_overlay_log_stack = ExitStack()
             try:
-                self._paragon_overlay_log = open(log_path, "a", encoding="utf-8", errors="ignore")
-            except Exception:
+                self._paragon_overlay_log = self._paragon_overlay_log_stack.enter_context(_open_append_log(log_path))
+            except OSError:
                 self._paragon_overlay_log = None
+                with suppress(Exception):
+                    self._paragon_overlay_log_stack.close()
+                self._paragon_overlay_log_stack = None
 
             self.paragon_overlay_proc = subprocess.Popen(
                 cmd,
@@ -127,7 +152,9 @@ class ScriptHandler:
     def setup_key_binds(self):
         keyboard.add_hotkey(IniConfigLoader().advanced_options.run_vision_mode, lambda: self.run_vision_mode())
         keyboard.add_hotkey(IniConfigLoader().advanced_options.exit_key, lambda: self._graceful_exit())
-        keyboard.add_hotkey(IniConfigLoader().advanced_options.toggle_paragon_overlay, lambda: self.toggle_paragon_overlay())
+        keyboard.add_hotkey(
+            IniConfigLoader().advanced_options.toggle_paragon_overlay, lambda: self.toggle_paragon_overlay()
+        )
         if not IniConfigLoader().advanced_options.vision_mode_only:
             keyboard.add_hotkey(IniConfigLoader().advanced_options.run_filter, lambda: self.filter_items())
             keyboard.add_hotkey(

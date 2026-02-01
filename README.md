@@ -53,11 +53,13 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 D4LF can import Paragon boards from supported build planners and show them in-game using the Paragon overlay.
 
 **How to use**
+
 1. Import your build from a supported planner (Mobalytics / Maxroll / D4Builds).
-2. Enable **Export Paragon JSON** in the importer (optional) and choose a Paragon folder (or leave the default).
-3. Toggle the Paragon overlay using the hotkey (default **F10**, configurable in *Advanced options*).
+1. Enable **Export Paragon JSON** in the importer (optional) and choose a Paragon folder (or leave the default).
+1. Toggle the Paragon overlay using the hotkey (default **F10**, configurable in *Advanced options*).
 
 **Tips**
+
 - Overlays may not work in exclusive fullscreen; use **borderless windowed** if the overlay does not appear.
 - Planner websites can change over time. If an import/export stops working, it may need an importer update.
 
@@ -131,8 +133,8 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | run_vision_mode              | Hotkey to start/stop vision mode                                                                                                                  |
 | force_refresh_only           | Hotkey to reset all item statuses without running a filter after                                                                                  |
 | exit_key                     | Hotkey to exit d4lf.exe                                                                                                                           |
-| toggle_paragon_overlay       | Hotkey to open/close the Paragon overlay (default: f10)                                                                                          |
-| paragon_overlay_source_dir   | Folder containing Paragon JSON files for the overlay. Leave blank to use the default: `~/.d4lf/paragon`                                          |
+| toggle_paragon_overlay       | Hotkey to open/close the Paragon overlay (default: f10)                                                                                           |
+| paragon_overlay_source_dir   | Folder containing Paragon JSON files for the overlay. Leave blank to use the default: `~/.d4lf/paragon`                                           |
 | log_lvl                      | Logging level. Can be any of [debug, info, warning, error, critical]                                                                              |
 | process_name                 | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted                          |
 | vision_mode_only             | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.                                     |

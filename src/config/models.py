@@ -221,9 +221,7 @@ class AdvancedOptionsModel(_IniBaseModel):
         default="f9", description="Hotkey to enable/disable the vision mode", json_schema_extra={IS_HOTKEY_KEY: "True"}
     )
     toggle_paragon_overlay: str = Field(
-        default="f10",
-        description="Hotkey to open/close the Paragon overlay",
-        json_schema_extra={IS_HOTKEY_KEY: "True"},
+        default="f10", description="Hotkey to open/close the Paragon overlay", json_schema_extra={IS_HOTKEY_KEY: "True"}
     )
     vision_mode_only: bool = Field(
         default=False, description="Only allow vision mode to run. All hotkeys and actions that click will be disabled."

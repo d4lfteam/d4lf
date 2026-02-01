@@ -1,3 +1,4 @@
+import contextlib
 import ctypes
 import logging
 import os
@@ -198,21 +199,18 @@ if __name__ == "__main__":
         preset_path = sys.argv[2] if len(sys.argv) > 2 else None
         try:
             from src.paragon_overlay import run_paragon_overlay
+
             run_paragon_overlay(preset_path)
         except Exception as e:
-            import logging
-
-            logging.getLogger(__name__).exception("Paragon overlay crashed")
+            LOGGER.exception("Paragon overlay crashed")
             if sys.platform == "win32":
-                try:
+                with contextlib.suppress(Exception):
                     ctypes.windll.user32.MessageBoxW(
                         None,
                         f"Paragon overlay ist abgestürzt.\n\nQuelle: {preset_path}\n\nFehler: {e}",
                         "D4LF Paragon Overlay",
                         0,
                     )
-                except Exception:
-                    pass
 
     elif len(sys.argv) > 1 and sys.argv[1] == "--consoleonly":
         # Console-only mode: keep console visible

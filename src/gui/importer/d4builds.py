@@ -30,7 +30,7 @@ from src.gui.importer.common import (
     update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import extract_d4builds_paragon_steps, export_paragon_build_json
+from src.gui.importer.paragon_export import export_paragon_build_json, extract_d4builds_paragon_steps
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
@@ -59,8 +59,10 @@ TEMPERING_ICON_XPATH = ".//*[contains(@src, 'tempering_02.png')]"
 SANCTIFIED_ICON_XPATH = ".//*[contains(@src, 'sanctified_icon.png')]"
 UNIQUE_ICON_XPATH = ".//*[contains(@src, '/Uniques/')]"
 
+
 class D4BuildsException(Exception):
     pass
+
 
 @retry_importer(inject_webdriver=True)
 def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
@@ -212,7 +214,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         add_to_profiles(corrected_file_name)
 
     if config.export_paragon:
-
         steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
         if steps:
             export_paragon_build_json(
@@ -226,6 +227,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
 
     LOGGER.info("Finished")
 
+
 def _corrections(input_str: str) -> str:
     input_str = input_str.lower()
     match input_str:
@@ -236,6 +238,7 @@ def _corrections(input_str: str) -> str:
     if "ranks to" in input_str or "ranks of" in input_str or "ranks" in input_str:
         return input_str.replace("ranks to", "to").replace("ranks of", "to").replace("ranks", "to")
     return input_str
+
 
 def _get_item_slots(data: lxml.html.HtmlElement) -> dict[str, str]:
     result = {}
@@ -253,6 +256,7 @@ def _get_item_slots(data: lxml.html.HtmlElement) -> dict[str, str]:
             unique_name = item.xpath(PAPERDOLL_ITEM_UNIQUE_NAME_XPATH)
             result[slot] = unique_name[0].text if unique_name else ""
     return result
+
 
 def _get_legendary_aspects(data: lxml.html.HtmlElement) -> list[str]:
     result = []
@@ -272,6 +276,7 @@ def _get_legendary_aspects(data: lxml.html.HtmlElement) -> list[str]:
             result.append(aspect_name)
 
     return result
+
 
 if __name__ == "__main__":
     src.logger.setup()
