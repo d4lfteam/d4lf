@@ -417,13 +417,137 @@ def extract_mobalytics_paragon_steps(variant: dict[str, Any]) -> list[list[dict[
     return [boards_out] if boards_out else []
 
 
-def extract_d4builds_paragon_steps(driver: WebDriver, class_name: str = "") -> list[list[dict[str, Any]]]:
+def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[list[dict[str, Any]]]:
+    """Parse D4Builds paragon boards from the currently loaded page."""
+    boards_out: list[dict[str, Any]] = []
+
+    try:
+        board_elements = driver.find_elements(By.CLASS_NAME, "paragon__board")
+    except Exception:
+        LOGGER.debug("Failed to locate D4Builds paragon boards (continuing).", exc_info=True)
+        board_elements = []
+
+    for board_elem in board_elements:
+        name_raw = ""
+        lines: list[str] = []
+        name_display = ""
+
+        try:
+            name_raw = board_elem.find_element(By.CLASS_NAME, "paragon__board__name").get_attribute("innerText") or ""
+            lines = [ln.strip() for ln in name_raw.splitlines() if ln.strip()]
+            # Prefer a line containing letters (sometimes line 1 is a numeric index)
+            name_display = next((ln for ln in lines if any(ch.isalpha() for ch in ln)), (lines[0] if lines else ""))
+        except Exception:
+            name_display = ""
+
+        # Try to infer a stable board id/slug from element attributes (best effort)
+        board_id = ""
+        try:
+            attrs = driver.execute_script(
+                "var a=arguments[0].attributes; var o={}; for (var i=0;i<a.length;i++){o[a[i].name]=a[i].value}; return o;",
+                board_elem,
+            )
+            if isinstance(attrs, dict):
+                for key in ("data-board", "data-board-id", "data-id", "data-name", "data-board-name", "data-boardname"):
+                    v = attrs.get(key)
+                    if isinstance(v, str) and v.strip():
+                        board_id = v.strip()
+                        break
+
+                if not board_id:
+                    for v in attrs.values():
+                        if isinstance(v, str):
+                            vv = v.strip()
+                            if vv and "-" in vv and re.fullmatch(r"[A-Za-z0-9_-]{3,64}", vv):
+                                board_id = vv
+                                break
+        except Exception:
+            LOGGER.debug("Failed to infer board id (continuing).", exc_info=True)
+
+        name_slug = _prefix_with_class_slug(_slugify(board_id or name_display), class_slug)
+        if not name_slug and lines and str(lines[0]).isdigit():
+            name_slug = f"board-{lines[0]}"
+
+        glyph_raw = ""
+        try:
+            glyph_elems = board_elem.find_elements(By.CLASS_NAME, "paragon__board__name__glyph")
+            if glyph_elems:
+                glyph_raw = (glyph_elems[0].get_attribute("innerText") or "").strip()
+        except Exception:
+            LOGGER.debug("Failed to read glyph name (continuing).", exc_info=True)
+
+        glyph_display = glyph_raw.replace("(", "").replace(")", "").strip()
+        glyph_slug = _prefix_with_class_slug(_slugify(glyph_display), class_slug)
+
+        style_str = board_elem.get_attribute("style") or ""
+        rotate_int = 0
+        if "rotate(" in style_str:
+            mm = re.search(r"rotate\(([-\d]+)deg\)", style_str)
+            if mm:
+                try:
+                    rotate_int = int(mm.group(1)) % 360
+                except Exception:
+                    rotate_int = 0
+
+        nodes = [False] * NODES_LEN
+
+        try:
+            tile_elems = board_elem.find_elements(By.CLASS_NAME, "paragon__board__tile")
+        except Exception:
+            tile_elems = []
+
+        for tile in tile_elems:
+            cls = tile.get_attribute("class") or ""
+            if "active" not in cls:
+                continue
+
+            parts = [pp for pp in cls.split() if pp]
+            # Example: "paragon__board__tile r2 c10 active enabled"
+            r_part = next((x for x in parts if x.startswith("r")), "r0")
+            c_part = next((x for x in parts if x.startswith("c")), "c0")
+
+            try:
+                r = int("".join(ch for ch in r_part if ch.isdigit()) or "0")
+                c = int("".join(ch for ch in c_part if ch.isdigit()) or "0")
+            except ValueError:
+                continue
+
+            # Transform coordinates based on rotation (matching Diablo4Companion)
+            x = c
+            y = r
+            if rotate_int == 0:
+                x = x - 1
+                y = y - 1
+            elif rotate_int == 90:
+                x = GRID - r
+                y = c - 1
+            elif rotate_int == 180:
+                x = GRID - c
+                y = GRID - r
+            elif rotate_int == 270:
+                x = r - 1
+                y = GRID - c
+
+            if 0 <= x < GRID and 0 <= y < GRID:
+                nodes[y * GRID + x] = True
+
+        boards_out.append({
+            "Name": name_slug or "paragon-board",
+            "Glyph": glyph_slug,
+            "Rotation": f"{rotate_int}°" if rotate_int in (0, 90, 180, 270) else "0°",
+            "Nodes": nodes,
+        })
+
+    return [boards_out] if boards_out else []
+
+
+def extract_d4builds_paragon_steps(
+    driver: WebDriver, class_name: str = "", *, wait: WebDriverWait | None = None
+) -> list[list[dict[str, Any]]]:
     """Extract paragon boards from D4Builds using Selenium.
 
-    This mimics Diablo4Companion's approach:
-      - wait until the build name input (renameBuild) is populated
-      - click the Paragon tab via the left navigation links (builder__navigation__link)
-      - parse .paragon__board elements and their active tiles
+    This reuses the existing Selenium session/page state created by the importer. We only
+    click/wait for the Paragon tab if boards are not already present in the DOM.
     """
     class_slug = _class_slug_from_name(class_name)
 
@@ -431,20 +555,21 @@ def extract_d4builds_paragon_steps(driver: WebDriver, class_name: str = "") -> l
         msg = "Selenium not available, cannot export D4Builds paragon"
         raise RuntimeError(msg)
 
-    # Wait until build is loaded (renameBuild has a non-empty value)
+    if wait is None:
+        wait = WebDriverWait(driver, 10)
+
+    # Fast path: if boards are already present, don't click/wait again.
     try:
-        wait = WebDriverWait(driver, 20)
-
-        def _has_build_name(drv):
-            try:
-                el = drv.find_element(By.ID, "renameBuild")
-                return bool((el.get_attribute("value") or "").strip())
-            except Exception:
-                return False
-
-        wait.until(_has_build_name)
+        if driver.find_elements(By.CLASS_NAME, "paragon__board"):
+            return _parse_d4builds_paragon_boards(driver, class_slug)
     except Exception:
-        LOGGER.debug("Unable to confirm D4Builds build name (continuing).", exc_info=True)
+        LOGGER.debug("Could not query for existing D4Builds paragon boards (continuing).", exc_info=True)
+
+    # Best effort: ensure the navigation is present before attempting to click Paragon.
+    try:
+        wait.until(lambda d: len(d.find_elements(By.CLASS_NAME, "builder__navigation__link")) > 0)
+    except Exception:
+        LOGGER.debug("Timed out waiting for D4Builds navigation links (continuing).", exc_info=True)
 
     # Switch to Paragon tab (D4Builds uses left navigation links)
     try:
@@ -459,126 +584,14 @@ def extract_d4builds_paragon_steps(driver: WebDriver, class_name: str = "") -> l
     except Exception:
         # Not fatal: sometimes paragon is already visible or site changed
         LOGGER.debug("Could not click Paragon tab (continuing).", exc_info=True)
+
     # Wait for paragon boards to appear (best effort)
     try:
-        wait = WebDriverWait(driver, 10)
         wait.until(lambda d: len(d.find_elements(By.CLASS_NAME, "paragon__board")) > 0)
     except Exception:
         LOGGER.debug("Timed out waiting for D4Builds paragon boards (continuing).", exc_info=True)
 
-    boards_out: list[dict[str, Any]] = []
-    try:
-        board_elements = driver.find_elements(By.CLASS_NAME, "paragon__board")
-    except Exception:
-        board_elements = []
-
-    for board_elem in board_elements:
-        name_raw = ""
-        lines = []
-        name_display = ""
-        try:
-            name_raw = board_elem.find_element(By.CLASS_NAME, "paragon__board__name").get_attribute("innerText") or ""
-            lines = [ln.strip() for ln in (name_raw or "").splitlines() if ln.strip()]
-            # Prefer first line that contains letters (D4Builds sometimes shows just a numeric index on line 1)
-            name_display = next((ln for ln in lines if any(ch.isalpha() for ch in ln)), (lines[0] if lines else ""))
-        except Exception:
-            name_display = ""
-
-        # Try to detect a stable board id/slug from element attributes (best effort)
-        board_id = ""
-        try:
-            attrs = driver.execute_script(
-                "var a=arguments[0].attributes; var o={}; for (var i=0;i<a.length;i++){o[a[i].name]=a[i].value}; return o;",
-                board_elem,
-            )
-            if isinstance(attrs, dict):
-                for key in ("data-board", "data-board-id", "data-id", "data-name", "data-board-name", "data-boardname"):
-                    v = attrs.get(key)
-                    if isinstance(v, str) and v.strip():
-                        board_id = v.strip()
-                        break
-                if not board_id:
-                    for v in attrs.values():
-                        if isinstance(v, str):
-                            vv = v.strip()
-                            if vv and "-" in vv and re.fullmatch(r"[A-Za-z0-9_-]{3,64}", vv):
-                                board_id = vv
-                                break
-        except Exception:
-            LOGGER.debug("Failed to infer board id (continuing).", exc_info=True)
-
-        name_slug = _slugify(board_id or name_display)
-        name_slug = _prefix_with_class_slug(name_slug, class_slug)
-        if not name_slug and lines and str(lines[0]).isdigit():
-            name_slug = f"board-{lines[0]}"
-
-        glyph_raw = ""
-        try:
-            glyph_elems = board_elem.find_elements(By.CLASS_NAME, "paragon__board__name__glyph")
-            if glyph_elems:
-                glyph_raw = (glyph_elems[0].get_attribute("innerText") or "").strip()
-        except Exception:
-            LOGGER.debug("Failed to read glyph name (continuing).", exc_info=True)
-
-        glyph_display = (glyph_raw or "").replace("(", "").replace(")", "").strip()
-        glyph_slug = _slugify(glyph_display)
-        glyph_slug = _prefix_with_class_slug(glyph_slug, class_slug)
-
-        style_str = board_elem.get_attribute("style") or ""
-        rotate_int = 0
-        if "rotate(" in style_str:
-            mm = re.search(r"rotate\(([-\d]+)deg\)", style_str)
-            if mm:
-                try:
-                    rotate_int = int(mm.group(1)) % 360
-                except Exception:
-                    rotate_int = 0
-
-        nodes = [False] * (21 * 21)
-
-        try:
-            tile_elems = board_elem.find_elements(By.CLASS_NAME, "paragon__board__tile")
-        except Exception:
-            tile_elems = []
-
-        for tile in tile_elems:
-            cls = tile.get_attribute("class") or ""
-            if "active" not in cls:
-                continue
-            parts = [pp for pp in cls.split() if pp]
-            # Example: "paragon__board__tile r2 c10 active enabled"
-            r_part = next((x for x in parts if x.startswith("r")), "r0")
-            c_part = next((x for x in parts if x.startswith("c")), "c0")
-            r = int("".join(ch for ch in r_part if ch.isdigit()) or "0")
-            c = int("".join(ch for ch in c_part if ch.isdigit()) or "0")
-
-            # Transform coordinates based on rotation (matching Diablo4Companion)
-            x = c
-            y = r
-            if rotate_int == 0:
-                x = x - 1
-                y = y - 1
-            elif rotate_int == 90:
-                x = 21 - r
-                y = c - 1
-            elif rotate_int == 180:
-                x = 21 - c
-                y = 21 - r
-            elif rotate_int == 270:
-                x = r - 1
-                y = 21 - c
-
-            if 0 <= x < 21 and 0 <= y < 21:
-                nodes[y * 21 + x] = True
-
-        boards_out.append({
-            "Name": name_slug or "paragon-board",
-            "Glyph": glyph_slug,
-            "Rotation": f"{rotate_int}°" if rotate_int in (0, 90, 180, 270) else "0°",
-            "Nodes": nodes,
-        })
-
-    return [boards_out]
+    return _parse_d4builds_paragon_boards(driver, class_slug)
 
 
 # --- Helper functions (ported from Diablo4Companion) ---

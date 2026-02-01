@@ -214,7 +214,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         add_to_profiles(corrected_file_name)
 
     if config.export_paragon:
-        steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
+        steps = extract_d4builds_paragon_steps(driver, class_name=class_name, wait=wait)
         if steps:
             export_paragon_build_json(
                 file_stem=f"{corrected_file_name}_paragon",
