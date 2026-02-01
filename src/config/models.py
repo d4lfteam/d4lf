@@ -180,16 +180,6 @@ class AdvancedOptionsModel(_IniBaseModel):
         description="If TTS is working for you but you are still receiving the warning, check this box to disable it.",
     )
     exit_key: str = Field(default="f12", description="Hotkey to exit d4lf", json_schema_extra={IS_HOTKEY_KEY: "True"})
-    toggle_paragon_overlay: str = Field(
-        default="f10",
-        description="Hotkey to open/close the Paragon overlay",
-        json_schema_extra={IS_HOTKEY_KEY: "True"},
-    )
-    paragon_overlay_source_dir: str = Field(
-        default="",
-        description="Folder containing Paragon JSON files for the Paragon overlay. Leave blank to use the default: ~/.d4lf/paragon",
-        json_schema_extra={HIDE_FROM_GUI_KEY: "True"},
-    )
     fast_vision_mode_coordinates: tuple[int, int] | None = Field(
         default=None,
         description="The top left coordinates of the desired location of the fast vision mode overlay in pixels. For example: (300, 500). Set to blank for default behavior.",
@@ -210,6 +200,11 @@ class AdvancedOptionsModel(_IniBaseModel):
         description="Hotkey to move configured items from stash to inventory",
         json_schema_extra={IS_HOTKEY_KEY: "True"},
     )
+    paragon_overlay_source_dir: str = Field(
+        default="",
+        description="Folder containing Paragon JSON files for the Paragon overlay. Leave blank to use the default: ~/.d4lf/paragon",
+        json_schema_extra={HIDE_FROM_GUI_KEY: "True"},
+    )
     process_name: str = Field(
         default="Diablo IV.exe",
         description="The process that is running Diablo 4. Could help usage when playing through a streaming service like GeForce Now",
@@ -224,6 +219,11 @@ class AdvancedOptionsModel(_IniBaseModel):
     )
     run_vision_mode: str = Field(
         default="f9", description="Hotkey to enable/disable the vision mode", json_schema_extra={IS_HOTKEY_KEY: "True"}
+    )
+    toggle_paragon_overlay: str = Field(
+        default="f10",
+        description="Hotkey to open/close the Paragon overlay",
+        json_schema_extra={IS_HOTKEY_KEY: "True"},
     )
     vision_mode_only: bool = Field(
         default=False, description="Only allow vision mode to run. All hotkeys and actions that click will be disabled."

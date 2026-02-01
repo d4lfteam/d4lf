@@ -23,6 +23,7 @@ from src.gui.importer.common import (
     update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
+from src.gui.importer.paragon_export import extract_maxroll_paragon_steps, export_paragon_build_json
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
 from src.item.descr.text import clean_str, closest_match
@@ -36,10 +37,8 @@ PLANNER_API_BASE_URL = "https://planners.maxroll.gg/profiles/d4/"
 PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?7659ec67"
 PLANNER_BASE_URL = "https://maxroll.gg/d4/planner/"
 
-
 class MaxrollException(Exception):
     pass
-
 
 @retry_importer
 def import_maxroll(config: ImportConfig):
@@ -185,7 +184,6 @@ def import_maxroll(config: ImportConfig):
         add_to_profiles(corrected_file_name)
 
     if config.export_paragon:
-        from src.gui.importer.paragon_export import extract_maxroll_paragon_steps, export_paragon_build_json
 
         steps = extract_maxroll_paragon_steps(active_profile)
         if steps:
@@ -200,7 +198,6 @@ def import_maxroll(config: ImportConfig):
 
     LOGGER.info("Finished")
 
-
 def _corrections(input_str: str) -> str:
     match input_str:
         case "On_Hit_Vulnerable_Proc_Chance":
@@ -208,7 +205,6 @@ def _corrections(input_str: str) -> str:
         case "Movement_Bonus_On_Elite_Kill":
             return "Movement_Speed_Bonus_On_Elite_Kill"
     return input_str
-
 
 def _find_item_affixes(mapping_data: dict, item_affixes: dict, import_greater_affixes=False) -> list[Affix]:
     res = []
@@ -293,7 +289,6 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict, import_greater_af
             break
     return res
 
-
 def _find_legendary_aspect(mapping_data: dict, legendary_aspect: dict) -> str | None:
     if not legendary_aspect:
         return None
@@ -312,7 +307,6 @@ def _find_legendary_aspect(mapping_data: dict, legendary_aspect: dict) -> str | 
         return None
 
     return None
-
 
 def _attr_desc_special_handling(affix_id: str) -> str:
     match affix_id:
@@ -335,7 +329,6 @@ def _attr_desc_special_handling(affix_id: str) -> str:
         case _:
             return ""
 
-
 def _unique_name_special_handling(unique_name: str) -> str:
     match unique_name:
         case "[PH] Season 7 Necro Pants":
@@ -345,7 +338,6 @@ def _unique_name_special_handling(unique_name: str) -> str:
         case _:
             return unique_name.replace("\xa0", " ")
 
-
 def _find_item_type(mapping_data: dict, value: str) -> ItemType | None:
     for d_key, d_value in mapping_data.items():
         if d_key == value:
@@ -354,7 +346,6 @@ def _find_item_type(mapping_data: dict, value: str) -> ItemType | None:
                 return None
             return res
     return None
-
 
 def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int]:
     planner_suffix = url.split(PLANNER_BASE_URL)
@@ -374,7 +365,6 @@ def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int]:
             raise MaxrollException(msg) from exc
         data_id = json.loads(r.json()["data"])["activeProfile"]
     return PLANNER_API_BASE_URL + planner_id, data_id
-
 
 def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int]:
     try:
@@ -397,7 +387,6 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int]:
         LOGGER.exception(msg)
         raise MaxrollException(msg) from ex
     return PLANNER_API_BASE_URL + planner_id, data_id
-
 
 if __name__ == "__main__":
     src.logger.setup()

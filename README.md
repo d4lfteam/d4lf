@@ -16,9 +16,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Automatically marks all common, magic, and optionally rare gear as junk
 - Quickly move items from your stash or inventory
 - Supported resolutions are all aspect ratios between 16:10 and 21:9
-- Export Paragon boards to overlay-compatible JSON from supported build planners (optional)
-- Integrated Paragon Overlay (toggle via hotkey; supports loading a single JSON file or a folder)
-- Multi-build Paragon overlay: load multiple JSONs and switch builds inside the overlay
+- Paragon Overlay with optional import from supported build planners (Mobalytics, Maxroll, D4Builds)
 
 ## How to Setup
 
@@ -50,60 +48,20 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Use the hotkeys listed in d4lf.exe to run filtering. By default, F11 will run the loot filter and filter your items.
 - For most common issues, if something is wrong, you will see an error or warning when you start d4lf.exe. Join our [discord](https://discord.gg/YyzaPhAN6T) for more help.
 
-#### Paragon Import/Export + Integrated Paragon Overlay (this fork)
+#### Paragon overlay
 
-This fork adds Paragon board export during build import and an integrated Win32 overlay to display Paragon boards in-game.
+D4LF can import Paragon boards from supported build planners and show them in-game using the Paragon overlay.
 
-This is **best-effort** scraping: planner websites can change their HTML and break an importer. If an import suddenly fails, it usually needs a scraper update.
+**How to use**
+1. Import your build from a supported planner (Mobalytics / Maxroll / D4Builds).
+2. Enable **Export Paragon JSON** in the importer (optional) and choose a Paragon folder (or leave the default).
+3. Toggle the Paragon overlay using the hotkey (default **F10**, configurable in *Advanced options*).
 
-Exported JSON uses **friendly slugs** (Mobalytics-style, class-prefixed where possible) for board and glyph identifiers to keep names consistent across sources.
-
-**Export Paragon JSON while importing a build**
-
-- Open **Import** in the GUI.
-- Paste a build link (Mobalytics / Maxroll / D4Builds).
-- Enable **"Export Paragon JSON"**.
-- Click **Generate**.
-- The JSON is written to **`<user_dir>/paragon`** (default: `C:/Users/<WINDOWS_USER>/.d4lf/paragon`).
-
-**Select your Paragon JSON folder**
-
-- In the main GUI, click **"Paragon Folder"**.
-- Choose the folder that contains your `*.json` Paragon files.
-- This sets `advanced_options.paragon_overlay_source_dir` in `params.ini`.
-
-**Toggle the overlay**
-
-- Press **F10** (config key: `advanced_options.toggle_paragon_overlay`).
-  - First press: starts the overlay
-  - Second press: closes the overlay
-
-**Run overlay directly (optional CLI mode)**
-
-- `d4lf.exe --paragon-overlay "C:\\path\\to\\file.json"`
-- `d4lf.exe --paragon-overlay "C:\\path\\to\\folder_with_jsons"`
-
-Notes:
-- Borderless windowed is recommended; exclusive fullscreen overlays may not show.
-- If the overlay opens off-screen, delete `d4_overlay_config.json` next to `d4lf.exe` to reset window position.
-
-### Updating an existing installation
-
-All configurations are stored in a separate location so all you need to do is download the newest version and delete your old version. This can be done manually by downloading from the [releases page](https://github.com/d4lfteam/d4lf/releases) or by running autoupdater.bat.
-
-Your profiles and configuration should continue to work. The only exception to this is if the major version of the release changes. In that case, a change was made that will make previous profiles no longer work.
-
-Example 1: You're on version 5.1.14 and updating to 5.2.0. Your profiles will continue to work fine.
-
-Example 2: You're on version 5.1.14 and updating to 6.0.0. Your profiles will no longer work and you'll need to update or re-import them on the newest version.
+**Tips**
+- Overlays may not work in exclusive fullscreen; use **borderless windowed** if the overlay does not appear.
+- Planner websites can change over time. If an import/export stops working, it may need an importer update.
 
 ### Common problems
-
-- Paragon overlay does not appear / does nothing
-  - Ensure Diablo IV is running in **borderless windowed** (exclusive fullscreen may block overlays).
-  - Ensure your Paragon folder contains `*.json` files (default: `C:/Users/<WINDOWS_USER>/.d4lf/paragon`).
-  - Check/adjust `advanced_options.toggle_paragon_overlay` (default `f10`) and ensure it is not conflicting with other hotkeys.
-  - If the overlay is off-screen, delete `d4_overlay_config.json` next to `d4lf.exe` to reset its position.
 
 - The GUI crashes immediately upon opening, with no error message given
   - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
@@ -198,6 +156,12 @@ Current functionality:
 - A beta version of a manual profile editor/creator
 
 Each window gives further instructions on how to use it and what kind of input it expects.
+
+- Paragon overlay does not appear / does nothing
+  - Ensure Diablo IV is running in **borderless windowed** (exclusive fullscreen may block overlays).
+  - Ensure your Paragon folder contains `*.json` files (default: `C:/Users/<WINDOWS_USER>/.d4lf/paragon`).
+  - Check/adjust `advanced_options.toggle_paragon_overlay` (default `f10`) and ensure it is not conflicting with other hotkeys.
+  - If the overlay is off-screen, delete `d4_overlay_config.json` next to `d4lf.exe` to reset its position.
 
 ## How to filter / Profiles
 

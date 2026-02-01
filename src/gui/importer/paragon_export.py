@@ -44,6 +44,9 @@ NODES_LEN = GRID * GRID
 # Used to export Paragon JSON with readable identifiers (similar to Mobalytics).
 # ---------------------------------------------------------------------------
 
+# NOTE: These IDs come from Maxroll. If they change, we fall back to using the raw ID.
+# Consider resolving board/glyph metadata via d4data in the future.
+
 _MAXROLL_BOARD_ID_TO_NAME = {
     "Paragon_Barb_00": "Start",
     "Paragon_Barb_01": "Hemorrhage",
