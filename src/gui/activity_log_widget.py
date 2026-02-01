@@ -33,7 +33,7 @@ class ActivityLogWidget(QWidget):
         config = IniConfigLoader()
 
         hotkey_text = QLabel()
-        hotkey_text.setMaximumHeight(65)
+        hotkey_text.setMaximumHeight(85)
         hotkey_text.setWordWrap(True)
         hotkey_text.setTextFormat(Qt.TextFormat.RichText)
         hotkey_text.setStyleSheet("margin-left: 5px;")
@@ -55,6 +55,7 @@ class ActivityLogWidget(QWidget):
             hotkeys_html += f"<u><b>{config.advanced_options.run_vision_mode.upper()}</b></u>: Run/Stop Vision Mode<br>"
             hotkeys_html += "<span style='font-style: italic;'>Vision Mode Only - clicking functionality disabled</span>&nbsp;&nbsp;&nbsp;"
 
+        hotkeys_html += f"<u><b>{config.advanced_options.toggle_paragon_overlay.upper()}</b></u>: Toggle Paragon Overlay&nbsp;&nbsp;&nbsp;"
         hotkeys_html += f"<u><b>{config.advanced_options.exit_key.upper()}</b></u>: Exit D4LF"
         hotkeys_html += "</div>"
 
@@ -77,9 +78,15 @@ class ActivityLogWidget(QWidget):
         self.editor_btn.setMinimumHeight(40)
         button_layout.addWidget(self.editor_btn)
 
+        self.paragon_overlay_btn = QPushButton("Paragon Folder")
+        self.paragon_overlay_btn.setMinimumHeight(40)
+        self.paragon_overlay_btn.setToolTip("Select the folder containing Paragon JSON files for the overlay")
+        button_layout.addWidget(self.paragon_overlay_btn)
+
         # === CONNECT BUTTONS TO UnifiedMainWindow ===
         self.import_btn.clicked.connect(self.parent().open_import_dialog)
         self.settings_btn.clicked.connect(self.parent().open_settings_dialog)
         self.editor_btn.clicked.connect(self.parent().open_profile_editor)
+        self.paragon_overlay_btn.clicked.connect(self.parent().open_paragon_overlay)
 
         self.main_layout.addLayout(button_layout)

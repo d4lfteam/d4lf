@@ -54,6 +54,7 @@ def main():
     table = BeautifulTable()
     table.set_style(BeautifulTable.STYLE_BOX_ROUNDED)
     table.rows.append([IniConfigLoader().advanced_options.run_vision_mode, "Run/Stop Vision Mode"])
+    table.rows.append([IniConfigLoader().advanced_options.toggle_paragon_overlay, "Toggle Paragon Overlay"])
 
     if not IniConfigLoader().advanced_options.vision_mode_only:
         table.rows.append([IniConfigLoader().advanced_options.run_filter, "Run/Stop Auto Filter"])
@@ -186,6 +187,32 @@ if __name__ == "__main__":
     elif len(sys.argv) > 1 and sys.argv[1] == "--autoupdatepost":
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=True)
         start_auto_update(postprocess=True)
+
+    elif len(sys.argv) > 1 and sys.argv[1] == "--paragon-overlay":
+        # Run integrated Win32 Paragon overlay (separate mode).
+        running_from_source = not getattr(sys, "frozen", False)
+        if not running_from_source:
+            hide_console()
+        # Minimal logger setup (keeps behavior consistent when run from source)
+        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=running_from_source)
+        preset_path = sys.argv[2] if len(sys.argv) > 2 else None
+        try:
+            from src.paragon_overlay import run_paragon_overlay
+            run_paragon_overlay(preset_path)
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).exception("Paragon overlay crashed")
+            if sys.platform == "win32":
+                try:
+                    ctypes.windll.user32.MessageBoxW(
+                        None,
+                        f"Paragon overlay ist abgestürzt.\n\nQuelle: {preset_path}\n\nFehler: {e}",
+                        "D4LF Paragon Overlay",
+                        0,
+                    )
+                except Exception:
+                    pass
 
     elif len(sys.argv) > 1 and sys.argv[1] == "--consoleonly":
         # Console-only mode: keep console visible

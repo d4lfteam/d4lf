@@ -1,6 +1,7 @@
 import logging
 import re
 import sys
+import subprocess
 import time
 from contextlib import suppress
 from pathlib import Path
@@ -9,6 +10,7 @@ from PyQt6.QtCore import QObject, QPoint, QSettings, QSize, Qt, QThread, pyqtSig
 from PyQt6.QtGui import QIcon, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
+    QFileDialog,
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
@@ -179,14 +181,22 @@ class UnifiedMainWindow(QMainWindow):
         theme_name = getattr(config.general, "theme", None) or "dark"
         stylesheet = DARK_THEME if theme_name == "dark" else LIGHT_THEME
         QApplication.instance().setStyleSheet(stylesheet)
-
         # --- Logging setup ---
         running_from_source = not getattr(sys, "frozen", False)
-        setup_logging(enable_stdout=running_from_source)
         root_logger = logging.getLogger()
 
-        # Remove existing handlers, but keep stdout handler if running from source
+        # Ensure file logging stays enabled. unified_window previously removed all handlers (including the file handler),
+        # which stopped live log writing to d4lf/logs.
+        if not any(getattr(h, "name", "") == "D4LF_FILE" for h in root_logger.handlers):
+            setup_logging(
+                log_level=config.advanced_options.log_lvl.value,
+                enable_stdout=running_from_source,
+            )
+
+        # Remove existing handlers, but keep file handler and (optionally) stdout when running from source
         for h in list(root_logger.handlers):
+            if getattr(h, "name", "") == "D4LF_FILE":
+                continue  # Keep file logging
             if running_from_source and isinstance(h, logging.StreamHandler) and h.stream == sys.stdout:
                 continue  # Keep stdout handler for IDE terminal
             root_logger.removeHandler(h)
@@ -326,7 +336,43 @@ class UnifiedMainWindow(QMainWindow):
         except Exception as e:
             LOGGER.error(f"Failed to open profile editor: {e}")
 
+    def open_paragon_overlay(self):
+        """Select the folder that contains Paragon JSON files for the overlay.
+
+        This does NOT start the overlay. Use the Paragon hotkey (Advanced Options → Toggle Paragon Overlay)
+        to open/close it.
+        """
+        try:
+            config = IniConfigLoader()
+            # Use last saved folder if present, otherwise default to ~/.d4lf/paragon
+            saved = getattr(config.advanced_options, "paragon_overlay_source_dir", "") or ""
+            default_dir = Path(saved).expanduser() if str(saved).strip() else (Path(config.user_dir) / "paragon")
+            default_dir.mkdir(parents=True, exist_ok=True)
+
+            folder = QFileDialog.getExistingDirectory(
+                self,
+                "Select Paragon folder (source for Paragon overlay JSON files)",
+                str(default_dir),
+            )
+            if not folder:
+                return
+
+            # Persist selection
+            config.save_value("advanced_options", "paragon_overlay_source_dir", folder)
+
+            hotkey = getattr(config.advanced_options, "toggle_paragon_overlay", "f10").upper()
+            LOGGER.info(f"Paragon folder set to: {folder}. Use {hotkey} to toggle the overlay.")
+            QMessageBox.information(
+                self,
+                "Paragon Folder Set",
+                f"Paragon folder saved:\n{folder}\n\nUse {hotkey} to open/close the Paragon overlay.",
+            )
+        except Exception as e:
+            LOGGER.error(f"Failed to set Paragon folder: {e}")
+            QMessageBox.critical(self, "Paragon Folder Error", str(e))
+
     def restore_geometry(self):
+
         settings = QSettings("d4lf", "mainwindow")
 
         size = settings.value("size", QSize(1000, 800))

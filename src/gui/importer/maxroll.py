@@ -184,6 +184,20 @@ def import_maxroll(config: ImportConfig):
     if config.add_to_profiles:
         add_to_profiles(corrected_file_name)
 
+    if config.export_paragon:
+        from src.gui.importer.paragon_export import extract_maxroll_paragon_steps, export_paragon_build_json
+
+        steps = extract_maxroll_paragon_steps(active_profile)
+        if steps:
+            export_paragon_build_json(
+                file_stem=f"{corrected_file_name}_paragon",
+                build_name=build_name,
+                source_url=url,
+                paragon_boards_list=steps,
+            )
+        else:
+            LOGGER.warning("Paragon export enabled, but no paragon steps were found in this Maxroll profile.")
+
     LOGGER.info("Finished")
 
 
@@ -396,6 +410,7 @@ if __name__ == "__main__":
             add_to_profiles=False,
             import_greater_affixes=True,
             require_greater_affixes=True,
+            export_paragon=False,
             custom_file_name=None,
         )
         import_maxroll(config)

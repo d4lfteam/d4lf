@@ -9,4 +9,5 @@ class ImportConfig:
     add_to_profiles: bool
     import_greater_affixes: bool
     require_greater_affixes: bool
+    export_paragon: bool
     custom_file_name: str | None

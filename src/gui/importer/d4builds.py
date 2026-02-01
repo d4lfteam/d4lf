@@ -212,6 +212,21 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
     if config.add_to_profiles:
         add_to_profiles(corrected_file_name)
+
+    if config.export_paragon:
+        from src.gui.importer.paragon_export import extract_d4builds_paragon_steps, export_paragon_build_json
+
+        steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
+        if steps:
+            export_paragon_build_json(
+                file_stem=f"{corrected_file_name}_paragon",
+                build_name=file_name,
+                source_url=url,
+                paragon_boards_list=steps,
+            )
+        else:
+            LOGGER.warning("Paragon export enabled, but no paragon data was found on this D4Builds page.")
+
     LOGGER.info("Finished")
 
 
@@ -276,6 +291,7 @@ if __name__ == "__main__":
             add_to_profiles=False,
             import_greater_affixes=True,
             require_greater_affixes=True,
+            export_paragon=False,
             custom_file_name=None,
         )
         import_d4builds(config)

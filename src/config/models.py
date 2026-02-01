@@ -180,6 +180,16 @@ class AdvancedOptionsModel(_IniBaseModel):
         description="If TTS is working for you but you are still receiving the warning, check this box to disable it.",
     )
     exit_key: str = Field(default="f12", description="Hotkey to exit d4lf", json_schema_extra={IS_HOTKEY_KEY: "True"})
+    toggle_paragon_overlay: str = Field(
+        default="f10",
+        description="Hotkey to open/close the Paragon overlay",
+        json_schema_extra={IS_HOTKEY_KEY: "True"},
+    )
+    paragon_overlay_source_dir: str = Field(
+        default="",
+        description="Folder containing Paragon JSON files for the Paragon overlay. Leave blank to use the default: ~/.d4lf/paragon",
+        json_schema_extra={HIDE_FROM_GUI_KEY: "True"},
+    )
     fast_vision_mode_coordinates: tuple[int, int] | None = Field(
         default=None,
         description="The top left coordinates of the desired location of the fast vision mode overlay in pixels. For example: (300, 500). Set to blank for default behavior.",
@@ -223,6 +233,7 @@ class AdvancedOptionsModel(_IniBaseModel):
     def key_must_be_unique(self) -> AdvancedOptionsModel:
         keys = [
             self.exit_key,
+            self.toggle_paragon_overlay,
             self.force_refresh_only,
             self.move_to_chest,
             self.move_to_inv,
@@ -237,6 +248,7 @@ class AdvancedOptionsModel(_IniBaseModel):
 
     @field_validator(
         "exit_key",
+        "toggle_paragon_overlay",
         "force_refresh_only",
         "move_to_chest",
         "move_to_inv",

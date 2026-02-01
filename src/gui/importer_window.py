@@ -107,6 +107,13 @@ class ImporterWindow(QMainWindow):
             "false",
         )
 
+        self.export_paragon_checkbox = self._generate_checkbox(
+            "Export Paragon JSON",
+            "export_paragon",
+            "Export paragon boards to a JSON file (D4Companion/d4.py compatible). Output: <user_dir>/paragon",
+            "false",
+        )
+
         # GA dependency logic
         def disable_require_if_import_disabled():
             if not self.import_gas_checkbox.isChecked():
@@ -135,6 +142,7 @@ class ImporterWindow(QMainWindow):
         checkbox_hbox = QHBoxLayout()
         checkbox_hbox.addWidget(self.import_gas_checkbox)
         checkbox_hbox.addWidget(self.require_all_gas_checkbox)
+        checkbox_hbox.addWidget(self.export_paragon_checkbox)
         layout.addLayout(checkbox_hbox)
 
         # Generate button
@@ -223,6 +231,7 @@ class ImporterWindow(QMainWindow):
             self.add_to_profiles_checkbox.isChecked(),
             self.import_gas_checkbox.isChecked(),
             self.require_all_gas_checkbox.isChecked(),
+            self.export_paragon_checkbox.isChecked(),
             custom_filename,
         )
 
