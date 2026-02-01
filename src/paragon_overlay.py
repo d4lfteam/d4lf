@@ -754,6 +754,22 @@ def WndProcGrid(hwnd, msg, wparam, lparam):
     return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
 
+def request_close() -> None:
+    """Best-effort request to close the overlay windows.
+
+    This is used when the overlay is run in-process (e.g., from a background thread).
+    """
+    st = globals().get("state")
+    if st is None:
+        return
+
+    wm_close = 0x0010
+    for hwnd in (getattr(st, "hwnd_list", None), getattr(st, "hwnd_grid", None)):
+        if hwnd:
+            with contextlib.suppress(Exception):
+                user32.PostMessageW(hwnd, wm_close, 0, 0)
+
+
 def run_paragon_overlay(preset_path: str | None = None) -> None:
     global state
     preset = preset_path or (sys.argv[1] if len(sys.argv) > 1 else "AffixPresets-v2.json")

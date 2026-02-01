@@ -1,4 +1,3 @@
-import contextlib
 import ctypes
 import logging
 import os
@@ -188,29 +187,6 @@ if __name__ == "__main__":
     elif len(sys.argv) > 1 and sys.argv[1] == "--autoupdatepost":
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=True)
         start_auto_update(postprocess=True)
-
-    elif len(sys.argv) > 1 and sys.argv[1] == "--paragon-overlay":
-        # Run integrated Win32 Paragon overlay (separate mode).
-        running_from_source = not getattr(sys, "frozen", False)
-        if not running_from_source:
-            hide_console()
-        # Minimal logger setup (keeps behavior consistent when run from source)
-        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=running_from_source)
-        preset_path = sys.argv[2] if len(sys.argv) > 2 else None
-        try:
-            from src.paragon_overlay import run_paragon_overlay
-
-            run_paragon_overlay(preset_path)
-        except Exception as e:
-            LOGGER.exception("Paragon overlay crashed")
-            if sys.platform == "win32":
-                with contextlib.suppress(Exception):
-                    ctypes.windll.user32.MessageBoxW(
-                        None,
-                        f"Paragon overlay ist abgestürzt.\n\nQuelle: {preset_path}\n\nFehler: {e}",
-                        "D4LF Paragon Overlay",
-                        0,
-                    )
 
     elif len(sys.argv) > 1 and sys.argv[1] == "--consoleonly":
         # Console-only mode: keep console visible

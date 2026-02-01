@@ -1,4 +1,5 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget
 
 from src.config.loader import IniConfigLoader
@@ -78,15 +79,19 @@ class ActivityLogWidget(QWidget):
         self.editor_btn.setMinimumHeight(40)
         button_layout.addWidget(self.editor_btn)
 
-        self.paragon_overlay_btn = QPushButton("Paragon Folder")
-        self.paragon_overlay_btn.setMinimumHeight(40)
-        self.paragon_overlay_btn.setToolTip("Select the folder containing Paragon JSON files for the overlay")
-        button_layout.addWidget(self.paragon_overlay_btn)
+        self.user_dir_btn = QPushButton("Open User Config")
+        self.user_dir_btn.setMinimumHeight(40)
+        self.user_dir_btn.setToolTip("Open the D4LF user config directory")
+        button_layout.addWidget(self.user_dir_btn)
 
         # === CONNECT BUTTONS TO UnifiedMainWindow ===
         self.import_btn.clicked.connect(self.parent().open_import_dialog)
         self.settings_btn.clicked.connect(self.parent().open_settings_dialog)
         self.editor_btn.clicked.connect(self.parent().open_profile_editor)
-        self.paragon_overlay_btn.clicked.connect(self.parent().open_paragon_overlay)
+        self.user_dir_btn.clicked.connect(self._open_user_dir)
 
         self.main_layout.addLayout(button_layout)
+
+    def _open_user_dir(self) -> None:
+        user_dir = IniConfigLoader().user_dir
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(user_dir)))

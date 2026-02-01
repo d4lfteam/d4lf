@@ -110,7 +110,7 @@ class ImporterWindow(QMainWindow):
         self.export_paragon_checkbox = self._generate_checkbox(
             "Export Paragon JSON",
             "export_paragon",
-            "Export paragon boards to a JSON file (D4Companion/d4.py compatible). Output: <user_dir>/paragon",
+            "Export paragon boards to a JSON file for the integrated Paragon overlay. Output: <user_dir>/paragon",
             "false",
         )
 

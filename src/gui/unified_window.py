@@ -9,7 +9,6 @@ from PyQt6.QtCore import QObject, QPoint, QSettings, QSize, Qt, QThread, pyqtSig
 from PyQt6.QtGui import QIcon, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
-    QFileDialog,
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
@@ -331,39 +330,6 @@ class UnifiedMainWindow(QMainWindow):
             self._show_singleton_modal("_profile_editor_window", ProfileEditorWindow)
         except Exception as e:
             LOGGER.error(f"Failed to open profile editor: {e}")
-
-    def open_paragon_overlay(self):
-        """Select the folder that contains Paragon JSON files for the overlay.
-
-        This does NOT start the overlay. Use the Paragon hotkey (Advanced Options → Toggle Paragon Overlay)
-        to open/close it.
-        """
-        try:
-            config = IniConfigLoader()
-            # Use last saved folder if present, otherwise default to ~/.d4lf/paragon
-            saved = getattr(config.advanced_options, "paragon_overlay_source_dir", "") or ""
-            default_dir = Path(saved).expanduser() if str(saved).strip() else (Path(config.user_dir) / "paragon")
-            default_dir.mkdir(parents=True, exist_ok=True)
-
-            folder = QFileDialog.getExistingDirectory(
-                self, "Select Paragon folder (source for Paragon overlay JSON files)", str(default_dir)
-            )
-            if not folder:
-                return
-
-            # Persist selection
-            config.save_value("advanced_options", "paragon_overlay_source_dir", folder)
-
-            hotkey = getattr(config.advanced_options, "toggle_paragon_overlay", "f10").upper()
-            LOGGER.info(f"Paragon folder set to: {folder}. Use {hotkey} to toggle the overlay.")
-            QMessageBox.information(
-                self,
-                "Paragon Folder Set",
-                f"Paragon folder saved:\n{folder}\n\nUse {hotkey} to open/close the Paragon overlay.",
-            )
-        except Exception as e:
-            LOGGER.error(f"Failed to set Paragon folder: {e}")
-            QMessageBox.critical(self, "Paragon Folder Error", str(e))
 
     def restore_geometry(self):
 

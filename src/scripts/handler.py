@@ -1,10 +1,9 @@
 import logging
-import subprocess
 import sys
 import threading
 import time
 import typing
-from contextlib import ExitStack, contextmanager, suppress
+from contextlib import suppress
 from pathlib import Path
 
 if sys.platform != "darwin":
@@ -24,31 +23,22 @@ from src.utils.custom_mouse import mouse
 from src.utils.process_handler import kill_thread, safe_exit
 from src.utils.window import screenshot
 
+if sys.platform == "win32":
+    from src.paragon_overlay import request_close, run_paragon_overlay
+else:
+    request_close = None  # type: ignore[assignment]
+    run_paragon_overlay = None  # type: ignore[assignment]
+
 LOGGER = logging.getLogger(__name__)
 
 LOCK = threading.Lock()
 
 
-@contextmanager
-def _open_append_log(path: Path):
-    """Open a log file for append.
-
-    Args:
-        path: Path to the log file.
-
-    Yields:
-        An open text file handle in append mode.
-    """
-    with path.open("a", encoding="utf-8", errors="ignore") as f:
-        yield f
-
-
 class ScriptHandler:
     def __init__(self):
         self.loot_interaction_thread = None
-        self.paragon_overlay_proc = None
-        self._paragon_overlay_log = None
-        self._paragon_overlay_log_stack: ExitStack | None = None
+        self.paragon_overlay_thread: threading.Thread | None = None
+        self._vision_mode_was_running_before_overlay = False
         if IniConfigLoader().general.vision_mode_type == VisionModeType.fast:
             self.vision_mode = src.scripts.vision_mode_fast.VisionModeFast()
         else:
@@ -62,22 +52,15 @@ class ScriptHandler:
         safe_exit()
 
     def toggle_paragon_overlay(self):
-        """Toggle the Paragon overlay process (start if not running, stop if running)."""
+        """Toggle the Paragon overlay thread (start if not running, request close if running)."""
         try:
-            # If already running -> stop it
-            if self.paragon_overlay_proc is not None and self.paragon_overlay_proc.poll() is None:
+            if self.paragon_overlay_thread is not None and self.paragon_overlay_thread.is_alive():
                 LOGGER.info("Closing Paragon overlay")
                 with suppress(Exception):
-                    self.paragon_overlay_proc.terminate()
-                with suppress(Exception):
-                    self.paragon_overlay_proc.wait(timeout=2)
-                self.paragon_overlay_proc = None
-                with suppress(Exception):
-                    if self._paragon_overlay_log_stack is not None:
-                        self._paragon_overlay_log_stack.close()
-                self._paragon_overlay_log_stack = None
-                self._paragon_overlay_log = None
-                self._paragon_overlay_log = None
+                    if request_close is not None:
+                        request_close()
+                self.paragon_overlay_thread.join(timeout=2)
+                # Vision mode is restored by the overlay thread cleanup.
                 return
 
             config = IniConfigLoader()
@@ -93,61 +76,37 @@ class ScriptHandler:
                     f"No Paragon JSON files found in {overlay_dir}. Import a build first or place *.json files there."
                 )
 
-            # Build command to launch overlay mode
-            if getattr(sys, "frozen", False):
-                cmd = [sys.executable, "--paragon-overlay", str(overlay_dir)]
-                cwd = str(Path(sys.executable).parent)
-            else:
-                # From source: ensure project root is cwd so `-m src.main` works reliably
-                project_root = Path(__file__).resolve().parents[2]
-                cmd = [sys.executable, "-m", "src.main", "--paragon-overlay", str(overlay_dir)]
-                cwd = str(project_root)
+            # Disable vision mode while the overlay is active; restore it when the overlay closes.
+            self._vision_mode_was_running_before_overlay = self.vision_mode.running()
+            if self._vision_mode_was_running_before_overlay:
+                self.vision_mode.stop()
 
-            creationflags = 0
-            startupinfo = None
-            if sys.platform == "win32":
-                creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-                try:
-                    startupinfo = subprocess.STARTUPINFO()
-                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                except Exception:
-                    startupinfo = None
-
-            LOGGER.info(f"Opening Paragon overlay (source: {overlay_dir})")
-            # Capture any overlay errors in a log file (important when console is hidden)
-            log_path = overlay_dir / "paragon_overlay.log"
-            with suppress(Exception):
-                if self._paragon_overlay_log_stack is not None:
-                    self._paragon_overlay_log_stack.close()
-            self._paragon_overlay_log_stack = ExitStack()
-            try:
-                self._paragon_overlay_log = self._paragon_overlay_log_stack.enter_context(_open_append_log(log_path))
-            except OSError:
-                self._paragon_overlay_log = None
-                with suppress(Exception):
-                    self._paragon_overlay_log_stack.close()
-                self._paragon_overlay_log_stack = None
-
-            self.paragon_overlay_proc = subprocess.Popen(
-                cmd,
-                cwd=cwd,
-                stdout=self._paragon_overlay_log or subprocess.DEVNULL,
-                stderr=self._paragon_overlay_log or subprocess.DEVNULL,
-                creationflags=creationflags,
-                startupinfo=startupinfo,
+            LOGGER.info("Opening Paragon overlay (source: %s)", overlay_dir)
+            self.paragon_overlay_thread = threading.Thread(
+                target=self._run_paragon_overlay, args=(str(overlay_dir),), daemon=True
             )
-
-            # If it exits immediately, surface the issue in the D4LF log.
-            time.sleep(0.2)
-            if self.paragon_overlay_proc.poll() is not None:
-                LOGGER.error(
-                    "Paragon overlay exited immediately (code=%s). See log: %s",
-                    self.paragon_overlay_proc.returncode,
-                    log_path,
-                )
+            self.paragon_overlay_thread.start()
 
         except Exception:
             LOGGER.exception("Failed to toggle Paragon overlay")
+
+    def _run_paragon_overlay(self, preset_path: str) -> None:
+        try:
+            if run_paragon_overlay is None:  # pragma: no cover
+                LOGGER.warning("Paragon overlay is not supported on this platform")
+                return
+            run_paragon_overlay(preset_path)
+        except Exception:
+            LOGGER.exception("Paragon overlay crashed")
+        finally:
+            # Overlay has stopped (or failed to start). Restore vision mode if we stopped it.
+            try:
+                if self._vision_mode_was_running_before_overlay and not self.vision_mode.running():
+                    self.vision_mode.start()
+            except Exception:
+                LOGGER.exception("Failed to restore vision mode after Paragon overlay")
+            finally:
+                self.paragon_overlay_thread = None
 
     def setup_key_binds(self):
         keyboard.add_hotkey(IniConfigLoader().advanced_options.run_vision_mode, lambda: self.run_vision_mode())
