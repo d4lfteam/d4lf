@@ -1,275 +1,128 @@
-# Integrated into D4LF as src.paragon_overlay
-# Original file: d4.py (Win32 layered window Paragon overlay)
-# Entry: run_paragon_overlay(preset_path)
+"""Paragon overlay (tkinter).
 
-# d4_paragon_overlay_v14_fix_button.py
-#
-# Features:
-#   - FIX: Start/Stop Button is now ALWAYS visible (drawn on top of header)
-#   - EXIT BUTTON (Right side of hint bar)
-#   - MENU POSITION: Top-Left (0,0)
-#   - THICK GOLD FRAME
-#   - ALWAYS ON TOP
-#   - 64-Bit Safe
-#
-# Controls:
-#   [Top-Left Button]: Toggle Start/Stop
-#   [Red 'EXIT' Button]: Close App
-#   [Build Header]: Switch Build
-#   [Scroll Wheel]: Zoom
-#   [Drag]: Move
+Refactor goals (per maintainer review):
+- Use tkinter Canvas (no Win32/ctypes/user32/gdi32/PIL overlay).
+- Route scaling/resolution through existing Cam + ResManager.
+- Keep code small and consistent with the codebase style.
+"""
 
-import contextlib
-import ctypes
-import ctypes.wintypes as wt
+from __future__ import annotations
+
 import json
 import logging
 import re
 import sys
+import tkinter as tk
+from contextlib import suppress
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from PIL import Image, ImageDraw, ImageFont
+from src.cam import Cam
+from src.config.ui import ResManager
 
-try:
-    from ruamel.yaml import YAML as RUAMEL_YAML
-except ImportError:  # pragma: no cover
-    RUAMEL_YAML = None
-
-try:
-    import yaml as PyYAML
-except ImportError:  # pragma: no cover
-    PyYAML = None
-
-try:
-    from src.config.loader import IniConfigLoader
-except ImportError:  # pragma: no cover
-    IniConfigLoader = None
-
-
-# --- HARDENED WIN32 DEFINITIONS (64-BIT SAFE) ---
-user32 = ctypes.WinDLL("user32", use_last_error=True)
-gdi32 = ctypes.WinDLL("gdi32", use_last_error=True)
-kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-
-# Explicit types
-HANDLE = ctypes.c_void_p
-HWND = ctypes.c_void_p
-HDC = ctypes.c_void_p
-HBITMAP = ctypes.c_void_p
-HGDIOBJ = ctypes.c_void_p
-HICON = ctypes.c_void_p
-HCURSOR = ctypes.c_void_p
-HBRUSH = ctypes.c_void_p
-HMENU = ctypes.c_void_p
-HINSTANCE = ctypes.c_void_p
-LPVOID = ctypes.c_void_p
-LPARAM = ctypes.c_longlong
-WPARAM = ctypes.c_ulonglong
-LRESULT = ctypes.c_longlong
-
-WNDPROCTYPE = ctypes.WINFUNCTYPE(LRESULT, HWND, wt.UINT, WPARAM, LPARAM)
-
-
-class WNDCLASSW(ctypes.Structure):
-    _fields_ = [
-        ("style", wt.UINT),
-        ("lpfnWndProc", WNDPROCTYPE),
-        ("cbClsExtra", ctypes.c_int),
-        ("cbWndExtra", ctypes.c_int),
-        ("hInstance", HINSTANCE),
-        ("hIcon", HICON),
-        ("hCursor", HCURSOR),
-        ("hbrBackground", HBRUSH),
-        ("lpszMenuName", wt.LPCWSTR),
-        ("lpszClassName", wt.LPCWSTR),
-    ]
-
-
-class BLENDFUNCTION(ctypes.Structure):
-    _fields_ = [
-        ("BlendOp", wt.BYTE),
-        ("BlendFlags", wt.BYTE),
-        ("SourceConstantAlpha", wt.BYTE),
-        ("AlphaFormat", wt.BYTE),
-    ]
-
-
-class BITMAPINFOHEADER(ctypes.Structure):
-    _fields_ = [
-        ("biSize", wt.DWORD),
-        ("biWidth", wt.LONG),
-        ("biHeight", wt.LONG),
-        ("biPlanes", wt.WORD),
-        ("biBitCount", wt.WORD),
-        ("biCompression", wt.DWORD),
-        ("biSizeImage", wt.DWORD),
-        ("biXPelsPerMeter", wt.LONG),
-        ("biYPelsPerMeter", wt.LONG),
-        ("biClrUsed", wt.DWORD),
-        ("biClrImportant", wt.DWORD),
-    ]
-
-
-class BITMAPINFO(ctypes.Structure):
-    _fields_ = [("bmiHeader", BITMAPINFOHEADER), ("bmiColors", ctypes.c_ulong * 3)]
-
-
-# --- API Signatures ---
-kernel32.GetModuleHandleW.argtypes = [wt.LPCWSTR]
-kernel32.GetModuleHandleW.restype = HINSTANCE
-user32.RegisterClassW.argtypes = [ctypes.POINTER(WNDCLASSW)]
-user32.RegisterClassW.restype = wt.ATOM
-user32.CreateWindowExW.argtypes = [
-    wt.DWORD,
-    wt.LPCWSTR,
-    wt.LPCWSTR,
-    wt.DWORD,
-    ctypes.c_int,
-    ctypes.c_int,
-    ctypes.c_int,
-    ctypes.c_int,
-    HWND,
-    HMENU,
-    HINSTANCE,
-    LPVOID,
-]
-user32.CreateWindowExW.restype = HWND
-user32.DefWindowProcW.argtypes = [HWND, wt.UINT, WPARAM, LPARAM]
-user32.DefWindowProcW.restype = LRESULT
-user32.UpdateLayeredWindow.argtypes = [
-    HWND,
-    HDC,
-    ctypes.POINTER(wt.POINT),
-    ctypes.POINTER(wt.SIZE),
-    HDC,
-    ctypes.POINTER(wt.POINT),
-    wt.COLORREF,
-    ctypes.POINTER(BLENDFUNCTION),
-    wt.DWORD,
-]
-user32.UpdateLayeredWindow.restype = wt.BOOL
-user32.GetDC.argtypes = [HWND]
-user32.GetDC.restype = HDC
-user32.ReleaseDC.argtypes = [HWND, HDC]
-user32.ReleaseDC.restype = ctypes.c_int
-user32.PostQuitMessage.argtypes = [ctypes.c_int]
-user32.PostQuitMessage.restype = None
-user32.SetFocus.argtypes = [HWND]
-user32.SetFocus.restype = HWND
-user32.GetKeyState.argtypes = [ctypes.c_int]
-user32.GetKeyState.restype = wt.SHORT
-user32.GetSystemMetrics.argtypes = [ctypes.c_int]
-user32.GetSystemMetrics.restype = ctypes.c_int
-user32.LoadCursorW.argtypes = [HINSTANCE, wt.LPCWSTR]
-user32.LoadCursorW.restype = HCURSOR
-user32.GetMessageW.argtypes = [ctypes.POINTER(wt.MSG), HWND, wt.UINT, wt.UINT]
-user32.GetMessageW.restype = wt.BOOL
-user32.TranslateMessage.argtypes = [ctypes.POINTER(wt.MSG)]
-user32.TranslateMessage.restype = wt.BOOL
-user32.DispatchMessageW.argtypes = [ctypes.POINTER(wt.MSG)]
-user32.DispatchMessageW.restype = LRESULT
-user32.SetCapture.argtypes = [HWND]
-user32.SetCapture.restype = HWND
-user32.ReleaseCapture.argtypes = []
-user32.ReleaseCapture.restype = wt.BOOL
-user32.GetCursorPos.argtypes = [ctypes.POINTER(wt.POINT)]
-user32.GetCursorPos.restype = wt.BOOL
-user32.SetCursor.argtypes = [HCURSOR]
-user32.SetCursor.restype = HCURSOR
-user32.SetWindowPos.argtypes = [HWND, HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wt.UINT]
-user32.SetWindowPos.restype = wt.BOOL
-
-gdi32.CreateCompatibleDC.argtypes = [HDC]
-gdi32.CreateCompatibleDC.restype = HDC
-gdi32.SelectObject.argtypes = [HDC, HGDIOBJ]
-gdi32.SelectObject.restype = HGDIOBJ
-gdi32.DeleteDC.argtypes = [HDC]
-gdi32.DeleteDC.restype = wt.BOOL
-gdi32.DeleteObject.argtypes = [HGDIOBJ]
-gdi32.DeleteObject.restype = wt.BOOL
-gdi32.CreateDIBSection.argtypes = [
-    HDC,
-    ctypes.POINTER(BITMAPINFO),
-    wt.UINT,
-    ctypes.POINTER(ctypes.c_void_p),
-    HANDLE,
-    wt.DWORD,
-]
-gdi32.CreateDIBSection.restype = HBITMAP
-
-# --- Constants ---
-WS_POPUP = 0x80000000
-WS_VISIBLE = 0x10000000
-WS_EX_TOPMOST = 0x00000008
-WS_EX_LAYERED = 0x00080000
-WS_EX_TOOLWINDOW = 0x00000080
-ULW_ALPHA = 0x00000002
-AC_SRC_OVER = 0x00
-AC_SRC_ALPHA = 0x01
-BI_RGB = 0
-WM_DESTROY = 0x0002
-WM_LBUTTONDOWN = 0x0201
-WM_LBUTTONUP = 0x0202
-WM_MOUSEMOVE = 0x0200
-WM_MOUSEWHEEL = 0x020A
-WM_KEYDOWN = 0x0100
-WM_NCHITTEST = 0x0084
-HTCLIENT = 1
-VK_LEFT, VK_UP, VK_RIGHT, VK_DOWN = 0x25, 0x26, 0x27, 0x28
-VK_SHIFT = 0x10
-IDC_ARROW = 32512
-IDC_SIZEALL = 32646
-
-HWND_TOPMOST = ctypes.c_void_p(-1)
-SWP_NOMOVE = 0x0002
-SWP_NOSIZE = 0x0001
-SWP_NOACTIVATE = 0x0010
-
-# --- Logic & Data ---
-GRID = 21
-PANEL_W = 600
-ITEM_H = 34
-HEADER_H = 80
-
-# Colors
-C_GRID_LINE = (80, 80, 80, 60)
-C_GRID_FRAME = (217, 143, 57, 240)
-C_GRID_FRAME_BG = (0, 0, 0, 150)
-C_NODE_ACTIVE = (0, 255, 60, 220)
-C_NODE_PATH = (0, 200, 50, 160)
-C_ACTION_BG = (50, 60, 80, 220)
-C_ITEM_BG = (30, 30, 30, 200)
-C_ITEM_BORDER = (80, 80, 80, 255)
-C_TEXT = (240, 240, 240, 255)
-C_TEXT_DIM = (180, 180, 180, 255)
-C_GOLD = (217, 143, 57, 255)
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
 
 LOGGER = logging.getLogger(__name__)
 
-
-def _msgbox(title: str, text: str) -> None:
-    """Show a Windows message box. Safe no-op on non-Windows."""
-    with contextlib.suppress(Exception):
-        if sys.platform == "win32":
-            user32.MessageBoxW(None, str(text), str(title), 0)
+GRID = 21  # 21x21 nodes
 
 
-def get_xy(lparam):
-    return (lparam & 0xFFFF), ((lparam >> 16) & 0xFFFF)
+# ----------------------------
+# Data loading / normalization
+# ----------------------------
+def _iter_entries(data: Any) -> Iterable[dict[str, Any]]:
+    if isinstance(data, dict):
+        yield data
+        return
+    if isinstance(data, list):
+        for it in data:
+            if isinstance(it, dict):
+                yield it
+
+
+def _normalize_steps(raw_list: Any) -> list[list[dict[str, Any]]]:
+    if not isinstance(raw_list, list) or not raw_list:
+        return []
+    if isinstance(raw_list[0], list):
+        return [step for step in raw_list if isinstance(step, list) and step]
+    return [raw_list]
+
+
+def load_builds_from_path(preset_path: str) -> list[dict[str, Any]]:
+    p = Path(preset_path)
+
+    msg_not_found = "Preset file/folder not found"
+    if not p.exists():
+        raise ValueError(msg_not_found)
+
+    files: list[Path]
+    if p.is_dir():
+        files = sorted(p.glob("*.json"), key=lambda fp: fp.stat().st_mtime, reverse=True)
+        msg_no_files = "Folder contains no supported preset files (*.json)"
+        if not files:
+            raise ValueError(msg_no_files)
+
+        builds: list[dict[str, Any]] = []
+        for fp in files:
+            try:
+                builds.extend(_load_builds_from_file(fp, name_tag=fp.stem, profile=fp.stem))
+            except Exception:
+                LOGGER.debug("Skipping invalid paragon preset JSON: %s", fp, exc_info=True)
+
+        msg_no_builds = "No valid builds found in folder"
+        if not builds:
+            raise ValueError(msg_no_builds)
+        return builds
+
+    return _load_builds_from_file(p, profile=p.stem)
+
+
+def _load_builds_from_file(
+    preset_file: Path, *, name_tag: str | None = None, profile: str | None = None
+) -> list[dict[str, Any]]:
+    with preset_file.open(encoding="utf-8") as f:
+        data = json.load(f)
+
+    builds: list[dict[str, Any]] = []
+    for entry in _iter_entries(data):
+        base_name = entry.get("Name") or entry.get("name") or "Unknown Build"
+        steps = _normalize_steps(entry.get("ParagonBoardsList", []))
+        if not steps:
+            continue
+
+        # Expose steps as separate builds; final step first.
+        for idx in range(len(steps) - 1, -1, -1):
+            boards = steps[idx]
+            step_name = base_name
+            if len(steps) > 1:
+                step_name = f"{base_name} - Step {idx + 1}"
+            if name_tag:
+                step_name = f"{step_name} [{name_tag}]"
+
+            builds.append({"name": step_name, "boards": boards, "profile": profile})
+
+    if not builds:
+        msg_no_valid = f"No valid builds in {preset_file}"
+        raise ValueError(msg_no_valid)
+
+    return builds
 
 
 def parse_rotation(rot_str: str) -> int:
     m = re.search(r"(\d+)", rot_str or "")
     deg = int(m.group(1)) if m else 0
-    return deg % 360 if deg % 360 in (0, 90, 180, 270) else 0
+    deg = deg % 360
+    return deg if deg in (0, 90, 180, 270) else 0
 
 
-def nodes_to_grid(nodes_441):
+def nodes_to_grid(nodes_441: list[int] | list[bool]) -> list[list[bool]]:
+    # 21*21 = 441
     return [[bool(nodes_441[y * GRID + x]) for x in range(GRID)] for y in range(GRID)]
 
 
-def rotate_grid(grid, deg: int):
+def rotate_grid(grid: list[list[bool]], deg: int) -> list[list[bool]]:
     if deg == 90:
         return [list(reversed(col)) for col in zip(*grid, strict=True)]
     if deg == 180:
@@ -279,698 +132,345 @@ def rotate_grid(grid, deg: int):
     return grid
 
 
-def _iter_entries(data):
-    """Yield build-like dicts from JSON that can be either a list[dict] or a dict."""
-    if isinstance(data, dict):
-        yield data
-    elif isinstance(data, list):
-        for it in data:
-            if isinstance(it, dict):
-                yield it
+# ----------------------------
+# Overlay UI
+# ----------------------------
+@dataclass(slots=True)
+class OverlayConfig:
+    cell_size: int = 24
+    panel_w: int = 420
+    poll_ms: int = 350  # watch Cam/ResManager changes without custom callbacks
+
+
+class ParagonOverlay(tk.Toplevel):
+    """A simple tkinter Canvas overlay for Paragon board visualization."""
+
+    def __init__(
+        self,
+        parent: tk.Misc,
+        builds: list[dict[str, Any]],
+        *,
+        cfg: OverlayConfig | None = None,
+        on_close: Callable[[], None] | None = None,
+    ) -> None:
+        super().__init__(parent)
+
+        self._cfg = cfg or OverlayConfig()
+        self._on_close = on_close
 
-
-def _normalize_steps(raw_list):
-    """Normalize ParagonBoardsList to a list of steps, each step being a list[board]."""
-    if not isinstance(raw_list, list) or not raw_list:
-        return []
-    # If first element is a list, assume list-of-steps.
-    if isinstance(raw_list[0], list):
-        return [step for step in raw_list if isinstance(step, list) and step]
-    # Otherwise assume a single step list-of-boards.
-    return [raw_list]
-
-
-def _load_builds_from_file(preset_file: str, name_tag: str | None = None, profile: str | None = None):
-    """Load one JSON file and return a list of builds in overlay format: {name, boards}.
-
-    Supports:
-      - D4LF paragon exports (JSON list with single entry)
-      - AffixPresets-v2 style (JSON list with many entries)
-      - A single dict payload
-    Also expands multi-step ParagonBoardsList into multiple selectable builds.
-    """
-    with Path(preset_file).open(encoding="utf-8") as f:
-        data = json.load(f)
-
-    builds = []
-    for entry in _iter_entries(data):
-        base_name = entry.get("Name") or entry.get("name") or "Unknown Build"
-        steps = _normalize_steps(entry.get("ParagonBoardsList", []))
-        if not steps:
-            continue
-
-        # If there are multiple steps, expose them as separate selectable builds.
-        # For planners that provide many incremental steps (e.g., Maxroll), it's more useful to start on the FINAL step.
-        for idx in range(len(steps) - 1, -1, -1):
-            boards = steps[idx]
-            step_no = idx + 1
-            step_name = base_name
-            if len(steps) > 1:
-                step_name = f"{base_name} - Step {step_no}"
-            if name_tag:
-                step_name = f"{step_name} [{name_tag}]"
-            builds.append({"name": step_name, "boards": boards, "profile": profile})
-
-    if not builds:
-        msg = f"No valid builds in {preset_file}"
-        raise ValueError(msg)
-
-    return builds
-
-
-def load_builds_from_path(preset_path: str):
-    """Load builds from a JSON preset or from a folder of profile/preset files.
-
-    Supported inputs:
-      - a single JSON preset file (legacy)
-      - a single YAML profile file (contains a top-level `Paragon:` payload)
-      - a directory containing *.yaml/*.yml profiles and/or *.json presets
-
-    If the directory is the d4lf profiles folder, we try to only load active profiles (general.profiles).
-    """
-
-    def _load_profile_paragon(fp: Path) -> dict[str, Any] | None:
-        try:
-            with fp.open("r", encoding="utf-8") as f:
-                if RUAMEL_YAML is not None:
-                    y = RUAMEL_YAML(typ="safe")
-                    data = y.load(f) or {}
-                elif PyYAML is not None:
-                    data = PyYAML.safe_load(f) or {}
-                else:  # pragma: no cover
-                    return None
-        except Exception:
-            LOGGER.debug("Skipping invalid YAML profile: %s", fp, exc_info=True)
-            return None
-        if not isinstance(data, dict):
-            return None
-        par = data.get("Paragon")
-        if not isinstance(par, dict):
-            return None
-        if not par.get("ParagonBoardsList"):
-            return None
-        return par
-
-    p = Path(preset_path)
-
-    # Determine active profile stems (best effort)
-    active_stems: set[str] | None = None
-    try:
-        if IniConfigLoader is not None:
-            cfg = IniConfigLoader()
-            gp = getattr(cfg, "general", None)
-            profs = getattr(gp, "profiles", None) if gp is not None else None
-            if isinstance(profs, list) and profs:
-                active_stems = {Path(x).stem for x in profs}
-    except Exception:
-        active_stems = None
-
-    if p.is_dir():
-        files: list[Path] = []
-        files.extend(p.glob("*.yaml"))
-        files.extend(p.glob("*.yml"))
-        files.extend(p.glob("*.json"))
-
-        files = sorted(files, key=lambda fp: fp.stat().st_mtime, reverse=True)
-
-        # If we know which profiles are active, prefer those (for YAML profiles only)
-        if active_stems:
-            yaml_files = [fp for fp in files if fp.suffix.lower() in {".yaml", ".yml"}]
-            json_files = [fp for fp in files if fp.suffix.lower() == ".json"]
-            filtered_yaml = [fp for fp in yaml_files if fp.stem in active_stems]
-            files = (filtered_yaml or yaml_files) + json_files
-
-        if not files:
-            msg = "Folder contains no supported preset/profile files"
-            raise ValueError(msg)
-
-        builds: list[dict[str, Any]] = []
-
-        for fp in files:
-            if fp.suffix.lower() == ".json":
-                try:
-                    builds.extend(_load_builds_from_file(str(fp), name_tag=fp.stem, profile=fp.stem))
-                except json.JSONDecodeError, OSError, KeyError, TypeError, ValueError:
-                    LOGGER.debug("Skipping invalid paragon preset JSON: %s", fp, exc_info=True)
-                continue
-
-            # YAML profile
-            par = _load_profile_paragon(fp)
-            if not par:
-                continue
-
-            base_name = par.get("Name") or fp.stem
-            steps = _normalize_steps(par.get("ParagonBoardsList", []))
-            if not steps:
-                continue
-
-            # Expose steps as separate selectable builds, final step first
-            for idx in range(len(steps) - 1, -1, -1):
-                boards = steps[idx]
-                step_no = idx + 1
-                step_name = base_name
-                if len(steps) > 1:
-                    step_name = f"{base_name} - Step {step_no}"
-                step_name = f"{step_name} [{fp.stem}]"
-                builds.append({"name": step_name, "boards": boards, "profile": fp.stem})
-
-        if not builds:
-            msg = "No valid builds found in folder"
-            raise ValueError(msg)
-
-        return builds
-
-    # Single file
-    if not p.exists():
-        msg = "Preset file not found"
-        raise ValueError(msg)
-
-    if p.suffix.lower() in {".yaml", ".yml"}:
-        par = _load_profile_paragon(p)
-        if not par:
-            msg = "No paragon data found in profile"
-            raise ValueError(msg)
-        base_name = par.get("Name") or p.stem
-        steps = _normalize_steps(par.get("ParagonBoardsList", []))
-        if not steps:
-            msg = "No paragon steps found in profile"
-            raise ValueError(msg)
-        builds: list[dict[str, Any]] = []
-        for idx in range(len(steps) - 1, -1, -1):
-            boards = steps[idx]
-            step_no = idx + 1
-            step_name = base_name
-            if len(steps) > 1:
-                step_name = f"{base_name} - Step {step_no}"
-            builds.append({"name": step_name, "boards": boards, "profile": p.stem})
-        return builds
-
-    return _load_builds_from_file(str(p), profile=p.stem)
-
-
-def get_font(size: int = 14, bold: bool = False):
-    font_name = "arialbd.ttf" if bold else "arial.ttf"
-    try:
-        return ImageFont.truetype(font_name, size)
-    except OSError:
-        return ImageFont.load_default()
-
-
-FONT_HEADER = get_font(16, bold=True)
-FONT_ITEM = get_font(13, bold=True)
-FONT_SMALL = get_font(11, bold=False)
-
-
-def render_grid_window(board, cell_size):
-    rot_deg = parse_rotation(board.get("Rotation", "0°"))
-    grid = rotate_grid(nodes_to_grid(board["Nodes"]), rot_deg)
-    grid_px = GRID * cell_size
-
-    img = Image.new("RGBA", (grid_px + 30, grid_px + 30), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    gx0, gy0 = 15, 15
-    half_cell = cell_size // 2
-
-    # 1. Background Grid
-    for i in range(GRID + 1):
-        p = i * cell_size
-        d.line([(gx0, gy0 + p), (gx0 + grid_px, gy0 + p)], fill=C_GRID_LINE, width=1)
-        d.line([(gx0 + p, gy0), (gx0 + p, gy0 + grid_px)], fill=C_GRID_LINE, width=1)
-
-    # 2. Draw Paths
-    path_width = max(2, cell_size // 6)
-    for y in range(GRID):
-        for x in range(GRID):
-            if grid[y][x]:
-                cx, cy = gx0 + x * cell_size + half_cell, gy0 + y * cell_size + half_cell
-                if x + 1 < GRID and grid[y][x + 1]:
-                    nx, ny = gx0 + (x + 1) * cell_size + half_cell, cy
-                    d.line([(cx, cy), (nx, ny)], fill=C_NODE_PATH, width=path_width)
-                if y + 1 < GRID and grid[y + 1][x]:
-                    nx, ny = cx, gy0 + (y + 1) * cell_size + half_cell
-                    d.line([(cx, cy), (nx, ny)], fill=C_NODE_PATH, width=path_width)
-
-    # 3. Draw Nodes
-    inset = max(3, cell_size // 4)
-    for y in range(GRID):
-        for x in range(GRID):
-            if grid[y][x]:
-                px, py = gx0 + x * cell_size, gy0 + y * cell_size
-                d.rectangle(
-                    (px + inset, py + inset, px + cell_size - inset, py + cell_size - inset),
-                    fill=C_NODE_ACTIVE,
-                    outline=None,
-                )
-                d.rectangle(
-                    (px + inset, py + inset, px + cell_size - inset, py + cell_size - inset),
-                    outline=(200, 255, 200, 100),
-                    width=1,
-                )
-
-    # 4. THICK Outer Frame
-    frame_thick = 5
-    d.rectangle(
-        (gx0 - 1, gy0 - 1, gx0 + grid_px + 1, gy0 + grid_px + 1), outline=C_GRID_FRAME_BG, width=frame_thick + 2
-    )
-    d.rectangle((gx0, gy0, gx0 + grid_px, gy0 + grid_px), outline=C_GRID_FRAME, width=frame_thick)
-
-    return img
-
-
-def render_list_window(state):
-    minimized = state.minimized
-    selecting = state.selecting_build
-
-    # 1. PREPARE TOGGLE BUTTON
-    btn_rect = [2, 2, 26, 26]
-    if minimized:
-        fill_col = (200, 50, 50)  # Red
-        symbol = "\u2716"  # X
-        txt_offset = (6, 5)
-    else:
-        fill_col = (50, 200, 50)  # Green
-        symbol = "\u2714"  # Check
-        txt_offset = (6, 5)
-
-    # 2. IF MINIMIZED -> DRAW ONLY BUTTON AND RETURN
-    if minimized:
-        img = Image.new("RGBA", (PANEL_W, 30), (0, 0, 0, 1))
-        d = ImageDraw.Draw(img)
-        d.rectangle(btn_rect, fill=fill_col, outline=(200, 200, 200))
-        d.text(txt_offset, symbol, fill=(255, 255, 255, 255), font=FONT_ITEM)
-        return img
-
-    # 3. IF OPEN -> DRAW CONTENT
-    if selecting:
-        data, title = state.builds, "Select Build (Click to cancel)"
-        active_idx = state.current_build_idx
-    else:
-        data, title = state.boards, state.build_name + " \u25bc"
-        active_idx = state.selected
-
-    rows = len(data)
-    total_h = HEADER_H + (rows * (ITEM_H + 4)) + 10
-
-    img = Image.new("RGBA", (PANEL_W, total_h), (0, 0, 0, 1))
-    d = ImageDraw.Draw(img)
-
-    # Header Background
-    d.rectangle((0, 0, PANEL_W, HEADER_H), fill=C_ACTION_BG if selecting else C_ITEM_BG)
-    d.text((35, 10), title, fill=C_TEXT, font=FONT_HEADER)
-
-    # Hint Box
-    d.rectangle((0, 50, PANEL_W - 5, 85), fill=C_ITEM_BG, outline=C_ITEM_BORDER, width=1)
-    hint = f"Found {len(data)} builds" if selecting else "click on golden frame= Zoom: Mousewheel | Move: Drag Grid"
-    d.text((12, 58), hint, fill=C_GOLD, font=FONT_SMALL)
-
-    # EXIT BUTTON (Right side)
-    exit_rect = [PANEL_W - 35, 55, PANEL_W - 10, 80]
-    d.rectangle(exit_rect, fill=(180, 0, 0), outline=(200, 200, 200))
-    d.text((PANEL_W - 30, 59), "EXIT", fill=(255, 255, 255), font=get_font(9, True))
-
-    d.line([(0, HEADER_H), (PANEL_W, HEADER_H)], fill=C_GOLD, width=1)
-
-    # List Items
-    y_start = HEADER_H + 10
-    for i, item in enumerate(data):
-        label = item["name"] if selecting else f"{item.get('Name', '?')} ({item.get('Rotation', '0')})"
-        if not selecting and item.get("Glyph"):
-            label += f" ({item.get('Glyph')})"
-
-        y = y_start + i * (ITEM_H + 4)
-        bg, border, txt = C_ITEM_BG, C_ITEM_BORDER, C_TEXT_DIM
-
-        if i == active_idx:
-            bg, border, txt = (40, 35, 20, 220), C_GOLD, C_TEXT
-        elif i == state.hover:
-            border, txt = (150, 150, 150, 255), C_TEXT
-
-        d.rectangle((0, y, PANEL_W - 5, y + ITEM_H), fill=bg, outline=border, width=1)
-        d.text((10, y + (ITEM_H - 13) // 2 - 2), label, fill=txt, font=FONT_ITEM)
-
-    # 4. DRAW TOGGLE BUTTON LAST (So it sits ON TOP of Header)
-    d.rectangle(btn_rect, fill=fill_col, outline=(200, 200, 200))
-    d.text(txt_offset, symbol, fill=(255, 255, 255, 255), font=FONT_ITEM)
-
-    return img
-
-
-def pil_to_hbitmap(pil_img):
-    img = pil_img.convert("RGBA")
-    w, h = img.size
-    bmi = BITMAPINFO()
-    bmi.bmiHeader.biSize = ctypes.sizeof(BITMAPINFOHEADER)
-    bmi.bmiHeader.biWidth, bmi.bmiHeader.biHeight = w, -h
-    bmi.bmiHeader.biPlanes, bmi.bmiHeader.biBitCount = 1, 32
-    bmi.bmiHeader.biCompression = BI_RGB
-    bits = ctypes.c_void_p()
-    hdc_screen = user32.GetDC(None)
-    hbmp = gdi32.CreateDIBSection(hdc_screen, ctypes.byref(bmi), 0, ctypes.byref(bits), None, 0)
-    user32.ReleaseDC(None, hdc_screen)
-    ctypes.memmove(bits, img.tobytes("raw", "BGRA"), w * h * 4)
-    return hbmp
-
-
-def update_window(hwnd, img, x, y):
-    hbmp = pil_to_hbitmap(img)
-    hdc_screen = user32.GetDC(None)
-    hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
-    old = gdi32.SelectObject(hdc_mem, hbmp)
-    pt_dst, sz, pt_src = wt.POINT(x, y), wt.SIZE(img.width, img.height), wt.POINT(0, 0)
-    blend = BLENDFUNCTION(AC_SRC_OVER, 0, 255, AC_SRC_ALPHA)
-    user32.UpdateLayeredWindow(
-        hwnd,
-        hdc_screen,
-        ctypes.byref(pt_dst),
-        ctypes.byref(sz),
-        hdc_mem,
-        ctypes.byref(pt_src),
-        0,
-        ctypes.byref(blend),
-        ULW_ALPHA,
-    )
-
-    # Always On Top
-    user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)
-
-    gdi32.SelectObject(hdc_mem, old)
-    gdi32.DeleteObject(hbmp)
-    gdi32.DeleteDC(hdc_mem)
-    user32.ReleaseDC(None, hdc_screen)
-
-
-class AppState:
-    def __init__(self, builds):
         self.builds = builds
         self.current_build_idx = 0
-        self.update_current_build_data()
-        self.selected = 0
-        self.hover = -1
-        self.selecting_build = False
-        self.hwnd_grid = None
-        self.hwnd_list = None
-        self.grid_pos = (450, 60)
-        self.list_pos = (0, 0)
-        self.cell_size = 28
-        self.minimized = False
-        self.grid_cache = {}
-        self.dragging = False
-        self.drag_start = (0, 0)
-        self.drag_offset = (0, 0)
-        self.load_config()
+        self.boards = self.builds[0]["boards"] if self.builds else []
+        self.selected_board_idx = 0
 
-    def update_current_build_data(self):
-        cur = self.builds[self.current_build_idx]
-        self.build_name, self.boards = cur["name"], cur["boards"]
-        self.grid_cache = {}
+        self._last_res: tuple[int, int] | None = None
+        self._last_roi: tuple[int, int, int, int] | None = None
 
-    def load_config(self):
-        cfg_path = Path(CONFIG_FILE)
-        if not cfg_path.exists():
+        self.title("D4LF Paragon Overlay")
+        self.attributes("-topmost", True)
+
+        # "Overlay-like" appearance (best-effort on Windows).
+        self.configure(bg="#ff00ff")
+        with suppress(tk.TclError):
+            self.overrideredirect(True)
+        with suppress(tk.TclError):
+            self.wm_attributes("-transparentcolor", "#ff00ff")
+
+        self.protocol("WM_DELETE_WINDOW", self.close)
+
+        self._build_ui()
+        self._bind_events()
+
+        self._apply_geometry()
+        self._refresh_lists()
+        self.redraw()
+
+        # Poll resolution/ROI changes (ResManager has no callback API).
+        self.after(self._cfg.poll_ms, self._poll_state)
+
+    # -------- UI layout --------
+    def _build_ui(self) -> None:
+        outer = tk.Frame(self, bg="#ff00ff")
+        outer.pack(fill="both", expand=True)
+
+        # left panel
+        self.left = tk.Frame(outer, width=self._cfg.panel_w, bg="#1b1b1b")
+        self.left.pack(side="left", fill="y")
+
+        header = tk.Frame(self.left, bg="#222")
+        header.pack(fill="x")
+
+        self.btn_close = tk.Button(header, text="EXIT", command=self.close)
+        self.btn_close.pack(side="right", padx=6, pady=6)
+
+        self.lbl_title = tk.Label(header, text="Paragon Overlay", fg="#eee", bg="#222")
+        self.lbl_title.pack(side="left", padx=8)
+
+        self.build_list = tk.Listbox(self.left, activestyle="none")
+        self.build_list.pack(fill="x", padx=8, pady=(6, 8))
+
+        self.board_list = tk.Listbox(self.left, activestyle="none")
+        self.board_list.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+
+        footer = tk.Frame(self.left, bg="#222")
+        footer.pack(fill="x")
+        self.lbl_hint = tk.Label(footer, text="Wheel: zoom | Drag grid: move window", fg="#cfa15b", bg="#222")
+        self.lbl_hint.pack(side="left", padx=8, pady=6)
+
+        # right: canvas
+        self.right = tk.Frame(outer, bg="#000")
+        self.right.pack(side="right", fill="both", expand=True)
+
+        self.canvas = tk.Canvas(self.right, highlightthickness=0, bg="#000")
+        self.canvas.pack(fill="both", expand=True)
+
+    def _bind_events(self) -> None:
+        self.build_list.bind("<<ListboxSelect>>", self._on_select_build)
+        self.board_list.bind("<<ListboxSelect>>", self._on_select_board)
+
+        # zoom
+        self.canvas.bind("<MouseWheel>", self._on_mousewheel)
+        self.canvas.bind("<Button-4>", self._on_mousewheel)  # linux
+        self.canvas.bind("<Button-5>", self._on_mousewheel)
+
+        # drag window
+        self.canvas.bind("<ButtonPress-1>", self._on_drag_start)
+        self.canvas.bind("<B1-Motion>", self._on_drag_move)
+
+    # -------- polling / state --------
+    def _poll_state(self) -> None:
+        try:
+            res = self._get_resolution()
+            roi = self._get_roi()
+
+            changed = (res != self._last_res) or (roi != self._last_roi)
+            if changed:
+                self._apply_geometry()
+                self.redraw()
+
+            self._last_res = res
+            self._last_roi = roi
+        except Exception:
+            LOGGER.debug("Overlay poll failed", exc_info=True)
+        finally:
+            self.after(self._cfg.poll_ms, self._poll_state)
+
+    # -------- handlers --------
+    def _on_select_build(self, _: Any) -> None:
+        sel = self._get_listbox_index(self.build_list)
+        if sel is None:
+            return
+        self.current_build_idx = sel
+        self.boards = self.builds[sel]["boards"]
+        self.selected_board_idx = 0
+        self._refresh_lists()
+        self.redraw()
+
+    def _on_select_board(self, _: Any) -> None:
+        sel = self._get_listbox_index(self.board_list)
+        if sel is None:
+            return
+        self.selected_board_idx = sel
+        self.redraw()
+
+    def _on_mousewheel(self, e: tk.Event) -> None:
+        delta = 0
+        if getattr(e, "delta", 0):
+            delta = 1 if e.delta > 0 else -1
+        elif getattr(e, "num", 0) in (4, 5):
+            delta = 1 if e.num == 4 else -1
+
+        if not delta:
             return
 
+        new_size = max(10, min(80, self._cfg.cell_size + (2 * delta)))
+        if new_size != self._cfg.cell_size:
+            self._cfg.cell_size = new_size
+            self.redraw()
+
+    def _on_drag_start(self, e: tk.Event) -> None:
+        self._drag_start_xy = (e.x_root, e.y_root)
+        self._drag_start_geo = (self.winfo_x(), self.winfo_y())
+
+    def _on_drag_move(self, e: tk.Event) -> None:
+        sx, sy = self._drag_start_xy
+        gx, gy = self._drag_start_geo
+        dx = e.x_root - sx
+        dy = e.y_root - sy
+        self.geometry(f"+{gx + dx}+{gy + dy}")
+
+    # -------- helpers --------
+    @staticmethod
+    def _get_listbox_index(lb: tk.Listbox) -> int | None:
+        cur = lb.curselection()
+        return int(cur[0]) if cur else None
+
+    def _get_resolution(self) -> tuple[int, int]:
+        # ResManager.resolution -> (w, h) based on active res key.
         try:
-            with cfg_path.open(encoding="utf-8") as f:
-                cfg = json.load(f)
-        except OSError, json.JSONDecodeError, ValueError:
+            w, h = ResManager().resolution[:2]
+            return (int(w), int(h))
+        except Exception:
+            return (self.winfo_screenwidth(), self.winfo_screenheight())
+
+    def _get_roi(self) -> tuple[int, int, int, int] | None:
+        try:
+            roi = Cam().window_roi
+        except Exception:
+            return None
+        if not roi or len(roi) < 4:
+            return None
+        x, y, w, h = roi[:4]
+        return (int(x), int(y), int(w), int(h))
+
+    def _apply_geometry(self) -> None:
+        # Prefer ROI (game window) size/position if present; else use screen resolution.
+        res_w, res_h = self._get_resolution()
+        roi = self._get_roi()
+
+        if roi is not None:
+            roi_x, roi_y, roi_w, roi_h = roi
+            # Attach overlay near the game window top-left; keep a small offset.
+            x0, y0 = roi_x + 20, roi_y + 20
+            available_w = max(800, roi_w - 40)
+            available_h = max(600, roi_h - 40)
+        else:
+            x0, y0 = 20, 20
+            available_w = res_w
+            available_h = res_h
+
+        grid_w = min(760, max(480, available_w - self._cfg.panel_w - 80))
+        grid_h = min(760, max(480, available_h - 120))
+        total_w = self._cfg.panel_w + grid_w
+        total_h = grid_h
+
+        self.geometry(f"{total_w}x{total_h}+{x0}+{y0}")
+        self.canvas.config(width=grid_w, height=grid_h)
+
+    def _refresh_lists(self) -> None:
+        self.build_list.delete(0, tk.END)
+        for b in self.builds:
+            self.build_list.insert(tk.END, b.get("name", "Unknown Build"))
+        if self.builds:
+            self.build_list.selection_set(self.current_build_idx)
+
+        self.board_list.delete(0, tk.END)
+        for bd in self.boards or []:
+            name = bd.get("Name", "?")
+            rot = bd.get("Rotation", "0")
+            glyph = bd.get("Glyph")
+            label = f"{name} ({rot})"
+            if glyph:
+                label += f" ({glyph})"
+            self.board_list.insert(tk.END, label)
+        if self.boards:
+            self.board_list.selection_set(self.selected_board_idx)
+
+        cur_name = self.builds[self.current_build_idx]["name"] if self.builds else "Paragon Overlay"
+        self.lbl_title.config(text=cur_name)
+
+    # -------- drawing --------
+    def redraw(self) -> None:
+        self.canvas.delete("all")
+        if not self.boards:
+            self.canvas.create_text(20, 20, anchor="nw", fill="#fff", text="No boards loaded")
             return
 
-        self.list_pos = (0, int(cfg.get("list_pos", (0, 60))[1]))
-        self.grid_pos = tuple(cfg.get("grid_pos", (0, 60)))
-        self.cell_size = int(cfg.get("cell_size", 28))
-        self.minimized = bool(cfg.get("minimized", False))
+        board = self.boards[self.selected_board_idx]
+        nodes = board.get("Nodes") or []
+        if len(nodes) != GRID * GRID:
+            self.canvas.create_text(20, 20, anchor="nw", fill="#fff", text="Invalid board node data")
+            return
 
-        preferred_profile = cfg.get("paragon_profile")
-        idx = cfg.get("current_build_idx")
+        rot = parse_rotation(board.get("Rotation", "0°"))
+        grid = rotate_grid(nodes_to_grid(nodes), rot)
 
-        if preferred_profile:
-            for bi, b in enumerate(self.builds):
-                if b.get("profile") == preferred_profile:
-                    self.current_build_idx = bi
-                    self.update_current_build_data()
-                    break
-        elif isinstance(idx, int) and 0 <= idx < len(self.builds):
-            self.current_build_idx = idx
-            self.update_current_build_data()
+        cs = self._cfg.cell_size
+        pad = 16
+        gx0, gy0 = pad, pad
+        grid_px = GRID * cs
 
-        # Clamp positions to visible screen area (prevents 'overlay opened but not visible')
-        with contextlib.suppress(Exception):
-            sw = user32.GetSystemMetrics(0)
-            sh = user32.GetSystemMetrics(1)
-            # list window: x is always 0
-            ly = max(0, min(int(self.list_pos[1]), max(0, sh - 80)))
-            self.list_pos = (0, ly)
-            gx, gy = self.grid_pos
-            gx = max(0, min(int(gx), max(0, sw - 80)))
-            gy = max(0, min(int(gy), max(0, sh - 80)))
-            self.grid_pos = (gx, gy)
+        # background frame
+        self.canvas.create_rectangle(gx0 - 6, gy0 - 6, gx0 + grid_px + 6, gy0 + grid_px + 6, outline="#cfa15b", width=3)
 
-    def save_config(self):
-        cfg = {
-            "list_pos": self.list_pos,
-            "grid_pos": self.grid_pos,
-            "cell_size": self.cell_size,
-            "minimized": self.minimized,
-            "current_build_idx": self.current_build_idx,
-            "paragon_profile": (self.builds[self.current_build_idx].get("profile") if self.builds else None),
-        }
-        cfg_path = Path(CONFIG_FILE)
+        # grid lines
+        for i in range(GRID + 1):
+            p = i * cs
+            self.canvas.create_line(gx0, gy0 + p, gx0 + grid_px, gy0 + p, fill="#444", width=1)
+            self.canvas.create_line(gx0 + p, gy0, gx0 + p, gy0 + grid_px, fill="#444", width=1)
+
+        # paths
+        path_w = max(2, cs // 6)
+        half = cs // 2
+        for y in range(GRID):
+            for x in range(GRID):
+                if not grid[y][x]:
+                    continue
+                cx = gx0 + x * cs + half
+                cy = gy0 + y * cs + half
+                if x + 1 < GRID and grid[y][x + 1]:
+                    nx = gx0 + (x + 1) * cs + half
+                    self.canvas.create_line(cx, cy, nx, cy, fill="#22aa44", width=path_w)
+                if y + 1 < GRID and grid[y + 1][x]:
+                    ny = gy0 + (y + 1) * cs + half
+                    self.canvas.create_line(cx, cy, cx, ny, fill="#22aa44", width=path_w)
+
+        # active nodes
+        inset = max(3, cs // 4)
+        for y in range(GRID):
+            for x in range(GRID):
+                if not grid[y][x]:
+                    continue
+                x1 = gx0 + x * cs + inset
+                y1 = gy0 + y * cs + inset
+                x2 = gx0 + (x + 1) * cs - inset
+                y2 = gy0 + (y + 1) * cs - inset
+                self.canvas.create_rectangle(x1, y1, x2, y2, fill="#18dd44", outline="#bbffbb", width=1)
+
+    # -------- lifecycle --------
+    def close(self) -> None:
         try:
-            with cfg_path.open("w", encoding="utf-8") as f:
-                json.dump(cfg, f)
-        except OSError:
-            LOGGER.debug("Failed to save overlay config", exc_info=True)
+            self.destroy()
+        finally:
+            if self._on_close:
+                self._on_close()
 
 
-state = None
-CONFIG_FILE = "d4_overlay_config.json"
+# ----------------------------
+# Public API (used by app)
+# ----------------------------
+def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | None = None) -> ParagonOverlay | None:
+    """Start overlay in-process. If parent is None, a Tk root is created."""
+    preset = preset_path or (sys.argv[1] if len(sys.argv) > 1 else "")
+    if not preset:
+        LOGGER.error("No preset path provided")
+        return None
 
-
-def redraw_all(force_grid=False):
-    l_img = render_list_window(state)
-    update_window(state.hwnd_list, l_img, 0, state.list_pos[1])
-
-    if state.minimized or state.selecting_build:
-        g_img = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
-    else:
-        key = (state.selected, state.cell_size)
-        if force_grid or key not in state.grid_cache:
-            state.grid_cache[key] = render_grid_window(state.boards[state.selected], state.cell_size)
-        g_img = state.grid_cache[key]
-    update_window(state.hwnd_grid, g_img, state.grid_pos[0], state.grid_pos[1])
-
-
-@WNDPROCTYPE
-def WndProcList(hwnd, msg, wparam, lparam):
-    if msg == WM_DESTROY:
-        user32.PostQuitMessage(0)
-        return 0
-    if msg == WM_NCHITTEST:
-        return HTCLIENT
-
-    if msg == WM_MOUSEMOVE:
-        if state.minimized:
-            return 0
-        _, y = get_xy(lparam)
-        if y > HEADER_H:
-            lst = state.builds if state.selecting_build else state.boards
-            idx = (y - HEADER_H - 10) // (ITEM_H + 4)
-            nh = idx if 0 <= idx < len(lst) else -1
-            if nh != state.hover:
-                state.hover = nh
-                redraw_all()
-        elif state.hover != -1:
-            state.hover = -1
-            redraw_all()
-        return 0
-
-    if msg == WM_LBUTTONDOWN:
-        user32.SetFocus(hwnd)
-        x, y = get_xy(lparam)
-        # Check START/STOP Button
-        if x < 28 and y < 28:
-            state.minimized = not state.minimized
-            state.save_config()
-            redraw_all()
-            return 0
-
-        if state.minimized:
-            return 0
-
-        # Check EXIT Button
-        # Rect: [PANEL_W - 35, 55, PANEL_W - 10, 80]
-        if PANEL_W - 35 <= x <= PANEL_W - 10 and 55 <= y <= 80:
-            user32.PostQuitMessage(0)
-            return 0
-
-        if y < HEADER_H:
-            if x > 30:
-                state.selecting_build = not state.selecting_build
-                state.hover = -1
-                redraw_all()
-            return 0
-
-        lst = state.builds if state.selecting_build else state.boards
-        idx = (y - HEADER_H - 10) // (ITEM_H + 4)
-        if 0 <= idx < len(lst):
-            if state.selecting_build:
-                state.current_build_idx = idx
-                state.update_current_build_data()
-                state.selected = 0
-                state.selecting_build = False
-            else:
-                state.selected = idx
-            redraw_all()
-        return 0
-    return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
-
-
-@WNDPROCTYPE
-def WndProcGrid(hwnd, msg, wparam, lparam):
-    if msg == WM_NCHITTEST:
-        return HTCLIENT
-
-    if msg == WM_MOUSEWHEEL:
-        delta = ctypes.c_short(wparam >> 16).value
-        change = 2 if delta > 0 else -2
-        new_size = max(10, min(150, state.cell_size + change))
-        if new_size != state.cell_size:
-            state.cell_size = new_size
-            state.save_config()
-            redraw_all(True)
-        return 0
-
-    if msg == WM_LBUTTONDOWN:
-        user32.SetFocus(hwnd)
-        user32.SetCapture(hwnd)
-        state.dragging = True
-        pt = wt.POINT()
-        user32.GetCursorPos(ctypes.byref(pt))
-        state.drag_start = (pt.x, pt.y)
-        state.drag_offset = state.grid_pos
-        user32.SetCursor(user32.LoadCursorW(state.h_inst, wt.LPCWSTR(IDC_SIZEALL)))
-        return 0
-
-    if msg == WM_MOUSEMOVE:
-        if state.dragging:
-            pt = wt.POINT()
-            user32.GetCursorPos(ctypes.byref(pt))
-            dx = pt.x - state.drag_start[0]
-            dy = pt.y - state.drag_start[1]
-            state.grid_pos = (state.drag_offset[0] + dx, state.drag_offset[1] + dy)
-            redraw_all(False)
-        return 0
-
-    if msg == WM_LBUTTONUP:
-        if state.dragging:
-            state.dragging = False
-            user32.ReleaseCapture()
-            state.save_config()
-            user32.SetCursor(user32.LoadCursorW(state.h_inst, wt.LPCWSTR(IDC_ARROW)))
-        return 0
-
-    if msg == WM_KEYDOWN:
-        gx, gy = state.grid_pos
-        step = 10 if (user32.GetKeyState(VK_SHIFT) & 0x8000) else 1
-        if wparam == VK_LEFT:
-            state.grid_pos = (gx - step, gy)
-        elif wparam == VK_RIGHT:
-            state.grid_pos = (gx + step, gy)
-        elif wparam == VK_UP:
-            state.grid_pos = (gx, gy - step)
-        elif wparam == VK_DOWN:
-            state.grid_pos = (gx, gy + step)
-        if wparam in (VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN):
-            state.save_config()
-            redraw_all()
-
-    return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
-
-
-def request_close() -> None:
-    """Best-effort request to close the overlay windows.
-
-    This is used when the overlay is run in-process (e.g., from a background thread).
-    """
-    st = globals().get("state")
-    if st is None:
-        return
-
-    wm_close = 0x0010
-    for hwnd in (getattr(st, "hwnd_list", None), getattr(st, "hwnd_grid", None)):
-        if hwnd:
-            with contextlib.suppress(Exception):
-                user32.PostMessageW(hwnd, wm_close, 0, 0)
-
-
-def run_paragon_overlay(preset_path: str | None = None) -> None:
-    global state
-    preset = preset_path or (sys.argv[1] if len(sys.argv) > 1 else "AffixPresets-v2.json")
     try:
         builds = load_builds_from_path(preset)
-    except Exception as e:
-        # In packaged mode we often suppress stdout/stderr; show a visible error.
+    except Exception:
         LOGGER.exception("Failed to load Paragon preset(s): %s", preset)
-        _msgbox("D4LF Paragon Overlay", f"Konnte Paragon JSON nicht laden.\n\nQuelle: {preset}\n\nFehler: {e}")
+        return None
+
+    owns_root = False
+    if parent is None:
+        root = tk.Tk()
+        root.withdraw()
+        parent = root
+        owns_root = True
+
+    overlay = ParagonOverlay(parent, builds, on_close=(parent.quit if owns_root else None))
+    if owns_root:
+        parent.mainloop()
+    return overlay
+
+
+def request_close(overlay: ParagonOverlay | None) -> None:
+    """Best-effort close from elsewhere."""
+    if overlay is None:
         return
-
-    state = AppState(builds)
-    state.h_inst = kernel32.GetModuleHandleW(None)
-
-    wc = WNDCLASSW(
-        style=0,
-        lpfnWndProc=WndProcList,
-        hInstance=state.h_inst,
-        hCursor=user32.LoadCursorW(state.h_inst, wt.LPCWSTR(IDC_ARROW)),
-        lpszClassName="D4ListCls",
-    )
-    user32.RegisterClassW(ctypes.byref(wc))
-
-    wc.lpfnWndProc = WndProcGrid
-    wc.lpszClassName = "D4GridCls"
-    user32.RegisterClassW(ctypes.byref(wc))
-
-    ex_style = WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TOOLWINDOW
-
-    # Init default to Top-Left if config not loaded
-    if state.list_pos == (0, 0) and state.grid_pos == (450, 60):
-        state.list_pos = (0, 0)
-        state.grid_pos = (600, 50)
-
-    state.hwnd_list = user32.CreateWindowExW(
-        ex_style,
-        "D4ListCls",
-        "List",
-        WS_POPUP | WS_VISIBLE,
-        0,
-        state.list_pos[1],
-        400,
-        600,
-        None,
-        None,
-        state.h_inst,
-        None,
-    )
-    state.hwnd_grid = user32.CreateWindowExW(
-        ex_style,
-        "D4GridCls",
-        "Grid",
-        WS_POPUP | WS_VISIBLE,
-        state.grid_pos[0],
-        state.grid_pos[1],
-        800,
-        800,
-        None,
-        None,
-        state.h_inst,
-        None,
-    )
-
-    redraw_all(True)
-    msg = wt.MSG()
-    while user32.GetMessageW(ctypes.byref(msg), 0, 0, 0):
-        user32.TranslateMessage(ctypes.byref(msg))
-        user32.DispatchMessageW(ctypes.byref(msg))
+    with suppress(Exception):
+        overlay.after(0, overlay.close)
 
 
 if __name__ == "__main__":
