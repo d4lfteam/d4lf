@@ -65,6 +65,11 @@ D4LF can import Paragon boards from supported build planners and show them in-ga
 
 ### Common problems
 
+- Paragon overlay does not appear / does nothing
+  - Ensure Diablo IV is running in **borderless windowed** (exclusive fullscreen may block overlays).
+  - Ensure your Paragon folder contains `*.json` files (default: `C:/Users/<WINDOWS_USER>/.d4lf/paragon`).
+  - Check/adjust `advanced_options.toggle_paragon_overlay` (default `f10`) and ensure it is not conflicting with other hotkeys.
+  - If the overlay is off-screen, delete `d4_overlay_config.json` next to `d4lf.exe` to reset its position.
 - The GUI crashes immediately upon opening, with no error message given
   - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
     your params.ini through the config tab. Using the GUI for configuration will ensure the file is always accurate.
@@ -158,12 +163,6 @@ Current functionality:
 - A beta version of a manual profile editor/creator
 
 Each window gives further instructions on how to use it and what kind of input it expects.
-
-- Paragon overlay does not appear / does nothing
-  - Ensure Diablo IV is running in **borderless windowed** (exclusive fullscreen may block overlays).
-  - Ensure your Paragon folder contains `*.json` files (default: `C:/Users/<WINDOWS_USER>/.d4lf/paragon`).
-  - Check/adjust `advanced_options.toggle_paragon_overlay` (default `f10`) and ensure it is not conflicting with other hotkeys.
-  - If the overlay is off-screen, delete `d4_overlay_config.json` next to `d4lf.exe` to reset its position.
 
 ## How to filter / Profiles
 
