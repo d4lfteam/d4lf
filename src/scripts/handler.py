@@ -1,13 +1,12 @@
 import logging
-import sys
 import threading
 import time
 import typing
 from contextlib import suppress
 from pathlib import Path
 
-if sys.platform != "darwin":
-    import keyboard
+import keyboard
+
 import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
@@ -16,18 +15,13 @@ from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import ItemRefreshType, VisionModeType
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
+from src.paragon_overlay import request_close, run_paragon_overlay
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
 from src.utils.custom_mouse import mouse
 from src.utils.process_handler import kill_thread, safe_exit
 from src.utils.window import screenshot
-
-if sys.platform == "win32":
-    from src.paragon_overlay import request_close, run_paragon_overlay
-else:
-    request_close = None  # type: ignore[assignment]
-    run_paragon_overlay = None  # type: ignore[assignment]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -57,8 +51,7 @@ class ScriptHandler:
             if self.paragon_overlay_thread is not None and self.paragon_overlay_thread.is_alive():
                 LOGGER.info("Closing Paragon overlay")
                 with suppress(Exception):
-                    if request_close is not None:
-                        request_close()
+                    request_close()
                 self.paragon_overlay_thread.join(timeout=2)
                 # Vision mode is restored by the overlay thread cleanup.
                 return
@@ -92,9 +85,6 @@ class ScriptHandler:
 
     def _run_paragon_overlay(self, preset_path: str) -> None:
         try:
-            if run_paragon_overlay is None:  # pragma: no cover
-                LOGGER.warning("Paragon overlay is not supported on this platform")
-                return
             run_paragon_overlay(preset_path)
         except Exception:
             LOGGER.exception("Paragon overlay crashed")
