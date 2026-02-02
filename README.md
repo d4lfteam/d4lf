@@ -69,7 +69,7 @@ D4LF can import Paragon boards from supported build planners and show them in-ga
   - Ensure Diablo IV is running in **borderless windowed** (exclusive fullscreen may block overlays).
   - Ensure your Paragon folder contains `*.json` files (default: `C:/Users/<WINDOWS_USER>/.d4lf/paragon`).
   - Check/adjust `advanced_options.toggle_paragon_overlay` (default `f10`) and ensure it is not conflicting with other hotkeys.
-  - If the overlay is off-screen, delete `d4_overlay_config.json` next to `d4lf.exe` to reset its position.
+  - If the overlay is off-screen, close D4LF and start it again (the overlay resets to a default position). You can drag the overlay to reposition it.
 - The GUI crashes immediately upon opening, with no error message given
   - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
     your params.ini through the config tab. Using the GUI for configuration will ensure the file is always accurate.
