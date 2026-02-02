@@ -27,8 +27,25 @@ import logging
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
+
+try:
+    from ruamel.yaml import YAML as RUAMEL_YAML
+except ImportError:  # pragma: no cover
+    RUAMEL_YAML = None
+
+try:
+    import yaml as PyYAML
+except ImportError:  # pragma: no cover
+    PyYAML = None
+
+try:
+    from src.config.loader import IniConfigLoader
+except ImportError:  # pragma: no cover
+    IniConfigLoader = None
+
 
 # --- HARDENED WIN32 DEFINITIONS (64-BIT SAFE) ---
 user32 = ctypes.WinDLL("user32", use_last_error=True)
@@ -283,7 +300,7 @@ def _normalize_steps(raw_list):
     return [raw_list]
 
 
-def _load_builds_from_file(preset_file: str, name_tag: str | None = None):
+def _load_builds_from_file(preset_file: str, name_tag: str | None = None, profile: str | None = None):
     """Load one JSON file and return a list of builds in overlay format: {name, boards}.
 
     Supports:
@@ -312,7 +329,7 @@ def _load_builds_from_file(preset_file: str, name_tag: str | None = None):
                 step_name = f"{base_name} - Step {step_no}"
             if name_tag:
                 step_name = f"{step_name} [{name_tag}]"
-            builds.append({"name": step_name, "boards": boards})
+            builds.append({"name": step_name, "boards": boards, "profile": profile})
 
     if not builds:
         msg = f"No valid builds in {preset_file}"
@@ -322,30 +339,133 @@ def _load_builds_from_file(preset_file: str, name_tag: str | None = None):
 
 
 def load_builds_from_path(preset_path: str):
-    """Load builds from a JSON file OR from a folder containing multiple *.json files."""
+    """Load builds from a JSON preset or from a folder of profile/preset files.
+
+    Supported inputs:
+      - a single JSON preset file (legacy)
+      - a single YAML profile file (contains a top-level `Paragon:` payload)
+      - a directory containing *.yaml/*.yml profiles and/or *.json presets
+
+    If the directory is the d4lf profiles folder, we try to only load active profiles (general.profiles).
+    """
+
+    def _load_profile_paragon(fp: Path) -> dict[str, Any] | None:
+        try:
+            with fp.open("r", encoding="utf-8") as f:
+                if RUAMEL_YAML is not None:
+                    y = RUAMEL_YAML(typ="safe")
+                    data = y.load(f) or {}
+                elif PyYAML is not None:
+                    data = PyYAML.safe_load(f) or {}
+                else:  # pragma: no cover
+                    return None
+        except Exception:
+            LOGGER.debug("Skipping invalid YAML profile: %s", fp, exc_info=True)
+            return None
+        if not isinstance(data, dict):
+            return None
+        par = data.get("Paragon")
+        if not isinstance(par, dict):
+            return None
+        if not par.get("ParagonBoardsList"):
+            return None
+        return par
+
     p = Path(preset_path)
+
+    # Determine active profile stems (best effort)
+    active_stems: set[str] | None = None
+    try:
+        if IniConfigLoader is not None:
+            cfg = IniConfigLoader()
+            gp = getattr(cfg, "general", None)
+            profs = getattr(gp, "profiles", None) if gp is not None else None
+            if isinstance(profs, list) and profs:
+                active_stems = {Path(x).stem for x in profs}
+    except Exception:
+        active_stems = None
+
     if p.is_dir():
-        files = sorted(p.glob("*.json"), key=lambda fp: fp.stat().st_mtime, reverse=True)
+        files: list[Path] = []
+        files.extend(p.glob("*.yaml"))
+        files.extend(p.glob("*.yml"))
+        files.extend(p.glob("*.json"))
+
+        files = sorted(files, key=lambda fp: fp.stat().st_mtime, reverse=True)
+
+        # If we know which profiles are active, prefer those (for YAML profiles only)
+        if active_stems:
+            yaml_files = [fp for fp in files if fp.suffix.lower() in {".yaml", ".yml"}]
+            json_files = [fp for fp in files if fp.suffix.lower() == ".json"]
+            filtered_yaml = [fp for fp in yaml_files if fp.stem in active_stems]
+            files = (filtered_yaml or yaml_files) + json_files
+
         if not files:
-            msg = "Folder contains no .json files"
+            msg = "Folder contains no supported preset/profile files"
             raise ValueError(msg)
-        multi = len(files) > 1
-        builds = []
+
+        builds: list[dict[str, Any]] = []
+
         for fp in files:
-            try:
-                builds.extend(_load_builds_from_file(str(fp), name_tag=(fp.stem if multi else None)))
-            except json.JSONDecodeError, OSError, KeyError, TypeError, ValueError:
-                LOGGER.debug("Skipping invalid paragon preset JSON: %s", fp, exc_info=True)
+            if fp.suffix.lower() == ".json":
+                try:
+                    builds.extend(_load_builds_from_file(str(fp), name_tag=fp.stem, profile=fp.stem))
+                except json.JSONDecodeError, OSError, KeyError, TypeError, ValueError:
+                    LOGGER.debug("Skipping invalid paragon preset JSON: %s", fp, exc_info=True)
+                continue
+
+            # YAML profile
+            par = _load_profile_paragon(fp)
+            if not par:
+                continue
+
+            base_name = par.get("Name") or fp.stem
+            steps = _normalize_steps(par.get("ParagonBoardsList", []))
+            if not steps:
+                continue
+
+            # Expose steps as separate selectable builds, final step first
+            for idx in range(len(steps) - 1, -1, -1):
+                boards = steps[idx]
+                step_no = idx + 1
+                step_name = base_name
+                if len(steps) > 1:
+                    step_name = f"{base_name} - Step {step_no}"
+                step_name = f"{step_name} [{fp.stem}]"
+                builds.append({"name": step_name, "boards": boards, "profile": fp.stem})
+
         if not builds:
             msg = "No valid builds found in folder"
             raise ValueError(msg)
+
         return builds
 
+    # Single file
     if not p.exists():
         msg = "Preset file not found"
         raise ValueError(msg)
 
-    return _load_builds_from_file(str(p))
+    if p.suffix.lower() in {".yaml", ".yml"}:
+        par = _load_profile_paragon(p)
+        if not par:
+            msg = "No paragon data found in profile"
+            raise ValueError(msg)
+        base_name = par.get("Name") or p.stem
+        steps = _normalize_steps(par.get("ParagonBoardsList", []))
+        if not steps:
+            msg = "No paragon steps found in profile"
+            raise ValueError(msg)
+        builds: list[dict[str, Any]] = []
+        for idx in range(len(steps) - 1, -1, -1):
+            boards = steps[idx]
+            step_no = idx + 1
+            step_name = base_name
+            if len(steps) > 1:
+                step_name = f"{base_name} - Step {step_no}"
+            builds.append({"name": step_name, "boards": boards, "profile": p.stem})
+        return builds
+
+    return _load_builds_from_file(str(p), profile=p.stem)
 
 
 def get_font(size: int = 14, bold: bool = False):
@@ -570,17 +690,28 @@ class AppState:
             return
 
         try:
-            with cfg_path.open("r", encoding="utf-8") as f:
+            with cfg_path.open(encoding="utf-8") as f:
                 cfg = json.load(f)
         except OSError, json.JSONDecodeError, ValueError:
             return
 
         self.list_pos = (0, int(cfg.get("list_pos", (0, 60))[1]))
-        gp = cfg.get("grid_pos")
-        if gp:
-            self.grid_pos = tuple(gp)
-        self.cell_size = cfg.get("cell_size", 28)
-        self.minimized = cfg.get("minimized", False)
+        self.grid_pos = tuple(cfg.get("grid_pos", (0, 60)))
+        self.cell_size = int(cfg.get("cell_size", 28))
+        self.minimized = bool(cfg.get("minimized", False))
+
+        preferred_profile = cfg.get("paragon_profile")
+        idx = cfg.get("current_build_idx")
+
+        if preferred_profile:
+            for bi, b in enumerate(self.builds):
+                if b.get("profile") == preferred_profile:
+                    self.current_build_idx = bi
+                    self.update_current_build_data()
+                    break
+        elif isinstance(idx, int) and 0 <= idx < len(self.builds):
+            self.current_build_idx = idx
+            self.update_current_build_data()
 
         # Clamp positions to visible screen area (prevents 'overlay opened but not visible')
         with contextlib.suppress(Exception):
@@ -600,6 +731,8 @@ class AppState:
             "grid_pos": self.grid_pos,
             "cell_size": self.cell_size,
             "minimized": self.minimized,
+            "current_build_idx": self.current_build_idx,
+            "paragon_profile": (self.builds[self.current_build_idx].get("profile") if self.builds else None),
         }
         cfg_path = Path(CONFIG_FILE)
         try:

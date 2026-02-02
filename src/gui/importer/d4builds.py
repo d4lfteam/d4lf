@@ -30,7 +30,11 @@ from src.gui.importer.common import (
     update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import export_paragon_build_json, extract_d4builds_paragon_steps
+from src.gui.importer.paragon_export import (
+    build_paragon_profile_payload,
+    extract_d4builds_paragon_steps,
+    write_paragon_into_profile_yaml,
+)
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
@@ -216,12 +220,8 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     if config.export_paragon:
         steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
         if steps:
-            export_paragon_build_json(
-                file_stem=f"{corrected_file_name}_paragon",
-                build_name=file_name,
-                source_url=url,
-                paragon_boards_list=steps,
-            )
+            payload = build_paragon_profile_payload(build_name=file_name, source_url=url, paragon_boards_list=steps)
+            write_paragon_into_profile_yaml(profile_ref=corrected_file_name, payload=payload)
         else:
             LOGGER.warning("Paragon export enabled, but no paragon data was found on this D4Builds page.")
 

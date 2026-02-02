@@ -23,7 +23,11 @@ from src.gui.importer.common import (
     update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import export_paragon_build_json, extract_maxroll_paragon_steps
+from src.gui.importer.paragon_export import (
+    build_paragon_profile_payload,
+    extract_maxroll_paragon_steps,
+    write_paragon_into_profile_yaml,
+)
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
 from src.item.descr.text import clean_str, closest_match
@@ -188,12 +192,8 @@ def import_maxroll(config: ImportConfig):
     if config.export_paragon:
         steps = extract_maxroll_paragon_steps(active_profile)
         if steps:
-            export_paragon_build_json(
-                file_stem=f"{corrected_file_name}_paragon",
-                build_name=build_name,
-                source_url=url,
-                paragon_boards_list=steps,
-            )
+            payload = build_paragon_profile_payload(build_name=build_name, source_url=url, paragon_boards_list=steps)
+            write_paragon_into_profile_yaml(profile_ref=corrected_file_name, payload=payload)
         else:
             LOGGER.warning("Paragon export enabled, but no paragon steps were found in this Maxroll profile.")
 
