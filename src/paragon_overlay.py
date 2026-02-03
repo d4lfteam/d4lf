@@ -1,10 +1,4 @@
-"""Paragon overlay (tkinter).
-
-Refactor goals (per maintainer review):
-- Use tkinter Canvas (no Win32/ctypes/user32/gdi32/PIL overlay).
-- Route scaling/resolution through existing Cam + ResManager.
-- Keep code small and consistent with the codebase style.
-"""
+"""Paragon overlay (tkinter)."""
 
 from __future__ import annotations
 
@@ -21,12 +15,24 @@ from typing import TYPE_CHECKING, Any
 from src.cam import Cam
 from src.config.ui import ResManager
 
+try:
+    from ruamel.yaml import YAML as RUAMEL_YAML
+except ImportError:  # pragma: no cover
+    RUAMEL_YAML = None
+
+try:
+    import yaml as PyYAML
+except ImportError:  # pragma: no cover
+    PyYAML = None
+
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
 LOGGER = logging.getLogger(__name__)
 
 GRID = 21  # 21x21 nodes
+NODES_LEN = GRID * GRID
 
 
 # ----------------------------
@@ -50,6 +56,36 @@ def _normalize_steps(raw_list: Any) -> list[list[dict[str, Any]]]:
     return [raw_list]
 
 
+def _load_yaml_file(path: Path) -> dict[str, Any] | None:
+    try:
+        if RUAMEL_YAML is not None:
+            y = RUAMEL_YAML(typ="rt")
+            with path.open("r", encoding="utf-8") as f:
+                loaded = y.load(f) or {}
+            return loaded if isinstance(loaded, dict) else None
+        if PyYAML is not None:
+            with path.open("r", encoding="utf-8") as f:
+                loaded = PyYAML.safe_load(f) or {}
+            return loaded if isinstance(loaded, dict) else None
+    except Exception:
+        LOGGER.debug("Failed reading YAML: %s", path, exc_info=True)
+        return None
+
+    LOGGER.error("No YAML library available (ruamel.yaml or PyYAML)")
+    return None
+
+
+def _extract_paragon_payloads_from_profile_yaml(profile_yaml: dict[str, Any]) -> Iterable[dict[str, Any]]:
+    paragon = profile_yaml.get("Paragon")
+    if isinstance(paragon, dict):
+        yield paragon
+        return
+    if isinstance(paragon, list):
+        for it in paragon:
+            if isinstance(it, dict):
+                yield it
+
+
 def load_builds_from_path(preset_path: str) -> list[dict[str, Any]]:
     p = Path(preset_path)
 
@@ -57,56 +93,104 @@ def load_builds_from_path(preset_path: str) -> list[dict[str, Any]]:
     if not p.exists():
         raise ValueError(msg_not_found)
 
-    files: list[Path]
-    if p.is_dir():
-        files = sorted(p.glob("*.json"), key=lambda fp: fp.stat().st_mtime, reverse=True)
-        msg_no_files = "Folder contains no supported preset files (*.json)"
-        if not files:
-            raise ValueError(msg_no_files)
+    builds: list[dict[str, Any]] = []
 
-        builds: list[dict[str, Any]] = []
-        for fp in files:
+    if p.is_file():
+        suffix = p.suffix.lower()
+        if suffix == ".json":
+            builds.extend(_load_builds_from_json_file(p, profile=p.stem))
+        elif suffix in (".yaml", ".yml"):
+            builds.extend(_load_builds_from_profile_yaml_file(p, profile=p.stem))
+        else:
+            msg = "Unsupported preset file type"
+            raise ValueError(msg)
+        if not builds:
+            msg = "No valid builds found"
+            raise ValueError(msg)
+        return builds
+
+    # Directory mode:
+    # - legacy exports: *.json in the selected folder
+    # - current format: profiles/*.yaml (or sibling ../profiles/*.yaml)
+    json_files = sorted(p.glob("*.json"), key=lambda fp: fp.stat().st_mtime, reverse=True)
+    if json_files:
+        for fp in json_files:
             try:
-                builds.extend(_load_builds_from_file(fp, name_tag=fp.stem, profile=fp.stem))
+                builds.extend(_load_builds_from_json_file(fp, name_tag=fp.stem, profile=fp.stem))
             except Exception:
                 LOGGER.debug("Skipping invalid paragon preset JSON: %s", fp, exc_info=True)
 
-        msg_no_builds = "No valid builds found in folder"
-        if not builds:
-            raise ValueError(msg_no_builds)
-        return builds
+    yaml_dirs: list[Path] = []
+    if (p / "profiles").is_dir():
+        yaml_dirs.append(p / "profiles")
+    if (p.parent / "profiles").is_dir():
+        yaml_dirs.append(p.parent / "profiles")
+    yaml_dirs.append(p)
 
-    return _load_builds_from_file(p, profile=p.stem)
+    seen: set[Path] = set()
+    for yd in yaml_dirs:
+        for fp in sorted(yd.glob("*.ya*"), key=lambda x: x.stat().st_mtime, reverse=True):
+            if fp in seen:
+                continue
+            seen.add(fp)
+            try:
+                builds.extend(_load_builds_from_profile_yaml_file(fp, profile=fp.stem))
+            except Exception:
+                LOGGER.debug("Skipping invalid profile YAML: %s", fp, exc_info=True)
+
+    if not builds:
+        msg = "No valid builds found in folder"
+        raise ValueError(msg)
+    return builds
 
 
-def _load_builds_from_file(
-    preset_file: Path, *, name_tag: str | None = None, profile: str | None = None
+def _load_builds_from_json_file(
+    preset_file: Path, name_tag: str | None = None, profile: str | None = None
 ) -> list[dict[str, Any]]:
     with preset_file.open(encoding="utf-8") as f:
         data = json.load(f)
 
     builds: list[dict[str, Any]] = []
     for entry in _iter_entries(data):
-        base_name = entry.get("Name") or entry.get("name") or "Unknown Build"
-        steps = _normalize_steps(entry.get("ParagonBoardsList", []))
-        if not steps:
-            continue
-
-        # Expose steps as separate builds; final step first.
-        for idx in range(len(steps) - 1, -1, -1):
-            boards = steps[idx]
-            step_name = base_name
-            if len(steps) > 1:
-                step_name = f"{base_name} - Step {idx + 1}"
-            if name_tag:
-                step_name = f"{step_name} [{name_tag}]"
-
-            builds.append({"name": step_name, "boards": boards, "profile": profile})
-
+        builds.extend(_builds_from_paragon_entry(entry, name_tag=name_tag, profile=profile))
     if not builds:
-        msg_no_valid = f"No valid builds in {preset_file}"
-        raise ValueError(msg_no_valid)
+        msg = "No valid builds in JSON"
+        raise ValueError(msg)
+    return builds
 
+
+def _load_builds_from_profile_yaml_file(profile_file: Path, profile: str | None = None) -> list[dict[str, Any]]:
+    loaded = _load_yaml_file(profile_file)
+    if not loaded:
+        msg = "Invalid or empty profile YAML"
+        raise ValueError(msg)
+
+    builds: list[dict[str, Any]] = []
+    for payload in _extract_paragon_payloads_from_profile_yaml(loaded):
+        builds.extend(_builds_from_paragon_entry(payload, name_tag=profile_file.stem, profile=profile))
+    if not builds:
+        msg = "No Paragon payload found in profile YAML"
+        raise ValueError(msg)
+    return builds
+
+
+def _builds_from_paragon_entry(
+    entry: dict[str, Any], *, name_tag: str | None, profile: str | None
+) -> list[dict[str, Any]]:
+    base_name = entry.get("Name") or entry.get("name") or "Unknown Build"
+    steps = _normalize_steps(entry.get("ParagonBoardsList", []))
+    if not steps:
+        return []
+
+    builds: list[dict[str, Any]] = []
+    for idx in range(len(steps) - 1, -1, -1):
+        boards = steps[idx]
+        step_name = base_name
+        if len(steps) > 1:
+            step_name = f"{base_name} - Step {idx + 1}"
+        if name_tag:
+            step_name = f"{step_name} [{name_tag}]"
+        builds.append({"name": step_name, "boards": boards, "profile": profile})
     return builds
 
 
@@ -118,7 +202,6 @@ def parse_rotation(rot_str: str) -> int:
 
 
 def nodes_to_grid(nodes_441: list[int] | list[bool]) -> list[list[bool]]:
-    # 21*21 = 441
     return [[bool(nodes_441[y * GRID + x]) for x in range(GRID)] for y in range(GRID)]
 
 
@@ -139,11 +222,11 @@ def rotate_grid(grid: list[list[bool]], deg: int) -> list[list[bool]]:
 class OverlayConfig:
     cell_size: int = 24
     panel_w: int = 420
-    poll_ms: int = 350  # watch Cam/ResManager changes without custom callbacks
+    poll_ms: int = 500
 
 
 class ParagonOverlay(tk.Toplevel):
-    """A simple tkinter Canvas overlay for Paragon board visualization."""
+    """Tkinter paragon overlay window."""
 
     def __init__(
         self,
@@ -154,22 +237,24 @@ class ParagonOverlay(tk.Toplevel):
         on_close: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(parent)
-
         self._cfg = cfg or OverlayConfig()
         self._on_close = on_close
+
+        self._cam = Cam()
+        self._res = ResManager()
 
         self.builds = builds
         self.current_build_idx = 0
         self.boards = self.builds[0]["boards"] if self.builds else []
         self.selected_board_idx = 0
 
-        self._last_res: tuple[int, int] | None = None
         self._last_roi: tuple[int, int, int, int] | None = None
+        self._last_res: tuple[int, int] | None = None
 
         self.title("D4LF Paragon Overlay")
         self.attributes("-topmost", True)
 
-        # "Overlay-like" appearance (best-effort on Windows).
+        # Overlay-like appearance, best effort.
         self.configure(bg="#ff00ff")
         with suppress(tk.TclError):
             self.overrideredirect(True)
@@ -184,16 +269,13 @@ class ParagonOverlay(tk.Toplevel):
         self._apply_geometry()
         self._refresh_lists()
         self.redraw()
-
-        # Poll resolution/ROI changes (ResManager has no callback API).
-        self.after(self._cfg.poll_ms, self._poll_state)
+        self.after(self._cfg.poll_ms, self._poll_window_state)
 
     # -------- UI layout --------
     def _build_ui(self) -> None:
         outer = tk.Frame(self, bg="#ff00ff")
         outer.pack(fill="both", expand=True)
 
-        # left panel
         self.left = tk.Frame(outer, width=self._cfg.panel_w, bg="#1b1b1b")
         self.left.pack(side="left", fill="y")
 
@@ -217,7 +299,6 @@ class ParagonOverlay(tk.Toplevel):
         self.lbl_hint = tk.Label(footer, text="Wheel: zoom | Drag grid: move window", fg="#cfa15b", bg="#222")
         self.lbl_hint.pack(side="left", padx=8, pady=6)
 
-        # right: canvas
         self.right = tk.Frame(outer, bg="#000")
         self.right.pack(side="right", fill="both", expand=True)
 
@@ -228,32 +309,26 @@ class ParagonOverlay(tk.Toplevel):
         self.build_list.bind("<<ListboxSelect>>", self._on_select_build)
         self.board_list.bind("<<ListboxSelect>>", self._on_select_board)
 
-        # zoom
         self.canvas.bind("<MouseWheel>", self._on_mousewheel)
-        self.canvas.bind("<Button-4>", self._on_mousewheel)  # linux
+        self.canvas.bind("<Button-4>", self._on_mousewheel)
         self.canvas.bind("<Button-5>", self._on_mousewheel)
 
-        # drag window
         self.canvas.bind("<ButtonPress-1>", self._on_drag_start)
         self.canvas.bind("<B1-Motion>", self._on_drag_move)
 
-    # -------- polling / state --------
-    def _poll_state(self) -> None:
+    # -------- polling for ROI/resolution changes --------
+    def _poll_window_state(self) -> None:
         try:
+            roi = self._get_cam_roi()
             res = self._get_resolution()
-            roi = self._get_roi()
 
-            changed = (res != self._last_res) or (roi != self._last_roi)
-            if changed:
+            if roi != self._last_roi or res != self._last_res:
+                self._last_roi = roi
+                self._last_res = res
                 self._apply_geometry()
                 self.redraw()
-
-            self._last_res = res
-            self._last_roi = roi
-        except Exception:
-            LOGGER.debug("Overlay poll failed", exc_info=True)
         finally:
-            self.after(self._cfg.poll_ms, self._poll_state)
+            self.after(self._cfg.poll_ms, self._poll_window_state)
 
     # -------- handlers --------
     def _on_select_build(self, _: Any) -> None:
@@ -306,45 +381,36 @@ class ParagonOverlay(tk.Toplevel):
         return int(cur[0]) if cur else None
 
     def _get_resolution(self) -> tuple[int, int]:
-        # ResManager.resolution -> (w, h) based on active res key.
-        try:
-            w, h = ResManager().resolution[:2]
+        with suppress(Exception):
+            w, h = tuple(self._res.resolution)[:2]
             return (int(w), int(h))
-        except Exception:
-            return (self.winfo_screenwidth(), self.winfo_screenheight())
+        return (self.winfo_screenwidth(), self.winfo_screenheight())
 
-    def _get_roi(self) -> tuple[int, int, int, int] | None:
+    def _get_cam_roi(self) -> tuple[int, int, int, int] | None:
+        roi = getattr(self._cam, "window_roi", None)
+        if not roi:
+            return None
         try:
-            roi = Cam().window_roi
+            x, y, w, h = roi
+            return (int(x), int(y), int(w), int(h))
         except Exception:
             return None
-        if not roi or len(roi) < 4:
-            return None
-        x, y, w, h = roi[:4]
-        return (int(x), int(y), int(w), int(h))
 
     def _apply_geometry(self) -> None:
-        # Prefer ROI (game window) size/position if present; else use screen resolution.
-        res_w, res_h = self._get_resolution()
-        roi = self._get_roi()
+        w, h = self._get_resolution()
+        roi = self._get_cam_roi()
 
-        if roi is not None:
-            roi_x, roi_y, roi_w, roi_h = roi
-            # Attach overlay near the game window top-left; keep a small offset.
-            x0, y0 = roi_x + 20, roi_y + 20
-            available_w = max(800, roi_w - 40)
-            available_h = max(600, roi_h - 40)
-        else:
-            x0, y0 = 20, 20
-            available_w = res_w
-            available_h = res_h
-
-        grid_w = min(760, max(480, available_w - self._cfg.panel_w - 80))
-        grid_h = min(760, max(480, available_h - 120))
+        grid_w = min(760, max(480, w - self._cfg.panel_w - 80))
+        grid_h = min(760, max(480, h - 120))
         total_w = self._cfg.panel_w + grid_w
         total_h = grid_h
 
-        self.geometry(f"{total_w}x{total_h}+{x0}+{y0}")
+        if roi is not None:
+            x, y, _, _ = roi
+            self.geometry(f"{total_w}x{total_h}+{x + 20}+{y + 20}")
+        else:
+            self.geometry(f"{total_w}x{total_h}+20+20")
+
         self.canvas.config(width=grid_w, height=grid_h)
 
     def _refresh_lists(self) -> None:
@@ -378,7 +444,7 @@ class ParagonOverlay(tk.Toplevel):
 
         board = self.boards[self.selected_board_idx]
         nodes = board.get("Nodes") or []
-        if len(nodes) != GRID * GRID:
+        if len(nodes) != NODES_LEN:
             self.canvas.create_text(20, 20, anchor="nw", fill="#fff", text="Invalid board node data")
             return
 
@@ -390,16 +456,13 @@ class ParagonOverlay(tk.Toplevel):
         gx0, gy0 = pad, pad
         grid_px = GRID * cs
 
-        # background frame
         self.canvas.create_rectangle(gx0 - 6, gy0 - 6, gx0 + grid_px + 6, gy0 + grid_px + 6, outline="#cfa15b", width=3)
 
-        # grid lines
         for i in range(GRID + 1):
             p = i * cs
             self.canvas.create_line(gx0, gy0 + p, gx0 + grid_px, gy0 + p, fill="#444", width=1)
             self.canvas.create_line(gx0 + p, gy0, gx0 + p, gy0 + grid_px, fill="#444", width=1)
 
-        # paths
         path_w = max(2, cs // 6)
         half = cs // 2
         for y in range(GRID):
@@ -415,7 +478,6 @@ class ParagonOverlay(tk.Toplevel):
                     ny = gy0 + (y + 1) * cs + half
                     self.canvas.create_line(cx, cy, cx, ny, fill="#22aa44", width=path_w)
 
-        # active nodes
         inset = max(3, cs // 4)
         for y in range(GRID):
             for x in range(GRID):
@@ -440,7 +502,7 @@ class ParagonOverlay(tk.Toplevel):
 # Public API (used by app)
 # ----------------------------
 def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | None = None) -> ParagonOverlay | None:
-    """Start overlay in-process. If parent is None, a Tk root is created."""
+    """Start overlay in-process."""
     preset = preset_path or (sys.argv[1] if len(sys.argv) > 1 else "")
     if not preset:
         LOGGER.error("No preset path provided")
@@ -460,6 +522,7 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
         owns_root = True
 
     overlay = ParagonOverlay(parent, builds, on_close=(parent.quit if owns_root else None))
+
     if owns_root:
         parent.mainloop()
     return overlay

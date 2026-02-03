@@ -59,14 +59,16 @@ class ScriptHandler:
             config = IniConfigLoader()
             overlay_dir_str = getattr(config.advanced_options, "paragon_overlay_source_dir", "") or ""
             overlay_dir = (
-                Path(overlay_dir_str).expanduser() if str(overlay_dir_str).strip() else (config.user_dir / "paragon")
+                Path(overlay_dir_str).expanduser() if str(overlay_dir_str).strip() else (config.user_dir / "profiles")
             )
             overlay_dir.mkdir(parents=True, exist_ok=True)
 
+            yaml_files = list(Path(overlay_dir).glob("*.yaml")) + list(Path(overlay_dir).glob("*.yml"))
             json_files = list(Path(overlay_dir).glob("*.json"))
-            if not json_files:
+            if not (yaml_files or json_files):
                 LOGGER.warning(
-                    f"No Paragon JSON files found in {overlay_dir}. Import a build first or place *.json files there."
+                    "No Paragon profiles found in %s. Import a build first or place *.yaml/*.yml profiles there (legacy *.json also supported).",
+                    overlay_dir,
                 )
 
             # Disable vision mode while the overlay is active; restore it when the overlay closes.
