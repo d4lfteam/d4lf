@@ -55,7 +55,7 @@ D4LF can import Paragon boards from supported build planners and show them in-ga
 **How to use**
 
 1. Import your build from a supported planner (Mobalytics / Maxroll / D4Builds).
-1. Enable **Export Paragon JSON** in the importer (optional) and choose a Paragon folder (or leave the default).
+1. Enable **Import Paragon** in the importer (optional). Paragon data will be stored in your profile YAMLs in the profiles folder (default: `~/.d4lf/profiles`).
 1. Toggle the Paragon overlay using the hotkey (default **F10**, configurable in *Advanced options*).
 
 **Tips**
@@ -67,7 +67,7 @@ D4LF can import Paragon boards from supported build planners and show them in-ga
 
 - Paragon overlay does not appear / does nothing
   - Ensure Diablo IV is running in **borderless windowed** (exclusive fullscreen may block overlays).
-  - Ensure your profiles folder contains `*.yaml` files with a top-level `Paragon:` section (default: `C:/Users/<WINDOWS_USER>/.d4lf/profiles`). (Legacy `paragon/*.json` is still supported when "Export Paragon JSON" is enabled.)
+  - Ensure your profiles folder contains `*.yaml`/`*.yml` profile files with a top-level `Paragon:` section (default: `C:/Users/<WINDOWS_USER>/.d4lf/profiles`).
   - Check/adjust `advanced_options.toggle_paragon_overlay` (default `f10`) and ensure it is not conflicting with other hotkeys.
   - If the overlay is off-screen, delete `d4_overlay_config.json` next to `d4lf.exe` to reset its position.
 - The GUI crashes immediately upon opening, with no error message given
@@ -101,7 +101,7 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
   automatically.
 - **params.ini**: Different hotkey settings and number of chest stashes that should be looked at. Management of this
   file should be done through the GUI in the config window.
-- **paragon/\*.json**: (Legacy) Paragon builds for the integrated overlay. Only generated when "Export Paragon JSON" is enabled. Default location: `C:/Users/<WINDOWS_USER>/.d4lf/paragon`
+- **profiles/\*.yaml**: Profiles including embedded Paragon data for the integrated overlay (top-level `Paragon:`). Generated/updated by the importer when "Import Paragon" is enabled. Default location: `C:/Users/<WINDOWS_USER>/.d4lf/profiles`
 
 ### params.ini
 
@@ -129,21 +129,21 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | --------- | --------------------------------- |
 | inventory | Your hotkey for opening inventory |
 
-| [advanced_options]           | Description                                                                                                                                                                                     |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| move_to_inv                  | Hotkey for moving items from stash to inventory                                                                                                                                                 |
-| move_to_chest                | Hotkey for moving items from inventory to stash                                                                                                                                                 |
-| run_filter                   | Hotkey to start/stop filtering items                                                                                                                                                            |
-| run_filter_force_refresh     | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                                                                                                      |
-| run_vision_mode              | Hotkey to start/stop vision mode                                                                                                                                                                |
-| force_refresh_only           | Hotkey to reset all item statuses without running a filter after                                                                                                                                |
-| exit_key                     | Hotkey to exit d4lf.exe                                                                                                                                                                         |
-| toggle_paragon_overlay       | Hotkey to open/close the Paragon overlay (default: f10)                                                                                                                                         |
-| paragon_overlay_source_dir   | Folder containing Paragon profiles for the overlay (`*.yaml`/`*.yml` with a top-level `Paragon:` section). Leave blank to use the default: `~/.d4lf/profiles` (legacy `*.json` also supported). |
-| log_lvl                      | Logging level. Can be any of [debug, info, warning, error, critical]                                                                                                                            |
-| process_name                 | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted                                                                        |
-| vision_mode_only             | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.                                                                                   |
-| fast_vision_mode_coordinates | If you are using fast vision mode, provide the location on screen where you want the overlay to appear. For example, you could provide (500, 800)                                               |
+| [advanced_options]           | Description                                                                                                                                                |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| move_to_inv                  | Hotkey for moving items from stash to inventory                                                                                                            |
+| move_to_chest                | Hotkey for moving items from inventory to stash                                                                                                            |
+| run_filter                   | Hotkey to start/stop filtering items                                                                                                                       |
+| run_filter_force_refresh     | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                                                                 |
+| run_vision_mode              | Hotkey to start/stop vision mode                                                                                                                           |
+| force_refresh_only           | Hotkey to reset all item statuses without running a filter after                                                                                           |
+| exit_key                     | Hotkey to exit d4lf.exe                                                                                                                                    |
+| toggle_paragon_overlay       | Hotkey to open/close the Paragon overlay (default: f10)                                                                                                    |
+| paragon_overlay_source_dir   | Folder containing profile YAML files with embedded Paragon data (top-level `Paragon:`) for the overlay. Leave blank to use the default: `~/.d4lf/profiles` |
+| log_lvl                      | Logging level. Can be any of [debug, info, warning, error, critical]                                                                                       |
+| process_name                 | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted                                   |
+| vision_mode_only             | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.                                              |
+| fast_vision_mode_coordinates | If you are using fast vision mode, provide the location on screen where you want the overlay to appear. For example, you could provide (500, 800)          |
 
 ### GUI
 
@@ -157,7 +157,7 @@ automatically picked up and no restart is necessary.
 
 Current functionality:
 
-- Import builds from maxroll/d4builds/mobalytics (optionally export Paragon JSON)
+- Import builds from maxroll/d4builds/mobalytics (optionally import Paragon data)
 - Toggle the integrated Paragon overlay (default hotkey: F10) and configure its JSON folder via "Paragon Folder"
 - Complete management of your settings through the config tab
 - A beta version of a manual profile editor/creator

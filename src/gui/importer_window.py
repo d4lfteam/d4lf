@@ -108,9 +108,9 @@ class ImporterWindow(QMainWindow):
         )
 
         self.export_paragon_checkbox = self._generate_checkbox(
-            "Export Paragon JSON",
+            "Import Paragon",
             "export_paragon",
-            "Export paragon boards to a JSON file for the integrated Paragon overlay. Output: <user_dir>/paragon",
+            "Import Paragon boards into your profile for the integrated Paragon overlay.",
             "false",
         )
 
