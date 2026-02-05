@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import configparser
 import json
 import logging
 import re
 import sys
+import threading
 import tkinter as tk
 from contextlib import suppress
 from dataclasses import dataclass
@@ -25,14 +27,104 @@ try:
 except ImportError:  # pragma: no cover
     PyYAML = None
 
-
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
 LOGGER = logging.getLogger(__name__)
 
+# Global overlay instance + close request. This avoids calling Tk APIs from
+# non-Tk threads (the hotkey handler runs in a different thread).
+_CURRENT_OVERLAY: ParagonOverlay | None = None
+_CLOSE_REQUESTED = threading.Event()
+_OVERLAY_LOCK = threading.Lock()
+
+# Theme
+TRANSPARENT_KEY = "#ff00ff"
+CARD_BG = "#151515"
+TEXT = "#ffffff"
+MUTED = "#cfcfcf"
+GOLD = "#cfa15b"
+SELECT_BG = "#1f1f1f"
+
 GRID = 21  # 21x21 nodes
 NODES_LEN = GRID * GRID
+
+
+def _params_ini_path() -> Path:
+    user_dir = Path.home() / ".d4lf"
+    user_dir.mkdir(parents=True, exist_ok=True)
+    return user_dir / "params.ini"
+
+
+def _load_overlay_settings() -> dict[str, Any]:
+
+    ini = _params_ini_path()
+    if not ini.exists():
+        ini.write_text("", encoding="utf-8")
+
+    p = configparser.ConfigParser()
+    p.read(ini, encoding="utf-8")
+    sec = p["paragon_overlay"] if p.has_section("paragon_overlay") else {}
+
+    def _get_int(k: str) -> int | None:
+        v = sec.get(k)
+        if v is None:
+            return None
+        s = str(v).strip()
+        if not s:
+            return None
+        try:
+            return int(s)
+        except Exception:
+            return None
+
+    def _get_str(k: str) -> str | None:
+        v = sec.get(k)
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s or None
+
+    return {
+        "x": _get_int("x"),
+        "y": _get_int("y"),
+        "cell_size": _get_int("cell_size"),
+        "profile": _get_str("profile"),
+        "build_idx": _get_int("build_idx"),
+        "board_idx": _get_int("board_idx"),
+        "grid_x": _get_int("grid_x"),
+        "grid_y": _get_int("grid_y"),
+    }
+
+
+def _save_overlay_settings(values: dict[str, Any]) -> None:
+
+    ini = _params_ini_path()
+    if not ini.exists():
+        ini.write_text("", encoding="utf-8")
+
+    p = configparser.ConfigParser()
+    p.read(ini, encoding="utf-8")
+    if not p.has_section("paragon_overlay"):
+        p.add_section("paragon_overlay")
+
+    sec = p["paragon_overlay"]
+    for k, v in values.items():
+        if v is None:
+            continue
+        sec[str(k)] = str(v)
+
+    with ini.open("w", encoding="utf-8") as f:
+        p.write(f)
+
+
+def _clamp_int(v: int | None, lo: int, hi: int, default: int) -> int:
+    if v is None:
+        return default
+    try:
+        return max(lo, min(hi, int(v)))
+    except Exception:
+        return default
 
 
 # ----------------------------
@@ -89,9 +181,9 @@ def _extract_paragon_payloads_from_profile_yaml(profile_yaml: dict[str, Any]) ->
 def load_builds_from_path(preset_path: str) -> list[dict[str, Any]]:
     p = Path(preset_path)
 
-    msg_not_found = "Preset file/folder not found"
     if not p.exists():
-        raise ValueError(msg_not_found)
+        msg = "Preset file/folder not found"
+        raise ValueError(msg)
 
     builds: list[dict[str, Any]] = []
 
@@ -104,14 +196,13 @@ def load_builds_from_path(preset_path: str) -> list[dict[str, Any]]:
         else:
             msg = "Unsupported preset file type"
             raise ValueError(msg)
+
         if not builds:
             msg = "No valid builds found"
             raise ValueError(msg)
         return builds
 
     # Directory mode:
-    # - legacy exports: *.json in the selected folder
-    # - current format: profiles/*.yaml (or sibling ../profiles/*.yaml)
     json_files = sorted(p.glob("*.json"), key=lambda fp: fp.stat().st_mtime, reverse=True)
     if json_files:
         for fp in json_files:
@@ -221,8 +312,9 @@ def rotate_grid(grid: list[list[bool]], deg: int) -> list[list[bool]]:
 @dataclass(slots=True)
 class OverlayConfig:
     cell_size: int = 24
-    panel_w: int = 420
+    panel_w: int = 380
     poll_ms: int = 500
+    window_alpha: float = 0.86
 
 
 class ParagonOverlay(tk.Toplevel):
@@ -237,29 +329,67 @@ class ParagonOverlay(tk.Toplevel):
         on_close: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(parent)
-        self._cfg = cfg or OverlayConfig()
-        self._on_close = on_close
 
+        self._settings = _load_overlay_settings()
+        self._cfg = cfg or OverlayConfig()
+
+        saved_cell = self._settings.get("cell_size")
+        if isinstance(saved_cell, int):
+            self._cfg.cell_size = _clamp_int(saved_cell, 10, 80, self._cfg.cell_size)
+
+        self._on_close = on_close
         self._cam = Cam()
         self._res = ResManager()
 
-        self.builds = builds
-        self.current_build_idx = 0
-        self.boards = self.builds[0]["boards"] if self.builds else []
-        self.selected_board_idx = 0
+        self.builds = list(builds)
+
+        saved_profile = self._settings.get("profile")
+        saved_idx = self._settings.get("build_idx")
+
+        idx: int | None = None
+        if isinstance(saved_idx, int) and 0 <= saved_idx < len(self.builds):
+            idx = saved_idx
+            if saved_profile and self.builds[idx].get("profile") != saved_profile:
+                idx = None
+        if idx is None and saved_profile:
+            for i, b in enumerate(self.builds):
+                if b.get("profile") == saved_profile:
+                    idx = i
+                    break
+        if idx is None:
+            idx = _clamp_int(saved_idx, 0, max(0, len(self.builds) - 1), 0)
+
+        self.current_build_idx = idx
+        self.boards = self.builds[self.current_build_idx]["boards"] if self.builds else []
+        self.selected_board_idx = _clamp_int(self._settings.get("board_idx"), 0, max(0, len(self.boards) - 1), 0)
+
+        # Grid position is independent from the left UI and persisted.
+        self.grid_x = self._settings.get("grid_x")
+        self.grid_y = self._settings.get("grid_y")
+        if not isinstance(self.grid_x, int):
+            self.grid_x = self._cfg.panel_w + 24
+        if not isinstance(self.grid_y, int):
+            self.grid_y = 24
 
         self._last_roi: tuple[int, int, int, int] | None = None
         self._last_res: tuple[int, int] | None = None
 
+        self._dragging_grid = False
+        self._dragging_window = False
+        self._border_rect: tuple[int, int, int, int] | None = None
+        self._border_grab = 12
+
         self.title("D4LF Paragon Overlay")
         self.attributes("-topmost", True)
 
-        # Overlay-like appearance, best effort.
-        self.configure(bg="#ff00ff")
+        with suppress(tk.TclError):
+            self.attributes("-alpha", float(self._cfg.window_alpha))
+
+        self.configure(bg=TRANSPARENT_KEY)
         with suppress(tk.TclError):
             self.overrideredirect(True)
         with suppress(tk.TclError):
-            self.wm_attributes("-transparentcolor", "#ff00ff")
+            self.wm_attributes("-transparentcolor", TRANSPARENT_KEY)
 
         self.protocol("WM_DELETE_WINDOW", self.close)
 
@@ -270,58 +400,110 @@ class ParagonOverlay(tk.Toplevel):
         self._refresh_lists()
         self.redraw()
         self.after(self._cfg.poll_ms, self._poll_window_state)
+        self.after(50, self._poll_close_request)
 
     # -------- UI layout --------
     def _build_ui(self) -> None:
-        outer = tk.Frame(self, bg="#ff00ff")
+        outer = tk.Frame(self, bg=TRANSPARENT_KEY)
         outer.pack(fill="both", expand=True)
 
-        self.left = tk.Frame(outer, width=self._cfg.panel_w, bg="#1b1b1b")
-        self.left.pack(side="left", fill="y")
-
-        header = tk.Frame(self.left, bg="#222")
-        header.pack(fill="x")
-
-        self.btn_close = tk.Button(header, text="EXIT", command=self.close)
-        self.btn_close.pack(side="right", padx=6, pady=6)
-
-        self.lbl_title = tk.Label(header, text="Paragon Overlay", fg="#eee", bg="#222")
-        self.lbl_title.pack(side="left", padx=8)
-
-        self.build_list = tk.Listbox(self.left, activestyle="none")
-        self.build_list.pack(fill="x", padx=8, pady=(6, 8))
-
-        self.board_list = tk.Listbox(self.left, activestyle="none")
-        self.board_list.pack(fill="both", expand=True, padx=8, pady=(0, 8))
-
-        footer = tk.Frame(self.left, bg="#222")
-        footer.pack(fill="x")
-        self.lbl_hint = tk.Label(footer, text="Wheel: zoom | Drag grid: move window", fg="#cfa15b", bg="#222")
-        self.lbl_hint.pack(side="left", padx=8, pady=6)
-
-        self.right = tk.Frame(outer, bg="#000")
-        self.right.pack(side="right", fill="both", expand=True)
-
-        self.canvas = tk.Canvas(self.right, highlightthickness=0, bg="#000")
+        # Full-screen canvas (grid)
+        self.canvas = tk.Canvas(outer, highlightthickness=0, bg=TRANSPARENT_KEY)
         self.canvas.pack(fill="both", expand=True)
 
+        # Left UI container (transparent; cards only)
+        self.left = tk.Frame(outer, bg=TRANSPARENT_KEY)
+        self.left.place(x=0, y=0, width=self._cfg.panel_w, relheight=1.0)
+
+        # Title card (longer)
+        self.card_title = tk.Frame(self.left, bg=CARD_BG, height=96)
+        self.card_title.pack(fill="x", padx=10, pady=(10, 14))
+        self.card_title.pack_propagate(False)
+
+        title_row = tk.Frame(self.card_title, bg=CARD_BG)
+        title_row.pack(fill="both", expand=True, padx=12)
+
+        self.lbl_title = tk.Label(
+            title_row,
+            text="",
+            fg=TEXT,
+            bg=CARD_BG,
+            font=("Segoe UI", 14, "bold"),
+            anchor="w",
+            wraplength=max(200, self._cfg.panel_w - 90),
+            justify="left",
+        )
+        self.lbl_title.pack(side="left", fill="x", expand=True)
+
+        self.btn_build_menu = tk.Button(
+            title_row,
+            text="▼",
+            command=self._show_build_menu,
+            padx=6,
+            pady=0,
+            bg=CARD_BG,
+            fg=TEXT,
+            activebackground=CARD_BG,
+            activeforeground=TEXT,
+            bd=0,
+            highlightthickness=0,
+            font=("Segoe UI", 12, "bold"),
+        )
+        self.btn_build_menu.pack(side="left", padx=(8, 0))
+
+        # Scrollable board cards area (no solid background block)
+        self.boards_canvas = tk.Canvas(self.left, bg=TRANSPARENT_KEY, highlightthickness=0)
+        self.boards_canvas.pack(fill="both", expand=True, padx=10, pady=(0, 12))
+
+        self.board_container = tk.Frame(self.boards_canvas, bg=TRANSPARENT_KEY)
+        self._boards_window_id = self.boards_canvas.create_window((0, 0), window=self.board_container, anchor="nw")
+
+        def _on_container_configure(_: tk.Event) -> None:
+            self.boards_canvas.configure(scrollregion=self.boards_canvas.bbox("all"))
+
+        def _on_canvas_configure(e: tk.Event) -> None:
+            # Keep cards full width of the visible canvas
+            self.boards_canvas.itemconfigure(self._boards_window_id, width=int(e.width))
+
+        self.board_container.bind("<Configure>", _on_container_configure)
+        self.boards_canvas.bind("<Configure>", _on_canvas_configure)
+
     def _bind_events(self) -> None:
-        self.build_list.bind("<<ListboxSelect>>", self._on_select_build)
-        self.board_list.bind("<<ListboxSelect>>", self._on_select_board)
+        # Grid zoom
+        self.canvas.bind("<MouseWheel>", self._on_grid_mousewheel)
+        self.canvas.bind("<Button-4>", self._on_grid_mousewheel)
+        self.canvas.bind("<Button-5>", self._on_grid_mousewheel)
 
-        self.canvas.bind("<MouseWheel>", self._on_mousewheel)
-        self.canvas.bind("<Button-4>", self._on_mousewheel)
-        self.canvas.bind("<Button-5>", self._on_mousewheel)
+        # Board list scroll
+        self.boards_canvas.bind("<MouseWheel>", self._on_boards_mousewheel)
+        self.boards_canvas.bind("<Button-4>", self._on_boards_mousewheel)
+        self.boards_canvas.bind("<Button-5>", self._on_boards_mousewheel)
 
-        self.canvas.bind("<ButtonPress-1>", self._on_drag_start)
-        self.canvas.bind("<B1-Motion>", self._on_drag_move)
+        # Drag the grid by grabbing the gold border.
+        self.canvas.bind("<ButtonPress-1>", self._on_grid_drag_start)
+        self.canvas.bind("<B1-Motion>", self._on_grid_drag_move)
+        self.canvas.bind("<ButtonRelease-1>", self._on_grid_drag_end)
+
+        # Drag the whole overlay window via the title card.
+        for w in (self.card_title, self.lbl_title):
+            w.bind("<ButtonPress-1>", self._on_window_drag_start)
+            w.bind("<B1-Motion>", self._on_window_drag_move)
+            w.bind("<ButtonRelease-1>", self._on_window_drag_end)
+
+    def _poll_close_request(self) -> None:
+        if _CLOSE_REQUESTED.is_set():
+            _CLOSE_REQUESTED.clear()
+            self.close()
+            return
+        with suppress(Exception):
+            if self.winfo_exists():
+                self.after(50, self._poll_close_request)
 
     # -------- polling for ROI/resolution changes --------
     def _poll_window_state(self) -> None:
         try:
             roi = self._get_cam_roi()
             res = self._get_resolution()
-
             if roi != self._last_roi or res != self._last_res:
                 self._last_roi = roi
                 self._last_res = res
@@ -330,56 +512,211 @@ class ParagonOverlay(tk.Toplevel):
         finally:
             self.after(self._cfg.poll_ms, self._poll_window_state)
 
-    # -------- handlers --------
-    def _on_select_build(self, _: Any) -> None:
-        sel = self._get_listbox_index(self.build_list)
-        if sel is None:
+    # -------- build selection --------
+    def _select_build(self, idx: int) -> None:
+        if not self.builds:
             return
-        self.current_build_idx = sel
-        self.boards = self.builds[sel]["boards"]
+        idx = _clamp_int(idx, 0, max(0, len(self.builds) - 1), 0)
+        self.current_build_idx = idx
+        self.boards = self.builds[idx]["boards"] if self.builds else []
         self.selected_board_idx = 0
         self._refresh_lists()
         self.redraw()
+        self._persist_state()
 
-    def _on_select_board(self, _: Any) -> None:
-        sel = self._get_listbox_index(self.board_list)
-        if sel is None:
+    def _show_build_menu(self) -> None:
+        if not self.builds:
             return
-        self.selected_board_idx = sel
-        self.redraw()
 
-    def _on_mousewheel(self, e: tk.Event) -> None:
+        m = tk.Menu(self, tearoff=0, bg=CARD_BG, fg=TEXT, activebackground=SELECT_BG, activeforeground=GOLD, bd=0)
+
+        groups: dict[str, list[tuple[int, dict[str, Any]]]] = {}
+        for i, b in enumerate(self.builds):
+            prof = str(b.get("profile") or "Ungrouped")
+            groups.setdefault(prof, []).append((i, b))
+
+        def _add_item(menu: tk.Menu, i: int, b: dict[str, Any]) -> None:
+            name = str(b.get("name") or "Unknown Build")
+            menu.add_command(label=name, command=lambda idx=i: self._select_build(idx))
+
+        if len(groups) > 1:
+            for prof in sorted(groups):
+                sm = tk.Menu(
+                    self, tearoff=0, bg=CARD_BG, fg=TEXT, activebackground=SELECT_BG, activeforeground=GOLD, bd=0
+                )
+                for i, b in groups[prof]:
+                    _add_item(sm, i, b)
+                m.add_cascade(label=prof, menu=sm)
+        else:
+            for i, b in enumerate(self.builds):
+                _add_item(m, i, b)
+
+        try:
+            x = self.btn_build_menu.winfo_rootx()
+            y = self.btn_build_menu.winfo_rooty() + self.btn_build_menu.winfo_height()
+            m.tk_popup(x, y)
+        finally:
+            with suppress(Exception):
+                m.grab_release()
+
+    # -------- board cards --------
+    def _select_board_card(self, idx: int) -> None:
+        self.selected_board_idx = _clamp_int(idx, 0, max(0, len(self.boards) - 1), 0)
+        self._refresh_lists()
+        self.redraw()
+        self._persist_state()
+
+    def _refresh_lists(self) -> None:
+        # Clear existing cards
+        for w in self.board_container.winfo_children():
+            w.destroy()
+
+        # Update title
+        if self.builds:
+            self.lbl_title.config(text=str(self.builds[self.current_build_idx].get("name") or "Paragon"))
+        else:
+            self.lbl_title.config(text="Paragon")
+
+        if not self.boards:
+            return
+
+        # Create one card per board (no solid background block)
+        for idx, bd in enumerate(self.boards):
+            name = bd.get("Name", "?")
+            rot = bd.get("Rotation", "0")
+            glyph = bd.get("Glyph")
+
+            text = f"{name} ({rot})"
+            if glyph:
+                text += f" • {glyph}"
+
+            selected = idx == self.selected_board_idx
+            bg = SELECT_BG if selected else CARD_BG
+            fg = GOLD if selected else TEXT
+
+            card = tk.Frame(self.board_container, bg=bg, height=76)
+            card.pack(fill="x", pady=8)
+            card.pack_propagate(False)
+
+            lbl = tk.Label(
+                card,
+                text=text,
+                fg=fg,
+                bg=bg,
+                anchor="w",
+                padx=14,
+                pady=16,
+                font=("Segoe UI", 11, "bold"),
+                wraplength=max(200, self._cfg.panel_w - 40),
+                justify="left",
+            )
+            lbl.pack(fill="both", expand=True)
+
+            lbl.bind("<Button-1>", lambda _, i=idx: self._select_board_card(i))
+            card.bind("<Button-1>", lambda _, i=idx: self._select_board_card(i))
+
+        with suppress(Exception):
+            self.btn_build_menu.config(state=(tk.NORMAL if len(self.builds) > 1 else tk.DISABLED))
+
+    # -------- input handlers --------
+    def _on_boards_mousewheel(self, e: tk.Event) -> None:
+        delta = 0
+        if getattr(e, "delta", 0):
+            delta = -1 if e.delta > 0 else 1
+        elif getattr(e, "num", 0) in (4, 5):
+            delta = -1 if e.num == 4 else 1
+        if not delta:
+            return
+        # Scroll cards
+        with suppress(Exception):
+            self.boards_canvas.yview_scroll(int(delta), "units")
+
+    def _on_grid_mousewheel(self, e: tk.Event) -> None:
         delta = 0
         if getattr(e, "delta", 0):
             delta = 1 if e.delta > 0 else -1
         elif getattr(e, "num", 0) in (4, 5):
             delta = 1 if e.num == 4 else -1
-
         if not delta:
             return
 
-        new_size = max(10, min(80, self._cfg.cell_size + (2 * delta)))
-        if new_size != self._cfg.cell_size:
-            self._cfg.cell_size = new_size
-            self.redraw()
+        step = 1
+        if getattr(e, "state", 0) & 0x0001:  # SHIFT
+            step = 4
 
-    def _on_drag_start(self, e: tk.Event) -> None:
-        self._drag_start_xy = (e.x_root, e.y_root)
-        self._drag_start_geo = (self.winfo_x(), self.winfo_y())
+        old = int(self._cfg.cell_size)
+        new = max(10, min(80, old + (step * delta)))
+        if new == old:
+            return
 
-    def _on_drag_move(self, e: tk.Event) -> None:
+        # Keep grid stable under cursor while zooming
+        mx, my = int(getattr(e, "x", 0)), int(getattr(e, "y", 0))
+        rel_x = mx - int(self.grid_x)
+        rel_y = my - int(self.grid_y)
+        if old > 0:
+            self.grid_x = int(mx - (rel_x * new / old))
+            self.grid_y = int(my - (rel_y * new / old))
+
+        self._cfg.cell_size = new
+        self.redraw()
+        self._persist_state()
+
+    def _on_grid_drag_start(self, e: tk.Event) -> None:
+        if not self._is_on_gold_border(int(e.x), int(e.y)):
+            self._dragging_grid = False
+            return
+        self._dragging_grid = True
+        self._drag_start_xy = (int(e.x_root), int(e.y_root))
+        self._drag_start_grid = (int(self.grid_x), int(self.grid_y))
+
+    def _on_grid_drag_move(self, e: tk.Event) -> None:
+        if not self._dragging_grid:
+            return
         sx, sy = self._drag_start_xy
-        gx, gy = self._drag_start_geo
-        dx = e.x_root - sx
-        dy = e.y_root - sy
-        self.geometry(f"+{gx + dx}+{gy + dy}")
+        gx, gy = self._drag_start_grid
+        dx = int(e.x_root) - sx
+        dy = int(e.y_root) - sy
+        self.grid_x = gx + dx
+        self.grid_y = gy + dy
+        self.redraw()
+
+    def _on_grid_drag_end(self, _: tk.Event) -> None:
+        if not self._dragging_grid:
+            return
+        self._dragging_grid = False
+        self._persist_state()
+
+    def _on_window_drag_start(self, e: tk.Event) -> None:
+        self._dragging_window = True
+        self._win_drag_start_xy = (int(e.x_root), int(e.y_root))
+        self._win_drag_start_pos = (int(self.winfo_x()), int(self.winfo_y()))
+
+    def _on_window_drag_move(self, e: tk.Event) -> None:
+        if not self._dragging_window:
+            return
+        sx, sy = self._win_drag_start_xy
+        wx, wy = self._win_drag_start_pos
+        dx = int(e.x_root) - sx
+        dy = int(e.y_root) - sy
+        self.geometry(f"+{wx + dx}+{wy + dy}")
+
+    def _on_window_drag_end(self, _: tk.Event) -> None:
+        if not self._dragging_window:
+            return
+        self._dragging_window = False
+        self._persist_state()
+
+    def _is_on_gold_border(self, x: int, y: int) -> bool:
+        if not self._border_rect:
+            return False
+        x1, y1, x2, y2 = self._border_rect
+        g = int(self._border_grab)
+        if not (x1 - g <= x <= x2 + g and y1 - g <= y <= y2 + g):
+            return False
+        near = min(abs(x - x1), abs(x - x2), abs(y - y1), abs(y - y2))
+        return near <= g
 
     # -------- helpers --------
-    @staticmethod
-    def _get_listbox_index(lb: tk.Listbox) -> int | None:
-        cur = lb.curselection()
-        return int(cur[0]) if cur else None
-
     def _get_resolution(self) -> tuple[int, int]:
         with suppress(Exception):
             w, h = tuple(self._res.resolution)[:2]
@@ -397,88 +734,69 @@ class ParagonOverlay(tk.Toplevel):
             return None
 
     def _apply_geometry(self) -> None:
-        w, h = self._get_resolution()
         roi = self._get_cam_roi()
-
-        grid_w = min(760, max(480, w - self._cfg.panel_w - 80))
-        grid_h = min(760, max(480, h - 120))
-        total_w = self._cfg.panel_w + grid_w
-        total_h = grid_h
-
         if roi is not None:
-            x, y, _, _ = roi
-            self.geometry(f"{total_w}x{total_h}+{x + 20}+{y + 20}")
+            rx, ry, rw, rh = roi
         else:
-            self.geometry(f"{total_w}x{total_h}+20+20")
+            rw, rh = self._get_resolution()
+            rx, ry = 0, 0
 
-        self.canvas.config(width=grid_w, height=grid_h)
+        # Use saved position if available.
+        sx = self._settings.get("x")
+        sy = self._settings.get("y")
+        if isinstance(sx, int) and isinstance(sy, int):
+            rx, ry = sx, sy
 
-    def _refresh_lists(self) -> None:
-        self.build_list.delete(0, tk.END)
-        for b in self.builds:
-            self.build_list.insert(tk.END, b.get("name", "Unknown Build"))
-        if self.builds:
-            self.build_list.selection_set(self.current_build_idx)
-
-        self.board_list.delete(0, tk.END)
-        for bd in self.boards or []:
-            name = bd.get("Name", "?")
-            rot = bd.get("Rotation", "0")
-            glyph = bd.get("Glyph")
-            label = f"{name} ({rot})"
-            if glyph:
-                label += f" ({glyph})"
-            self.board_list.insert(tk.END, label)
-        if self.boards:
-            self.board_list.selection_set(self.selected_board_idx)
-
-        cur_name = self.builds[self.current_build_idx]["name"] if self.builds else "Paragon Overlay"
-        self.lbl_title.config(text=cur_name)
+        self.geometry(f"{int(rw)}x{int(rh)}+{int(rx)}+{int(ry)}")
+        with suppress(Exception):
+            self.canvas.config(width=int(rw), height=int(rh))
 
     # -------- drawing --------
     def redraw(self) -> None:
         self.canvas.delete("all")
         if not self.boards:
-            self.canvas.create_text(20, 20, anchor="nw", fill="#fff", text="No boards loaded")
             return
 
         board = self.boards[self.selected_board_idx]
         nodes = board.get("Nodes") or []
         if len(nodes) != NODES_LEN:
-            self.canvas.create_text(20, 20, anchor="nw", fill="#fff", text="Invalid board node data")
             return
 
         rot = parse_rotation(board.get("Rotation", "0°"))
         grid = rotate_grid(nodes_to_grid(nodes), rot)
 
-        cs = self._cfg.cell_size
-        pad = 16
-        gx0, gy0 = pad, pad
+        cs = int(self._cfg.cell_size)
+        gx0, gy0 = int(self.grid_x), int(self.grid_y)
         grid_px = GRID * cs
 
-        self.canvas.create_rectangle(gx0 - 6, gy0 - 6, gx0 + grid_px + 6, gy0 + grid_px + 6, outline="#cfa15b", width=3)
+        border_pad = 6
+        border_w = 6
+        self.canvas.create_rectangle(
+            gx0 - border_pad,
+            gy0 - border_pad,
+            gx0 + grid_px + border_pad,
+            gy0 + grid_px + border_pad,
+            outline=GOLD,
+            width=border_w,
+        )
 
+        self._border_rect = (
+            int(gx0 - border_pad),
+            int(gy0 - border_pad),
+            int(gx0 + grid_px + border_pad),
+            int(gy0 + grid_px + border_pad),
+        )
+        self._border_grab = max(12, (border_w * 2) + 2)
+
+        # Grid lines
         for i in range(GRID + 1):
             p = i * cs
-            self.canvas.create_line(gx0, gy0 + p, gx0 + grid_px, gy0 + p, fill="#444", width=1)
-            self.canvas.create_line(gx0 + p, gy0, gx0 + p, gy0 + grid_px, fill="#444", width=1)
+            self.canvas.create_line(gx0, gy0 + p, gx0 + grid_px, gy0 + p, fill="#3f3f3f", width=1)
+            self.canvas.create_line(gx0 + p, gy0, gx0 + p, gy0 + grid_px, fill="#3f3f3f", width=1)
 
-        path_w = max(2, cs // 6)
-        half = cs // 2
-        for y in range(GRID):
-            for x in range(GRID):
-                if not grid[y][x]:
-                    continue
-                cx = gx0 + x * cs + half
-                cy = gy0 + y * cs + half
-                if x + 1 < GRID and grid[y][x + 1]:
-                    nx = gx0 + (x + 1) * cs + half
-                    self.canvas.create_line(cx, cy, nx, cy, fill="#22aa44", width=path_w)
-                if y + 1 < GRID and grid[y + 1][x]:
-                    ny = gy0 + (y + 1) * cs + half
-                    self.canvas.create_line(cx, cy, cx, ny, fill="#22aa44", width=path_w)
-
-        inset = max(3, cs // 4)
+        # Nodes
+        inset = max(2, cs // 4)
+        outline_w = max(2, cs // 10)
         for y in range(GRID):
             for x in range(GRID):
                 if not grid[y][x]:
@@ -487,15 +805,39 @@ class ParagonOverlay(tk.Toplevel):
                 y1 = gy0 + y * cs + inset
                 x2 = gx0 + (x + 1) * cs - inset
                 y2 = gy0 + (y + 1) * cs - inset
-                self.canvas.create_rectangle(x1, y1, x2, y2, fill="#18dd44", outline="#bbffbb", width=1)
+                self.canvas.create_rectangle(x1, y1, x2, y2, fill="", outline="#18dd44", width=outline_w)
 
     # -------- lifecycle --------
     def close(self) -> None:
         try:
+            self._persist_state()
             self.destroy()
         finally:
             if self._on_close:
                 self._on_close()
+
+            with _OVERLAY_LOCK:
+                global _CURRENT_OVERLAY
+                if _CURRENT_OVERLAY is self:
+                    _CURRENT_OVERLAY = None
+
+    def _persist_state(self) -> None:
+        try:
+            prof = ""
+            if self.builds:
+                prof = str(self.builds[self.current_build_idx].get("profile") or "")
+            _save_overlay_settings({
+                "x": int(self.winfo_x()),
+                "y": int(self.winfo_y()),
+                "cell_size": int(self._cfg.cell_size),
+                "profile": prof,
+                "build_idx": int(self.current_build_idx),
+                "board_idx": int(self.selected_board_idx),
+                "grid_x": int(self.grid_x),
+                "grid_y": int(self.grid_y),
+            })
+        except Exception:
+            LOGGER.debug("Failed to persist overlay state", exc_info=True)
 
 
 # ----------------------------
@@ -522,18 +864,27 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
         owns_root = True
 
     overlay = ParagonOverlay(parent, builds, on_close=(parent.quit if owns_root else None))
+    with _OVERLAY_LOCK:
+        global _CURRENT_OVERLAY
+        _CURRENT_OVERLAY = overlay
+        _CLOSE_REQUESTED.clear()
 
     if owns_root:
         parent.mainloop()
     return overlay
 
 
-def request_close(overlay: ParagonOverlay | None) -> None:
-    """Best-effort close from elsewhere."""
-    if overlay is None:
-        return
-    with suppress(Exception):
-        overlay.after(0, overlay.close)
+def request_close(overlay: ParagonOverlay | None = None) -> None:
+    """Request the Paragon overlay to close.
+
+    Safe to call from non-Tk threads (hotkey thread). The overlay checks this
+    flag periodically and closes itself.
+    """
+    with _OVERLAY_LOCK:
+        target = overlay or _CURRENT_OVERLAY
+        if target is None:
+            return
+        _CLOSE_REQUESTED.set()
 
 
 if __name__ == "__main__":
