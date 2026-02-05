@@ -57,7 +57,11 @@ def main():
     table.rows.append([IniConfigLoader().advanced_options.toggle_paragon_overlay, "Toggle Paragon Overlay"])
 
     if not IniConfigLoader().advanced_options.vision_mode_only:
-        table.rows.append([IniConfigLoader().advanced_options.run_filter, "Run/Stop Auto Filter"])
+        table.rows.append([IniConfigLoader().advanced_options.run_filter, "Run/Stop Auto Filter (no match = junk)"])
+        table.rows.append([
+            IniConfigLoader().advanced_options.run_filter_drop,
+            "Run/Stop Auto Filter (no match = drop)",
+        ])
         table.rows.append([
             IniConfigLoader().advanced_options.run_filter_force_refresh,
             "Force Run/Stop Filter, Resetting Item Status",

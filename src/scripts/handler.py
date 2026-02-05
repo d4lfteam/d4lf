@@ -109,6 +109,9 @@ class ScriptHandler:
         if not IniConfigLoader().advanced_options.vision_mode_only:
             keyboard.add_hotkey(IniConfigLoader().advanced_options.run_filter, lambda: self.filter_items())
             keyboard.add_hotkey(
+                IniConfigLoader().advanced_options.run_filter_drop, lambda: self.filter_items(no_match_action="drop")
+            )
+            keyboard.add_hotkey(
                 IniConfigLoader().advanced_options.run_filter_force_refresh,
                 lambda: self.filter_items(ItemRefreshType.force_with_filter),
             )
@@ -119,9 +122,9 @@ class ScriptHandler:
             keyboard.add_hotkey(IniConfigLoader().advanced_options.move_to_inv, lambda: self.move_items_to_inventory())
             keyboard.add_hotkey(IniConfigLoader().advanced_options.move_to_chest, lambda: self.move_items_to_stash())
 
-    def filter_items(self, force_refresh=ItemRefreshType.no_refresh):
+    def filter_items(self, force_refresh=ItemRefreshType.no_refresh, *, no_match_action: str = "junk"):
         if src.tts.CONNECTED:
-            self._start_or_stop_loot_interaction_thread(run_loot_filter, (force_refresh,))
+            self._start_or_stop_loot_interaction_thread(run_loot_filter, (force_refresh, no_match_action))
         else:
             LOGGER.warning(
                 f"TTS connection has not been made yet. Have you followed all of the instructions in {SETUP_INSTRUCTIONS_URL}? "
@@ -183,7 +186,7 @@ class ScriptHandler:
             return
 
 
-def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh):
+def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh, no_match_action: str = "junk"):
     LOGGER.info("Running loot filter")
     mouse.move(*Cam().abs_window_to_monitor((0, 0)))
     check_items = src.scripts.loot_filter_tts.check_items
@@ -195,15 +198,15 @@ def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh)
         for i in IniConfigLoader().general.check_chest_tabs:
             stash.switch_to_tab(i)
             time.sleep(0.3)
-            check_items(stash, force_refresh, stash_is_open=True)
+            check_items(stash, force_refresh, stash_is_open=True, no_match_action=no_match_action)
         mouse.move(*Cam().abs_window_to_monitor((0, 0)))
         time.sleep(0.3)
-        check_items(inv, force_refresh, stash_is_open=True)
+        check_items(inv, force_refresh, stash_is_open=True, no_match_action=no_match_action)
     else:
         if not inv.open():
             screenshot("inventory_not_open", img=Cam().grab())
             LOGGER.error("Inventory did not open up")
             return
-        check_items(inv, force_refresh)
+        check_items(inv, force_refresh, no_match_action=no_match_action)
     mouse.move(*Cam().abs_window_to_monitor((0, 0)))
-    LOGGER.info("Loot Filter done")
+    LOGGER.info("loot filter done")

@@ -210,7 +210,14 @@ class AdvancedOptionsModel(_IniBaseModel):
         description="The process that is running Diablo 4. Could help usage when playing through a streaming service like GeForce Now",
     )
     run_filter: str = Field(
-        default="f11", description="Hotkey to run the filter process", json_schema_extra={IS_HOTKEY_KEY: "True"}
+        default="f11",
+        description="Hotkey to run the filter process (no match = junk)",
+        json_schema_extra={IS_HOTKEY_KEY: "True"},
+    )
+    run_filter_drop: str = Field(
+        default="ctrl+f11",
+        description="Hotkey to run the filter process (no match = drop item from inventory via Ctrl+Left Click)",
+        json_schema_extra={IS_HOTKEY_KEY: "True"},
     )
     run_filter_force_refresh: str = Field(
         default="shift+f11",
@@ -236,6 +243,7 @@ class AdvancedOptionsModel(_IniBaseModel):
             self.move_to_chest,
             self.move_to_inv,
             self.run_filter,
+            self.run_filter_drop,
             self.run_filter_force_refresh,
             self.run_vision_mode,
         ]
@@ -251,6 +259,7 @@ class AdvancedOptionsModel(_IniBaseModel):
         "move_to_chest",
         "move_to_inv",
         "run_filter",
+        "run_filter_drop",
         "run_filter_force_refresh",
         "run_vision_mode",
     )
