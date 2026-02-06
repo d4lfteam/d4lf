@@ -45,11 +45,13 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
   profiles you want to use.
 - Ensure all [game settings](#game-settings) are configured properly.
 - If you made changes, restart d4lf.exe and launch Diablo 4.
-- Use the hotkeys listed in d4lf.exe to run filtering. By default, F11 will run the loot filter and filter your items.
+- Use the hotkeys listed in d4lf.exe to run filtering. By default, **F11** will run the loot filter and mark items as **favorite** (match) or **junk** (no match). You can also run an alternate mode where **no match items are dropped** using **Ctrl+F11** (configurable in settings). In drop mode, the log will not list every dropped item; it will only print `loot filter done` when finished.
 - For most common issues, if something is wrong, you will see an error or warning when you start d4lf.exe. Join our [discord](https://discord.gg/YyzaPhAN6T) for more help.
 
 #### Paragon overlay
 
+You can Drap and Drop the Grid via hold/release leftmouse on the golden frame. Hoover to the golden frame and zoom in/out with mousewheel.
+Last Overlay Postion will be saved in "params.ini"
 D4LF can import Paragon boards from supported build planners and show them in-game using the Paragon overlay.
 
 **How to use**
@@ -69,7 +71,6 @@ D4LF can import Paragon boards from supported build planners and show them in-ga
   - Ensure Diablo IV is running in **borderless windowed** (exclusive fullscreen may block overlays).
   - Ensure your profiles folder contains `*.yaml`/`*.yml` profile files with a top-level `Paragon:` section (default: `C:/Users/<WINDOWS_USER>/.d4lf/profiles`).
   - Check/adjust `advanced_options.toggle_paragon_overlay` (default `f10`) and ensure it is not conflicting with other hotkeys.
-  - If the overlay is off-screen, delete `d4_overlay_config.json` next to `d4lf.exe` to reset its position.
 - The GUI crashes immediately upon opening, with no error message given
   - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
     your params.ini through the config tab. Using the GUI for configuration will ensure the file is always accurate.
@@ -133,7 +134,8 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | move_to_inv                  | Hotkey for moving items from stash to inventory                                                                                                            |
 | move_to_chest                | Hotkey for moving items from inventory to stash                                                                                                            |
-| run_filter                   | Hotkey to start/stop filtering items                                                                                                                       |
+| run_filter                   | Hotkey to start/stop filtering items (no match → junk)                                                                                                     |
+| run_filter_drop              | Hotkey to start/stop filtering items (no match → drop item), only works in "normal" mode (no stash or vendor etc open)                                     |
 | run_filter_force_refresh     | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                                                                 |
 | run_vision_mode              | Hotkey to start/stop vision mode                                                                                                                           |
 | force_refresh_only           | Hotkey to reset all item statuses without running a filter after                                                                                           |
