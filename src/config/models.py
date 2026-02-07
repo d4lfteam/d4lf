@@ -200,23 +200,19 @@ class AdvancedOptionsModel(_IniBaseModel):
         description="Hotkey to move configured items from stash to inventory",
         json_schema_extra={IS_HOTKEY_KEY: "True"},
     )
-    paragon_overlay_source_dir: str = Field(
-        default="",
-        description="Folder containing Paragon JSON files for the Paragon overlay. Leave blank to use the default: ~/.d4lf/paragon",
-        json_schema_extra={HIDE_FROM_GUI_KEY: "True"},
-    )
     process_name: str = Field(
         default="Diablo IV.exe",
         description="The process that is running Diablo 4. Could help usage when playing through a streaming service like GeForce Now",
     )
     run_filter: str = Field(
         default="f11",
-        description="Hotkey to run the filter process (no match = junk)",
+        description="Hotkey to run the filter process. If the item matches no profiles, it is marked as junk.",
         json_schema_extra={IS_HOTKEY_KEY: "True"},
     )
+
     run_filter_drop: str = Field(
         default="ctrl+f11",
-        description="Hotkey to run the filter process (no match = drop item from inventory via Ctrl+Left Click)",
+        description="Hotkey to run the filter process. If the item matches no profiles, it is dropped.",
         json_schema_extra={IS_HOTKEY_KEY: "True"},
     )
     run_filter_force_refresh: str = Field(

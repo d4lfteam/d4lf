@@ -27,11 +27,7 @@ from src.gui.importer.common import (
     update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import (
-    build_paragon_profile_payload,
-    extract_mobalytics_paragon_steps,
-    write_paragon_into_profile_yaml,
-)
+from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_mobalytics_paragon_steps
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
@@ -236,19 +232,20 @@ def import_mobalytics(config: ImportConfig):
 
     if config.custom_file_name:
         build_name = config.custom_file_name
+    # Optionally embed Paragon data into the profile model before saving
+    if config.export_paragon:
+        steps = extract_mobalytics_paragon_steps(variant if isinstance(variant, dict) else {})
+        if steps:
+            profile.Paragon = build_paragon_profile_payload(
+                build_name=build_name, source_url=url, paragon_boards_list=steps
+            )
+        else:
+            LOGGER.warning("Paragon export enabled, but no paragon data was found for this Mobalytics variant.")
 
     corrected_file_name = save_as_profile(file_name=build_name, profile=profile, url=url)
 
     if config.add_to_profiles:
         add_to_profiles(corrected_file_name)
-
-    if config.export_paragon:
-        steps = extract_mobalytics_paragon_steps(variant if isinstance(variant, dict) else {})
-        if steps:
-            payload = build_paragon_profile_payload(build_name=build_name, source_url=url, paragon_boards_list=steps)
-            write_paragon_into_profile_yaml(profile_ref=corrected_file_name, payload=payload)
-        else:
-            LOGGER.warning("Paragon export enabled, but no paragon data was found for this Mobalytics variant.")
 
     LOGGER.info("Finished")
 

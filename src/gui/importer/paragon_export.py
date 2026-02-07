@@ -1,26 +1,12 @@
 from __future__ import annotations
 
 import datetime
-import json
 import logging
 import re
 import time
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from src import __version__
-from src.config.loader import IniConfigLoader
-
-try:
-    from ruamel.yaml import YAML as RUAMEL_YAML
-except ImportError:  # pragma: no cover
-    RUAMEL_YAML = None
-
-try:
-    import yaml as PyYAML
-except ImportError:  # pragma: no cover
-    PyYAML = None
-
 
 try:
     from selenium.webdriver.common.by import By
@@ -302,35 +288,6 @@ def _maxroll_glyph_slug(glyph_id: str, board_id: str) -> str:
     return f"{cls}-{name_slug}" if cls and name_slug else _slugify(glyph_id)
 
 
-def export_paragon_build_json(
-    file_stem: str, build_name: str, source_url: str, paragon_boards_list: list[list[dict[str, Any]]]
-) -> Path:
-    """Write a D4Companion-compatible JSON containing Name + ParagonBoardsList.
-
-    Output format is a JSON list with a single entry, so it can be consumed by tools that expect a list.
-    """
-    out_dir = IniConfigLoader().user_dir / "paragon"
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    out_path = out_dir / f"{file_stem}.json"
-
-    payload = [
-        {
-            "Name": build_name,
-            "Source": source_url,
-            "GeneratedAt": datetime.datetime.now(tz=datetime.UTC).strftime("%Y-%m-%d %H:%M:%S UTC"),
-            "Generator": f"d4lf v{__version__}",
-            "ParagonBoardsList": paragon_boards_list,
-        }
-    ]
-
-    with out_path.open("w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
-
-    LOGGER.info(f"Exported paragon JSON: {out_path}")
-    return out_path
-
-
 def build_paragon_profile_payload(
     build_name: str, source_url: str, paragon_boards_list: list[list[dict[str, Any]]]
 ) -> dict[str, Any]:
@@ -345,60 +302,6 @@ def build_paragon_profile_payload(
         "Generator": f"d4lf v{__version__}",
         "ParagonBoardsList": paragon_boards_list,
     }
-
-
-def write_paragon_into_profile_yaml(profile_ref: str, payload: dict[str, Any]) -> Path | None:
-    """Embed paragon payload into a profile YAML under a top-level ``Paragon`` key.
-
-    Returns the updated profile path if successful; otherwise returns ``None``.
-    """
-    profiles_dir = IniConfigLoader().user_dir / "profiles"
-    p = Path(profile_ref)
-
-    # Accept absolute or relative path
-    if p.is_file():
-        profile_path = p
-    else:
-        stem = p.stem
-        candidates = [
-            profiles_dir / f"{stem}.yaml",
-            profiles_dir / f"{stem}.yml",
-            profiles_dir / stem,  # in case save_as_profile returns full filename
-        ]
-        profile_path = next((c for c in candidates if c.exists()), None)
-
-    if profile_path is None or not profile_path.exists():
-        LOGGER.warning("Unable to locate profile YAML for Paragon embed: %s", profile_ref)
-        return None
-
-    data: dict[str, Any] = {}
-    try:
-        if RUAMEL_YAML is not None:
-            y = RUAMEL_YAML(typ="rt")
-            with profile_path.open("r", encoding="utf-8") as f:
-                loaded = y.load(f) or {}
-            if isinstance(loaded, dict):
-                data = loaded
-            data["Paragon"] = payload
-            with profile_path.open("w", encoding="utf-8") as f:
-                y.dump(data, f)
-        elif PyYAML is not None:
-            with profile_path.open("r", encoding="utf-8") as f:
-                loaded = PyYAML.safe_load(f) or {}
-            if isinstance(loaded, dict):
-                data = loaded
-            data["Paragon"] = payload
-            with profile_path.open("w", encoding="utf-8") as f:
-                PyYAML.safe_dump(data, f, sort_keys=False, allow_unicode=True)
-        else:  # pragma: no cover
-            LOGGER.error("No YAML library available (ruamel.yaml or PyYAML); cannot embed Paragon.")
-            return None
-    except Exception:
-        LOGGER.exception("Failed embedding Paragon into profile YAML: %s", profile_path)
-        return None
-
-    LOGGER.info("Embedded Paragon into profile: %s", profile_path)
-    return profile_path
 
 
 def extract_maxroll_paragon_steps(active_profile: dict[str, Any]) -> list[list[dict[str, Any]]]:

@@ -34,7 +34,7 @@ class ActivityLogWidget(QWidget):
         config = IniConfigLoader()
 
         hotkey_text = QLabel()
-        hotkey_text.setMaximumHeight(85)
+        hotkey_text.setMaximumHeight(105)
         hotkey_text.setWordWrap(True)
         hotkey_text.setTextFormat(Qt.TextFormat.RichText)
         hotkey_text.setStyleSheet("margin-left: 5px;")

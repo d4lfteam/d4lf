@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import configparser
-import json
 import logging
 import re
 import sys
@@ -14,18 +13,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import yaml
+from pydantic import ValidationError
+
 from src.cam import Cam
+from src.config.loader import IniConfigLoader
+from src.config.models import ProfileModel
 from src.config.ui import ResManager
-
-try:
-    from ruamel.yaml import YAML as RUAMEL_YAML
-except ImportError:  # pragma: no cover
-    RUAMEL_YAML = None
-
-try:
-    import yaml as PyYAML
-except ImportError:  # pragma: no cover
-    PyYAML = None
+from src.item.filter import _UniqueKeyLoader
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -146,120 +141,75 @@ def _normalize_steps(raw_list: Any) -> list[list[dict[str, Any]]]:
     return [raw_list]
 
 
-def _load_yaml_file(path: Path) -> dict[str, Any] | None:
+def _iter_paragon_payloads(paragon: object) -> list[dict[str, Any]]:
+    if isinstance(paragon, dict):
+        return [paragon]
+    if isinstance(paragon, list):
+        return [x for x in paragon if isinstance(x, dict)]
+    return []
+
+
+def _load_profile_model(profile_path: Path, profile_name: str) -> ProfileModel | None:
     try:
-        if RUAMEL_YAML is not None:
-            y = RUAMEL_YAML(typ="rt")
-            with path.open("r", encoding="utf-8") as f:
-                loaded = y.load(f) or {}
-            return loaded if isinstance(loaded, dict) else None
-        if PyYAML is not None:
-            with path.open("r", encoding="utf-8") as f:
-                loaded = PyYAML.safe_load(f) or {}
-            return loaded if isinstance(loaded, dict) else None
+        with profile_path.open(encoding="utf-8") as f:
+            cfg = yaml.load(stream=f, Loader=_UniqueKeyLoader)
     except Exception:
-        LOGGER.debug("Failed reading YAML: %s", path, exc_info=True)
+        LOGGER.debug("Failed reading YAML: %s", profile_path, exc_info=True)
         return None
 
-    LOGGER.error("No YAML library available (ruamel.yaml or PyYAML)")
-    return None
+    if cfg is None:
+        return None
+    if not isinstance(cfg, dict):
+        return None
+
+    try:
+        return ProfileModel(name=profile_name, **cfg)
+    except ValidationError:
+        LOGGER.debug("Profile validation failed for %s", profile_path, exc_info=True)
+        return None
 
 
-def _extract_paragon_payloads_from_profile_yaml(profile_yaml: dict[str, Any]) -> Iterable[dict[str, Any]]:
-    paragon = profile_yaml.get("Paragon")
-    if isinstance(paragon, dict):
-        yield paragon
-        return
-    if isinstance(paragon, list):
-        for it in paragon:
-            if isinstance(it, dict):
-                yield it
+def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]]:
+    """Load Paragon builds for the overlay.
 
+    Primary source is the currently loaded profile list from the main config (same as Filter.load_files).
+    If no profiles are configured, this falls back to scanning the provided directory for *.yaml/*.yml.
+    """
+    config = IniConfigLoader()
+    profiles_dir = config.user_dir / "profiles"
 
-def load_builds_from_path(preset_path: str) -> list[dict[str, Any]]:
-    p = Path(preset_path)
+    profile_names = [p.strip() for p in config.general.profiles if p.strip()]
+    candidates: list[tuple[str, Path]] = []
 
-    if not p.exists():
-        msg = "Preset file/folder not found"
-        raise ValueError(msg)
-
-    builds: list[dict[str, Any]] = []
-
-    if p.is_file():
-        suffix = p.suffix.lower()
-        if suffix == ".json":
-            builds.extend(_load_builds_from_json_file(p, profile=p.stem))
-        elif suffix in (".yaml", ".yml"):
-            builds.extend(_load_builds_from_profile_yaml_file(p, profile=p.stem))
-        else:
-            msg = "Unsupported preset file type"
-            raise ValueError(msg)
-
-        if not builds:
-            msg = "No valid builds found"
-            raise ValueError(msg)
-        return builds
-
-    # Directory mode:
-    json_files = sorted(p.glob("*.json"), key=lambda fp: fp.stat().st_mtime, reverse=True)
-    if json_files:
-        for fp in json_files:
-            try:
-                builds.extend(_load_builds_from_json_file(fp, name_tag=fp.stem, profile=fp.stem))
-            except Exception:
-                LOGGER.debug("Skipping invalid paragon preset JSON: %s", fp, exc_info=True)
-
-    yaml_dirs: list[Path] = []
-    if (p / "profiles").is_dir():
-        yaml_dirs.append(p / "profiles")
-    if (p.parent / "profiles").is_dir():
-        yaml_dirs.append(p.parent / "profiles")
-    yaml_dirs.append(p)
-
-    seen: set[Path] = set()
-    for yd in yaml_dirs:
-        for fp in sorted(yd.glob("*.ya*"), key=lambda x: x.stat().st_mtime, reverse=True):
-            if fp in seen:
-                continue
-            seen.add(fp)
-            try:
-                builds.extend(_load_builds_from_profile_yaml_file(fp, profile=fp.stem))
-            except Exception:
-                LOGGER.debug("Skipping invalid profile YAML: %s", fp, exc_info=True)
-
-    if not builds:
-        msg = "No valid builds found in folder"
-        raise ValueError(msg)
-    return builds
-
-
-def _load_builds_from_json_file(
-    preset_file: Path, name_tag: str | None = None, profile: str | None = None
-) -> list[dict[str, Any]]:
-    with preset_file.open(encoding="utf-8") as f:
-        data = json.load(f)
+    if profile_names:
+        for name in profile_names:
+            path_yaml = profiles_dir / f"{name}.yaml"
+            path_yml = profiles_dir / f"{name}.yml"
+            if path_yaml.is_file():
+                candidates.append((name, path_yaml))
+            elif path_yml.is_file():
+                candidates.append((name, path_yml))
+            else:
+                # Keep behavior consistent with filter.py: log and continue
+                LOGGER.debug("Could not load profile %s. Checked: %s", name, path_yaml)
+    else:
+        # Fallback: scan provided dir (or default profiles dir)
+        scan_dir = Path(preset_path) if preset_path else profiles_dir
+        if scan_dir.is_file():
+            scan_dir = scan_dir.parent
+        candidates.extend([
+            (fp.stem, fp) for fp in sorted(scan_dir.glob("*.ya*"), key=lambda x: x.stat().st_mtime, reverse=True)
+        ])
 
     builds: list[dict[str, Any]] = []
-    for entry in _iter_entries(data):
-        builds.extend(_builds_from_paragon_entry(entry, name_tag=name_tag, profile=profile))
-    if not builds:
-        msg = "No valid builds in JSON"
-        raise ValueError(msg)
-    return builds
+    for prof_name, prof_path in candidates:
+        model = _load_profile_model(prof_path, prof_name)
+        if model is None or not model.Paragon:
+            continue
 
+        for payload in _iter_paragon_payloads(model.Paragon):
+            builds.extend(_builds_from_paragon_entry(payload, name_tag=None, profile=prof_name))
 
-def _load_builds_from_profile_yaml_file(profile_file: Path, profile: str | None = None) -> list[dict[str, Any]]:
-    loaded = _load_yaml_file(profile_file)
-    if not loaded:
-        msg = "Invalid or empty profile YAML"
-        raise ValueError(msg)
-
-    builds: list[dict[str, Any]] = []
-    for payload in _extract_paragon_payloads_from_profile_yaml(loaded):
-        builds.extend(_builds_from_paragon_entry(payload, name_tag=profile_file.stem, profile=profile))
-    if not builds:
-        msg = "No Paragon payload found in profile YAML"
-        raise ValueError(msg)
     return builds
 
 
@@ -885,13 +835,13 @@ class ParagonOverlay(tk.Toplevel):
 # ----------------------------
 def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | None = None) -> ParagonOverlay | None:
     """Start overlay in-process."""
-    preset = preset_path or (sys.argv[1] if len(sys.argv) > 1 else "")
-    if not preset:
-        LOGGER.error("No preset path provided")
-        return None
+    preset = preset_path or (sys.argv[1] if len(sys.argv) > 1 else None)
 
     try:
         builds = load_builds_from_path(preset)
+        if not builds:
+            LOGGER.warning("No Paragon data found in loaded profiles.")
+            return None
     except Exception:
         LOGGER.exception("Failed to load Paragon preset(s): %s", preset)
         return None

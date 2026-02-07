@@ -3,7 +3,6 @@ import threading
 import time
 import typing
 from contextlib import suppress
-from pathlib import Path
 
 import keyboard
 
@@ -57,17 +56,13 @@ class ScriptHandler:
                 return
 
             config = IniConfigLoader()
-            overlay_dir_str = getattr(config.advanced_options, "paragon_overlay_source_dir", "") or ""
-            overlay_dir = (
-                Path(overlay_dir_str).expanduser() if str(overlay_dir_str).strip() else (config.user_dir / "profiles")
-            )
+            overlay_dir = config.user_dir / "profiles"
             overlay_dir.mkdir(parents=True, exist_ok=True)
 
-            yaml_files = list(Path(overlay_dir).glob("*.yaml")) + list(Path(overlay_dir).glob("*.yml"))
-            json_files = list(Path(overlay_dir).glob("*.json"))
-            if not (yaml_files or json_files):
+            yaml_files = list(overlay_dir.glob("*.yaml")) + list(overlay_dir.glob("*.yml"))
+            if not yaml_files:
                 LOGGER.warning(
-                    "No Paragon profiles found in %s. Import a build first or place *.yaml/*.yml profiles there (legacy *.json also supported).",
+                    "No profile YAML files found in %s. Import a build first (Importer), then open the overlay again.",
                     overlay_dir,
                 )
 
@@ -122,7 +117,7 @@ class ScriptHandler:
             keyboard.add_hotkey(IniConfigLoader().advanced_options.move_to_inv, lambda: self.move_items_to_inventory())
             keyboard.add_hotkey(IniConfigLoader().advanced_options.move_to_chest, lambda: self.move_items_to_stash())
 
-    def filter_items(self, force_refresh=ItemRefreshType.no_refresh, *, no_match_action: str = "junk"):
+    def filter_items(self, force_refresh=ItemRefreshType.no_refresh, no_match_action: str = "junk"):
         if src.tts.CONNECTED:
             self._start_or_stop_loot_interaction_thread(run_loot_filter, (force_refresh, no_match_action))
         else:
@@ -198,10 +193,10 @@ def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh,
         for i in IniConfigLoader().general.check_chest_tabs:
             stash.switch_to_tab(i)
             time.sleep(0.3)
-            check_items(stash, force_refresh, stash_is_open=True, no_match_action=no_match_action)
+            check_items(stash, force_refresh, stash_is_open=True, no_match_action="junk")
         mouse.move(*Cam().abs_window_to_monitor((0, 0)))
         time.sleep(0.3)
-        check_items(inv, force_refresh, stash_is_open=True, no_match_action=no_match_action)
+        check_items(inv, force_refresh, stash_is_open=True, no_match_action="junk")
     else:
         if not inv.open():
             screenshot("inventory_not_open", img=Cam().grab())
