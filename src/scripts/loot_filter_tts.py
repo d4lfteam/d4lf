@@ -12,6 +12,7 @@ from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter
 from src.scripts.common import (
     ASPECT_UPGRADES_LABEL,
+    drop_item_from_inventory,
     is_ignored_item,
     is_junk_rarity,
     mark_as_favorite,
@@ -27,8 +28,16 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-def check_items(inv: InventoryBase, force_refresh: ItemRefreshType, stash_is_open=False):
+def check_items(
+    inv: InventoryBase, force_refresh: ItemRefreshType, stash_is_open: bool = False, no_match_action: str = "junk"
+):
     occupied, _ = inv.get_item_slots()
+
+    def _handle_no_match() -> None:
+        if no_match_action == "drop" and not stash_is_open:
+            drop_item_from_inventory()
+        else:
+            mark_as_junk()
 
     if force_refresh in {ItemRefreshType.force_with_filter, ItemRefreshType.force_without_filter}:
         reset_item_status(occupied, inv)
@@ -92,7 +101,7 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType, stash_is_ope
         # property
         if item_descr.rarity == ItemRarity.Unique and item_descr.item_type != ItemType.Tribute:
             if not res.keep:
-                mark_as_junk()
+                _handle_no_match()
             elif res.keep:
                 if len(res.matched) == 1 and res.matched[0].profile.lower() == "cosmetics":
                     LOGGER.info("Ignoring unique because it matches no filters and is a cosmetic upgrade.")
@@ -107,7 +116,7 @@ def check_items(inv: InventoryBase, force_refresh: ItemRefreshType, stash_is_ope
             ):
                 LOGGER.info("Skipping marking as junk because it is an ancestral legendary.")
             else:
-                mark_as_junk()
+                _handle_no_match()
         elif (
             res.keep
             and (

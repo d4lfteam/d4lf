@@ -27,6 +27,7 @@ from src.gui.importer.common import (
     update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
+from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_mobalytics_paragon_steps
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
@@ -97,6 +98,19 @@ def import_mobalytics(config: ImportConfig):
         variant_id = jsonpath.findall(
             f"$..['{root_document_name}'].data.buildVariants.values[0].id", full_script_data_json
         )[0]
+
+    # Keep the full build variant object around (needed for optional paragon export)
+    try:
+        if variant_id:
+            variant = jsonpath.findall(
+                f"$..['{root_document_name}'].data.buildVariants.values[?@.id=='{variant_id}']", full_script_data_json
+            )[0]
+        else:
+            variant = jsonpath.findall(
+                f"$..['{root_document_name}'].data.buildVariants.values[0]", full_script_data_json
+            )[0]
+    except Exception:
+        variant = {}
 
     variant_name = jsonpath.findall(
         f"..['NgfDocumentCmWidgetContentVariantsV1DataChildVariant:{variant_id}'].title", full_script_data_json
@@ -218,6 +232,15 @@ def import_mobalytics(config: ImportConfig):
 
     if config.custom_file_name:
         build_name = config.custom_file_name
+    # Optionally embed Paragon data into the profile model before saving
+    if config.export_paragon:
+        steps = extract_mobalytics_paragon_steps(variant if isinstance(variant, dict) else {})
+        if steps:
+            profile.Paragon = build_paragon_profile_payload(
+                build_name=build_name, source_url=url, paragon_boards_list=steps
+            )
+        else:
+            LOGGER.warning("Paragon export enabled, but no paragon data was found for this Mobalytics variant.")
 
     corrected_file_name = save_as_profile(file_name=build_name, profile=profile, url=url)
 
@@ -288,6 +311,7 @@ if __name__ == "__main__":
             add_to_profiles=False,
             import_greater_affixes=True,
             require_greater_affixes=True,
+            export_paragon=False,
             custom_file_name=None,
         )
         import_mobalytics(config)
