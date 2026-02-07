@@ -50,7 +50,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 #### Paragon overlay
 
-You can Drap and Drop the Grid via hold/release leftmouse on the golden frame. Hoover to the golden frame and zoom in/out with mousewheel.
+You can Drap and Drop the Grid via hold/release leftmouse on the golden frame. Hover to the golden frame and zoom in/out with mousewheel.
 Last Overlay Postion will be saved in "params.ini"
 D4LF can import Paragon boards from supported build planners and show them in-game using the Paragon overlay.
 
@@ -70,7 +70,7 @@ D4LF can import Paragon boards from supported build planners and show them in-ga
 - Paragon overlay does not appear / does nothing
   - Ensure Diablo IV is running in **borderless windowed** (exclusive fullscreen may block overlays).
   - Ensure your profiles folder contains `*.yaml`/`*.yml` profile files with a top-level `Paragon:` section (default: `C:/Users/<WINDOWS_USER>/.d4lf/profiles`).
-  - Check/adjust `advanced_options.toggle_paragon_overlay` (default `f10`) and ensure it is not conflicting with other hotkeys.
+  - Check/adjust "Settings/Advanced/toogle_pragon_overlay" and ensure (standard hotkey f10) is not conflicting with other hotkeys.
 - The GUI crashes immediately upon opening, with no error message given
   - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
     your params.ini through the config tab. Using the GUI for configuration will ensure the file is always accurate.
@@ -160,7 +160,7 @@ automatically picked up and no restart is necessary.
 Current functionality:
 
 - Import builds from maxroll/d4builds/mobalytics (optionally import Paragon data)
-- Toggle the integrated Paragon overlay (default hotkey: F10) and configure its JSON folder via "Paragon Folder"
+- Toggle the integrated Paragon overlay (default hotkey: F10)
 - Complete management of your settings through the config tab
 - A beta version of a manual profile editor/creator
 

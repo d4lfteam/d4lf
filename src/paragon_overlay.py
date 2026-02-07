@@ -57,7 +57,6 @@ def _params_ini_path() -> Path:
 
 
 def _load_overlay_settings() -> dict[str, Any]:
-
     ini = _params_ini_path()
     if not ini.exists():
         ini.write_text("", encoding="utf-8")
@@ -98,7 +97,6 @@ def _load_overlay_settings() -> dict[str, Any]:
 
 
 def _save_overlay_settings(values: dict[str, Any]) -> None:
-
     ini = _params_ini_path()
     if not ini.exists():
         ini.write_text("", encoding="utf-8")
@@ -416,7 +414,7 @@ class ParagonOverlay(tk.Toplevel):
         self.left.place(x=0, y=0, width=self._cfg.panel_w, relheight=1.0)
 
         # Title card (longer)
-        self.card_title = tk.Frame(self.left, bg=CARD_BG, height=96)
+        self.card_title = tk.Frame(self.left, bg=CARD_BG, height=120)
         self.card_title.pack(fill="x", padx=10, pady=(10, 14))
         self.card_title.pack_propagate(False)
 
@@ -573,10 +571,18 @@ class ParagonOverlay(tk.Toplevel):
 
         # Update title
         if self.builds:
-            self.lbl_title.config(text=str(self.builds[self.current_build_idx].get("name") or "Paragon"))
+            b = self.builds[self.current_build_idx]
+            title = str(b.get("profile") or "").strip()
+
+            # Fallback: extract trailing [tag] from the build name
+            if not title:
+                nm = str(b.get("name") or "").strip()
+                mt = re.search(r"\[([^\[\]]+)\]\s*$", nm)
+                title = mt.group(1).strip() if mt else nm
+
+            self.lbl_title.config(text=title or "Paragon")
         else:
             self.lbl_title.config(text="Paragon")
-
         if not self.boards:
             return
 
@@ -752,6 +758,38 @@ class ParagonOverlay(tk.Toplevel):
             self.canvas.config(width=int(rw), height=int(rh))
 
     # -------- drawing --------
+    def _draw_grid_hints(self, gx0: int, gy0: int, *, border_pad: int) -> None:
+        """Draw small help text near the paragon grid (directly on the canvas)."""
+        hint = (
+            "Hover over the golden frame; mouse wheel up/down = zoom +/-\n"
+            "Hold left click on the golden frame to drag/drop the grid"
+        )
+
+        # Prefer above the grid. If there's not enough space, place inside the top-left.
+        x = int(gx0 - border_pad + 4)
+        y_above = int(gy0 - border_pad - 8)
+
+        font_size = max(9, min(12, int(self._cfg.cell_size * 0.45)))
+        text_id = self.canvas.create_text(
+            x, y_above, text=hint, fill=MUTED, font=("Segoe UI", font_size), anchor="sw", justify="left"
+        )
+
+        bbox = self.canvas.bbox(text_id) or (x, y_above, x + 10, y_above + 10)
+        if bbox[1] < 8:
+            # Move inside the frame if it would be clipped.
+            self.canvas.delete(text_id)
+            y_inside = int(gy0 - border_pad + 10)
+            text_id = self.canvas.create_text(
+                x, y_inside, text=hint, fill=MUTED, font=("Segoe UI", font_size), anchor="nw", justify="left"
+            )
+            bbox = self.canvas.bbox(text_id) or (x, y_inside, x + 10, y_inside + 10)
+
+        pad_x, pad_y = 8, 6
+        rect_id = self.canvas.create_rectangle(
+            bbox[0] - pad_x, bbox[1] - pad_y, bbox[2] + pad_x, bbox[3] + pad_y, fill=CARD_BG, outline=""
+        )
+        self.canvas.tag_raise(text_id, rect_id)
+
     def redraw(self) -> None:
         self.canvas.delete("all")
         if not self.boards:
@@ -787,6 +825,8 @@ class ParagonOverlay(tk.Toplevel):
             int(gy0 + grid_px + border_pad),
         )
         self._border_grab = max(12, (border_w * 2) + 2)
+
+        self._draw_grid_hints(gx0, gy0, border_pad=border_pad)
 
         # Grid lines
         for i in range(GRID + 1):
