@@ -48,27 +48,8 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Use the hotkeys listed in d4lf.exe to run filtering. By default, F11 will run the loot filter and filter your items.
 - For most common issues, if something is wrong, you will see an error or warning when you start d4lf.exe. Join our [discord](https://discord.gg/YyzaPhAN6T) for more help.
 
-#### Paragon overlay
-
-D4LF can import Paragon boards from supported build planners and show them in-game using the Paragon overlay.
-
-**How to use**
-
-1. Import your build from a supported planner (Mobalytics / Maxroll / D4Builds).
-1. Enable **Import Paragon** in the importer (optional). Paragon data will be stored in your profile YAMLs in the profiles folder (default: `~/.d4lf/profiles`).
-1. Toggle the Paragon overlay using the hotkey (default **F10**, configurable in *Advanced options*).
-
-**Tips**
-
-- Overlays may not work in exclusive fullscreen; use **borderless windowed** if the overlay does not appear.
-- Planner websites can change over time. If an import/export stops working, it may need an importer update.
-
 ### Common problems
 
-- Paragon overlay does not appear / does nothing
-  - Ensure Diablo IV is running in **borderless windowed** (exclusive fullscreen may block overlays).
-  - Ensure your profiles folder contains `*.yaml`/`*.yml` profile files with a top-level `Paragon:` section (default: `C:/Users/<WINDOWS_USER>/.d4lf/profiles`).
-  - Check/adjust `advanced/settings/toggle_paragon_overlay` (default `f10`) and ensure it is not conflicting with other hotkeys.
 - The GUI crashes immediately upon opening, with no error message given
   - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
     your params.ini through the config tab. Using the GUI for configuration will ensure the file is always accurate.
@@ -85,6 +66,10 @@ D4LF can import Paragon boards from supported build planners and show them in-ga
       that says "Run this program as an administrator"
     - Run Diablo 4 again through Steam and see if that resolved the issue.
     - If it did not, set Steam to run as administrator as well and make sure you are running Diablo through Steam. This should resolve the issue.
+- Paragon overlay does not appear / does nothing
+  - Ensure Diablo IV is running in **borderless windowed** (exclusive fullscreen may block overlays).
+  - Ensure your profiles folder contains `*.yaml`/`*.yml` profile files with a top-level `Paragon:` section (default: `C:/Users/<WINDOWS_USER>/.d4lf/profiles`).
+  - Check/adjust `advanced/settings/toggle_paragon_overlay` (default `f10`) and ensure it is not conflicting with other hotkeys.
 
 ### TTS
 
@@ -669,6 +654,21 @@ Uniques:
 
 Unique names are lower case and spaces are replaced by underscore. You can find the full list of names
 in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json). Occasionally a unique is missing. If you find one missing just raise an issue and we can add it.
+
+## Paragon overlay
+
+D4LF can import Paragon boards from supported build planners and show them in-game using the Paragon overlay.
+
+**How to use**
+
+1. Import your build from a supported planner (Mobalytics / Maxroll / D4Builds).
+1. Enable **Import Paragon** in the importer (optional). Paragon data will be stored in your profile YAMLs in the profiles folder (default: `~/.d4lf/profiles`).
+1. Toggle the Paragon overlay using the hotkey (default **F10**, configurable in *Advanced options*).
+
+**Tips**
+
+- Overlays may not work in exclusive fullscreen; use **borderless windowed** if the overlay does not appear.
+- Planner websites can change over time. If an import/export stops working, it may need an importer update.
 
 ## Future Plans
 
