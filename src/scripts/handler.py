@@ -1,10 +1,14 @@
 import logging
+import sys
 import threading
 import time
 import typing
 from contextlib import suppress
 
-import keyboard
+if sys.platform != "darwin":
+    import keyboard  # type: ignore[import-not-found]
+else:
+    keyboard = None
 
 import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
@@ -96,6 +100,9 @@ class ScriptHandler:
                 self.paragon_overlay_thread = None
 
     def setup_key_binds(self):
+        if keyboard is None:
+            LOGGER.info("Global hotkeys are disabled on macOS")
+            return
         keyboard.add_hotkey(IniConfigLoader().advanced_options.run_vision_mode, lambda: self.run_vision_mode())
         keyboard.add_hotkey(IniConfigLoader().advanced_options.exit_key, lambda: self._graceful_exit())
         keyboard.add_hotkey(
@@ -204,4 +211,4 @@ def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh,
             return
         check_items(inv, force_refresh, no_match_action=no_match_action)
     mouse.move(*Cam().abs_window_to_monitor((0, 0)))
-    LOGGER.info("loot filter done")
+    LOGGER.info("Loot filter done")
