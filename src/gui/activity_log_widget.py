@@ -43,7 +43,7 @@ class ActivityLogWidget(QWidget):
 
         if not config.advanced_options.vision_mode_only:
             hotkeys_html += f"<u><b>{config.advanced_options.run_vision_mode.upper()}</b></u>: Run/Stop Vision Mode&nbsp;&nbsp;&nbsp;"
-            hotkeys_html += f"<u><b>{config.advanced_options.run_filter.upper()}</b></u>: Run/Stop Auto Filter (no match = junk)&nbsp;&nbsp;&nbsp;"
+            hotkeys_html += f"<u><b>{config.advanced_options.run_filter.upper()}</b></u>: Run/Stop Auto Filter&nbsp;&nbsp;&nbsp;"
             hotkeys_html += f"<u><b>{config.advanced_options.run_filter_drop.upper()}</b></u>: Run/Stop Auto Filter (no match = drop)&nbsp;&nbsp;&nbsp;"
             hotkeys_html += (
                 f"<u><b>{config.advanced_options.move_to_inv.upper()}</b></u>: Move Chest → Inventory&nbsp;&nbsp;&nbsp;"
