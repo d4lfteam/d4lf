@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import configparser
+import ctypes
 import logging
 import re
 import sys
@@ -40,9 +41,71 @@ TEXT = "#ffffff"
 MUTED = "#cfcfcf"
 GOLD = "#cfa15b"
 SELECT_BG = "#1f1f1f"
-
 GRID = 21  # 21x21 nodes
 NODES_LEN = GRID * GRID
+
+# ----------------------------
+# Windows DPI helpers
+# ----------------------------
+_TK_BASELINE_SCALING = 96 / 72  # pixels per point (Tk). Baseline to make ui_scale predictable.
+
+
+def _enable_windows_dpi_awareness() -> None:
+    """Best-effort: make the process Per-Monitor DPI aware on Windows.
+
+    Must be called before creating the Tk root window to fully take effect.
+    """
+    if sys.platform != "win32":
+        return
+
+    # Attempt methods in order; stop at first success.
+    with suppress(Exception):
+        # Windows 10+: Per Monitor v2
+        # DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4
+        ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+        return
+
+    with suppress(Exception):
+        # Windows 8.1+: PROCESS_PER_MONITOR_DPI_AWARE = 2
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        return
+
+    # Vista+: system DPI aware
+    with suppress(Exception):
+        ctypes.windll.user32.SetProcessDPIAware()
+
+
+def _win_dpi_for_hwnd(hwnd: int) -> int | None:
+    """Return DPI for a window handle (Windows), or None on failure."""
+    if sys.platform != "win32":
+        return None
+    try:
+        return int(ctypes.windll.user32.GetDpiForWindow(int(hwnd)))
+    except Exception:
+        return None
+
+
+def _dpi_scale_for_widget(w: tk.Misc) -> float:
+    """Return scale factor vs 96 DPI for the widget's monitor (best effort)."""
+    # Try Windows per-window DPI first.
+    dpi = None
+    try:
+        dpi = _win_dpi_for_hwnd(w.winfo_id())
+    except Exception:
+        dpi = None
+
+    # Fallback: infer DPI from current Tk scaling (pixels/point * 72 = dpi).
+    if dpi is None:
+        try:
+            s = float(w.tk.call("tk", "scaling"))
+            dpi = round(s * 72)
+        except Exception:
+            dpi = 96
+
+    try:
+        return float(dpi) / 96.0
+    except Exception:
+        return 1.0
 
 
 def _params_ini_path() -> Path:
@@ -123,6 +186,8 @@ def _clamp_int(v: int | None, lo: int, hi: int, default: int) -> int:
 # ----------------------------
 # Data loading / normalization
 # ----------------------------
+
+
 def _iter_entries(data: Any) -> Iterable[dict[str, Any]]:
     if isinstance(data, dict):
         yield data
@@ -177,8 +242,8 @@ def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]
     """
     config = IniConfigLoader()
     profiles_dir = config.user_dir / "profiles"
-
     profile_names = [p.strip() for p in config.general.profiles if p.strip()]
+
     candidates: list[tuple[str, Path]] = []
 
     if profile_names:
@@ -206,7 +271,6 @@ def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]
         model = _load_profile_model(prof_path, prof_name)
         if model is None or not model.Paragon:
             continue
-
         for payload in _iter_paragon_payloads(model.Paragon):
             builds.extend(_builds_from_paragon_entry(payload, name_tag=None, profile=prof_name))
 
@@ -230,6 +294,7 @@ def _builds_from_paragon_entry(
         if name_tag:
             step_name = f"{step_name} [{name_tag}]"
         builds.append({"name": step_name, "boards": boards, "profile": profile})
+
     return builds
 
 
@@ -257,10 +322,13 @@ def rotate_grid(grid: list[list[bool]], deg: int) -> list[list[bool]]:
 # ----------------------------
 # Overlay UI
 # ----------------------------
+
+
 @dataclass(slots=True)
 class OverlayConfig:
     cell_size: int = 24
-    panel_w: int = 380
+    ui_scale: float = 1.0  # Auto-DPI baseline (scaled at runtime)
+    panel_w: int = 520
     poll_ms: int = 500
     window_alpha: float = 0.86
 
@@ -280,6 +348,7 @@ class ParagonOverlay(tk.Toplevel):
 
         self._settings = _load_overlay_settings()
         self._cfg = cfg or OverlayConfig()
+        self._apply_dpi_scaling()
 
         saved_cell = self._settings.get("cell_size")
         if isinstance(saved_cell, int):
@@ -290,20 +359,21 @@ class ParagonOverlay(tk.Toplevel):
         self._res = ResManager()
 
         self.builds = list(builds)
-
         saved_profile = self._settings.get("profile")
         saved_idx = self._settings.get("build_idx")
-
         idx: int | None = None
+
         if isinstance(saved_idx, int) and 0 <= saved_idx < len(self.builds):
             idx = saved_idx
             if saved_profile and self.builds[idx].get("profile") != saved_profile:
                 idx = None
+
         if idx is None and saved_profile:
             for i, b in enumerate(self.builds):
                 if b.get("profile") == saved_profile:
                     idx = i
                     break
+
         if idx is None:
             idx = _clamp_int(saved_idx, 0, max(0, len(self.builds) - 1), 0)
 
@@ -321,7 +391,6 @@ class ParagonOverlay(tk.Toplevel):
 
         self._last_roi: tuple[int, int, int, int] | None = None
         self._last_res: tuple[int, int] | None = None
-
         self._dragging_grid = False
         self._dragging_window = False
         self._border_rect: tuple[int, int, int, int] | None = None
@@ -329,10 +398,8 @@ class ParagonOverlay(tk.Toplevel):
 
         self.title("D4LF Paragon Overlay")
         self.attributes("-topmost", True)
-
         with suppress(tk.TclError):
             self.attributes("-alpha", float(self._cfg.window_alpha))
-
         self.configure(bg=TRANSPARENT_KEY)
         with suppress(tk.TclError):
             self.overrideredirect(True)
@@ -343,14 +410,50 @@ class ParagonOverlay(tk.Toplevel):
 
         self._build_ui()
         self._bind_events()
-
         self._apply_geometry()
         self._refresh_lists()
         self.redraw()
         self.after(self._cfg.poll_ms, self._poll_window_state)
         self.after(50, self._poll_close_request)
 
+    def _apply_dpi_scaling(self) -> None:
+        """Apply DPI-based scaling to fonts and pixel-based layout.
+
+        Strategy:
+        - Force Tk's internal `tk scaling` to a 96-DPI baseline so our manual
+          `ui_scale` multiplier is predictable across systems.
+        - Compute `ui_scale` from the monitor DPI (vs 96).
+        - Scale panel width and default cell size (unless user saved a cell size).
+        """
+        # Baseline Tk scaling (pixels per point). If this fails, we still keep running.
+        with suppress(Exception):
+            self.tk.call("tk", "scaling", _TK_BASELINE_SCALING)
+
+        scale = _dpi_scale_for_widget(self)
+
+        # If callers provided cfg.ui_scale as an extra multiplier, apply it.
+        # (Default is 1.0; values like 1.1 can slightly enlarge the UI.)
+        with suppress(Exception):
+            extra = float(self._cfg.ui_scale or 1.0)
+            if extra > 0:
+                scale *= extra
+
+        eff = max(0.75, min(4.0, float(scale)))
+        self._cfg.ui_scale = eff
+
+        # Scale the left panel width so long board names fit better.
+        with suppress(Exception):
+            base_w = float(self._cfg.panel_w)
+            self._cfg.panel_w = round(base_w * eff)
+
+        # If there is no saved cell_size, scale the default cell size too.
+        if not isinstance(self._settings.get("cell_size"), int):
+            with suppress(Exception):
+                base_cell = float(self._cfg.cell_size)
+                self._cfg.cell_size = round(base_cell * eff)
+
     # -------- UI layout --------
+
     def _build_ui(self) -> None:
         outer = tk.Frame(self, bg=TRANSPARENT_KEY)
         outer.pack(fill="both", expand=True)
@@ -364,7 +467,7 @@ class ParagonOverlay(tk.Toplevel):
         self.left.place(x=0, y=0, width=self._cfg.panel_w, relheight=1.0)
 
         # Title card (longer)
-        self.card_title = tk.Frame(self.left, bg=CARD_BG, height=120)
+        self.card_title = tk.Frame(self.left, bg=CARD_BG, height=int(160 * self._cfg.ui_scale))
         self.card_title.pack(fill="x", padx=10, pady=(10, 14))
         self.card_title.pack_propagate(False)
 
@@ -376,7 +479,7 @@ class ParagonOverlay(tk.Toplevel):
             text="",
             fg=TEXT,
             bg=CARD_BG,
-            font=("Segoe UI", 14, "bold"),
+            font=("Segoe UI", int(14 * self._cfg.ui_scale), "bold"),
             anchor="w",
             wraplength=max(200, self._cfg.panel_w - 90),
             justify="left",
@@ -395,7 +498,7 @@ class ParagonOverlay(tk.Toplevel):
             activeforeground=TEXT,
             bd=0,
             highlightthickness=0,
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", int(12 * self._cfg.ui_scale), "bold"),
         )
         self.btn_build_menu.pack(side="left", padx=(8, 0))
 
@@ -443,11 +546,13 @@ class ParagonOverlay(tk.Toplevel):
             _CLOSE_REQUESTED.clear()
             self.close()
             return
+
         with suppress(Exception):
             if self.winfo_exists():
                 self.after(50, self._poll_close_request)
 
     # -------- polling for ROI/resolution changes --------
+
     def _poll_window_state(self) -> None:
         try:
             roi = self._get_cam_roi()
@@ -461,6 +566,7 @@ class ParagonOverlay(tk.Toplevel):
             self.after(self._cfg.poll_ms, self._poll_window_state)
 
     # -------- build selection --------
+
     def _select_build(self, idx: int) -> None:
         if not self.builds:
             return
@@ -477,8 +583,8 @@ class ParagonOverlay(tk.Toplevel):
             return
 
         m = tk.Menu(self, tearoff=0, bg=CARD_BG, fg=TEXT, activebackground=SELECT_BG, activeforeground=GOLD, bd=0)
-
         groups: dict[str, list[tuple[int, dict[str, Any]]]] = {}
+
         for i, b in enumerate(self.builds):
             prof = str(b.get("profile") or "Ungrouped")
             groups.setdefault(prof, []).append((i, b))
@@ -508,6 +614,7 @@ class ParagonOverlay(tk.Toplevel):
                 m.grab_release()
 
     # -------- board cards --------
+
     def _select_board_card(self, idx: int) -> None:
         self.selected_board_idx = _clamp_int(idx, 0, max(0, len(self.boards) - 1), 0)
         self._refresh_lists()
@@ -533,6 +640,7 @@ class ParagonOverlay(tk.Toplevel):
             self.lbl_title.config(text=title or "Paragon")
         else:
             self.lbl_title.config(text="Paragon")
+
         if not self.boards:
             return
 
@@ -550,7 +658,7 @@ class ParagonOverlay(tk.Toplevel):
             bg = SELECT_BG if selected else CARD_BG
             fg = GOLD if selected else TEXT
 
-            card = tk.Frame(self.board_container, bg=bg, height=76)
+            card = tk.Frame(self.board_container, bg=bg, height=int(76 * self._cfg.ui_scale))
             card.pack(fill="x", pady=8)
             card.pack_propagate(False)
 
@@ -562,12 +670,11 @@ class ParagonOverlay(tk.Toplevel):
                 anchor="w",
                 padx=14,
                 pady=16,
-                font=("Segoe UI", 11, "bold"),
+                font=("Segoe UI", int(11 * self._cfg.ui_scale), "bold"),
                 wraplength=max(200, self._cfg.panel_w - 40),
                 justify="left",
             )
             lbl.pack(fill="both", expand=True)
-
             lbl.bind("<Button-1>", lambda _, i=idx: self._select_board_card(i))
             card.bind("<Button-1>", lambda _, i=idx: self._select_board_card(i))
 
@@ -575,14 +682,17 @@ class ParagonOverlay(tk.Toplevel):
             self.btn_build_menu.config(state=(tk.NORMAL if len(self.builds) > 1 else tk.DISABLED))
 
     # -------- input handlers --------
+
     def _on_boards_mousewheel(self, e: tk.Event) -> None:
         delta = 0
         if getattr(e, "delta", 0):
             delta = -1 if e.delta > 0 else 1
         elif getattr(e, "num", 0) in (4, 5):
             delta = -1 if e.num == 4 else 1
+
         if not delta:
             return
+
         # Scroll cards
         with suppress(Exception):
             self.boards_canvas.yview_scroll(int(delta), "units")
@@ -593,6 +703,7 @@ class ParagonOverlay(tk.Toplevel):
             delta = 1 if e.delta > 0 else -1
         elif getattr(e, "num", 0) in (4, 5):
             delta = 1 if e.num == 4 else -1
+
         if not delta:
             return
 
@@ -602,6 +713,7 @@ class ParagonOverlay(tk.Toplevel):
 
         old = int(self._cfg.cell_size)
         new = max(10, min(80, old + (step * delta)))
+
         if new == old:
             return
 
@@ -609,6 +721,7 @@ class ParagonOverlay(tk.Toplevel):
         mx, my = int(getattr(e, "x", 0)), int(getattr(e, "y", 0))
         rel_x = mx - int(self.grid_x)
         rel_y = my - int(self.grid_y)
+
         if old > 0:
             self.grid_x = int(mx - (rel_x * new / old))
             self.grid_y = int(my - (rel_y * new / old))
@@ -621,6 +734,7 @@ class ParagonOverlay(tk.Toplevel):
         if not self._is_on_gold_border(int(e.x), int(e.y)):
             self._dragging_grid = False
             return
+
         self._dragging_grid = True
         self._drag_start_xy = (int(e.x_root), int(e.y_root))
         self._drag_start_grid = (int(self.grid_x), int(self.grid_y))
@@ -628,10 +742,12 @@ class ParagonOverlay(tk.Toplevel):
     def _on_grid_drag_move(self, e: tk.Event) -> None:
         if not self._dragging_grid:
             return
+
         sx, sy = self._drag_start_xy
         gx, gy = self._drag_start_grid
         dx = int(e.x_root) - sx
         dy = int(e.y_root) - sy
+
         self.grid_x = gx + dx
         self.grid_y = gy + dy
         self.redraw()
@@ -639,6 +755,7 @@ class ParagonOverlay(tk.Toplevel):
     def _on_grid_drag_end(self, _: tk.Event) -> None:
         if not self._dragging_grid:
             return
+
         self._dragging_grid = False
         self._persist_state()
 
@@ -650,29 +767,36 @@ class ParagonOverlay(tk.Toplevel):
     def _on_window_drag_move(self, e: tk.Event) -> None:
         if not self._dragging_window:
             return
+
         sx, sy = self._win_drag_start_xy
         wx, wy = self._win_drag_start_pos
         dx = int(e.x_root) - sx
         dy = int(e.y_root) - sy
+
         self.geometry(f"+{wx + dx}+{wy + dy}")
 
     def _on_window_drag_end(self, _: tk.Event) -> None:
         if not self._dragging_window:
             return
+
         self._dragging_window = False
         self._persist_state()
 
     def _is_on_gold_border(self, x: int, y: int) -> bool:
         if not self._border_rect:
             return False
+
         x1, y1, x2, y2 = self._border_rect
         g = int(self._border_grab)
+
         if not (x1 - g <= x <= x2 + g and y1 - g <= y <= y2 + g):
             return False
+
         near = min(abs(x - x1), abs(x - x2), abs(y - y1), abs(y - y2))
         return near <= g
 
     # -------- helpers --------
+
     def _get_resolution(self) -> tuple[int, int]:
         with suppress(Exception):
             w, h = tuple(self._res.resolution)[:2]
@@ -683,6 +807,7 @@ class ParagonOverlay(tk.Toplevel):
         roi = getattr(self._cam, "window_roi", None)
         if not roi:
             return None
+
         try:
             x, y, w, h = roi
             return (int(x), int(y), int(w), int(h))
@@ -704,10 +829,12 @@ class ParagonOverlay(tk.Toplevel):
             rx, ry = sx, sy
 
         self.geometry(f"{int(rw)}x{int(rh)}+{int(rx)}+{int(ry)}")
+
         with suppress(Exception):
             self.canvas.config(width=int(rw), height=int(rh))
 
     # -------- drawing --------
+
     def _draw_grid_hints(self, gx0: int, gy0: int, *, border_pad: int) -> None:
         """Draw small help text near the paragon grid (directly on the canvas)."""
         hint = (
@@ -718,13 +845,14 @@ class ParagonOverlay(tk.Toplevel):
         # Prefer above the grid. If there's not enough space, place inside the top-left.
         x = int(gx0 - border_pad + 4)
         y_above = int(gy0 - border_pad - 8)
-
         font_size = max(9, min(12, int(self._cfg.cell_size * 0.45)))
+
         text_id = self.canvas.create_text(
             x, y_above, text=hint, fill=MUTED, font=("Segoe UI", font_size), anchor="sw", justify="left"
         )
 
         bbox = self.canvas.bbox(text_id) or (x, y_above, x + 10, y_above + 10)
+
         if bbox[1] < 8:
             # Move inside the frame if it would be clipped.
             self.canvas.delete(text_id)
@@ -742,23 +870,24 @@ class ParagonOverlay(tk.Toplevel):
 
     def redraw(self) -> None:
         self.canvas.delete("all")
+
         if not self.boards:
             return
 
         board = self.boards[self.selected_board_idx]
         nodes = board.get("Nodes") or []
+
         if len(nodes) != NODES_LEN:
             return
 
-        rot = parse_rotation(board.get("Rotation", "0°"))
-        grid = rotate_grid(nodes_to_grid(nodes), rot)
-
+        grid = nodes_to_grid(nodes)
         cs = int(self._cfg.cell_size)
         gx0, gy0 = int(self.grid_x), int(self.grid_y)
         grid_px = GRID * cs
 
         border_pad = 6
         border_w = 6
+
         self.canvas.create_rectangle(
             gx0 - border_pad,
             gy0 - border_pad,
@@ -787,17 +916,21 @@ class ParagonOverlay(tk.Toplevel):
         # Nodes
         inset = max(2, cs // 4)
         outline_w = max(2, cs // 10)
+
         for y in range(GRID):
             for x in range(GRID):
                 if not grid[y][x]:
                     continue
+
                 x1 = gx0 + x * cs + inset
                 y1 = gy0 + y * cs + inset
                 x2 = gx0 + (x + 1) * cs - inset
                 y2 = gy0 + (y + 1) * cs - inset
+
                 self.canvas.create_rectangle(x1, y1, x2, y2, fill="", outline="#18dd44", width=outline_w)
 
     # -------- lifecycle --------
+
     def close(self) -> None:
         try:
             self._persist_state()
@@ -816,6 +949,7 @@ class ParagonOverlay(tk.Toplevel):
             prof = ""
             if self.builds:
                 prof = str(self.builds[self.current_build_idx].get("profile") or "")
+
             _save_overlay_settings({
                 "x": int(self.winfo_x()),
                 "y": int(self.winfo_y()),
@@ -833,6 +967,8 @@ class ParagonOverlay(tk.Toplevel):
 # ----------------------------
 # Public API (used by app)
 # ----------------------------
+
+
 def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | None = None) -> ParagonOverlay | None:
     """Start overlay in-process."""
     preset = preset_path or (sys.argv[1] if len(sys.argv) > 1 else None)
@@ -848,12 +984,14 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
 
     owns_root = False
     if parent is None:
+        _enable_windows_dpi_awareness()
         root = tk.Tk()
         root.withdraw()
         parent = root
         owns_root = True
 
     overlay = ParagonOverlay(parent, builds, on_close=(parent.quit if owns_root else None))
+
     with _OVERLAY_LOCK:
         global _CURRENT_OVERLAY
         _CURRENT_OVERLAY = overlay
@@ -861,6 +999,7 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
 
     if owns_root:
         parent.mainloop()
+
     return overlay
 
 

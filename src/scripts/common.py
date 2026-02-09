@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING
 
 if sys.platform != "darwin":
     import keyboard
-else:
-    keyboard = None
 
 from src.cam import Cam
 from src.config.loader import IniConfigLoader

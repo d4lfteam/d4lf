@@ -6,9 +6,7 @@ import typing
 from contextlib import suppress
 
 if sys.platform != "darwin":
-    import keyboard  # type: ignore[import-not-found]
-else:
-    keyboard = None
+    import keyboard
 
 import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast

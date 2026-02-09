@@ -568,6 +568,8 @@ class Filter:
                 if data.Tributes:
                     self.tribute_filters[data.name] = data.Tributes
                     info_str += "Tributes "
+                if data.Paragon:
+                    info_str += "Paragon "
                 if data.Uniques:
                     self.unique_filters[data.name] = data.Uniques
                     info_str += "Uniques"
