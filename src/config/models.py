@@ -3,7 +3,7 @@
 import enum
 import logging
 import sys
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from pydantic_numpy import np_array_pydantic_annotated_typing  # noqa: TC002
@@ -634,13 +634,13 @@ class UniqueModel(BaseModel):
 
 class ProfileModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    name: str
-    Paragon: dict[str, Any] | list[dict[str, Any]] | None = None
     Affixes: list[DynamicItemFilterModel] = []
     AspectUpgrades: list[str] = []
+    name: str
     Sigils: SigilFilterModel = SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist)
     Tributes: list[TributeFilterModel] = []
     Uniques: list[UniqueModel] = []
+    Paragon: dict[str, object] | list[dict[str, object]] | None = None
 
     @model_validator(mode="before")
     def aspects_must_exist(self) -> ProfileModel:
