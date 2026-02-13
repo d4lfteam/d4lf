@@ -5,8 +5,6 @@ import logging
 import pathlib
 from pathlib import Path
 
-from PyQt6.QtCore import QTimer
-
 from src.config.helper import singleton
 from src.config.models import DEPRECATED_INI_KEYS, AdvancedOptionsModel, CharModel, GeneralModel
 
@@ -23,7 +21,6 @@ class IniConfigLoader:
         self._parser = None
         self._user_dir = pathlib.Path.home() / ".d4lf"
         self._user_dir.mkdir(parents=True, exist_ok=True)
-        self._pending_write = False
         self.load()
 
     def load(self, clear: bool = False):
@@ -38,6 +35,7 @@ class IniConfigLoader:
         deprecated_keys = [key for key in DEPRECATED_INI_KEYS if key in all_keys]
         for key in deprecated_keys:
             LOGGER.warning(f"Deprecated {key=} found in {PARAMS_INI}. Please remove this key from your config file.")
+            # remove key from parser
             for section in self._parser.sections():
                 if key in self._parser[section]:
                     self._parser.remove_option(section, key)
@@ -76,25 +74,11 @@ class IniConfigLoader:
     def save_value(self, section, key, value):
         if self._parser is None:
             self.load()
-
         if section not in self._parser.sections():
             self._parser.add_section(section)
-
         self._parser.set(section, key, value)
-
-        # Avoid multiple writes in the same event loop tick
-        if not self._pending_write:
-            self._pending_write = True
-            QTimer.singleShot(0, self._write_to_disk)
-
-    def _write_to_disk(self):
-        try:
-            with Path(self.user_dir / PARAMS_INI).open("w", encoding="utf-8") as config_file:
-                self._parser.write(config_file)
-        except Exception as e:
-            LOGGER.error(f"Failed to write config file: {e}")
-        finally:
-            self._pending_write = False
+        with Path(self.user_dir / PARAMS_INI).open("w", encoding="utf-8") as config_file:
+            self._parser.write(config_file)
 
 
 if __name__ == "__main__":
