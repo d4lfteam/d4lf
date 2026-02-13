@@ -41,6 +41,18 @@ def mark_as_favorite():
     time.sleep(0.13)
 
 
+def drop_item_from_inventory() -> None:
+    """Drop the currently-hovered inventory item (Ctrl + Left Click in-game)."""
+    if keyboard is None:
+        return
+    keyboard.press("ctrl")
+    time.sleep(0.03)
+    mouse.click("left")
+    time.sleep(0.03)
+    keyboard.release("ctrl")
+    time.sleep(0.10)
+
+
 def reset_canvas(root, canvas):
     canvas.delete("all")
     canvas.config(height=0, width=0)

@@ -30,6 +30,7 @@ from src.gui.importer.common import (
     update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
+from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_d4builds_paragon_steps
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
@@ -37,7 +38,6 @@ from src.scripts import correct_name
 
 if TYPE_CHECKING:
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -209,9 +209,21 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         config.custom_file_name
         or f"d4build_{class_name}_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}"
     )
+
+    # Optionally embed Paragon data into the profile model before saving
+    if config.export_paragon:
+        steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
+        if steps:
+            profile.Paragon = build_paragon_profile_payload(
+                build_name=file_name, source_url=url, paragon_boards_list=steps
+            )
+        else:
+            LOGGER.warning("Paragon export enabled, but no paragon data was found on this D4Builds page.")
+
     corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
     if config.add_to_profiles:
         add_to_profiles(corrected_file_name)
+
     LOGGER.info("Finished")
 
 
@@ -276,6 +288,7 @@ if __name__ == "__main__":
             add_to_profiles=False,
             import_greater_affixes=True,
             require_greater_affixes=True,
+            export_paragon=False,
             custom_file_name=None,
         )
         import_d4builds(config)
