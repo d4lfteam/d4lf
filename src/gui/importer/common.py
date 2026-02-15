@@ -1,4 +1,3 @@
-import configparser
 import datetime
 import functools
 import logging
@@ -6,7 +5,6 @@ import pathlib
 import re
 import shutil
 import time
-from contextlib import suppress
 from typing import TYPE_CHECKING, Literal, TypeVar
 
 import httpx
@@ -215,60 +213,13 @@ def save_as_profile(file_name: str, profile: ProfileModel, url: str, exclude=Non
     return file_name
 
 
-def add_to_profiles(build_name: str) -> None:
-    """Add a profile name to the active profiles list in params.ini (general.profiles).
-
-    The GUI importer expects this to persist immediately so the profile is active without
-    requiring a manual toggle in Settings → Profiles.
-    """
-    loader = IniConfigLoader()
-
-    msg = "IniConfigLoader.save_value did not persist changes"
-
-    def _raise_not_persisted() -> None:
-        raise RuntimeError(msg)
-
-    # Ensure we start from the latest on-disk config (best effort).
-    with suppress(Exception):
-        loader.load()
-
-    current = [p.strip() for p in loader.general.profiles if str(p).strip()]
-    if build_name in current:
+def add_to_profiles(build_name):
+    profiles = IniConfigLoader().general.profiles
+    if build_name in profiles:
         LOGGER.info(f"Profile {build_name} was already an active profile.")
-        return
-
-    current.append(build_name)
-    new_value = ", ".join(current)
-
-    # Prefer the loader's persistence mechanism, but fall back to direct INI write if needed.
-    try:
-        loader.save_value("general", "profiles", new_value, flush=True)
-
-        # Verify persistence (some environments cache config objects).
-        with suppress(Exception):
-            loader.load()
-        verify = [p.strip() for p in loader.general.profiles if str(p).strip()]
-        if build_name in verify:
-            LOGGER.info(f"Added {build_name} to active profiles configuration")
-            return
-
-        _raise_not_persisted()
-    except Exception as exc:
-        ini_path = pathlib.Path(loader.user_dir) / "params.ini"
-        ini_path.parent.mkdir(parents=True, exist_ok=True)
-
-        parser = configparser.ConfigParser()
-        with suppress(Exception):
-            parser.read(ini_path, encoding="utf-8")
-
-        if not parser.has_section("general"):
-            parser.add_section("general")
-        parser.set("general", "profiles", new_value)
-
-        with ini_path.open("w", encoding="utf-8") as f:
-            parser.write(f)
-
-        LOGGER.warning("Fell back to direct params.ini update for active profiles due to: %s", exc)
+    else:
+        profiles.append(build_name)
+        IniConfigLoader().save_value("general", "profiles", ", ".join(profiles))
         LOGGER.info(f"Added {build_name} to active profiles configuration")
 
 
