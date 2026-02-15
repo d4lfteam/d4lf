@@ -135,6 +135,17 @@ def _load_overlay_settings() -> dict[str, Any]:
         except Exception:
             return None
 
+    def _get_bool(k: str) -> bool | None:
+        v = sec.get(k)
+        if v is None:
+            return None
+        s = str(v).strip().lower()
+        if s in ("true", "1", "yes"):
+            return True
+        if s in ("false", "0", "no"):
+            return False
+        return None
+
     def _get_str(k: str) -> str | None:
         v = sec.get(k)
         if v is None:
@@ -151,6 +162,13 @@ def _load_overlay_settings() -> dict[str, Any]:
         "board_idx": _get_int("board_idx"),
         "grid_x": _get_int("grid_x"),
         "grid_y": _get_int("grid_y"),
+        # Collapsed mode settings
+        "is_collapsed": _get_bool("is_collapsed"),
+        "cell_size_collapsed": _get_int("cell_size_collapsed"),
+        "grid_x_collapsed": _get_int("grid_x_collapsed"),
+        "grid_y_collapsed": _get_int("grid_y_collapsed"),
+        # Grid lock
+        "grid_locked": _get_bool("grid_locked"),
     }
 
 
@@ -326,11 +344,24 @@ def rotate_grid(grid: list[list[bool]], deg: int) -> list[list[bool]]:
 
 @dataclass(slots=True)
 class OverlayConfig:
+    # Full View settings
     cell_size: int = 24
+    grid_x_default: int = 544  # panel_w + 24
+    grid_y_default: int = 24
+
+    # Collapsed View settings
+    cell_size_collapsed: int = 16
+    grid_x_collapsed_default: int = 600
+    grid_y_collapsed_default: int = 300
+
     ui_scale: float = 1.0  # Auto-DPI baseline (scaled at runtime)
-    panel_w: int = 520
+    panel_w: int = 350
     poll_ms: int = 500
     window_alpha: float = 0.86
+
+    # State
+    is_collapsed: bool = False
+    grid_locked: bool = False
 
 
 class ParagonOverlay(tk.Toplevel):
@@ -350,9 +381,25 @@ class ParagonOverlay(tk.Toplevel):
         self._cfg = cfg or OverlayConfig()
         self._apply_dpi_scaling()
 
+        # Load cell_size for Full View
         saved_cell = self._settings.get("cell_size")
         if isinstance(saved_cell, int):
             self._cfg.cell_size = _clamp_int(saved_cell, 10, 80, self._cfg.cell_size)
+
+        # Load cell_size for Collapsed View
+        saved_cell_c = self._settings.get("cell_size_collapsed")
+        if isinstance(saved_cell_c, int):
+            self._cfg.cell_size_collapsed = _clamp_int(saved_cell_c, 8, 50, self._cfg.cell_size_collapsed)
+
+        # Load collapsed state
+        saved_collapsed = self._settings.get("is_collapsed")
+        if isinstance(saved_collapsed, bool):
+            self._cfg.is_collapsed = saved_collapsed
+
+        # Load grid locked state
+        saved_locked = self._settings.get("grid_locked")
+        if isinstance(saved_locked, bool):
+            self._cfg.grid_locked = saved_locked
 
         self._on_close = on_close
         self._cam = Cam()
@@ -381,13 +428,21 @@ class ParagonOverlay(tk.Toplevel):
         self.boards = self.builds[self.current_build_idx]["boards"] if self.builds else []
         self.selected_board_idx = _clamp_int(self._settings.get("board_idx"), 0, max(0, len(self.boards) - 1), 0)
 
-        # Grid position is independent from the left UI and persisted.
+        # Grid positions for BOTH modes - Full View
         self.grid_x = self._settings.get("grid_x")
         self.grid_y = self._settings.get("grid_y")
         if not isinstance(self.grid_x, int):
             self.grid_x = self._cfg.panel_w + 24
         if not isinstance(self.grid_y, int):
             self.grid_y = 24
+
+        # Grid positions for Collapsed View
+        self.grid_x_collapsed = self._settings.get("grid_x_collapsed")
+        self.grid_y_collapsed = self._settings.get("grid_y_collapsed")
+        if not isinstance(self.grid_x_collapsed, int):
+            self.grid_x_collapsed = self._cfg.grid_x_collapsed_default
+        if not isinstance(self.grid_y_collapsed, int):
+            self.grid_y_collapsed = self._cfg.grid_y_collapsed_default
 
         self._last_roi: tuple[int, int, int, int] | None = None
         self._last_res: tuple[int, int] | None = None
@@ -413,6 +468,7 @@ class ParagonOverlay(tk.Toplevel):
         self._apply_geometry()
         self._refresh_lists()
         self.redraw()
+
         self.after(self._cfg.poll_ms, self._poll_window_state)
         self.after(50, self._poll_close_request)
 
@@ -452,6 +508,11 @@ class ParagonOverlay(tk.Toplevel):
                 base_cell = float(self._cfg.cell_size)
                 self._cfg.cell_size = round(base_cell * eff)
 
+        if not isinstance(self._settings.get("cell_size_collapsed"), int):
+            with suppress(Exception):
+                base_cell_c = float(self._cfg.cell_size_collapsed)
+                self._cfg.cell_size_collapsed = round(base_cell_c * eff)
+
     # -------- UI layout --------
 
     def _build_ui(self) -> None:
@@ -466,48 +527,167 @@ class ParagonOverlay(tk.Toplevel):
         self.left = tk.Frame(outer, bg=TRANSPARENT_KEY)
         self.left.place(x=0, y=0, width=self._cfg.panel_w, relheight=1.0)
 
-        # Title card (longer)
-        self.card_title = tk.Frame(self.left, bg=CARD_BG, height=int(160 * self._cfg.ui_scale))
-        self.card_title.pack(fill="x", padx=10, pady=(10, 14))
+        # ========== TITLE CARD (Titel + Mode + Dropdown) ==========
+        self.card_title = tk.Frame(self.left, bg=CARD_BG, height=int(100 * self._cfg.ui_scale))
+        self.card_title.pack(
+            fill="x",
+            padx=int(10 * self._cfg.ui_scale),
+            pady=(int(10 * self._cfg.ui_scale), int(8 * self._cfg.ui_scale)),
+        )
         self.card_title.pack_propagate(False)
 
+        # Title Row
         title_row = tk.Frame(self.card_title, bg=CARD_BG)
-        title_row.pack(fill="both", expand=True, padx=12)
+        title_row.pack(
+            fill="both", expand=True, padx=int(12 * self._cfg.ui_scale), pady=(0, int(4 * self._cfg.ui_scale))
+        )
 
         self.lbl_title = tk.Label(
             title_row,
             text="",
             fg=TEXT,
             bg=CARD_BG,
-            font=("Segoe UI", int(14 * self._cfg.ui_scale), "bold"),
+            font=("Segoe UI", int(10 * self._cfg.ui_scale), "bold"),
             anchor="w",
-            wraplength=max(200, self._cfg.panel_w - 90),
+            wraplength=max(200, self._cfg.panel_w - 40),
             justify="left",
         )
         self.lbl_title.pack(side="left", fill="x", expand=True)
 
-        self.btn_build_menu = tk.Button(
-            title_row,
-            text="▼",
-            command=self._show_build_menu,
-            padx=6,
-            pady=0,
+        # Mode Label
+        mode_label_frame = tk.Frame(self.card_title, bg=CARD_BG)
+        mode_label_frame.pack(fill="x", padx=int(12 * self._cfg.ui_scale))
+
+        mode_text = "Compact View" if self._cfg.is_collapsed else "Full View"
+        self.lbl_mode = tk.Label(
+            mode_label_frame,
+            text=mode_text,
+            fg=MUTED,
+            bg=CARD_BG,
+            font=("Segoe UI", int(7 * self._cfg.ui_scale)),
+            anchor="w",
+        )
+        self.lbl_mode.pack(side="left")
+
+        # ========== BUTTONS CARD (Toggle + Lock + Reload) ==========
+        self.card_buttons = tk.Frame(self.left, bg=CARD_BG, height=int(68 * self._cfg.ui_scale))
+        self.card_buttons.pack(fill="x", padx=int(10 * self._cfg.ui_scale), pady=(0, int(8 * self._cfg.ui_scale)))
+        self.card_buttons.pack_propagate(False)
+
+        buttons_container = tk.Frame(self.card_buttons, bg=CARD_BG)
+        buttons_container.pack(
+            expand=True, fill="both", padx=int(12 * self._cfg.ui_scale), pady=int(8 * self._cfg.ui_scale)
+        )
+
+        # Toggle Collapsed/Full Button
+        self.btn_toggle_mode = tk.Button(
+            buttons_container,
+            text="◱" if self._cfg.is_collapsed else "◰",
+            command=self._toggle_collapsed_mode,
+            padx=int(8 * self._cfg.ui_scale),
+            pady=int(6 * self._cfg.ui_scale),
+            bg=CARD_BG,
+            fg=GOLD if self._cfg.is_collapsed else TEXT,
+            activebackground=CARD_BG,
+            activeforeground=GOLD,
+            bd=0,
+            highlightthickness=0,
+            font=("Segoe UI", int(16 * self._cfg.ui_scale), "bold"),
+        )
+        self.btn_toggle_mode.pack(side="left", padx=int(4 * self._cfg.ui_scale))
+
+        # Lock Grid Button
+        self.btn_lock_grid = tk.Button(
+            buttons_container,
+            text="🔒" if self._cfg.grid_locked else "🔓",
+            command=self._toggle_grid_lock,
+            padx=int(8 * self._cfg.ui_scale),
+            pady=int(6 * self._cfg.ui_scale),
+            bg=CARD_BG,
+            fg=GOLD if self._cfg.grid_locked else TEXT,
+            activebackground=CARD_BG,
+            activeforeground=GOLD,
+            bd=0,
+            highlightthickness=0,
+            font=("Segoe UI", int(14 * self._cfg.ui_scale), "bold"),
+        )
+        self.btn_lock_grid.pack(side="left", padx=int(4 * self._cfg.ui_scale))
+
+        # Reload Button
+        self.btn_reload = tk.Button(
+            buttons_container,
+            text="↻",
+            command=self._reload_profiles,
+            padx=int(8 * self._cfg.ui_scale),
+            pady=int(6 * self._cfg.ui_scale),
             bg=CARD_BG,
             fg=TEXT,
             activebackground=CARD_BG,
-            activeforeground=TEXT,
+            activeforeground=GOLD,
             bd=0,
             highlightthickness=0,
-            font=("Segoe UI", int(12 * self._cfg.ui_scale), "bold"),
+            font=("Segoe UI", int(16 * self._cfg.ui_scale), "bold"),
         )
-        self.btn_build_menu.pack(side="left", padx=(8, 0))
+        self.btn_reload.pack(side="left", padx=int(4 * self._cfg.ui_scale))
 
-        # Scrollable board cards area (no solid background block)
+        # Build Menu Dropdown (moved from title card)
+        self.btn_build_menu = tk.Button(
+            buttons_container,
+            text="Builds ▼",
+            command=self._show_build_menu,
+            padx=int(10 * self._cfg.ui_scale),
+            pady=int(6 * self._cfg.ui_scale),
+            bg=CARD_BG,
+            fg=TEXT,
+            activebackground=CARD_BG,
+            activeforeground=GOLD,
+            bd=0,
+            highlightthickness=0,
+            font=("Segoe UI", int(10 * self._cfg.ui_scale), "bold"),
+        )
+        self.btn_build_menu.pack(side="right", padx=int(4 * self._cfg.ui_scale))
+
+        # ========== HINT CARD ==========
+        self.card_hint = tk.Frame(self.left, bg=CARD_BG)
+        self.card_hint.pack(fill="x", padx=int(10 * self._cfg.ui_scale), pady=(0, int(14 * self._cfg.ui_scale)))
+
+        hint_text = (
+            "• Hover over golden frame use mousewheel to zoom+-\n"
+            "• Drag golden frame to move grid\n"
+            "• Hold SHIFT while scrolling for faster zoom\n"
+            "• Use 🔓 to lock grid"
+        )
+
+        lbl_hint = tk.Label(
+            self.card_hint,
+            text=hint_text,
+            fg=MUTED,
+            bg=CARD_BG,
+            font=("Segoe UI", int(9 * self._cfg.ui_scale)),
+            anchor="w",
+            justify="left",
+            padx=int(13 * self._cfg.ui_scale),
+            pady=int(12 * self._cfg.ui_scale),
+        )
+        lbl_hint.pack(fill="both")
+
+        # ========== SCROLLABLE BOARD CARDS ==========
         self.boards_canvas = tk.Canvas(self.left, bg=TRANSPARENT_KEY, highlightthickness=0)
-        self.boards_canvas.pack(fill="both", expand=True, padx=10, pady=(0, 12))
+        self.boards_canvas.pack(
+            fill="both", expand=True, padx=int(10 * self._cfg.ui_scale), pady=(0, int(12 * self._cfg.ui_scale))
+        )
 
         self.board_container = tk.Frame(self.boards_canvas, bg=TRANSPARENT_KEY)
         self._boards_window_id = self.boards_canvas.create_window((0, 0), window=self.board_container, anchor="nw")
+
+        def _on_container_configure(_: tk.Event) -> None:
+            self.boards_canvas.configure(scrollregion=self.boards_canvas.bbox("all"))
+
+        def _on_canvas_configure(e: tk.Event) -> None:
+            self.boards_canvas.itemconfigure(self._boards_window_id, width=int(e.width))
+
+        self.board_container.bind("<Configure>", _on_container_configure)
+        self.boards_canvas.bind("<Configure>", _on_canvas_configure)
 
         def _on_container_configure(_: tk.Event) -> None:
             self.boards_canvas.configure(scrollregion=self.boards_canvas.bbox("all"))
@@ -578,6 +758,43 @@ class ParagonOverlay(tk.Toplevel):
         self.redraw()
         self._persist_state()
 
+    def _toggle_grid_lock(self) -> None:
+        """Toggle grid lock (prevent zoom/move)."""
+        self._cfg.grid_locked = not self._cfg.grid_locked
+
+        self.btn_lock_grid.config(
+            text="🔒" if self._cfg.grid_locked else "🔓", fg=GOLD if self._cfg.grid_locked else TEXT
+        )
+
+        self._persist_state()
+        LOGGER.info(f"Grid {'locked' if self._cfg.grid_locked else 'unlocked'}")
+
+    def _reload_profiles(self) -> None:
+        """Reload profiles from YAML files."""
+        try:
+            new_builds = load_builds_from_path()
+            if not new_builds:
+                LOGGER.warning("No builds found after reload")
+                return
+
+            self.builds = new_builds
+
+            # Try to keep current selection
+            if 0 <= self.current_build_idx < len(self.builds):
+                self.boards = self.builds[self.current_build_idx]["boards"]
+            else:
+                self.current_build_idx = 0
+                self.boards = self.builds[0]["boards"] if self.builds else []
+
+            self.selected_board_idx = min(self.selected_board_idx, max(0, len(self.boards) - 1))
+
+            self._refresh_lists()
+            self.redraw()
+            LOGGER.info("Profiles reloaded successfully")
+
+        except Exception:
+            LOGGER.exception("Failed to reload profiles")
+
     def _show_build_menu(self) -> None:
         if not self.builds:
             return
@@ -621,6 +838,20 @@ class ParagonOverlay(tk.Toplevel):
         self.redraw()
         self._persist_state()
 
+    def _toggle_collapsed_mode(self) -> None:
+        """Toggle between Full and Collapsed Mode."""
+        self._cfg.is_collapsed = not self._cfg.is_collapsed
+
+        self.btn_toggle_mode.config(
+            text="◱" if self._cfg.is_collapsed else "◰", fg=GOLD if self._cfg.is_collapsed else TEXT
+        )
+
+        mode_text = "Compact View" if self._cfg.is_collapsed else "Full View"
+        self.lbl_mode.config(text=mode_text)
+
+        self.redraw()
+        self._persist_state()
+
     def _refresh_lists(self) -> None:
         # Clear existing cards
         for w in self.board_container.winfo_children():
@@ -646,13 +877,41 @@ class ParagonOverlay(tk.Toplevel):
 
         # Create one card per board (no solid background block)
         for idx, bd in enumerate(self.boards):
-            name = bd.get("Name", "?")
-            rot = bd.get("Rotation", "0")
-            glyph = bd.get("Glyph")
+            raw_name = str(bd.get("Name", "?") or "?")
+            raw_rot = bd.get("Rotation", "0")
+            raw_glyph = bd.get("Glyph")
 
-            text = f"{name} ({rot})"
-            if glyph:
-                text += f" • {glyph}"
+            # Desired display:
+            #   "Char" - "ParagonBoard" - "GlyphName" - "Rotation"
+            # Example: Spiritborn - Starting Board - Spirit - 90°
+            name_parts = raw_name.split("-", 1)
+            char_slug = (name_parts[0] if name_parts else raw_name).strip().lower()
+            board_slug = (name_parts[1] if len(name_parts) > 1 else raw_name).strip()
+
+            char_map = {
+                "paladin": "Paladin",
+                "spiritborn": "Spiritborn",
+                "necromancer": "Necromancer",
+                "barbarian": "Barbarian",
+                "druid": "Druid",
+                "rogue": "Rogue",
+                "sorcerer": "Sorcerer",
+            }
+            char_name = char_map.get(char_slug, char_slug.title() if char_slug else "?")
+            board_name = board_slug.replace("-", " ").strip().title() if board_slug else "?"
+
+            glyph_name = "No Glyph"
+            if raw_glyph:
+                g = str(raw_glyph).strip()
+                g_parts = g.split("-", 1)
+                if len(g_parts) > 1 and g_parts[0].strip().lower() == char_slug:
+                    g = g_parts[1]
+                glyph_name = g.replace("-", " ").strip().title() if g else "No Glyph"
+
+            deg = parse_rotation(str(raw_rot))
+            rot_text = f"{deg}°"
+
+            text = f"{char_name} - {board_name} - {glyph_name} - {rot_text}"
 
             selected = idx == self.selected_board_idx
             bg = SELECT_BG if selected else CARD_BG
@@ -670,7 +929,7 @@ class ParagonOverlay(tk.Toplevel):
                 anchor="w",
                 padx=14,
                 pady=16,
-                font=("Segoe UI", int(11 * self._cfg.ui_scale), "bold"),
+                font=("Segoe UI", int(9 * self._cfg.ui_scale), "bold"),
                 wraplength=max(200, self._cfg.panel_w - 40),
                 justify="left",
             )
@@ -698,6 +957,10 @@ class ParagonOverlay(tk.Toplevel):
             self.boards_canvas.yview_scroll(int(delta), "units")
 
     def _on_grid_mousewheel(self, e: tk.Event) -> None:
+        # Ignore if grid is locked
+        if self._cfg.grid_locked:
+            return
+
         delta = 0
         if getattr(e, "delta", 0):
             delta = 1 if e.delta > 0 else -1
@@ -711,33 +974,59 @@ class ParagonOverlay(tk.Toplevel):
         if getattr(e, "state", 0) & 0x0001:  # SHIFT
             step = 4
 
-        old = int(self._cfg.cell_size)
-        new = max(10, min(80, old + (step * delta)))
+        # Modify cell_size based on current mode
+        if self._cfg.is_collapsed:
+            old = int(self._cfg.cell_size_collapsed)
+            new = max(8, min(50, old + (step * delta)))
+            if new == old:
+                return
 
-        if new == old:
-            return
+            # Keep grid stable under cursor while zooming
+            mx, my = int(getattr(e, "x", 0)), int(getattr(e, "y", 0))
+            rel_x = mx - int(self.grid_x_collapsed)
+            rel_y = my - int(self.grid_y_collapsed)
+            if old > 0:
+                self.grid_x_collapsed = int(mx - (rel_x * new / old))
+                self.grid_y_collapsed = int(my - (rel_y * new / old))
 
-        # Keep grid stable under cursor while zooming
-        mx, my = int(getattr(e, "x", 0)), int(getattr(e, "y", 0))
-        rel_x = mx - int(self.grid_x)
-        rel_y = my - int(self.grid_y)
+            self._cfg.cell_size_collapsed = new
+        else:
+            old = int(self._cfg.cell_size)
+            new = max(10, min(80, old + (step * delta)))
+            if new == old:
+                return
 
-        if old > 0:
-            self.grid_x = int(mx - (rel_x * new / old))
-            self.grid_y = int(my - (rel_y * new / old))
+            # Keep grid stable under cursor while zooming
+            mx, my = int(getattr(e, "x", 0)), int(getattr(e, "y", 0))
+            rel_x = mx - int(self.grid_x)
+            rel_y = my - int(self.grid_y)
+            if old > 0:
+                self.grid_x = int(mx - (rel_x * new / old))
+                self.grid_y = int(my - (rel_y * new / old))
 
-        self._cfg.cell_size = new
+            self._cfg.cell_size = new
+
         self.redraw()
         self._persist_state()
 
     def _on_grid_drag_start(self, e: tk.Event) -> None:
+        # Ignore if grid is locked
+        if self._cfg.grid_locked:
+            self._dragging_grid = False
+            return
+
         if not self._is_on_gold_border(int(e.x), int(e.y)):
             self._dragging_grid = False
             return
 
         self._dragging_grid = True
         self._drag_start_xy = (int(e.x_root), int(e.y_root))
-        self._drag_start_grid = (int(self.grid_x), int(self.grid_y))
+
+        # Use correct grid position based on mode
+        if self._cfg.is_collapsed:
+            self._drag_start_grid = (int(self.grid_x_collapsed), int(self.grid_y_collapsed))
+        else:
+            self._drag_start_grid = (int(self.grid_x), int(self.grid_y))
 
     def _on_grid_drag_move(self, e: tk.Event) -> None:
         if not self._dragging_grid:
@@ -748,8 +1037,14 @@ class ParagonOverlay(tk.Toplevel):
         dx = int(e.x_root) - sx
         dy = int(e.y_root) - sy
 
-        self.grid_x = gx + dx
-        self.grid_y = gy + dy
+        # Update correct grid position based on mode
+        if self._cfg.is_collapsed:
+            self.grid_x_collapsed = gx + dx
+            self.grid_y_collapsed = gy + dy
+        else:
+            self.grid_x = gx + dx
+            self.grid_y = gy + dy
+
         self.redraw()
 
     def _on_grid_drag_end(self, _: tk.Event) -> None:
@@ -788,7 +1083,6 @@ class ParagonOverlay(tk.Toplevel):
 
         x1, y1, x2, y2 = self._border_rect
         g = int(self._border_grab)
-
         if not (x1 - g <= x <= x2 + g and y1 - g <= y <= y2 + g):
             return False
 
@@ -835,39 +1129,6 @@ class ParagonOverlay(tk.Toplevel):
 
     # -------- drawing --------
 
-    def _draw_grid_hints(self, gx0: int, gy0: int, *, border_pad: int) -> None:
-        """Draw small help text near the paragon grid (directly on the canvas)."""
-        hint = (
-            "Hover over the golden frame; mouse wheel up/down = zoom +/-\n"
-            "Hold left click on the golden frame to drag/drop the grid"
-        )
-
-        # Prefer above the grid. If there's not enough space, place inside the top-left.
-        x = int(gx0 - border_pad + 4)
-        y_above = int(gy0 - border_pad - 8)
-        font_size = max(9, min(12, int(self._cfg.cell_size * 0.45)))
-
-        text_id = self.canvas.create_text(
-            x, y_above, text=hint, fill=MUTED, font=("Segoe UI", font_size), anchor="sw", justify="left"
-        )
-
-        bbox = self.canvas.bbox(text_id) or (x, y_above, x + 10, y_above + 10)
-
-        if bbox[1] < 8:
-            # Move inside the frame if it would be clipped.
-            self.canvas.delete(text_id)
-            y_inside = int(gy0 - border_pad + 10)
-            text_id = self.canvas.create_text(
-                x, y_inside, text=hint, fill=MUTED, font=("Segoe UI", font_size), anchor="nw", justify="left"
-            )
-            bbox = self.canvas.bbox(text_id) or (x, y_inside, x + 10, y_inside + 10)
-
-        pad_x, pad_y = 8, 6
-        rect_id = self.canvas.create_rectangle(
-            bbox[0] - pad_x, bbox[1] - pad_y, bbox[2] + pad_x, bbox[3] + pad_y, fill=CARD_BG, outline=""
-        )
-        self.canvas.tag_raise(text_id, rect_id)
-
     def redraw(self) -> None:
         self.canvas.delete("all")
 
@@ -881,10 +1142,16 @@ class ParagonOverlay(tk.Toplevel):
             return
 
         grid = nodes_to_grid(nodes)
-        cs = int(self._cfg.cell_size)
-        gx0, gy0 = int(self.grid_x), int(self.grid_y)
-        grid_px = GRID * cs
 
+        # Use settings based on current mode
+        if self._cfg.is_collapsed:
+            cs = int(self._cfg.cell_size_collapsed)
+            gx0, gy0 = int(self.grid_x_collapsed), int(self.grid_y_collapsed)
+        else:
+            cs = int(self._cfg.cell_size)
+            gx0, gy0 = int(self.grid_x), int(self.grid_y)
+
+        grid_px = GRID * cs
         border_pad = 6
         border_w = 6
 
@@ -905,7 +1172,7 @@ class ParagonOverlay(tk.Toplevel):
         )
         self._border_grab = max(12, (border_w * 2) + 2)
 
-        self._draw_grid_hints(gx0, gy0, border_pad=border_pad)
+        # (removed) hint/status box above the grid
 
         # Grid lines
         for i in range(GRID + 1):
@@ -913,7 +1180,7 @@ class ParagonOverlay(tk.Toplevel):
             self.canvas.create_line(gx0, gy0 + p, gx0 + grid_px, gy0 + p, fill="#3f3f3f", width=1)
             self.canvas.create_line(gx0 + p, gy0, gx0 + p, gy0 + grid_px, fill="#3f3f3f", width=1)
 
-        # Nodes
+        # Nodes (transparent green boxes)
         inset = max(2, cs // 4)
         outline_w = max(2, cs // 10)
 
@@ -927,7 +1194,15 @@ class ParagonOverlay(tk.Toplevel):
                 x2 = gx0 + (x + 1) * cs - inset
                 y2 = gy0 + (y + 1) * cs - inset
 
-                self.canvas.create_rectangle(x1, y1, x2, y2, fill="", outline="#18dd44", width=outline_w)
+                self.canvas.create_rectangle(
+                    x1,
+                    y1,
+                    x2,
+                    y2,
+                    fill=TRANSPARENT_KEY,  # Transparent!
+                    outline="#18dd44",
+                    width=outline_w,
+                )
 
     # -------- lifecycle --------
 
@@ -959,6 +1234,13 @@ class ParagonOverlay(tk.Toplevel):
                 "board_idx": int(self.selected_board_idx),
                 "grid_x": int(self.grid_x),
                 "grid_y": int(self.grid_y),
+                # Collapsed mode
+                "is_collapsed": bool(self._cfg.is_collapsed),
+                "cell_size_collapsed": int(self._cfg.cell_size_collapsed),
+                "grid_x_collapsed": int(self.grid_x_collapsed),
+                "grid_y_collapsed": int(self.grid_y_collapsed),
+                # Grid lock
+                "grid_locked": bool(self._cfg.grid_locked),
             })
         except Exception:
             LOGGER.debug("Failed to persist overlay state", exc_info=True)
