@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 import logging
 import sys
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tkinter import Canvas
 
 if sys.platform != "darwin":
     import keyboard
@@ -157,7 +162,7 @@ def _scaled_overlay_font_size(minimum_font_size: int, window_height: int | None)
 
 
 def draw_text_with_background(
-    canvas: Any,
+    canvas: Canvas,
     text: str,
     color: str,
     previous_text_y: int,
