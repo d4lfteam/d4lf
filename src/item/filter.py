@@ -556,23 +556,27 @@ class Filter:
 
                     continue
 
+                sections: list[str] = []
                 if data.Affixes:
                     self.affix_filters[data.name] = data.Affixes
-                    info_str += "Affixes "
+                    sections.append("Affixes")
                 if data.AspectUpgrades:
                     self.aspect_upgrade_filters[data.name] = data.AspectUpgrades
-                    info_str += f"{ASPECT_UPGRADES_LABEL} "
+                    sections.append(ASPECT_UPGRADES_LABEL)
                 if data.Sigils and (data.Sigils.blacklist or data.Sigils.whitelist):
                     self.sigil_filters[data.name] = data.Sigils
-                    info_str += "Sigils "
+                    sections.append("Sigils")
                 if data.Tributes:
                     self.tribute_filters[data.name] = data.Tributes
-                    info_str += "Tributes "
+                    sections.append("Tributes")
                 if data.Uniques:
                     self.unique_filters[data.name] = data.Uniques
-                    info_str += "Uniques"
+                    sections.append("Uniques")
+                if data.Paragon:
+                    sections.append("Paragon")
 
-                LOGGER.info(info_str)
+                info_str += " ".join(sections)
+                LOGGER.info(info_str.rstrip())
             if errors:
                 fatal_msg = "\n" + "\n".join(["=" * 80, "❌ FATAL: Cannot continue with invalid profiles", "=" * 80])
                 LOGGER.error(fatal_msg)
