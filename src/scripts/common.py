@@ -76,39 +76,16 @@ def reset_item_status(occupied, inv):
         mouse.move(*Cam().abs_window_to_monitor((0, 0)))
 
 
-def drop_item_from_inventory(*args, **kwargs):
-    """Compatibility helper expected by other scripts.
-
-    The original implementation may perform UI automation to drop an item from inventory.
-    This version tries to delegate to methods on the passed inventory object if available,
-    otherwise it becomes a no-op (but keeps the app importable).
-    """
-    inv = kwargs.get("inv")
-    item_slot = kwargs.get("item_slot")
-
-    # Heuristic extraction from positional args
-    if inv is None or item_slot is None:
-        for a in args:
-            if inv is None and hasattr(a, "hover_item_with_delay"):
-                inv = a
-            elif item_slot is None and hasattr(a, "is_junk"):
-                item_slot = a
-
-    # Delegate if the inventory object exposes a drop method
-    if inv is not None:
-        for meth_name in ("drop_item_from_inventory", "drop_item", "drop"):
-            meth = getattr(inv, meth_name, None)
-            if callable(meth):
-                try:
-                    if item_slot is not None:
-                        return meth(item_slot)
-                    return meth()
-                except Exception:
-                    LOGGER.exception("drop_item_from_inventory delegate failed")
-                    break
-
-    LOGGER.warning("drop_item_from_inventory: no compatible inventory method found; no-op")
-    return None
+def drop_item_from_inventory() -> None:
+    """Drop the currently-hovered inventory item (Ctrl + Left Click in-game)."""
+    if keyboard is None:
+        return
+    keyboard.press("ctrl")
+    time.sleep(0.03)
+    mouse.click("left")
+    time.sleep(0.03)
+    keyboard.release("ctrl")
+    time.sleep(0.10)
 
 
 def is_ignored_item(item_descr: Item):
