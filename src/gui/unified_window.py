@@ -179,14 +179,19 @@ class UnifiedMainWindow(QMainWindow):
         theme_name = getattr(config.general, "theme", None) or "dark"
         stylesheet = DARK_THEME if theme_name == "dark" else LIGHT_THEME
         QApplication.instance().setStyleSheet(stylesheet)
-
         # --- Logging setup ---
         running_from_source = not getattr(sys, "frozen", False)
-        setup_logging(enable_stdout=running_from_source)
         root_logger = logging.getLogger()
 
-        # Remove existing handlers, but keep stdout handler if running from source
+        # Ensure file logging stays enabled. unified_window previously removed all handlers (including the file handler),
+        # which stopped live log writing to d4lf/logs.
+        if not any(getattr(h, "name", "") == "D4LF_FILE" for h in root_logger.handlers):
+            setup_logging(log_level=config.advanced_options.log_lvl.value, enable_stdout=running_from_source)
+
+        # Remove existing handlers, but keep file handler and (optionally) stdout when running from source
         for h in list(root_logger.handlers):
+            if getattr(h, "name", "") == "D4LF_FILE":
+                continue  # Keep file logging
             if running_from_source and isinstance(h, logging.StreamHandler) and h.stream == sys.stdout:
                 continue  # Keep stdout handler for IDE terminal
             root_logger.removeHandler(h)
@@ -327,6 +332,7 @@ class UnifiedMainWindow(QMainWindow):
             LOGGER.error(f"Failed to open profile editor: {e}")
 
     def restore_geometry(self):
+
         settings = QSettings("d4lf", "mainwindow")
 
         size = settings.value("size", QSize(1000, 800))

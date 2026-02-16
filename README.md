@@ -16,6 +16,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Automatically marks all common, magic, and optionally rare gear as junk
 - Quickly move items from your stash or inventory
 - Supported resolutions are all aspect ratios between 16:10 and 21:9
+- Paragon Overlay with optional import from supported build planners (Mobalytics, Maxroll, D4Builds)
 
 ## How to Setup
 
@@ -47,16 +48,6 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Use the hotkeys listed in d4lf.exe to run filtering. By default, F11 will run the loot filter and filter your items.
 - For most common issues, if something is wrong, you will see an error or warning when you start d4lf.exe. Join our [discord](https://discord.gg/YyzaPhAN6T) for more help.
 
-### Updating an existing installation
-
-All configurations are stored in a separate location so all you need to do is download the newest version and delete your old version. This can be done manually by downloading from the [releases page](https://github.com/d4lfteam/d4lf/releases) or by running autoupdater.bat.
-
-Your profiles and configuration should continue to work. The only exception to this is if the major version of the release changes. In that case, a change was made that will make previous profiles no longer work.
-
-Example 1: You're on version 5.1.14 and updating to 5.2.0. Your profiles will continue to work fine.
-
-Example 2: You're on version 5.1.14 and updating to 6.0.0. Your profiles will no longer work and you'll need to update or re-import them on the newest version.
-
 ### Common problems
 
 - The GUI crashes immediately upon opening, with no error message given
@@ -75,6 +66,10 @@ Example 2: You're on version 5.1.14 and updating to 6.0.0. Your profiles will no
       that says "Run this program as an administrator"
     - Run Diablo 4 again through Steam and see if that resolved the issue.
     - If it did not, set Steam to run as administrator as well and make sure you are running Diablo through Steam. This should resolve the issue.
+- Paragon overlay does not appear / does nothing
+  - Ensure Diablo IV is running in **borderless windowed** (exclusive fullscreen may block overlays).
+  - Ensure your profiles folder contains `*.yaml`/`*.yml` profile files with a top-level `Paragon:` section (default: `C:/Users/<WINDOWS_USER>/.d4lf/profiles`).
+  - Check/adjust `advanced/settings/toggle_paragon_overlay` (default `f10`) and ensure it is not conflicting with other hotkeys.
 
 ### TTS
 
@@ -90,6 +85,7 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
   automatically.
 - **params.ini**: Different hotkey settings and number of chest stashes that should be looked at. Management of this
   file should be done through the GUI in the config window.
+- **profiles/\*.yaml**: Profiles including embedded Paragon data for the integrated overlay (top-level `Paragon:`). Generated/updated by the importer when "Import Paragon" is enabled. Default location: `C:/Users/<WINDOWS_USER>/.d4lf/profiles`
 
 ### params.ini
 
@@ -121,11 +117,13 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | move_to_inv                  | Hotkey for moving items from stash to inventory                                                                                                   |
 | move_to_chest                | Hotkey for moving items from inventory to stash                                                                                                   |
+| run_filter_drop              | Hotkey to start/stop filtering items [drop instead of mark as junk]                                                                               |
 | run_filter                   | Hotkey to start/stop filtering items                                                                                                              |
 | run_filter_force_refresh     | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                                                        |
 | run_vision_mode              | Hotkey to start/stop vision mode                                                                                                                  |
 | force_refresh_only           | Hotkey to reset all item statuses without running a filter after                                                                                  |
 | exit_key                     | Hotkey to exit d4lf.exe                                                                                                                           |
+| toggle_paragon_overlay       | Hotkey to open/close the Paragon overlay                                                                                                          |
 | log_lvl                      | Logging level. Can be any of [debug, info, warning, error, critical]                                                                              |
 | process_name                 | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted                          |
 | vision_mode_only             | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.                                     |
@@ -143,7 +141,8 @@ automatically picked up and no restart is necessary.
 
 Current functionality:
 
-- Import builds from maxroll/d4builds/mobalytics
+- Import builds from maxroll/d4builds/mobalytics (optionally import Paragon data)
+- Toggle the integrated Paragon overlay (default hotkey: F10)
 - Complete management of your settings through the config tab
 - A beta version of a manual profile editor/creator
 
@@ -655,6 +654,21 @@ Uniques:
 
 Unique names are lower case and spaces are replaced by underscore. You can find the full list of names
 in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json). Occasionally a unique is missing. If you find one missing just raise an issue and we can add it.
+
+## Paragon overlay
+
+D4LF can import Paragon boards from supported build planners and show them in-game using the Paragon overlay.
+
+**How to use**
+
+1. Import your build from a supported planner (Mobalytics / Maxroll / D4Builds).
+1. Enable **Import Paragon** in the importer (optional). Paragon data will be stored in your profile YAMLs in the profiles folder (default: `~/.d4lf/profiles`).
+1. Toggle the Paragon overlay using the hotkey (default **F10**, configurable in *Advanced options*).
+
+**Tips**
+
+- Overlays may not work in exclusive fullscreen; use **borderless windowed** if the overlay does not appear.
+- Planner websites can change over time. If an import/export stops working, it may need an importer update.
 
 ## Future Plans
 

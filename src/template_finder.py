@@ -280,12 +280,10 @@ def search(
         result.success = True
         result.matches = sorted(matches, key=lambda obj: obj.score, reverse=True)
         if not suppress_debug and len(matches) > 1 and mode == "all":
-            msg = f"Found the following matches:\n{
-                ', '.join([
-                    f'  {template_match.name} ({template_match.score * 100:.1f}% confidence)'
-                    for template_match in matches
-                ])
-            }"
+            details = "\n".join(
+                f"  {template_match.name} ({template_match.score * 100:.1f}% confidence)" for template_match in matches
+            )
+            msg = f"Found the following matches:\n{details}"
             LOGGER.debug(msg)
     elif not suppress_debug:
         LOGGER.debug(f"Could not find desired templates: {ref}")

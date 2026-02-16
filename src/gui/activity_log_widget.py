@@ -1,4 +1,5 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget
 
 from src.config.loader import IniConfigLoader
@@ -33,7 +34,7 @@ class ActivityLogWidget(QWidget):
         config = IniConfigLoader()
 
         hotkey_text = QLabel()
-        hotkey_text.setMaximumHeight(65)
+        hotkey_text.setMaximumHeight(105)
         hotkey_text.setWordWrap(True)
         hotkey_text.setTextFormat(Qt.TextFormat.RichText)
         hotkey_text.setStyleSheet("margin-left: 5px;")
@@ -45,6 +46,7 @@ class ActivityLogWidget(QWidget):
             hotkeys_html += (
                 f"<u><b>{config.advanced_options.run_filter.upper()}</b></u>: Run/Stop Auto Filter&nbsp;&nbsp;&nbsp;"
             )
+            hotkeys_html += f"<u><b>{config.advanced_options.run_filter_drop.upper()}</b></u>: Run/Stop Auto Filter with Item Drop&nbsp;&nbsp;&nbsp;"
             hotkeys_html += (
                 f"<u><b>{config.advanced_options.move_to_inv.upper()}</b></u>: Move Chest → Inventory&nbsp;&nbsp;&nbsp;"
             )
@@ -55,6 +57,7 @@ class ActivityLogWidget(QWidget):
             hotkeys_html += f"<u><b>{config.advanced_options.run_vision_mode.upper()}</b></u>: Run/Stop Vision Mode<br>"
             hotkeys_html += "<span style='font-style: italic;'>Vision Mode Only - clicking functionality disabled</span>&nbsp;&nbsp;&nbsp;"
 
+        hotkeys_html += f"<u><b>{config.advanced_options.toggle_paragon_overlay.upper()}</b></u>: Toggle Paragon Overlay&nbsp;&nbsp;&nbsp;"
         hotkeys_html += f"<u><b>{config.advanced_options.exit_key.upper()}</b></u>: Exit D4LF"
         hotkeys_html += "</div>"
 
@@ -77,9 +80,19 @@ class ActivityLogWidget(QWidget):
         self.editor_btn.setMinimumHeight(40)
         button_layout.addWidget(self.editor_btn)
 
+        self.user_dir_btn = QPushButton("Open User Config")
+        self.user_dir_btn.setMinimumHeight(40)
+        self.user_dir_btn.setToolTip("Open the D4LF user config directory")
+        button_layout.addWidget(self.user_dir_btn)
+
         # === CONNECT BUTTONS TO UnifiedMainWindow ===
         self.import_btn.clicked.connect(self.parent().open_import_dialog)
         self.settings_btn.clicked.connect(self.parent().open_settings_dialog)
         self.editor_btn.clicked.connect(self.parent().open_profile_editor)
+        self.user_dir_btn.clicked.connect(self._open_user_dir)
 
         self.main_layout.addLayout(button_layout)
+
+    def _open_user_dir(self) -> None:
+        user_dir = IniConfigLoader().user_dir
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(user_dir)))

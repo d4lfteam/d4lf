@@ -205,7 +205,15 @@ class AdvancedOptionsModel(_IniBaseModel):
         description="The process that is running Diablo 4. Could help usage when playing through a streaming service like GeForce Now",
     )
     run_filter: str = Field(
-        default="f11", description="Hotkey to run the filter process", json_schema_extra={IS_HOTKEY_KEY: "True"}
+        default="f11",
+        description="Hotkey to run the filter process. If the item matches no profiles, it is marked as junk.",
+        json_schema_extra={IS_HOTKEY_KEY: "True"},
+    )
+
+    run_filter_drop: str = Field(
+        default="ctrl+f11",
+        description="Hotkey to run the filter process. If the item matches no profiles, it is dropped.",
+        json_schema_extra={IS_HOTKEY_KEY: "True"},
     )
     run_filter_force_refresh: str = Field(
         default="shift+f11",
@@ -215,6 +223,9 @@ class AdvancedOptionsModel(_IniBaseModel):
     run_vision_mode: str = Field(
         default="f9", description="Hotkey to enable/disable the vision mode", json_schema_extra={IS_HOTKEY_KEY: "True"}
     )
+    toggle_paragon_overlay: str = Field(
+        default="f10", description="Hotkey to open/close the Paragon overlay", json_schema_extra={IS_HOTKEY_KEY: "True"}
+    )
     vision_mode_only: bool = Field(
         default=False, description="Only allow vision mode to run. All hotkeys and actions that click will be disabled."
     )
@@ -223,10 +234,12 @@ class AdvancedOptionsModel(_IniBaseModel):
     def key_must_be_unique(self) -> AdvancedOptionsModel:
         keys = [
             self.exit_key,
+            self.toggle_paragon_overlay,
             self.force_refresh_only,
             self.move_to_chest,
             self.move_to_inv,
             self.run_filter,
+            self.run_filter_drop,
             self.run_filter_force_refresh,
             self.run_vision_mode,
         ]
@@ -237,10 +250,12 @@ class AdvancedOptionsModel(_IniBaseModel):
 
     @field_validator(
         "exit_key",
+        "toggle_paragon_overlay",
         "force_refresh_only",
         "move_to_chest",
         "move_to_inv",
         "run_filter",
+        "run_filter_drop",
         "run_filter_force_refresh",
         "run_vision_mode",
     )
@@ -619,12 +634,13 @@ class UniqueModel(BaseModel):
 
 class ProfileModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    name: str
     Affixes: list[DynamicItemFilterModel] = []
     AspectUpgrades: list[str] = []
+    name: str
     Sigils: SigilFilterModel = SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist)
     Tributes: list[TributeFilterModel] = []
     Uniques: list[UniqueModel] = []
+    Paragon: dict[str, object] | list[dict[str, object]] | None = None
 
     @model_validator(mode="before")
     def aspects_must_exist(self) -> ProfileModel:

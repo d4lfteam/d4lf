@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 import logging
 import sys
 import time
 from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tkinter import Canvas
 
 if sys.platform != "darwin":
     import keyboard
@@ -11,6 +16,12 @@ from src.config.loader import IniConfigLoader
 from src.item.data.item_type import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
 from src.item.data.rarity import ItemRarity
 from src.utils.custom_mouse import mouse
+
+try:
+    from src.config.ui import ResManager
+except Exception:  # pragma: no cover
+    ResManager = None  # type: ignore[assignment]
+
 
 if TYPE_CHECKING:
     from src.item.models import Item
@@ -65,6 +76,18 @@ def reset_item_status(occupied, inv):
         mouse.move(*Cam().abs_window_to_monitor((0, 0)))
 
 
+def drop_item_from_inventory() -> None:
+    """Drop the currently-hovered inventory item (Ctrl + Left Click in-game)."""
+    if keyboard is None:
+        return
+    keyboard.press("ctrl")
+    time.sleep(0.03)
+    mouse.click("left")
+    time.sleep(0.03)
+    keyboard.release("ctrl")
+    time.sleep(0.10)
+
+
 def is_ignored_item(item_descr: Item):
     if is_consumable(item_descr.item_type):
         LOGGER.info(f"{item_descr.original_name} -- Matched: Consumable")
@@ -101,3 +124,89 @@ def is_junk_rarity(item_rarity: ItemRarity) -> bool:
     if IniConfigLoader().general.junk_rares:
         return item_rarity in [ItemRarity.Common, ItemRarity.Magic, ItemRarity.Rare]
     return item_rarity in [ItemRarity.Common, ItemRarity.Magic]
+
+
+# --- Shared overlay text helper (used by paragon_overlay & vision modes) ---
+def _scaled_overlay_font_size(minimum_font_size: int, window_height: int | None) -> int:
+    """Legacy scaling behavior from vision_mode_with_highlighting."""
+    if window_height == 1440:
+        return minimum_font_size + 1
+    if window_height == 1600:
+        return minimum_font_size + 2
+    if window_height == 2160:
+        return minimum_font_size + 3
+    return minimum_font_size
+
+
+def draw_text_with_background(
+    canvas: Canvas,
+    text: str,
+    color: str,
+    previous_text_y: int,
+    offset: int,
+    canvas_center_x: int,
+    *,
+    background_color: str = "#111111",
+    font_name: str = "Courier New",
+    window_height: int | None = None,
+) -> int | None:
+    """Draw wrapped text centered at canvas_center_x with a background box.
+
+    Thread-safe relative to overlays that run outside the main thread because this
+    implementation avoids creating tkinter.font.Font() objects (which can trigger
+    'main thread is not in main loop' in some environments). Instead, it measures
+    the rendered text using a temporary canvas text item and canvas.bbox().
+    """
+    if not text:
+        return None
+
+    minimum_font_size = IniConfigLoader().general.minimum_overlay_font_size
+
+    # If caller didn't provide window_height, attempt to fetch it lazily.
+    if window_height is None:
+        try:
+            if ResManager is not None:
+                window_height = ResManager().pos.window_dimensions[1]
+        except Exception:
+            window_height = None
+
+    max_width = int(canvas_center_x * 2)
+    font_size = _scaled_overlay_font_size(minimum_font_size, window_height)
+
+    def _measure_bbox(size: int):
+        tmp_id = canvas.create_text(
+            -10000, -10000, text=text, anchor="nw", font=(font_name, size), fill=color, width=max_width
+        )
+        bbox = canvas.bbox(tmp_id)  # (x1, y1, x2, y2) or None
+        canvas.delete(tmp_id)
+        return bbox
+
+    bbox = _measure_bbox(font_size)
+    if not bbox:
+        return None
+
+    text_w = int(bbox[2] - bbox[0])
+    text_h = int(bbox[3] - bbox[1])
+
+    # Legacy-ish fallback: if it basically fills the whole width and we used the
+    # scaled font, try the minimum font size.
+    if font_size != minimum_font_size and text_w >= max_width - 2:
+        bbox2 = _measure_bbox(minimum_font_size)
+        if bbox2:
+            font_size = minimum_font_size
+            text_w = int(bbox2[2] - bbox2[0])
+            text_h = int(bbox2[3] - bbox2[1])
+
+    left = int(canvas_center_x - text_w // 2)
+    right = int(canvas_center_x + text_w // 2)
+    bottom = int(previous_text_y - offset)
+    top = int(bottom - text_h)
+
+    rect_id = canvas.create_rectangle(left, top, right, bottom, fill=background_color, outline="")
+    text_id = canvas.create_text(
+        canvas_center_x, bottom, text=text, anchor="s", font=(font_name, font_size), fill=color, width=max_width
+    )
+    # Ensure text is above background.
+    canvas.tag_raise(text_id, rect_id)
+
+    return top
