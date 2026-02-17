@@ -16,7 +16,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Automatically marks all common, magic, and optionally rare gear as junk
 - Quickly move items from your stash or inventory
 - Supported resolutions are all aspect ratios between 16:10 and 21:9
-- Paragon Overlay with optional import from supported build planners (Mobalytics, Maxroll, D4Builds)
+- Paragon Overlay with import from supported build planners (Mobalytics, Maxroll, D4Builds)
 
 ## How to Setup
 
@@ -117,8 +117,8 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | move_to_inv                  | Hotkey for moving items from stash to inventory                                                                                                   |
 | move_to_chest                | Hotkey for moving items from inventory to stash                                                                                                   |
-| run_filter_drop              | Hotkey to start/stop filtering items [drop instead of mark as junk]                                                                               |
 | run_filter                   | Hotkey to start/stop filtering items                                                                                                              |
+| run_filter_drop              | Hotkey to start/stop filtering items. Unmatched items are dropped instead of marked as junk                                                       |
 | run_filter_force_refresh     | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                                                        |
 | run_vision_mode              | Hotkey to start/stop vision mode                                                                                                                  |
 | force_refresh_only           | Hotkey to reset all item statuses without running a filter after                                                                                  |
@@ -657,18 +657,21 @@ in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json). Occasionally 
 
 ## Paragon overlay
 
+![sample](assets/paragon_overlay.jpg)
+
 D4LF can import Paragon boards from supported build planners and show them in-game using the Paragon overlay.
 
 **How to use**
 
 1. Import your build from a supported planner (Mobalytics / Maxroll / D4Builds).
-1. Enable **Import Paragon** in the importer (optional). Paragon data will be stored in your profile YAMLs in the profiles folder (default: `~/.d4lf/profiles`).
+1. Enable **Import Paragon** in the importer. Paragon data will be stored in your profile YAMLs in the profiles folder (default: `~/.d4lf/profiles`).
 1. Toggle the Paragon overlay using the hotkey (default **F10**, configurable in *Advanced options*).
+1. Follow the on-screen instructions to zoom in and out of the overlay until it is the size you want. Ideally, the golden outline will be the same size as the red lines in the paragon board. The location of the overlay is automatically saved.
 
 **Tips**
 
 - Overlays may not work in exclusive fullscreen; use **borderless windowed** if the overlay does not appear.
-- Planner websites can change over time. If an import/export stops working, it may need an importer update.
+- Planner websites can change over time. If an import/export stops working, please report a bug.
 
 ## Future Plans
 
