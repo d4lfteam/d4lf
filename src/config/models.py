@@ -319,6 +319,10 @@ class GeneralModel(_IniBaseModel):
     check_chest_tabs: list[int] = Field(
         default=[0, 1], description="Which stash tabs to check. Note: All tabs available (6 or 7) must be unlocked!"
     )
+    colorblind_mode: bool = Field(
+        default=False,
+        description="Use colorblind-friendly colors in the vision mode overlay (Blue/Orange/Yellow instead of Green/Red/Orange)",
+    )
     do_not_junk_ancestral_legendaries: bool = Field(
         default=False, description="Do not mark ancestral legendaries as junk for seasonal challenge"
     )

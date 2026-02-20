@@ -43,6 +43,17 @@ if TYPE_CHECKING:
 
 LOGGER = logging.getLogger(__name__)
 
+# Colorblind-safe equivalents (Blue + Orange + Yellow instead of Green + Red + Orange)
+_CB_GREEN = "#0077bb"  # Blau   statt Grün  (Match)
+_CB_RED = "#ee7733"  # Orange statt Rot   (No Match / Junk)
+_CB_ORANGE = "#ffcc00"  # Gelb   statt Orange (Codex Upgrade)
+
+
+def _vc(normal: str, cb: str) -> str:
+    if IniConfigLoader().general.colorblind_mode:
+        return cb
+    return normal
+
 
 class CancellationRequested(Exception):
     """Exception raised when a cancellation is requested."""
@@ -70,7 +81,6 @@ class VisionModeWithHighlighting:
         self.is_running = False
         self.root.geometry("0x0+0+0")
         self.thick = int(Cam().window_roi["height"] * 0.0047)
-
         inv = CharInventory()
         stash = Stash()
         vendor = Vendor()
@@ -82,21 +92,15 @@ class VisionModeWithHighlighting:
         possible_centers = []
         possible_centers += [slot.center for slot in occ_inv]
         possible_centers += [slot.center for slot in empty_inv]
-
-        # add possible centers of equipped items
         for x in ResManager().pos.possible_centers:
             possible_centers.append(x)
-
         possible_vendor_centers = possible_centers.copy()
         possible_vendor_centers += [slot.center for slot in occ_vendor]
         possible_vendor_centers += [slot.center for slot in empty_vendor]
-
         possible_centers += [slot.center for slot in occ_stash]
         possible_centers += [slot.center for slot in empty_stash]
-
         self.possible_centers = np.array(possible_centers)
         self.possible_vendor_centers = np.array(possible_vendor_centers)
-
         self.screen_off_x = Cam().window_roi["left"]
         self.screen_off_y = Cam().window_roi["top"]
 
@@ -111,10 +115,8 @@ class VisionModeWithHighlighting:
     def draw_text(self, canvas, text, color, previous_text_y, offset, canvas_center_x) -> int:
         if not text:
             return None
-
         font_name = "Courier New"
         minimum_font_size = IniConfigLoader().general.minimum_overlay_font_size
-
         font_size = minimum_font_size
         window_height = ResManager().pos.window_dimensions[1]
         if window_height == 1440:
@@ -123,30 +125,26 @@ class VisionModeWithHighlighting:
             font_size = minimum_font_size + 2
         elif window_height == 2160:
             font_size = minimum_font_size + 3
-
         font = Font(family=font_name, size=font_size)
         width_per_character = font.measure(text) / len(text)
         height_of_character = font.metrics("linespace")
         max_text_length_per_line = canvas_center_x * 2 // width_per_character
-        if max_text_length_per_line < len(text):  # Use a smaller font
+        if max_text_length_per_line < len(text):
             font_size = minimum_font_size
             font = Font(family=font_name, size=font_size)
             width_per_character = font.measure(text) / len(text)
             height_of_character = font.metrics("linespace")
             max_text_length_per_line = canvas_center_x * 2 // width_per_character
-
-        # Create a gray rectangle as the background
         text_width = int(width_per_character * len(text))
         text_width = min(text_width, canvas_center_x * 2)
         number_of_lines = math.ceil(len(text) / max_text_length_per_line)
         text_height = int(height_of_character * number_of_lines)
-
         dark_gray_color = "#111111"
         canvas.create_rectangle(
-            canvas_center_x - text_width // 2,  # x1
-            previous_text_y - offset - text_height,  # y1
-            canvas_center_x + text_width // 2,  # x2
-            previous_text_y - offset,  # y2
+            canvas_center_x - text_width // 2,
+            previous_text_y - offset - text_height,
+            canvas_center_x + text_width // 2,
+            previous_text_y - offset,
             fill=dark_gray_color,
             outline="",
         )
@@ -176,7 +174,6 @@ class VisionModeWithHighlighting:
                 stipple = "gray12"
             start_y = steps * i
             end_y = steps * (i + 1)
-
             canvas.create_rectangle(0, start_y, thick * 2, end_y, fill=color, outline="", stipple=stipple)
             canvas.create_rectangle(w - thick * 2, start_y, w, end_y, fill=color, outline="", stipple=stipple)
 
@@ -201,65 +198,53 @@ class VisionModeWithHighlighting:
                         self.draw_no_match_outline(task[2])
         except queue.Empty:
             pass
-
         self.canvas.after(10, self.draw_from_queue)
 
     def draw_empty_outline(self, item_roi, color, text: str | None):
         reset_canvas(self.root, self.canvas)
-
-        # Make the canvas gray for "found the item"
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
         self.canvas.config(height=h, width=w)
         self.create_signal_rect(self.canvas, w, self.thick, color)
-
         if text:
             self.draw_text(self.canvas, text, color, h, 5, w // 2)
-
         self.root.geometry(f"{w}x{h}+{x + self.screen_off_x}+{y + self.screen_off_y}")
         self.root.update_idletasks()
         self.root.update()
 
     def draw_match_outline(self, item_roi, should_keep_res, item_descr):
+        color = _vc(COLOR_GREEN, _CB_GREEN)
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
-        self.create_signal_rect(self.canvas, w, self.thick, COLOR_GREEN)
-
-        # show all info strings of the profiles
+        self.create_signal_rect(self.canvas, w, self.thick, color)
         text_y = h
         for match in reversed(should_keep_res.matched):
-            text_y = self.draw_text(self.canvas, match.profile, COLOR_GREEN, text_y, 5, w // 2)
-        # Show matched bullets
+            text_y = self.draw_text(self.canvas, match.profile, color, text_y, 5, w // 2)
         if item_descr and len(should_keep_res.matched) > 0:
             bullet_width = self.thick * 3
             for affix in should_keep_res.matched[0].matched_affixes:
                 if affix.loc:
-                    self.draw_rect(self.canvas, bullet_width, affix, off, COLOR_GREEN)
-
+                    self.draw_rect(self.canvas, bullet_width, affix, off, color)
             if item_descr.aspect and item_descr.aspect.loc and any(m.did_match_aspect for m in should_keep_res.matched):
-                self.draw_rect(self.canvas, bullet_width, item_descr.aspect, off, COLOR_GREEN)
-
+                self.draw_rect(self.canvas, bullet_width, item_descr.aspect, off, color)
         self.root.update_idletasks()
         self.root.update()
 
     def draw_no_match_outline(self, item_roi):
+        color = _vc(COLOR_RED, _CB_RED)
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
-        self.create_signal_rect(self.canvas, w, self.thick, COLOR_RED)
+        self.create_signal_rect(self.canvas, w, self.thick, color)
         self.root.update_idletasks()
         self.root.update()
 
     def draw_codex_upgrade_outline(self, item_roi, should_keep_result: FilterResult):
+        color = _vc(COLOR_ORANGE, _CB_ORANGE)
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
-
-        self.create_signal_rect(self.canvas, w, self.thick, COLOR_ORANGE)
-
-        # show string indicating that this item upgrades the codex
+        self.create_signal_rect(self.canvas, w, self.thick, color)
         if len(should_keep_result.matched) == 1 and should_keep_result.matched[0].profile == ASPECT_UPGRADES_LABEL:
-            self.draw_text(self.canvas, "Codex Upgrade", COLOR_ORANGE, h, 5, w // 2)
+            self.draw_text(self.canvas, "Codex Upgrade", color, h, 5, w // 2)
         else:
-            # This matched an Aspects section in a profile, write the profiles
             text_y = h
             for match in reversed(should_keep_result.matched):
-                text_y = self.draw_text(self.canvas, match.profile, COLOR_ORANGE, text_y, 5, w // 2)
-
+                text_y = self.draw_text(self.canvas, match.profile, color, text_y, 5, w // 2)
         self.root.update_idletasks()
         self.root.update()
 
@@ -275,14 +260,9 @@ class VisionModeWithHighlighting:
         if item_descr is None:
             self.request_clear()
             return
-
         self.current_item = item_descr
-
-        # Kick off a thread that will evaluate the item and queue up the appropriate drawings.
-        # If one already exists we'll kill it since a new item has come in
         if self.evaluate_item_thread:
             self.stop_thread_and_wait(self.evaluate_item_thread, self.evaluate_item_thread_cancel_event)
-
         self.evaluate_item_thread_cancel_event = threading.Event()
         self.evaluate_item_thread = threading.Thread(
             target=self.evaluate_item_and_queue_draw, args=(item_descr,), daemon=True
@@ -297,11 +277,8 @@ class VisionModeWithHighlighting:
                 self.clear_when_item_not_selected_thread, self.clear_when_item_not_selected_thread_cancel_event
             )
             self.clear_when_item_not_selected_thread = None
-
         last_top_left_corner = None
         last_center = None
-        # Each item must be detected twice and the image must match, this is to avoid
-        # getting in item while the fade-in animation and failing to read it properly
         is_confirmed = False
         retry_count = 0
         try:
@@ -309,20 +286,15 @@ class VisionModeWithHighlighting:
                 self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
                 retry_count += 1
                 mouse_pos = Cam().monitor_to_window(mouse.get_position())
-                # get closest pos to a item center
                 centers_to_use = self.possible_vendor_centers if item_descr.is_in_shop else self.possible_centers
                 delta = centers_to_use - mouse_pos
                 distances = np.linalg.norm(delta, axis=1)
                 closest_index = np.argmin(distances)
                 item_center = centers_to_use[closest_index]
-
                 self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
-
-                # Before we get the cropped_descr we need to ensure there is no previous overlay on screen
                 while not self.is_cleared:
                     time.sleep(0.10)
                 found, rarity, cropped_descr, item_roi = find_descr(Cam().grab(), item_center)
-
                 top_left_corner = None if not found else item_roi[:2]
                 if found:
                     if not is_confirmed:
@@ -331,10 +303,8 @@ class VisionModeWithHighlighting:
                             score = compare_histograms(cropped_descr, cropped_descr_check)
                             if score < 0.99:
                                 continue
-                            is_confirmed = True
-
+                        is_confirmed = True
                     self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
-
                     if (
                         last_top_left_corner is None
                         or last_top_left_corner[0] != top_left_corner[0]
@@ -342,7 +312,6 @@ class VisionModeWithHighlighting:
                         or (last_center is not None and last_center[1] != item_center[1])
                     ):
                         ignored_item = is_ignored_item(item_descr)
-                        # Make the canvas gray for "found the item" or blue for "ignored this item"
                         if ignored_item:
                             if item_descr.sanctified:
                                 self.request_empty_outline(
@@ -352,10 +321,6 @@ class VisionModeWithHighlighting:
                                 self.request_empty_outline(item_descr, item_roi, COLOR_BLUE)
                         else:
                             self.request_empty_outline(item_descr, item_roi, COLOR_GREY)
-
-                        # Since we've now drawn something we kick off a thread to remove the drawing
-                        # if the item is unselected. It is also automatically removed if a different
-                        # TTS item comes in.
                         self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
                         if not self.clear_when_item_not_selected_thread:
                             self.clear_when_item_not_selected_thread_cancel_event = threading.Event()
@@ -363,26 +328,17 @@ class VisionModeWithHighlighting:
                                 target=self.check_for_item_still_selected, args=(item_center,), daemon=True
                             )
                             self.clear_when_item_not_selected_thread.start()
-
                         if ignored_item:
                             return
-
-                        # Check if the item is a match based on our filters
                         last_top_left_corner = top_left_corner
                         last_center = item_center
-
                         if item_descr == self.current_item:
-                            # We need to get the item_descr again but this time with affix locations
                             if is_sigil(item_descr.item_type) or is_junk_rarity(item_descr.rarity):
-                                # We won't highlight specific affixes for sigils. We'll see if people complain
-                                # We're also marking all common/magic/potentially rares as junk so no need to do the image lookup
                                 item_descr_with_loc = item_descr
                             else:
                                 item_descr_with_loc = src.item.descr.read_descr_tts.read_descr_mixed(cropped_descr)
                             res = Filter().should_keep(item_descr_with_loc)
                             match = res.keep
-
-                            # Adapt colors based on config
                             if match:
                                 if any(
                                     res_matched.profile.endswith(ASPECT_UPGRADES_LABEL) for res_matched in res.matched
@@ -392,9 +348,10 @@ class VisionModeWithHighlighting:
                                     self.request_match_box(item_descr, item_roi, res, item_descr_with_loc)
                             elif not match:
                                 self.request_no_match_box(item_descr, item_roi)
-                else:
-                    self.request_clear()
+                            else:
+                                self.request_clear()
                     self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
+                else:
                     last_center = None
                     last_top_left_corner = None
                     is_confirmed = False
