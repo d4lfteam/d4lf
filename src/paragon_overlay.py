@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import base64
 import configparser
 import ctypes
+import io
 import logging
 import re
 import sys
@@ -15,6 +17,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
+
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    Image = ImageDraw = ImageFont = None  # type: ignore[assignment]
 from pydantic import ValidationError
 
 from src.cam import Cam
@@ -41,6 +48,23 @@ TEXT = "#ffffff"
 MUTED = "#cfcfcf"
 GOLD = "#cfa15b"
 SELECT_BG = "#1f1f1f"
+NODE_GREEN = "#18dd44"
+NODE_BLUE = "#2da3ff"
+
+# Font sizes in pt - edit here to adjust all UI text
+# All values are multiplied by ui_scale at runtime (DPI-aware)
+FS_PANEL_TITLE = 13  # Build/profile title in panel header
+FS_MODE_LABEL = 9  # "Full View" / "Compact View" label
+FS_BUTTON = 12  # "Builds" and settings button labels
+FS_BOARD_CARD = 10  # Board card entries in the left panel list
+FS_BUILDS_MENU = 12  # Items in the "Builds" dropdown menu
+FS_SETTINGS_ICON = 13  # Icons in the settings popup rows
+FS_SETTINGS_LABEL = 10  # Label text in the settings popup rows
+FS_ZOOM_BTN = 15  # zoom buttons
+FS_HINT = 10  # Hint / move-grid text at bottom of settings
+
+# Panel width in px (base value, DPI-scaled at runtime)
+PANEL_W = 370
 GRID = 21  # 21x21 nodes
 NODES_LEN = GRID * GRID
 
@@ -169,6 +193,8 @@ def _load_overlay_settings() -> dict[str, Any]:
         "grid_y_collapsed": _get_int("grid_y_collapsed"),
         # Grid lock
         "grid_locked": _get_bool("grid_locked"),
+        # Accessibility
+        "colorblind": _get_bool("colorblind"),
     }
 
 
@@ -346,7 +372,7 @@ def rotate_grid(grid: list[list[bool]], deg: int) -> list[list[bool]]:
 class OverlayConfig:
     # Full View settings
     cell_size: int = 24
-    grid_x_default: int = 544  # panel_w + 24
+    grid_x_default: int = PANEL_W + 24  # default grid offset: panel width + gap
     grid_y_default: int = 24
 
     # Collapsed View settings
@@ -355,13 +381,14 @@ class OverlayConfig:
     grid_y_collapsed_default: int = 300
 
     ui_scale: float = 1.0  # Auto-DPI baseline (scaled at runtime)
-    panel_w: int = 350
+    panel_w: int = PANEL_W
     poll_ms: int = 500
     window_alpha: float = 0.86
 
     # State
     is_collapsed: bool = False
     grid_locked: bool = False
+    colorblind: bool = False
 
 
 class ParagonOverlay(tk.Toplevel):
@@ -400,6 +427,11 @@ class ParagonOverlay(tk.Toplevel):
         saved_locked = self._settings.get("grid_locked")
         if isinstance(saved_locked, bool):
             self._cfg.grid_locked = saved_locked
+
+        # Load colorblind mode
+        saved_cb = self._settings.get("colorblind")
+        if isinstance(saved_cb, bool):
+            self._cfg.colorblind = saved_cb
 
         self._on_close = on_close
         self._cam = Cam()
@@ -528,13 +560,12 @@ class ParagonOverlay(tk.Toplevel):
         self.left.place(x=0, y=0, width=self._cfg.panel_w, relheight=1.0)
 
         # ========== TITLE CARD (Titel + Mode + Dropdown) ==========
-        self.card_title = tk.Frame(self.left, bg=CARD_BG, height=int(100 * self._cfg.ui_scale))
+        self.card_title = tk.Frame(self.left, bg=CARD_BG)
         self.card_title.pack(
             fill="x",
             padx=int(10 * self._cfg.ui_scale),
             pady=(int(10 * self._cfg.ui_scale), int(8 * self._cfg.ui_scale)),
         )
-        self.card_title.pack_propagate(False)
 
         # Title Row
         title_row = tk.Frame(self.card_title, bg=CARD_BG)
@@ -547,7 +578,7 @@ class ParagonOverlay(tk.Toplevel):
             text="",
             fg=TEXT,
             bg=CARD_BG,
-            font=("Segoe UI", int(10 * self._cfg.ui_scale), "bold"),
+            font=("Segoe UI", int(FS_PANEL_TITLE * self._cfg.ui_scale), "bold"),
             anchor="w",
             wraplength=max(200, self._cfg.panel_w - 40),
             justify="left",
@@ -564,77 +595,24 @@ class ParagonOverlay(tk.Toplevel):
             text=mode_text,
             fg=MUTED,
             bg=CARD_BG,
-            font=("Segoe UI", int(7 * self._cfg.ui_scale)),
+            font=("Segoe UI", int(FS_MODE_LABEL * self._cfg.ui_scale)),
             anchor="w",
         )
         self.lbl_mode.pack(side="left")
 
-        # ========== BUTTONS CARD (Toggle + Lock + Reload) ==========
-        self.card_buttons = tk.Frame(self.left, bg=CARD_BG, height=int(68 * self._cfg.ui_scale))
+        # ========== BUTTONS CARD (Settings + Builds) ==========
+        self.card_buttons = tk.Frame(self.left, bg=CARD_BG)
         self.card_buttons.pack(fill="x", padx=int(10 * self._cfg.ui_scale), pady=(0, int(8 * self._cfg.ui_scale)))
-        self.card_buttons.pack_propagate(False)
 
         buttons_container = tk.Frame(self.card_buttons, bg=CARD_BG)
         buttons_container.pack(
             expand=True, fill="both", padx=int(12 * self._cfg.ui_scale), pady=int(8 * self._cfg.ui_scale)
         )
 
-        # Toggle Collapsed/Full Button
-        self.btn_toggle_mode = tk.Button(
+        self.btn_settings = tk.Button(
             buttons_container,
-            text="◱" if self._cfg.is_collapsed else "◰",
-            command=self._toggle_collapsed_mode,
-            padx=int(8 * self._cfg.ui_scale),
-            pady=int(6 * self._cfg.ui_scale),
-            bg=CARD_BG,
-            fg=GOLD if self._cfg.is_collapsed else TEXT,
-            activebackground=CARD_BG,
-            activeforeground=GOLD,
-            bd=0,
-            highlightthickness=0,
-            font=("Segoe UI", int(16 * self._cfg.ui_scale), "bold"),
-        )
-        self.btn_toggle_mode.pack(side="left", padx=int(4 * self._cfg.ui_scale))
-
-        # Lock Grid Button
-        self.btn_lock_grid = tk.Button(
-            buttons_container,
-            text="🔒" if self._cfg.grid_locked else "🔓",
-            command=self._toggle_grid_lock,
-            padx=int(8 * self._cfg.ui_scale),
-            pady=int(6 * self._cfg.ui_scale),
-            bg=CARD_BG,
-            fg=GOLD if self._cfg.grid_locked else TEXT,
-            activebackground=CARD_BG,
-            activeforeground=GOLD,
-            bd=0,
-            highlightthickness=0,
-            font=("Segoe UI", int(14 * self._cfg.ui_scale), "bold"),
-        )
-        self.btn_lock_grid.pack(side="left", padx=int(4 * self._cfg.ui_scale))
-
-        # Reload Button
-        self.btn_reload = tk.Button(
-            buttons_container,
-            text="↻",
-            command=self._reload_profiles,
-            padx=int(8 * self._cfg.ui_scale),
-            pady=int(6 * self._cfg.ui_scale),
-            bg=CARD_BG,
-            fg=TEXT,
-            activebackground=CARD_BG,
-            activeforeground=GOLD,
-            bd=0,
-            highlightthickness=0,
-            font=("Segoe UI", int(16 * self._cfg.ui_scale), "bold"),
-        )
-        self.btn_reload.pack(side="left", padx=int(4 * self._cfg.ui_scale))
-
-        # Build Menu Dropdown (moved from title card)
-        self.btn_build_menu = tk.Button(
-            buttons_container,
-            text="Builds ▼",
-            command=self._show_build_menu,
+            text="ParagonOverlay⚙ ▼",
+            command=self._show_settings_dropdown,
             padx=int(10 * self._cfg.ui_scale),
             pady=int(6 * self._cfg.ui_scale),
             bg=CARD_BG,
@@ -643,33 +621,25 @@ class ParagonOverlay(tk.Toplevel):
             activeforeground=GOLD,
             bd=0,
             highlightthickness=0,
-            font=("Segoe UI", int(10 * self._cfg.ui_scale), "bold"),
+            font=("Segoe UI", int(FS_BUTTON * self._cfg.ui_scale), "bold"),
         )
-        self.btn_build_menu.pack(side="right", padx=int(4 * self._cfg.ui_scale))
+        self.btn_settings.pack(side="left", padx=int(4 * self._cfg.ui_scale))
 
-        # ========== HINT CARD ==========
-        self.card_hint = tk.Frame(self.left, bg=CARD_BG)
-        self.card_hint.pack(fill="x", padx=int(10 * self._cfg.ui_scale), pady=(0, int(14 * self._cfg.ui_scale)))
-
-        hint_text = (
-            "• Hover over golden frame use mousewheel to zoom+-\n"
-            "• Drag golden frame to move grid\n"
-            "• Hold SHIFT while scrolling for faster zoom\n"
-            "• Use 🔓 to lock grid"
-        )
-
-        lbl_hint = tk.Label(
-            self.card_hint,
-            text=hint_text,
-            fg=MUTED,
+        self.btn_build_menu = tk.Button(
+            buttons_container,
+            text="Builds ▼",
+            command=self._show_build_menu,
+            padx=int(12 * self._cfg.ui_scale),
+            pady=int(6 * self._cfg.ui_scale),
             bg=CARD_BG,
-            font=("Segoe UI", int(9 * self._cfg.ui_scale)),
-            anchor="w",
-            justify="left",
-            padx=int(13 * self._cfg.ui_scale),
-            pady=int(12 * self._cfg.ui_scale),
+            fg=TEXT,
+            activebackground=CARD_BG,
+            activeforeground=GOLD,
+            bd=0,
+            highlightthickness=0,
+            font=("Segoe UI", int(FS_BUTTON * self._cfg.ui_scale), "bold"),
         )
-        lbl_hint.pack(fill="both")
+        self.btn_build_menu.pack(side="right", padx=int(5 * self._cfg.ui_scale))
 
         # ========== SCROLLABLE BOARD CARDS ==========
         self.boards_canvas = tk.Canvas(self.left, bg=TRANSPARENT_KEY, highlightthickness=0)
@@ -700,22 +670,12 @@ class ParagonOverlay(tk.Toplevel):
         self.boards_canvas.bind("<Configure>", _on_canvas_configure)
 
     def _bind_events(self) -> None:
-        # Grid zoom
-        self.canvas.bind("<MouseWheel>", self._on_grid_mousewheel)
-        self.canvas.bind("<Button-4>", self._on_grid_mousewheel)
-        self.canvas.bind("<Button-5>", self._on_grid_mousewheel)
-
-        # Board list scroll
         self.boards_canvas.bind("<MouseWheel>", self._on_boards_mousewheel)
         self.boards_canvas.bind("<Button-4>", self._on_boards_mousewheel)
         self.boards_canvas.bind("<Button-5>", self._on_boards_mousewheel)
-
-        # Drag the grid by grabbing the gold border.
         self.canvas.bind("<ButtonPress-1>", self._on_grid_drag_start)
         self.canvas.bind("<B1-Motion>", self._on_grid_drag_move)
         self.canvas.bind("<ButtonRelease-1>", self._on_grid_drag_end)
-
-        # Drag the whole overlay window via the title card.
         for w in (self.card_title, self.lbl_title):
             w.bind("<ButtonPress-1>", self._on_window_drag_start)
             w.bind("<B1-Motion>", self._on_window_drag_move)
@@ -762,12 +722,18 @@ class ParagonOverlay(tk.Toplevel):
         """Toggle grid lock (prevent zoom/move)."""
         self._cfg.grid_locked = not self._cfg.grid_locked
 
-        self.btn_lock_grid.config(
-            text="🔒" if self._cfg.grid_locked else "🔓", fg=GOLD if self._cfg.grid_locked else TEXT
-        )
-
         self._persist_state()
         LOGGER.info(f"Grid {'locked' if self._cfg.grid_locked else 'unlocked'}")
+
+    def _toggle_colorblind(self) -> None:
+        """Toggle colorblind mode.
+
+        When enabled, active nodes are drawn in blue instead of green.
+        """
+        self._cfg.colorblind = not self._cfg.colorblind
+
+        self.redraw()
+        self._persist_state()
 
     def _reload_profiles(self) -> None:
         """Reload profiles from YAML files."""
@@ -799,7 +765,17 @@ class ParagonOverlay(tk.Toplevel):
         if not self.builds:
             return
 
-        m = tk.Menu(self, tearoff=0, bg=CARD_BG, fg=TEXT, activebackground=SELECT_BG, activeforeground=GOLD, bd=0)
+        menu_font = ("Segoe UI", int(FS_BUILDS_MENU * self._cfg.ui_scale))
+        m = tk.Menu(
+            self,
+            tearoff=0,
+            bg=CARD_BG,
+            fg=TEXT,
+            activebackground=SELECT_BG,
+            activeforeground=GOLD,
+            bd=0,
+            font=menu_font,
+        )
         groups: dict[str, list[tuple[int, dict[str, Any]]]] = {}
 
         for i, b in enumerate(self.builds):
@@ -813,7 +789,14 @@ class ParagonOverlay(tk.Toplevel):
         if len(groups) > 1:
             for prof in sorted(groups):
                 sm = tk.Menu(
-                    self, tearoff=0, bg=CARD_BG, fg=TEXT, activebackground=SELECT_BG, activeforeground=GOLD, bd=0
+                    self,
+                    tearoff=0,
+                    bg=CARD_BG,
+                    fg=TEXT,
+                    activebackground=SELECT_BG,
+                    activeforeground=GOLD,
+                    bd=0,
+                    font=menu_font,
                 )
                 for i, b in groups[prof]:
                     _add_item(sm, i, b)
@@ -822,6 +805,16 @@ class ParagonOverlay(tk.Toplevel):
             for i, b in enumerate(self.builds):
                 _add_item(m, i, b)
 
+        self.btn_build_menu.config(fg=GOLD)
+
+        def _poll_menu_closed() -> None:
+            with suppress(Exception):
+                if m.winfo_exists() and m.winfo_viewable():
+                    self.after(80, _poll_menu_closed)
+                    return
+            with suppress(Exception):
+                self.btn_build_menu.config(fg=TEXT)
+
         try:
             x = self.btn_build_menu.winfo_rootx()
             y = self.btn_build_menu.winfo_rooty() + self.btn_build_menu.winfo_height()
@@ -829,6 +822,260 @@ class ParagonOverlay(tk.Toplevel):
         finally:
             with suppress(Exception):
                 m.grab_release()
+            self.after(80, _poll_menu_closed)
+
+    def _hide_cards(self) -> None:
+        with suppress(Exception):
+            self.boards_canvas.pack_forget()
+
+    def _show_cards(self) -> None:
+        with suppress(Exception):
+            self.boards_canvas.pack(
+                fill="both", expand=True, padx=int(10 * self._cfg.ui_scale), pady=(0, int(12 * self._cfg.ui_scale))
+            )
+
+    def _show_settings_dropdown(self) -> None:
+        existing = getattr(self, "_settings_popup", None)
+        if existing is not None:
+            with suppress(Exception):
+                existing.destroy()
+            self._settings_popup = None
+            self._show_cards()
+            with suppress(Exception):
+                self.btn_settings.config(fg=TEXT)  # zurück auf weiß beim Schließen
+            return
+
+        # Lock-Images einmalig cachen — PIL + Font werden nur beim ersten Öffnen geladen
+        if not hasattr(self, "_lock_img_cache"):
+            icon_size = max(12, int(14 * self._cfg.ui_scale))
+            self._lock_img_cache = {
+                True: self._make_lock_image(True, icon_size),
+                False: self._make_lock_image(False, icon_size),
+            }
+
+        popup = tk.Toplevel(self)
+        popup.overrideredirect(True)
+        popup.attributes("-topmost", True)
+        popup.configure(bg=CARD_BG)
+        self._settings_popup = popup
+        self._hide_cards()
+        self._build_settings_popup(popup)
+        popup.update_idletasks()
+        pw = max(220, popup.winfo_reqwidth())
+        ph = popup.winfo_reqheight()
+        bx = self.btn_settings.winfo_rootx()
+        by = self.btn_settings.winfo_rooty() + self.btn_settings.winfo_height() + 4
+        if by + ph > self.winfo_screenheight():
+            by = self.btn_settings.winfo_rooty() - ph - 4
+        popup.geometry(f"{pw}x{ph}+{bx}+{by}")
+        with suppress(Exception):
+            self.btn_settings.config(fg=GOLD)  # golden wenn geöffnet
+
+    def _build_settings_popup(self, popup: tk.Toplevel) -> None:
+        scale = self._cfg.ui_scale
+        container = tk.Frame(popup, bg=CARD_BG, padx=int(14 * scale), pady=int(10 * scale))
+        container.pack(fill="both", expand=True)
+
+        # Gecachte Lock-Images aus self._lock_img_cache verwenden
+        lock_imgs = getattr(self, "_lock_img_cache", {})
+
+        def _wrap(fn):
+            def _inner() -> None:
+                fn()
+                _populate()
+
+            return _inner
+
+        def _on_zoom(delta: int) -> None:
+            self._zoom_grid(delta)
+            _populate()
+
+        def _populate() -> None:
+            for w in container.winfo_children():
+                w.destroy()
+
+            lock_text_fb = "🔒" if self._cfg.grid_locked else "🔓"
+
+            for icon, lock_img, label, active, cmd in [
+                (
+                    "▱" if self._cfg.is_collapsed else "▰",
+                    None,
+                    "Compact View" if self._cfg.is_collapsed else "Full View",
+                    self._cfg.is_collapsed,
+                    _wrap(self._toggle_collapsed_mode),
+                ),
+                (
+                    lock_text_fb,
+                    lock_imgs.get(self._cfg.grid_locked),
+                    "Grid locked" if self._cfg.grid_locked else "Grid unlocked",
+                    self._cfg.grid_locked,
+                    _wrap(self._toggle_grid_lock),
+                ),
+                (
+                    "C",
+                    None,
+                    "Colorblind: on" if self._cfg.colorblind else "Colorblind: off",
+                    self._cfg.colorblind,
+                    _wrap(self._toggle_colorblind),
+                ),
+                ("↻", None, "Reload profiles", False, self._reload_profiles),
+            ]:
+                fg = GOLD if active else TEXT
+                row = tk.Frame(container, bg=CARD_BG)
+                row.pack(fill="x", pady=int(3 * scale))
+                if lock_img is not None:
+                    tk.Button(
+                        row,
+                        image=lock_img,
+                        command=cmd,
+                        bg=CARD_BG,
+                        activebackground=SELECT_BG,
+                        bd=0,
+                        highlightthickness=0,
+                        padx=int(6 * scale),
+                        pady=int(4 * scale),
+                    ).pack(side="left")
+                else:
+                    tk.Button(
+                        row,
+                        text=icon,
+                        command=cmd,
+                        bg=CARD_BG,
+                        fg=fg,
+                        activebackground=SELECT_BG,
+                        activeforeground=GOLD,
+                        bd=0,
+                        highlightthickness=0,
+                        font=("Segoe UI", int(FS_SETTINGS_ICON * scale), "bold"),
+                        padx=int(6 * scale),
+                        pady=int(4 * scale),
+                    ).pack(side="left")
+                tk.Label(
+                    row, text=label, fg=fg, bg=CARD_BG, font=("Segoe UI", int(FS_SETTINGS_LABEL * scale)), anchor="w"
+                ).pack(side="left", padx=(int(8 * scale), int(24 * scale)))
+
+            tk.Frame(container, bg=MUTED, height=1).pack(fill="x", pady=int(6 * scale))
+            locked = self._cfg.grid_locked
+            fg_c = MUTED if locked else TEXT
+            s_c = tk.DISABLED if locked else tk.NORMAL
+
+            zoom_row = tk.Frame(container, bg=CARD_BG)
+            zoom_row.pack(fill="x", pady=int(3 * scale))
+            tk.Button(
+                zoom_row,
+                text="−",
+                command=lambda: _on_zoom(-1),
+                bg=CARD_BG,
+                fg=fg_c,
+                activebackground=SELECT_BG,
+                activeforeground=GOLD,
+                bd=0,
+                highlightthickness=0,
+                state=s_c,
+                font=("Segoe UI", int(FS_ZOOM_BTN * scale), "bold"),
+                padx=int(8 * scale),
+                pady=int(2 * scale),
+            ).pack(side="left")
+            cell_now = self._cfg.cell_size_collapsed if self._cfg.is_collapsed else self._cfg.cell_size
+            tk.Label(
+                zoom_row,
+                text=f"{int(cell_now)}px",
+                fg=fg_c,
+                bg=CARD_BG,
+                font=("Segoe UI", int(FS_SETTINGS_LABEL * scale), "bold"),
+                width=5,
+                anchor="center",
+            ).pack(side="left")
+            tk.Button(
+                zoom_row,
+                text="+",
+                command=lambda: _on_zoom(+1),
+                bg=CARD_BG,
+                fg=fg_c,
+                activebackground=SELECT_BG,
+                activeforeground=GOLD,
+                bd=0,
+                highlightthickness=0,
+                state=s_c,
+                font=("Segoe UI", int(FS_ZOOM_BTN * scale), "bold"),
+                padx=int(8 * scale),
+                pady=int(2 * scale),
+            ).pack(side="left")
+            tk.Label(
+                zoom_row,
+                text="Grid Zoom",
+                fg=MUTED,
+                bg=CARD_BG,
+                font=("Segoe UI", int(FS_SETTINGS_LABEL * scale)),
+                anchor="w",
+            ).pack(side="left", padx=(int(8 * scale), 0))
+
+            tk.Frame(container, bg=MUTED, height=1).pack(fill="x", pady=int(4 * scale))
+
+            bc = {
+                "bg": CARD_BG,
+                "fg": fg_c,
+                "activebackground": SELECT_BG,
+                "activeforeground": GOLD,
+                "bd": 1,
+                "relief": "flat",
+                "highlightthickness": 0,
+                "state": s_c,
+                "font": ("Segoe UI", int(FS_SETTINGS_ICON * scale), "bold"),
+                "width": 2,
+                "pady": int(2 * scale),
+            }
+            dpad_outer = tk.Frame(container, bg=CARD_BG)
+            dpad_outer.pack(anchor="w", pady=(int(2 * scale), int(2 * scale)))
+            dpad_col = tk.Frame(dpad_outer, bg=CARD_BG)
+            dpad_col.pack(side="left")
+            sp = int(30 * scale)
+            r0 = tk.Frame(dpad_col, bg=CARD_BG)
+            r0.pack()
+            tk.Frame(r0, bg=CARD_BG, width=sp, height=1).pack(side="left")
+            tk.Button(r0, text="↑", command=lambda: self._move_grid(0, -1), **bc).pack(side="left", padx=1, pady=1)
+            tk.Frame(r0, bg=CARD_BG, width=sp, height=1).pack(side="left")
+            r1 = tk.Frame(dpad_col, bg=CARD_BG)
+            r1.pack()
+            tk.Button(r1, text="←", command=lambda: self._move_grid(-1, 0), **bc).pack(side="left", padx=1, pady=1)
+            tk.Frame(r1, bg=CARD_BG, width=sp, height=1).pack(side="left")
+            tk.Button(r1, text="→", command=lambda: self._move_grid(1, 0), **bc).pack(side="left", padx=1, pady=1)
+            r2 = tk.Frame(dpad_col, bg=CARD_BG)
+            r2.pack()
+            tk.Frame(r2, bg=CARD_BG, width=sp, height=1).pack(side="left")
+            tk.Button(r2, text="↓", command=lambda: self._move_grid(0, 1), **bc).pack(side="left", padx=1, pady=1)
+            tk.Frame(r2, bg=CARD_BG, width=sp, height=1).pack(side="left")
+            tk.Label(
+                dpad_outer,
+                text="Move\nGrid",
+                fg=MUTED,
+                bg=CARD_BG,
+                font=("Segoe UI", int(FS_HINT * scale)),
+                anchor="w",
+                justify="left",
+            ).pack(side="left", padx=(int(8 * scale), 0))
+
+            tk.Frame(container, bg=MUTED, height=1).pack(fill="x", pady=int(6 * scale))
+            hint = (
+                "• Drag golden frame to move grid\n"
+                "• D-Pad ↑ ↓ ← → moves grid per click\n"
+                "• Use − + buttons to zoom\n"
+                "• Use 🔓 to unlock grid\n"
+                "• Use C to toggle colorblind mode"
+            )
+            tk.Label(
+                container,
+                text=hint,
+                fg=MUTED,
+                bg=CARD_BG,
+                font=("Segoe UI", int(FS_HINT * scale)),
+                anchor="w",
+                justify="left",
+                padx=int(4 * scale),
+                pady=int(6 * scale),
+            ).pack(fill="x")
+
+        _populate()
 
     # -------- board cards --------
 
@@ -841,10 +1088,6 @@ class ParagonOverlay(tk.Toplevel):
     def _toggle_collapsed_mode(self) -> None:
         """Toggle between Full and Collapsed Mode."""
         self._cfg.is_collapsed = not self._cfg.is_collapsed
-
-        self.btn_toggle_mode.config(
-            text="◱" if self._cfg.is_collapsed else "◰", fg=GOLD if self._cfg.is_collapsed else TEXT
-        )
 
         mode_text = "Compact View" if self._cfg.is_collapsed else "Full View"
         self.lbl_mode.config(text=mode_text)
@@ -917,9 +1160,8 @@ class ParagonOverlay(tk.Toplevel):
             bg = SELECT_BG if selected else CARD_BG
             fg = GOLD if selected else TEXT
 
-            card = tk.Frame(self.board_container, bg=bg, height=int(76 * self._cfg.ui_scale))
+            card = tk.Frame(self.board_container, bg=bg)
             card.pack(fill="x", pady=8)
-            card.pack_propagate(False)
 
             lbl = tk.Label(
                 card,
@@ -929,7 +1171,7 @@ class ParagonOverlay(tk.Toplevel):
                 anchor="w",
                 padx=14,
                 pady=16,
-                font=("Segoe UI", int(9 * self._cfg.ui_scale), "bold"),
+                font=("Segoe UI", int(FS_BOARD_CARD * self._cfg.ui_scale), "bold"),
                 wraplength=max(200, self._cfg.panel_w - 40),
                 justify="left",
             )
@@ -1009,7 +1251,56 @@ class ParagonOverlay(tk.Toplevel):
         self.redraw()
         self._persist_state()
 
+    def _move_grid(self, dx: int, dy: int) -> None:
+        if self._cfg.grid_locked:
+            return
+        if self._cfg.is_collapsed:
+            self.grid_x_collapsed += dx
+            self.grid_y_collapsed += dy
+        else:
+            self.grid_x += dx
+            self.grid_y += dy
+        self.redraw()
+        self._persist_state()
+
+    def _zoom_grid(self, delta: int) -> None:
+        if self._cfg.grid_locked:
+            return
+        if self._cfg.is_collapsed:
+            old = int(self._cfg.cell_size_collapsed)
+            new = max(8, min(50, old + delta))
+            if new == old:
+                return
+            self._cfg.cell_size_collapsed = new
+        else:
+            old = int(self._cfg.cell_size)
+            new = max(10, min(80, old + delta))
+            if new == old:
+                return
+            self._cfg.cell_size = new
+        self.redraw()
+        self._persist_state()
+
+    def _make_lock_image(self, locked: bool, size: int = 14) -> tk.PhotoImage | None:
+        try:
+            if Image is None:
+                return None
+            emoji = "🔒" if locked else "🔓"
+            fnt = ImageFont.truetype(r"C:\Windows\Fonts\seguiemj.ttf", size)
+            pad = 1
+            img = Image.new("RGBA", (size + pad * 2, size + pad * 2), (0, 0, 0, 0))
+            try:
+                ImageDraw.Draw(img).text((pad, pad), emoji, font=fnt, embedded_color=True)
+            except TypeError:
+                ImageDraw.Draw(img).text((pad, pad), emoji, font=fnt)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            return tk.PhotoImage(data=base64.b64encode(buf.getvalue()))
+        except Exception:
+            return None
+
     def _on_grid_drag_start(self, e: tk.Event) -> None:
+        self.focus_set()
         # Ignore if grid is locked
         if self._cfg.grid_locked:
             self._dragging_grid = False
@@ -1055,6 +1346,7 @@ class ParagonOverlay(tk.Toplevel):
         self._persist_state()
 
     def _on_window_drag_start(self, e: tk.Event) -> None:
+        self.focus_set()
         self._dragging_window = True
         self._win_drag_start_xy = (int(e.x_root), int(e.y_root))
         self._win_drag_start_pos = (int(self.winfo_x()), int(self.winfo_y()))
@@ -1184,6 +1476,8 @@ class ParagonOverlay(tk.Toplevel):
         inset = max(2, cs // 4)
         outline_w = max(2, cs // 10)
 
+        node_outline = NODE_BLUE if self._cfg.colorblind else NODE_GREEN
+
         for y in range(GRID):
             for x in range(GRID):
                 if not grid[y][x]:
@@ -1200,7 +1494,7 @@ class ParagonOverlay(tk.Toplevel):
                     x2,
                     y2,
                     fill=TRANSPARENT_KEY,  # Transparent!
-                    outline="#18dd44",
+                    outline=node_outline,
                     width=outline_w,
                 )
 
@@ -1241,6 +1535,8 @@ class ParagonOverlay(tk.Toplevel):
                 "grid_y_collapsed": int(self.grid_y_collapsed),
                 # Grid lock
                 "grid_locked": bool(self._cfg.grid_locked),
+                # Accessibility
+                "colorblind": bool(self._cfg.colorblind),
             })
         except Exception:
             LOGGER.debug("Failed to persist overlay state", exc_info=True)
