@@ -12,22 +12,12 @@ from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
 from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter, MatchedFilter
-from src.scripts.common import ASPECT_UPGRADES_LABEL, COLOR_GREEN, COLOR_ORANGE, is_ignored_item
+from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item
 from src.tts import Publisher
 from src.utils.custom_mouse import mouse
 from src.utils.window import screenshot
 
 LOGGER = logging.getLogger(__name__)
-
-# Colorblind-safe equivalents (Blue + Yellow instead of Green + Orange)
-_CB_GREEN = "#0077bb"  # Blau   statt Grün
-_CB_ORANGE = "#ffcc00"  # Gelb   statt Orange
-
-
-def _vc(normal: str, cb: str) -> str:
-    if IniConfigLoader().general.colorblind_mode:
-        return cb
-    return normal
 
 
 @singleton
@@ -53,13 +43,17 @@ class VisionModeFast:
         self.textbox.update_idletasks()
         text_content = self.textbox.get(1.0, tk.END)
         line_count = text_content.count("\n")
+
         text_font = font.Font(font=self.textbox.tag_cget("colored", "font"))
         line_height = text_font.metrics("linespace")
         max_line_length = max(len(line) for line in text_content.splitlines())
+
         width = max_line_length * text_font.measure("0")
         height = (line_count + 1) * line_height
+
         mouse_pos = Cam().monitor_to_window(mouse.get_position())
         self.textbox.config(x=mouse_pos[0], y=mouse_pos[1], width=width // 9, height=(height // line_height) - 2)
+
         self.textbox.config(state=tk.DISABLED)
 
     def clear_textbox(self):
@@ -91,6 +85,7 @@ class VisionModeFast:
                 self.clear_textbox()
         except queue.Empty:
             pass
+
         self.canvas.after(10, self.draw_from_queue)
 
     def insert_colored_text(self, text, color):
@@ -105,6 +100,7 @@ class VisionModeFast:
     def refresh_clear_timer(self):
         if self.clear_timer_id is not None:
             self.root.after_cancel(self.clear_timer_id)
+
         self.clear_timer_id = self.root.after(5000, self.clear_textbox)
 
     def request_clear(self):
@@ -123,7 +119,6 @@ class VisionModeFast:
                 img = Cam().grab()
                 screenshot("tts_error", img=img)
                 LOGGER.exception(f"Error in TTS read_descr. {src.tts.LAST_ITEM=}")
-
             if item_descr is None:
                 return None
 
@@ -138,8 +133,9 @@ class VisionModeFast:
 
             res = Filter().should_keep(item_descr)
             match = res.keep
+
             if match:
-                color = _vc(COLOR_GREEN, _CB_GREEN)
+                color = get_filter_colors().matched
                 if not res.matched:
                     if item_descr.rarity == ItemRarity.Unique:
                         text = ["Unique"]
@@ -147,7 +143,7 @@ class VisionModeFast:
                         text = ["Mythic (Always Kept)"]
                 else:
                     if any(res_matched.profile.endswith(ASPECT_UPGRADES_LABEL) for res_matched in res.matched):
-                        color = _vc(COLOR_ORANGE, _CB_ORANGE)
+                        color = get_filter_colors().codex_upgrade
                     text = create_match_text(reversed(res.matched))
                 return self.request_draw("\n".join(text), color)
             self.request_clear()
@@ -170,4 +166,4 @@ class VisionModeFast:
 
 
 def create_match_text(matches: list[MatchedFilter]):
-    return [f"{match.profile}\n" + "\n".join(f" - {ma.name}" for ma in match.matched_affixes) for match in matches]
+    return [f"{match.profile}\n" + "\n".join(f"  - {ma.name}" for ma in match.matched_affixes) for match in matches]
