@@ -73,13 +73,6 @@ def get_filter_colors() -> FilterColors:
     return FILTER_COLORS_DEFAULT
 
 
-# Backwards-compatible constants (default palette).
-COLOR_GREEN = FILTER_COLORS_DEFAULT.matched
-COLOR_RED = FILTER_COLORS_DEFAULT.no_match
-COLOR_ORANGE = FILTER_COLORS_DEFAULT.codex_upgrade
-COLOR_GREY = FILTER_COLORS_DEFAULT.processing
-COLOR_BLUE = FILTER_COLORS_DEFAULT.unhandled
-
 ASPECT_UPGRADES_LABEL = "AspectUpgrades"
 
 
