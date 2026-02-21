@@ -54,7 +54,7 @@ NODE_BLUE = "#2da3ff"
 # Font sizes in pt - edit here to adjust all UI text
 # All values are multiplied by ui_scale at runtime (DPI-aware)
 FS_PANEL_TITLE = 13  # Build/profile title in panel header
-FS_MODE_LABEL = 9  # "Full View" / "Compact View" label
+FS_MODE_LABEL = 10  # "Full View" / "Compact View" label
 FS_BUTTON = 12  # "Builds" and settings button labels
 FS_BOARD_CARD = 10  # Board card entries in the left panel list
 FS_BUILDS_MENU = 12  # Items in the "Builds" dropdown menu
@@ -492,7 +492,9 @@ class ParagonOverlay(tk.Toplevel):
         self._refresh_lists()
         self.redraw()
         # Warm up settings popup assets (lock icons) to avoid first-open lag
-        self.after_idle(self._warmup_settings_assets)
+        # Warm up settings popup assets (lock icons) to avoid first-open lag.
+        # Delay slightly so the window can paint first.
+        self._warmup_after_id = self.after(600, self._warmup_settings_assets)
 
         self.after(self._cfg.poll_ms, self._poll_window_state)
         self.after(50, self._poll_close_request)
@@ -592,6 +594,24 @@ class ParagonOverlay(tk.Toplevel):
             anchor="w",
         )
         self.lbl_mode.pack(side="left")
+
+        # View switch button (placed next to the mode label).
+        self.btn_view_switch = tk.Button(
+            mode_label_frame,
+            text=self._get_view_switch_symbol(),
+            command=self._toggle_collapsed_mode,
+            padx=int(8 * self._cfg.ui_scale),
+            pady=int(2 * self._cfg.ui_scale),
+            bg=CARD_BG,
+            fg=TEXT,
+            activebackground=CARD_BG,
+            activeforeground=GOLD,
+            bd=0,
+            highlightthickness=0,
+            font=("Segoe UI", int(FS_BUTTON * self._cfg.ui_scale), "bold"),
+            takefocus=0,
+        )
+        self.btn_view_switch.pack(side="left", padx=(int(8 * self._cfg.ui_scale), 0))
 
         # ========== BUTTONS CARD (Settings + Builds) ==========
         self.card_buttons = tk.Frame(self.left, bg=CARD_BG)
@@ -832,13 +852,25 @@ class ParagonOverlay(tk.Toplevel):
     def _show_settings_dropdown(self) -> None:
         existing = getattr(self, "_settings_popup", None)
         if existing is not None:
+            # If the popup was already destroyed (stale reference), clear it and continue opening.
+            if not bool(getattr(existing, "winfo_exists", lambda: 0)()):
+                self._settings_popup = None
+                existing = None
+            else:
+                with suppress(Exception):
+                    existing.destroy()
+                self._settings_popup = None
+                self._show_cards()
+                with suppress(Exception):
+                    self.btn_settings.config(fg=TEXT)  # back to white when closing
+                return
+
+        # Cancel any pending warmup so it can't race with popup creation.
+        warmup_id = getattr(self, "_warmup_after_id", None)
+        if warmup_id:
             with suppress(Exception):
-                existing.destroy()
-            self._settings_popup = None
-            self._show_cards()
-            with suppress(Exception):
-                self.btn_settings.config(fg=TEXT)  # back to white when closing
-            return
+                self.after_cancel(warmup_id)
+            self._warmup_after_id = None
 
         # Ensure lock icon cache exists (usually warmed up during init).
         if not hasattr(self, "_lock_img_cache"):
@@ -849,6 +881,15 @@ class ParagonOverlay(tk.Toplevel):
         popup.attributes("-topmost", True)
         popup.configure(bg=CARD_BG)
         self._settings_popup = popup
+
+        def _on_popup_destroy(event: tk.Event) -> None:
+            if event.widget is popup:
+                self._settings_popup = None
+                self._show_cards()
+                with suppress(Exception):
+                    self.btn_settings.config(fg=TEXT)
+
+        popup.bind("<Destroy>", _on_popup_destroy, add="+")
         self._hide_cards()
         self._build_settings_popup(popup)
         popup.update_idletasks()
@@ -921,14 +962,6 @@ class ParagonOverlay(tk.Toplevel):
             return btn, lbl
 
         # ----- dynamic rows -----
-
-        btn_view, lbl_view = _row(
-            icon_text="▱" if self._cfg.is_collapsed else "▰",
-            icon_img=None,
-            label_text="Compact View" if self._cfg.is_collapsed else "Full View",
-            is_active=self._cfg.is_collapsed,
-            command=lambda: (_toggle_collapsed(), _refresh()),
-        )
 
         # lock/unlock: prefer cached images, fall back to emoji text
         locked_now = self._cfg.grid_locked
@@ -1068,7 +1101,7 @@ class ParagonOverlay(tk.Toplevel):
             "• Drag golden frame to move grid\n"
             "• D-Pad ↑ ↓ ← → moves grid per click\n"
             "• Use − + buttons to zoom\n"
-            "• Use 🔓 to unlock grid"
+            "• Use 🔓 to lock/unlock grid"
         )
         tk.Label(
             container,
@@ -1084,9 +1117,6 @@ class ParagonOverlay(tk.Toplevel):
 
         # ----- actions + refresh -----
 
-        def _toggle_collapsed() -> None:
-            self._toggle_collapsed_mode()
-
         def _toggle_grid_lock() -> None:
             self._toggle_grid_lock()
 
@@ -1097,11 +1127,7 @@ class ParagonOverlay(tk.Toplevel):
             self._move_grid(dx, dy)
 
         def _refresh() -> None:
-            # View row
             is_collapsed = self._cfg.is_collapsed
-            fg_view = GOLD if is_collapsed else TEXT
-            btn_view.configure(text="▱" if is_collapsed else "▰", fg=fg_view)
-            lbl_view.configure(text="Compact View" if is_collapsed else "Full View", fg=fg_view)
 
             # Lock row
             locked = self._cfg.grid_locked
@@ -1140,12 +1166,31 @@ class ParagonOverlay(tk.Toplevel):
         self.redraw()
         self._persist_state()
 
+    def _get_view_switch_symbol(self) -> str:
+        """Return the icon for the view switch button.
+
+        The icon indicates the action that will happen when clicking:
+        - Expand to full view when currently compact.
+        - Collapse to compact view when currently full.
+        """
+        return "⤢" if self._cfg.is_collapsed else "⤡"
+
+    def _refresh_view_switch_ui(self) -> None:
+        """Refresh the mode label and view switch button state."""
+        mode_text = "Compact View" if self._cfg.is_collapsed else "Full View"
+        with suppress(Exception):
+            self.lbl_mode.config(text=mode_text)
+
+        btn = getattr(self, "btn_view_switch", None)
+        if btn is not None:
+            with suppress(Exception):
+                btn.config(text=self._get_view_switch_symbol())
+
     def _toggle_collapsed_mode(self) -> None:
         """Toggle between Full and Collapsed Mode."""
         self._cfg.is_collapsed = not self._cfg.is_collapsed
 
-        mode_text = "Compact View" if self._cfg.is_collapsed else "Full View"
-        self.lbl_mode.config(text=mode_text)
+        self._refresh_view_switch_ui()
 
         self.redraw()
         self._persist_state()
@@ -1357,8 +1402,18 @@ class ParagonOverlay(tk.Toplevel):
     def _warmup_settings_assets(self) -> None:
         """Pre-create settings popup assets to avoid lag on first open.
 
-        Currently this only caches the lock/unlock icons (PIL → PhotoImage).
+        Currently this only caches the lock/unlock icons (PIL -> PhotoImage).
         """
+        # Mark the scheduled callback as consumed (if any).
+        self._warmup_after_id = None
+        # If the window is already gone, do nothing.
+        with suppress(Exception):
+            if not self.winfo_exists():
+                return
+        # Avoid doing heavy work while the popup is open; try again shortly.
+        if getattr(self, "_settings_popup", None) is not None:
+            self._warmup_after_id = self.after(400, self._warmup_settings_assets)
+            return
         if hasattr(self, "_lock_img_cache"):
             return
         icon_size = max(12, int(14 * self._cfg.ui_scale))
