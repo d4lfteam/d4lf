@@ -12,7 +12,7 @@ from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
 from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter, MatchedFilter
-from src.scripts.common import ASPECT_UPGRADES_LABEL, COLOR_GREEN, COLOR_ORANGE, is_ignored_item
+from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item
 from src.tts import Publisher
 from src.utils.custom_mouse import mouse
 from src.utils.window import screenshot
@@ -135,7 +135,7 @@ class VisionModeFast:
             match = res.keep
 
             if match:
-                color = COLOR_GREEN
+                color = get_filter_colors().matched
                 if not res.matched:
                     if item_descr.rarity == ItemRarity.Unique:
                         text = ["Unique"]
@@ -143,7 +143,7 @@ class VisionModeFast:
                         text = ["Mythic (Always Kept)"]
                 else:
                     if any(res_matched.profile.endswith(ASPECT_UPGRADES_LABEL) for res_matched in res.matched):
-                        color = COLOR_ORANGE
+                        color = get_filter_colors().codex_upgrade
                     text = create_match_text(reversed(res.matched))
                 return self.request_draw("\n".join(text), color)
             self.request_clear()

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import sys
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -30,11 +31,47 @@ LOGGER = logging.getLogger(__name__)
 
 SETUP_INSTRUCTIONS_URL = "https://github.com/d4lfteam/d4lf/blob/main/README.md#how-to-setup"
 
-COLOR_GREEN = "#23fc5d"  # Matched a profile
-COLOR_RED = "#fc2323"  # Matched no profiles at all
-COLOR_ORANGE = "#fca503"  # Matched a codex upgrade
-COLOR_GREY = "#888888"  # Still processing or can't find the info we expect
-COLOR_BLUE = "#00b3b3"  # We recognize this as an item, but it is not one we handle
+
+@dataclass(frozen=True, slots=True)
+class FilterColors:
+    """Color palette used by the loot filter / vision overlays."""
+
+    matched: str
+    no_match: str
+    codex_upgrade: str
+    processing: str
+    unhandled: str
+
+
+# Default palette.
+FILTER_COLORS_DEFAULT = FilterColors(
+    matched="#23fc5d",  # COLOR_GREEN-Matched a profile
+    no_match="#fc2323",  # COLOR_RED-Matched no profiles at all
+    codex_upgrade="#fca503",  # COLOR_ORANGE-Matched a codex upgrade
+    processing="#888888",  # COLOR_GREY-Still processing or can't find the info we expect
+    unhandled="#00b3b3",  # COLOR_BLUE-We recognize this as an item, but it is not one we handle
+)
+
+# Colorblind-friendly palette (Okabe-Ito inspired).
+FILTER_COLORS_COLORBLIND = FilterColors(
+    matched="#56B4E9",  # COLOR_BLUE-Matched a profile
+    no_match="#D55E00",  # COLOR_VERMILLION-Matched no profiles at all
+    codex_upgrade="#E69F00",  # COLOR_ORANGE-Matched a codex upgrade
+    processing="#888888",  # COLOR_GREY-Still processing or can't find the info we expect
+    unhandled="#CC79A7",  # COLOR_PURPLE-We recognize this as an item, but it is not one we handle
+)
+
+
+def get_filter_colors() -> FilterColors:
+    """Return the active palette (default vs. colorblind mode)."""
+    try:
+        if IniConfigLoader().general.colorblind_mode:
+            return FILTER_COLORS_COLORBLIND
+    except Exception:
+        # Fail-safe: if config isn't available yet, use defaults.
+        LOGGER.debug("get_filter_colors(): config unavailable; using default palette", exc_info=True)
+    return FILTER_COLORS_DEFAULT
+
 
 ASPECT_UPGRADES_LABEL = "AspectUpgrades"
 

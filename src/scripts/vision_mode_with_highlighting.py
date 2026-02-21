@@ -19,17 +19,7 @@ from src.config.ui import ResManager
 from src.item.data.item_type import is_sigil
 from src.item.filter import Filter, FilterResult
 from src.item.find_descr import find_descr
-from src.scripts.common import (
-    ASPECT_UPGRADES_LABEL,
-    COLOR_BLUE,
-    COLOR_GREEN,
-    COLOR_GREY,
-    COLOR_ORANGE,
-    COLOR_RED,
-    is_ignored_item,
-    is_junk_rarity,
-    reset_canvas,
-)
+from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item, is_junk_rarity, reset_canvas
 from src.tts import Publisher
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
@@ -221,44 +211,46 @@ class VisionModeWithHighlighting:
 
     def draw_match_outline(self, item_roi, should_keep_res, item_descr):
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
-        self.create_signal_rect(self.canvas, w, self.thick, COLOR_GREEN)
+        self.create_signal_rect(self.canvas, w, self.thick, get_filter_colors().matched)
 
         # show all info strings of the profiles
         text_y = h
         for match in reversed(should_keep_res.matched):
-            text_y = self.draw_text(self.canvas, match.profile, COLOR_GREEN, text_y, 5, w // 2)
+            text_y = self.draw_text(self.canvas, match.profile, get_filter_colors().matched, text_y, 5, w // 2)
         # Show matched bullets
         if item_descr and len(should_keep_res.matched) > 0:
             bullet_width = self.thick * 3
             for affix in should_keep_res.matched[0].matched_affixes:
                 if affix.loc:
-                    self.draw_rect(self.canvas, bullet_width, affix, off, COLOR_GREEN)
+                    self.draw_rect(self.canvas, bullet_width, affix, off, get_filter_colors().matched)
 
             if item_descr.aspect and item_descr.aspect.loc and any(m.did_match_aspect for m in should_keep_res.matched):
-                self.draw_rect(self.canvas, bullet_width, item_descr.aspect, off, COLOR_GREEN)
+                self.draw_rect(self.canvas, bullet_width, item_descr.aspect, off, get_filter_colors().matched)
 
         self.root.update_idletasks()
         self.root.update()
 
     def draw_no_match_outline(self, item_roi):
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
-        self.create_signal_rect(self.canvas, w, self.thick, COLOR_RED)
+        self.create_signal_rect(self.canvas, w, self.thick, get_filter_colors().no_match)
         self.root.update_idletasks()
         self.root.update()
 
     def draw_codex_upgrade_outline(self, item_roi, should_keep_result: FilterResult):
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
 
-        self.create_signal_rect(self.canvas, w, self.thick, COLOR_ORANGE)
+        self.create_signal_rect(self.canvas, w, self.thick, get_filter_colors().codex_upgrade)
 
         # show string indicating that this item upgrades the codex
         if len(should_keep_result.matched) == 1 and should_keep_result.matched[0].profile == ASPECT_UPGRADES_LABEL:
-            self.draw_text(self.canvas, "Codex Upgrade", COLOR_ORANGE, h, 5, w // 2)
+            self.draw_text(self.canvas, "Codex Upgrade", get_filter_colors().codex_upgrade, h, 5, w // 2)
         else:
             # This matched an Aspects section in a profile, write the profiles
             text_y = h
             for match in reversed(should_keep_result.matched):
-                text_y = self.draw_text(self.canvas, match.profile, COLOR_ORANGE, text_y, 5, w // 2)
+                text_y = self.draw_text(
+                    self.canvas, match.profile, get_filter_colors().codex_upgrade, text_y, 5, w // 2
+                )
 
         self.root.update_idletasks()
         self.root.update()
@@ -346,12 +338,12 @@ class VisionModeWithHighlighting:
                         if ignored_item:
                             if item_descr.sanctified:
                                 self.request_empty_outline(
-                                    item_descr, item_roi, COLOR_BLUE, "Sanctified (Not Supported)"
+                                    item_descr, item_roi, get_filter_colors().unhandled, "Sanctified (Not Supported)"
                                 )
                             else:
-                                self.request_empty_outline(item_descr, item_roi, COLOR_BLUE)
+                                self.request_empty_outline(item_descr, item_roi, get_filter_colors().unhandled)
                         else:
-                            self.request_empty_outline(item_descr, item_roi, COLOR_GREY)
+                            self.request_empty_outline(item_descr, item_roi, get_filter_colors().processing)
 
                         # Since we've now drawn something we kick off a thread to remove the drawing
                         # if the item is unselected. It is also automatically removed if a different

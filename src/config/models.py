@@ -373,6 +373,9 @@ class GeneralModel(_IniBaseModel):
     )
     run_vision_mode_on_startup: bool = Field(default=True, description="Whether to run vision mode on startup or not")
     theme: ThemeType = Field(default=ThemeType.dark, description="Choose between light and dark theme for the GUI")
+    colorblind_mode: bool = Field(
+        default=False, description="Enable a colorblind friendly palette for loot filter and paragon overlays"
+    )
     vision_mode_type: VisionModeType = Field(
         default=VisionModeType.highlight_matches,
         description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
