@@ -7,6 +7,7 @@ import configparser
 import ctypes
 import io
 import logging
+import queue
 import re
 import sys
 import threading
@@ -40,6 +41,78 @@ LOGGER = logging.getLogger(__name__)
 _CURRENT_OVERLAY: ParagonOverlay | None = None
 _CLOSE_REQUESTED = threading.Event()
 _OVERLAY_LOCK = threading.Lock()
+
+
+# Tk must run on a single dedicated thread. Some launchers/hotkey handlers call
+# run_paragon_overlay() from worker threads, which can otherwise crash Tcl/Tk
+# when widgets are created/destroyed across threads.
+_UI_THREAD: threading.Thread | None = None
+_UI_QUEUE: queue.Queue[tuple[object, threading.Event | None, dict[str, object]]] = queue.Queue()
+_UI_ROOT: tk.Tk | None = None
+_UI_READY = threading.Event()
+
+
+def _tk_thread_main() -> None:
+    """Run the hidden Tk root + mainloop in a dedicated UI thread."""
+    global _UI_ROOT
+    with suppress(Exception):
+        _enable_windows_dpi_awareness()
+
+    root = tk.Tk()
+    root.withdraw()
+    _UI_ROOT = root
+    _UI_READY.set()
+
+    def _pump_queue() -> None:
+        try:
+            while True:
+                fn, done, box = _UI_QUEUE.get_nowait()
+                try:
+                    box["result"] = fn()  # type: ignore[operator]
+                except Exception as exc:
+                    box["error"] = exc
+                finally:
+                    if done is not None:
+                        done.set()
+        except queue.Empty:
+            pass
+        root.after(25, _pump_queue)
+
+    root.after(0, _pump_queue)
+    root.mainloop()
+
+
+def _ensure_ui_thread() -> None:
+    """Start the Tk UI thread once and wait until the root exists."""
+    global _UI_THREAD
+    if _UI_THREAD is not None and _UI_THREAD.is_alive():
+        return
+    _UI_READY.clear()
+    _UI_THREAD = threading.Thread(target=_tk_thread_main, name="paragon-overlay-ui", daemon=True)
+    _UI_THREAD.start()
+    if not _UI_READY.wait(timeout=5.0):
+        err_msg = "Tk UI thread did not initialize in time"
+        raise RuntimeError(err_msg)
+
+
+def _call_on_ui_thread(fn: object) -> object:
+    """Call fn() on the Tk UI thread and return its result."""
+    _ensure_ui_thread()
+    done = threading.Event()
+    box: dict[str, object] = {}
+    _UI_QUEUE.put((fn, done, box))
+    done.wait()
+    err = box.get("error")
+    if isinstance(err, BaseException):
+        raise err
+    return box.get("result")
+
+
+def _post_to_ui_thread(fn: object) -> None:
+    """Fire-and-forget: run fn() on the Tk UI thread."""
+    _ensure_ui_thread()
+    _UI_QUEUE.put((fn, None, {}))
+
 
 # Theme
 TRANSPARENT_KEY = "#ff00ff"
@@ -1024,13 +1097,47 @@ class ParagonOverlay(tk.Toplevel):
         # Ensure the accent border matches current mode.
         self._apply_accent_frames()
 
+        # Build contents first so width/height measurements are accurate (high DPI).
+        refresh = getattr(self, "_build_popup_refresh", None)
+        if callable(refresh):
+            refresh()
+
         # Position relative to the overlay window.
         self.update_idletasks()
         popup.update_idletasks()
-        pw = popup.winfo_reqwidth()
-        ph = popup.winfo_reqheight()
 
         scale = self._cfg.ui_scale
+
+        # Compute width based on the widest item (measured from widgets) + padding + scrollbar.
+        def _max_req_width(root: tk.Misc) -> int:
+            best = 0
+            for child in root.winfo_children():
+                with suppress(Exception):
+                    best = max(best, int(child.winfo_reqwidth()))
+                best = max(best, _max_req_width(child))
+            return best
+
+        def _find_scrollbar_req_width(root: tk.Misc) -> int:
+            for child in root.winfo_children():
+                if isinstance(child, tk.Scrollbar):
+                    with suppress(Exception):
+                        child.update_idletasks()
+                        return max(0, int(child.winfo_reqwidth()))
+                w = _find_scrollbar_req_width(child)
+                if w:
+                    return w
+            return 0
+
+        outer_pad = int(12 * scale) * 2
+        sbw = _find_scrollbar_req_width(popup) or int(22 * scale)
+        widest_item = _max_req_width(popup)
+
+        # Add a small safety margin so text never touches the scrollbar at high DPI.
+        desired_w = max(int(self._cfg.panel_w), widest_item + outer_pad + sbw + int(12 * scale))
+        ph = popup.winfo_reqheight()
+
+        ph = popup.winfo_reqheight()
+
         bx = self.btn_build_menu.winfo_rootx() - self.winfo_rootx()
         by = (
             self.btn_build_menu.winfo_rooty() - self.winfo_rooty() + self.btn_build_menu.winfo_height() + int(4 * scale)
@@ -1038,6 +1145,9 @@ class ParagonOverlay(tk.Toplevel):
 
         ow = max(1, self.winfo_width())
         oh = max(1, self.winfo_height())
+
+        max_w = max(1, ow - int(8 * scale))
+        pw = max(1, min(desired_w, max_w))
 
         x = bx
         y = by
@@ -1047,20 +1157,21 @@ class ParagonOverlay(tk.Toplevel):
         if y + ph > oh:
             y = max(0, self.btn_build_menu.winfo_rooty() - self.winfo_rooty() - ph - int(4 * scale))
 
-        popup.place(x=x, y=y)
+        popup.place(x=x, y=y, width=pw)
         popup.lift()
-
-        refresh = getattr(self, "_build_popup_refresh", None)
-        if callable(refresh):
-            refresh()
 
         with suppress(Exception):
             self.btn_build_menu.config(fg=GOLD)
 
-        if getattr(self, "_build_popup_bind_id", None) is None:
-            self._build_popup_bind_id = self.bind_all("<Button-1>", self._on_global_click_close_build, add="+")
-        if getattr(self, "_build_popup_escape_bind_id", None) is None:
-            self._build_popup_escape_bind_id = self.bind_all("<Escape>", self._on_escape_close_build, add="+")
+        # Arm global close bindings on the next idle cycle so we don't instantly
+        # catch the same click that opened the dropdown (common on high DPI / Win11).
+        def _arm_close_bindings() -> None:
+            if getattr(self, "_build_popup_bind_id", None) is None:
+                self._build_popup_bind_id = self.bind_all("<Button-1>", self._on_global_click_close_build, add="+")
+            if getattr(self, "_build_popup_escape_bind_id", None) is None:
+                self._build_popup_escape_bind_id = self.bind_all("<Escape>", self._on_escape_close_build, add="+")
+
+        self.after_idle(_arm_close_bindings)
 
     def _build_build_popup(self, host: tk.Misc) -> Any:
         scale = self._cfg.ui_scale
@@ -2086,7 +2197,15 @@ class ParagonOverlay(tk.Toplevel):
 
 
 def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | None = None) -> ParagonOverlay | None:
-    """Start overlay in-process."""
+    """Start the overlay in-process.
+
+    Notes:
+    - If parent is provided, the overlay is created under that Tk context (caller is
+      responsible for running the Tk mainloop).
+    - If parent is None, we run a persistent hidden Tk root in a dedicated UI thread
+      and open the overlay there. This avoids Tcl/Tk crashes when callers invoke
+      this function from worker threads.
+    """
     preset = preset_path or (sys.argv[1] if len(sys.argv) > 1 else None)
 
     try:
@@ -2098,38 +2217,52 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
         LOGGER.exception("Failed to load Paragon preset(s): %s", preset)
         return None
 
-    owns_root = False
-    if parent is None:
-        _enable_windows_dpi_awareness()
-        root = tk.Tk()
-        root.withdraw()
-        parent = root
-        owns_root = True
+    # If we already have a Tk context, stay in-process without additional threads.
+    if parent is not None:
+        overlay = ParagonOverlay(parent, builds, on_close=None)
+        with _OVERLAY_LOCK:
+            global _CURRENT_OVERLAY
+            _CURRENT_OVERLAY = overlay
+            _CLOSE_REQUESTED.clear()
+        return overlay
 
-    overlay = ParagonOverlay(parent, builds, on_close=(parent.quit if owns_root else None))
+    # Otherwise, create/show the overlay on the dedicated Tk UI thread.
+    closed = threading.Event()
 
-    with _OVERLAY_LOCK:
-        global _CURRENT_OVERLAY
-        _CURRENT_OVERLAY = overlay
-        _CLOSE_REQUESTED.clear()
+    def _open_overlay() -> None:
+        assert _UI_ROOT is not None
+        overlay = ParagonOverlay(_UI_ROOT, builds, on_close=closed.set)
 
-    if owns_root:
-        parent.mainloop()
+        with _OVERLAY_LOCK:
+            global _CURRENT_OVERLAY
+            _CURRENT_OVERLAY = overlay
+            _CLOSE_REQUESTED.clear()
 
-    return overlay
+    _call_on_ui_thread(_open_overlay)
+    closed.wait()
+    # Do not return the Tk object across threads.
+    return None
 
 
 def request_close(overlay: ParagonOverlay | None = None) -> None:
     """Request the Paragon overlay to close.
 
-    Safe to call from non-Tk threads (hotkey thread). The overlay checks this
-    flag periodically and closes itself.
+    Safe to call from non-Tk threads (hotkey thread).
     """
     with _OVERLAY_LOCK:
         target = overlay or _CURRENT_OVERLAY
         if target is None:
             return
         _CLOSE_REQUESTED.set()
+
+    # Also try an immediate close on the Tk UI thread (best-effort).
+    def _close_now() -> None:
+        with suppress(Exception):
+            if target is not None and target.winfo_exists():
+                target.close()
+
+    with suppress(Exception):
+        _post_to_ui_thread(_close_now)
 
 
 if __name__ == "__main__":
