@@ -46,15 +46,21 @@ TRANSPARENT_KEY = "#ff00ff"
 CARD_BG = "#151515"
 TEXT = "#ffffff"
 MUTED = "#cfcfcf"
-GOLD = "#cfa15b"
+# Accent colors - edit here to adjust frames/nodes
+FS_ACCENT_GREEN = "#34C410"  # green
+FS_ACCENT_BLUE = "#56B4E9"  # blue (colorblind-friendly)
+FS_ACCENT_GOLD = "#cfa15b"  # Gold
+FS_GRID_COLOR = "#3f3f3f"  # Grid line color
+
+GOLD = FS_ACCENT_GOLD
 SELECT_BG = "#1f1f1f"
-NODE_GREEN = "#18dd44"
-NODE_BLUE = "#2da3ff"
+NODE_GREEN = FS_ACCENT_GREEN
+NODE_BLUE = FS_ACCENT_BLUE
 
 # Font sizes in pt - edit here to adjust all UI text
 # All values are multiplied by ui_scale at runtime (DPI-aware)
 FS_PANEL_TITLE = 13  # Build/profile title in panel header
-FS_MODE_LABEL = 10  # "Full View" / "Compact View" label
+FS_MODE_LABEL = 9  # "Full View" / "Compact View" label
 FS_BUTTON = 12  # "Builds" and settings button labels
 FS_BOARD_CARD = 10  # Board card entries in the left panel list
 FS_BUILDS_MENU = 12  # Items in the "Builds" dropdown menu
@@ -62,6 +68,9 @@ FS_SETTINGS_ICON = 13  # Icons in the settings popup rows
 FS_SETTINGS_LABEL = 10  # Label text in the settings popup rows
 FS_ZOOM_BTN = 15  # zoom buttons
 FS_HINT = 10  # Hint / move-grid text at bottom of settings
+
+FS_CARD_FRAME = 1  # Card/dropdown frame thickness in px (DPI-scaled at runtime)
+FS_GRID_FRAME = 6  # Grid border thickness in px (DPI-scaled at runtime)
 
 # Panel width in px (base value, DPI-scaled at runtime)
 PANEL_W = 370
@@ -178,8 +187,6 @@ def _load_overlay_settings() -> dict[str, Any]:
         return s or None
 
     return {
-        "x": _get_int("x"),
-        "y": _get_int("y"),
         "cell_size": _get_int("cell_size"),
         "profile": _get_str("profile"),
         "build_idx": _get_int("build_idx"),
@@ -193,6 +200,8 @@ def _load_overlay_settings() -> dict[str, Any]:
         "grid_y_collapsed": _get_int("grid_y_collapsed"),
         # Grid lock
         "grid_locked": _get_bool("grid_locked"),
+        # Accent override
+        "gold_frames": _get_bool("gold_frames"),
     }
 
 
@@ -386,6 +395,7 @@ class OverlayConfig:
     # State
     is_collapsed: bool = False
     grid_locked: bool = False
+    gold_frames: bool = False
 
 
 class ParagonOverlay(tk.Toplevel):
@@ -424,6 +434,11 @@ class ParagonOverlay(tk.Toplevel):
         saved_locked = self._settings.get("grid_locked")
         if isinstance(saved_locked, bool):
             self._cfg.grid_locked = saved_locked
+
+        # Load golden frame override
+        saved_gold = self._settings.get("gold_frames")
+        if isinstance(saved_gold, bool):
+            self._cfg.gold_frames = saved_gold
         self._on_close = on_close
         self._cam = Cam()
         self._res = ResManager()
@@ -470,7 +485,6 @@ class ParagonOverlay(tk.Toplevel):
         self._last_roi: tuple[int, int, int, int] | None = None
         self._last_res: tuple[int, int] | None = None
         self._dragging_grid = False
-        self._dragging_window = False
         self._border_rect: tuple[int, int, int, int] | None = None
         self._border_grab = 12
 
@@ -543,6 +557,7 @@ class ParagonOverlay(tk.Toplevel):
     # -------- UI layout --------
 
     def _build_ui(self) -> None:
+        accent = self._accent_frame_color()
         outer = tk.Frame(self, bg=TRANSPARENT_KEY)
         outer.pack(fill="both", expand=True)
 
@@ -555,7 +570,13 @@ class ParagonOverlay(tk.Toplevel):
         self.left.place(x=0, y=0, width=self._cfg.panel_w, relheight=1.0)
 
         # ========== TITLE CARD (Titel + Mode + Dropdown) ==========
-        self.card_title = tk.Frame(self.left, bg=CARD_BG)
+        self.card_title = tk.Frame(
+            self.left,
+            bg=CARD_BG,
+            highlightthickness=self._accent_frame_thickness(),
+            highlightbackground=accent,
+            highlightcolor=accent,
+        )
         self.card_title.pack(
             fill="x",
             padx=int(10 * self._cfg.ui_scale),
@@ -614,7 +635,13 @@ class ParagonOverlay(tk.Toplevel):
         self.btn_view_switch.pack(side="left", padx=(int(8 * self._cfg.ui_scale), 0))
 
         # ========== BUTTONS CARD (Settings + Builds) ==========
-        self.card_buttons = tk.Frame(self.left, bg=CARD_BG)
+        self.card_buttons = tk.Frame(
+            self.left,
+            bg=CARD_BG,
+            highlightthickness=self._accent_frame_thickness(),
+            highlightbackground=accent,
+            highlightcolor=accent,
+        )
         self.card_buttons.pack(fill="x", padx=int(10 * self._cfg.ui_scale), pady=(0, int(8 * self._cfg.ui_scale)))
 
         buttons_container = tk.Frame(self.card_buttons, bg=CARD_BG)
@@ -689,10 +716,7 @@ class ParagonOverlay(tk.Toplevel):
         self.canvas.bind("<ButtonPress-1>", self._on_grid_drag_start)
         self.canvas.bind("<B1-Motion>", self._on_grid_drag_move)
         self.canvas.bind("<ButtonRelease-1>", self._on_grid_drag_end)
-        for w in (self.card_title, self.lbl_title):
-            w.bind("<ButtonPress-1>", self._on_window_drag_start)
-            w.bind("<B1-Motion>", self._on_window_drag_move)
-            w.bind("<ButtonRelease-1>", self._on_window_drag_end)
+        # Window dragging disabled: only the grid can be moved.
 
     def _poll_close_request(self) -> None:
         if _CLOSE_REQUESTED.is_set():
@@ -738,6 +762,39 @@ class ParagonOverlay(tk.Toplevel):
         self._persist_state()
         LOGGER.info(f"Grid {'locked' if self._cfg.grid_locked else 'unlocked'}")
 
+    def _toggle_gold_frames(self) -> None:
+        """Toggle the golden frames override.
+
+        When enabled, all accent frames (cards, dropdowns, grid border, node outlines) are rendered in GOLD.
+        """
+        self._cfg.gold_frames = not getattr(self._cfg, "gold_frames", False)
+        self._persist_state()
+        self._apply_accent_frames(force=True)
+        self.redraw()
+
+    def _reset_grid_defaults(self) -> None:
+        """Reset grid position and size (zoom) to defaults and persist."""
+        try:
+            scale = float(self._cfg.ui_scale or 1.0)
+        except Exception:
+            scale = 1.0
+
+        # Default zoom (DPI-aware): base sizes scaled by current ui_scale.
+        self._cfg.cell_size = _clamp_int(round(24 * scale), 10, 80, self._cfg.cell_size)
+        self._cfg.cell_size_collapsed = _clamp_int(round(16 * scale), 8, 50, self._cfg.cell_size_collapsed)
+
+        # Default grid offsets (Full View).
+        gap = round(24 * scale)
+        self.grid_x = self._cfg.panel_w + gap
+        self.grid_y = gap
+
+        # Collapsed View defaults (keep current standard values).
+        self.grid_x_collapsed = self._cfg.grid_x_collapsed_default
+        self.grid_y_collapsed = self._cfg.grid_y_collapsed_default
+
+        self._persist_state()
+        self.redraw()
+
     def _is_colorblind_enabled(self) -> bool:
         """Return True if the global (app) colorblind mode is enabled.
 
@@ -749,6 +806,63 @@ class ParagonOverlay(tk.Toplevel):
             return bool(getattr(cfg.general, "colorblind_mode", False))
         except Exception:
             return False
+
+    def _accent_frame_color(self) -> str:
+        """Return the accent border color for cards and dropdown menus.
+
+        Default is green; when global colorblind mode is enabled, the accent turns blue.
+        """
+        if getattr(self._cfg, "gold_frames", False):
+            return GOLD
+        return NODE_BLUE if self._is_colorblind_enabled() else NODE_GREEN
+
+    def _accent_frame_thickness(self) -> int:
+        """Return the accent frame thickness for cards and dropdown menus (DPI-scaled)."""
+        try:
+            scale = float(self._cfg.ui_scale or 1.0)
+        except Exception:
+            scale = 1.0
+        return max(1, round(FS_CARD_FRAME * scale))
+
+    def _grid_frame_thickness(self) -> int:
+        """Return the outer grid border thickness (DPI-scaled)."""
+        try:
+            scale = float(self._cfg.ui_scale or 1.0)
+        except Exception:
+            scale = 1.0
+        return max(1, round(FS_GRID_FRAME * scale))
+
+    def _apply_accent_frames(self, *, force: bool = False) -> None:
+        """Apply the accent border color to all card frames and dropdown panels."""
+        color = self._accent_frame_color()
+        if not force and getattr(self, "_accent_frame_last", None) == color:
+            return
+        self._accent_frame_last = color
+        th = self._accent_frame_thickness()
+
+        # Main cards
+        for w in (getattr(self, "card_title", None), getattr(self, "card_buttons", None)):
+            if w is None:
+                continue
+            with suppress(Exception):
+                w.configure(highlightthickness=th, highlightbackground=color, highlightcolor=color)
+
+        # Board cards
+        bc = getattr(self, "board_container", None)
+        if bc is not None:
+            with suppress(Exception):
+                for card in bc.winfo_children():
+                    if isinstance(card, tk.Frame):
+                        card.configure(highlightthickness=th, highlightbackground=color, highlightcolor=color)
+
+        # In-window dropdown panels
+        for popup_name in ("_settings_popup", "_build_popup"):
+            popup = getattr(self, popup_name, None)
+            if popup is None:
+                continue
+            with suppress(Exception):
+                if bool(getattr(popup, "winfo_exists", lambda: 0)()):
+                    popup.configure(highlightthickness=th, highlightbackground=color, highlightcolor=color)
 
     def _reload_profiles(self) -> None:
         """Reload profiles from YAML files."""
@@ -776,94 +890,351 @@ class ParagonOverlay(tk.Toplevel):
         except Exception:
             LOGGER.exception("Failed to reload profiles")
 
+    # -------- build dropdown --------
+
+    def _on_global_click_close_build(self, event: tk.Event) -> None:
+        popup = getattr(self, "_build_popup", None)
+        if popup is None:
+            return
+        if not bool(getattr(popup, "winfo_exists", lambda: 0)()):
+            self._build_popup = None
+            return
+        if not bool(getattr(popup, "winfo_ismapped", lambda: 0)()):
+            return
+
+        w = None
+        with suppress(Exception):
+            w = self.winfo_containing(event.x_root, event.y_root)
+
+        if w is None:
+            self._close_build_dropdown()
+            return
+
+        if w is self.btn_build_menu or self._is_descendant(w, popup):
+            return
+
+        self._close_build_dropdown()
+
+    def _on_escape_close_build(self, _event: tk.Event) -> None:
+        self._close_build_dropdown()
+
+    def _close_build_dropdown(self) -> None:
+        popup = getattr(self, "_build_popup", None)
+        if popup is None:
+            return
+
+        with suppress(Exception):
+            popup.place_forget()
+
+        with suppress(Exception):
+            self.btn_build_menu.config(fg=TEXT)
+
+        bid = getattr(self, "_build_popup_bind_id", None)
+        if bid:
+            with suppress(Exception):
+                self.unbind_all("<Button-1>", bid)
+            self._build_popup_bind_id = None
+
+        eid = getattr(self, "_build_popup_escape_bind_id", None)
+        if eid:
+            with suppress(Exception):
+                self.unbind_all("<Escape>", eid)
+            self._build_popup_escape_bind_id = None
+
+    # -------- build dropdown --------
+
+    def _on_global_click_close_build(self, event: tk.Event) -> None:
+        popup = getattr(self, "_build_popup", None)
+        if popup is None:
+            return
+        if not bool(getattr(popup, "winfo_exists", lambda: 0)()):
+            self._build_popup = None
+            return
+        if not bool(getattr(popup, "winfo_ismapped", lambda: 0)()):
+            return
+
+        w = None
+        with suppress(Exception):
+            w = self.winfo_containing(event.x_root, event.y_root)
+
+        if w is None:
+            self._close_build_dropdown()
+            return
+
+        if w is self.btn_build_menu or self._is_descendant(w, popup):
+            return
+
+        self._close_build_dropdown()
+
+    def _on_escape_close_build(self, _event: tk.Event) -> None:
+        self._close_build_dropdown()
+
+    def _close_build_dropdown(self) -> None:
+        popup = getattr(self, "_build_popup", None)
+        if popup is None:
+            return
+
+        with suppress(Exception):
+            popup.place_forget()
+
+        with suppress(Exception):
+            self.btn_build_menu.config(fg=TEXT)
+
+        bid = getattr(self, "_build_popup_bind_id", None)
+        if bid:
+            with suppress(Exception):
+                self.unbind_all("<Button-1>", bid)
+            self._build_popup_bind_id = None
+
+        eid = getattr(self, "_build_popup_escape_bind_id", None)
+        if eid:
+            with suppress(Exception):
+                self.unbind_all("<Escape>", eid)
+            self._build_popup_escape_bind_id = None
+
     def _show_build_menu(self) -> None:
+        """Toggle the builds dropdown (in-window panel)."""
         if not self.builds:
             return
 
-        menu_font = ("Segoe UI", int(FS_BUILDS_MENU * self._cfg.ui_scale))
-        m = tk.Menu(
-            self,
-            tearoff=0,
-            bg=CARD_BG,
-            fg=TEXT,
-            activebackground=SELECT_BG,
-            activeforeground=GOLD,
-            bd=0,
-            font=menu_font,
+        # Close the settings dropdown if it is open.
+        self._close_settings_dropdown()
+
+        popup = getattr(self, "_build_popup", None)
+        if (
+            popup is not None
+            and bool(getattr(popup, "winfo_exists", lambda: 0)())
+            and bool(getattr(popup, "winfo_ismapped", lambda: 0)())
+        ):
+            self._close_build_dropdown()
+            return
+
+        if popup is None or not bool(getattr(popup, "winfo_exists", lambda: 0)()):
+            popup = tk.Frame(
+                self,
+                bg=CARD_BG,
+                bd=0,
+                highlightthickness=self._accent_frame_thickness(),
+                highlightbackground=self._accent_frame_color(),
+                highlightcolor=self._accent_frame_color(),
+            )
+            self._build_popup = popup
+            self._build_popup_refresh = self._build_build_popup(popup)
+
+        # Ensure the accent border matches current mode.
+        self._apply_accent_frames()
+
+        # Position relative to the overlay window.
+        self.update_idletasks()
+        popup.update_idletasks()
+        pw = popup.winfo_reqwidth()
+        ph = popup.winfo_reqheight()
+
+        scale = self._cfg.ui_scale
+        bx = self.btn_build_menu.winfo_rootx() - self.winfo_rootx()
+        by = (
+            self.btn_build_menu.winfo_rooty() - self.winfo_rooty() + self.btn_build_menu.winfo_height() + int(4 * scale)
         )
-        groups: dict[str, list[tuple[int, dict[str, Any]]]] = {}
 
-        for i, b in enumerate(self.builds):
-            prof = str(b.get("profile") or "Ungrouped")
-            groups.setdefault(prof, []).append((i, b))
+        ow = max(1, self.winfo_width())
+        oh = max(1, self.winfo_height())
 
-        def _add_item(menu: tk.Menu, i: int, b: dict[str, Any]) -> None:
-            name = str(b.get("name") or "Unknown Build")
-            menu.add_command(label=name, command=lambda idx=i: self._select_build(idx))
+        x = bx
+        y = by
 
-        if len(groups) > 1:
-            for prof in sorted(groups):
-                sm = tk.Menu(
-                    self,
-                    tearoff=0,
-                    bg=CARD_BG,
-                    fg=TEXT,
+        if x + pw > ow:
+            x = max(0, ow - pw - int(4 * scale))
+        if y + ph > oh:
+            y = max(0, self.btn_build_menu.winfo_rooty() - self.winfo_rooty() - ph - int(4 * scale))
+
+        popup.place(x=x, y=y)
+        popup.lift()
+
+        refresh = getattr(self, "_build_popup_refresh", None)
+        if callable(refresh):
+            refresh()
+
+        with suppress(Exception):
+            self.btn_build_menu.config(fg=GOLD)
+
+        if getattr(self, "_build_popup_bind_id", None) is None:
+            self._build_popup_bind_id = self.bind_all("<Button-1>", self._on_global_click_close_build, add="+")
+        if getattr(self, "_build_popup_escape_bind_id", None) is None:
+            self._build_popup_escape_bind_id = self.bind_all("<Escape>", self._on_escape_close_build, add="+")
+
+    def _build_build_popup(self, host: tk.Misc) -> Any:
+        scale = self._cfg.ui_scale
+
+        container = tk.Frame(host, bg=CARD_BG, padx=int(12 * scale), pady=int(10 * scale))
+        container.pack(fill="both", expand=True)
+
+        # Scrollable list (keeps the panel usable for many builds).
+        max_h = int(360 * scale)
+
+        canvas = tk.Canvas(container, bg=CARD_BG, highlightthickness=0, bd=0, height=max_h)
+        canvas.pack(side="left", fill="both", expand=True)
+
+        sb = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        sb.pack(side="right", fill="y")
+
+        canvas.configure(yscrollcommand=sb.set)
+
+        list_frame = tk.Frame(canvas, bg=CARD_BG)
+        win_id = canvas.create_window((0, 0), window=list_frame, anchor="nw")
+
+        def _on_frame_configure(_: tk.Event) -> None:
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def _on_canvas_configure(e: tk.Event) -> None:
+            canvas.itemconfigure(win_id, width=int(e.width))
+
+        list_frame.bind("<Configure>", _on_frame_configure)
+        canvas.bind("<Configure>", _on_canvas_configure)
+
+        def _refresh() -> None:
+            for w in list_frame.winfo_children():
+                w.destroy()
+
+            groups: dict[str, list[tuple[int, dict[str, Any]]]] = {}
+            for i, b in enumerate(self.builds):
+                prof = str(b.get("profile") or "Ungrouped")
+                groups.setdefault(prof, []).append((i, b))
+
+            multi = len(groups) > 1
+
+            def _add_build_button(i: int, b: dict[str, Any]) -> None:
+                name = str(b.get("name") or "Unknown Build")
+                active = i == self.current_build_idx
+
+                bg = SELECT_BG if active else CARD_BG
+                fg = GOLD if active else TEXT
+
+                btn = tk.Button(
+                    list_frame,
+                    text=name,
+                    command=lambda idx=i: (self._select_build(idx), self._close_build_dropdown()),
+                    bg=bg,
+                    fg=fg,
                     activebackground=SELECT_BG,
                     activeforeground=GOLD,
                     bd=0,
-                    font=menu_font,
+                    highlightthickness=0,
+                    anchor="w",
+                    padx=int(10 * scale),
+                    pady=int(6 * scale),
+                    font=("Segoe UI", int(FS_BUILDS_MENU * scale), "bold" if active else "normal"),
                 )
+                btn.pack(fill="x", pady=int(2 * scale))
+
+            for prof in sorted(groups):
+                if multi:
+                    tk.Label(
+                        list_frame,
+                        text=prof,
+                        fg=MUTED,
+                        bg=CARD_BG,
+                        font=("Segoe UI", int(FS_BUILDS_MENU * scale), "bold"),
+                        anchor="w",
+                        padx=int(6 * scale),
+                        pady=int(6 * scale),
+                    ).pack(fill="x", pady=(int(4 * scale), int(2 * scale)))
+
                 for i, b in groups[prof]:
-                    _add_item(sm, i, b)
-                m.add_cascade(label=prof, menu=sm)
-        else:
-            for i, b in enumerate(self.builds):
-                _add_item(m, i, b)
+                    _add_build_button(i, b)
 
-        self.btn_build_menu.config(fg=GOLD)
+                if multi:
+                    tk.Frame(list_frame, bg=MUTED, height=1).pack(fill="x", pady=int(6 * scale))
 
-        def _poll_menu_closed() -> None:
+            # Keep the canvas height tight when there are only a few items.
             with suppress(Exception):
-                if m.winfo_exists() and m.winfo_viewable():
-                    self.after(80, _poll_menu_closed)
-                    return
-            with suppress(Exception):
-                self.btn_build_menu.config(fg=TEXT)
+                host.update_idletasks()
+                req_h = list_frame.winfo_reqheight()
+                canvas.configure(height=min(max_h, max(int(120 * scale), req_h)))
+                canvas.yview_moveto(0.0)
 
-        try:
-            x = self.btn_build_menu.winfo_rootx()
-            y = self.btn_build_menu.winfo_rooty() + self.btn_build_menu.winfo_height()
-            m.tk_popup(x, y)
-        finally:
-            with suppress(Exception):
-                m.grab_release()
-            self.after(80, _poll_menu_closed)
+        _refresh()
+        return _refresh
 
-    def _hide_cards(self) -> None:
+    def _is_descendant(self, child: tk.Misc, parent: tk.Misc) -> bool:
+        """Return True if *child* is within the widget hierarchy of *parent*."""
+        w: tk.Misc | None = child
+        while w is not None:
+            if w is parent:
+                return True
+            try:
+                w = w.master  # type: ignore[assignment]
+            except Exception:
+                break
+        return False
+
+    def _on_global_click_close_settings(self, event: tk.Event) -> None:
+        popup = getattr(self, "_settings_popup", None)
+        if popup is None:
+            return
+        if not bool(getattr(popup, "winfo_exists", lambda: 0)()):
+            self._settings_popup = None
+            return
+        if not bool(getattr(popup, "winfo_ismapped", lambda: 0)()):
+            return
+
+        w = None
         with suppress(Exception):
-            self.boards_canvas.pack_forget()
+            w = self.winfo_containing(event.x_root, event.y_root)
 
-    def _show_cards(self) -> None:
+        if w is None:
+            self._close_settings_dropdown()
+            return
+
+        # Click on the settings button or inside the popup should not close it.
+        if w is self.btn_settings or self._is_descendant(w, popup):
+            return
+
+        self._close_settings_dropdown()
+
+    def _on_escape_close_settings(self, _event: tk.Event) -> None:
+        self._close_settings_dropdown()
+
+    def _close_settings_dropdown(self) -> None:
+        popup = getattr(self, "_settings_popup", None)
+        if popup is None:
+            return
+
         with suppress(Exception):
-            self.boards_canvas.pack(
-                fill="both", expand=True, padx=int(10 * self._cfg.ui_scale), pady=(0, int(12 * self._cfg.ui_scale))
-            )
+            popup.place_forget()
+
+        with suppress(Exception):
+            self.btn_settings.config(fg=TEXT)
+
+        # Remove global bindings added while the popup is open.
+        bid = getattr(self, "_settings_popup_bind_id", None)
+        if bid:
+            with suppress(Exception):
+                self.unbind_all("<Button-1>", bid)
+            self._settings_popup_bind_id = None
+
+        eid = getattr(self, "_settings_popup_escape_bind_id", None)
+        if eid:
+            with suppress(Exception):
+                self.unbind_all("<Escape>", eid)
+            self._settings_popup_escape_bind_id = None
 
     def _show_settings_dropdown(self) -> None:
-        existing = getattr(self, "_settings_popup", None)
-        if existing is not None:
-            # If the popup was already destroyed (stale reference), clear it and continue opening.
-            if not bool(getattr(existing, "winfo_exists", lambda: 0)()):
-                self._settings_popup = None
-                existing = None
-            else:
-                with suppress(Exception):
-                    existing.destroy()
-                self._settings_popup = None
-                self._show_cards()
-                with suppress(Exception):
-                    self.btn_settings.config(fg=TEXT)  # back to white when closing
-                return
+        """Toggle the settings dropdown.
+
+        Note: Using a child Frame instead of a separate Toplevel avoids Windows
+        compositing artifacts with transparentcolor + overrideredirect windows.
+        """
+        # Close the build dropdown if it is open.
+        self._close_build_dropdown()
+
+        popup = getattr(self, "_settings_popup", None)
+        if (
+            popup is not None
+            and bool(getattr(popup, "winfo_exists", lambda: 0)())
+            and bool(getattr(popup, "winfo_ismapped", lambda: 0)())
+        ):
+            self._close_settings_dropdown()
+            return
 
         # Cancel any pending warmup so it can't race with popup creation.
         warmup_id = getattr(self, "_warmup_after_id", None)
@@ -876,37 +1247,64 @@ class ParagonOverlay(tk.Toplevel):
         if not hasattr(self, "_lock_img_cache"):
             self._warmup_settings_assets()
 
-        popup = tk.Toplevel(self)
-        popup.overrideredirect(True)
-        popup.attributes("-topmost", True)
-        popup.configure(bg=CARD_BG)
-        self._settings_popup = popup
+        # Create the popup once and reuse it to avoid flicker.
+        if popup is None or not bool(getattr(popup, "winfo_exists", lambda: 0)()):
+            popup = tk.Frame(
+                self,
+                bg=CARD_BG,
+                bd=0,
+                highlightthickness=self._accent_frame_thickness(),
+                highlightbackground=self._accent_frame_color(),
+                highlightcolor=self._accent_frame_color(),
+            )
+            self._settings_popup = popup
+            self._settings_popup_refresh = self._build_settings_popup(popup)
 
-        def _on_popup_destroy(event: tk.Event) -> None:
-            if event.widget is popup:
-                self._settings_popup = None
-                self._show_cards()
-                with suppress(Exception):
-                    self.btn_settings.config(fg=TEXT)
+        self._apply_accent_frames()
 
-        popup.bind("<Destroy>", _on_popup_destroy, add="+")
-        self._hide_cards()
-        self._build_settings_popup(popup)
+        # Position relative to the overlay window.
+        self.update_idletasks()
         popup.update_idletasks()
-        pw = max(220, popup.winfo_reqwidth())
+        pw = popup.winfo_reqwidth()
         ph = popup.winfo_reqheight()
-        bx = self.btn_settings.winfo_rootx()
-        by = self.btn_settings.winfo_rooty() + self.btn_settings.winfo_height() + 4
-        if by + ph > self.winfo_screenheight():
-            by = self.btn_settings.winfo_rooty() - ph - 4
-        popup.geometry(f"{pw}x{ph}+{bx}+{by}")
-        with suppress(Exception):
-            self.btn_settings.config(fg=GOLD)  # golden when opened
 
-    def _build_settings_popup(self, popup: tk.Toplevel) -> None:
+        scale = self._cfg.ui_scale
+        bx = self.btn_settings.winfo_rootx() - self.winfo_rootx()
+        by = self.btn_settings.winfo_rooty() - self.winfo_rooty() + self.btn_settings.winfo_height() + int(4 * scale)
+
+        ow = max(1, self.winfo_width())
+        oh = max(1, self.winfo_height())
+
+        x = bx
+        y = by
+
+        # Keep inside the overlay window bounds where possible.
+        if x + pw > ow:
+            x = max(0, ow - pw - int(4 * scale))
+        if y + ph > oh:
+            y = max(0, self.btn_settings.winfo_rooty() - self.winfo_rooty() - ph - int(4 * scale))
+
+        popup.place(x=x, y=y)
+        popup.lift()
+
+        # Refresh UI state on open.
+        refresh = getattr(self, "_settings_popup_refresh", None)
+        if callable(refresh):
+            refresh()
+
+        with suppress(Exception):
+            self.btn_settings.config(fg=GOLD)
+
+        # Close when clicking anywhere outside the popup.
+        if getattr(self, "_settings_popup_bind_id", None) is None:
+            self._settings_popup_bind_id = self.bind_all("<Button-1>", self._on_global_click_close_settings, add="+")
+        if getattr(self, "_settings_popup_escape_bind_id", None) is None:
+            self._settings_popup_escape_bind_id = self.bind_all("<Escape>", self._on_escape_close_settings, add="+")
+
+    def _build_settings_popup(self, host: tk.Misc) -> Any:
         scale = self._cfg.ui_scale
 
-        container = tk.Frame(popup, bg=CARD_BG, padx=int(14 * scale), pady=int(10 * scale))
+        container = tk.Frame(host, bg=CARD_BG, padx=int(14 * scale), pady=int(10 * scale))
         container.pack(fill="both", expand=True)
 
         lock_imgs: dict[bool, tk.PhotoImage | None] = getattr(self, "_lock_img_cache", {})
@@ -975,8 +1373,25 @@ class ParagonOverlay(tk.Toplevel):
             command=lambda: (_toggle_grid_lock(), _refresh()),
         )
 
+        gold_now = getattr(self._cfg, "gold_frames", False)
+        btn_gold, lbl_gold = _row(
+            icon_text="★",
+            icon_img=None,
+            label_text="Golden frames (on)" if gold_now else "Golden frames (off)",
+            is_active=gold_now,
+            command=lambda: (_toggle_gold_frames(), _refresh()),
+        )
+
         btn_reload, lbl_reload = _row(
             icon_text="↻", icon_img=None, label_text="Reload profiles", is_active=False, command=self._reload_profiles
+        )
+
+        btn_reset_grid, lbl_reset_grid = _row(
+            icon_text="↺",
+            icon_img=None,
+            label_text="Reset grid defaults",
+            is_active=False,
+            command=lambda: (self._reset_grid_defaults(), _refresh()),
         )
 
         tk.Frame(container, bg=MUTED, height=1).pack(fill="x", pady=int(6 * scale))
@@ -1098,10 +1513,12 @@ class ParagonOverlay(tk.Toplevel):
         tk.Frame(container, bg=MUTED, height=1).pack(fill="x", pady=int(6 * scale))
 
         hint = (
-            "• Drag golden frame to move grid\n"
+            "• Drag frame to move grid\n"
             "• D-Pad ↑ ↓ ← → moves grid per click\n"
             "• Use − + buttons to zoom\n"
-            "• Use 🔓 to lock/unlock grid"
+            "• Use ★ to make all frames golden\n"
+            "• Use ↺ to reset to default size/position from grids\n"
+            "• Use 🔓 to unlock/lock grid"
         )
         tk.Label(
             container,
@@ -1119,6 +1536,9 @@ class ParagonOverlay(tk.Toplevel):
 
         def _toggle_grid_lock() -> None:
             self._toggle_grid_lock()
+
+        def _toggle_gold_frames() -> None:
+            self._toggle_gold_frames()
 
         def _on_zoom(delta: int) -> None:
             self._zoom_grid(delta)
@@ -1140,6 +1560,13 @@ class ParagonOverlay(tk.Toplevel):
                 btn_lock.configure(text="🔒" if locked else "🔓", fg=fg_lock)
             lbl_lock.configure(text="Grid locked" if locked else "Grid unlocked", fg=fg_lock)
 
+            # Golden frames row
+            gold = getattr(self._cfg, "gold_frames", False)
+            fg_gold = GOLD if gold else TEXT
+            with suppress(Exception):
+                btn_gold.configure(fg=fg_gold)
+            lbl_gold.configure(text="Golden frames (on)" if gold else "Golden frames (off)", fg=fg_gold)
+
             # Disable/enable controls when locked
             state = tk.DISABLED if locked else tk.NORMAL
             fg_controls = MUTED if locked else TEXT
@@ -1152,14 +1579,14 @@ class ParagonOverlay(tk.Toplevel):
 
             # Force a full repaint (helps with Windows compositing artifacts on overrideredirect popups)
             with suppress(Exception):
-                popup.update_idletasks()
-                popup.lift()
-                popup.configure(bg=CARD_BG)
+                host.update_idletasks()
+                host.lift()
+                host.configure(bg=CARD_BG)
 
         _refresh()
+        return _refresh
 
     # -------- board cards --------
-
     def _select_board_card(self, idx: int) -> None:
         self.selected_board_idx = _clamp_int(idx, 0, max(0, len(self.boards) - 1), 0)
         self._refresh_lists()
@@ -1218,6 +1645,8 @@ class ParagonOverlay(tk.Toplevel):
         if not self.boards:
             return
 
+        accent = self._accent_frame_color()
+
         # Create one card per board (no solid background block)
         for idx, bd in enumerate(self.boards):
             raw_name = str(bd.get("Name", "?") or "?")
@@ -1260,7 +1689,13 @@ class ParagonOverlay(tk.Toplevel):
             bg = SELECT_BG if selected else CARD_BG
             fg = GOLD if selected else TEXT
 
-            card = tk.Frame(self.board_container, bg=bg)
+            card = tk.Frame(
+                self.board_container,
+                bg=bg,
+                highlightthickness=self._accent_frame_thickness(),
+                highlightbackground=accent,
+                highlightcolor=accent,
+            )
             card.pack(fill="x", pady=8)
 
             lbl = tk.Label(
@@ -1278,6 +1713,8 @@ class ParagonOverlay(tk.Toplevel):
             lbl.pack(fill="both", expand=True)
             lbl.bind("<Button-1>", lambda _, i=idx: self._select_board_card(i))
             card.bind("<Button-1>", lambda _, i=idx: self._select_board_card(i))
+
+        self._apply_accent_frames()
 
         with suppress(Exception):
             self.btn_build_menu.config(state=(tk.NORMAL if len(self.builds) > 1 else tk.DISABLED))
@@ -1411,9 +1848,14 @@ class ParagonOverlay(tk.Toplevel):
             if not self.winfo_exists():
                 return
         # Avoid doing heavy work while the popup is open; try again shortly.
-        if getattr(self, "_settings_popup", None) is not None:
-            self._warmup_after_id = self.after(400, self._warmup_settings_assets)
-            return
+        popup = getattr(self, "_settings_popup", None)
+        if popup is not None:
+            with suppress(Exception):
+                if bool(getattr(popup, "winfo_exists", lambda: 0)()) and bool(
+                    getattr(popup, "winfo_ismapped", lambda: 0)()
+                ):
+                    self._warmup_after_id = self.after(400, self._warmup_settings_assets)
+                    return
         if hasattr(self, "_lock_img_cache"):
             return
         icon_size = max(12, int(14 * self._cfg.ui_scale))
@@ -1468,30 +1910,6 @@ class ParagonOverlay(tk.Toplevel):
         self._dragging_grid = False
         self._persist_state()
 
-    def _on_window_drag_start(self, e: tk.Event) -> None:
-        self.focus_set()
-        self._dragging_window = True
-        self._win_drag_start_xy = (int(e.x_root), int(e.y_root))
-        self._win_drag_start_pos = (int(self.winfo_x()), int(self.winfo_y()))
-
-    def _on_window_drag_move(self, e: tk.Event) -> None:
-        if not self._dragging_window:
-            return
-
-        sx, sy = self._win_drag_start_xy
-        wx, wy = self._win_drag_start_pos
-        dx = int(e.x_root) - sx
-        dy = int(e.y_root) - sy
-
-        self.geometry(f"+{wx + dx}+{wy + dy}")
-
-    def _on_window_drag_end(self, _: tk.Event) -> None:
-        if not self._dragging_window:
-            return
-
-        self._dragging_window = False
-        self._persist_state()
-
     def _is_on_gold_border(self, x: int, y: int) -> bool:
         if not self._border_rect:
             return False
@@ -1530,12 +1948,8 @@ class ParagonOverlay(tk.Toplevel):
         else:
             rw, rh = self._get_resolution()
             rx, ry = 0, 0
-
-        # Use saved position if available.
-        sx = self._settings.get("x")
-        sy = self._settings.get("y")
-        if isinstance(sx, int) and isinstance(sy, int):
-            rx, ry = sx, sy
+        # Overlay window position is always anchored to the game ROI/screen.
+        # Users can move only the grid contents (grid_x/grid_y).
 
         self.geometry(f"{int(rw)}x{int(rh)}+{int(rx)}+{int(ry)}")
 
@@ -1558,6 +1972,10 @@ class ParagonOverlay(tk.Toplevel):
 
         grid = nodes_to_grid(nodes)
 
+        # Accent color switches with global colorblind mode (and optional golden override).
+        accent_color = self._accent_frame_color()
+        self._apply_accent_frames()
+
         # Use settings based on current mode
         if self._cfg.is_collapsed:
             cs = int(self._cfg.cell_size_collapsed)
@@ -1567,15 +1985,15 @@ class ParagonOverlay(tk.Toplevel):
             gx0, gy0 = int(self.grid_x), int(self.grid_y)
 
         grid_px = GRID * cs
-        border_pad = 6
-        border_w = 6
+        border_w = self._grid_frame_thickness()
+        border_pad = max(2, border_w)
 
         self.canvas.create_rectangle(
             gx0 - border_pad,
             gy0 - border_pad,
             gx0 + grid_px + border_pad,
             gy0 + grid_px + border_pad,
-            outline=GOLD,
+            outline=accent_color,
             width=border_w,
         )
 
@@ -1592,14 +2010,14 @@ class ParagonOverlay(tk.Toplevel):
         # Grid lines
         for i in range(GRID + 1):
             p = i * cs
-            self.canvas.create_line(gx0, gy0 + p, gx0 + grid_px, gy0 + p, fill="#3f3f3f", width=1)
-            self.canvas.create_line(gx0 + p, gy0, gx0 + p, gy0 + grid_px, fill="#3f3f3f", width=1)
+            self.canvas.create_line(gx0, gy0 + p, gx0 + grid_px, gy0 + p, fill=FS_GRID_COLOR, width=1)
+            self.canvas.create_line(gx0 + p, gy0, gx0 + p, gy0 + grid_px, fill=FS_GRID_COLOR, width=1)
 
         # Nodes (transparent green boxes)
         inset = max(2, cs // 4)
         outline_w = max(2, cs // 10)
 
-        node_outline = NODE_BLUE if self._is_colorblind_enabled() else NODE_GREEN
+        node_outline = accent_color
 
         for y in range(GRID):
             for x in range(GRID):
@@ -1641,10 +2059,7 @@ class ParagonOverlay(tk.Toplevel):
             prof = ""
             if self.builds:
                 prof = str(self.builds[self.current_build_idx].get("profile") or "")
-
             _save_overlay_settings({
-                "x": int(self.winfo_x()),
-                "y": int(self.winfo_y()),
                 "cell_size": int(self._cfg.cell_size),
                 "profile": prof,
                 "build_idx": int(self.current_build_idx),
@@ -1658,6 +2073,8 @@ class ParagonOverlay(tk.Toplevel):
                 "grid_y_collapsed": int(self.grid_y_collapsed),
                 # Grid lock
                 "grid_locked": bool(self._cfg.grid_locked),
+                # Accent override
+                "gold_frames": bool(getattr(self._cfg, "gold_frames", False)),
             })
         except Exception:
             LOGGER.debug("Failed to persist overlay state", exc_info=True)
