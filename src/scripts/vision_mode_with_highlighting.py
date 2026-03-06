@@ -173,7 +173,7 @@ class VisionModeWithHighlighting:
     def draw_from_queue(self):
         try:
             task = self.queue.get_nowait()
-            LOGGER.debug(f"Queue size: {self.queue.qsize()}, task: {task}")
+            # LOGGER.debug(f"Queue size: {self.queue.qsize()}, task: {task}")
             if task[0] == "clear":
                 reset_canvas(self.root, self.canvas)
                 self.is_cleared = True
