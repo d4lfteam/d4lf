@@ -315,6 +315,9 @@ def generate_uniques(d4data_dir, language):
     unique_files = sorted(d4data_dir.glob(unique_pattern, case_sensitive=False))
 
     for core_unique_file in unique_files:
+        if core_unique_file.name.startswith("S10_"):
+            # Chaos uniques really throw off our inherent counts
+            continue
         # Get inherent count and item type from this file. Beyond that, we need the file name to find the enUS strings file.
         num_inherents = 0
         with Path(core_unique_file).open(encoding="utf-8") as unique_item_file:
