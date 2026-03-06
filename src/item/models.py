@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from src.item.data.aspect import Aspect
     from src.item.data.item_type import ItemType
     from src.item.data.rarity import ItemRarity
+    from src.item.data.seasonal_attribute import SeasonalAttribute
 
 LOGGER = logging.getLogger(__name__)
 
@@ -19,14 +20,13 @@ class Item:
     codex_upgrade: bool = False
     cosmetic_upgrade: bool = False
     inherent: list[Affix] = field(default_factory=list)
-    is_chaos: bool = False
     is_in_shop: bool = False
     item_type: ItemType | None = None
     name: str | None = None
     original_name: str | None = None
     power: int | None = None
     rarity: ItemRarity | None = None
-    sanctified: bool = False
+    seasonal_attribute: SeasonalAttribute | None = None
 
     def __eq__(self, other):
         if not isinstance(other, Item):
@@ -61,7 +61,7 @@ class Item:
             res = False
         if self.is_in_shop != other.is_in_shop:
             res = False
-        if self.is_chaos != other.is_chaos:
+        if self.seasonal_attribute != other.seasonal_attribute:
             res = False
         return res
 
