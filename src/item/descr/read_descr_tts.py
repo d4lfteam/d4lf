@@ -21,6 +21,7 @@ from src.item.data.item_type import (
     is_weapon,
 )
 from src.item.data.rarity import ItemRarity
+from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.item.descr import keep_letters_and_spaces
 from src.item.descr.text import find_number
 from src.item.descr.texture import find_affix_bullets, find_aspect_bullet, find_seperator_short, find_seperators_long
@@ -252,12 +253,12 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         item.rarity = _get_item_rarity(search_string_split[0])
         return item
 
-    if "chaos" in tts_item[1].lower():
-        item.is_chaos = True
+    if "bloodied" in tts_item[1].lower():
+        item.seasonal_attribute = SeasonalAttribute.bloodied
 
     # Check lines 3-6 instead of just line 4 (handles variable name lengths and gives us flexibility to search for the sanctified marker)
     if any("sanctified" in tts_item[i].lower() for i in range(3, min(7, len(tts_item)))):
-        item.sanctified = True
+        item.seasonal_attribute = SeasonalAttribute.sanctified
 
     search_string = tts_item[1].lower().replace("ancestral", "").replace("chaos", "").strip()
     search_string = _REPLACE_COMPARE_RE.sub("", search_string).strip()
@@ -483,7 +484,7 @@ def read_descr() -> Item | None:
         is_non_sigil_mapping(item.item_type),
         is_socketable(item.item_type),
         item.item_type in [ItemType.Material, ItemType.Tribute, ItemType.Cache, ItemType.LairBossKey],
-        item.sanctified,
+        item.seasonal_attribute == SeasonalAttribute.sanctified,
     ]):
         return item
 

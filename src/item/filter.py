@@ -29,6 +29,7 @@ from src.config.models import (
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity
+from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.scripts.common import ASPECT_UPGRADES_LABEL, is_junk_rarity
 
 if TYPE_CHECKING:
@@ -268,7 +269,9 @@ class Filter:
                     continue
                 # check aspect
                 if not self._match_item_aspect_or_affix(
-                    expected_aspect=filter_item.aspect, item_aspect=item.aspect, is_chaos=item.is_chaos
+                    expected_aspect=filter_item.aspect,
+                    item_aspect=item.aspect,
+                    is_fixed_aspect_value=item.seasonal_attribute == SeasonalAttribute.bloodied,
                 ):
                     continue
                 # check affixes
@@ -439,7 +442,7 @@ class Filter:
 
     @staticmethod
     def _match_item_aspect_or_affix(
-        expected_aspect: AffixAspectFilterModel | None, item_aspect: Aspect | Affix, is_chaos: bool = False
+        expected_aspect: AffixAspectFilterModel | None, item_aspect: Aspect | Affix, is_fixed_aspect_value: bool = False
     ) -> bool:
         if expected_aspect is None:
             return True
@@ -448,8 +451,9 @@ class Filter:
 
         if expected_aspect.value is not None:
             if item_aspect.value is None:
-                # Chaos uniques have a fixed aspect number. There is no reason to compare it, it is always at max
-                return bool(is_chaos)
+                # Chaos uniques and probably bloodied items have a fixed aspect number.
+                # There is no reason to compare it, it is always at max
+                return bool(is_fixed_aspect_value)
             if (expected_aspect.comparison == ComparisonType.larger and item_aspect.value < expected_aspect.value) or (
                 expected_aspect.comparison == ComparisonType.smaller and item_aspect.value > expected_aspect.value
             ):
