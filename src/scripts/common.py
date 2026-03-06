@@ -6,6 +6,8 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from item.data.seasonal_attribute import SeasonalAttribute
+
 if TYPE_CHECKING:
     from tkinter import Canvas
 
@@ -150,7 +152,7 @@ def is_ignored_item(item_descr: Item):
     if item_descr.item_type == ItemType.LairBossKey:
         LOGGER.info(f"{item_descr.original_name} -- Matched: Lair Boss Key")
         return True
-    if item_descr.sanctified:
+    if item_descr.seasonal_attribute == SeasonalAttribute.sanctified:
         LOGGER.info(f"{item_descr.original_name} -- Matched: Sanctified item, which is not supported")
         return True
 

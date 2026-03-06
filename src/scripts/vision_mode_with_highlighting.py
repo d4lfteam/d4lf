@@ -17,6 +17,7 @@ from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
 from src.item.data.item_type import is_sigil
+from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.item.filter import Filter, FilterResult
 from src.item.find_descr import find_descr
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item, is_junk_rarity, reset_canvas
@@ -336,7 +337,7 @@ class VisionModeWithHighlighting:
                         ignored_item = is_ignored_item(item_descr)
                         # Make the canvas gray for "found the item" or blue for "ignored this item"
                         if ignored_item:
-                            if item_descr.sanctified:
+                            if item_descr.seasonal_attribute == SeasonalAttribute.sanctified:
                                 self.request_empty_outline(
                                     item_descr, item_roi, get_filter_colors().unhandled, "Sanctified (Not Supported)"
                                 )
