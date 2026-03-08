@@ -12,6 +12,7 @@ import re
 import sys
 import threading
 import tkinter as tk
+import tkinter.font as tkfont
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -50,15 +51,19 @@ _UI_READY = threading.Event()
 
 
 def _tk_thread_main() -> None:
+    """Own the dedicated Tk root and execute queued UI work on that thread."""
     global _UI_ROOT
     with suppress(Exception):
         _enable_windows_dpi_awareness()
+    # Create a hidden root window. The actual overlay is a Toplevel that is
+    # opened later, but Tk still needs one root that owns the event loop.
     root = tk.Tk()
     root.withdraw()
     _UI_ROOT = root
     _UI_READY.set()
 
     def _pump_queue() -> None:
+        """Run all queued UI callbacks and reschedule the queue pump."""
         while True:
             try:
                 fn, done, box = _UI_QUEUE.get_nowait()
@@ -80,6 +85,7 @@ def _tk_thread_main() -> None:
 
 
 def _ensure_ui_thread() -> None:
+    """Start the shared Tk UI thread once and wait until it is ready."""
     global _UI_THREAD
     if _UI_THREAD and _UI_THREAD.is_alive():
         return
@@ -92,6 +98,7 @@ def _ensure_ui_thread() -> None:
 
 
 def _call_on_ui_thread(fn: object) -> object:
+    """Execute a callback on the Tk thread and wait for its return value."""
     _ensure_ui_thread()
     done, box = threading.Event(), {}
     _UI_QUEUE.put((fn, done, box))
@@ -103,6 +110,7 @@ def _call_on_ui_thread(fn: object) -> object:
 
 
 def _post_to_ui_thread(fn: object) -> None:
+    """Queue work on the Tk thread without blocking the caller."""
     _ensure_ui_thread()
     _UI_QUEUE.put((fn, None, {}))
 
@@ -175,6 +183,7 @@ _TK_BASELINE_SCALING = 96 / 72
 
 
 def _enable_windows_dpi_awareness() -> None:
+    """Enable the highest DPI awareness mode available on Windows."""
     if sys.platform != "win32":
         return
 
@@ -194,6 +203,7 @@ def _enable_windows_dpi_awareness() -> None:
 
 
 def _dpi_scale_for_widget(w: tk.Misc) -> float:
+    """Read the effective DPI scale for a widget, falling back safely."""
     with suppress(Exception):
         return float(ctypes.windll.user32.GetDpiForWindow(int(w.winfo_id()))) / 96.0
     with suppress(Exception):
@@ -207,12 +217,18 @@ def _dpi_scale_for_widget(w: tk.Misc) -> float:
 
 
 def _params_ini_path() -> Path:
+    """Return the user-specific params.ini path and ensure the folder exists."""
     p = Path.home() / ".d4lf"
     p.mkdir(parents=True, exist_ok=True)
     return p / "params.ini"
 
 
 def _load_overlay_settings() -> dict[str, Any]:
+    """Load persisted overlay state from params.ini.
+
+    Invalid or missing values are ignored so the overlay can continue with
+    sensible runtime defaults.
+    """
     ini = _params_ini_path()
     if not ini.exists():
         ini.write_text("", encoding="utf-8")
@@ -221,6 +237,7 @@ def _load_overlay_settings() -> dict[str, Any]:
     sec = p["paragon_overlay"] if p.has_section("paragon_overlay") else {}
 
     def parse(k: str, t: type) -> Any:
+        """Parse one INI value into the requested type or return None."""
         v = sec.get(k)
         if not v:
             return None
@@ -253,6 +270,7 @@ def _load_overlay_settings() -> dict[str, Any]:
 
 
 def _save_overlay_settings(values: dict[str, Any]) -> None:
+    """Persist the current overlay state without touching unrelated INI sections."""
     ini, p = _params_ini_path(), configparser.ConfigParser()
     if not ini.exists():
         ini.write_text("", encoding="utf-8")
@@ -267,6 +285,7 @@ def _save_overlay_settings(values: dict[str, Any]) -> None:
 
 
 def _clamp_int(v: int | None, lo: int, hi: int, default: int) -> int:
+    """Clamp an optional integer into a safe range, with a fallback default."""
     try:
         return max(lo, min(hi, int(v))) if v is not None else default
     except Exception:
@@ -274,6 +293,7 @@ def _clamp_int(v: int | None, lo: int, hi: int, default: int) -> int:
 
 
 def _iter_paragon_payloads(paragon: object) -> list[dict[str, Any]]:
+    """Normalize Paragon data so the rest of the loader can iterate one shape."""
     return (
         [paragon]
         if isinstance(paragon, dict)
@@ -284,6 +304,7 @@ def _iter_paragon_payloads(paragon: object) -> list[dict[str, Any]]:
 
 
 def _load_profile_model(profile_path: Path, profile_name: str) -> ProfileModel | None:
+    """Load one YAML profile file into the validated ProfileModel."""
     try:
         with profile_path.open(encoding="utf-8") as f:
             cfg = yaml.load(stream=f, Loader=_UniqueKeyLoader)
@@ -295,11 +316,18 @@ def _load_profile_model(profile_path: Path, profile_name: str) -> ProfileModel |
 
 
 def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]]:
+    """Collect all available builds and flatten them into overlay-friendly rows.
+
+    Each returned entry contains the visible build name, its board list, and the
+    source profile name that is later used for grouping inside the popup.
+    """
     config = IniConfigLoader()
     profiles_dir = config.user_dir / "profiles"
     names = [p.strip() for p in config.general.profiles if p.strip()]
     candidates: list[tuple[str, Path]] = []
 
+    # Prefer the configured profile list when one exists. Otherwise fall back to
+    # scanning the profiles directory, newest file first.
     if names:
         for n in names:
             p_yaml, p_yml = profiles_dir / f"{n}.yaml", profiles_dir / f"{n}.yml"
@@ -319,6 +347,9 @@ def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]
 
     builds: list[dict[str, Any]] = []
     for pname, ppath in candidates:
+        # A profile can contain one or many Paragon payloads, and each payload can
+        # contain multiple step states. The overlay shows each step as its own
+        # selectable build entry.
         model = _load_profile_model(ppath, pname)
         if not model or not model.Paragon:
             continue
@@ -339,12 +370,14 @@ def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]
 
 
 def parse_rotation(rot_str: str) -> int:
+    """Extract and sanitize the supported board rotation angle."""
     m = re.search(r"(\d+)", rot_str or "")
     deg = int(m.group(1)) % 360 if m else 0
     return deg if deg in (0, 90, 180, 270) else 0
 
 
 def nodes_to_grid(nodes: list[int] | list[bool]) -> list[list[bool]]:
+    """Convert the flat 21x21 node list into a 2D boolean grid."""
     return [[bool(nodes[y * GRID + x]) for x in range(GRID)] for y in range(GRID)]
 
 
@@ -355,6 +388,8 @@ def nodes_to_grid(nodes: list[int] | list[bool]) -> list[list[bool]]:
 
 @dataclass(slots=True)
 class OverlayConfig:
+    """Runtime configuration for overlay size, scaling, and persisted state."""
+
     cell_size: int = 24
     grid_x_default: int = PANEL_W + 24
     grid_y_default: int = 24
@@ -389,11 +424,14 @@ class ParagonOverlay(tk.Toplevel):
         cfg: OverlayConfig | None = None,
         on_close: Callable[[], None] | None = None,
     ) -> None:
+        """Initialize the overlay window, restore settings, and build the UI."""
         super().__init__(parent)
         self._settings = _load_overlay_settings()
         self._cfg = cfg or OverlayConfig()
         self._apply_dpi_scaling()
 
+        # Persisted size/position values are trusted only after clamping so a bad
+        # INI value cannot create an unusable overlay.
         self._cfg.cell_size = _clamp_int(self._settings.get("cell_size"), 10, 80, self._cfg.cell_size)
         self._cfg.cell_size_collapsed = _clamp_int(
             self._settings.get("cell_size_collapsed"), 8, 50, self._cfg.cell_size_collapsed
@@ -412,6 +450,8 @@ class ParagonOverlay(tk.Toplevel):
         self._res = ResManager()
         self.builds = list(builds)
 
+        # Restore the previously selected build by profile name when possible.
+        # Falling back to the stored numeric index keeps old settings compatible.
         prof, b_idx = self._settings.get("profile"), self._settings.get("build_idx")
         idx = next((i for i, b in enumerate(self.builds) if b.get("profile") == prof), b_idx) if prof else b_idx
         self.current_build_idx = _clamp_int(idx, 0, max(0, len(self.builds) - 1), 0)
@@ -455,11 +495,14 @@ class ParagonOverlay(tk.Toplevel):
         self.after(50, self._poll_close_request)
 
     def _apply_dpi_scaling(self) -> None:
+        """Apply DPI-aware sizing before widgets are created."""
         with suppress(Exception):
             self.tk.call("tk", "scaling", _TK_BASELINE_SCALING)
         scale = _dpi_scale_for_widget(self) * float(self._cfg.ui_scale or 1.0)
         self._cfg.ui_scale = eff = max(0.75, min(4.0, float(scale)))
 
+        # The panel width always scales with DPI. Cell sizes only scale
+        # automatically when the user has not stored an explicit override.
         self._cfg.panel_w = round(self._cfg.panel_w * eff)
         if self._settings.get("cell_size") is None:
             self._cfg.cell_size = round(self._cfg.cell_size * eff)
@@ -469,10 +512,13 @@ class ParagonOverlay(tk.Toplevel):
     # --- UI LAYOUT ---
 
     def _build_ui(self) -> None:
+        """Create the left control panel and the transparent drawing canvas."""
         accent = self._accent_frame_color()
         outer = tk.Frame(self, bg=TRANSPARENT_KEY)
         outer.pack(fill="both", expand=True)
 
+        # The canvas owns all grid drawing. The left panel is a separate Frame
+        # placed on top of the same transparent outer container.
         self.canvas = tk.Canvas(outer, highlightthickness=0, bg=TRANSPARENT_KEY)
         self.canvas.pack(fill="both", expand=True)
 
@@ -578,6 +624,7 @@ class ParagonOverlay(tk.Toplevel):
         )
 
     def _bind_events(self) -> None:
+        """Bind scrolling and drag interactions after widgets exist."""
         for ev in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
             self.boards_canvas.bind(ev, self._on_boards_mousewheel)
         self.canvas.bind("<ButtonPress-1>", self._on_grid_drag_start)
@@ -587,6 +634,7 @@ class ParagonOverlay(tk.Toplevel):
     # --- POLLING & STATE MANAGEMENT ---
 
     def _poll_close_request(self) -> None:
+        """Check for external close requests coming from non-UI threads."""
         if _CLOSE_REQUESTED.is_set():
             _CLOSE_REQUESTED.clear()
             self.close()
@@ -595,6 +643,7 @@ class ParagonOverlay(tk.Toplevel):
             self.after(50, self._poll_close_request)
 
     def _poll_window_state(self) -> None:
+        """Re-apply geometry when the tracked game window changes size or ROI."""
         try:
             roi, res = self._get_cam_roi(), self._get_resolution()
             if roi != self._last_roi or res != self._last_res:
@@ -605,6 +654,7 @@ class ParagonOverlay(tk.Toplevel):
             self.after(self._cfg.poll_ms, self._poll_window_state)
 
     def _select_build(self, idx: int) -> None:
+        """Activate a build, reset the selected board, and redraw the overlay."""
         if not self.builds:
             return
         self.current_build_idx = _clamp_int(idx, 0, max(0, len(self.builds) - 1), 0)
@@ -615,16 +665,19 @@ class ParagonOverlay(tk.Toplevel):
         self._persist_state()
 
     def _toggle_grid_lock(self) -> None:
+        """Enable or disable all grid movement and zoom controls."""
         self._cfg.grid_locked = not self._cfg.grid_locked
         self._persist_state()
 
     def _toggle_gold_frames(self) -> None:
+        """Toggle the optional gold accent color override for all frames."""
         self._cfg.gold_frames = not getattr(self._cfg, "gold_frames", False)
         self._persist_state()
         self._apply_accent_frames(force=True)
         self.redraw()
 
     def _reset_grid_defaults(self) -> None:
+        """Restore default grid size and position for both overlay modes."""
         s = float(self._cfg.ui_scale or 1.0)
         self._cfg.cell_size, self._cfg.cell_size_collapsed = (
             _clamp_int(round(24 * s), 10, 80, self._cfg.cell_size),
@@ -639,6 +692,7 @@ class ParagonOverlay(tk.Toplevel):
         self.redraw()
 
     def _accent_frame_color(self) -> str:
+        """Resolve the current accent color from settings and colorblind mode."""
         if getattr(self._cfg, "gold_frames", False):
             return GOLD
         try:
@@ -647,12 +701,15 @@ class ParagonOverlay(tk.Toplevel):
             return NODE_GREEN
 
     def _accent_frame_thickness(self) -> int:
+        """Return the scaled border width for cards and popup frames."""
         return max(1, round(FS_CARD_FRAME * float(self._cfg.ui_scale or 1.0)))
 
     def _grid_frame_thickness(self) -> int:
+        """Return the scaled outer border width for the rendered node grid."""
         return max(1, round(FS_GRID_FRAME * float(self._cfg.ui_scale or 1.0)))
 
     def _apply_accent_frames(self, *, force: bool = False) -> None:
+        """Refresh accent borders on all existing cards and popups."""
         c = self._accent_frame_color()
         if not force and getattr(self, "_accent_frame_last", None) == c:
             return
@@ -675,6 +732,7 @@ class ParagonOverlay(tk.Toplevel):
                 getattr(self, p).configure(highlightthickness=th, highlightbackground=c, highlightcolor=c)
 
     def _reload_profiles(self) -> None:
+        """Reload build data from disk and keep the current selection if possible."""
         try:
             if not (new_builds := load_builds_from_path()):
                 return
@@ -690,6 +748,7 @@ class ParagonOverlay(tk.Toplevel):
     # --- DROPDOWNS: BUILDS & SETTINGS ---
 
     def _is_descendant(self, child: tk.Misc, parent: tk.Misc) -> bool:
+        """Return True when a widget belongs to the popup subtree."""
         w: tk.Misc | None = child
         while w:
             if w is parent:
@@ -703,6 +762,7 @@ class ParagonOverlay(tk.Toplevel):
         return False
 
     def _close_popup(self, attr_name: str, btn_widget: tk.Button, escape_id_attr: str, click_id_attr: str) -> None:
+        """Hide one popup and remove its temporary global event bindings."""
         popup = getattr(self, attr_name, None)
         if popup:
             with suppress(Exception):
@@ -716,6 +776,7 @@ class ParagonOverlay(tk.Toplevel):
                 setattr(self, attr, None)
 
     def _handle_global_click(self, e: tk.Event, attr_name: str, btn_widget: tk.Button, close_func: Callable) -> None:
+        """Close a popup when the user clicks outside of it and its button."""
         popup = getattr(self, attr_name, None)
         if not _is_alive(popup, mapped=True):
             return
@@ -743,6 +804,14 @@ class ParagonOverlay(tk.Toplevel):
         click_attr: str,
         click_handler: Callable,
     ) -> None:
+        """Open or close one of the overlay popups and position it near its button.
+
+        The same helper is used for both the builds popup and the settings popup.
+        This keeps popup lifecycle handling (create, refresh, measure, position,
+        bind global close handlers) in one place instead of duplicating it.
+        """
+        # Only one dropdown should be open at a time, so opening one first closes
+        # the other one.
         if popup_attr == "_build_popup":
             self._close_settings_dropdown()
         else:
@@ -754,6 +823,9 @@ class ParagonOverlay(tk.Toplevel):
             return
 
         if popup_attr == "_settings_popup":
+            # The settings popup uses lock icons that may be generated lazily.
+            # Warm them up once before the popup is shown so the first open feels
+            # instant and does not flicker.
             if getattr(self, "_warmup_after_id", None):
                 with suppress(Exception):
                     self.after_cancel(self._warmup_after_id)
@@ -772,23 +844,34 @@ class ParagonOverlay(tk.Toplevel):
                 highlightcolor=c,
             )
             setattr(self, popup_attr, popup)
+            # The builder returns a refresh callback. We keep that callback so the
+            # popup content can be rebuilt later without re-creating the container.
             setattr(self, f"{popup_attr}_refresh", build_func(popup))
 
         self._apply_accent_frames()
         if callable(refresh := getattr(self, f"{popup_attr}_refresh", None)):
             refresh()
 
-        popup.place(x=-9999, y=-9999)  # off-screen messen ohne Flash
+        # First place the popup off-screen and let Tk calculate the requested size.
+        # This avoids a visible resize flash before we know the final width/height.
+        popup.place(x=-9999, y=-9999)
         self.update_idletasks()
         popup.update_idletasks()
         s = self._cfg.ui_scale
 
-        pw = min(
-            max(1, popup.winfo_reqwidth() if popup_attr == "_settings_popup" else popup.winfo_reqwidth() + int(46 * s)),
-            max(1, self.winfo_width() - int(8 * s)),
-        )
+        if popup_attr == "_settings_popup":
+            popup_width = popup.winfo_reqwidth()
+        else:
+            # The builds popup can contain very long names. The requested width of
+            # the frame alone is not enough, so we explicitly measure the longest
+            # possible text width and use the larger of both values.
+            popup_width = max(popup.winfo_reqwidth(), self._measure_build_popup_width())
+
+        pw = min(max(1, popup_width), max(1, self.winfo_width() - int(8 * s)))
         ph = popup.winfo_reqheight()
 
+        # Start by aligning the popup below the button. If it would overflow the
+        # overlay bounds, move it left or above the button instead.
         x, y = (
             btn_widget.winfo_rootx() - self.winfo_rootx(),
             btn_widget.winfo_rooty() - self.winfo_rooty() + btn_widget.winfo_height() + int(4 * s),
@@ -804,6 +887,8 @@ class ParagonOverlay(tk.Toplevel):
             btn_widget.config(fg=GOLD)
 
         def _arm():
+            # The global bindings are attached only while the popup is open.
+            # Clicking outside or pressing Escape closes the current popup.
             if not getattr(self, click_attr, None):
                 setattr(self, click_attr, self.bind("<Button-1>", click_handler, add="+"))
             if not getattr(self, escape_attr, None):
@@ -813,6 +898,7 @@ class ParagonOverlay(tk.Toplevel):
         return
 
     def _show_build_menu(self) -> None:
+        """Open the build selector popup when build data is available."""
         if self.builds:
             self._show_dropdown(
                 "_build_popup",
@@ -825,6 +911,7 @@ class ParagonOverlay(tk.Toplevel):
             )
 
     def _show_settings_dropdown(self) -> None:
+        """Open the settings popup anchored to the settings button."""
         self._show_dropdown(
             "_settings_popup",
             self.btn_settings,
@@ -835,11 +922,52 @@ class ParagonOverlay(tk.Toplevel):
             lambda e: self._handle_global_click(e, "_settings_popup", self.btn_settings, self._close_settings_dropdown),
         )
 
+    def _measure_build_popup_width(self) -> int:
+        """Return a safe popup width for the builds dropdown.
+
+        Tk's requested width can underestimate the real width that is needed when
+        the popup content is rebuilt dynamically or when the active build uses a
+        bold font. This helper measures the longest relevant text and adds the
+        fixed UI chrome around it.
+        """
+        scale = float(self._cfg.ui_scale or 1.0)
+        btn_font = tkfont.Font(family="Segoe UI", size=int(FS_BUILDS_MENU * scale))
+        active_btn_font = tkfont.Font(family="Segoe UI", size=int(FS_BUILDS_MENU * scale), weight="bold")
+        header_font = tkfont.Font(family="Segoe UI", size=int(FS_BUILDS_MENU * scale), weight="bold")
+
+        # Start with the fallback label so the popup still has a sensible minimum
+        # width even if the loaded data is incomplete.
+        text_widths = [btn_font.measure("Unknown Build")]
+        groups: dict[str, list[dict[str, Any]]] = {}
+        for build in self.builds:
+            groups.setdefault(str(build.get("profile") or "Ungrouped"), []).append(build)
+            name = str(build.get("name") or "Unknown Build")
+            # Measure both normal and active states because the selected build is
+            # rendered in bold and can therefore be slightly wider.
+            text_widths.extend((btn_font.measure(name), active_btn_font.measure(name)))
+
+        if len(groups) > 1:
+            # Group headers use the same bold style as the active row and must
+            # therefore also be included in the width calculation.
+            text_widths.extend(header_font.measure(group_name) for group_name in groups)
+
+        content_width = max(text_widths, default=0)
+        # Extra space for button padding, the surrounding frame, and the vertical
+        # scrollbar that is always present in the builds popup layout.
+        horizontal_padding = int(72 * scale)
+        scrollbar_width = int(22 * scale)
+        frame_padding = int(24 * scale)
+        return content_width + horizontal_padding + scrollbar_width + frame_padding
+
     def _build_build_popup(self, host: tk.Misc) -> Any:
+        """Create the scrollable builds popup and return its refresh callback."""
         scale = self._cfg.ui_scale
         c = tk.Frame(host, bg=CARD_BG, padx=int(12 * scale), pady=int(10 * scale))
         c.pack(fill="both", expand=True)
         max_h = int(360 * scale)
+
+        # Canvas + inner frame is the standard Tk pattern for a scrollable list.
+        # The canvas handles scrolling, while the inner frame holds the real widgets.
         cv = tk.Canvas(c, bg=CARD_BG, highlightthickness=0, bd=0, height=max_h)
         cv.pack(side="left", fill="both", expand=True)
         sb = tk.Scrollbar(c, orient="vertical", command=cv.yview)
@@ -848,10 +976,15 @@ class ParagonOverlay(tk.Toplevel):
         lf = tk.Frame(cv, bg=CARD_BG)
         wid = cv.create_window((0, 0), window=lf, anchor="nw")
 
+        # Keep the canvas scroll region and embedded frame width synchronized with
+        # the real content size.
         lf.bind("<Configure>", lambda *_: cv.configure(scrollregion=cv.bbox("all")))
         cv.bind("<Configure>", lambda e: cv.itemconfigure(wid, width=int(e.width)))
 
         def _ref():
+            # Rebuild the visible list from scratch. This is simple and reliable for
+            # the current popup size and allows highlighting/grouping to stay in sync
+            # with the current overlay state.
             for w in lf.winfo_children():
                 w.destroy()
             grps: dict[str, list[tuple[int, dict[str, Any]]]] = {}
@@ -884,22 +1017,28 @@ class ParagonOverlay(tk.Toplevel):
                         font=("Segoe UI", int(FS_BUILDS_MENU * scale), "bold" if act else "normal"),
                     ).pack(fill="x", pady=int(2 * scale))
                 if mul:
+                    # A divider line visually separates profile groups without having
+                    # to add more nested containers or special spacing logic.
                     tk.Frame(lf, bg=MUTED, height=1).pack(fill="x", pady=int(6 * scale))
 
             with suppress(Exception):
                 host.update_idletasks()
+                # Limit popup height so long build lists stay scrollable instead of
+                # growing beyond the overlay window.
                 cv.configure(height=min(max_h, max(int(120 * scale), lf.winfo_reqheight())))
                 cv.yview_moveto(0.0)
 
-        return _ref  # initial fill done by caller via refresh()
+        return _ref  # Initial fill is triggered by the shared popup helper.
 
     def _build_settings_popup(self, host: tk.Misc) -> Any:
+        """Create the settings popup and return its refresh callback."""
         s = self._cfg.ui_scale
         c = tk.Frame(host, bg=CARD_BG, padx=int(14 * s), pady=int(10 * s))
         c.pack(fill="both", expand=True)
         imgs: dict[bool, tk.PhotoImage | None] = getattr(self, "_lock_img_cache", {})
 
         def _row(txt: str, img: tk.PhotoImage | None, lbl_txt: str, cmd: Callable) -> tuple[tk.Button, tk.Label]:
+            """Create one icon/text setting row with a button and description."""
             r = tk.Frame(c, bg=CARD_BG)
             r.pack(fill="x", pady=int(3 * s))
             b = (
@@ -933,7 +1072,7 @@ class ParagonOverlay(tk.Toplevel):
 
         tk.Frame(c, bg=MUTED, height=1).pack(fill="x", pady=int(6 * s))
 
-        # Zoom
+        # Zoom controls change the active cell size for the current mode.
         zr = tk.Frame(c, bg=CARD_BG)
         zr.pack(fill="x", pady=int(3 * s))
         btn_zm = _tk_btn(
@@ -962,7 +1101,7 @@ class ParagonOverlay(tk.Toplevel):
 
         tk.Frame(c, bg=MUTED, height=1).pack(fill="x", pady=int(4 * s))
 
-        # D-Pad
+        # D-pad buttons provide pixel-precise movement without dragging.
         dp = tk.Frame(c, bg=CARD_BG)
         dp.pack(anchor="w", pady=(int(2 * s), int(2 * s)))
         dc = tk.Frame(dp, bg=CARD_BG)
@@ -1031,6 +1170,7 @@ class ParagonOverlay(tk.Toplevel):
         ).pack(fill="x")
 
         def _ref():
+            """Refresh labels, icons, and enabled states after a setting changes."""
             lk, gd = self._cfg.grid_locked, getattr(self._cfg, "gold_frames", False)
             if imgs.get(lk):
                 btn_lock.configure(image=imgs[lk])
@@ -1072,12 +1212,14 @@ class ParagonOverlay(tk.Toplevel):
                     child.configure(bg=bg, fg=fg)
 
     def _select_board_card(self, idx: int) -> None:
+        """Select one board card, then redraw and persist the new state."""
         self.selected_board_idx = _clamp_int(idx, 0, max(0, len(self.boards) - 1), 0)
         self._update_board_selection()
         self.redraw()
         self._persist_state()
 
     def _toggle_collapsed_mode(self) -> None:
+        """Switch between the full and compact grid layouts."""
         self._cfg.is_collapsed = not self._cfg.is_collapsed
         with suppress(Exception):
             self.lbl_mode.config(text="Compact View" if self._cfg.is_collapsed else "Full View")
@@ -1087,9 +1229,12 @@ class ParagonOverlay(tk.Toplevel):
         self._persist_state()
 
     def _refresh_lists(self) -> None:
+        """Rebuild the board list and refresh the title for the active build."""
         for w in self.board_container.winfo_children():
             w.destroy()
 
+        # The title prefers the profile name. When that is missing, a readable
+        # fallback is derived from the build name.
         t = "Paragon"
         if self.builds:
             b = self.builds[self.current_build_idx]
@@ -1105,6 +1250,8 @@ class ParagonOverlay(tk.Toplevel):
         acc = self._accent_frame_color()
 
         for idx, bd in enumerate(self.boards):
+            # Build a readable line that includes class, board name, glyph, and
+            # rotation so the user can identify each board without opening it.
             rn, rg = str(bd.get("Name", "?") or "?"), bd.get("Glyph")
             np = rn.split("-", 1)
             cs, bs = ((np[0] if np else rn).strip().lower(), (np[1] if len(np) > 1 else rn).strip())
@@ -1156,6 +1303,7 @@ class ParagonOverlay(tk.Toplevel):
     # --- EVENT HANDLERS ---
 
     def _on_boards_mousewheel(self, e: tk.Event) -> None:
+        """Scroll the board list on Windows, Linux, and X11 wheel events."""
         delta = (
             -1
             if getattr(e, "delta", 0) > 0 or getattr(e, "num", 0) == 4
@@ -1168,6 +1316,7 @@ class ParagonOverlay(tk.Toplevel):
                 self.boards_canvas.yview_scroll(int(delta), "units")
 
     def _move_grid(self, dx: int, dy: int) -> None:
+        """Move the grid by a small step in the active layout mode."""
         if self._cfg.grid_locked:
             return
         if self._cfg.is_collapsed:
@@ -1180,6 +1329,7 @@ class ParagonOverlay(tk.Toplevel):
         self._persist_state()
 
     def _zoom_grid(self, delta: int) -> None:
+        """Increase or decrease the active cell size within safe limits."""
         if self._cfg.grid_locked:
             return
         if self._cfg.is_collapsed:
@@ -1190,6 +1340,7 @@ class ParagonOverlay(tk.Toplevel):
         self._persist_state()
 
     def _warmup_settings_assets(self) -> None:
+        """Pre-render lock icons so the settings popup opens without image lag."""
         self._warmup_after_id = None
         if not _is_alive(self) or hasattr(self, "_lock_img_cache"):
             return
@@ -1203,6 +1354,8 @@ class ParagonOverlay(tk.Toplevel):
             return
 
         try:
+            # Segoe UI Emoji gives reliable lock/unlock glyphs on Windows and lets
+            # the popup use small crisp icons instead of text symbols.
             fnt = ImageFont.truetype(r"C:\Windows\Fonts\seguiemj.ttf", sz)
 
             def _mk(locked: bool) -> tk.PhotoImage:
@@ -1220,6 +1373,7 @@ class ParagonOverlay(tk.Toplevel):
             self._lock_img_cache = {True: None, False: None}
 
     def _on_grid_drag_start(self, e: tk.Event) -> None:
+        """Start dragging only when the cursor grabs the outer grid border."""
         self.focus_set()
         if self._cfg.grid_locked or not self._border_rect:
             self._dragging_grid = False
@@ -1240,6 +1394,7 @@ class ParagonOverlay(tk.Toplevel):
         )
 
     def _on_grid_drag_move(self, e: tk.Event) -> None:
+        """Move the grid live while the user drags the captured border."""
         if not self._dragging_grid:
             return
         dx, dy = (int(e.x_root) - self._drag_start_xy[0], int(e.y_root) - self._drag_start_xy[1])
@@ -1253,6 +1408,7 @@ class ParagonOverlay(tk.Toplevel):
         self.redraw()
 
     def _on_grid_drag_end(self, _: tk.Event) -> None:
+        """Finish a drag operation and persist the final grid position."""
         if self._dragging_grid:
             self._dragging_grid = False
             self._persist_state()
@@ -1260,11 +1416,13 @@ class ParagonOverlay(tk.Toplevel):
     # --- GEOMETRY & RENDERING ---
 
     def _get_resolution(self) -> tuple[int, int]:
+        """Return the tracked game resolution, falling back to the screen size."""
         with suppress(Exception):
             return (int(self._res.resolution[0]), int(self._res.resolution[1]))
         return (self.winfo_screenwidth(), self.winfo_screenheight())
 
     def _get_cam_roi(self) -> tuple[int, int, int, int] | None:
+        """Return the tracked game window ROI when the camera module exposes one."""
         try:
             return (
                 (int(r[0]), int(r[1]), int(r[2]), int(r[3])) if (r := getattr(self._cam, "window_roi", None)) else None
@@ -1273,6 +1431,7 @@ class ParagonOverlay(tk.Toplevel):
             return None
 
     def _apply_geometry(self) -> None:
+        """Resize the overlay to match the tracked game window or full screen."""
         roi = self._get_cam_roi()
         rx, ry, rw, rh = roi or (0, 0, *self._get_resolution())
         self.geometry(f"{int(rw)}x{int(rh)}+{int(rx)}+{int(ry)}")
@@ -1280,6 +1439,7 @@ class ParagonOverlay(tk.Toplevel):
             self.canvas.config(width=int(rw), height=int(rh))
 
     def redraw(self) -> None:
+        """Redraw the entire transparent grid overlay for the selected board."""
         self.canvas.delete("all")
         if not self.boards or len(n := self.boards[self.selected_board_idx].get("Nodes") or []) != NODES_LEN:
             return
@@ -1294,6 +1454,8 @@ class ParagonOverlay(tk.Toplevel):
             else (int(self.grid_x), int(self.grid_y))
         )
 
+        # Compute the square grid size once and reuse it for both the border and
+        # the node cell rendering below.
         gpx, bw = GRID * cs, self._grid_frame_thickness()
         bp = max(2, bw)
 
@@ -1325,6 +1487,7 @@ class ParagonOverlay(tk.Toplevel):
     # --- LIFECYCLE ---
 
     def close(self) -> None:
+        """Persist state, destroy the window, and clear the global overlay handle."""
         try:
             self._persist_state()
             self.destroy()
@@ -1337,6 +1500,7 @@ class ParagonOverlay(tk.Toplevel):
                     _CURRENT_OVERLAY = None
 
     def _persist_state(self) -> None:
+        """Write the overlay's current user-facing state back to params.ini."""
         try:
             _save_overlay_settings({
                 "cell_size": int(self._cfg.cell_size),
@@ -1362,6 +1526,7 @@ class ParagonOverlay(tk.Toplevel):
 
 
 def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | None = None) -> ParagonOverlay | None:
+    """Open the overlay either on an existing Tk parent or on the shared UI thread."""
     try:
         if not (builds := load_builds_from_path(preset_path or (sys.argv[1] if len(sys.argv) > 1 else None))):
             LOGGER.warning("No Paragon data found in loaded profiles.")
@@ -1371,6 +1536,8 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
         return None
 
     if parent is not None:
+        # Embedding mode is used when another Tk application already owns the
+        # event loop and can host the overlay directly.
         overlay = ParagonOverlay(parent, builds, on_close=None)
         with _OVERLAY_LOCK:
             global _CURRENT_OVERLAY
@@ -1407,6 +1574,7 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
 
 
 def request_close(overlay: ParagonOverlay | None = None) -> None:
+    """Request that the current overlay closes, even from another thread."""
     with _OVERLAY_LOCK:
         if not (t := overlay or _CURRENT_OVERLAY):
             return
