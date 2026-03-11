@@ -1,48 +1,74 @@
 default_install_hook_types: [pre-push]
 default_language_version:
   python: python3.14
-minimum_prek_version: '0.2.3'
+minimum_prek_version: '0.3.0'
 repos:
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.9.21
+    rev: 0.10.9
     hooks:
       - id: uv-lock
+        priority: &group1 4294967294
   - repo: https://github.com/executablebooks/mdformat
     rev: 1.0.0
     hooks:
       - id: mdformat
+        priority: *group1
         additional_dependencies:
           - mdformat-gfm
   - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-    rev: v2.15.0
+    rev: v2.16.0
     hooks:
       - id: pretty-format-toml
+        priority: *group1
         args: [--autofix, --indent, "4"]
       - id: pretty-format-yaml
+        priority: *group1
         args: [--autofix, --preserve-quotes, --offset, "2"]
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v21.1.8
+    rev: v22.1.0
     hooks:
       - id: clang-format
+        priority: *group1
         files: \.(cpp|h)$
+  - repo: builtin
+    hooks:
+      - id: check-added-large-files
+        priority: &read-only 4294967295
+      - id: check-case-conflict
+        priority: *read-only
+      - id: check-executables-have-shebangs
+        priority: *read-only
+      - id: check-json
+        priority: *read-only
+      - id: check-toml
+        priority: *read-only
+      - id: check-yaml
+        priority: *read-only
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: trailing-whitespace
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
       - id: check-ast
-      - id: check-case-conflict
-      - id: check-executables-have-shebangs
-      - id: check-json
-      - id: check-toml
-      - id: check-xml
-      - id: check-yaml
-      - id: end-of-file-fixer
-      - id: fix-byte-order-marker
+        priority: *read-only
       - id: pretty-format-json
         args: [--autofix, --indent=4, --no-ensure-ascii]
+        priority: *group1
       - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.10
+    rev: v0.15.5
     hooks:
       - id: ruff-format
+        priority: *group1
       - id: ruff-check
+        priority: &group2 4294967293
         args: [--fix]
+  - repo: https://github.com/thetestlabs/py-psscriptanalyzer
+    rev: v0.3.1
+    hooks:
+      - id: py-psscriptanalyzer
+        priority: *read-only
+        args: ['--severity', 'Error']
+      - id: py-psscriptanalyzer-format
+        priority: *group1

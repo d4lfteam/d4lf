@@ -26,6 +26,9 @@
     "ashearas_khanjar": {
         "num_inherents": 1
     },
+    "ashearas_khanjar_(crucible)": {
+        "num_inherents": 1
+    },
     "assassins_stride": {
         "num_inherents": 1
     },
@@ -33,6 +36,9 @@
         "num_inherents": 0
     },
     "azurewrath": {
+        "num_inherents": 1
+    },
+    "azurewrath_(crucible)": {
         "num_inherents": 1
     },
     "balazans_maxtlatl": {
@@ -83,7 +89,19 @@
     "chainscourged_mail": {
         "num_inherents": 0
     },
+    "cluckeye": {
+        "num_inherents": 1
+    },
+    "cluckonomicon": {
+        "num_inherents": 0
+    },
     "condemnation": {
+        "num_inherents": 1
+    },
+    "condemnation_(crucible)": {
+        "num_inherents": 1
+    },
+    "coop_de_grâce": {
         "num_inherents": 1
     },
     "cowl_of_the_nameless": {
@@ -119,6 +137,9 @@
     "doombringer": {
         "num_inherents": 1
     },
+    "doombringer_(crucible)": {
+        "num_inherents": 1
+    },
     "eaglehorn": {
         "num_inherents": 1
     },
@@ -127,6 +148,12 @@
     },
     "ebonpiercer": {
         "num_inherents": 0
+    },
+    "eggcecutioner": {
+        "num_inherents": 1
+    },
+    "eggis": {
+        "num_inherents": 3
     },
     "endurant_faith": {
         "num_inherents": 0
@@ -141,6 +168,9 @@
         "num_inherents": 1
     },
     "fields_of_crimson": {
+        "num_inherents": 1
+    },
+    "fields_of_crimson_(crucible)": {
         "num_inherents": 1
     },
     "fists_of_fate": {
@@ -198,6 +228,9 @@
         "num_inherents": 2
     },
     "griswolds_opus": {
+        "num_inherents": 1
+    },
+    "griswolds_opus_(crucible)": {
         "num_inherents": 1
     },
     "hail_of_verglas": {
@@ -350,10 +383,16 @@
     "ramaladnis_magnum_opus": {
         "num_inherents": 1
     },
+    "ramaladnis_magnum_opus_(crucible)": {
+        "num_inherents": 1
+    },
     "razorplate": {
         "num_inherents": 0
     },
     "red_sermon": {
+        "num_inherents": 1
+    },
+    "red_sermon_(crucible)": {
         "num_inherents": 1
     },
     "ring_of_mendeln": {
@@ -389,16 +428,25 @@
     "rustbitten_dirk": {
         "num_inherents": 1
     },
+    "rustbitten_dirk_(crucible)": {
+        "num_inherents": 1
+    },
     "saboteurs_signet": {
         "num_inherents": 0
     },
     "sabre_of_tsasgal": {
         "num_inherents": 1
     },
+    "sabre_of_tsasgal_(crucible)": {
+        "num_inherents": 1
+    },
     "sanctis_of_kethamar": {
         "num_inherents": 0
     },
     "sanguivor_blade_of_zir": {
+        "num_inherents": 1
+    },
+    "sanguivor_blade_of_zir_(crucible)": {
         "num_inherents": 1
     },
     "scorn_of_the_earth": {
@@ -419,7 +467,13 @@
     "shard_of_verathiel": {
         "num_inherents": 1
     },
+    "shard_of_verathiel_(crucible)": {
+        "num_inherents": 1
+    },
     "shattered_vow": {
+        "num_inherents": 1
+    },
+    "shattered_vow_(crucible)": {
         "num_inherents": 1
     },
     "shroud_of_false_death": {
@@ -470,6 +524,9 @@
     "supplication": {
         "num_inherents": 1
     },
+    "supplication_(crucible)": {
+        "num_inherents": 1
+    },
     "tal_rashas_iridescent_loop": {
         "num_inherents": 0
     },
@@ -488,7 +545,13 @@
     "the_butchers_cleaver": {
         "num_inherents": 1
     },
+    "the_butchers_cleaver_(crucible)": {
+        "num_inherents": 1
+    },
     "the_grandfather": {
+        "num_inherents": 2
+    },
+    "the_grandfather_(crucible)": {
         "num_inherents": 2
     },
     "the_hand_of_naz": {
@@ -497,19 +560,31 @@
     "the_mortacrux": {
         "num_inherents": 2
     },
+    "the_mortacrux_(crucible)": {
+        "num_inherents": 2
+    },
     "the_oculus": {
         "num_inherents": 1
     },
     "the_third_blade": {
         "num_inherents": 1
     },
+    "the_third_blade_(crucible)": {
+        "num_inherents": 1
+    },
     "the_umbracrux": {
+        "num_inherents": 1
+    },
+    "the_umbracrux_(crucible)": {
         "num_inherents": 1
     },
     "the_unmaker": {
         "num_inherents": 0
     },
     "thousand-eye_reaver": {
+        "num_inherents": 1
+    },
+    "thousand-eye_reaver_(crucible)": {
         "num_inherents": 1
     },
     "tibaults_will": {
@@ -546,6 +621,9 @@
         "num_inherents": 3
     },
     "waxing_gibbous": {
+        "num_inherents": 1
+    },
+    "waxing_gibbous_(crucible)": {
         "num_inherents": 1
     },
     "wendigo_brand": {
