@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)]
     [string]$d4_path
 )
@@ -44,9 +44,9 @@ $allSigntools = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin\
     -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue
 
 # Prefer x64, then x86, then anything else
-$signtool = ($allSigntools | Where-Object { $_.DirectoryName -match "\\x64$" } | Select-Object -First 1) ??
-($allSigntools | Where-Object { $_.DirectoryName -match "\\x86$" } | Select-Object -First 1) ??
-($allSigntools | Select-Object -First 1)
+$signtool = $allSigntools | Where-Object { $_.DirectoryName -match "\\x64$" } | Select-Object -First 1
+if (-not $signtool) { $signtool = $allSigntools | Where-Object { $_.DirectoryName -match "\\x86$" } | Select-Object -First 1 }
+if (-not $signtool) { $signtool = $allSigntools | Select-Object -First 1 }
 
 if (-not $signtool) {
     Write-Error "signtool.exe not found under 'C:\Program Files (x86)\Windows Kits\10\bin\'."
