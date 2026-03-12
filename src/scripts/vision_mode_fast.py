@@ -132,9 +132,8 @@ class VisionModeFast:
                 return self.request_draw("Unknown item", "#ce7e00")
 
             res = Filter().should_keep(item_descr)
-            match = res.keep
 
-            if match:
+            if res.keep:
                 color = get_filter_colors().matched
                 if not res.matched:
                     if item_descr.rarity == ItemRarity.Unique:
