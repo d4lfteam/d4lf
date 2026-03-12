@@ -231,7 +231,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         return _update_item_object(item, item_type=ItemType.Gem)
     if any(tts_item[1].lower().endswith(x) for x in ["whispering wood"]):
         return _update_item_object(item, item_type=ItemType.WhisperingWood)
-    if any(tts_item[1].lower().startswith(x) for x in ["cosmetic"]) or tts_item[3] == "Crucible Cosmetic Variant":
+    if any(tts_item[1].lower().startswith(x) for x in ["cosmetic"]):
         return _update_item_object(item, item_type=ItemType.Cosmetic)
     if any(tts_item[1].lower().endswith(x) for x in ["boss key"]):
         return _update_item_object(item, item_type=ItemType.LairBossKey)
