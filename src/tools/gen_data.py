@@ -78,7 +78,7 @@ def is_placeholder_or_test_name(name) -> bool:
             "_test_",
             "(not_used",
             "(dns)",
-            "(crucible)"
+            "(crucible)",
         ]
     ):
         return True
