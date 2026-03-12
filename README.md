@@ -35,6 +35,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
   - Navigate to your d4lf directory
   - Right click anywhere that isn't an icon and choose "Open in Terminal". If you don't see this option, google how to open powershell and navigate to your d4lf directory.
   - Type the following: `.\sign_dll.ps1`
+    - If you get any issues with permissions, run `Set-ExecutionPolicy Unrestricted -Scope CurrentUser` first then run the above command
   - When prompted for d4_path, paste in the D4 directory you located previously
 - Generate a profile of what you want to filter for. To do so you have a few options:
   - Run d4lf.exe and import a profile using the import window by pasting a build page from popular planner websites
