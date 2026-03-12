@@ -4,14 +4,14 @@ requires = ["hatchling"]
 
 [dependency-groups]
 dev = [
+    "prek",
     "pyinstaller",
+    "pytest",
     "pytest-env",
     "pytest-mock",
     "pytest-pythonpath",
     "pytest-xdist",
-    "pytest",
-    "typing-extensions",
-    "prek"
+    "typing-extensions"
 ]
 
 [project]
@@ -142,6 +142,7 @@ ignore = [
     "RUF043",  # fix more in the future
     "RUF045",  # fix more in the future
     "RUF059",  # fix more in the future
+    "RUF067",  # fix more in the future
     "S101",  # fix more in the future
     "S311",  # fix more in the future
     "S404",
@@ -158,7 +159,8 @@ ignore = [
     "TRY002",  # fix more in the future
     "TRY003",  # fix more in the future
     "TRY004",  # fix more in the future
-    "TRY400"  # fix more in the future
+    "TRY400",  # fix more in the future
+    "UP047"  # fix more in the future
 ]
 select = ["ALL"]
 

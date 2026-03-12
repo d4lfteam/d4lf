@@ -83,7 +83,16 @@
     "chainscourged_mail": {
         "num_inherents": 0
     },
+    "cluckeye": {
+        "num_inherents": 1
+    },
+    "cluckonomicon": {
+        "num_inherents": 0
+    },
     "condemnation": {
+        "num_inherents": 1
+    },
+    "coop_de_grâce": {
         "num_inherents": 1
     },
     "cowl_of_the_nameless": {
@@ -127,6 +136,12 @@
     },
     "ebonpiercer": {
         "num_inherents": 0
+    },
+    "eggcecutioner": {
+        "num_inherents": 1
+    },
+    "eggis": {
+        "num_inherents": 3
     },
     "endurant_faith": {
         "num_inherents": 0

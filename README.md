@@ -20,22 +20,18 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 ## How to Setup
 
-### Game Settings
-
-- Game Language must be English
-- IMPORTANT: Advanced Tooltip Information must be enabled in Options > Gameplay > Gameplay. If you don't do this then item parsing will be very inconsistent and you will receive no warning something is wrong.
-- Font scale in Graphics settings must be small or medium
-- HDR makes the screen too bright and D4LF is unable to read the state of some items on screen. It must be disabled.
-- Use Screen Reader must be enabled in Options > Accessibility
-- 3rd Party Screen Reader must be enabled in Options > Accessibility (The voice will go away when DLL is installed, see quick start guide below)
-
-### Installation and quick start guide
+### Installation and quick start guide (New instructions for season 12 that must be followed!)
 
 - Download and extract the latest version (.zip) from the releases: https://github.com/d4lfteam/d4lf/releases
 - Copy `saapi64.dll` from the downloaded folder to your "Diablo IV" directory
   - To find your D4 directory:
     - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
     - In Steam, right click the game, select Manage > Browse local files
+- **New for Season 12** The saapi64.dll must be locally signed for D4 to pick it up. We have written a script to do this for you. It is a one-time process per computer.
+  - Navigate to your d4lf directory
+  - Right click and choose "Open in Terminal"
+  - Type the following: `.\sign_dll.ps1`
+  - When prompted for d4_path, paste in the D4 directory you located previously
 - Generate a profile of what you want to filter for. To do so you have a few options:
   - Run d4lf.exe and import a profile using the import window by pasting a build page from popular planner websites
   - Create one yourself by looking at the [examples](#how-to-filter--profiles) below
@@ -47,6 +43,15 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - If you made changes, restart d4lf.exe and launch Diablo 4.
 - Use the hotkeys listed in d4lf.exe to run filtering. By default, F11 will run the loot filter and filter your items.
 - For most common issues, if something is wrong, you will see an error or warning when you start d4lf.exe. Join our [discord](https://discord.gg/YyzaPhAN6T) for more help.
+
+### Game Settings
+
+- Game Language must be English
+- IMPORTANT: Advanced Tooltip Information must be enabled in Options > Gameplay > Gameplay. If you don't do this then item parsing will be very inconsistent and you will receive no warning something is wrong.
+- Font scale in Graphics settings must be small or medium
+- HDR makes the screen too bright and D4LF is unable to read the state of some items on screen. It must be disabled.
+- Use Screen Reader must be enabled in Options > Accessibility
+- 3rd Party Screen Reader must be enabled in Options > Accessibility (The voice will go away when DLL is installed, see quick start guide below)
 
 ### Common problems
 
@@ -700,7 +705,13 @@ If you receive an error about missing Visual Studio code, follow the link it pro
 
 ### Formatting & Linting
 
-Just use prek. If it's your first setup, run:
+Just use prek. If it's your first setup, you will need to install the NuGet package provider. Open Windows Powershell and run::
+
+```
+Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser
+```
+
+Then run:
 
 ```bash
 prek install

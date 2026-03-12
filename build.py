@@ -26,6 +26,7 @@ def copy_additional_resources(release_dir: Path):
     shutil.copy("README.md", release_dir)
     shutil.copy("tts/saapi64.dll", release_dir)
     shutil.copytree("assets", release_dir / "assets")
+    shutil.copy("tts/sign_dll.ps1", release_dir)
 
 
 def create_batch_for_consoleonly(release_dir: Path, exe_name: str):
