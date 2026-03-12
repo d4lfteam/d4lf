@@ -788,8 +788,8 @@ class ParagonOverlay(tk.Toplevel):
     def _close_build_dropdown(self) -> None:
         """Destroy the floating builds popup and remove its temporary bindings."""
         popup = getattr(self, "_build_popup", None)
-        setattr(self, "_build_popup", None)
-        setattr(self, "_build_popup_refresh", None)
+        self._build_popup = None
+        self._build_popup_refresh = None
 
         if popup:
             with suppress(Exception):
@@ -939,8 +939,8 @@ class ParagonOverlay(tk.Toplevel):
                 popup.transient(self)
             popup.resizable(False, False)
             popup.bind("<Escape>", lambda *_: self._close_build_dropdown())
-            setattr(self, "_build_popup", popup)
-            setattr(self, "_build_popup_refresh", self._build_build_popup(popup))
+            self._build_popup = popup
+            self._build_popup_refresh = self._build_build_popup(popup)
 
         self._apply_accent_frames()
         if callable(refresh := getattr(self, "_build_popup_refresh", None)):
@@ -959,8 +959,7 @@ class ParagonOverlay(tk.Toplevel):
 
         if x + pw > vx + vw - margin:
             x = max(vx + margin, (vx + vw) - pw - margin)
-        if x < vx + margin:
-            x = vx + margin
+        x = max(x, vx + margin)
         if y + ph > vy + vh - margin:
             y = max(vy + margin, self.btn_build_menu.winfo_rooty() - ph - int(4 * s))
 
@@ -977,25 +976,16 @@ class ParagonOverlay(tk.Toplevel):
             # is now a separate window. Escape is bound on both windows so the
             # shortcut still works regardless of which one currently has focus.
             if not getattr(self, "_build_popup_bind_id", None):
-                setattr(
-                    self,
-                    "_build_popup_bind_id",
-                    self.bind(
-                        "<Button-1>",
-                        lambda e: self._handle_global_click(
-                            e,
-                            "_build_popup",
-                            self.btn_build_menu,
-                            self._close_build_dropdown,
-                        ),
-                        add="+",
+                self._build_popup_bind_id = self.bind(
+                    "<Button-1>",
+                    lambda e: self._handle_global_click(
+                        e, "_build_popup", self.btn_build_menu, self._close_build_dropdown
                     ),
+                    add="+",
                 )
             if not getattr(self, "_build_popup_escape_bind_id", None):
-                setattr(
-                    self,
-                    "_build_popup_escape_bind_id",
-                    self.bind("<Escape>", lambda *_: self._close_build_dropdown(), add="+"),
+                self._build_popup_escape_bind_id = self.bind(
+                    "<Escape>", lambda *_: self._close_build_dropdown(), add="+"
                 )
 
         self.after_idle(_arm)
