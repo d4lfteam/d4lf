@@ -28,6 +28,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
     - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
     - In Steam, right click the game, select Manage > Browse local files
 - **New for Season 12** The saapi64.dll must be locally signed for D4 to pick it up. We have written a script to do this for you. It is a one-time process per computer.
+  - If you are on Windows 10, you need to install Windows SDK Signing Tools from this link: https://go.microsoft.com/fwlink/?linkid=2311805
   - Navigate to your d4lf directory
   - Right click and choose "Open in Terminal"
   - Type the following: `.\sign_dll.ps1`
