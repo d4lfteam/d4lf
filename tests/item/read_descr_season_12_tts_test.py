@@ -135,8 +135,7 @@ items = [
             seasonal_attribute=SeasonalAttribute.bloodied,
         ),
     ),
-    # The new DOOM cosmetics are uniques and not just cosmetics. Pay to win!??!
-    # They should be ignored
+    # New DOOM cosmetics are just regular uniques with the word crucible in them. We remove the word and treat as normal uniques
     (
         [
             "SHARD OF VERATHIEL (CRUCIBLE)",
