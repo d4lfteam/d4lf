@@ -12,7 +12,6 @@ import re
 import sys
 import threading
 import tkinter as tk
-import tkinter.font as tkfont
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -862,10 +861,10 @@ class ParagonOverlay(tk.Toplevel):
         if popup_attr == "_settings_popup":
             popup_width = popup.winfo_reqwidth()
         else:
-            # The builds popup can contain very long names. The requested width of
-            # the frame alone is not enough, so we explicitly measure the longest
-            # possible text width and use the larger of both values.
-            popup_width = max(popup.winfo_reqwidth(), self._measure_build_popup_width())
+            # The builds popup can contain very long names. Measure the widget
+            # tree after refresh so the final width reflects the widest real row
+            # without creating new Tk font objects at click time.
+            popup_width = max(popup.winfo_reqwidth(), self._measure_build_popup_width(popup))
 
         pw = min(max(1, popup_width), max(1, self.winfo_width() - int(8 * s)))
         ph = popup.winfo_reqheight()
@@ -922,42 +921,22 @@ class ParagonOverlay(tk.Toplevel):
             lambda e: self._handle_global_click(e, "_settings_popup", self.btn_settings, self._close_settings_dropdown),
         )
 
-    def _measure_build_popup_width(self) -> int:
-        """Return a safe popup width for the builds dropdown.
+    def _measure_build_popup_width(self, popup: tk.Misc) -> int:
+        """Return the widest requested width found inside the builds popup.
 
-        Tk's requested width can underestimate the real width that is needed when
-        the popup content is rebuilt dynamically or when the active build uses a
-        bold font. This helper measures the longest relevant text and adds the
-        fixed UI chrome around it.
+        The overlay window runs in its own Tk thread, so creating new ``tkfont.Font``
+        objects during a click callback can raise ``RuntimeError: main thread is not
+        in main loop`` on some systems. Measuring the already-built widget tree keeps
+        the dynamic sizing behavior while avoiding extra font creation.
         """
-        scale = float(self._cfg.ui_scale or 1.0)
-        btn_font = tkfont.Font(family="Segoe UI", size=int(FS_BUILDS_MENU * scale))
-        active_btn_font = tkfont.Font(family="Segoe UI", size=int(FS_BUILDS_MENU * scale), weight="bold")
-        header_font = tkfont.Font(family="Segoe UI", size=int(FS_BUILDS_MENU * scale), weight="bold")
-
-        # Start with the fallback label so the popup still has a sensible minimum
-        # width even if the loaded data is incomplete.
-        text_widths = [btn_font.measure("Unknown Build")]
-        groups: dict[str, list[dict[str, Any]]] = {}
-        for build in self.builds:
-            groups.setdefault(str(build.get("profile") or "Ungrouped"), []).append(build)
-            name = str(build.get("name") or "Unknown Build")
-            # Measure both normal and active states because the selected build is
-            # rendered in bold and can therefore be slightly wider.
-            text_widths.extend((btn_font.measure(name), active_btn_font.measure(name)))
-
-        if len(groups) > 1:
-            # Group headers use the same bold style as the active row and must
-            # therefore also be included in the width calculation.
-            text_widths.extend(header_font.measure(group_name) for group_name in groups)
-
-        content_width = max(text_widths, default=0)
-        # Extra space for button padding, the surrounding frame, and the vertical
-        # scrollbar that is always present in the builds popup layout.
-        horizontal_padding = int(72 * scale)
-        scrollbar_width = int(22 * scale)
-        frame_padding = int(24 * scale)
-        return content_width + horizontal_padding + scrollbar_width + frame_padding
+        max_width = 0
+        stack: list[tk.Misc] = [popup]
+        while stack:
+            widget = stack.pop()
+            with suppress(Exception):
+                max_width = max(max_width, int(widget.winfo_reqwidth()))
+                stack.extend(widget.winfo_children())
+        return max_width
 
     def _build_build_popup(self, host: tk.Misc) -> Any:
         """Create the scrollable builds popup and return its refresh callback."""
