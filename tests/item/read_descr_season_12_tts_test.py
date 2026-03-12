@@ -11,7 +11,7 @@ from src.item.models import Item
 
 items = [
     (
-        # The next 3 tests are bloodied items
+        # The next 2 tests are bloodied items
         [
             "INIMICAL SEAL OF PILGRIMS PROGRESS",
             "Bloodied Legendary Amulet",
@@ -133,6 +133,46 @@ items = [
             power=393,
             rarity=ItemRarity.Rare,
             seasonal_attribute=SeasonalAttribute.bloodied,
+        ),
+    ),
+    # The new DOOM cosmetics are uniques and not just cosmetics. Pay to win!??!
+    # They should be ignored
+    (
+        [
+            "SHARD OF VERATHIEL (CRUCIBLE)",
+            "Ancestral Unique Sword",
+            "800 Item Power",
+            "Crucible Cosmetic Variant",
+            "298 Damage Per Second (+283)",
+            "[217 - 325] Damage per Hit",
+            "1.10 Attacks per Second (Fast)",
+            "+50.0% Damage [50.0]%",
+            "+58 All Stats +[51 - 65]",
+            "+24 Maximum Resource",
+            "+18.0% Basic Attack Speed [16.0 - 25.0]%",
+            "+2 to Basic Skills [1 - 2]",
+            "Basic Skills deal 115%[x] [50 - 150]% increased damage but additionally cost 25 Primary Resource.",
+            "Empty Socket",
+            "This blade once bore divine purpose wielded by the angel Verathiel. Like its keeper, the sword fell to Infernal depths. Yet beneath this corruption, is a heartbeat of a past memory, holding steadfast.",
+            "Requires Level 60. Account Bound. Unique Equipped",
+            "Unlocks new look on salvage",
+            "Sell Value: 117,933 Gold",
+            "Durability: 100/100",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[],
+            aspect=None,
+            codex_upgrade=False,
+            cosmetic_upgrade=True,
+            inherent=[],
+            is_in_shop=False,
+            item_type=ItemType.Cosmetic,
+            name=None,
+            original_name="SHARD OF VERATHIEL (CRUCIBLE)",
+            power=None,
+            rarity=None,
+            seasonal_attribute=None,
         ),
     ),
 ]
