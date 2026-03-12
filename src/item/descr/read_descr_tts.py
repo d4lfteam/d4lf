@@ -76,7 +76,7 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
     # This will also grab up slotted gems but we really don't have much choice
     if item.rarity == ItemRarity.Rare and any(
         tts_section[start + inherent_num + affixes_num - 1].lower().startswith(x)
-        for x in ["empty socket", "requires level", "properties lost when equipped"]
+        for x in ["empty socket", "requires level", "properties lost when equipped", "rampage:", "feast:", "hunger:"]
     ):
         affixes_num = 3
     elif item.rarity == ItemRarity.Legendary and tts_section[start + inherent_num + affixes_num - 1].lower().startswith(
@@ -91,7 +91,8 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
 def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
     starting_index = _get_affix_starting_location_from_tts_section(tts_section, item)
     inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
-    affixes = _get_affixes_from_tts_section(tts_section, item, starting_index, inherent_num + affixes_num)
+    affixes = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
+    aspect_text = _get_aspect_from_tts_section(tts_section, item, starting_index, len(affixes))
     for i, affix_text in enumerate(affixes):
         if i < inherent_num:
             affix = _get_affix_from_text(affix_text)
@@ -100,12 +101,14 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
         elif i < inherent_num + affixes_num:
             affix = _get_affix_from_text(affix_text)
             item.affixes.append(affix)
-        elif item.rarity == ItemRarity.Mythic:
-            item.aspect = Aspect(name=item.name, text=affix_text, value=find_number(affix_text))
+
+    if aspect_text:
+        if item.rarity == ItemRarity.Mythic:
+            item.aspect = Aspect(name=item.name, text=aspect_text, value=find_number(aspect_text))
         elif item.rarity == ItemRarity.Unique:
-            item.aspect = _get_aspect_from_text(affix_text, item.name)
+            item.aspect = _get_aspect_from_text(aspect_text, item.name)
         else:
-            item.aspect = _get_aspect_from_name(affix_text, item.name)
+            item.aspect = _get_aspect_from_name(aspect_text, item.name)
     return item
 
 
@@ -118,7 +121,8 @@ def _add_affixes_from_tts_mixed(
 ) -> Item:
     starting_index = _get_affix_starting_location_from_tts_section(tts_section, item)
     inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
-    affixes = _get_affixes_from_tts_section(tts_section, item, starting_index, inherent_num + affixes_num)
+    affixes = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
+    aspect_text = _get_aspect_from_tts_section(tts_section, item, starting_index, len(affixes))
 
     # With advanced item compare on we'll actually find more bullets than we need, so we don't rely on them for number of affixes
     if len(affixes) - 1 > len(affix_bullets):
@@ -140,22 +144,23 @@ def _add_affixes_from_tts_mixed(
             else:
                 affix.type = AffixType.normal
             item.affixes.append(affix)
+
+    if aspect_text:
+        if item.rarity == ItemRarity.Mythic:
+            item.aspect = Aspect(name=item.name, text=aspect_text, value=find_number(aspect_text))
+        elif item.rarity == ItemRarity.Unique:
+            item.aspect = _get_aspect_from_text(aspect_text, item.name)
         else:
-            if item.rarity == ItemRarity.Mythic:
-                item.aspect = Aspect(name=item.name, text=affix_text, value=find_number(affix_text))
-            elif item.rarity == ItemRarity.Unique:
-                item.aspect = _get_aspect_from_text(affix_text, item.name)
+            item.aspect = _get_aspect_from_name(aspect_text, item.name)
+        if item.aspect:
+            if not aspect_bullet:
+                LOGGER.warning(
+                    "No bullet was found for the aspect. If the aspect's first line is partially or fully off "
+                    "the screen, you can ignore this warning. Otherwise, please report a bug with a screenshot "
+                    "of the item."
+                )
             else:
-                item.aspect = _get_aspect_from_name(affix_text, item.name)
-            if item.aspect:
-                if not aspect_bullet:
-                    LOGGER.warning(
-                        "No bullet was found for the aspect. If the aspect's first line is partially or fully off "
-                        "the screen, you can ignore this warning. Otherwise, please report a bug with a screenshot "
-                        "of the item."
-                    )
-                else:
-                    item.aspect.loc = aspect_bullet.center
+                item.aspect.loc = aspect_bullet.center
     return item
 
 
@@ -260,7 +265,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     if any("sanctified" in tts_item[i].lower() for i in range(3, min(7, len(tts_item)))):
         item.seasonal_attribute = SeasonalAttribute.sanctified
 
-    search_string = tts_item[1].lower().replace("ancestral", "").replace("chaos", "").strip()
+    search_string = tts_item[1].lower().replace("ancestral", "").replace("bloodied", "").strip()
     search_string = _REPLACE_COMPARE_RE.sub("", search_string).strip()
     search_string_split = search_string.split(" ")
     item.rarity = _get_item_rarity(search_string_split[0])
@@ -311,12 +316,19 @@ def _get_index_of_armor_dps_or_all_resist(tts_section: list[str], indicator: str
     return 0
 
 
-def _get_affixes_from_tts_section(tts_section: list[str], item: Item, start: int, length: int):
+def _get_affixes_from_tts_section(tts_section: list[str], start: int, length: int):
+    return tts_section[start : start + length]
+
+
+def _get_aspect_from_tts_section(tts_section: list[str], item: Item, start: int, num_affixes: int):
     # Grab the aspect as well in this case
     if item.rarity in [ItemRarity.Mythic, ItemRarity.Unique, ItemRarity.Legendary]:
-        length += 1
+        aspect_index = start + num_affixes
+        if item.seasonal_attribute == SeasonalAttribute.bloodied:
+            aspect_index = aspect_index + 1
+        return tts_section[aspect_index]
 
-    return tts_section[start : start + length]
+    return None
 
 
 def _get_affix_from_text(text: str) -> Affix:
