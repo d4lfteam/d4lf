@@ -11,7 +11,7 @@ from src.item.models import Item
 
 items = [
     (
-        # The next 3 tests are bloodied items
+        # The next 2 tests are bloodied items
         [
             "INIMICAL SEAL OF PILGRIMS PROGRESS",
             "Bloodied Legendary Amulet",
@@ -133,6 +133,93 @@ items = [
             power=393,
             rarity=ItemRarity.Rare,
             seasonal_attribute=SeasonalAttribute.bloodied,
+        ),
+    ),
+    # New DOOM cosmetics are just regular uniques with the word crucible in them. We remove the word and treat as normal uniques
+    (
+        [
+            "SHARD OF VERATHIEL (CRUCIBLE)",
+            "Ancestral Unique Sword",
+            "800 Item Power",
+            "Crucible Cosmetic Variant",
+            "298 Damage Per Second (+283)",
+            "[217 - 325] Damage per Hit",
+            "1.10 Attacks per Second (Fast)",
+            "+50.0% Damage [50.0]%",
+            "+58 All Stats +[51 - 65]",
+            "+24 Maximum Resource",
+            "+18.0% Basic Attack Speed [16.0 - 25.0]%",
+            "+2 to Basic Skills [1 - 2]",
+            "Basic Skills deal 115%[x] [50 - 150]% increased damage but additionally cost 25 Primary Resource.",
+            "Empty Socket",
+            "This blade once bore divine purpose wielded by the angel Verathiel. Like its keeper, the sword fell to Infernal depths. Yet beneath this corruption, is a heartbeat of a past memory, holding steadfast.",
+            "Requires Level 60. Account Bound. Unique Equipped",
+            "Unlocks new look on salvage",
+            "Sell Value: 117,933 Gold",
+            "Durability: 100/100",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(
+                    max_value=65.0,
+                    min_value=51.0,
+                    name="all_stats",
+                    text="+58 All Stats +[51 - 65]",
+                    type=AffixType.normal,
+                    value=58.0,
+                ),
+                Affix(
+                    max_value=None,
+                    min_value=None,
+                    name="maximum_resource",
+                    text="+24 Maximum Resource",
+                    type=AffixType.greater,
+                    value=24.0,
+                ),
+                Affix(
+                    max_value=25.0,
+                    min_value=16.0,
+                    name="basic_attack_speed",
+                    text="+18.0% Basic Attack Speed [16.0 - 25.0]%",
+                    type=AffixType.normal,
+                    value=18.0,
+                ),
+                Affix(
+                    max_value=2.0,
+                    min_value=1.0,
+                    name="to_basic_skills",
+                    text="+2 to Basic Skills [1 - 2]",
+                    type=AffixType.normal,
+                    value=2.0,
+                ),
+            ],
+            aspect=Aspect(
+                name="shard_of_verathiel",
+                min_value=50.0,
+                max_value=150.0,
+                text="Basic Skills deal 115%[x] [50 - 150]% increased damage but additionally cost 25 Primary Resource.",
+                value=115.0,
+            ),
+            codex_upgrade=False,
+            cosmetic_upgrade=True,
+            inherent=[
+                Affix(
+                    max_value=50.0,
+                    min_value=50.0,
+                    name="damage",
+                    text="+50.0% Damage [50.0]%",
+                    type=AffixType.inherent,
+                    value=50.0,
+                )
+            ],
+            is_in_shop=False,
+            item_type=ItemType.Sword,
+            name="shard_of_verathiel",
+            original_name="SHARD OF VERATHIEL (CRUCIBLE)",
+            power=800,
+            rarity=ItemRarity.Unique,
+            seasonal_attribute=None,
         ),
     ),
 ]
