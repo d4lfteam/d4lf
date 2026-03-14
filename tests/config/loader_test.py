@@ -1,8 +1,13 @@
-from pathlib import Path
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import pytest
 
 from src.config.loader import PARAMS_INI, IniConfigLoader
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture
@@ -35,7 +40,7 @@ def isolated_ini_loader(tmp_path: Path):
 
 
 class TestIniConfigLoader:
-    def test_reload_if_changed_updates_models_and_revision(self, isolated_ini_loader: IniConfigLoader):
+    def test_reload_if_changed_updates_models_and_revision(self, isolated_ini_loader: IniConfigLoader) -> None:
         loader = isolated_ini_loader
         revision_before_change = loader.config_revision
         config_path = loader.user_dir / PARAMS_INI
@@ -46,21 +51,21 @@ class TestIniConfigLoader:
         assert loader.config_revision > revision_before_change
         assert loader.reload_if_changed() is False
 
-    def test_property_access_auto_reloads_changed_config(self, isolated_ini_loader: IniConfigLoader):
+    def test_property_access_auto_reloads_changed_config(self, isolated_ini_loader: IniConfigLoader) -> None:
         loader = isolated_ini_loader
         config_path = loader.user_dir / PARAMS_INI
         config_path.write_text("[general]\nrun_vision_mode_on_startup = false\n", encoding="utf-8")
 
         assert loader.general.run_vision_mode_on_startup is False
 
-    def test_save_value_updates_model_without_reloading_from_file(self, isolated_ini_loader: IniConfigLoader):
+    def test_save_value_updates_model_without_reloading_from_file(self, isolated_ini_loader: IniConfigLoader) -> None:
         loader = isolated_ini_loader
 
         loader.save_value("general", "profiles", "alpha, beta")
 
         assert loader.general.profiles == ["alpha", "beta"]
 
-    def test_save_value_notifies_change_listeners(self, isolated_ini_loader: IniConfigLoader):
+    def test_save_value_notifies_change_listeners(self, isolated_ini_loader: IniConfigLoader) -> None:
         loader = isolated_ini_loader
         notified_changes: list[frozenset[str]] = []
 
@@ -69,7 +74,7 @@ class TestIniConfigLoader:
 
         assert notified_changes == [frozenset({"advanced_options.log_lvl"})]
 
-    def test_reload_if_changed_notifies_changed_keys(self, isolated_ini_loader: IniConfigLoader):
+    def test_reload_if_changed_notifies_changed_keys(self, isolated_ini_loader: IniConfigLoader) -> None:
         loader = isolated_ini_loader
         notified_changes: list[frozenset[str]] = []
         config_path = loader.user_dir / PARAMS_INI
