@@ -25,10 +25,6 @@ class TributesTab(QWidget):
         self.tribute_list_widget = QListWidget()
         self.loaded = False
 
-        # Normalize existing data immediately so old combined name+rarity rules
-        # become the simpler independent rules that the editor now exposes.
-        self._normalize_tributes()
-
     def load(self):
         if not self.loaded:
             self.setup_ui()
@@ -39,7 +35,7 @@ class TributesTab(QWidget):
         main_layout.setContentsMargins(0, 20, 0, 20)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         label = QLabel(
-            "Add tribute names and tribute rarities you want to keep. These rules are evaluated independently."
+            "Add tribute names and tribute rarities you want to keep. Existing combined rules are preserved as-is."
         )
         label.setWordWrap(True)
         main_layout.addWidget(label)
@@ -68,42 +64,6 @@ class TributesTab(QWidget):
         btn_layout.addWidget(remove_rule_btn)
         return btn_layout
 
-    def _normalize_tributes(self):
-        """Split old combined tribute entries into simple independent rules."""
-        normalized: list[TributeFilterModel] = []
-        seen: set[tuple[str, str]] = set()
-
-        for tribute in self.tributes:
-            if tribute.name:
-                self._append_unique_rule(normalized, seen, TributeFilterModel(name=tribute.name))
-
-            for rarity in tribute.rarities:
-                item_rarity = ItemRarity(rarity)
-                self._append_unique_rule(normalized, seen, TributeFilterModel(rarities=[item_rarity]))
-
-        self.tributes[:] = normalized
-
-    @staticmethod
-    def _append_unique_rule(
-        normalized: list[TributeFilterModel], seen: set[tuple[str, str]], tribute: TributeFilterModel
-    ):
-        """Append a tribute rule once, preserving the original order."""
-        rule_key = TributesTab._rule_key(tribute)
-        if rule_key in seen:
-            return
-
-        normalized.append(tribute)
-        seen.add(rule_key)
-
-    @staticmethod
-    def _rule_key(tribute: TributeFilterModel) -> tuple[str, str]:
-        """Build a stable identity for duplicate detection in the editor."""
-        if tribute.name:
-            return ("name", tribute.name)
-
-        rarity = ItemRarity(tribute.rarities[0])
-        return ("rarity", rarity.value)
-
     def _reload_tribute_list_widget(self):
         self.tribute_list_widget.clear()
         for tribute in self.tributes:
@@ -111,13 +71,19 @@ class TributesTab(QWidget):
 
     @staticmethod
     def _display_text(tribute: TributeFilterModel) -> str:
-        """Render a tribute rule as user-facing text in the list widget."""
+        if not tribute.name and not tribute.rarities:
+            return "Empty tribute rule"
+
+        parts = []
         if tribute.name:
             tribute_name = Dataloader().tribute_dict.get(tribute.name, tribute.name)
-            return f"Tribute: {tribute_name}"
+            parts.append(f"Tribute: {tribute_name}")
 
-        rarity = ItemRarity(tribute.rarities[0])
-        return f"Rarity: {rarity.name}"
+        if tribute.rarities:
+            rarity_names = ", ".join(ItemRarity(rarity).name for rarity in tribute.rarities)
+            parts.append(f"Rarities: {rarity_names}")
+
+        return " | ".join(parts)
 
     def add_tribute(self):
         dialog = CreateTribute(self._existing_tribute_names())
@@ -146,7 +112,11 @@ class TributesTab(QWidget):
             self.tributes.pop(row)
 
     def _existing_tribute_names(self) -> list[str]:
-        return [tribute.name for tribute in self.tributes if tribute.name]
+        return [tribute.name for tribute in self.tributes if tribute.name and not tribute.rarities]
 
     def _existing_rarities(self) -> list[ItemRarity]:
-        return [ItemRarity(tribute.rarities[0]) for tribute in self.tributes if tribute.rarities]
+        return [
+            ItemRarity(tribute.rarities[0])
+            for tribute in self.tributes
+            if tribute.rarities and not tribute.name and len(tribute.rarities) == 1
+        ]

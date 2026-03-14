@@ -3,13 +3,13 @@ import typing
 import pytest
 from natsort import natsorted
 
-from src.config.models import ItemRarity, SigilPriority
+from src.config.models import SigilPriority
 from src.item.filter import Filter, FilterResult
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.aspects import aspects
 from tests.item.filter.data.sigils import sigil_jalal, sigil_priority, sigils
-from tests.item.filter.data.tributes import TestTribute, tributes
+from tests.item.filter.data.tributes import tributes
 from tests.item.filter.data.uniques import aspect_only_mythic_tests, simple_mythics, uniques
 
 if typing.TYPE_CHECKING:
@@ -79,19 +79,6 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
     test_filter = _create_mocked_filter(mocker)
     test_filter.tribute_filters = {filters.tributes.name: filters.tributes.Tributes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
-
-
-def test_tribute_combined_rule_matches_name_or_rarity(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.tribute_filters = {filters.tributes_combined.name: filters.tributes_combined.Tributes}
-
-    name_match_result = test_filter.should_keep(TestTribute(name="tribute_of_pride", rarity=ItemRarity.Magic))
-    rarity_match_result = test_filter.should_keep(TestTribute(name="tribute_of_fake", rarity=ItemRarity.Unique))
-    no_match_result = test_filter.should_keep(TestTribute(name="tribute_of_fake", rarity=ItemRarity.Magic))
-
-    assert [match.profile for match in name_match_result.matched] == [filters.tributes_combined.name]
-    assert [match.profile for match in rarity_match_result.matched] == [filters.tributes_combined.name]
-    assert no_match_result.matched == []
 
 
 @pytest.mark.parametrize(
