@@ -232,10 +232,14 @@ class Filter:
 
         for profile_name, profile_filter in self.tribute_filters.items():
             for filter_item in profile_filter:
-                if filter_item.name and not item.name.startswith(filter_item.name):
+                has_name_rule = bool(filter_item.name)
+                has_rarity_rule = bool(filter_item.rarities)
+                if not has_name_rule and not has_rarity_rule:
                     continue
 
-                if filter_item.rarities and item.rarity not in filter_item.rarities:
+                name_matches = has_name_rule and item.name.startswith(filter_item.name)
+                rarity_matches = has_rarity_rule and item.rarity in filter_item.rarities
+                if not name_matches and not rarity_matches:
                     continue
 
                 LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Tributes")
@@ -600,7 +604,19 @@ class Filter:
         if item.item_type == ItemType.Tribute:
             return self._check_tribute(item)
 
-        if item.item_type is None or item.power is None or (is_junk_rarity(item.rarity) and not item.cosmetic_upgrade):
+        if item.item_type is None or item.power is None:
+            return res
+
+        if (
+            IniConfigLoader().general.junk_3_affix_rares
+            and item.rarity == ItemRarity.Rare
+            and not item.cosmetic_upgrade
+            and sum(1 for affix in item.affixes if affix.type != AffixType.tempered) == 3
+        ):
+            LOGGER.info(f"{item.original_name} -- Matched: Rare with only 3 affixes and configured to be junk")
+            return res
+
+        if is_junk_rarity(item.rarity) and not item.cosmetic_upgrade:
             return res
 
         if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:

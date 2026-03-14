@@ -235,6 +235,10 @@ tributes = ProfileModel(
     ],
 )
 
+tributes_combined = ProfileModel(
+    name="tributes_combined", Tributes=[TributeFilterModel(name="tribute_of_pride", rarities=[ItemRarity.Unique])]
+)
+
 unique = ProfileModel(
     name="test",
     Uniques=[

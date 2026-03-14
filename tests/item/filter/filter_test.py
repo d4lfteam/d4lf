@@ -3,19 +3,22 @@ import typing
 import pytest
 from natsort import natsorted
 
+from src.config.loader import IniConfigLoader
 from src.config.models import SigilPriority
+from src.item.data.affix import Affix
+from src.item.data.item_type import ItemType
+from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter, FilterResult
+from src.item.models import Item
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.aspects import aspects
 from tests.item.filter.data.sigils import sigil_jalal, sigil_priority, sigils
-from tests.item.filter.data.tributes import tributes
+from tests.item.filter.data.tributes import TestTribute, tributes
 from tests.item.filter.data.uniques import aspect_only_mythic_tests, simple_mythics, uniques
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
-
-    from src.item.models import Item
 
 
 def _create_mocked_filter(mocker: MockerFixture) -> Filter:
@@ -81,6 +84,19 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
+def test_tribute_combined_rule_matches_name_or_rarity(mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.tribute_filters = {filters.tributes_combined.name: filters.tributes_combined.Tributes}
+
+    name_match_result = test_filter.should_keep(TestTribute(name="tribute_of_pride", rarity=ItemRarity.Magic))
+    rarity_match_result = test_filter.should_keep(TestTribute(name="tribute_of_fake", rarity=ItemRarity.Unique))
+    no_match_result = test_filter.should_keep(TestTribute(name="tribute_of_fake", rarity=ItemRarity.Magic))
+
+    assert [match.profile for match in name_match_result.matched] == [filters.tributes_combined.name]
+    assert [match.profile for match in rarity_match_result.matched] == [filters.tributes_combined.name]
+    assert no_match_result.matched == []
+
+
 @pytest.mark.parametrize(
     ("_name", "result", "item"), natsorted(uniques), ids=[name for name, _, _ in natsorted(uniques)]
 )
@@ -112,3 +128,39 @@ def test_unfiltered_unique_is_kept(
     test_filter_result = test_filter.should_keep(item)
     assert natsorted([match.profile for match in test_filter_result.matched]) == natsorted(matched)
     assert test_filter_result.keep == should_keep
+
+
+def _three_affix_rare_that_matches_a_filter() -> Item:
+    return Item(
+        item_type=ItemType.Boots,
+        power=910,
+        rarity=ItemRarity.Rare,
+        affixes=[
+            Affix(name="cold_resistance", value=5),
+            Affix(name="movement_speed", value=5),
+            Affix(name="shadow_resistance", value=5),
+        ],
+    )
+
+
+def test_three_affix_rares_can_be_junked_even_when_they_match_a_filter(mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.affix_filters = {filters.affix.name: filters.affix.Affixes}
+    mocker.patch.object(IniConfigLoader().general, "junk_rares", False)
+    mocker.patch.object(IniConfigLoader().general, "junk_3_affix_rares", True)
+
+    test_filter_result = test_filter.should_keep(_three_affix_rare_that_matches_a_filter())
+
+    assert test_filter_result.keep is False
+    assert test_filter_result.matched == []
+
+
+def test_three_affix_rares_still_match_filters_when_option_is_disabled(mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.affix_filters = {filters.affix.name: filters.affix.Affixes}
+    mocker.patch.object(IniConfigLoader().general, "junk_rares", False)
+    mocker.patch.object(IniConfigLoader().general, "junk_3_affix_rares", False)
+
+    assert [match.profile for match in test_filter.should_keep(_three_affix_rare_that_matches_a_filter()).matched] == [
+        "test.ResBoots"
+    ]
