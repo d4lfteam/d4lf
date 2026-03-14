@@ -15,6 +15,7 @@ import src.tts
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import ItemRefreshType, VisionModeType
+from src.dataloader import Dataloader
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
 from src.paragon_overlay import request_close, run_paragon_overlay
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
@@ -27,6 +28,21 @@ from src.utils.window import screenshot
 LOGGER = logging.getLogger(__name__)
 
 LOCK = threading.Lock()
+HOTKEY_SETTING_KEYS = {
+    "advanced_options.exit_key",
+    "advanced_options.force_refresh_only",
+    "advanced_options.move_to_chest",
+    "advanced_options.move_to_inv",
+    "advanced_options.run_filter",
+    "advanced_options.run_filter_drop",
+    "advanced_options.run_filter_force_refresh",
+    "advanced_options.run_vision_mode",
+    "advanced_options.toggle_paragon_overlay",
+    "advanced_options.vision_mode_only",
+}
+LANGUAGE_SETTING_KEYS = {"general.language"}
+LOG_LEVEL_SETTING_KEYS = {"advanced_options.log_lvl"}
+VISION_MODE_SETTING_KEYS = {"general.vision_mode_type"}
 
 
 class ScriptHandler:
@@ -34,17 +50,100 @@ class ScriptHandler:
         self.loot_interaction_thread = None
         self.paragon_overlay_thread: threading.Thread | None = None
         self._vision_mode_was_running_before_overlay = False
-        if IniConfigLoader().general.vision_mode_type == VisionModeType.fast:
-            self.vision_mode = src.scripts.vision_mode_fast.VisionModeFast()
-        else:
-            self.vision_mode = src.scripts.vision_mode_with_highlighting.VisionModeWithHighlighting()
+        self._hotkey_handles: list[typing.Any] = []
+        self._runtime_config_lock = threading.RLock()
+        self._config = IniConfigLoader()
+        self._vision_mode_type = self._config.general.vision_mode_type
+        self._language = self._config.general.language
+        self._log_level = self._config.advanced_options.log_lvl.value.upper()
+        self.vision_mode = self._create_vision_mode(self._vision_mode_type)
 
         self.setup_key_binds()
-        if IniConfigLoader().general.run_vision_mode_on_startup:
+        self._config.register_listener(self._on_config_changed)
+        if self._config.general.run_vision_mode_on_startup:
             self.run_vision_mode()
+
+    def _create_vision_mode(self, vision_mode_type: VisionModeType):
+        if vision_mode_type == VisionModeType.fast:
+            return src.scripts.vision_mode_fast.VisionModeFast()
+        return src.scripts.vision_mode_with_highlighting.VisionModeWithHighlighting()
 
     def _graceful_exit(self):
         safe_exit()
+
+    def _on_config_changed(self, changed_keys: set[str]) -> None:
+        """Apply relevant runtime settings immediately after a config change event."""
+        with self._runtime_config_lock:
+            if changed_keys & LOG_LEVEL_SETTING_KEYS:
+                self._refresh_logging_level(self._config)
+            if changed_keys & HOTKEY_SETTING_KEYS:
+                self._refresh_hotkeys(self._config)
+            if changed_keys & LANGUAGE_SETTING_KEYS:
+                self._refresh_language_assets(self._config)
+            if changed_keys & VISION_MODE_SETTING_KEYS:
+                self._refresh_vision_mode(self._config)
+
+    def _hotkey_signature(self, config: IniConfigLoader) -> tuple[str | bool, ...]:
+        advanced_options = config.advanced_options
+        return (
+            advanced_options.run_vision_mode,
+            advanced_options.exit_key,
+            advanced_options.toggle_paragon_overlay,
+            advanced_options.vision_mode_only,
+            advanced_options.run_filter,
+            advanced_options.run_filter_drop,
+            advanced_options.run_filter_force_refresh,
+            advanced_options.force_refresh_only,
+            advanced_options.move_to_inv,
+            advanced_options.move_to_chest,
+        )
+
+    def _refresh_hotkeys(self, config: IniConfigLoader) -> None:
+        if sys.platform == "darwin":
+            return
+
+        current_signature = self._hotkey_signature(config)
+        if getattr(self, "_current_hotkey_signature", None) == current_signature:
+            return
+
+        self._clear_key_binds()
+        self.setup_key_binds()
+        LOGGER.info("Reloaded hotkeys from updated settings")
+
+    def _refresh_language_assets(self, config: IniConfigLoader) -> None:
+        if config.general.language == self._language:
+            return
+
+        Dataloader().load_data()
+        self._language = config.general.language
+        LOGGER.info("Reloaded language assets for %s", self._language)
+
+    def _refresh_logging_level(self, config: IniConfigLoader) -> None:
+        current_log_level = config.advanced_options.log_lvl.value.upper()
+        if current_log_level == self._log_level:
+            return
+
+        root_logger = logging.getLogger()
+        for handler in root_logger.handlers:
+            handler.setLevel(current_log_level)
+        self._log_level = current_log_level
+        LOGGER.info("Updated log level to %s", current_log_level)
+
+    def _refresh_vision_mode(self, config: IniConfigLoader) -> None:
+        vision_mode_type = config.general.vision_mode_type
+        if vision_mode_type == self._vision_mode_type:
+            return
+
+        was_running = self.vision_mode.running()
+        if was_running:
+            self.vision_mode.stop()
+
+        self.vision_mode = self._create_vision_mode(vision_mode_type)
+        self._vision_mode_type = vision_mode_type
+        LOGGER.info("Reloaded vision mode implementation: %s", vision_mode_type.value)
+
+        if was_running:
+            self.vision_mode.start()
 
     def toggle_paragon_overlay(self):
         """Toggle the Paragon overlay thread (start if not running, request close if running)."""
@@ -57,7 +156,7 @@ class ScriptHandler:
                 # Vision mode is restored by the overlay thread cleanup.
                 return
 
-            config = IniConfigLoader()
+            config = self._config
             overlay_dir = config.user_dir / "profiles"
             overlay_dir.mkdir(parents=True, exist_ok=True)
 
@@ -97,30 +196,38 @@ class ScriptHandler:
             finally:
                 self.paragon_overlay_thread = None
 
+    def _clear_key_binds(self) -> None:
+        while self._hotkey_handles:
+            handle = self._hotkey_handles.pop()
+            with suppress(KeyError, ValueError):
+                keyboard.remove_hotkey(handle)
+
+    def _register_hotkey(self, hotkey: str, callback: typing.Callable[[], None]) -> None:
+        self._hotkey_handles.append(keyboard.add_hotkey(hotkey, callback))
+
     def setup_key_binds(self):
-        if keyboard is None:
+        if sys.platform == "darwin":
             LOGGER.info("Global hotkeys are disabled on macOS")
             return
-        keyboard.add_hotkey(IniConfigLoader().advanced_options.run_vision_mode, lambda: self.run_vision_mode())
-        keyboard.add_hotkey(IniConfigLoader().advanced_options.exit_key, lambda: self._graceful_exit())
-        keyboard.add_hotkey(
-            IniConfigLoader().advanced_options.toggle_paragon_overlay, lambda: self.toggle_paragon_overlay()
-        )
-        if not IniConfigLoader().advanced_options.vision_mode_only:
-            keyboard.add_hotkey(IniConfigLoader().advanced_options.run_filter, lambda: self.filter_items())
-            keyboard.add_hotkey(
-                IniConfigLoader().advanced_options.run_filter_drop, lambda: self.filter_items(no_match_action="drop")
+
+        config = self._config
+        advanced_options = config.advanced_options
+        self._register_hotkey(advanced_options.run_vision_mode, lambda: self.run_vision_mode())
+        self._register_hotkey(advanced_options.exit_key, lambda: self._graceful_exit())
+        self._register_hotkey(advanced_options.toggle_paragon_overlay, lambda: self.toggle_paragon_overlay())
+        if not advanced_options.vision_mode_only:
+            self._register_hotkey(advanced_options.run_filter, lambda: self.filter_items())
+            self._register_hotkey(advanced_options.run_filter_drop, lambda: self.filter_items(no_match_action="drop"))
+            self._register_hotkey(
+                advanced_options.run_filter_force_refresh, lambda: self.filter_items(ItemRefreshType.force_with_filter)
             )
-            keyboard.add_hotkey(
-                IniConfigLoader().advanced_options.run_filter_force_refresh,
-                lambda: self.filter_items(ItemRefreshType.force_with_filter),
+            self._register_hotkey(
+                advanced_options.force_refresh_only, lambda: self.filter_items(ItemRefreshType.force_without_filter)
             )
-            keyboard.add_hotkey(
-                IniConfigLoader().advanced_options.force_refresh_only,
-                lambda: self.filter_items(ItemRefreshType.force_without_filter),
-            )
-            keyboard.add_hotkey(IniConfigLoader().advanced_options.move_to_inv, lambda: self.move_items_to_inventory())
-            keyboard.add_hotkey(IniConfigLoader().advanced_options.move_to_chest, lambda: self.move_items_to_stash())
+            self._register_hotkey(advanced_options.move_to_inv, lambda: self.move_items_to_inventory())
+            self._register_hotkey(advanced_options.move_to_chest, lambda: self.move_items_to_stash())
+
+        self._current_hotkey_signature = self._hotkey_signature(config)
 
     def filter_items(self, force_refresh=ItemRefreshType.no_refresh, no_match_action: str = "junk"):
         if src.tts.CONNECTED:
@@ -208,5 +315,3 @@ def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh,
             LOGGER.error("Inventory did not open up")
             return
         check_items(inv, force_refresh, no_match_action=no_match_action)
-    mouse.move(*Cam().abs_window_to_monitor((0, 0)))
-    LOGGER.info("Loot filter done")

@@ -37,7 +37,6 @@ CONFIG_TABNAME = "config"
 
 def _validate_and_save_changes(model, header, key, value, method_to_reset_value: typing.Callable | None = None):
     try:
-        setattr(model, key, value)
         IniConfigLoader().save_value(header, key, value)
     except ValidationError as e:
         msg = QMessageBox()
@@ -99,7 +98,7 @@ class ConfigTab(QWidget):
         )
         instructions_text.append("")
         instructions_text.append(
-            "Note: You will need to restart d4lf after modifying these values. Modifying params.ini manually while this gui is running is not supported (and really not necessary)."
+            "Note: Most settings are reloaded automatically through in-memory change events. Hotkey changes are applied live, and other runtime settings refresh on next use. Some GUI/layout-specific changes may still require reopening the affected window."
         )
 
         instructions_text.setFixedHeight(100)
@@ -174,9 +173,11 @@ class ConfigTab(QWidget):
 
             def make_on_enum_changed(key):
                 def on_enum_changed():
-                    _validate_and_save_changes(model, section_config_header, key, parameter_value_widget.currentText())
+                    value_saved = _validate_and_save_changes(
+                        model, section_config_header, key, parameter_value_widget.currentText()
+                    )
 
-                    if key == "theme" and self.theme_changed_callback and not self._initializing:
+                    if value_saved and key == "theme" and self.theme_changed_callback and not self._initializing:
                         self.theme_changed_callback()
 
                 return on_enum_changed
