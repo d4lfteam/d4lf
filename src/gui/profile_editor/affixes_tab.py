@@ -75,7 +75,8 @@ class AffixGroupEditor(QWidget):
         self.item_type_combo.addItems(item_types_names)
         self.item_type_combo.setCurrentText(self.config.itemType[0].name if self.config.itemType else None)
         self.item_type_combo.setMaximumWidth(150)
-        self.item_type_combo.currentIndexChanged.connect(self.update_item_type)
+        # Keep the model in sync for both mouse selection and keyboard/completer selection.
+        self.item_type_combo.currentTextChanged.connect(self.update_item_type)
         general_form.addRow("Item Type:", self.item_type_combo)
 
         self.min_power = IgnoreScrollWheelSpinBox()
@@ -241,8 +242,11 @@ class AffixGroupEditor(QWidget):
             if item and item.widget() is not None:
                 item.widget().header.set_name(f"Count {i}")
 
-    def update_item_type(self):
-        self.config.itemType = [ItemType(ItemType._member_map_[self.item_type_combo.currentText()])]
+    def update_item_type(self, current_text=None):
+        item_type_name = current_text or self.item_type_combo.currentText()
+        if item_type_name not in ItemType._member_map_:
+            return
+        self.config.itemType = [ItemType(ItemType._member_map_[item_type_name])]
 
     def update_min_power(self):
         self.config.minPower = self.min_power.value()
@@ -476,7 +480,8 @@ class AffixWidget(QWidget):
         self.name_combo.setMaximumWidth(600)
         if self.affix.name in Dataloader().affix_dict:
             self.name_combo.setCurrentText(Dataloader().affix_dict[self.affix.name])
-        self.name_combo.currentIndexChanged.connect(self.update_name)
+        # currentIndexChanged misses some editable-combobox keyboard flows.
+        self.name_combo.currentTextChanged.connect(self.update_name)
 
     def create_greater_checkbox(self):
         self.greater_checkbox = QCheckBox("Greater")
@@ -517,12 +522,16 @@ class AffixWidget(QWidget):
         self.comparison_combo.setFixedSize(100, self.comparison_combo.sizeHint().height())
         self.comparison_combo.addItems([ct.value for ct in ComparisonType])
         self.comparison_combo.setCurrentText(self.affix.comparison.value)
-        self.comparison_combo.currentIndexChanged.connect(self.update_comparison)
+        self.comparison_combo.currentTextChanged.connect(self.update_comparison)
         self.affix.comparison = ComparisonType(self.affix.comparison.value)
 
-    def update_name(self):
+    def update_name(self, current_text=None):
+        """Update the model only when the editable combobox contains a valid affix."""
         reverse_dict = {v: k for k, v in Dataloader().affix_dict.items()}
-        self.affix.name = reverse_dict.get(self.name_combo.currentText())
+        affix_name = reverse_dict.get(current_text or self.name_combo.currentText())
+        if affix_name is None:
+            return
+        self.affix.name = affix_name
 
     def update_value(self, value):
         try:
@@ -530,8 +539,10 @@ class AffixWidget(QWidget):
         except ValueError:
             return
 
-    def update_comparison(self):
-        comparison = self.comparison_combo.currentText()
+    def update_comparison(self, current_text=None):
+        comparison = current_text or self.comparison_combo.currentText()
+        if comparison not in {comparison_type.value for comparison_type in ComparisonType}:
+            return
         self.affix.comparison = ComparisonType(comparison)
 
     def update_greater(self):
