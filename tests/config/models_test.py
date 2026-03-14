@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from pydantic import ValidationError
 
-from src.config.models import ProfileModel
+from src.config.models import ItemRarity, ProfileModel, TributeFilterModel
 from tests.config.data import sigils, uniques
 
 if TYPE_CHECKING:
@@ -27,6 +27,21 @@ class TestSigil:
     def test_all_good_cases(data: dict[str, Any]) -> None:
         data["name"] = "good"
         assert ProfileModel(**data)
+
+
+class TestTributes:
+    @pytest.fixture(autouse=True)
+    def _setup(self, mock_ini_loader: IniConfigLoader) -> None:
+        self.mock_ini_loader = mock_ini_loader
+
+    @staticmethod
+    def test_simple_rules_serialize_to_readme_friendly_yaml_shape() -> None:
+        assert TributeFilterModel(name="mystique").model_dump(mode="json") == "tribute_of_mystique"
+        assert TributeFilterModel(rarities=[ItemRarity.Unique]).model_dump(mode="json") == "unique"
+        assert TributeFilterModel(rarities=[ItemRarity.Legendary, ItemRarity.Unique]).model_dump(mode="json") == [
+            "legendary",
+            "unique",
+        ]
 
 
 class TestUnique:
