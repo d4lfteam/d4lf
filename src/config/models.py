@@ -5,7 +5,7 @@ import logging
 import sys
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_serializer, model_validator
 from pydantic_numpy import np_array_pydantic_annotated_typing  # noqa: TC002
 from pydantic_numpy.model import NumpyModel
 
@@ -340,6 +340,10 @@ class GeneralModel(_IniBaseModel):
     junk_rares: bool = Field(
         default=False, description="Should rares be automatically marked as junk even if they match a filter?"
     )
+    junk_3_affix_rares: bool = Field(
+        default=False,
+        description="Should rares with only 3 non-tempered affixes be automatically marked as junk even if they match a filter?",
+    )
     keep_aspects: AspectFilterType = Field(
         default=AspectFilterType.upgrade, description="Whether to keep aspects that didn't match a filter"
     )
@@ -558,6 +562,25 @@ class TributeFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = None
     rarities: list[ItemRarity] = []
+
+    @model_serializer(mode="plain", when_used="json")
+    def serialize(self) -> str | list[str] | dict[str, str | list[str]]:
+        """Write simple tribute rules back to YAML in the README-friendly form."""
+        if self.name and not self.rarities:
+            return self.name
+
+        if self.rarities and not self.name:
+            rarity_values = [rarity.value for rarity in self.rarities]
+            if len(rarity_values) == 1:
+                return rarity_values[0]
+            return rarity_values
+
+        data: dict[str, str | list[str]] = {}
+        if self.name:
+            data["name"] = self.name
+        if self.rarities:
+            data["rarities"] = [rarity.value for rarity in self.rarities]
+        return data
 
     @field_validator("name")
     def name_must_exist(cls, name: str) -> str:
