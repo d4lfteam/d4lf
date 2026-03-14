@@ -3,6 +3,7 @@ import logging
 import re
 import time
 from typing import TYPE_CHECKING
+from urllib.parse import parse_qs, urlparse
 
 import lxml.html
 from selenium.webdriver.common.by import By
@@ -79,10 +80,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         5
     )  # super hacky but I didn't find anything else. The page is not fully loaded when the above wait is done
     data = lxml.html.fromstring(driver.page_source)
-    if (elem := data.xpath(CLASS_XPATH + "/*")) or (elem := data.xpath(CLASS_XPATH)):
-        class_name = get_class_name(f"{elem[0].tail} {elem[0].text}")
-    else:
-        class_name = "Unknown"
+    class_name = _get_build_class_name(data=data, source_url=url)
     if not (items := data.xpath(BUILD_OVERVIEW_XPATH)):
         LOGGER.error(msg := "No items found")
         raise D4BuildsException(msg)
@@ -125,7 +123,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 continue
             if "filled" not in stat.xpath("../..")[0].attrib["class"]:
                 continue
-            affix_name = stat.xpath("./span")[0].text
+            affix_name = _get_affix_name(stat=stat)
             if not affix_name:
                 LOGGER.warning(f"Slot {slot} is missing an affix, skipping import of that affix.")
                 continue
@@ -205,9 +203,10 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 
-    file_name = (
-        config.custom_file_name
-        or f"d4build_{class_name}_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}"
+    selected_variant_parts = _get_selected_variant_labels_from_driver(driver=driver)
+
+    file_name = config.custom_file_name or _build_default_file_name(
+        data=data, class_name=class_name, source_url=url, selected_variant_parts=selected_variant_parts
     )
 
     # Optionally embed Paragon data into the profile model before saving
@@ -225,6 +224,256 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         add_to_profiles(corrected_file_name)
 
     LOGGER.info("Finished")
+
+
+def _get_build_class_name(data: lxml.html.HtmlElement, source_url: str) -> str:
+    """Extract the class name from multiple possible page locations."""
+    class_candidates = [
+        *_iter_text_candidates(data.xpath("//title")),
+        *_iter_text_candidates(data.xpath("//h1")),
+        *_get_url_path_candidates(data=data, source_url=source_url),
+        *_iter_text_candidates(data.xpath(CLASS_XPATH + "/*")),
+        *_iter_text_candidates(data.xpath(CLASS_XPATH)),
+    ]
+    for candidate in class_candidates:
+        class_name = get_class_name(candidate)
+        if class_name != "Unknown":
+            return class_name
+    LOGGER.error(f"Couldn't match class name from any source: {class_candidates=}")
+    return "Unknown"
+
+
+def _iter_text_candidates(elements: list[lxml.html.HtmlElement]) -> list[str]:
+    """Return normalized text candidates from a list of HTML elements."""
+    candidates = []
+    for element in elements:
+        if not hasattr(element, "text_content"):
+            continue
+        candidate = " ".join(element.text_content().split())
+        if candidate:
+            candidates.append(candidate)
+    return candidates
+
+
+def _get_url_path_candidates(data: lxml.html.HtmlElement, source_url: str) -> list[str]:
+    """Return normalized candidates derived from canonical URLs and the source URL."""
+    candidates = []
+    for xpath in ("//link[@rel='canonical']/@href", "//meta[@property='og:url']/@content"):
+        for url in data.xpath(xpath):
+            candidate = _normalize_url_candidate(url)
+            if candidate:
+                candidates.append(candidate)
+    if source_url:
+        candidate = _normalize_url_candidate(source_url)
+        if candidate:
+            candidates.append(candidate)
+    return candidates
+
+
+def _normalize_url_candidate(url: str) -> str:
+    """Convert a build URL path into text that can be matched against class names."""
+    match = re.search(r"/builds/([^/?#]+)", url)
+    if not match:
+        return ""
+    return match.group(1).replace("-", " ").strip()
+
+
+def _build_default_file_name(
+    data: lxml.html.HtmlElement, class_name: str, source_url: str, selected_variant_parts: list[str] | None = None
+) -> str:
+    """Build a human-readable default profile name from page labels before falling back to a timestamp."""
+    file_name_parts = _get_file_name_parts(
+        data=data, class_name=class_name, source_url=source_url, selected_variant_parts=selected_variant_parts
+    )
+    normalized_class_name = class_name if class_name and class_name != "Unknown" else "Unknown"
+    if file_name_parts:
+        return f"d4builds_{normalized_class_name}_{'_'.join(file_name_parts)}"
+    timestamp = datetime.datetime.now(tz=datetime.UTC).strftime("%Y_%m_%d_%H_%M_%S")
+    return f"d4builds_{normalized_class_name}_{timestamp}"
+
+
+def _get_file_name_parts(
+    data: lxml.html.HtmlElement, class_name: str, source_url: str, selected_variant_parts: list[str] | None = None
+) -> list[str]:
+    """Extract descriptive build labels for the saved profile name."""
+    parts = [*_get_header_file_name_parts(data), *(selected_variant_parts or []), *_get_selected_variant_parts(data)]
+    if not parts:
+        parts.extend(_get_title_file_name_parts(data=data, source_url=source_url))
+    deduplicated_parts = []
+    for part in parts:
+        if not _is_useful_file_name_part(part=part, class_name=class_name):
+            continue
+        if part not in deduplicated_parts:
+            deduplicated_parts.append(part)
+
+    variant_suffix = _get_variant_suffix_from_url(source_url)
+    if variant_suffix and variant_suffix not in deduplicated_parts:
+        deduplicated_parts.append(variant_suffix)
+
+    return deduplicated_parts
+
+
+def _get_header_file_name_parts(data: lxml.html.HtmlElement) -> list[str]:
+    """Extract distinct header labels, preserving separate variant labels when available."""
+    parts = []
+    for header in data.xpath(CLASS_XPATH):
+        element_parts = _extract_element_label_parts(header)
+        if element_parts:
+            parts.extend(element_parts)
+    return parts
+
+
+def _get_selected_variant_parts(data: lxml.html.HtmlElement) -> list[str]:
+    """Extract currently selected variant labels from generic selected-state markup."""
+    xpaths = (
+        "//*[(@aria-selected='true' or @data-state='active') and not(self::script)]",
+        "//*[contains(@class, 'selected') and not(self::script)]",
+    )
+    parts = []
+    for xpath in xpaths:
+        for element in data.xpath(xpath):
+            text = _normalize_text(" ".join(element.itertext()))
+            if text:
+                parts.append(text)
+    return parts
+
+
+def _get_selected_variant_labels_from_driver(driver: ChromiumDriver) -> list[str]:
+    """Read selected variant labels from the live DOM when D4Builds renders them client-side."""
+    script = r"""
+const selectors = [
+  '[role="tab"][aria-selected="true"]',
+  '[role="option"][aria-selected="true"]',
+  '[aria-current="true"]',
+  '[data-state="active"]',
+  '[data-state="checked"]',
+  '.selected',
+  '.active',
+  '.is-active',
+  '.builder__header__description',
+];
+const texts = [];
+for (const selector of selectors) {
+  for (const element of document.querySelectorAll(selector)) {
+    const text = (element.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text) {
+      texts.push(text);
+    }
+  }
+}
+return texts;
+"""
+    try:
+        raw_parts = driver.execute_script(script)
+    except Exception:
+        LOGGER.exception("Failed to read selected variant labels from the D4Builds DOM.")
+        return []
+    if not isinstance(raw_parts, list):
+        return []
+    normalized_parts = []
+    for part in raw_parts:
+        if not isinstance(part, str):
+            continue
+        normalized_part = _normalize_text(part)
+        if normalized_part and normalized_part not in normalized_parts:
+            normalized_parts.append(normalized_part)
+    return normalized_parts
+
+
+def _get_title_file_name_parts(data: lxml.html.HtmlElement, source_url: str) -> list[str]:
+    """Fallback to the page title or URL slug when header labels are not available."""
+    title_candidates = []
+    for raw_title in data.xpath("//title/text()"):
+        title = _clean_build_title(raw_title)
+        if title:
+            title_candidates.append(title)
+    if title_candidates:
+        return title_candidates
+    url_candidate = _normalize_url_candidate(source_url)
+    return [url_candidate.title()] if url_candidate else []
+
+
+def _extract_element_label_parts(element: lxml.html.HtmlElement) -> list[str]:
+    """Return per-child text labels so variant and sub-variant names stay separate."""
+    parts = []
+    leading_text = _normalize_text(element.text or "")
+    if leading_text:
+        parts.append(leading_text)
+    for child in element:
+        child_text = _normalize_text(" ".join(child.itertext()))
+        if child_text:
+            parts.append(child_text)
+        tail_text = _normalize_text(child.tail or "")
+        if tail_text:
+            parts.append(tail_text)
+    if not parts:
+        fallback_text = _normalize_text(" ".join(element.itertext()))
+        if fallback_text:
+            parts.append(fallback_text)
+    return parts
+
+
+def _clean_build_title(title: str) -> str:
+    """Strip generic suffixes from the page title so only the build label remains."""
+    cleaned_title = _normalize_text(title)
+    for suffix in ("· D4 Builds", "- D4 Builds", "- Diablo 4"):
+        if cleaned_title.endswith(suffix):
+            cleaned_title = cleaned_title.removesuffix(suffix).rstrip(" -")
+    return re.sub(r"\s+Build Guide$", "", cleaned_title).strip()
+
+
+def _normalize_text(text: str) -> str:
+    """Collapse whitespace in extracted UI labels."""
+    return " ".join(text.split())
+
+
+def _get_variant_suffix_from_url(source_url: str) -> str:
+    """Return a stable suffix derived from the D4Builds variant query parameter."""
+    if not source_url:
+        return ""
+    parsed_url = urlparse(source_url)
+    variant_values = parse_qs(parsed_url.query).get("var", [])
+    if not variant_values:
+        return ""
+    variant_value = variant_values[0].strip()
+    if not variant_value:
+        return ""
+    return f"var_{variant_value}"
+
+
+def _is_useful_file_name_part(part: str, class_name: str) -> bool:
+    """Filter out generic, duplicate, or class-only labels from the generated file name."""
+    normalized_part = _normalize_text(part).strip("-–— ")
+    if not normalized_part:
+        return False
+    lowered_part = normalized_part.casefold()
+    ignored_parts = {
+        "none",
+        "updated on .",
+        "share",
+        "save build",
+        "gear & skills",
+        "skill tree",
+        "paragon",
+        "mercenaries",
+    }
+    if lowered_part in ignored_parts:
+        return False
+    if class_name and lowered_part == class_name.casefold():
+        return False
+    return not (
+        lowered_part in {"barbarian", "druid", "necromancer", "rogue", "sorcerer", "spiritborn", "paladin"}
+        and len(normalized_part.split()) <= 2
+    )
+
+
+def _get_affix_name(stat: lxml.html.HtmlElement) -> str:
+    """Extract visible affix text even when wrapped in nested markup."""
+    for span in stat.xpath("./span"):
+        affix_name = " ".join(span.text_content().split())
+        if affix_name:
+            return affix_name
+    return ""
 
 
 def _corrections(input_str: str) -> str:

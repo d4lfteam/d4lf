@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from urllib.parse import unquote
+from urllib.parse import parse_qs, unquote, urlparse
 
 import jsonpath
 import lxml.html
@@ -57,7 +57,7 @@ def import_mobalytics(config: ImportConfig):
     except ConnectionError as exc:
         LOGGER.exception(msg := "Couldn't get build")
         raise MobalyticsException(msg) from exc
-    variant_id = url.split(",")[1].split("#")[0] if "activeVariantId" in url else None
+    variant_id = _extract_variant_id_from_url(url)
     raw_html_data = lxml.html.fromstring(r.text)
     # The build is shoved in a massive JSON in one of the script tags. We find that json now.
     scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
@@ -86,37 +86,14 @@ def import_mobalytics(config: ImportConfig):
     if not class_name:
         LOGGER.error(msg := "No class name found")
         raise MobalyticsException(msg)
-    if variant_id:
-        items = jsonpath.findall(
-            f"$..['{root_document_name}'].data.buildVariants.values[?@.id=='{variant_id}'].genericBuilder.slots",
-            full_script_data_json,
-        )[0]
-    else:
-        items = jsonpath.findall(
-            f"$..['{root_document_name}'].data.buildVariants.values[0].genericBuilder.slots", full_script_data_json
-        )[0]
-        variant_id = jsonpath.findall(
-            f"$..['{root_document_name}'].data.buildVariants.values[0].id", full_script_data_json
-        )[0]
 
-    # Keep the full build variant object around (needed for optional paragon export)
-    try:
-        if variant_id:
-            variant = jsonpath.findall(
-                f"$..['{root_document_name}'].data.buildVariants.values[?@.id=='{variant_id}']", full_script_data_json
-            )[0]
-        else:
-            variant = jsonpath.findall(
-                f"$..['{root_document_name}'].data.buildVariants.values[0]", full_script_data_json
-            )[0]
-    except Exception:
-        variant = {}
-
-    variant_name = jsonpath.findall(
-        f"..['NgfDocumentCmWidgetContentVariantsV1DataChildVariant:{variant_id}'].title", full_script_data_json
+    variant, variant_id = _get_selected_variant(
+        root_document_name=root_document_name, full_script_data_json=full_script_data_json, variant_id=variant_id
     )
-    if variant_name:
-        build_name = f"{build_name} {variant_name[0]}"
+    items = variant.get("genericBuilder", {}).get("slots", [])
+    variant_name = _extract_variant_name(
+        variant=variant, variant_id=variant_id, full_script_data_json=full_script_data_json
+    )
 
     if not items:
         LOGGER.error(msg := "No items found")
@@ -230,19 +207,18 @@ def import_mobalytics(config: ImportConfig):
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 
-    if config.custom_file_name:
-        build_name = config.custom_file_name
+    file_name = config.custom_file_name or _build_default_file_name(build_name, class_name, variant_name, variant_id)
     # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
         steps = extract_mobalytics_paragon_steps(variant if isinstance(variant, dict) else {})
         if steps:
             profile.Paragon = build_paragon_profile_payload(
-                build_name=build_name, source_url=url, paragon_boards_list=steps
+                build_name=file_name, source_url=url, paragon_boards_list=steps
             )
         else:
             LOGGER.warning("Paragon export enabled, but no paragon data was found for this Mobalytics variant.")
 
-    corrected_file_name = save_as_profile(file_name=build_name, profile=profile, url=url)
+    corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
 
     if config.add_to_profiles:
         add_to_profiles(corrected_file_name)
@@ -259,6 +235,78 @@ def _corrections(input_str: str) -> str:
 
 def _fix_input_url(url: str) -> str:
     return unquote(url)
+
+
+def _extract_variant_id_from_url(url: str) -> str | None:
+    query = parse_qs(urlparse(url).query)
+    for values in query.values():
+        for value in values:
+            if "activeVariantId," not in value:
+                continue
+            return value.split("activeVariantId,", maxsplit=1)[1].split("#", maxsplit=1)[0]
+    return None
+
+
+def _get_selected_variant(
+    root_document_name: str, full_script_data_json: dict, variant_id: str | None
+) -> tuple[dict, str | None]:
+    variants = jsonpath.findall(f"$..['{root_document_name}'].data.buildVariants.values[*]", full_script_data_json)
+    if not variants:
+        return {}, variant_id
+
+    if variant_id:
+        for variant in variants:
+            if variant.get("id") == variant_id:
+                return variant, variant_id
+
+    selected_variant = variants[0]
+    return selected_variant, selected_variant.get("id")
+
+
+def _extract_variant_name(variant: dict, variant_id: str | None, full_script_data_json: dict) -> str:
+    direct_candidates = [
+        variant.get("title"),
+        variant.get("name"),
+        variant.get("label"),
+        variant.get("variantTitle"),
+        variant.get("variantName"),
+    ]
+    for candidate in direct_candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+
+    if variant_id:
+        for path in (
+            f"..['NgfDocumentCmWidgetContentVariantsV1DataChildVariant:{variant_id}'].title",
+            f"..['NgfDocumentCmWidgetContentVariantsV1DataChildVariant:{variant_id}'].name",
+            f"$..[?@.id=='{variant_id}'].title",
+            f"$..[?@.id=='{variant_id}'].name",
+            f"$..[?@.id=='{variant_id}'].label",
+        ):
+            variant_names = jsonpath.findall(path, full_script_data_json)
+            for candidate in variant_names:
+                if isinstance(candidate, str) and candidate.strip():
+                    return candidate.strip()
+
+    return ""
+
+
+def _build_default_file_name(build_name: str, class_name: str, variant_name: str, variant_id: str | None) -> str:
+    parts = ["mobalytics"]
+
+    normalized_class_name = class_name.strip().title()
+    if normalized_class_name:
+        parts.append(normalized_class_name)
+
+    if build_name.strip():
+        parts.append(build_name)
+
+    if variant_name and variant_name.lower() not in build_name.lower():
+        parts.append(variant_name)
+    elif variant_id:
+        parts.append(f"variant_{variant_id}")
+
+    return "_".join(part.strip() for part in parts if part and part.strip())
 
 
 def _get_legendary_aspect(name: str) -> str:
