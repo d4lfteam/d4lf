@@ -1,5 +1,7 @@
 """Configuration loading, validation, persistence, and live change notifications."""
 
+from __future__ import annotations
+
 import configparser
 import logging
 import pathlib
@@ -12,19 +14,19 @@ from src.config.models import DEPRECATED_INI_KEYS, AdvancedOptionsModel, CharMod
 
 LOGGER = logging.getLogger(__name__)
 PARAMS_INI = "params.ini"
-ConfigChangeListener = typing.Callable[[set[str]], None]
+ConfigChangeListener = typing.Callable[[frozenset[str]], None]
 
 
 @singleton
 class IniConfigLoader:
     """Load, validate, persist, and broadcast config changes.
 
-    The in-memory pydantic models are the source of truth for runtime changes.
-    ``params.ini`` is still used for persistence and optional manual reloads, but
-    normal GUI/importer changes are applied through direct change events.
+    The in-memory pydantic models are the runtime source of truth. ``params.ini``
+    remains the persistence layer and an optional fallback for external/manual
+    file edits.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._advanced_options = AdvancedOptionsModel()
         self._char = CharModel()
         self._general = GeneralModel()
@@ -32,7 +34,7 @@ class IniConfigLoader:
         self._user_dir = pathlib.Path.home() / ".d4lf"
         self._user_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
-        self._listeners: list[ConfigChangeListener] = []
+        self._change_listeners: list[ConfigChangeListener] = []
         self._last_config_signature: tuple[int, int] | None = None
         self._config_revision = 0
         self._state_snapshot: dict[str, typing.Any] = {}
@@ -49,8 +51,13 @@ class IniConfigLoader:
         stat_result = config_path.stat()
         return stat_result.st_mtime_ns, stat_result.st_size
 
+    def _section_models(self) -> dict[str, typing.Any]:
+        return {"advanced_options": self._advanced_options, "char": self._char, "general": self._general}
+
+    def _model_for_section(self, section: str) -> typing.Any | None:
+        return self._section_models().get(section)
+
     def _capture_state_snapshot(self) -> dict[str, typing.Any]:
-        """Return a flattened snapshot of runtime config values."""
         snapshot: dict[str, typing.Any] = {}
         for section_name, model in self._section_models().items():
             for key, value in model.model_dump(mode="python").items():
@@ -60,18 +67,11 @@ class IniConfigLoader:
     def _changed_keys(
         self, previous_snapshot: dict[str, typing.Any], current_snapshot: dict[str, typing.Any]
     ) -> set[str]:
-        """Return the set of changed ``section.key`` values between two snapshots."""
         return {
             key
             for key in previous_snapshot.keys() | current_snapshot.keys()
             if previous_snapshot.get(key) != current_snapshot.get(key)
         }
-
-    def _section_models(self) -> dict[str, typing.Any]:
-        return {"advanced_options": self._advanced_options, "char": self._char, "general": self._general}
-
-    def _model_for_section(self, section: str) -> typing.Any | None:
-        return self._section_models().get(section)
 
     def _write_parser(self) -> None:
         if self._parser is None:
@@ -81,43 +81,49 @@ class IniConfigLoader:
         with self._config_path().open("w", encoding="utf-8") as config_file:
             self._parser.write(config_file)
 
-    def _format_log_value(self, value: typing.Any) -> str:
-        """Return a concise, human-readable value for log messages."""
+    def _format_value_for_log(self, value: typing.Any) -> str:
         if isinstance(value, bool):
             return "on" if value else "off"
-        if value is None:
-            return "None"
         return str(value)
+
+    def _log_changed_values(self, changed_keys: set[str]) -> None:
+        if not changed_keys:
+            return
+
+        snapshot = self._state_snapshot.copy()
+        formatted_entries = [f"{key}={self._format_value_for_log(snapshot.get(key))}" for key in sorted(changed_keys)]
+        noun = "change" if len(formatted_entries) == 1 else "changes"
+        LOGGER.info("Applied setting %s: %s", noun, ", ".join(formatted_entries))
 
     def _notify_listeners(self, changed_keys: set[str]) -> None:
         if not changed_keys:
             return
 
-        with self._lock:
-            changed_items = [
-                f"{key}={self._format_log_value(self._state_snapshot.get(key))}" for key in sorted(changed_keys)
-            ]
-            listeners = list(self._listeners)
-
-        LOGGER.info("Applied setting change%s: %s", "s" if len(changed_items) != 1 else "", ", ".join(changed_items))
-
+        listeners = list(self._change_listeners)
+        frozen_keys = frozenset(changed_keys)
         for listener in listeners:
             try:
-                listener(changed_keys)
+                listener(frozen_keys)
             except Exception:
                 LOGGER.exception("Failed to notify config listener")
 
-    def register_listener(self, listener: ConfigChangeListener) -> None:
+    def register_change_listener(self, listener: ConfigChangeListener) -> None:
         with self._lock:
-            if listener not in self._listeners:
-                self._listeners.append(listener)
+            if listener not in self._change_listeners:
+                self._change_listeners.append(listener)
+
+    def unregister_change_listener(self, listener: ConfigChangeListener) -> None:
+        with self._lock:
+            self._change_listeners = [existing for existing in self._change_listeners if existing != listener]
+
+    # Backward-compatible aliases used by the other runtime patches.
+    def register_listener(self, listener: ConfigChangeListener) -> None:
+        self.register_change_listener(listener)
 
     def unregister_listener(self, listener: ConfigChangeListener) -> None:
-        with self._lock:
-            self._listeners = [existing for existing in self._listeners if existing != listener]
+        self.unregister_change_listener(listener)
 
     def load(self, clear: bool = False, notify: bool = True) -> None:
-        """Load config from disk and optionally notify listeners about changed keys."""
         with self._lock:
             previous_snapshot = self._state_snapshot.copy()
             config_path = self._config_path()
@@ -159,10 +165,10 @@ class IniConfigLoader:
             changed_keys = self._changed_keys(previous_snapshot, self._state_snapshot)
 
         if notify:
+            self._log_changed_values(changed_keys)
             self._notify_listeners(changed_keys)
 
     def reload_if_changed(self) -> bool:
-        """Reload config from disk only when the file changed externally."""
         with self._lock:
             current_signature = self._get_config_signature()
             if current_signature == self._last_config_signature:
@@ -174,14 +180,17 @@ class IniConfigLoader:
 
     @property
     def advanced_options(self) -> AdvancedOptionsModel:
+        self.reload_if_changed()
         return self._advanced_options
 
     @property
     def char(self) -> CharModel:
+        self.reload_if_changed()
         return self._char
 
     @property
     def general(self) -> GeneralModel:
+        self.reload_if_changed()
         return self._general
 
     @property
@@ -194,7 +203,6 @@ class IniConfigLoader:
             return self._config_revision
 
     def save_value(self, section: str, key: str, value: typing.Any) -> None:
-        """Persist a single value and notify listeners immediately when it changed."""
         changed_keys: set[str] = set()
 
         with self._lock:
@@ -204,7 +212,6 @@ class IniConfigLoader:
             previous_snapshot = self._state_snapshot.copy()
             model = self._model_for_section(section)
             if model is not None:
-                # Validate and update the in-memory source of truth first.
                 setattr(model, key, value)
 
             if section not in self._parser.sections():
@@ -222,6 +229,7 @@ class IniConfigLoader:
             self._state_snapshot = self._capture_state_snapshot()
             changed_keys = self._changed_keys(previous_snapshot, self._state_snapshot)
 
+        self._log_changed_values(changed_keys)
         self._notify_listeners(changed_keys)
 
 
