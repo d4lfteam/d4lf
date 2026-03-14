@@ -85,6 +85,9 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
         # Additionally, if someone imprinted a 3 affix rare we'd think it was a legendary so we need to catch those here
         affixes_num = 3
 
+    if item.seasonal_attribute == SeasonalAttribute.bloodied:
+        affixes_num = affixes_num + 1
+
     return inherent_num, affixes_num
 
 
@@ -326,8 +329,6 @@ def _get_aspect_from_tts_section(tts_section: list[str], item: Item, start: int,
     # Grab the aspect as well in this case
     if item.rarity in [ItemRarity.Mythic, ItemRarity.Unique, ItemRarity.Legendary]:
         aspect_index = start + num_affixes
-        if item.seasonal_attribute == SeasonalAttribute.bloodied:
-            aspect_index = aspect_index + 1
         return tts_section[aspect_index]
 
     return None
