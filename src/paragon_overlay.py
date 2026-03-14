@@ -445,6 +445,9 @@ class ParagonOverlay(tk.Toplevel):
                 setattr(self._cfg, attr, val)
 
         self._on_close = on_close
+        self._config_loader = IniConfigLoader()
+        self._config_listener = self._on_config_changed
+        self._config_loader.register_listener(self._config_listener)
         self._cam = Cam()
         self._res = ResManager()
         self.builds = list(builds)
@@ -651,6 +654,23 @@ class ParagonOverlay(tk.Toplevel):
                 self.redraw()
         finally:
             self.after(self._cfg.poll_ms, self._poll_window_state)
+
+    def _on_config_changed(self, changed_keys: set[str]) -> None:
+        """Apply live overlay updates after runtime config changes."""
+        if "general.colorblind_mode" not in changed_keys:
+            return
+        _post_to_ui_thread(self._apply_live_colorblind_change)
+
+    def _apply_live_colorblind_change(self) -> None:
+        """Refresh overlay colors on the Tk UI thread after a colorblind change."""
+        if not _is_alive(self):
+            return
+        self._apply_accent_frames(force=True)
+        self.redraw()
+        LOGGER.info(
+            "Applied live Paragon overlay colorblind mode: %s",
+            "on" if bool(getattr(self._config_loader.general, "colorblind_mode", False)) else "off",
+        )
 
     def _select_build(self, idx: int) -> None:
         """Activate a build, reset the selected board, and redraw the overlay."""
@@ -1576,6 +1596,8 @@ class ParagonOverlay(tk.Toplevel):
     def close(self) -> None:
         """Persist state, destroy the window, and clear the global overlay handle."""
         try:
+            with suppress(Exception):
+                self._config_loader.unregister_listener(self._config_listener)
             self._close_build_dropdown()
             self._close_settings_dropdown()
             self._persist_state()
