@@ -85,6 +85,9 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
         # Additionally, if someone imprinted a 3 affix rare we'd think it was a legendary so we need to catch those here
         affixes_num = 3
 
+    if item.seasonal_attribute == SeasonalAttribute.bloodied:
+        affixes_num = affixes_num + 1
+
     return inherent_num, affixes_num
 
 
@@ -152,15 +155,17 @@ def _add_affixes_from_tts_mixed(
             item.aspect = _get_aspect_from_text(aspect_text, item.name)
         else:
             item.aspect = _get_aspect_from_name(aspect_text, item.name)
-        if item.aspect:
-            if not aspect_bullet:
-                LOGGER.warning(
-                    "No bullet was found for the aspect. If the aspect's first line is partially or fully off "
-                    "the screen, you can ignore this warning. Otherwise, please report a bug with a screenshot "
-                    "of the item."
-                )
-            else:
-                item.aspect.loc = aspect_bullet.center
+        if item.aspect and aspect_bullet:
+            # This bullet was removed but I'm not clear it was on purpose, commenting out for now
+            # if not aspect_bullet:
+            #     LOGGER.warning(
+            #         "No bullet was found for the aspect. If the aspect's first line is partially or fully off "
+            #         "the screen, you can ignore this warning. Otherwise, please report a bug with a screenshot "
+            #         "of the item."
+            #     )
+            # else:
+            #     item.aspect.loc = aspect_bullet.center
+            item.aspect.loc = aspect_bullet.center
     return item
 
 
@@ -324,8 +329,6 @@ def _get_aspect_from_tts_section(tts_section: list[str], item: Item, start: int,
     # Grab the aspect as well in this case
     if item.rarity in [ItemRarity.Mythic, ItemRarity.Unique, ItemRarity.Legendary]:
         aspect_index = start + num_affixes
-        if item.seasonal_attribute == SeasonalAttribute.bloodied:
-            aspect_index = aspect_index + 1
         return tts_section[aspect_index]
 
     return None
