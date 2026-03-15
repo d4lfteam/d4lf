@@ -238,6 +238,45 @@ items = [
             seasonal_attribute=None,
         ),
     ),
+    # Bloodied nightmare sigil
+    (
+        [
+            "ULDURS CAVE NIGHTMARE SIGIL",
+            "Bloodied Nightmare Sigil",
+            "Transform this place into a  Bloodied Nightmare Dungeon with greater challenge and greater reward.",
+            "Uldurs Cave in Kehjistan",
+            "DUNGEON AFFIXES",
+            "Obols Reserve",
+            "Many Obols chests have been stashed here.",
+            "Profane Aegis",
+            "Monsters gain 50% of their Maximum Life as a Barrier.",
+            "Bloodstained",
+            "Enemies are much stronger here.",
+            "Relentless Butcher",
+            "The Butcher is relentlessly stalking you...",
+            "Account Bound",
+            "Seasonal Item",
+            "Sell Value: 1 Gold",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(max_value=None, min_value=None, name="obols_reserve", text="", type=AffixType.normal, value=None),
+                Affix(max_value=None, min_value=None, name="profane_aegis", text="", type=AffixType.normal, value=None),
+            ],
+            aspect=None,
+            codex_upgrade=False,
+            cosmetic_upgrade=False,
+            inherent=[],
+            is_in_shop=False,
+            item_type=ItemType.Sigil,
+            name="uldurs_cave",
+            original_name="ULDURS CAVE NIGHTMARE SIGIL",
+            power=None,
+            rarity=ItemRarity.Common,
+            seasonal_attribute=SeasonalAttribute.bloodied,
+        ),
+    ),
 ]
 
 
