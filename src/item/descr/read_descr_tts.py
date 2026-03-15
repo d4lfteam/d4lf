@@ -188,7 +188,9 @@ def _raise_index_error(affixes, affix_bullets, item, img_item_descr: np.ndarray)
 
 
 def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
-    name_index = 3 if item.item_type == ItemType.EscalationSigil else 2
+    name_index = (
+        3 if item.item_type == ItemType.EscalationSigil or item.seasonal_attribute == SeasonalAttribute.bloodied else 2
+    )
     name = tts_section[name_index].split(" in ")[0]
     item.name = correct_name(name)
 
@@ -216,9 +218,11 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     item = Item(original_name=tts_item[0])
     if tts_item[1].endswith(ItemIdentifiers.COMPASS.value):
         return _update_item_object(item, rarity=ItemRarity.Common, item_type=ItemType.Compass)
-    if tts_item[0].startswith(ItemIdentifiers.NIGHTMARE_SIGIL.value):
+    if ItemIdentifiers.NIGHTMARE_SIGIL.value.upper() in tts_item[0].upper():
         if "Nightmare Sigil is used" in tts_item[0]:  # This is actually the crafting screen
             return None
+        if "bloodied" in tts_item[1].lower():
+            item.seasonal_attribute = SeasonalAttribute.bloodied
         return _update_item_object(item, rarity=ItemRarity.Common, item_type=ItemType.Sigil)
     if tts_item[0].startswith(ItemIdentifiers.ESCALATION_SIGIL.value):
         return _update_item_object(item, rarity=ItemRarity.Common, item_type=ItemType.EscalationSigil)
