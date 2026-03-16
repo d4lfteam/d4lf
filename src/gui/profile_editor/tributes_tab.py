@@ -35,7 +35,7 @@ class TributesTab(QWidget):
         main_layout.setContentsMargins(0, 20, 0, 20)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         label = QLabel(
-            "Add tribute names and tribute rarities you want to keep. Existing combined rules are preserved as-is."
+            "Add tribute names and tribute rarities you want to keep. These rules are evaluated independently."
         )
         label.setWordWrap(True)
         main_layout.addWidget(label)
