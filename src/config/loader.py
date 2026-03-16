@@ -15,6 +15,7 @@ from src.config.models import DEPRECATED_INI_KEYS, AdvancedOptionsModel, CharMod
 
 LOGGER = logging.getLogger(__name__)
 PARAMS_INI = "params.ini"
+MANUAL_RESTART_SETTING_KEYS = {"general.vision_mode_type"}
 ConfigChangeListener = Callable[[frozenset[str]], None]
 
 
@@ -88,6 +89,9 @@ class IniConfigLoader:
         formatted_entries = [f"{key}={self._format_value_for_log(snapshot.get(key))}" for key in sorted(changed_keys)]
         noun = "change" if len(formatted_entries) == 1 else "changes"
         LOGGER.info("Applied setting %s: %s", noun, ", ".join(formatted_entries))
+
+        if any(key in MANUAL_RESTART_SETTING_KEYS for key in changed_keys):
+            LOGGER.warning("Please restart d4lf manually to apply vision mode changes.")
 
     def _notify_listeners(self, changed_keys: set[str]) -> None:
         if not changed_keys:

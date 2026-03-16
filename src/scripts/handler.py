@@ -77,6 +77,7 @@ HOTKEY_SETTING_KEYS = _collect_hotkey_setting_keys()
 LANGUAGE_SETTING_KEYS = _collect_reload_group_keys("general", GeneralModel, "language")
 LOG_LEVEL_SETTING_KEYS = _collect_reload_group_keys("advanced_options", AdvancedOptionsModel, "log_level")
 MANUAL_RESTART_SETTING_KEYS = _collect_reload_group_keys("general", GeneralModel, "restart_app")
+VISION_MODE_TYPE_SETTING_KEY = _setting_key("general", "vision_mode_type")
 
 
 class ScriptHandler:
@@ -115,8 +116,10 @@ class ScriptHandler:
                 self._refresh_hotkeys(self._config)
             if _has_any_changed(changed_keys, LANGUAGE_SETTING_KEYS):
                 self._refresh_language_assets(self._config)
-            if _has_any_changed(changed_keys, MANUAL_RESTART_SETTING_KEYS):
+            if VISION_MODE_TYPE_SETTING_KEY in changed_keys:
                 self._notify_manual_restart_required("vision mode changes")
+            elif _has_any_changed(changed_keys, MANUAL_RESTART_SETTING_KEYS):
+                self._notify_manual_restart_required("settings changes")
 
     def _hotkey_signature(self, config: IniConfigLoader) -> tuple[str | bool, ...]:
         advanced_options = config.advanced_options
