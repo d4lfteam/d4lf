@@ -37,6 +37,9 @@ CONFIG_TABNAME = "config"
 
 def _validate_and_save_changes(model, header, key, value, method_to_reset_value: typing.Callable | None = None):
     try:
+        validated_values = model.model_dump(mode="python")
+        validated_values[key] = value
+        type(model)(**validated_values)
         IniConfigLoader().save_value(header, key, value)
     except ValidationError as e:
         msg = QMessageBox()
@@ -96,12 +99,7 @@ class ConfigTab(QWidget):
             "description of what it is for. To read more about each parameter, please view "
             "<a href='https://github.com/d4lfteam/d4lf?tab=readme-ov-file#configs' style='color: #1E90FF;'>the config portion of the readme</a>"
         )
-        instructions_text.append("")
-        instructions_text.append(
-            "Note: Most settings are reloaded automatically through in-memory change events. Hotkey changes are applied live, and other runtime settings refresh on next use. Some GUI/layout-specific changes may still require reopening the affected window."
-        )
-
-        instructions_text.setFixedHeight(100)
+        instructions_text.setFixedHeight(80)
         layout.addWidget(instructions_text)
 
         self.setLayout(layout)
@@ -173,11 +171,9 @@ class ConfigTab(QWidget):
 
             def make_on_enum_changed(key):
                 def on_enum_changed():
-                    value_saved = _validate_and_save_changes(
-                        model, section_config_header, key, parameter_value_widget.currentText()
-                    )
+                    _validate_and_save_changes(model, section_config_header, key, parameter_value_widget.currentText())
 
-                    if value_saved and key == "theme" and self.theme_changed_callback and not self._initializing:
+                    if key == "theme" and self.theme_changed_callback and not self._initializing:
                         self.theme_changed_callback()
 
                 return on_enum_changed

@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 MODULE_LOGGER = logging.getLogger(__name__)
 HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
+LIVE_RELOAD_GROUP_KEY = "live_reload_group"
 
 DEPRECATED_INI_KEYS = [
     "hidden_transparency",
@@ -189,7 +190,11 @@ class AdvancedOptionsModel(_IniBaseModel):
         description="Hotkey to refresh the junk/favorite status of all items in your inventory/stash. A filter is not run after.",
         json_schema_extra={IS_HOTKEY_KEY: "True"},
     )
-    log_lvl: LogLevels = Field(default=LogLevels.info, description="The level at which logs are written")
+    log_lvl: LogLevels = Field(
+        default=LogLevels.info,
+        description="The level at which logs are written",
+        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level"},
+    )
     move_to_chest: str = Field(
         default="f8",
         description="Hotkey to move configured items from inventory to stash",
@@ -227,7 +232,9 @@ class AdvancedOptionsModel(_IniBaseModel):
         default="f10", description="Hotkey to open/close the Paragon overlay", json_schema_extra={IS_HOTKEY_KEY: "True"}
     )
     vision_mode_only: bool = Field(
-        default=False, description="Only allow vision mode to run. All hotkeys and actions that click will be disabled."
+        default=False,
+        description="Only allow vision mode to run. All hotkeys and actions that click will be disabled.",
+        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "hotkeys"},
     )
 
     @model_validator(mode="after")
@@ -346,7 +353,7 @@ class GeneralModel(_IniBaseModel):
     language: str = Field(
         default="enUS",
         description="Do not change. Only English is supported at this time",
-        json_schema_extra={HIDE_FROM_GUI_KEY: "True"},
+        json_schema_extra={HIDE_FROM_GUI_KEY: "True", LIVE_RELOAD_GROUP_KEY: "language"},
     )
     mark_as_favorite: bool = Field(default=True, description="Whether to favorite matched items or not")
     max_stash_tabs: int = Field(
@@ -379,6 +386,7 @@ class GeneralModel(_IniBaseModel):
     vision_mode_type: VisionModeType = Field(
         default=VisionModeType.highlight_matches,
         description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
+        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "restart_app"},
     )
 
     @field_validator("check_chest_tabs", mode="before")

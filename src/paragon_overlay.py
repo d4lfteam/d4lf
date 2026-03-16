@@ -447,7 +447,7 @@ class ParagonOverlay(tk.Toplevel):
         self._on_close = on_close
         self._config_loader = IniConfigLoader()
         self._config_listener = self._on_config_changed
-        self._config_loader.register_listener(self._config_listener)
+        self._config_loader.register_change_listener(self._config_listener)
         self._cam = Cam()
         self._res = ResManager()
         self.builds = list(builds)
@@ -655,7 +655,7 @@ class ParagonOverlay(tk.Toplevel):
         finally:
             self.after(self._cfg.poll_ms, self._poll_window_state)
 
-    def _on_config_changed(self, changed_keys: set[str]) -> None:
+    def _on_config_changed(self, changed_keys: set[str] | frozenset[str]) -> None:
         """Apply live overlay updates after runtime config changes."""
         if "general.colorblind_mode" not in changed_keys:
             return
@@ -1597,7 +1597,7 @@ class ParagonOverlay(tk.Toplevel):
         """Persist state, destroy the window, and clear the global overlay handle."""
         try:
             with suppress(Exception):
-                self._config_loader.unregister_listener(self._config_listener)
+                self._config_loader.unregister_change_listener(self._config_listener)
             self._close_build_dropdown()
             self._close_settings_dropdown()
             self._persist_state()

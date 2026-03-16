@@ -1,9 +1,17 @@
+from __future__ import annotations
+
 import logging
+import os
+import subprocess
 import sys
 import threading
 import time
-import typing
 from contextlib import suppress
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from collections.abc import Set as AbstractSet
 
 if sys.platform != "darwin":
     import keyboard
@@ -14,7 +22,14 @@ import src.scripts.vision_mode_with_highlighting
 import src.tts
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
-from src.config.models import ItemRefreshType, VisionModeType
+from src.config.models import (
+    IS_HOTKEY_KEY,
+    LIVE_RELOAD_GROUP_KEY,
+    AdvancedOptionsModel,
+    GeneralModel,
+    ItemRefreshType,
+    VisionModeType,
+)
 from src.dataloader import Dataloader
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
 from src.paragon_overlay import request_close, run_paragon_overlay
@@ -28,38 +43,60 @@ from src.utils.window import screenshot
 LOGGER = logging.getLogger(__name__)
 
 LOCK = threading.Lock()
-HOTKEY_SETTING_KEYS = {
-    "advanced_options.exit_key",
-    "advanced_options.force_refresh_only",
-    "advanced_options.move_to_chest",
-    "advanced_options.move_to_inv",
-    "advanced_options.run_filter",
-    "advanced_options.run_filter_drop",
-    "advanced_options.run_filter_force_refresh",
-    "advanced_options.run_vision_mode",
-    "advanced_options.toggle_paragon_overlay",
-    "advanced_options.vision_mode_only",
-}
-LANGUAGE_SETTING_KEYS = {"general.language"}
-LOG_LEVEL_SETTING_KEYS = {"advanced_options.log_lvl"}
-VISION_MODE_SETTING_KEYS = {"general.vision_mode_type"}
+
+
+def _setting_key(section: str, field_name: str) -> str:
+    return f"{section}.{field_name}"
+
+
+def _field_metadata(model_class: type[Any], field_name: str) -> dict[str, Any]:
+    return model_class.model_fields[field_name].json_schema_extra or {}
+
+
+def _collect_reload_group_keys(section: str, model_class: type[Any], group_name: str) -> set[str]:
+    return {
+        _setting_key(section, field_name)
+        for field_name in model_class.model_fields
+        if _field_metadata(model_class, field_name).get(LIVE_RELOAD_GROUP_KEY) == group_name
+    }
+
+
+def _collect_hotkey_setting_keys() -> set[str]:
+    hotkey_keys = {
+        _setting_key("advanced_options", field_name)
+        for field_name in AdvancedOptionsModel.model_fields
+        if _field_metadata(AdvancedOptionsModel, field_name).get(IS_HOTKEY_KEY) == "True"
+    }
+    hotkey_keys.update(_collect_reload_group_keys("advanced_options", AdvancedOptionsModel, "hotkeys"))
+    return hotkey_keys
+
+
+def _has_any_changed(changed_keys: AbstractSet[str], relevant_keys: set[str]) -> bool:
+    return any(key in changed_keys for key in relevant_keys)
+
+
+HOTKEY_SETTING_KEYS = _collect_hotkey_setting_keys()
+LANGUAGE_SETTING_KEYS = _collect_reload_group_keys("general", GeneralModel, "language")
+LOG_LEVEL_SETTING_KEYS = _collect_reload_group_keys("advanced_options", AdvancedOptionsModel, "log_level")
+APP_RESTART_SETTING_KEYS = _collect_reload_group_keys("general", GeneralModel, "restart_app")
 
 
 class ScriptHandler:
     def __init__(self):
         self.loot_interaction_thread = None
         self.paragon_overlay_thread: threading.Thread | None = None
+        self.did_stop_scripts = False
         self._vision_mode_was_running_before_overlay = False
-        self._hotkey_handles: list[typing.Any] = []
+        self._hotkey_handles: list[Any] = []
         self._runtime_config_lock = threading.RLock()
+        self._restart_requested = False
         self._config = IniConfigLoader()
-        self._vision_mode_type = self._config.general.vision_mode_type
         self._language = self._config.general.language
         self._log_level = self._config.advanced_options.log_lvl.value.upper()
-        self.vision_mode = self._create_vision_mode(self._vision_mode_type)
+        self.vision_mode = self._create_vision_mode(self._config.general.vision_mode_type)
 
         self.setup_key_binds()
-        self._config.register_listener(self._on_config_changed)
+        self._config.register_change_listener(self._on_config_changed)
         if self._config.general.run_vision_mode_on_startup:
             self.run_vision_mode()
 
@@ -71,17 +108,17 @@ class ScriptHandler:
     def _graceful_exit(self):
         safe_exit()
 
-    def _on_config_changed(self, changed_keys: set[str]) -> None:
-        """Apply relevant runtime settings immediately after a config change event."""
+    def _on_config_changed(self, changed_keys: AbstractSet[str]) -> None:
+        """Apply relevant settings after a config change event."""
         with self._runtime_config_lock:
-            if changed_keys & LOG_LEVEL_SETTING_KEYS:
+            if _has_any_changed(changed_keys, LOG_LEVEL_SETTING_KEYS):
                 self._refresh_logging_level(self._config)
-            if changed_keys & HOTKEY_SETTING_KEYS:
+            if _has_any_changed(changed_keys, HOTKEY_SETTING_KEYS):
                 self._refresh_hotkeys(self._config)
-            if changed_keys & LANGUAGE_SETTING_KEYS:
+            if _has_any_changed(changed_keys, LANGUAGE_SETTING_KEYS):
                 self._refresh_language_assets(self._config)
-            if changed_keys & VISION_MODE_SETTING_KEYS:
-                self._refresh_vision_mode(self._config)
+            if _has_any_changed(changed_keys, APP_RESTART_SETTING_KEYS):
+                self._request_application_restart("vision mode change")
 
     def _hotkey_signature(self, config: IniConfigLoader) -> tuple[str | bool, ...]:
         advanced_options = config.advanced_options
@@ -129,21 +166,37 @@ class ScriptHandler:
         self._log_level = current_log_level
         LOGGER.info("Updated log level to %s", current_log_level)
 
-    def _refresh_vision_mode(self, config: IniConfigLoader) -> None:
-        vision_mode_type = config.general.vision_mode_type
-        if vision_mode_type == self._vision_mode_type:
+    def _restart_command(self) -> list[str]:
+        if getattr(sys, "frozen", False):
+            return [sys.executable, *sys.argv[1:]]
+        return [sys.executable, *sys.argv]
+
+    def _request_application_restart(self, reason: str) -> None:
+        if self._restart_requested:
             return
 
-        was_running = self.vision_mode.running()
-        if was_running:
-            self.vision_mode.stop()
+        self._restart_requested = True
+        threading.Thread(target=self._restart_application, args=(reason,), daemon=True).start()
 
-        self.vision_mode = self._create_vision_mode(vision_mode_type)
-        self._vision_mode_type = vision_mode_type
-        LOGGER.info("Reloaded vision mode implementation: %s", vision_mode_type.value)
+    def _restart_application(self, reason: str) -> None:
+        LOGGER.info("Restarting d4lf to apply %s", reason)
+        time.sleep(0.1)
 
-        if was_running:
-            self.vision_mode.start()
+        with suppress(Exception):
+            if self.vision_mode.running():
+                self.vision_mode.stop()
+        with suppress(Exception):
+            if self.paragon_overlay_thread is not None and self.paragon_overlay_thread.is_alive():
+                request_close()
+
+        try:
+            subprocess.Popen(self._restart_command())
+        except Exception:
+            self._restart_requested = False
+            LOGGER.exception("Failed to restart d4lf automatically. Please restart it manually.")
+            return
+
+        os._exit(0)
 
     def toggle_paragon_overlay(self):
         """Toggle the Paragon overlay thread (start if not running, request close if running)."""
@@ -187,7 +240,6 @@ class ScriptHandler:
         except Exception:
             LOGGER.exception("Paragon overlay crashed")
         finally:
-            # Overlay has stopped (or failed to start). Restore vision mode if we stopped it.
             try:
                 if self._vision_mode_was_running_before_overlay and not self.vision_mode.running():
                     self.vision_mode.start()
@@ -197,12 +249,15 @@ class ScriptHandler:
                 self.paragon_overlay_thread = None
 
     def _clear_key_binds(self) -> None:
+        if sys.platform == "darwin":
+            return
+
         while self._hotkey_handles:
             handle = self._hotkey_handles.pop()
             with suppress(KeyError, ValueError):
                 keyboard.remove_hotkey(handle)
 
-    def _register_hotkey(self, hotkey: str, callback: typing.Callable[[], None]) -> None:
+    def _register_hotkey(self, hotkey: str, callback: Callable[[], None]) -> None:
         self._hotkey_handles.append(keyboard.add_hotkey(hotkey, callback))
 
     def setup_key_binds(self):
@@ -234,8 +289,10 @@ class ScriptHandler:
             self._start_or_stop_loot_interaction_thread(run_loot_filter, (force_refresh, no_match_action))
         else:
             LOGGER.warning(
-                f"TTS connection has not been made yet. Have you followed all of the instructions in {SETUP_INSTRUCTIONS_URL}? "
-                f"If so, it's possible your Windows user does not have the correct permissions to allow Diablo 4 to connect to a third party screen reader."
+                "TTS connection has not been made yet. Have you followed all of the instructions in %s? "
+                "If so, it's possible your Windows user does not have the correct permissions to allow Diablo 4 "
+                "to connect to a third party screen reader.",
+                SETUP_INSTRUCTIONS_URL,
             )
 
     def move_items_to_inventory(self):
@@ -244,7 +301,7 @@ class ScriptHandler:
     def move_items_to_stash(self):
         self._start_or_stop_loot_interaction_thread(move_items_to_stash)
 
-    def _start_or_stop_loot_interaction_thread(self, loot_interaction_method: typing.Callable, method_args=()):
+    def _start_or_stop_loot_interaction_thread(self, loot_interaction_method: Callable[..., None], method_args=()):
         if LOCK.acquire(blocking=False):
             try:
                 if self.loot_interaction_thread is not None:
@@ -265,9 +322,9 @@ class ScriptHandler:
         else:
             return
 
-    def _wrapper_run_loot_interaction_method(self, loot_interaction_method: typing.Callable, method_args=()):
+    def _wrapper_run_loot_interaction_method(self, loot_interaction_method: Callable[..., None], method_args=()):
         try:
-            # We will stop all scripts if they are currently running and restart them afterward if needed
+            # We will stop all scripts if they are currently running and restart them afterward if needed.
             self.did_stop_scripts = False
             if self.vision_mode.running():
                 self.vision_mode.stop()
@@ -315,3 +372,5 @@ def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh,
             LOGGER.error("Inventory did not open up")
             return
         check_items(inv, force_refresh, no_match_action=no_match_action)
+    mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+    LOGGER.info("Loot filter done")

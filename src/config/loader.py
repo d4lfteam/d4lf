@@ -6,25 +6,21 @@ import configparser
 import logging
 import pathlib
 import threading
-import typing
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from src.config.helper import singleton
 from src.config.models import DEPRECATED_INI_KEYS, AdvancedOptionsModel, CharModel, GeneralModel
 
 LOGGER = logging.getLogger(__name__)
 PARAMS_INI = "params.ini"
-ConfigChangeListener = typing.Callable[[frozenset[str]], None]
+ConfigChangeListener = Callable[[frozenset[str]], None]
 
 
 @singleton
 class IniConfigLoader:
-    """Load, validate, persist, and broadcast config changes.
-
-    The in-memory pydantic models are the runtime source of truth. ``params.ini``
-    remains the persistence layer and an optional fallback for external/manual
-    file edits.
-    """
+    """Load, validate, persist, and broadcast config changes."""
 
     def __init__(self) -> None:
         self._advanced_options = AdvancedOptionsModel()
@@ -37,7 +33,7 @@ class IniConfigLoader:
         self._change_listeners: list[ConfigChangeListener] = []
         self._last_config_signature: tuple[int, int] | None = None
         self._config_revision = 0
-        self._state_snapshot: dict[str, typing.Any] = {}
+        self._state_snapshot: dict[str, Any] = {}
         self.load(notify=False)
 
     def _config_path(self) -> Path:
@@ -51,22 +47,20 @@ class IniConfigLoader:
         stat_result = config_path.stat()
         return stat_result.st_mtime_ns, stat_result.st_size
 
-    def _section_models(self) -> dict[str, typing.Any]:
+    def _section_models(self) -> dict[str, Any]:
         return {"advanced_options": self._advanced_options, "char": self._char, "general": self._general}
 
-    def _model_for_section(self, section: str) -> typing.Any | None:
+    def _model_for_section(self, section: str) -> Any | None:
         return self._section_models().get(section)
 
-    def _capture_state_snapshot(self) -> dict[str, typing.Any]:
-        snapshot: dict[str, typing.Any] = {}
+    def _capture_state_snapshot(self) -> dict[str, Any]:
+        snapshot: dict[str, Any] = {}
         for section_name, model in self._section_models().items():
             for key, value in model.model_dump(mode="python").items():
                 snapshot[f"{section_name}.{key}"] = value
         return snapshot
 
-    def _changed_keys(
-        self, previous_snapshot: dict[str, typing.Any], current_snapshot: dict[str, typing.Any]
-    ) -> set[str]:
+    def _changed_keys(self, previous_snapshot: dict[str, Any], current_snapshot: dict[str, Any]) -> set[str]:
         return {
             key
             for key in previous_snapshot.keys() | current_snapshot.keys()
@@ -81,7 +75,7 @@ class IniConfigLoader:
         with self._config_path().open("w", encoding="utf-8") as config_file:
             self._parser.write(config_file)
 
-    def _format_value_for_log(self, value: typing.Any) -> str:
+    def _format_value_for_log(self, value: Any) -> str:
         if isinstance(value, bool):
             return "on" if value else "off"
         return str(value)
@@ -116,11 +110,12 @@ class IniConfigLoader:
         with self._lock:
             self._change_listeners = [existing for existing in self._change_listeners if existing != listener]
 
-    # Backward-compatible aliases used by the other runtime patches.
     def register_listener(self, listener: ConfigChangeListener) -> None:
+        """Backward-compatible alias for older call sites."""
         self.register_change_listener(listener)
 
     def unregister_listener(self, listener: ConfigChangeListener) -> None:
+        """Backward-compatible alias for older call sites."""
         self.unregister_change_listener(listener)
 
     def load(self, clear: bool = False, notify: bool = True) -> None:
@@ -128,8 +123,7 @@ class IniConfigLoader:
             previous_snapshot = self._state_snapshot.copy()
             config_path = self._config_path()
             if not config_path.exists() or clear:
-                with config_path.open("w", encoding="utf-8"):
-                    pass
+                config_path.write_text("", encoding="utf-8")
 
             self._parser = configparser.ConfigParser()
             self._parser.read(config_path, encoding="utf-8")
@@ -202,7 +196,7 @@ class IniConfigLoader:
         with self._lock:
             return self._config_revision
 
-    def save_value(self, section: str, key: str, value: typing.Any) -> None:
+    def save_value(self, section: str, key: str, value: Any) -> None:
         changed_keys: set[str] = set()
 
         with self._lock:
