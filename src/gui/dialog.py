@@ -23,6 +23,7 @@ from src.config.models import (
     AffixFilterModel,
     DynamicItemFilterModel,
     ItemFilterModel,
+    ItemRarity,
     TributeFilterModel,
 )
 from src.dataloader import Dataloader
@@ -387,7 +388,11 @@ class CreateTribute(QDialog):
 
     def accept(self):
         reverse_dict = {v: k for k, v in Dataloader().tribute_dict.items()}
-        if reverse_dict.get(self.name_input.currentText()) in self.tributes:
+        tribute_name = reverse_dict.get(self.name_input.currentText())
+        if tribute_name is None:
+            QMessageBox.warning(self, "Warning", "Select a valid tribute from the list.")
+            return
+        if tribute_name in self.tributes:
             QMessageBox.warning(self, "Warning", "Tribute already exist. You can modify the existing one.")
             return
         super().accept()
@@ -396,6 +401,57 @@ class CreateTribute(QDialog):
         reverse_dict = {v: k for k, v in Dataloader().tribute_dict.items()}
         tribute_name = reverse_dict.get(self.name_input.currentText())
         return TributeFilterModel(name=tribute_name, rarities=[])
+
+
+class AddTributeRarity(QDialog):
+    def __init__(self, rarities: list[ItemRarity], parent=None):
+        super().__init__(parent)
+
+        self.rarities = {ItemRarity(rarity) for rarity in rarities}
+
+        self.setWindowTitle("Add Tribute Rarity")
+        self.setFixedSize(300, 150)
+
+        self.main_layout = QVBoxLayout()
+        self.form_layout = QFormLayout()
+
+        self.rarity_label = QLabel("Rarity:")
+        self.rarity_input = IgnoreScrollWheelComboBox()
+        self.rarity_input.setEditable(True)
+        self.rarity_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.rarity_input.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.rarity_input.addItems([rarity.name for rarity in ItemRarity])
+        self.form_layout.addRow(self.rarity_label, self.rarity_input)
+        self.buttonLayout = QHBoxLayout()
+        self.okButton = QPushButton("OK")
+        self.okButton.clicked.connect(self.accept)
+        self.cancelButton = QPushButton("Cancel")
+        self.cancelButton.clicked.connect(self.reject)
+
+        self.buttonLayout.addWidget(self.okButton)
+        self.buttonLayout.addWidget(self.cancelButton)
+
+        self.main_layout.addLayout(self.form_layout)
+        self.main_layout.addLayout(self.buttonLayout)
+
+        self.setLayout(self.main_layout)
+
+    def accept(self):
+        rarity_name = self.rarity_input.currentText()
+        if rarity_name not in ItemRarity.__members__:
+            QMessageBox.warning(self, "Warning", "Select a valid rarity from the list.")
+            return
+
+        rarity = ItemRarity[rarity_name]
+        if rarity in self.rarities:
+            QMessageBox.warning(self, "Warning", "Rarity already exists in this tribute filter.")
+            return
+
+        super().accept()
+
+    def get_value(self):
+        rarity = ItemRarity[self.rarity_input.currentText()]
+        return TributeFilterModel(rarities=[rarity])
 
 
 class RemoveTribute(QDialog):
