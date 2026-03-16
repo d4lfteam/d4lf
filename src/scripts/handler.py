@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
-import subprocess
 import sys
 import threading
 import time
@@ -78,7 +76,7 @@ def _has_any_changed(changed_keys: AbstractSet[str], relevant_keys: set[str]) ->
 HOTKEY_SETTING_KEYS = _collect_hotkey_setting_keys()
 LANGUAGE_SETTING_KEYS = _collect_reload_group_keys("general", GeneralModel, "language")
 LOG_LEVEL_SETTING_KEYS = _collect_reload_group_keys("advanced_options", AdvancedOptionsModel, "log_level")
-APP_RESTART_SETTING_KEYS = _collect_reload_group_keys("general", GeneralModel, "restart_app")
+MANUAL_RESTART_SETTING_KEYS = _collect_reload_group_keys("general", GeneralModel, "restart_app")
 
 
 class ScriptHandler:
@@ -89,7 +87,7 @@ class ScriptHandler:
         self._vision_mode_was_running_before_overlay = False
         self._hotkey_handles: list[Any] = []
         self._runtime_config_lock = threading.RLock()
-        self._restart_requested = False
+        self._manual_restart_warning = False
         self._config = IniConfigLoader()
         self._language = self._config.general.language
         self._log_level = self._config.advanced_options.log_lvl.value.upper()
@@ -117,8 +115,8 @@ class ScriptHandler:
                 self._refresh_hotkeys(self._config)
             if _has_any_changed(changed_keys, LANGUAGE_SETTING_KEYS):
                 self._refresh_language_assets(self._config)
-            if _has_any_changed(changed_keys, APP_RESTART_SETTING_KEYS):
-                self._request_application_restart("vision mode change")
+            if _has_any_changed(changed_keys, MANUAL_RESTART_SETTING_KEYS):
+                self._notify_manual_restart_required("vision mode changes")
 
     def _hotkey_signature(self, config: IniConfigLoader) -> tuple[str | bool, ...]:
         advanced_options = config.advanced_options
@@ -166,37 +164,12 @@ class ScriptHandler:
         self._log_level = current_log_level
         LOGGER.info("Updated log level to %s", current_log_level)
 
-    def _restart_command(self) -> list[str]:
-        if getattr(sys, "frozen", False):
-            return [sys.executable, *sys.argv[1:]]
-        return [sys.executable, *sys.argv]
-
-    def _request_application_restart(self, reason: str) -> None:
-        if self._restart_requested:
+    def _notify_manual_restart_required(self, reason: str) -> None:
+        if self._manual_restart_warning:
             return
 
-        self._restart_requested = True
-        threading.Thread(target=self._restart_application, args=(reason,), daemon=True).start()
-
-    def _restart_application(self, reason: str) -> None:
-        LOGGER.info("Restarting d4lf to apply %s", reason)
-        time.sleep(0.1)
-
-        with suppress(Exception):
-            if self.vision_mode.running():
-                self.vision_mode.stop()
-        with suppress(Exception):
-            if self.paragon_overlay_thread is not None and self.paragon_overlay_thread.is_alive():
-                request_close()
-
-        try:
-            subprocess.Popen(self._restart_command())
-        except Exception:
-            self._restart_requested = False
-            LOGGER.exception("Failed to restart d4lf automatically. Please restart it manually.")
-            return
-
-        os._exit(0)
+        self._manual_restart_warning = True
+        LOGGER.warning("Please restart d4lf manually to apply %s.", reason)
 
     def toggle_paragon_overlay(self):
         """Toggle the Paragon overlay thread (start if not running, request close if running)."""
