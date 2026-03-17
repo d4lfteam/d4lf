@@ -209,10 +209,12 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         data=data, class_name=class_name, source_url=url, selected_variant_parts=selected_variant_parts
     )
 
+    paragon_step_count = 0
     # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
         steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
         if steps:
+            paragon_step_count = len(steps)
             profile.Paragon = build_paragon_profile_payload(
                 build_name=file_name, source_url=url, paragon_boards_list=steps
             )
@@ -220,6 +222,8 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             LOGGER.warning("Paragon export enabled, but no paragon data was found on this D4Builds page.")
 
     corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
+    if paragon_step_count:
+        LOGGER.info(f"Paragon imported successfully for {corrected_file_name} with {paragon_step_count} board step(s).")
     if config.add_to_profiles:
         add_to_profiles(corrected_file_name)
 

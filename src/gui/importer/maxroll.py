@@ -86,10 +86,12 @@ def import_maxroll(config: ImportConfig):
             import_count=len(profile_indices),
         )
 
+        paragon_step_count = 0
         # Optionally embed Paragon data into the profile model before saving
         if config.export_paragon:
             steps = extract_maxroll_paragon_steps(active_profile)
             if steps:
+                paragon_step_count = len(steps)
                 profile.Paragon = build_paragon_profile_payload(
                     build_name=build_name, source_url=url, paragon_boards_list=steps
                 )
@@ -97,6 +99,10 @@ def import_maxroll(config: ImportConfig):
                 LOGGER.warning("Paragon export enabled, but no paragon steps were found in this Maxroll profile.")
 
         corrected_file_name = save_as_profile(file_name=build_name, profile=profile, url=url)
+        if paragon_step_count:
+            LOGGER.info(
+                f"Paragon imported successfully for {corrected_file_name} with {paragon_step_count} board step(s)."
+            )
         created_profiles.append(corrected_file_name)
 
         if config.add_to_profiles:

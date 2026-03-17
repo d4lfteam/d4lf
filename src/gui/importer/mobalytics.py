@@ -208,10 +208,12 @@ def import_mobalytics(config: ImportConfig):
         profile.AspectUpgrades = aspect_upgrade_filters
 
     file_name = config.custom_file_name or _build_default_file_name(build_name, class_name, variant_name, variant_id)
+    paragon_step_count = 0
     # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
         steps = extract_mobalytics_paragon_steps(variant if isinstance(variant, dict) else {})
         if steps:
+            paragon_step_count = len(steps)
             profile.Paragon = build_paragon_profile_payload(
                 build_name=file_name, source_url=url, paragon_boards_list=steps
             )
@@ -219,6 +221,8 @@ def import_mobalytics(config: ImportConfig):
             LOGGER.warning("Paragon export enabled, but no paragon data was found for this Mobalytics variant.")
 
     corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
+    if paragon_step_count:
+        LOGGER.info(f"Paragon imported successfully for {corrected_file_name} with {paragon_step_count} board step(s).")
 
     if config.add_to_profiles:
         add_to_profiles(corrected_file_name)
