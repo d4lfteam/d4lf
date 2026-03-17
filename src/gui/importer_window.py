@@ -1,12 +1,14 @@
 import logging
 import sys
 import threading
+from dataclasses import dataclass
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, Qt, QThreadPool, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -20,7 +22,7 @@ from PyQt6.QtWidgets import (
 from src.config.loader import IniConfigLoader
 from src.gui.importer.d4builds import import_d4builds
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.maxroll import import_maxroll
+from src.gui.importer.maxroll import get_maxroll_variant_options, import_maxroll
 from src.gui.importer.mobalytics import import_mobalytics
 from src.gui.open_user_config_button import OpenUserConfigButton
 
@@ -30,6 +32,59 @@ ICON_PATH = BASE_DIR / "assets" / "logo.png"
 
 LOGGER = logging.getLogger(__name__)
 THREADPOOL = QThreadPool()
+
+
+@dataclass(slots=True)
+class _MaxrollVariantChoice:
+    """Represents one selectable Maxroll build variant."""
+
+    index: int
+    label: str
+
+
+class _MaxrollVariantDialog(QDialog):
+    """Modal checkbox dialog for choosing Maxroll build variants."""
+
+    def __init__(self, choices: list[_MaxrollVariantChoice], parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._checkboxes: list[tuple[int, QCheckBox]] = []
+        self.setWindowTitle("Select Maxroll build variants")
+        self.setModal(True)
+        self.setMinimumWidth(420)
+        self._build_ui(choices=choices)
+
+    def selected_indices(self) -> list[int]:
+        """Return all checked planner indices."""
+        return [index for index, checkbox in self._checkboxes if checkbox.isChecked()]
+
+    def _build_ui(self, choices: list[_MaxrollVariantChoice]) -> None:
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Choose the Maxroll build variants to import:"))
+
+        for choice in choices:
+            checkbox = QCheckBox(choice.label, self)
+            checkbox.setChecked(True)
+            checkbox.stateChanged.connect(self._update_import_button_state)
+            self._checkboxes.append((choice.index, checkbox))
+            layout.addWidget(checkbox)
+
+        button_layout = QHBoxLayout()
+        button_layout.addStretch(1)
+
+        cancel_button = QPushButton("Cancel", self)
+        cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_button)
+
+        self._import_button = QPushButton("Import selected", self)
+        self._import_button.clicked.connect(self.accept)
+        self._import_button.setDefault(True)
+        button_layout.addWidget(self._import_button)
+
+        layout.addLayout(button_layout)
+        self._update_import_button_state()
+
+    def _update_import_button_state(self) -> None:
+        self._import_button.setEnabled(any(checkbox.isChecked() for _, checkbox in self._checkboxes))
 
 
 class ImporterWindow(QMainWindow):
@@ -216,23 +271,31 @@ class ImporterWindow(QMainWindow):
         self.generate_button.setEnabled(bool(text.strip()))
 
     def _generate_button_click(self):
+        """Handle generate button click."""
         self.log_output.clear()
-        """Handle generate button click"""
         url = self.input_box.text().strip()
         custom_filename = self.filename_input_box.text()
         if custom_filename:
             custom_filename = custom_filename.split(".")[0]
             custom_filename = custom_filename.strip()
 
+        selected_profile_indices: list[int] | None = None
+        if "maxroll" in url:
+            selected_profile_indices = self._prompt_for_maxroll_variants(url)
+            if selected_profile_indices == []:
+                logging.getLogger("src.gui.importer.maxroll").info("Maxroll import canceled.")
+                return
+
         importer_config = ImportConfig(
-            url,
-            self.import_uniques_checkbox.isChecked(),
-            self.import_aspect_upgrades_checkbox.isChecked(),
-            self.add_to_profiles_checkbox.isChecked(),
-            self.import_gas_checkbox.isChecked(),
-            self.require_all_gas_checkbox.isChecked(),
-            self.export_paragon_checkbox.isChecked(),
-            custom_filename,
+            url=url,
+            import_uniques=self.import_uniques_checkbox.isChecked(),
+            import_aspect_upgrades=self.import_aspect_upgrades_checkbox.isChecked(),
+            add_to_profiles=self.add_to_profiles_checkbox.isChecked(),
+            import_greater_affixes=self.import_gas_checkbox.isChecked(),
+            require_greater_affixes=self.require_all_gas_checkbox.isChecked(),
+            export_paragon=self.export_paragon_checkbox.isChecked(),
+            custom_file_name=custom_filename,
+            selected_profile_indices=selected_profile_indices,
         )
 
         if "maxroll" in url:
@@ -246,6 +309,20 @@ class ImporterWindow(QMainWindow):
         self.generate_button.setEnabled(False)
         self.generate_button.setText("Generating...")
         THREADPOOL.start(worker)
+
+    def _prompt_for_maxroll_variants(self, url: str) -> list[int] | None:
+        """Return selected Maxroll variant indices, [] when canceled, or None for default behavior."""
+        options = get_maxroll_variant_options(url)
+        if len(options) <= 1:
+            return None
+
+        choices = [_MaxrollVariantChoice(index=option.index, label=option.label) for option in options]
+        dialog = _MaxrollVariantDialog(choices=choices, parent=self)
+        if dialog.exec() != int(QDialog.DialogCode.Accepted):
+            return []
+
+        selected_indices = dialog.selected_indices()
+        return selected_indices or []
 
     def _on_worker_finished(self):
         """Handle worker completion."""
