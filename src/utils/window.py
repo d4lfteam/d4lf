@@ -39,7 +39,10 @@ class WindowSpec:
 
     def match(self, hwnd: int, check_window_name: bool = True) -> bool:
         window_name_ok = not check_window_name or "diablo" in _get_window_name_from_id(hwnd).lower()
-        return _get_process_from_window_name(hwnd).casefold() == self.process_name.casefold() and window_name_ok
+        LOGGER.info(f"Checking {_get_window_name_from_id(hwnd).lower()}")
+        result = _get_process_from_window_name(hwnd).casefold() == self.process_name.casefold() and window_name_ok
+        LOGGER.info(f"Returning {result}")
+        return result
 
 
 def _list_active_window_ids() -> list[int]:
@@ -49,12 +52,15 @@ def _list_active_window_ids() -> list[int]:
 
 
 def get_window_spec_id(window_spec: WindowSpec) -> int | None:
+    LOGGER.info("In get_window_spec_id, about to check active windows")
     for hwnd in _list_active_window_ids():
         if window_spec.match(hwnd):
+            LOGGER.info("Last checked one was a match with check_window_name True")
             return hwnd
     # If no process was found with "diablo" in the window name, search without that restriction
     for hwnd in _list_active_window_ids():
         if window_spec.match(hwnd, check_window_name=False):
+            LOGGER.info("Last checked one was a match with check_window_name not true")
             return hwnd
     return None
 
@@ -94,6 +100,7 @@ def find_and_set_window_position(window_spec: WindowSpec):
         top_left = ClientToScreen(hwnd, (pos[0], pos[1]))
         if pos[2] > 0 and pos[3] > 0:
             Cam().update_window_pos(top_left[0], top_left[1], pos[2], pos[3])
+    stop_detecting_window()
     time.sleep(1)
 
 
