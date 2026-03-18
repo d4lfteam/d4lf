@@ -2,6 +2,7 @@ import ctypes
 import logging
 import os
 import pathlib
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -9,6 +10,7 @@ from pathlib import Path
 import psutil
 from beautifultable import BeautifulTable
 from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QApplication
 
 import src.logger
 from src import __version__, tts
@@ -103,8 +105,9 @@ def main():
 
 
 def check_for_proper_tts_configuration():
-    # Check that the dll has been installed
+    # Check that the dll has been installed and is signed
     d4_process_found = False
+    tts_dll = None
     for proc in psutil.process_iter(["name", "exe"]):
         if proc.name().lower() == "diablo iv.exe":
             d4_dir = Path(proc.exe()).parent
@@ -117,6 +120,22 @@ def check_for_proper_tts_configuration():
                 LOGGER.debug(f"TTS DLL found at {tts_dll}")
             d4_process_found = True
             break
+
+    if tts_dll and tts_dll.exists():
+        try:
+            powershell_cmd = ["powershell", "-Command", f"(Get-AuthenticodeSignature '{tts_dll}').Status"]
+            result = subprocess.run(powershell_cmd, capture_output=True, text=True, check=True)
+            status = result.stdout.strip()
+
+            if status == "Valid":
+                LOGGER.debug(f"{tts_dll} is locally signed and valid.")
+            else:
+                LOGGER.error(
+                    f"As of season 12, the saapi64.dll must be locally signed. Follow all instructions in "
+                    f"{SETUP_INSTRUCTIONS_URL} to get the dll signed. It currently has a status of {status}"
+                )
+        except subprocess.CalledProcessError as e:
+            LOGGER.error(f"Error checking saapi64.dll signature: {e}")
 
     if not d4_process_found:
         LOGGER.warning(
@@ -205,12 +224,11 @@ if __name__ == "__main__":
         os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
         src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=running_from_source)
 
-        from PyQt6.QtWidgets import QApplication
-
-        from src.gui.unified_window import UnifiedMainWindow
-
         app = QApplication(sys.argv)
         app.setWindowIcon(QIcon(str(ICON_PATH)))
+        # Has to be imported in line to avoid circular reference
+        from src.gui.unified_window import UnifiedMainWindow
+
         window = UnifiedMainWindow()
         window.show()
         sys.exit(app.exec())
