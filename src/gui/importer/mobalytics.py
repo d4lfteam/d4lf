@@ -1,7 +1,8 @@
 import json
 import logging
 import re
-from urllib.parse import parse_qs, unquote, urlparse
+from dataclasses import dataclass
+from urllib.parse import parse_qs, parse_qsl, unquote, urlencode, urlparse, urlsplit, urlunsplit
 
 import jsonpath
 import lxml.html
@@ -44,28 +45,104 @@ class MobalyticsException(Exception):
     pass
 
 
+@dataclass(slots=True)
+class MobalyticsVariantOption:
+    """Represents one selectable Mobalytics variant URL."""
+
+    url: str
+    label: str
+
+
 @retry_importer
 def import_mobalytics(config: ImportConfig):
-    url = config.url.strip().replace("\n", "")
-    if BUILD_GUIDE_BASE_URL not in url:
+    """Import one or more Mobalytics variants into d4lf profiles."""
+    target_urls = _resolve_target_urls(config)
+    if not target_urls:
         LOGGER.error("Invalid url, please use a mobalytics build guide")
         return
-    url = _fix_input_url(url=url)
+    if config.selected_variant_urls is not None:
+        LOGGER.info(f"Importing {len(target_urls)} selected Mobalytics variant(s).")
+
+    created_profiles: list[str] = []
+    for target_url in target_urls:
+        corrected_file_name = _import_mobalytics_url(config=config, url=target_url, import_count=len(target_urls))
+        if corrected_file_name:
+            created_profiles.append(corrected_file_name)
+
+    if created_profiles:
+        LOGGER.info(f"Finished importing {len(created_profiles)} Mobalytics profile(s)")
+    else:
+        LOGGER.warning("No Mobalytics profiles were imported")
+
+
+def get_mobalytics_variant_options(url: str) -> list[MobalyticsVariantOption]:
+    """Return importable Mobalytics variant URLs for a build guide URL."""
+    normalized_url = url.strip().replace("\n", "")
+    if BUILD_GUIDE_BASE_URL not in normalized_url:
+        LOGGER.error("Invalid url, please use a mobalytics build guide")
+        return []
+
+    normalized_url = _fix_input_url(url=normalized_url)
+    try:
+        response = get_with_retry(url=normalized_url, custom_headers={})
+    except ConnectionError as exc:
+        LOGGER.exception(msg := "Couldn't get build")
+        raise MobalyticsException(msg) from exc
+
+    full_script_data_json = _extract_preloaded_state_json(response.text)
+    if not full_script_data_json:
+        LOGGER.error(
+            msg
+            := "No script containing build data was found. This means Mobalytics has changed how they present data, please submit a bung."
+        )
+        raise MobalyticsException(msg)
+
+    root_document_name = jsonpath.findall("$..['Diablo4Query:{}'].documents..data.__ref", full_script_data_json)[0]
+    variants = jsonpath.findall(f"$..['{root_document_name}'].data.buildVariants.values[*]", full_script_data_json)
+    if not variants:
+        return []
+
+    options: list[MobalyticsVariantOption] = []
+    for index, variant in enumerate(variants, start=1):
+        variant_id = str(variant.get("id", "")).strip()
+        if not variant_id:
+            continue
+        variant_name = _extract_variant_name(
+            variant=variant, variant_id=variant_id, full_script_data_json=full_script_data_json
+        )
+        options.append(
+            MobalyticsVariantOption(
+                url=_build_mobalytics_variant_url(source_url=normalized_url, variant_id=variant_id),
+                label=variant_name or f"Variant {index}",
+            )
+        )
+    return options
+
+
+def _resolve_target_urls(config: ImportConfig) -> list[str]:
+    """Resolve which Mobalytics URLs should be imported."""
+    if config.selected_variant_urls is not None:
+        unique_urls: list[str] = []
+        for url in config.selected_variant_urls:
+            if url and url not in unique_urls:
+                unique_urls.append(url)
+        return unique_urls
+    url = config.url.strip().replace("\n", "")
+    if BUILD_GUIDE_BASE_URL not in url:
+        return []
+    return [_fix_input_url(url=url)]
+
+
+def _import_mobalytics_url(config: ImportConfig, url: str, import_count: int) -> str | None:
+    """Import a single Mobalytics variant URL into a d4lf profile."""
     LOGGER.info(f"Loading {url}")
     try:
-        r = get_with_retry(url=url, custom_headers={})
+        response = get_with_retry(url=url, custom_headers={})
     except ConnectionError as exc:
         LOGGER.exception(msg := "Couldn't get build")
         raise MobalyticsException(msg) from exc
     variant_id = _extract_variant_id_from_url(url)
-    raw_html_data = lxml.html.fromstring(r.text)
-    # The build is shoved in a massive JSON in one of the script tags. We find that json now.
-    scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
-    full_script_data_json = None
-    for script in scripts_elem:
-        if script.text and script.text.strip().startswith(BUILD_SCRIPT_PREFIX):
-            full_script_data_json = json.loads(script.text.strip().replace(BUILD_SCRIPT_PREFIX, "")[:-1])
-            break
+    full_script_data_json = _extract_preloaded_state_json(response.text)
 
     if not full_script_data_json:
         LOGGER.error(
@@ -74,7 +151,6 @@ def import_mobalytics(config: ImportConfig):
         )
         raise MobalyticsException(msg)
 
-    # This gets the name of the root document, ie the one that will contain the name of the build
     root_document_name = jsonpath.findall("$..['Diablo4Query:{}'].documents..data.__ref", full_script_data_json)[0]
     build_name = jsonpath.findall(f"$..['{root_document_name}'].data.name", full_script_data_json)[0]
     if not build_name:
@@ -120,15 +196,9 @@ def import_mobalytics(config: ImportConfig):
 
         is_unique = entity_type == "uniqueItems"
         if is_unique:
-            # This has proven unreliable, just like MaxRoll, so the affix portion is getting removed
-            # if not raw_affixes:
-            #     LOGGER.warning(f"Unique {item_name} had no affixes listed for it, only the aspect will be imported.")
-            # affixes = _convert_raw_to_affixes(raw_affixes)
             unique_model = UniqueModel()
             try:
                 unique_model.aspect = AspectUniqueFilterModel(name=item_name)
-                # if affixes:
-                #     unique_model.affix = [AffixFilterModel(name=x.name) for x in affixes]
                 unique_filters.append(unique_model)
             except Exception:
                 LOGGER.exception(f"Unexpected error importing unique {item_name}, please report a bug.")
@@ -143,7 +213,6 @@ def import_mobalytics(config: ImportConfig):
             continue
 
         item_type = None
-        # Item type is hidden in the inherents. If it's in there, then we assume there are no further inherents
         is_weapon = "weapon" in slot_type
         for inherent in raw_inherents:
             potential_item_type = " ".join(inherent["id"].split("-")[:2]).lower()
@@ -160,7 +229,6 @@ def import_mobalytics(config: ImportConfig):
         if item_type:
             raw_inherents.clear()
 
-        # Druid and sorc have a default offhand item type that we may have missed if there were no inherents
         if not item_type and "offhand" in slot_type:
             item_type = fix_offhand_type("", class_name)
 
@@ -207,9 +275,15 @@ def import_mobalytics(config: ImportConfig):
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 
-    file_name = config.custom_file_name or _build_default_file_name(build_name, class_name, variant_name, variant_id)
+    file_name = _resolve_output_file_name(
+        config=config,
+        build_name=build_name,
+        class_name=class_name,
+        variant_name=variant_name,
+        variant_id=variant_id,
+        import_count=import_count,
+    )
     paragon_step_count = 0
-    # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
         steps = extract_mobalytics_paragon_steps(variant if isinstance(variant, dict) else {})
         if steps:
@@ -227,7 +301,47 @@ def import_mobalytics(config: ImportConfig):
     if config.add_to_profiles:
         add_to_profiles(corrected_file_name)
 
-    LOGGER.info("Finished")
+    return corrected_file_name
+
+
+def _extract_preloaded_state_json(response_text: str) -> dict | None:
+    """Return the Mobalytics preloaded state JSON from the build page HTML."""
+    raw_html_data = lxml.html.fromstring(response_text)
+    scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
+    for script in scripts_elem:
+        if script.text and script.text.strip().startswith(BUILD_SCRIPT_PREFIX):
+            return json.loads(script.text.strip().replace(BUILD_SCRIPT_PREFIX, "")[:-1])
+    return None
+
+
+def _build_mobalytics_variant_url(source_url: str, variant_id: str) -> str:
+    """Return a stable Mobalytics URL pointing to a specific build variant."""
+    parsed_url = urlsplit(source_url)
+    filtered_query = [
+        pair for pair in parse_qsl(parsed_url.query, keep_blank_values=True) if "activeVariantId," not in pair[1]
+    ]
+    filtered_query.append(("ws-ngf5-1", f"activeVariantId,{variant_id}"))
+    return urlunsplit((
+        parsed_url.scheme,
+        parsed_url.netloc,
+        parsed_url.path,
+        urlencode(filtered_query),
+        parsed_url.fragment,
+    ))
+
+
+def _resolve_output_file_name(
+    config: ImportConfig, build_name: str, class_name: str, variant_name: str, variant_id: str | None, import_count: int
+) -> str:
+    """Resolve the output file name for a Mobalytics import."""
+    if not config.custom_file_name:
+        return _build_default_file_name(build_name, class_name, variant_name, variant_id)
+
+    if import_count <= 1:
+        return config.custom_file_name
+
+    suffix = variant_name or (f"variant_{variant_id}" if variant_id else build_name)
+    return f"{config.custom_file_name}_{suffix}"
 
 
 def _corrections(input_str: str) -> str:

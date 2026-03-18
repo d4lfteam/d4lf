@@ -20,10 +20,10 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config.loader import IniConfigLoader
-from src.gui.importer.d4builds import import_d4builds
+from src.gui.importer.d4builds import get_d4builds_variant_options, import_d4builds
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.maxroll import get_maxroll_variant_options, import_maxroll
-from src.gui.importer.mobalytics import import_mobalytics
+from src.gui.importer.mobalytics import get_mobalytics_variant_options, import_mobalytics
 from src.gui.open_user_config_button import OpenUserConfigButton
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
@@ -35,37 +35,37 @@ THREADPOOL = QThreadPool()
 
 
 @dataclass(slots=True)
-class _MaxrollVariantChoice:
-    """Represents one selectable Maxroll build variant."""
+class _VariantChoice:
+    """Represents one selectable importer variant option."""
 
-    index: int
+    value: int | str
     label: str
 
 
-class _MaxrollVariantDialog(QDialog):
-    """Modal checkbox dialog for choosing Maxroll build variants."""
+class _VariantSelectionDialog(QDialog):
+    """Modal checkbox dialog for choosing importer variants."""
 
-    def __init__(self, choices: list[_MaxrollVariantChoice], parent: QWidget | None = None) -> None:
+    def __init__(self, choices: list[_VariantChoice], title: str, prompt: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._checkboxes: list[tuple[int, QCheckBox]] = []
-        self.setWindowTitle("Select Maxroll build variants")
+        self._checkboxes: list[tuple[int | str, QCheckBox]] = []
+        self.setWindowTitle(title)
         self.setModal(True)
         self.setMinimumWidth(420)
-        self._build_ui(choices=choices)
+        self._build_ui(choices=choices, prompt=prompt)
 
-    def selected_indices(self) -> list[int]:
-        """Return all checked planner indices."""
-        return [index for index, checkbox in self._checkboxes if checkbox.isChecked()]
+    def selected_values(self) -> list[int | str]:
+        """Return all checked variant values."""
+        return [value for value, checkbox in self._checkboxes if checkbox.isChecked()]
 
-    def _build_ui(self, choices: list[_MaxrollVariantChoice]) -> None:
+    def _build_ui(self, choices: list[_VariantChoice], prompt: str) -> None:
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("Choose the Maxroll build variants to import:"))
+        layout.addWidget(QLabel(prompt))
 
         for choice in choices:
             checkbox = QCheckBox(choice.label, self)
             checkbox.setChecked(True)
             checkbox.stateChanged.connect(self._update_import_button_state)
-            self._checkboxes.append((choice.index, checkbox))
+            self._checkboxes.append((choice.value, checkbox))
             layout.addWidget(checkbox)
 
         button_layout = QHBoxLayout()
@@ -280,10 +280,33 @@ class ImporterWindow(QMainWindow):
             custom_filename = custom_filename.strip()
 
         selected_profile_indices: list[int] | None = None
+        selected_variant_urls: list[str] | None = None
         if "maxroll" in url:
             selected_profile_indices = self._prompt_for_maxroll_variants(url)
             if selected_profile_indices == []:
                 logging.getLogger("src.gui.importer.maxroll").info("Maxroll import canceled.")
+                return
+        elif "d4builds" in url:
+            selected_variant_urls = self._prompt_for_url_variants(
+                url=url,
+                title="Select D4Builds variants",
+                prompt="Choose the D4Builds build variants to import:",
+                option_loader=get_d4builds_variant_options,
+                logger_name="src.gui.importer.d4builds",
+                cancel_message="D4Builds import canceled.",
+            )
+            if selected_variant_urls == []:
+                return
+        else:
+            selected_variant_urls = self._prompt_for_url_variants(
+                url=url,
+                title="Select Mobalytics variants",
+                prompt="Choose the Mobalytics build variants to import:",
+                option_loader=get_mobalytics_variant_options,
+                logger_name="src.gui.importer.mobalytics",
+                cancel_message="Mobalytics import canceled.",
+            )
+            if selected_variant_urls == []:
                 return
 
         importer_config = ImportConfig(
@@ -296,6 +319,7 @@ class ImporterWindow(QMainWindow):
             export_paragon=self.export_paragon_checkbox.isChecked(),
             custom_file_name=custom_filename,
             selected_profile_indices=selected_profile_indices,
+            selected_variant_urls=selected_variant_urls,
         )
 
         if "maxroll" in url:
@@ -316,13 +340,35 @@ class ImporterWindow(QMainWindow):
         if len(options) <= 1:
             return None
 
-        choices = [_MaxrollVariantChoice(index=option.index, label=option.label) for option in options]
-        dialog = _MaxrollVariantDialog(choices=choices, parent=self)
+        choices = [_VariantChoice(value=option.index, label=option.label) for option in options]
+        dialog = _VariantSelectionDialog(
+            choices=choices,
+            title="Select Maxroll build variants",
+            prompt="Choose the Maxroll build variants to import:",
+            parent=self,
+        )
         if dialog.exec() != int(QDialog.DialogCode.Accepted):
             return []
 
-        selected_indices = dialog.selected_indices()
-        return selected_indices or []
+        selected_values = dialog.selected_values()
+        return [value for value in selected_values if isinstance(value, int)] or []
+
+    def _prompt_for_url_variants(
+        self, url: str, title: str, prompt: str, option_loader, logger_name: str, cancel_message: str
+    ) -> list[str] | None:
+        """Return selected variant URLs, [] when canceled, or None for default behavior."""
+        options = option_loader(url)
+        if len(options) <= 1:
+            return None
+
+        choices = [_VariantChoice(value=option.url, label=option.label) for option in options]
+        dialog = _VariantSelectionDialog(choices=choices, title=title, prompt=prompt, parent=self)
+        if dialog.exec() != int(QDialog.DialogCode.Accepted):
+            logging.getLogger(logger_name).info(cancel_message)
+            return []
+
+        selected_values = dialog.selected_values()
+        return [value for value in selected_values if isinstance(value, str)] or []
 
     def _on_worker_finished(self):
         """Handle worker completion."""

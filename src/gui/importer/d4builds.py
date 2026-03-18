@@ -1,9 +1,11 @@
 import datetime
+import hashlib
 import logging
 import re
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlsplit, urlunsplit
 
 import lxml.html
 from selenium.webdriver.common.by import By
@@ -65,20 +67,80 @@ class D4BuildsException(Exception):
     pass
 
 
+@dataclass(slots=True)
+class D4BuildsVariantOption:
+    """Represents one selectable D4Builds variant URL."""
+
+    url: str
+    label: str
+
+
 @retry_importer(inject_webdriver=True)
 def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
-    url = config.url.strip().replace("\n", "")
-    if BASE_URL not in url:
+    """Import one or more D4Builds variants into d4lf profiles."""
+    target_urls = _resolve_target_urls(config)
+    if not target_urls:
         LOGGER.error("Invalid url, please use a d4builds url")
         return
+    if config.selected_variant_urls is not None:
+        LOGGER.info(f"Importing {len(target_urls)} selected D4Builds variant(s).")
+
+    created_profiles: list[str] = []
+    for target_url in target_urls:
+        corrected_file_name = _import_d4builds_url(
+            config=config, driver=driver, url=target_url, import_count=len(target_urls)
+        )
+        if corrected_file_name:
+            created_profiles.append(corrected_file_name)
+
+    if created_profiles:
+        LOGGER.info(f"Finished importing {len(created_profiles)} D4Builds profile(s)")
+    else:
+        LOGGER.warning("No D4Builds profiles were imported")
+
+
+def get_d4builds_variant_options(url: str) -> list[D4BuildsVariantOption]:
+    """Return importable D4Builds variant URLs for the provided build page."""
+    normalized_url = url.strip().replace("\n", "")
+    if BASE_URL not in normalized_url:
+        LOGGER.error("Invalid url, please use a d4builds url")
+        return []
+
+    parsed_url = urlsplit(normalized_url)
+    current_variant_values = parse_qs(parsed_url.query).get("var", [])
+    if current_variant_values:
+        base_url = _get_d4builds_variant_discovery_url(normalized_url)
+        return [
+            D4BuildsVariantOption(
+                url=_set_d4builds_variant_value(base_url=base_url, variant_value=str(variant_index)),
+                label=f"Var {variant_index}",
+            )
+            for variant_index in range(7)
+        ]
+
+    current_variant_url = _normalize_d4builds_variant_url(normalized_url)
+    current_variant_label = _build_d4builds_variant_label(raw_label="", variant_url=current_variant_url)
+    return [D4BuildsVariantOption(url=current_variant_url, label=current_variant_label)]
+
+
+def _resolve_target_urls(config: ImportConfig) -> list[str]:
+    """Resolve which D4Builds URLs should be imported."""
+    if config.selected_variant_urls is not None:
+        unique_urls: list[str] = []
+        for url in config.selected_variant_urls:
+            if url and url not in unique_urls:
+                unique_urls.append(url)
+        return unique_urls
+    url = config.url.strip().replace("\n", "")
+    if BASE_URL not in url:
+        return []
+    return [url]
+
+
+def _import_d4builds_url(config: ImportConfig, driver: ChromiumDriver, url: str, import_count: int) -> str | None:
+    """Import a single D4Builds URL into a d4lf profile."""
     LOGGER.info(f"Loading {url}")
-    driver.get(url)
-    wait = WebDriverWait(driver, 10)
-    wait.until(EC.presence_of_element_located((By.XPATH, BUILD_OVERVIEW_XPATH)))
-    wait.until(EC.presence_of_element_located((By.XPATH, PAPERDOLL_XPATH)))
-    time.sleep(
-        5
-    )  # super hacky but I didn't find anything else. The page is not fully loaded when the above wait is done
+    _load_d4builds_page(driver=driver, url=url)
     data = lxml.html.fromstring(driver.page_source)
     class_name = _get_build_class_name(data=data, source_url=url)
     if not (items := data.xpath(BUILD_OVERVIEW_XPATH)):
@@ -108,8 +170,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             unique_name = slot_to_unique_name_map[slot]
             try:
                 unique_model.aspect = AspectUniqueFilterModel(name=unique_name)
-                # We just can't trust their data well enough so removing this just like the other importers.
-                # unique_model.affix = [AffixFilterModel(name=x.name) for x in affixes]
                 unique_filters.append(unique_model)
             except Exception:
                 LOGGER.exception(
@@ -135,9 +195,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 and (x := fix_offhand_type(input_str=affix_name, class_str=class_name)) is not None
             ):
                 item_type = x
-                if any(
-                    substring in affix_name.lower() for substring in ["focus", "offhand", "shield", "totem"]
-                ):  # special line indicating the item type
+                if any(substring in affix_name.lower() for substring in ["focus", "offhand", "shield", "totem"]):
                     continue
             affix_obj = Affix(
                 name=closest_match(clean_str(_corrections(input_str=affix_name)), Dataloader().affix_dict)
@@ -150,9 +208,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             if (
                 "ring" in slot.lower()
                 and any(substring in affix_name.lower() for substring in ["resistance"])
-                and not any(
-                    substring in affix_name.lower() for substring in ["elements"]
-                )  # Exclude resistance to all elements
+                and not any(substring in affix_name.lower() for substring in ["elements"])
             ) or (
                 "boots" in slot.lower()
                 and any(substring in affix_name.lower() for substring in ["max evade charges", "attacks reduce"])
@@ -204,13 +260,16 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         profile.AspectUpgrades = aspect_upgrade_filters
 
     selected_variant_parts = _get_selected_variant_labels_from_driver(driver=driver)
-
-    file_name = config.custom_file_name or _build_default_file_name(
-        data=data, class_name=class_name, source_url=url, selected_variant_parts=selected_variant_parts
+    file_name = _resolve_output_file_name(
+        config=config,
+        data=data,
+        class_name=class_name,
+        source_url=url,
+        selected_variant_parts=selected_variant_parts,
+        import_count=import_count,
     )
 
     paragon_step_count = 0
-    # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
         steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
         if steps:
@@ -227,7 +286,252 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     if config.add_to_profiles:
         add_to_profiles(corrected_file_name)
 
-    LOGGER.info("Finished")
+    return corrected_file_name
+
+
+def _load_d4builds_page(driver: ChromiumDriver, url: str) -> None:
+    """Load a D4Builds page and wait until the build UI is present."""
+    driver.get(url)
+    wait = WebDriverWait(driver, 10)
+    wait.until(EC.presence_of_element_located((By.XPATH, BUILD_OVERVIEW_XPATH)))
+    wait.until(EC.presence_of_element_located((By.XPATH, PAPERDOLL_XPATH)))
+    time.sleep(5)
+
+
+def _extract_d4builds_variant_options(driver: ChromiumDriver, source_url: str) -> list[D4BuildsVariantOption]:
+    """Extract distinct D4Builds variant URLs from the live DOM."""
+    raw_options = _read_d4builds_variant_links_from_driver(driver=driver)
+    if not raw_options:
+        return []
+
+    current_variant_url = _normalize_d4builds_variant_url(source_url)
+    options: list[D4BuildsVariantOption] = []
+    seen_urls: set[str] = set()
+    for raw_option in raw_options:
+        if not isinstance(raw_option, dict):
+            continue
+        raw_url = str(raw_option.get("url", "")).strip()
+        variant_url = _normalize_d4builds_variant_url(urljoin(source_url, raw_url)) if raw_url else current_variant_url
+        if not variant_url or variant_url in seen_urls:
+            continue
+        seen_urls.add(variant_url)
+        label = _build_d4builds_variant_label(
+            raw_label=str(raw_option.get("label", "")).strip(), variant_url=variant_url
+        )
+        options.append(D4BuildsVariantOption(url=variant_url, label=label))
+
+    options.sort(key=lambda option: _get_d4builds_variant_sort_key(option.url))
+    return options
+
+
+def _get_d4builds_variant_discovery_url(url: str) -> str:
+    """Return the base D4Builds build URL used to discover all variant links."""
+    parsed_url = urlsplit(url.strip())
+    query_params = parse_qs(parsed_url.query)
+    query_params.pop("var", None)
+    discovery_query = urlencode([(key, value) for key, values in query_params.items() for value in values])
+    return urlunsplit((parsed_url.scheme, parsed_url.netloc, parsed_url.path.rstrip("/"), discovery_query, ""))
+
+
+def _probe_d4builds_variant_options(driver: ChromiumDriver, source_url: str) -> list[D4BuildsVariantOption]:
+    """Probe numbered D4Builds ``?var=`` URLs when the DOM does not expose variant links."""
+    base_url = _get_d4builds_variant_discovery_url(source_url)
+    options: list[D4BuildsVariantOption] = []
+    seen_urls: set[str] = set()
+    seen_fingerprints: set[str] = set()
+    consecutive_misses = 0
+
+    for variant_index in range(12):
+        probe_url = _set_d4builds_variant_value(base_url=base_url, variant_value=str(variant_index))
+        requested_variant_value = str(variant_index)
+        try:
+            _load_d4builds_page(driver=driver, url=probe_url)
+        except Exception:
+            LOGGER.debug("Failed to probe D4Builds variant url %s", probe_url, exc_info=True)
+            if options:
+                consecutive_misses += 1
+                if consecutive_misses >= 3:
+                    break
+            continue
+
+        data = lxml.html.fromstring(driver.page_source)
+        resolved_url = _normalize_d4builds_variant_url(driver.current_url or probe_url)
+        resolved_variant_values = parse_qs(urlparse(resolved_url).query).get("var", [])
+        resolved_variant_value = resolved_variant_values[0] if resolved_variant_values else ""
+        normalized_probe_url = _normalize_d4builds_variant_url(probe_url)
+
+        if resolved_variant_value and resolved_variant_value != requested_variant_value:
+            consecutive_misses += 1
+            if options and consecutive_misses >= 3:
+                break
+            continue
+
+        if normalized_probe_url in seen_urls:
+            consecutive_misses += 1
+            if options and consecutive_misses >= 3:
+                break
+            continue
+
+        fingerprint = _get_d4builds_variant_fingerprint(driver=driver, data=data, source_url=normalized_probe_url)
+        selected_variant_parts = _get_selected_variant_labels_from_driver(driver=driver)
+        class_name = _get_build_class_name(data=data, source_url=normalized_probe_url)
+        label = _build_d4builds_probed_variant_label(
+            data=data,
+            class_name=class_name,
+            source_url=normalized_probe_url,
+            selected_variant_parts=selected_variant_parts,
+        )
+
+        allow_duplicate_fingerprint = bool(resolved_variant_value == requested_variant_value)
+        if fingerprint in seen_fingerprints and not allow_duplicate_fingerprint:
+            consecutive_misses += 1
+            if options and consecutive_misses >= 3:
+                break
+            continue
+
+        options.append(D4BuildsVariantOption(url=normalized_probe_url, label=label))
+        seen_urls.add(normalized_probe_url)
+        seen_fingerprints.add(fingerprint)
+        consecutive_misses = 0
+
+    return _deduplicate_d4builds_variant_labels(options)
+
+
+def _set_d4builds_variant_value(base_url: str, variant_value: str) -> str:
+    """Return ``base_url`` with the provided ``var`` query value applied."""
+    parsed_url = urlsplit(base_url)
+    query_params = parse_qs(parsed_url.query)
+    query_items = [(key, value) for key, values in query_params.items() if key != "var" for value in values]
+    query_items.append(("var", variant_value))
+    return urlunsplit((parsed_url.scheme, parsed_url.netloc, parsed_url.path.rstrip("/"), urlencode(query_items), ""))
+
+
+def _get_d4builds_variant_fingerprint(driver: ChromiumDriver, data: lxml.html.HtmlElement, source_url: str) -> str:
+    """Return a stable fingerprint for the currently loaded D4Builds variant."""
+    fingerprint_parts = [
+        *_get_selected_variant_labels_from_driver(driver=driver),
+        *_get_header_file_name_parts(data),
+        *_iter_text_candidates(data.xpath(BUILD_OVERVIEW_XPATH)),
+        *_iter_text_candidates(data.xpath(PAPERDOLL_XPATH)),
+        *_get_title_file_name_parts(data=data, source_url=source_url),
+    ]
+    fingerprint_source = "\n".join(part for part in fingerprint_parts if part)
+    return hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest()
+
+
+def _build_d4builds_probed_variant_label(
+    data: lxml.html.HtmlElement, class_name: str, source_url: str, selected_variant_parts: list[str] | None
+) -> str:
+    """Build a readable label for a probed D4Builds variant URL."""
+    if selected_variant_parts:
+        selected_label = " / ".join(selected_variant_parts)
+        if selected_label:
+            return selected_label
+
+    file_name_parts = _get_file_name_parts(
+        data=data, class_name=class_name, source_url=source_url, selected_variant_parts=selected_variant_parts
+    )
+    if file_name_parts:
+        return " / ".join(file_name_parts)
+    return _build_d4builds_variant_label(raw_label="", variant_url=source_url)
+
+
+def _deduplicate_d4builds_variant_labels(options: list[D4BuildsVariantOption]) -> list[D4BuildsVariantOption]:
+    """Append a var suffix when multiple D4Builds variants share the same label."""
+    label_counts: dict[str, int] = {}
+    for option in options:
+        label_counts[option.label] = label_counts.get(option.label, 0) + 1
+
+    deduplicated_options: list[D4BuildsVariantOption] = []
+    for option in options:
+        label = option.label
+        if label_counts.get(label, 0) > 1:
+            variant_suffix = _get_variant_suffix_from_url(option.url).replace("_", " ").title()
+            if variant_suffix:
+                label = f"{label} ({variant_suffix})"
+        deduplicated_options.append(D4BuildsVariantOption(url=option.url, label=label))
+    return deduplicated_options
+
+
+def _read_d4builds_variant_links_from_driver(driver: ChromiumDriver) -> list[dict[str, str]]:
+    """Read candidate D4Builds variant links from the live DOM."""
+    script = r"""
+const elements = document.querySelectorAll('a[href*="?var="], a[href*="&var="]');
+const results = [];
+const seen = new Set();
+for (const element of elements) {
+  const href = element.href || element.getAttribute('href') || '';
+  if (!href || !href.includes('var=')) {
+    continue;
+  }
+  if (seen.has(href)) {
+    continue;
+  }
+  seen.add(href);
+  const text = (element.textContent || '').replace(/\s+/g, ' ').trim();
+  results.push({url: href, label: text});
+}
+return results;
+"""
+    try:
+        raw_options = driver.execute_script(script)
+    except Exception:
+        LOGGER.exception("Failed to read D4Builds variant links from the DOM.")
+        return []
+    if not isinstance(raw_options, list):
+        return []
+    return raw_options
+
+
+def _normalize_d4builds_variant_url(url: str) -> str:
+    """Return a stable D4Builds variant URL without fragments."""
+    parsed_url = urlsplit(url)
+    filtered_query = parse_qs(parsed_url.query).get("var", [])
+    query = urlencode({"var": filtered_query[0]}) if filtered_query else parsed_url.query
+    return urlunsplit((parsed_url.scheme, parsed_url.netloc, parsed_url.path.rstrip("/"), query, ""))
+
+
+def _build_d4builds_variant_label(raw_label: str, variant_url: str) -> str:
+    """Build a human-readable label for a D4Builds variant URL."""
+    normalized_label = _normalize_text(raw_label)
+    if normalized_label and normalized_label.casefold() not in {"gear & skills", "share", "save build"}:
+        return normalized_label
+    variant_suffix = _get_variant_suffix_from_url(variant_url)
+    if variant_suffix:
+        return variant_suffix.replace("_", " ").title()
+    return "Current build"
+
+
+def _get_d4builds_variant_sort_key(url: str) -> tuple[int, str]:
+    """Return a stable sort key for D4Builds variant URLs."""
+    variant_values = parse_qs(urlparse(url).query).get("var", [])
+    if variant_values and variant_values[0].isdigit():
+        return int(variant_values[0]), url
+    return 9999, url
+
+
+def _resolve_output_file_name(
+    config: ImportConfig,
+    data: lxml.html.HtmlElement,
+    class_name: str,
+    source_url: str,
+    selected_variant_parts: list[str] | None,
+    import_count: int,
+) -> str:
+    """Resolve the output file name for a D4Builds import."""
+    if not config.custom_file_name:
+        return _build_default_file_name(
+            data=data, class_name=class_name, source_url=source_url, selected_variant_parts=selected_variant_parts
+        )
+
+    if import_count <= 1:
+        return config.custom_file_name
+
+    suffix_parts = _get_file_name_parts(
+        data=data, class_name=class_name, source_url=source_url, selected_variant_parts=selected_variant_parts
+    )
+    suffix = "_".join(suffix_parts) if suffix_parts else _get_variant_suffix_from_url(source_url) or "variant"
+    return f"{config.custom_file_name}_{suffix}"
 
 
 def _get_build_class_name(data: lxml.html.HtmlElement, source_url: str) -> str:

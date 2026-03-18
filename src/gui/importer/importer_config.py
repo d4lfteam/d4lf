@@ -15,3 +15,5 @@ class ImportConfig:
     custom_file_name: str | None = None
     # Maxroll variant selection is performed in the GUI thread before the worker starts.
     selected_profile_indices: list[int] | None = None
+    # D4Builds and Mobalytics variant selection uses explicit variant URLs.
+    selected_variant_urls: list[str] | None = None
