@@ -111,6 +111,21 @@ def setup(log_level: str = "DEBUG", *, enable_stdout: bool = True) -> None:
         LOGGER.info(f"Running version v{__version__}")
         _setup_called = True
 
+    # Clean up old log files
+    clean_up_old_log_files()
+
+
+def clean_up_old_log_files():
+    max_to_keep = 10
+
+    files = [f for f in LOG_DIR.iterdir() if f.is_file() and f.name.startswith("log_")]
+    sorted_files = sorted(files, key=lambda f: f.stat().st_mtime)  # Oldest first
+    files_to_delete = sorted_files[:-max_to_keep] if len(sorted_files) > max_to_keep else []
+
+    for file in files_to_delete:
+        file.unlink()
+        LOGGER.debug(f"Cleaned up old log file: {file}")
+
 
 def _log_unhandled_exceptions(args: typing.Any) -> None:
     if len(args) >= 2 and isinstance(args[1], SystemExit):

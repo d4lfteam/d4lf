@@ -192,7 +192,7 @@ class UnifiedMainWindow(QMainWindow):
         for h in list(root_logger.handlers):
             if getattr(h, "name", "") == "D4LF_FILE":
                 continue  # Keep file logging
-            if running_from_source and isinstance(h, logging.StreamHandler) and h.stream == sys.stdout:
+            if running_from_source and isinstance(h, logging.StreamHandler) and h.stream.name == "<stdout>":
                 continue  # Keep stdout handler for IDE terminal
             root_logger.removeHandler(h)
 
