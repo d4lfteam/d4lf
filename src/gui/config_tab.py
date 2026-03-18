@@ -1,10 +1,12 @@
 import enum
 import os
+import subprocess
+import sys
 import typing
 from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import QCoreApplication, Qt, QTimer
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -35,9 +37,19 @@ from src.gui.open_user_config_button import OpenUserConfigButton
 CONFIG_TABNAME = "config"
 
 
-def _validate_and_save_changes(model, header, key, value, method_to_reset_value: typing.Callable | None = None):
+def _validate_and_save_changes(
+    model,
+    header,
+    key,
+    value,
+    method_to_reset_value: typing.Callable | None = None,
+    post_save_callback: typing.Callable[[], None] | None = None,
+):
+    current_value = getattr(model, key)
     try:
-        setattr(model, key, value)
+        validated_values = model.model_dump(mode="python")
+        validated_values[key] = value
+        type(model)(**validated_values)
         IniConfigLoader().save_value(header, key, value)
     except ValidationError as e:
         msg = QMessageBox()
@@ -46,7 +58,6 @@ def _validate_and_save_changes(model, header, key, value, method_to_reset_value:
         message = f"There was an error setting {key} to {value}. See error below.\n\n"
 
         # Only reset the widget if the field is NOT an enum
-        current_value = getattr(model, key)
         if method_to_reset_value and key != "theme":
             message = message + "Your value has been reset to its previous version.\n\n"
             method_to_reset_value(str(current_value))
@@ -57,6 +68,9 @@ def _validate_and_save_changes(model, header, key, value, method_to_reset_value:
         msg.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg.exec()
         return False
+
+    if post_save_callback and str(current_value) != str(value):
+        post_save_callback()
     return True
 
 
@@ -97,12 +111,7 @@ class ConfigTab(QWidget):
             "description of what it is for. To read more about each parameter, please view "
             "<a href='https://github.com/d4lfteam/d4lf?tab=readme-ov-file#configs' style='color: #1E90FF;'>the config portion of the readme</a>"
         )
-        instructions_text.append("")
-        instructions_text.append(
-            "Note: You will need to restart d4lf after modifying these values. Modifying params.ini manually while this gui is running is not supported (and really not necessary)."
-        )
-
-        instructions_text.setFixedHeight(100)
+        instructions_text.setFixedHeight(80)
         layout.addWidget(instructions_text)
 
         self.setLayout(layout)
@@ -110,6 +119,39 @@ class ConfigTab(QWidget):
 
     def _finish_init(self):
         self._initializing = False
+
+    def _prompt_restart_for_vision_mode_change(self) -> None:
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Icon.Question)
+        msg.setWindowTitle("Restart required")
+        msg.setText("Vision mode changes require restarting d4lf. Restart now?")
+        restart_button = msg.addButton("Restart now", QMessageBox.ButtonRole.AcceptRole)
+        msg.addButton("Later", QMessageBox.ButtonRole.RejectRole)
+        msg.exec()
+
+        if msg.clickedButton() is restart_button:
+            self._restart_application()
+
+    def _restart_application(self) -> None:
+        command = [sys.executable, *sys.argv[1:]] if getattr(sys, "frozen", False) else [sys.executable, *sys.argv]
+
+        creationflags = 0
+        if os.name == "nt":
+            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+
+        try:
+            subprocess.Popen(command, cwd=Path.cwd(), creationflags=creationflags)
+        except OSError:
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Icon.Critical)
+            msg.setWindowTitle("Restart failed")
+            msg.setText("d4lf could not be restarted automatically. Please restart it manually.")
+            msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+            msg.exec()
+            return
+
+        if app := QCoreApplication.instance():
+            app.quit()
 
     def _generate_params_section(self, model: BaseModel, section_readable_header: str, section_config_header: str):
         group_box = QGroupBox(section_readable_header)
@@ -174,7 +216,17 @@ class ConfigTab(QWidget):
 
             def make_on_enum_changed(key):
                 def on_enum_changed():
-                    _validate_and_save_changes(model, section_config_header, key, parameter_value_widget.currentText())
+                    _validate_and_save_changes(
+                        model,
+                        section_config_header,
+                        key,
+                        parameter_value_widget.currentText(),
+                        post_save_callback=(
+                            self._prompt_restart_for_vision_mode_change
+                            if key == "vision_mode_type" and not self._initializing
+                            else None
+                        ),
+                    )
 
                     if key == "theme" and self.theme_changed_callback and not self._initializing:
                         self.theme_changed_callback()
