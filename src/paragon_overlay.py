@@ -41,24 +41,33 @@ LOGGER = logging.getLogger(__name__)
 
 _CURRENT_OVERLAY: ParagonOverlay | None = None
 _CLOSE_REQUESTED = threading.Event()
-_OVERLAY_LOCK = threading.Lock()
+_OVERLAY_LOCK = threading.Lock()  # Thread-safe access to _CURRENT_OVERLAY
 
+# UI thread synchronization primitives
 _UI_THREAD: threading.Thread | None = None
 _UI_QUEUE: queue.Queue[tuple[object, threading.Event | None, dict[str, object]]] = queue.Queue()
 _UI_ROOT: tk.Tk | None = None
 _UI_READY = threading.Event()
+_UI_LOCK = threading.Lock()  # Thread-safe access to _UI_ROOT and _UI_THREAD
 
 
 def _tk_thread_main() -> None:
     """Own the dedicated Tk root and execute queued UI work on that thread."""
     global _UI_ROOT
-    with suppress(Exception):
+
+    # Enable DPI awareness, ignoring Windows API-specific errors
+    try:
         _enable_windows_dpi_awareness()
+    except OSError as exc:
+        LOGGER.debug("DPI awareness initialization failed: %s", exc)
+
     # Create a hidden root window. The actual overlay is a Toplevel that is
     # opened later, but Tk still needs one root that owns the event loop.
     root = tk.Tk()
     root.withdraw()
-    _UI_ROOT = root
+
+    with _UI_LOCK:
+        _UI_ROOT = root
     _UI_READY.set()
 
     def _pump_queue() -> None:
@@ -84,20 +93,38 @@ def _tk_thread_main() -> None:
 
 
 def _ensure_ui_thread() -> None:
-    """Start the shared Tk UI thread once and wait until it is ready."""
+    """Start the shared Tk UI thread once and wait until it is ready.
+
+    Thread-safe: Uses _UI_LOCK to prevent race conditions when checking/starting thread.
+    Raises RuntimeError if thread fails to initialize within timeout.
+    """
     global _UI_THREAD
-    if _UI_THREAD and _UI_THREAD.is_alive():
-        return
-    _UI_READY.clear()
-    _UI_THREAD = threading.Thread(target=_tk_thread_main, name="paragon-overlay-ui", daemon=True)
-    _UI_THREAD.start()
-    if not _UI_READY.wait(timeout=5.0):
+    with _UI_LOCK:
+        if _UI_THREAD and _UI_THREAD.is_alive():
+            return
+        _UI_READY.clear()
+        _UI_THREAD = threading.Thread(target=_tk_thread_main, name="paragon-overlay-ui", daemon=True)
+        _UI_THREAD.start()
+
+    if not _UI_READY.wait(timeout=UI_THREAD_INIT_TIMEOUT):
         msg = "Tk UI thread failed to init"
         raise RuntimeError(msg)
 
 
-def _call_on_ui_thread(fn: object) -> object:
-    """Execute a callback on the Tk thread and wait for its return value."""
+def _call_on_ui_thread(fn: Callable[[], Any]) -> Any:
+    """Execute a callback on the Tk thread and wait for its return value.
+
+    Thread-safe cross-thread communication using queue and event synchronization.
+
+    Args:
+        fn: Callable with no arguments; will be invoked on the UI thread
+
+    Returns:
+        Any: Return value from fn(), or raises if fn() raised an exception
+
+    Raises:
+        BaseException: Re-raises any exception that occurred in fn()
+    """
     _ensure_ui_thread()
     done, box = threading.Event(), {}
     _UI_QUEUE.put((fn, done, box))
@@ -108,8 +135,14 @@ def _call_on_ui_thread(fn: object) -> object:
     return box.get("result")
 
 
-def _post_to_ui_thread(fn: object) -> None:
-    """Queue work on the Tk thread without blocking the caller."""
+def _post_to_ui_thread(fn: Callable[[], Any]) -> None:
+    """Queue work on the Tk thread without blocking the caller.
+
+    Fire-and-forget execution; returns immediately without waiting for completion.
+
+    Args:
+        fn: Callable with no arguments; will be invoked asynchronously on the UI thread
+    """
     _ensure_ui_thread()
     _UI_QUEUE.put((fn, None, {}))
 
@@ -147,14 +180,39 @@ FS_CARD_FRAME, FS_GRID_FRAME = 1, 6
 PANEL_W, GRID = 370, 21
 NODES_LEN = GRID * GRID
 
+# UI Padding and spacing constants (in pixels, before DPI scaling)
+UI_PADDING_PANEL_X = 10  # Horizontal padding for left panel cards
+UI_PADDING_PANEL_Y_TOP = 10  # Top padding for left panel cards
+UI_PADDING_PANEL_Y_BOT = 8  # Bottom padding between panels
+UI_PADDING_INNER_X = 12  # Inner horizontal padding within cards
+UI_PADDING_INNER_Y = 8  # Inner vertical padding within cards
+UI_PADDING_BTN_X = 10  # Button horizontal padding
+UI_PADDING_BTN_Y = 6  # Button vertical padding
+UI_BUTTON_ZOOM_PAD_X = 8  # View switch button horizontal padding
+UI_BORDER_GRAB = 12  # Border grab area size in pixels for window dragging
+
+# Threading and initialization timeouts (in seconds)
+UI_THREAD_INIT_TIMEOUT = 5.0  # Maximum time to wait for UI thread initialization
+UI_POLL_CLOSE_REQUEST_MS = 50  # Interval for checking external close requests (milliseconds)
+
 
 # =============================================================================
 # UI FACTORY HELPERS
 # =============================================================================
 
 
-def _tk_btn(parent: tk.Misc, text: str = "", cmd: Callable | None = None, **kw) -> tk.Button:
-    """Creates a pre-styled Tkinter Button."""
+def _tk_btn(parent: tk.Misc, text: str = "", cmd: Callable[[], None] | None = None, **kw) -> tk.Button:
+    """Create a pre-styled Tkinter Button with consistent dark theme.
+
+    Args:
+        parent: Parent widget to attach button to
+        text: Button display text
+        cmd: Callback function to invoke on button click
+        **kw: Additional tkinter Button kwargs (e.g., font, padx, pady)
+
+    Returns:
+        tk.Button: Styled button widget ready for packing/placing
+    """
     opts = {
         "bg": CARD_BG,
         "fg": TEXT,
@@ -168,7 +226,16 @@ def _tk_btn(parent: tk.Misc, text: str = "", cmd: Callable | None = None, **kw) 
 
 
 def _tk_lbl(parent: tk.Misc, text: str = "", **kw) -> tk.Label:
-    """Creates a pre-styled Tkinter Label."""
+    """Create a pre-styled Tkinter Label with consistent dark theme.
+
+    Args:
+        parent: Parent widget to attach label to
+        text: Label display text
+        **kw: Additional tkinter Label kwargs (e.g., font, fg, anchor)
+
+    Returns:
+        tk.Label: Styled label widget ready for packing/placing
+    """
     opts = {"bg": CARD_BG, "fg": TEXT}
     opts.update(kw)
     return tk.Label(parent, text=text, **opts)
@@ -182,31 +249,63 @@ _TK_BASELINE_SCALING = 96 / 72
 
 
 def _enable_windows_dpi_awareness() -> None:
-    """Enable the highest DPI awareness mode available on Windows."""
+    """Enable the highest DPI awareness mode available on Windows.
+
+    Attempts multiple DPI awareness APIs in order of preference (newest first),
+    falling back to older methods if newer ones are unavailable. This prevents
+    blurry windows on high-DPI displays (e.g., 4K monitors).
+
+    Only runs on Windows; silently skips on other platforms.
+    """
     if sys.platform != "win32":
         return
 
-    funcs = (
-        lambda: ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)),
-        lambda: ctypes.windll.shcore.SetProcessDpiAwareness(2),
-        lambda: ctypes.windll.user32.SetProcessDPIAware(),
+    # Try DPI awareness APIs in descending order of preference (newest first)
+    dpi_funcs = (
+        (
+            "SetProcessDpiAwarenessContext",
+            lambda: ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)),
+        ),
+        ("SetProcessDpiAwareness", lambda: ctypes.windll.shcore.SetProcessDpiAwareness(2)),
+        ("SetProcessDPIAware", lambda: ctypes.windll.user32.SetProcessDPIAware()),
     )
-    for func in funcs:
+    for api_name, func in dpi_funcs:
         try:
             func()
-        except Exception as exc:
-            LOGGER.debug("DPI awareness call failed: %s", exc, exc_info=True)
-            continue
+        except (OSError, AttributeError) as exc:
+            LOGGER.debug("DPI awareness %s unavailable: %s", api_name, exc)
         else:
+            LOGGER.debug("Windows DPI awareness enabled via %s", api_name)
             return
 
 
 def _dpi_scale_for_widget(w: tk.Misc) -> float:
-    """Read the effective DPI scale for a widget, falling back safely."""
-    with suppress(Exception):
-        return float(ctypes.windll.user32.GetDpiForWindow(int(w.winfo_id()))) / 96.0
-    with suppress(Exception):
+    """Read the effective DPI scale factor for a widget, with safe fallbacks.
+
+    Attempts to detect the actual DPI scale of the monitor containing the widget.
+    Falls back through multiple methods to ensure we always return a reasonable default.
+    This is crucial for correct sizing on high-DPI displays.
+
+    Args:
+        w: Tkinter widget to query for DPI information
+
+    Returns:
+        float: DPI scale factor (1.0 = 96 DPI, 2.0 = 192 DPI, etc.)
+    """
+    # Try Windows API first (most reliable on Windows)
+    try:
+        dpi = ctypes.windll.user32.GetDpiForWindow(int(w.winfo_id()))
+        return float(dpi) / 96.0
+    except OSError, AttributeError, ValueError, TypeError:
+        pass
+
+    # Fall back to Tk's scaling factor
+    try:
         return float(w.tk.call("tk", "scaling")) * 72 / 96.0
+    except tk.TclError, ValueError, TypeError:
+        pass
+
+    # Ultimate fallback: assume standard 96 DPI
     return 1.0
 
 
@@ -225,8 +324,14 @@ def _params_ini_path() -> Path:
 def _load_overlay_settings() -> dict[str, Any]:
     """Load persisted overlay state from params.ini.
 
-    Invalid or missing values are ignored so the overlay can continue with
-    sensible runtime defaults.
+    Reads user preferences like window position, grid size, and selected build.
+    Invalid or missing values are ignored, allowing the overlay to continue with
+    sensible runtime defaults. Missing INI file is silently created.
+
+    Returns:
+        dict: Configuration dictionary with keys: cell_size, profile, build_idx,
+              board_idx, grid_x, grid_y, is_collapsed, cell_size_collapsed,
+              grid_x_collapsed, grid_y_collapsed, grid_locked, gold_frames
     """
     ini = _params_ini_path()
     if not ini.exists():
@@ -236,7 +341,15 @@ def _load_overlay_settings() -> dict[str, Any]:
     sec = p["paragon_overlay"] if p.has_section("paragon_overlay") else {}
 
     def parse(k: str, t: type) -> Any:
-        """Parse one INI value into the requested type or return None."""
+        """Parse one INI value into the requested type, returning None on failure.
+
+        Args:
+            k: INI key name
+            t: Target type (int, str, bool)
+
+        Returns:
+            Parsed value of type t, or None if parsing fails
+        """
         v = sec.get(k)
         if not v:
             return None
@@ -246,10 +359,10 @@ def _load_overlay_settings() -> dict[str, Any]:
                 return True
             if v.lower() in ("false", "0", "no", "off"):
                 return False
-            return None  # unbekannter Wert → Default verwenden
+            return None  # Unknown value → use default
         try:
             return t(v)
-        except Exception:
+        except ValueError, TypeError:
             return None
 
     return {
@@ -269,7 +382,14 @@ def _load_overlay_settings() -> dict[str, Any]:
 
 
 def _save_overlay_settings(values: dict[str, Any]) -> None:
-    """Persist the current overlay state without touching unrelated INI sections."""
+    """Persist the current overlay state without touching unrelated INI sections.
+
+    Selectively writes only the paragon_overlay section, preserving any other
+    sections in the file. None values are skipped (not persisted).
+
+    Args:
+        values: Dictionary of settings to persist (e.g., cell_size, grid_x, etc.)
+    """
     ini, p = _params_ini_path(), configparser.ConfigParser()
     if not ini.exists():
         ini.write_text("", encoding="utf-8")
@@ -284,15 +404,43 @@ def _save_overlay_settings(values: dict[str, Any]) -> None:
 
 
 def _clamp_int(v: int | None, lo: int, hi: int, default: int) -> int:
-    """Clamp an optional integer into a safe range, with a fallback default."""
+    """Clamp an optional integer into a safe range, with a fallback default.
+
+    Used to validate user-persisted values that may be out of range due to
+    config changes or corrupted settings.
+
+    Args:
+        v: Integer value to clamp, may be None
+        lo: Minimum allowed value (inclusive)
+        hi: Maximum allowed value (inclusive)
+        default: Fallback value if v is None or unparseable
+
+    Returns:
+        int: Clamped value within [lo, hi], or default if v is invalid
+    """
     try:
         return max(lo, min(hi, int(v))) if v is not None else default
-    except Exception:
+    except ValueError, TypeError:
         return default
 
 
 def _iter_paragon_payloads(paragon: object) -> list[dict[str, Any]]:
-    """Normalize Paragon data so the rest of the loader can iterate one shape."""
+    """Normalize Paragon data into a consistent iterable shape.
+
+    Paragon data can be structured as:
+    - A single dict (one build)
+    - A list of dicts (multiple builds)
+    - A list of lists (multiple builds with multiple steps each)
+
+    This function normalizes any of these shapes into a flat list of dicts
+    suitable for the overlay builder.
+
+    Args:
+        paragon: Raw paragon data from profile (dict, list[dict], or list[list[dict]])
+
+    Returns:
+        list[dict]: Flat list of (potentially partial) paragon build dicts
+    """
     return (
         [paragon]
         if isinstance(paragon, dict)
@@ -303,22 +451,48 @@ def _iter_paragon_payloads(paragon: object) -> list[dict[str, Any]]:
 
 
 def _load_profile_model(profile_path: Path, profile_name: str) -> ProfileModel | None:
-    """Load one YAML profile file into the validated ProfileModel."""
+    """Load and validate one YAML profile file into a ProfileModel.
+
+    Parses YAML and validates structure using ProfileModel. Returns None if
+    the file is missing, malformed, or fails validation. Errors are logged
+    at debug level to avoid spam on startup.
+
+    Args:
+        profile_path: Path to the YAML profile file
+        profile_name: Human-readable name for error messages
+
+    Returns:
+        ProfileModel: Validated profile data, or None if loading/validation fails
+    """
     try:
         with profile_path.open(encoding="utf-8") as f:
             cfg = yaml.load(stream=f, Loader=_UniqueKeyLoader)
         if isinstance(cfg, dict):
             return ProfileModel(name=profile_name, **cfg)
-    except Exception:
-        LOGGER.debug("Profile load failed: %s", profile_path, exc_info=True)
+    except (FileNotFoundError, yaml.YAMLError, ValueError) as exc:
+        LOGGER.debug("Profile load failed for %s: %s", profile_path, exc)
+    except Exception as exc:
+        LOGGER.debug("Unexpected error loading profile %s: %s", profile_path, exc, exc_info=True)
     return None
 
 
 def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]]:
     """Collect all available builds and flatten them into overlay-friendly rows.
 
-    Each returned entry contains the visible build name, its board list, and the
-    source profile name that is later used for grouping inside the popup.
+    Loads YAML profiles from either a configured list or by scanning a directory.
+    Each profile may contain multiple paragon builds, each with multiple step states.
+    Returns a flat list where each entry represents one selectable build variant.
+
+    Each returned entry contains:
+        - name: Display name for the build (source_BuildName - Step N)
+        - boards: List of paragon board lists (one per step)
+        - profile: Source profile filename (used for grouping in build menu)
+
+    Args:
+        preset_path: Optional override path (file or directory) to scan for profiles
+
+    Returns:
+        list[dict]: Flattened list of build entries ready for overlay selection menu
     """
     config = IniConfigLoader()
     profiles_dir = config.user_dir / "profiles"
@@ -369,14 +543,113 @@ def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]
 
 
 def parse_rotation(rot_str: str) -> int:
-    """Extract and sanitize the supported board rotation angle."""
-    m = re.search(r"(\d+)", rot_str or "")
-    deg = int(m.group(1)) % 360 if m else 0
+    """Extract and sanitize the board rotation angle to valid values.
+
+    Paragon boards can be rotated 0, 90, 180, or 270 degrees. This function
+    extracts the first number found in rot_str and normalizes it.
+    Any angle not in {0, 90, 180, 270} defaults to 0.
+
+    Args:
+        rot_str: String possibly containing a rotation angle (e.g., "90 degrees")
+
+    Returns:
+        int: Normalized rotation angle in {0, 90, 180, 270}
+
+    Example:
+        >>> parse_rotation("90 degrees")
+        90
+        >>> parse_rotation("invalid")
+        0
+        >>> parse_rotation("")
+        0
+        >>> parse_rotation(None)
+        0
+    """
+    if not rot_str or not isinstance(rot_str, str):
+        return 0
+
+    m = re.search(r"(\d+)", rot_str.strip())
+    if not m:
+        return 0
+
+    try:
+        deg = int(m.group(1)) % 360
+    except ValueError, IndexError:
+        return 0
+
     return deg if deg in (0, 90, 180, 270) else 0
 
 
+def _format_build_title(name: str, profile: str = "") -> str:
+    """Convert stored build names into a readable title card label.
+
+    Removes source prefixes (mobalytics, maxroll, etc.), strips brackets,
+    normalizes whitespace, and preserves step suffixes.
+
+    Args:
+        name: Raw build name from profile (e.g., "maxroll_Rogue_Heartseeker - Step 1")
+        profile: Source profile name as fallback
+
+    Returns:
+        str: Cleaned build title (e.g., "Rogue Heartseeker - Step 1"), or "Paragon" if empty
+
+    Example:
+        >>> _format_build_title("maxroll_Rogue_Heartseeker - Step 1", "rogue_build")
+        'Rogue Heartseeker - Step 1'
+        >>> _format_build_title("", "my_profile")
+        'my_profile'
+        >>> _format_build_title("", "")
+        'Paragon'
+    """
+    # Validate inputs
+    if not isinstance(name, str):
+        name = ""
+    if not isinstance(profile, str):
+        profile = ""
+
+    text = str(name or "").strip()
+    if not text:
+        text = str(profile or "").strip()
+    if not text:
+        return "Paragon"
+
+    step_suffix = ""
+    step_match = re.search(r"(\s+-\s+Step\s+\d+)\s*$", text, flags=re.IGNORECASE)
+    if step_match:
+        step_suffix = step_match.group(1)
+        text = text[: step_match.start()].strip()
+
+    match = re.search(r"\[([^\[\]]+)\]\s*$", text)
+    if match:
+        text = match.group(1).strip()
+    else:
+        text = re.sub(r"^(?:mobalytics|maxroll|d4builds)[_-]+", "", text, flags=re.IGNORECASE)
+        text = re.sub(
+            r"^(?:barbarian|druid|necromancer|paladin|rogue|sorcerer|spiritborn)[_-]+", "", text, flags=re.IGNORECASE
+        )
+
+    text = re.sub(r"[_-]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return f"{text}{step_suffix}" if text else "Paragon"
+
+
 def nodes_to_grid(nodes: list[int] | list[bool]) -> list[list[bool]]:
-    """Convert the flat 21x21 node list into a 2D boolean grid."""
+    """Convert flat 1D node array into a 2D boolean grid for paragon board visualization.
+
+    The paragon board is represented as a flat list of length GRID*GRID (441 nodes for 21x21).
+    This function reorganizes it into a 2D grid where grid[y][x] is the node at row y, col x.
+
+    Args:
+        nodes: Flat list of node activation states (int/bool where 1/True = activated)
+
+    Returns:
+        List[List[bool]]: 2D grid of shape (GRID, GRID) with True for activated nodes
+
+    Example:
+        >>> nodes = [1, 0, 1, ...]  # flat 441-element list
+        >>> grid = nodes_to_grid(nodes)
+        >>> grid[10][15]  # Access node at row 10, col 15
+    """
     return [[bool(nodes[y * GRID + x]) for x in range(GRID)] for y in range(GRID)]
 
 
@@ -387,7 +660,23 @@ def nodes_to_grid(nodes: list[int] | list[bool]) -> list[list[bool]]:
 
 @dataclass(slots=True)
 class OverlayConfig:
-    """Runtime configuration for overlay size, scaling, and persisted state."""
+    """Runtime configuration for overlay size, scaling, and persisted state.
+
+    Attributes:
+        cell_size: Grid cell pixel size in expanded view (default 24)
+        grid_x_default: Default grid X position in pixels
+        grid_y_default: Default grid Y position in pixels
+        cell_size_collapsed: Grid cell pixel size in compact view (default 16)
+        grid_x_collapsed_default: Default grid X position in compact mode
+        grid_y_collapsed_default: Default grid Y position in compact mode
+        ui_scale: DPI-aware scaling factor (1.0 = 96 DPI baseline, may be 1.5+ on 4K)
+        panel_w: Width of the left control panel, scales with DPI
+        poll_ms: Polling interval in milliseconds for window state checks (default 500)
+        window_alpha: Overall window opacity as float in [0.0, 1.0] (default 0.86)
+        is_collapsed: Whether overlay starts in compact view mode
+        grid_locked: Whether grid movement/zoom controls are disabled
+        gold_frames: Whether to use gold accent color instead of node green/blue
+    """
 
     cell_size: int = 24
     grid_x_default: int = PANEL_W + 24
@@ -413,7 +702,20 @@ class OverlayConfig:
 
 
 class ParagonOverlay(tk.Toplevel):
-    """Tkinter paragon overlay window."""
+    """Tkinter paragon overlay window with multi-platform support.
+
+    Displays an interactive paragon board grid that overlays the game window.
+    Supports high-DPI displays with automatic scaling, window transparency,
+    persistence of layout/zoom/selection state, and live colorblind mode switching.
+
+    Attributes:
+        builds: List of available build definitions (name, boards, profile)
+        current_build_idx: Active build selected by user
+        boards: Paragon board list for current build
+        selected_board_idx: Active board step index
+        grid_x, grid_y: Current grid position in expanded view
+        grid_x_collapsed, grid_y_collapsed: Current grid position in compact view
+    """
 
     def __init__(
         self,
@@ -423,7 +725,18 @@ class ParagonOverlay(tk.Toplevel):
         cfg: OverlayConfig | None = None,
         on_close: Callable[[], None] | None = None,
     ) -> None:
-        """Initialize the overlay window, restore settings, and build the UI."""
+        """Initialize the overlay window, restore settings, and build the UI.
+
+        Loads persisted user state (grid position, zoom, selected build) from INI,
+        creates all widgets, binds event handlers, and starts polling loops for
+        window state tracking and close requests.
+
+        Args:
+            parent: Tkinter parent widget (usually root)
+            builds: List of build dicts with keys: name, boards, profile
+            cfg: Optional OverlayConfig to override defaults
+            on_close: Optional callback to invoke when overlay closes
+        """
         super().__init__(parent)
         self._settings = _load_overlay_settings()
         self._cfg = cfg or OverlayConfig()
@@ -464,8 +777,8 @@ class ParagonOverlay(tk.Toplevel):
         gy_val = self._settings.get("grid_y")
         gxc_val = self._settings.get("grid_x_collapsed")
         gyc_val = self._settings.get("grid_y_collapsed")
-        self.grid_x = gx_val if isinstance(gx_val, int) else (self._cfg.panel_w + 24)
-        self.grid_y = gy_val if isinstance(gy_val, int) else 24
+        self.grid_x = gx_val if isinstance(gx_val, int) else (self._cfg.panel_w + round(24 * self._cfg.ui_scale or 1.0))
+        self.grid_y = gy_val if isinstance(gy_val, int) else round(24 * self._cfg.ui_scale or 1.0)
         self.grid_x_collapsed = gxc_val if isinstance(gxc_val, int) else self._cfg.grid_x_collapsed_default
         self.grid_y_collapsed = gyc_val if isinstance(gyc_val, int) else self._cfg.grid_y_collapsed_default
 
@@ -474,15 +787,28 @@ class ParagonOverlay(tk.Toplevel):
             None,
             None,
             False,
-            12,
+            UI_BORDER_GRAB,
         )
 
         self.title("D4LF Paragon Overlay")
         self.attributes("-topmost", True)
-        with suppress(tk.TclError):
+
+        # Try to set window attributes that may not be supported on all platforms
+        try:
             self.attributes("-alpha", float(self._cfg.window_alpha))
+        except tk.TclError as e:
+            LOGGER.debug("Window alpha attribute not supported on this platform: %s", e)
+
+        try:
             self.overrideredirect(True)
+        except tk.TclError as e:
+            LOGGER.debug("Window borderless mode not supported: %s", e)
+
+        try:
             self.wm_attributes("-transparentcolor", TRANSPARENT_KEY)
+        except tk.TclError as e:
+            LOGGER.debug("Window transparent color not supported on this platform: %s", e)
+
         self.configure(bg=TRANSPARENT_KEY)
         self.protocol("WM_DELETE_WINDOW", self.close)
 
@@ -494,12 +820,15 @@ class ParagonOverlay(tk.Toplevel):
 
         self._warmup_after_id = self.after(600, self._warmup_settings_assets)
         self.after(self._cfg.poll_ms, self._poll_window_state)
-        self.after(50, self._poll_close_request)
+        self.after(UI_POLL_CLOSE_REQUEST_MS, self._poll_close_request)
 
     def _apply_dpi_scaling(self) -> None:
         """Apply DPI-aware sizing before widgets are created."""
-        with suppress(Exception):
+        try:
             self.tk.call("tk", "scaling", _TK_BASELINE_SCALING)
+        except tk.TclError as exc:
+            LOGGER.debug("Failed to set Tk scaling: %s", exc)
+
         scale = _dpi_scale_for_widget(self) * float(self._cfg.ui_scale or 1.0)
         self._cfg.ui_scale = eff = max(0.75, min(4.0, float(scale)))
 
@@ -514,7 +843,15 @@ class ParagonOverlay(tk.Toplevel):
     # --- UI LAYOUT ---
 
     def _build_ui(self) -> None:
-        """Create the left control panel and the transparent drawing canvas."""
+        """Create the left control panel and the transparent drawing canvas.
+
+        Layout:
+        - Left side: Control panel with title card, buttons, and board list
+        - Right/overlay: Transparent canvas for drawing the paragon grid
+
+        Creates all static UI elements (does not populate dynamic data).
+        Canvas is drawn later by redraw() after board data is available.
+        """
         accent = self._accent_frame_color()
         outer = tk.Frame(self, bg=TRANSPARENT_KEY)
         outer.pack(fill="both", expand=True)
@@ -626,7 +963,12 @@ class ParagonOverlay(tk.Toplevel):
         )
 
     def _bind_events(self) -> None:
-        """Bind scrolling and drag interactions after widgets exist."""
+        """Bind user input events for scrolling and grid dragging.
+
+        Must be called after all widgets are created. Binds:
+        - Mouse scroll on board list (cross-platform: wheel, button 4/5)
+        - Left-click drag on canvas for grid movement and auto-zoom
+        """
         for ev in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
             self.boards_canvas.bind(ev, self._on_boards_mousewheel)
         self.canvas.bind("<ButtonPress-1>", self._on_grid_drag_start)
@@ -636,13 +978,18 @@ class ParagonOverlay(tk.Toplevel):
     # --- POLLING & STATE MANAGEMENT ---
 
     def _poll_close_request(self) -> None:
-        """Check for external close requests coming from non-UI threads."""
+        """Check for external close requests coming from non-UI threads.
+
+        The UI thread polls this flag periodically (_CLOSE_REQUESTED threading.Event)
+        as a safe way to close the overlay from external threads (e.g., hotkey handler).
+        Reschedules itself unless the window is destroyed.
+        """
         if _CLOSE_REQUESTED.is_set():
             _CLOSE_REQUESTED.clear()
             self.close()
             return
         if _is_alive(self):
-            self.after(50, self._poll_close_request)
+            self.after(UI_POLL_CLOSE_REQUEST_MS, self._poll_close_request)
 
     def _poll_window_state(self) -> None:
         """Re-apply geometry when the tracked game window changes size or ROI."""
@@ -1339,16 +1686,12 @@ class ParagonOverlay(tk.Toplevel):
         for w in self.board_container.winfo_children():
             w.destroy()
 
-        # The title prefers the profile name. When that is missing, a readable
-        # fallback is derived from the build name.
+        # The title card prefers the readable build name and falls back to the
+        # profile name only when needed.
         t = "Paragon"
         if self.builds:
             b = self.builds[self.current_build_idx]
-            t = str(b.get("profile") or "").strip()
-            if not t:
-                nm = str(b.get("name") or "").strip()
-                mt = re.search(r"\[([^\[\]]+)\]\s*$", nm)
-                t = mt.group(1).strip() if mt else nm
+            t = _format_build_title(str(b.get("name") or ""), str(b.get("profile") or ""))
         self.lbl_title.config(text=t or "Paragon")
 
         if not self.boards:
