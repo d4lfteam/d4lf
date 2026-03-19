@@ -110,6 +110,14 @@ def check_items(
                         mark_as_favorite()
                 elif IniConfigLoader().general.mark_as_favorite:
                     mark_as_favorite()
+        # Check if rare with only 3 affixes should be junked
+        elif (
+            IniConfigLoader().general.junk_rares_with_only_3_affixes
+            and item_descr.rarity == ItemRarity.Rare
+            and len(item_descr.affixes) == 3
+        ):
+            LOGGER.info("Junking rare with only 3 affixes.")
+            _handle_no_match()
         elif not res.keep:
             if IniConfigLoader().general.do_not_junk_ancestral_legendaries and any(
                 affix.type == AffixType.greater for affix in item_descr.affixes

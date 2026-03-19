@@ -347,6 +347,9 @@ class GeneralModel(_IniBaseModel):
     junk_rares: bool = Field(
         default=False, description="Should rares be automatically marked as junk even if they match a filter?"
     )
+    junk_rares_with_only_3_affixes: bool = Field(
+        default=False, description="Should rares with only 3 affixes be automatically marked as junk?"
+    )
     keep_aspects: AspectFilterType = Field(
         default=AspectFilterType.upgrade, description="Whether to keep aspects that didn't match a filter"
     )
