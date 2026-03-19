@@ -252,11 +252,10 @@ def _build_profile(active_profile: dict, items: dict, mapping_data: dict, config
             and mapping_data["items"][resolved_item["id"]]["magicType"] == 1
             and config.import_aspect_upgrades
         ):
+            mapping_item = mapping_data["items"].get(resolved_item["id"])
+            aspect_payload = _extract_legendary_aspect_payload(resolved_item=resolved_item, mapping_item=mapping_item)
             legendary_aspect = _find_legendary_aspect(
-                mapping_data=mapping_data,
-                legendary_aspect=_extract_legendary_aspect_payload(
-                    resolved_item=resolved_item, mapping_item=mapping_data["items"].get(resolved_item["id"])
-                ),
+                mapping_data=mapping_data, legendary_aspect=aspect_payload
             ) or _find_legendary_aspect_from_explicit_affixes(
                 mapping_data=mapping_data, item_explicit_affixes=resolved_item.get("explicits", [])
             )
@@ -269,18 +268,14 @@ def _build_profile(active_profile: dict, items: dict, mapping_data: dict, config
                 else:
                     aspect_upgrade_filters.append(legendary_aspect)
             else:
-                msg = (
-                    f"Unable to find legendary aspect in maxroll data for {item_type}, can not automatically add "
-                    f"to AspectUpgrades."
-                )
-                if len(resolved_item["explicits"]) == 3:
-                    msg += (
-                        " We suspect this item is actually a rare and maxroll is falsely reporting it as a legendary, "
-                        "please double check."
+                aspects_field = resolved_item.get("aspects")
+                is_empty_aspect = not aspects_field
+                is_rare = len(resolved_item.get("explicits", [])) == 3
+                if not is_empty_aspect and not is_rare:
+                    LOGGER.warning(
+                        f"Unable to find legendary aspect in maxroll data for {item_type}, "
+                        f"can not automatically add to AspectUpgrades."
                     )
-                    LOGGER.debug(msg)
-                else:
-                    LOGGER.warning(msg)
 
         item_filter.affixPool = [
             AffixFilterCountModel(
@@ -486,8 +481,12 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict, import_greater_af
                         attribute_name = _corrections(str(attr_obj["name"]))
                         attr_desc = mapping_data["attributeDescriptions"].get(attribute_name)
                         if not attr_desc:
-                            _log_unsupported_affix_attribute(attribute_name, "attributeDescriptions")
-                            break
+                            # 1. Check manual name overrides first (exact affix key).
+                            if attribute_name in _ATTR_NAME_OVERRIDES:
+                                attr_desc = _ATTR_NAME_OVERRIDES[attribute_name]
+                            else:
+                                _log_unsupported_affix_attribute(attribute_name, "attributeDescriptions")
+                                break
                 else:
                     attr_param = primary_attribute["param"]
                     for skill_data in mapping_data["skills"].values():
@@ -529,6 +528,8 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict, import_greater_af
 
 def _find_legendary_aspect_from_explicit_affixes(mapping_data: dict, item_explicit_affixes: list[dict]) -> str | None:
     """Resolve a legendary aspect by inspecting explicit affix ids on an item."""
+    aspect_name_lookup = {_normalize_maxroll_identifier(name).strip("_"): name for name in Dataloader().aspect_list}
+
     for item_explicit_affix in item_explicit_affixes:
         explicit_affix_id = item_explicit_affix.get("nid")
         if explicit_affix_id is None:
@@ -538,9 +539,25 @@ def _find_legendary_aspect_from_explicit_affixes(mapping_data: dict, item_explic
             if affix.get("id") != explicit_affix_id or affix.get("magicType") != 1:
                 continue
 
+            # 1. Standard name resolution via prefix/suffix/name fields.
             if resolved_affix_name := _resolve_legendary_aspect_name(affix):
                 return resolved_affix_name
-            return None
+
+            # 2. Fallback: try normalized lookup + closest_match on each string field.
+            for field in ("name", "prefix", "suffix"):
+                raw = str(affix.get(field, "")).strip()
+                if not raw:
+                    continue
+                normalized = _normalize_maxroll_identifier(raw).strip("_")
+                if normalized in aspect_name_lookup:
+                    return aspect_name_lookup[normalized]
+                matched = closest_match(
+                    clean_str(raw.replace("_", " ")), {name: name for name in Dataloader().aspect_list}
+                )
+                if matched:
+                    return matched
+
+            # magicType=1 affix found but name unresolvable — keep trying other explicits.
 
     return None
 
@@ -609,6 +626,14 @@ def _resolve_legendary_aspect_name(affix: dict) -> str | None:
     if "name" in affix:
         return _normalize_legendary_aspect_name(str(affix["name"]))
     return None
+
+
+# Maps Maxroll attribute names (from attr_obj['name']) to d4lf affix descriptions.
+# Used as a fallback when attributeDescriptions does not contain the key.
+_ATTR_NAME_OVERRIDES: dict[str, str] = {
+    "S12_KillStreak_Hunger_KillstreakRep": "hunger_increased_reputation_from_kill_streaks",
+    "S12_KillStreak_Hunger_KillstreakXP": "hunger_increased_experience_from_kill_streaks",
+}
 
 
 def _attr_desc_special_handling(affix_id: str) -> str:
