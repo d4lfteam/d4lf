@@ -1,7 +1,7 @@
 import logging
 import sys
 import threading
-from dataclasses import dataclass
+from dataclasses import replace as _dc_replace
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, Qt, QThreadPool, pyqtSignal, pyqtSlot
@@ -9,18 +9,20 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QCheckBox,
     QDialog,
+    QDialogButtonBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
     QPushButton,
+    QScrollArea,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
 from src.config.loader import IniConfigLoader
-from src.gui.importer.d4builds import get_d4builds_variant_options, import_d4builds
+from src.gui.importer.d4builds import discover_d4builds_variants, import_d4builds
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.maxroll import get_maxroll_variant_options, import_maxroll
 from src.gui.importer.mobalytics import get_mobalytics_variant_options, import_mobalytics
@@ -32,59 +34,6 @@ ICON_PATH = BASE_DIR / "assets" / "logo.png"
 
 LOGGER = logging.getLogger(__name__)
 THREADPOOL = QThreadPool()
-
-
-@dataclass(slots=True)
-class _VariantChoice:
-    """Represents one selectable importer variant option."""
-
-    value: int | str
-    label: str
-
-
-class _VariantSelectionDialog(QDialog):
-    """Modal checkbox dialog for choosing importer variants."""
-
-    def __init__(self, choices: list[_VariantChoice], title: str, prompt: str, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self._checkboxes: list[tuple[int | str, QCheckBox]] = []
-        self.setWindowTitle(title)
-        self.setModal(True)
-        self.setMinimumWidth(420)
-        self._build_ui(choices=choices, prompt=prompt)
-
-    def selected_values(self) -> list[int | str]:
-        """Return all checked variant values."""
-        return [value for value, checkbox in self._checkboxes if checkbox.isChecked()]
-
-    def _build_ui(self, choices: list[_VariantChoice], prompt: str) -> None:
-        layout = QVBoxLayout(self)
-        layout.addWidget(QLabel(prompt))
-
-        for choice in choices:
-            checkbox = QCheckBox(choice.label, self)
-            checkbox.setChecked(True)
-            checkbox.stateChanged.connect(self._update_import_button_state)
-            self._checkboxes.append((choice.value, checkbox))
-            layout.addWidget(checkbox)
-
-        button_layout = QHBoxLayout()
-        button_layout.addStretch(1)
-
-        cancel_button = QPushButton("Cancel", self)
-        cancel_button.clicked.connect(self.reject)
-        button_layout.addWidget(cancel_button)
-
-        self._import_button = QPushButton("Import selected", self)
-        self._import_button.clicked.connect(self.accept)
-        self._import_button.setDefault(True)
-        button_layout.addWidget(self._import_button)
-
-        layout.addLayout(button_layout)
-        self._update_import_button_state()
-
-    def _update_import_button_state(self) -> None:
-        self._import_button.setEnabled(any(checkbox.isChecked() for _, checkbox in self._checkboxes))
 
 
 class ImporterWindow(QMainWindow):
@@ -224,6 +173,7 @@ class ImporterWindow(QMainWindow):
 
         # Attach directly to each importer logger AND common.py
         for name in (
+            __name__,
             "src.gui.importer.mobalytics",
             "src.gui.importer.maxroll",
             "src.gui.importer.d4builds",
@@ -271,104 +221,67 @@ class ImporterWindow(QMainWindow):
         self.generate_button.setEnabled(bool(text.strip()))
 
     def _generate_button_click(self):
-        """Handle generate button click."""
         self.log_output.clear()
+        """Handle generate button click"""
         url = self.input_box.text().strip()
         custom_filename = self.filename_input_box.text()
         if custom_filename:
             custom_filename = custom_filename.split(".")[0]
             custom_filename = custom_filename.strip()
 
-        selected_profile_indices: list[int] | None = None
-        selected_variant_urls: list[str] | None = None
-        if "maxroll" in url:
-            selected_profile_indices = self._prompt_for_maxroll_variants(url)
-            if selected_profile_indices == []:
-                logging.getLogger("src.gui.importer.maxroll").info("Maxroll import canceled.")
-                return
-        elif "d4builds" in url:
-            selected_variant_urls = self._prompt_for_url_variants(
-                url=url,
-                title="Select D4Builds variants",
-                prompt="Choose the D4Builds build variants to import:",
-                option_loader=get_d4builds_variant_options,
-                logger_name="src.gui.importer.d4builds",
-                cancel_message="D4Builds import canceled.",
-            )
-            if selected_variant_urls == []:
-                return
-        else:
-            selected_variant_urls = self._prompt_for_url_variants(
-                url=url,
-                title="Select Mobalytics variants",
-                prompt="Choose the Mobalytics build variants to import:",
-                option_loader=get_mobalytics_variant_options,
-                logger_name="src.gui.importer.mobalytics",
-                cancel_message="Mobalytics import canceled.",
-            )
-            if selected_variant_urls == []:
-                return
-
         importer_config = ImportConfig(
-            url=url,
-            import_uniques=self.import_uniques_checkbox.isChecked(),
-            import_aspect_upgrades=self.import_aspect_upgrades_checkbox.isChecked(),
-            add_to_profiles=self.add_to_profiles_checkbox.isChecked(),
-            import_greater_affixes=self.import_gas_checkbox.isChecked(),
-            require_greater_affixes=self.require_all_gas_checkbox.isChecked(),
-            export_paragon=self.export_paragon_checkbox.isChecked(),
-            custom_file_name=custom_filename,
-            selected_profile_indices=selected_profile_indices,
-            selected_variant_urls=selected_variant_urls,
+            url,
+            self.import_uniques_checkbox.isChecked(),
+            self.import_aspect_upgrades_checkbox.isChecked(),
+            self.add_to_profiles_checkbox.isChecked(),
+            self.import_gas_checkbox.isChecked(),
+            self.require_all_gas_checkbox.isChecked(),
+            self.export_paragon_checkbox.isChecked(),
+            custom_filename,
         )
 
         if "maxroll" in url:
-            worker = _Worker(name="maxroll", fn=import_maxroll, config=importer_config)
-        elif "d4builds" in url:
-            worker = _Worker(name="d4builds", fn=import_d4builds, config=importer_config)
-        else:
-            worker = _Worker(name="mobalytics", fn=import_mobalytics, config=importer_config)
+            LOGGER.info("Discovering Maxroll variants, please wait...")
+            self.generate_button.setEnabled(False)
+            self.generate_button.setText("Discovering variants...")
+            disc = _Worker(name="maxroll_discover", fn=get_maxroll_variant_options, url=url)
+            disc.signals.result.connect(
+                lambda variants: self._on_maxroll_variants_discovered(variants, importer_config)
+            )
+            disc.signals.finished.connect(self._on_discovery_finished)
+            THREADPOOL.start(disc)
+            return
+
+        if "mobalytics" in url:
+            LOGGER.info("Discovering Mobalytics variants, please wait...")
+            self.generate_button.setEnabled(False)
+            self.generate_button.setText("Discovering variants...")
+            disc = _Worker(name="mobalytics_discover", fn=get_mobalytics_variant_options, url=url)
+            disc.signals.result.connect(
+                lambda variants: self._on_mobalytics_variants_discovered(variants, importer_config)
+            )
+            disc.signals.finished.connect(self._on_discovery_finished)
+            THREADPOOL.start(disc)
+            return
+
+        if "d4builds" in url and "var=" in url:
+            # D4Builds with variants: async discovery → popup → import.
+            self.generate_button.setEnabled(False)
+            self.generate_button.setText("Discovering variants...")
+            disc = _Worker(name="d4builds_discover", fn=discover_d4builds_variants, config=importer_config)
+            disc.signals.result.connect(
+                lambda variants: self._on_d4builds_variants_discovered(variants, importer_config)
+            )
+            disc.signals.finished.connect(self._on_discovery_finished)
+            THREADPOOL.start(disc)
+            return
+
+        worker = _Worker(name="d4builds", fn=import_d4builds, config=importer_config)
 
         worker.signals.finished.connect(self._on_worker_finished)
         self.generate_button.setEnabled(False)
         self.generate_button.setText("Generating...")
         THREADPOOL.start(worker)
-
-    def _prompt_for_maxroll_variants(self, url: str) -> list[int] | None:
-        """Return selected Maxroll variant indices, [] when canceled, or None for default behavior."""
-        options = get_maxroll_variant_options(url)
-        if len(options) <= 1:
-            return None
-
-        choices = [_VariantChoice(value=option.index, label=option.label) for option in options]
-        dialog = _VariantSelectionDialog(
-            choices=choices,
-            title="Select Maxroll build variants",
-            prompt="Choose the Maxroll build variants to import:",
-            parent=self,
-        )
-        if dialog.exec() != int(QDialog.DialogCode.Accepted):
-            return []
-
-        selected_values = dialog.selected_values()
-        return [value for value in selected_values if isinstance(value, int)] or []
-
-    def _prompt_for_url_variants(
-        self, url: str, title: str, prompt: str, option_loader, logger_name: str, cancel_message: str
-    ) -> list[str] | None:
-        """Return selected variant URLs, [] when canceled, or None for default behavior."""
-        options = option_loader(url)
-        if len(options) <= 1:
-            return None
-
-        choices = [_VariantChoice(value=option.url, label=option.label) for option in options]
-        dialog = _VariantSelectionDialog(choices=choices, title=title, prompt=prompt, parent=self)
-        if dialog.exec() != int(QDialog.DialogCode.Accepted):
-            logging.getLogger(logger_name).info(cancel_message)
-            return []
-
-        selected_values = dialog.selected_values()
-        return [value for value in selected_values if isinstance(value, str)] or []
 
     def _on_worker_finished(self):
         """Handle worker completion."""
@@ -385,11 +298,119 @@ class ImporterWindow(QMainWindow):
         self.settings.setValue("maximized", "true" if self.isMaximized() else "false")
 
         # Cleanup log handler
+        logging.getLogger(__name__).removeHandler(self.log_handler)
+        logging.getLogger(__name__).removeHandler(self.log_handler)
         logging.getLogger("src.gui.importer.mobalytics").removeHandler(self.log_handler)
         logging.getLogger("src.gui.importer.maxroll").removeHandler(self.log_handler)
         logging.getLogger("src.gui.importer.d4builds").removeHandler(self.log_handler)
         logging.getLogger("src.gui.importer.common").removeHandler(self.log_handler)
         event.accept()
+
+    def _on_maxroll_variants_discovered(self, variants: list, config: ImportConfig):
+        """Show variant dialog after maxroll discovery, then start import."""
+        if not variants or len(variants) <= 1:
+            worker = _Worker(name="maxroll", fn=import_maxroll, config=config)
+            worker.signals.finished.connect(self._on_worker_finished)
+            self.generate_button.setEnabled(False)
+            self.generate_button.setText("Generating...")
+            THREADPOOL.start(worker)
+            return
+
+        dialog = _VariantSelectionDialog(
+            title="Select Maxroll Variants", labels=[getattr(v, "label", str(v)) for v in variants], parent=self
+        )
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            LOGGER.info("Import cancelled.")
+            self.generate_button.setEnabled(True)
+            self.generate_button.setText("Generate")
+            return
+
+        selected_indices = dialog.selected_indices()
+        if not selected_indices:
+            LOGGER.info("Import cancelled — no variants selected.")
+            self.generate_button.setEnabled(True)
+            self.generate_button.setText("Generate")
+            return
+
+        new_config = _dc_replace(config, selected_profile_indices=[variants[i].index for i in selected_indices])
+        worker = _Worker(name="maxroll", fn=import_maxroll, config=new_config)
+        worker.signals.finished.connect(self._on_worker_finished)
+        self.generate_button.setEnabled(False)
+        self.generate_button.setText("Generating...")
+        THREADPOOL.start(worker)
+
+    def _on_mobalytics_variants_discovered(self, variants: list, config: ImportConfig):
+        """Show variant dialog after mobalytics discovery, then start import."""
+        if not variants or len(variants) <= 1:
+            worker = _Worker(name="mobalytics", fn=import_mobalytics, config=config)
+            worker.signals.finished.connect(self._on_worker_finished)
+            self.generate_button.setEnabled(False)
+            self.generate_button.setText("Generating...")
+            THREADPOOL.start(worker)
+            return
+
+        dialog = _VariantSelectionDialog(
+            title="Select Mobalytics Variants", labels=[getattr(v, "label", str(v)) for v in variants], parent=self
+        )
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            LOGGER.info("Import cancelled.")
+            self.generate_button.setEnabled(True)
+            self.generate_button.setText("Generate")
+            return
+
+        selected_indices = dialog.selected_indices()
+        if not selected_indices:
+            LOGGER.info("Import cancelled — no variants selected.")
+            self.generate_button.setEnabled(True)
+            self.generate_button.setText("Generate")
+            return
+
+        new_config = _dc_replace(config, selected_variant_urls=[variants[i].url for i in selected_indices])
+        worker = _Worker(name="mobalytics", fn=import_mobalytics, config=new_config)
+        worker.signals.finished.connect(self._on_worker_finished)
+        self.generate_button.setEnabled(False)
+        self.generate_button.setText("Generating...")
+        THREADPOOL.start(worker)
+
+    def _on_discovery_finished(self):
+        """Re-enable button if discovery ended without result."""
+        self.generate_button.setEnabled(True)
+        self.generate_button.setText("Generate")
+
+    def _on_d4builds_variants_discovered(self, variants: list, config: ImportConfig):
+        """Show variant dialog after d4builds discovery, then start import."""
+        if not variants:
+            LOGGER.warning("No D4Builds variants found — importing directly.")
+            worker = _Worker(name="d4builds", fn=import_d4builds, config=config)
+            worker.signals.finished.connect(self._on_worker_finished)
+            self.generate_button.setEnabled(False)
+            self.generate_button.setText("Generating...")
+            THREADPOOL.start(worker)
+            return
+
+        dialog = _VariantSelectionDialog(
+            title="Select D4Builds Variants", labels=[getattr(v, "label", str(v)) for v in variants], parent=self
+        )
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            LOGGER.info("Import cancelled.")
+            self.generate_button.setEnabled(True)
+            self.generate_button.setText("Generate")
+            return
+
+        selected_indices = dialog.selected_indices()
+        if not selected_indices:
+            LOGGER.info("Import cancelled — no variants selected.")
+            self.generate_button.setEnabled(True)
+            self.generate_button.setText("Generate")
+            return
+
+        selected_urls = [getattr(variants[i], "url", str(variants[i])) for i in selected_indices]
+        new_config = _dc_replace(config, selected_variant_urls=selected_urls)
+        worker = _Worker(name="d4builds", fn=import_d4builds, config=new_config)
+        worker.signals.finished.connect(self._on_worker_finished)
+        self.generate_button.setEnabled(False)
+        self.generate_button.setText("Generating...")
+        THREADPOOL.start(worker)
 
 
 class _GuiLogHandler(logging.Handler):
@@ -436,9 +457,55 @@ class _Worker(QRunnable):
     @pyqtSlot()
     def run(self):
         threading.current_thread().name = self.name
-        self.fn(*self.args, **self.kwargs)
+        ret = self.fn(*self.args, **self.kwargs)
+        self.signals.result.emit(ret)
         self.signals.finished.emit()
 
 
 class _WorkerSignals(QObject):
     finished = pyqtSignal()
+    result = pyqtSignal(object)
+
+
+class _VariantSelectionDialog(QDialog):
+    """Generic checkbox dialog for selecting importer variants."""
+
+    def __init__(self, title: str, labels: list[str], parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setMinimumWidth(480)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Select which variants to import:"))
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        inner = QWidget()
+        inner_layout = QVBoxLayout(inner)
+
+        self._checkboxes: list[QCheckBox] = []
+        for label in labels:
+            cb = QCheckBox(label)
+            cb.setChecked(True)
+            inner_layout.addWidget(cb)
+            self._checkboxes.append(cb)
+
+        scroll.setWidget(inner)
+        layout.addWidget(scroll)
+
+        btn_row = QHBoxLayout()
+        sel_all = QPushButton("Select All")
+        desel_all = QPushButton("Deselect All")
+        sel_all.clicked.connect(lambda: [cb.setChecked(True) for cb in self._checkboxes])
+        desel_all.clicked.connect(lambda: [cb.setChecked(False) for cb in self._checkboxes])
+        btn_row.addWidget(sel_all)
+        btn_row.addWidget(desel_all)
+        layout.addLayout(btn_row)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def selected_indices(self) -> list[int]:
+        return [i for i, cb in enumerate(self._checkboxes) if cb.isChecked()]

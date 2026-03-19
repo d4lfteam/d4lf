@@ -123,6 +123,23 @@ def get_d4builds_variant_options(url: str) -> list[D4BuildsVariantOption]:
     return [D4BuildsVariantOption(url=current_variant_url, label=current_variant_label)]
 
 
+@retry_importer(inject_webdriver=True)
+def discover_d4builds_variants(config: ImportConfig, driver: ChromiumDriver = None) -> list[D4BuildsVariantOption]:
+    """Discover available D4Builds variant options without importing anything."""
+    url = config.url.strip().replace("\n", "")
+    if BASE_URL not in url or "var=" not in url:
+        return []
+
+    LOGGER.info("Discovering D4Builds variants, please wait...")
+    _load_d4builds_page(driver=driver, url=url)
+
+    options = _extract_d4builds_variant_options(driver=driver, source_url=url)
+    if not options:
+        options = _probe_d4builds_variant_options(driver=driver, source_url=url)
+
+    return options or []
+
+
 def _resolve_target_urls(config: ImportConfig) -> list[str]:
     """Resolve which D4Builds URLs should be imported."""
     if config.selected_variant_urls is not None:
@@ -422,17 +439,38 @@ def _get_d4builds_variant_fingerprint(driver: ChromiumDriver, data: lxml.html.Ht
 def _build_d4builds_probed_variant_label(
     data: lxml.html.HtmlElement, class_name: str, source_url: str, selected_variant_parts: list[str] | None
 ) -> str:
-    """Build a readable label for a probed D4Builds variant URL."""
-    if selected_variant_parts:
-        selected_label = " / ".join(selected_variant_parts)
-        if selected_label:
-            return selected_label
+    """Build a readable label for a probed D4Builds variant URL.
 
+    The goal is a combined label such as
+    "Summon Golem Necromancer (S12) Uber (P230)" where the first part comes
+    from the build header/title and the trailing part comes from the active
+    variant selection (e.g. "Uber (P230)", "No Uber").
+    """
+    # Always prefer explicit variant parts when available.
+    variant_parts: list[str] = selected_variant_parts or []
+
+    # Header/title parts already include the class + build name segment
+    # (e.g. "Summon Golem Necromancer (S12)").
+    header_parts = _get_header_file_name_parts(data)
+    if not header_parts:
+        header_parts = _get_title_file_name_parts(data=data, source_url=source_url)
+
+    parts: list[str] = []
+    if header_parts:
+        parts.append(" / ".join(header_parts))
+    if variant_parts:
+        parts.extend(variant_parts)
+
+    if parts:
+        return " ".join(parts)
+
+    # Fallback to generic file-name parts, then to the var suffix.
     file_name_parts = _get_file_name_parts(
         data=data, class_name=class_name, source_url=source_url, selected_variant_parts=selected_variant_parts
     )
     if file_name_parts:
         return " / ".join(file_name_parts)
+
     return _build_d4builds_variant_label(raw_label="", variant_url=source_url)
 
 
@@ -454,25 +492,38 @@ def _deduplicate_d4builds_variant_labels(options: list[D4BuildsVariantOption]) -
 
 
 def _read_d4builds_variant_links_from_driver(driver: ChromiumDriver) -> list[dict[str, str]]:
-    """Read candidate D4Builds variant links from the live DOM."""
+    """Read candidate D4Builds variant links from the live DOM.
+
+    Tab navigation links share the same `?var=` URL as real variant dropdown
+    items but appear earlier. Keeps the best label per URL.
+    """
     script = r"""
-const elements = document.querySelectorAll('a[href*="?var="], a[href*="&var="]');
+const TAB_NAMES = new Set([
+    'gear & skills', 'gear skills', 'paragon', 'mercenaries',
+    'share', 'save build', 'skill tree',
+]);
+
+const urlToLabel = new Map();
+for (const el of document.querySelectorAll('a[href*="?var="], a[href*="&var="]')) {
+    const href = el.href || el.getAttribute('href') || '';
+    if (!href.includes('var=')) continue;
+    const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+    const isTab = TAB_NAMES.has(text.toLowerCase());
+    const prevLabel = urlToLabel.get(href);
+    const prevIsTab = prevLabel ? TAB_NAMES.has(prevLabel.toLowerCase()) : true;
+    if (!prevLabel || (prevIsTab && !isTab)) {
+        urlToLabel.set(href, text);
+    }
+}
+
 const results = [];
-const seen = new Set();
-for (const element of elements) {
-  const href = element.href || element.getAttribute('href') || '';
-  if (!href || !href.includes('var=')) {
-    continue;
-  }
-  if (seen.has(href)) {
-    continue;
-  }
-  seen.add(href);
-  const text = (element.textContent || '').replace(/\s+/g, ' ').trim();
-  results.push({url: href, label: text});
+for (const [url, label] of urlToLabel) {
+    results.push({url, label});
 }
 return results;
 """
+
     try:
         raw_options = driver.execute_script(script)
     except Exception:
@@ -614,9 +665,11 @@ def _get_file_name_parts(
         if part not in deduplicated_parts:
             deduplicated_parts.append(part)
 
-    variant_suffix = _get_variant_suffix_from_url(source_url)
-    if variant_suffix and variant_suffix not in deduplicated_parts:
-        deduplicated_parts.append(variant_suffix)
+    # Only fall back to "var_N" when no descriptive parts were found.
+    if not deduplicated_parts:
+        variant_suffix = _get_variant_suffix_from_url(source_url)
+        if variant_suffix:
+            deduplicated_parts.append(variant_suffix)
 
     return deduplicated_parts
 
@@ -647,29 +700,36 @@ def _get_selected_variant_parts(data: lxml.html.HtmlElement) -> list[str]:
 
 
 def _get_selected_variant_labels_from_driver(driver: ChromiumDriver) -> list[str]:
-    """Read selected variant labels from the live DOM when D4Builds renders them client-side."""
+    """Read the currently active variant name from the live D4Builds DOM.
+
+    The variant name is stored in an <input class="builder__variant__input">
+    element's ``value`` attribute (e.g. id="renameVariant0" value="Speed Uber (P240)").
+    """
     script = r"""
-const selectors = [
-  '[role="tab"][aria-selected="true"]',
-  '[role="option"][aria-selected="true"]',
-  '[aria-current="true"]',
-  '[data-state="active"]',
-  '[data-state="checked"]',
-  '.selected',
-  '.active',
-  '.is-active',
-  '.builder__header__description',
-];
-const texts = [];
-for (const selector of selectors) {
-  for (const element of document.querySelectorAll(selector)) {
-    const text = (element.textContent || '').replace(/\s+/g, ' ').trim();
-    if (text) {
-      texts.push(text);
+const results = [];
+
+// Primary: builder__variant__input holds the variant name in its value attribute.
+for (const el of document.querySelectorAll(
+    '[class*="builder__variant__input"], input[id^="renameVariant"]'
+)) {
+    const val = (el.value || el.getAttribute('value') || '').replace(/\s+/g, ' ').trim();
+    if (val && !results.includes(val)) {
+        results.push(val);
     }
-  }
 }
-return texts;
+
+// Fallback: if input not found, read .builder__header__description text
+// (will at least give us the build name).
+if (results.length === 0) {
+    for (const el of document.querySelectorAll('[class*="builder__header__description"]')) {
+        const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (text && !results.includes(text)) {
+            results.push(text);
+        }
+    }
+}
+
+return results;
 """
     try:
         raw_parts = driver.execute_script(script)
