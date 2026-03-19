@@ -336,34 +336,36 @@ def _load_overlay_settings() -> dict[str, Any]:
     ini = _params_ini_path()
     if not ini.exists():
         ini.write_text("", encoding="utf-8")
+
     p = configparser.ConfigParser()
-    p.read(ini, encoding="utf-8")
+    try:
+        p.read(ini, encoding="utf-8")
+    except (configparser.Error, OSError) as exc:
+        LOGGER.warning("Unable to read overlay settings from %s: %s", ini, exc)
+        return {}
+
     sec = p["paragon_overlay"] if p.has_section("paragon_overlay") else {}
 
     def parse(k: str, t: type) -> Any:
-        """Parse one INI value into the requested type, returning None on failure.
-
-        Args:
-            k: INI key name
-            t: Target type (int, str, bool)
-
-        Returns:
-            Parsed value of type t, or None if parsing fails
-        """
+        """Parse one INI value into the requested type, returning None on failure."""
         v = sec.get(k)
-        if not v:
+        if v is None:
             return None
         v = str(v).strip()
+
         if t is bool:
-            if v.lower() in ("true", "1", "yes", "on"):
-                return True
-            if v.lower() in ("false", "0", "no", "off"):
-                return False
-            return None  # Unknown value → use default
-        try:
-            return t(v)
-        except ValueError, TypeError:
-            return None
+            return _parse_optional_bool(v)
+
+        if t is int:
+            try:
+                return int(v)
+            except ValueError, TypeError:
+                return None
+
+        if t is str:
+            return v
+
+        return None
 
     return {
         "cell_size": parse("cell_size", int),
@@ -406,22 +408,26 @@ def _save_overlay_settings(values: dict[str, Any]) -> None:
 def _clamp_int(v: int | None, lo: int, hi: int, default: int) -> int:
     """Clamp an optional integer into a safe range, with a fallback default.
 
-    Used to validate user-persisted values that may be out of range due to
+    Used to validate persisted values that may be out of range due to
     config changes or corrupted settings.
-
-    Args:
-        v: Integer value to clamp, may be None
-        lo: Minimum allowed value (inclusive)
-        hi: Maximum allowed value (inclusive)
-        default: Fallback value if v is None or unparseable
-
-    Returns:
-        int: Clamped value within [lo, hi], or default if v is invalid
     """
     try:
         return max(lo, min(hi, int(v))) if v is not None else default
     except ValueError, TypeError:
         return default
+
+
+def _parse_optional_bool(value: Any) -> bool | None:
+    """Parse boolean-like values from strings or bools; unknown returns None."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ("true", "1", "yes", "on"):
+            return True
+        if normalized in ("false", "0", "no", "off"):
+            return False
+    return None
 
 
 def _iter_paragon_payloads(paragon: object) -> list[dict[str, Any]]:
@@ -542,86 +548,49 @@ def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]
     return builds
 
 
-def parse_rotation(rot_str: str) -> int:
+def parse_rotation(rot_str: str | None) -> int:
     """Extract and sanitize the board rotation angle to valid values.
 
-    Paragon boards can be rotated 0, 90, 180, or 270 degrees. This function
-    extracts the first number found in rot_str and normalizes it.
-    Any angle not in {0, 90, 180, 270} defaults to 0.
-
-    Args:
-        rot_str: String possibly containing a rotation angle (e.g., "90 degrees")
-
-    Returns:
-        int: Normalized rotation angle in {0, 90, 180, 270}
-
-    Example:
-        >>> parse_rotation("90 degrees")
-        90
-        >>> parse_rotation("invalid")
-        0
-        >>> parse_rotation("")
-        0
-        >>> parse_rotation(None)
-        0
+    Paragon boards can be rotated 0, 90, 180, or 270 degrees.
+    ``rot_str`` may be a string or None. Any invalid input returns 0.
     """
-    if not rot_str or not isinstance(rot_str, str):
+    if not isinstance(rot_str, str):
         return 0
 
-    m = re.search(r"(\d+)", rot_str.strip())
-    if not m:
+    match = re.search(r"(\d+)", rot_str)
+    if not match:
         return 0
 
     try:
-        deg = int(m.group(1)) % 360
-    except ValueError, IndexError:
+        angle = int(match.group(1)) % 360
+    except ValueError, TypeError:
         return 0
 
-    return deg if deg in (0, 90, 180, 270) else 0
+    return angle if angle in {0, 90, 180, 270} else 0
 
 
-def _format_build_title(name: str, profile: str = "") -> str:
-    """Convert stored build names into a readable title card label.
+def _format_build_title(name: str | None, profile: str | None = "") -> str:
+    """Clean a raw build title into a readable label.
 
-    Removes source prefixes (mobalytics, maxroll, etc.), strips brackets,
-    normalizes whitespace, and preserves step suffixes.
-
-    Args:
-        name: Raw build name from profile (e.g., "maxroll_Rogue_Heartseeker - Step 1")
-        profile: Source profile name as fallback
-
-    Returns:
-        str: Cleaned build title (e.g., "Rogue Heartseeker - Step 1"), or "Paragon" if empty
-
-    Example:
-        >>> _format_build_title("maxroll_Rogue_Heartseeker - Step 1", "rogue_build")
-        'Rogue Heartseeker - Step 1'
-        >>> _format_build_title("", "my_profile")
-        'my_profile'
-        >>> _format_build_title("", "")
-        'Paragon'
+    Preferred precedence: name > profile > fallback "Paragon".
+    Strips known source prefixes, normalizes whitespace and dashes.
     """
-    # Validate inputs
-    if not isinstance(name, str):
-        name = ""
-    if not isinstance(profile, str):
-        profile = ""
-
-    text = str(name or "").strip()
+    text = (name or "").strip() if isinstance(name, str) else ""
     if not text:
-        text = str(profile or "").strip()
+        text = (profile or "").strip() if isinstance(profile, str) else ""
     if not text:
         return "Paragon"
 
-    step_suffix = ""
+    # Keep step suffix in place and normalize only the name portion.
     step_match = re.search(r"(\s+-\s+Step\s+\d+)\s*$", text, flags=re.IGNORECASE)
+    step_suffix = ""
     if step_match:
         step_suffix = step_match.group(1)
         text = text[: step_match.start()].strip()
 
-    match = re.search(r"\[([^\[\]]+)\]\s*$", text)
-    if match:
-        text = match.group(1).strip()
+    bracket_match = re.search(r"\[([^\[\]]+)\]\s*$", text)
+    if bracket_match:
+        text = bracket_match.group(1).strip()
     else:
         text = re.sub(r"^(?:mobalytics|maxroll|d4builds)[_-]+", "", text, flags=re.IGNORECASE)
         text = re.sub(
@@ -630,6 +599,7 @@ def _format_build_title(name: str, profile: str = "") -> str:
 
     text = re.sub(r"[_-]+", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
+
     return f"{text}{step_suffix}" if text else "Paragon"
 
 
