@@ -1,5 +1,4 @@
 import datetime
-import hashlib
 import logging
 import re
 import time
@@ -67,7 +66,7 @@ class D4BuildsException(Exception):
     pass
 
 
-@dataclass(slots=True)
+@dataclass
 class D4BuildsVariantOption:
     """Represents one selectable D4Builds variant URL."""
 
@@ -99,30 +98,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         LOGGER.warning("No D4Builds profiles were imported")
 
 
-def get_d4builds_variant_options(url: str) -> list[D4BuildsVariantOption]:
-    """Return importable D4Builds variant URLs for the provided build page."""
-    normalized_url = url.strip().replace("\n", "")
-    if BASE_URL not in normalized_url:
-        LOGGER.error("Invalid url, please use a d4builds url")
-        return []
-
-    parsed_url = urlsplit(normalized_url)
-    current_variant_values = parse_qs(parsed_url.query).get("var", [])
-    if current_variant_values:
-        base_url = _get_d4builds_variant_discovery_url(normalized_url)
-        return [
-            D4BuildsVariantOption(
-                url=_set_d4builds_variant_value(base_url=base_url, variant_value=str(variant_index)),
-                label=f"Var {variant_index}",
-            )
-            for variant_index in range(7)
-        ]
-
-    current_variant_url = _normalize_d4builds_variant_url(normalized_url)
-    current_variant_label = _build_d4builds_variant_label(raw_label="", variant_url=current_variant_url)
-    return [D4BuildsVariantOption(url=current_variant_url, label=current_variant_label)]
-
-
 @retry_importer(inject_webdriver=True)
 def discover_d4builds_variants(config: ImportConfig, driver: ChromiumDriver = None) -> list[D4BuildsVariantOption]:
     """Discover available D4Builds variant options without importing anything."""
@@ -130,7 +105,6 @@ def discover_d4builds_variants(config: ImportConfig, driver: ChromiumDriver = No
     if BASE_URL not in url or "var=" not in url:
         return []
 
-    LOGGER.info("Discovering D4Builds variants, please wait...")
     _load_d4builds_page(driver=driver, url=url)
 
     options = _extract_d4builds_variant_options(driver=driver, source_url=url)
@@ -358,6 +332,13 @@ def _probe_d4builds_variant_options(driver: ChromiumDriver, source_url: str) -> 
     seen_fingerprints: set[str] = set()
     consecutive_misses = 0
 
+    def stop_after_miss() -> bool:
+        nonlocal consecutive_misses
+        if not options:
+            return False
+        consecutive_misses += 1
+        return consecutive_misses >= 3
+
     for variant_index in range(12):
         probe_url = _set_d4builds_variant_value(base_url=base_url, variant_value=str(variant_index))
         requested_variant_value = str(variant_index)
@@ -365,10 +346,8 @@ def _probe_d4builds_variant_options(driver: ChromiumDriver, source_url: str) -> 
             _load_d4builds_page(driver=driver, url=probe_url)
         except Exception:
             LOGGER.debug("Failed to probe D4Builds variant url %s", probe_url, exc_info=True)
-            if options:
-                consecutive_misses += 1
-                if consecutive_misses >= 3:
-                    break
+            if stop_after_miss():
+                break
             continue
 
         data = lxml.html.fromstring(driver.page_source)
@@ -378,14 +357,12 @@ def _probe_d4builds_variant_options(driver: ChromiumDriver, source_url: str) -> 
         normalized_probe_url = _normalize_d4builds_variant_url(probe_url)
 
         if resolved_variant_value and resolved_variant_value != requested_variant_value:
-            consecutive_misses += 1
-            if options and consecutive_misses >= 3:
+            if stop_after_miss():
                 break
             continue
 
         if normalized_probe_url in seen_urls:
-            consecutive_misses += 1
-            if options and consecutive_misses >= 3:
+            if stop_after_miss():
                 break
             continue
 
@@ -401,8 +378,7 @@ def _probe_d4builds_variant_options(driver: ChromiumDriver, source_url: str) -> 
 
         allow_duplicate_fingerprint = bool(resolved_variant_value == requested_variant_value)
         if fingerprint in seen_fingerprints and not allow_duplicate_fingerprint:
-            consecutive_misses += 1
-            if options and consecutive_misses >= 3:
+            if stop_after_miss():
                 break
             continue
 
@@ -432,8 +408,7 @@ def _get_d4builds_variant_fingerprint(driver: ChromiumDriver, data: lxml.html.Ht
         *_iter_text_candidates(data.xpath(PAPERDOLL_XPATH)),
         *_get_title_file_name_parts(data=data, source_url=source_url),
     ]
-    fingerprint_source = "\n".join(part for part in fingerprint_parts if part)
-    return hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest()
+    return "\n".join(part for part in fingerprint_parts if part)
 
 
 def _build_d4builds_probed_variant_label(

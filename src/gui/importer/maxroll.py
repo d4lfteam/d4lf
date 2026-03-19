@@ -46,7 +46,7 @@ class MaxrollException(Exception):
     """Raised when Maxroll content cannot be parsed."""
 
 
-@dataclass(slots=True)
+@dataclass
 class MaxrollVariantOption:
     """Represents one importable Maxroll planner variant."""
 
@@ -481,12 +481,10 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict, import_greater_af
                         attribute_name = _corrections(str(attr_obj["name"]))
                         attr_desc = mapping_data["attributeDescriptions"].get(attribute_name)
                         if not attr_desc:
-                            # 1. Check manual name overrides first (exact affix key).
-                            if attribute_name in _ATTR_NAME_OVERRIDES:
-                                attr_desc = _ATTR_NAME_OVERRIDES[attribute_name]
-                            else:
-                                _log_unsupported_affix_attribute(attribute_name, "attributeDescriptions")
-                                break
+                            attr_desc = _attr_desc_special_handling(affix["id"], attribute_name)
+                        if not attr_desc:
+                            _log_unsupported_affix_attribute(attribute_name, "attributeDescriptions")
+                            break
                 else:
                     attr_param = primary_attribute["param"]
                     for skill_data in mapping_data["skills"].values():
@@ -628,16 +626,8 @@ def _resolve_legendary_aspect_name(affix: dict) -> str | None:
     return None
 
 
-# Maps Maxroll attribute names (from attr_obj['name']) to d4lf affix descriptions.
-# Used as a fallback when attributeDescriptions does not contain the key.
-_ATTR_NAME_OVERRIDES: dict[str, str] = {
-    "S12_KillStreak_Hunger_KillstreakRep": "hunger_increased_reputation_from_kill_streaks",
-    "S12_KillStreak_Hunger_KillstreakXP": "hunger_increased_experience_from_kill_streaks",
-}
-
-
-def _attr_desc_special_handling(affix_id: str) -> str:
-    """Handle Maxroll affix ids that need manual description overrides."""
+def _attr_desc_special_handling(affix_id: int, attribute_name: str = "") -> str:
+    """Handle Maxroll affixes that need manual description overrides."""
     match affix_id:
         case 1014505 | 2051010:
             return "evade grants movement speed for second"
@@ -655,6 +645,12 @@ def _attr_desc_special_handling(affix_id: str) -> str:
             return "basic lucky hit chance"
         case 2052125:
             return "non-physical damage"
+
+    match attribute_name:
+        case "S12_KillStreak_Hunger_KillstreakRep":
+            return "hunger_increased_reputation_from_kill_streaks"
+        case "S12_KillStreak_Hunger_KillstreakXP":
+            return "hunger_increased_experience_from_kill_streaks"
         case _:
             return ""
 

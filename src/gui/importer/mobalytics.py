@@ -45,7 +45,7 @@ class MobalyticsException(Exception):
     pass
 
 
-@dataclass(slots=True)
+@dataclass
 class MobalyticsVariantOption:
     """Represents one selectable Mobalytics variant URL."""
 

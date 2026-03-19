@@ -1,7 +1,6 @@
 import logging
 import sys
 import threading
-from dataclasses import replace as _dc_replace
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, Qt, QThreadPool, pyqtSignal, pyqtSlot
@@ -34,6 +33,13 @@ ICON_PATH = BASE_DIR / "assets" / "logo.png"
 
 LOGGER = logging.getLogger(__name__)
 THREADPOOL = QThreadPool()
+IMPORTER_LOGGERS = (
+    __name__,
+    "src.gui.importer.mobalytics",
+    "src.gui.importer.maxroll",
+    "src.gui.importer.d4builds",
+    "src.gui.importer.common",
+)
 
 
 class ImporterWindow(QMainWindow):
@@ -172,13 +178,7 @@ class ImporterWindow(QMainWindow):
         self.log_handler = _GuiLogHandler(self.log_output)
 
         # Attach directly to each importer logger AND common.py
-        for name in (
-            __name__,
-            "src.gui.importer.mobalytics",
-            "src.gui.importer.maxroll",
-            "src.gui.importer.d4builds",
-            "src.gui.importer.common",
-        ):
+        for name in IMPORTER_LOGGERS:
             logger = logging.getLogger(name)
             logger.setLevel(logging.DEBUG)
             logger.addHandler(self.log_handler)
@@ -207,13 +207,13 @@ class ImporterWindow(QMainWindow):
         layout.addWidget(instructions_text)
 
     def _generate_checkbox(self, name, settings_value, desc, default_value="true") -> QCheckBox:
-        def save_setting_change(settings_value, value):
-            self.settings.setValue(settings_value, value)
+        def save_setting_change(settings_key):
+            self.settings.setValue(settings_key, checkbox.isChecked())
 
         checkbox = QCheckBox(name)
         checkbox.setChecked(self.settings.value(settings_value, default_value) == "true")
         checkbox.setToolTip(desc)
-        checkbox.stateChanged.connect(lambda: save_setting_change(settings_value, checkbox.isChecked()))
+        checkbox.stateChanged.connect(lambda: save_setting_change(settings_value))
         return checkbox
 
     def _handle_text_changed(self, text):
@@ -221,8 +221,9 @@ class ImporterWindow(QMainWindow):
         self.generate_button.setEnabled(bool(text.strip()))
 
     def _generate_button_click(self):
+        """Handle generate button click."""
         self.log_output.clear()
-        """Handle generate button click"""
+
         url = self.input_box.text().strip()
         custom_filename = self.filename_input_box.text()
         if custom_filename:
@@ -241,52 +242,136 @@ class ImporterWindow(QMainWindow):
         )
 
         if "maxroll" in url:
-            LOGGER.info("Discovering Maxroll variants, please wait...")
-            self.generate_button.setEnabled(False)
-            self.generate_button.setText("Discovering variants...")
-            disc = _Worker(name="maxroll_discover", fn=get_maxroll_variant_options, url=url)
-            disc.signals.result.connect(
-                lambda variants: self._on_maxroll_variants_discovered(variants, importer_config)
+            self._discover_variants(
+                name="maxroll",
+                discover_fn=get_maxroll_variant_options,
+                import_fn=import_maxroll,
+                import_config=importer_config,
+                title="Select Maxroll Variants",
+                selection_mode="profile_indices",
+                url=url,
             )
-            disc.signals.finished.connect(self._on_discovery_finished)
-            THREADPOOL.start(disc)
+            return
+
+        if "d4builds" in url:
+            if "var=" in url:
+                self._discover_variants(
+                    name="d4builds",
+                    discover_fn=discover_d4builds_variants,
+                    import_fn=import_d4builds,
+                    import_config=importer_config,
+                    title="Select D4Builds Variants",
+                    selection_mode="variant_urls",
+                    empty_warning="No D4Builds variants found — importing directly.",
+                    config=importer_config,
+                )
+                return
+            self._start_worker(name="d4builds", fn=import_d4builds, config=importer_config)
             return
 
         if "mobalytics" in url:
-            LOGGER.info("Discovering Mobalytics variants, please wait...")
-            self.generate_button.setEnabled(False)
-            self.generate_button.setText("Discovering variants...")
-            disc = _Worker(name="mobalytics_discover", fn=get_mobalytics_variant_options, url=url)
-            disc.signals.result.connect(
-                lambda variants: self._on_mobalytics_variants_discovered(variants, importer_config)
+            self._discover_variants(
+                name="mobalytics",
+                discover_fn=get_mobalytics_variant_options,
+                import_fn=import_mobalytics,
+                import_config=importer_config,
+                title="Select Mobalytics Variants",
+                selection_mode="variant_urls",
+                url=url,
             )
-            disc.signals.finished.connect(self._on_discovery_finished)
-            THREADPOOL.start(disc)
             return
 
-        if "d4builds" in url and "var=" in url:
-            # D4Builds with variants: async discovery → popup → import.
-            self.generate_button.setEnabled(False)
-            self.generate_button.setText("Discovering variants...")
-            disc = _Worker(name="d4builds_discover", fn=discover_d4builds_variants, config=importer_config)
-            disc.signals.result.connect(
-                lambda variants: self._on_d4builds_variants_discovered(variants, importer_config)
-            )
-            disc.signals.finished.connect(self._on_discovery_finished)
-            THREADPOOL.start(disc)
-            return
+        self._start_worker(name="mobalytics", fn=import_mobalytics, config=importer_config)
 
-        worker = _Worker(name="d4builds", fn=import_d4builds, config=importer_config)
-
+    def _start_worker(self, name, fn, **kwargs):
+        worker = _Worker(name=name, fn=fn, **kwargs)
         worker.signals.finished.connect(self._on_worker_finished)
         self.generate_button.setEnabled(False)
         self.generate_button.setText("Generating...")
         THREADPOOL.start(worker)
 
-    def _on_worker_finished(self):
-        """Handle worker completion."""
+    def _start_discovery(self, name, fn, on_result, **kwargs):
+        self.generate_button.setEnabled(False)
+        self.generate_button.setText("Discovering variants...")
+        disc = _Worker(name=name, fn=fn, **kwargs)
+        disc.signals.result.connect(on_result)
+        disc.signals.finished.connect(self._on_discovery_finished)
+        THREADPOOL.start(disc)
+
+    def _discover_variants(
+        self,
+        name: str,
+        discover_fn,
+        import_fn,
+        import_config: ImportConfig,
+        title: str,
+        selection_mode: str,
+        empty_warning: str = "",
+        **kwargs,
+    ):
+        LOGGER.info(f"Discovering {name.title()} variants, please wait...")
+        self._start_discovery(
+            name=f"{name}_discover",
+            fn=discover_fn,
+            on_result=lambda variants: self._on_variants_discovered(
+                name=name,
+                import_fn=import_fn,
+                import_config=import_config,
+                title=title,
+                selection_mode=selection_mode,
+                empty_warning=empty_warning,
+                variants=variants,
+            ),
+            **kwargs,
+        )
+
+    def _reset_generate_button(self):
         self.generate_button.setEnabled(True)
         self.generate_button.setText("Generate")
+
+    def _build_selected_config(
+        self, config: ImportConfig, variants: list, selected_indices: list[int], selection_mode: str
+    ) -> ImportConfig:
+        selected_profile_indices = None
+        selected_variant_urls = None
+        if selection_mode == "profile_indices":
+            selected_profile_indices = [getattr(variants[index], "index", index) for index in selected_indices]
+        else:
+            selected_variant_urls = [
+                getattr(variants[index], "url", str(variants[index])) for index in selected_indices
+            ]
+
+        return ImportConfig(
+            config.url,
+            config.import_uniques,
+            config.import_aspect_upgrades,
+            config.add_to_profiles,
+            config.import_greater_affixes,
+            config.require_greater_affixes,
+            config.export_paragon,
+            config.custom_file_name,
+            selected_profile_indices,
+            selected_variant_urls,
+        )
+
+    def _show_variant_selection_dialog(self, title: str, labels: list[str]) -> list[int] | None:
+        dialog = _VariantSelectionDialog(title=title, labels=labels, parent=self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            LOGGER.info("Import cancelled.")
+            self._reset_generate_button()
+            return None
+
+        selected_indices = dialog.selected_indices()
+        if not selected_indices:
+            LOGGER.info("Import cancelled — no variants selected.")
+            self._reset_generate_button()
+            return None
+
+        return selected_indices
+
+    def _on_worker_finished(self):
+        """Handle worker completion."""
+        self._reset_generate_button()
         self.filename_input_box.clear()
 
     def closeEvent(self, event):
@@ -298,119 +383,45 @@ class ImporterWindow(QMainWindow):
         self.settings.setValue("maximized", "true" if self.isMaximized() else "false")
 
         # Cleanup log handler
-        logging.getLogger(__name__).removeHandler(self.log_handler)
-        logging.getLogger(__name__).removeHandler(self.log_handler)
-        logging.getLogger("src.gui.importer.mobalytics").removeHandler(self.log_handler)
-        logging.getLogger("src.gui.importer.maxroll").removeHandler(self.log_handler)
-        logging.getLogger("src.gui.importer.d4builds").removeHandler(self.log_handler)
-        logging.getLogger("src.gui.importer.common").removeHandler(self.log_handler)
+        for name in IMPORTER_LOGGERS:
+            logging.getLogger(name).removeHandler(self.log_handler)
         event.accept()
 
-    def _on_maxroll_variants_discovered(self, variants: list, config: ImportConfig):
-        """Show variant dialog after maxroll discovery, then start import."""
-        if not variants or len(variants) <= 1:
-            worker = _Worker(name="maxroll", fn=import_maxroll, config=config)
-            worker.signals.finished.connect(self._on_worker_finished)
-            self.generate_button.setEnabled(False)
-            self.generate_button.setText("Generating...")
-            THREADPOOL.start(worker)
+    def _on_variants_discovered(
+        self,
+        name: str,
+        import_fn,
+        import_config: ImportConfig,
+        title: str,
+        selection_mode: str,
+        empty_warning: str,
+        variants: list,
+    ):
+        if not variants:
+            if empty_warning:
+                LOGGER.warning(empty_warning)
+            self._start_worker(name=name, fn=import_fn, config=import_config)
             return
 
-        dialog = _VariantSelectionDialog(
-            title="Select Maxroll Variants", labels=[getattr(v, "label", str(v)) for v in variants], parent=self
+        if len(variants) <= 1:
+            self._start_worker(name=name, fn=import_fn, config=import_config)
+            return
+
+        selected_indices = self._show_variant_selection_dialog(
+            title=title, labels=[getattr(variant, "label", str(variant)) for variant in variants]
         )
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            LOGGER.info("Import cancelled.")
-            self.generate_button.setEnabled(True)
-            self.generate_button.setText("Generate")
+        if selected_indices is None:
             return
 
-        selected_indices = dialog.selected_indices()
-        if not selected_indices:
-            LOGGER.info("Import cancelled — no variants selected.")
-            self.generate_button.setEnabled(True)
-            self.generate_button.setText("Generate")
-            return
-
-        new_config = _dc_replace(config, selected_profile_indices=[variants[i].index for i in selected_indices])
-        worker = _Worker(name="maxroll", fn=import_maxroll, config=new_config)
-        worker.signals.finished.connect(self._on_worker_finished)
-        self.generate_button.setEnabled(False)
-        self.generate_button.setText("Generating...")
-        THREADPOOL.start(worker)
-
-    def _on_mobalytics_variants_discovered(self, variants: list, config: ImportConfig):
-        """Show variant dialog after mobalytics discovery, then start import."""
-        if not variants or len(variants) <= 1:
-            worker = _Worker(name="mobalytics", fn=import_mobalytics, config=config)
-            worker.signals.finished.connect(self._on_worker_finished)
-            self.generate_button.setEnabled(False)
-            self.generate_button.setText("Generating...")
-            THREADPOOL.start(worker)
-            return
-
-        dialog = _VariantSelectionDialog(
-            title="Select Mobalytics Variants", labels=[getattr(v, "label", str(v)) for v in variants], parent=self
+        new_config = self._build_selected_config(
+            config=import_config, variants=variants, selected_indices=selected_indices, selection_mode=selection_mode
         )
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            LOGGER.info("Import cancelled.")
-            self.generate_button.setEnabled(True)
-            self.generate_button.setText("Generate")
-            return
-
-        selected_indices = dialog.selected_indices()
-        if not selected_indices:
-            LOGGER.info("Import cancelled — no variants selected.")
-            self.generate_button.setEnabled(True)
-            self.generate_button.setText("Generate")
-            return
-
-        new_config = _dc_replace(config, selected_variant_urls=[variants[i].url for i in selected_indices])
-        worker = _Worker(name="mobalytics", fn=import_mobalytics, config=new_config)
-        worker.signals.finished.connect(self._on_worker_finished)
-        self.generate_button.setEnabled(False)
-        self.generate_button.setText("Generating...")
-        THREADPOOL.start(worker)
+        self._start_worker(name=name, fn=import_fn, config=new_config)
 
     def _on_discovery_finished(self):
-        """Re-enable button if discovery ended without result."""
-        self.generate_button.setEnabled(True)
-        self.generate_button.setText("Generate")
-
-    def _on_d4builds_variants_discovered(self, variants: list, config: ImportConfig):
-        """Show variant dialog after d4builds discovery, then start import."""
-        if not variants:
-            LOGGER.warning("No D4Builds variants found — importing directly.")
-            worker = _Worker(name="d4builds", fn=import_d4builds, config=config)
-            worker.signals.finished.connect(self._on_worker_finished)
-            self.generate_button.setEnabled(False)
-            self.generate_button.setText("Generating...")
-            THREADPOOL.start(worker)
-            return
-
-        dialog = _VariantSelectionDialog(
-            title="Select D4Builds Variants", labels=[getattr(v, "label", str(v)) for v in variants], parent=self
-        )
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            LOGGER.info("Import cancelled.")
-            self.generate_button.setEnabled(True)
-            self.generate_button.setText("Generate")
-            return
-
-        selected_indices = dialog.selected_indices()
-        if not selected_indices:
-            LOGGER.info("Import cancelled — no variants selected.")
-            self.generate_button.setEnabled(True)
-            self.generate_button.setText("Generate")
-            return
-
-        selected_urls = [getattr(variants[i], "url", str(variants[i])) for i in selected_indices]
-        new_config = _dc_replace(config, selected_variant_urls=selected_urls)
-        worker = _Worker(name="d4builds", fn=import_d4builds, config=new_config)
-        worker.signals.finished.connect(self._on_worker_finished)
-        self.generate_button.setEnabled(False)
-        self.generate_button.setText("Generating...")
-        THREADPOOL.start(worker)
+        """Re-enable button if discovery ended without starting an import."""
+        if self.generate_button.text() != "Generating...":
+            self._reset_generate_button()
 
 
 class _GuiLogHandler(logging.Handler):
@@ -485,10 +496,10 @@ class _VariantSelectionDialog(QDialog):
 
         self._checkboxes: list[QCheckBox] = []
         for label in labels:
-            cb = QCheckBox(label)
-            cb.setChecked(True)
-            inner_layout.addWidget(cb)
-            self._checkboxes.append(cb)
+            checkbox = QCheckBox(label)
+            checkbox.setChecked(True)
+            inner_layout.addWidget(checkbox)
+            self._checkboxes.append(checkbox)
 
         scroll.setWidget(inner)
         layout.addWidget(scroll)
@@ -496,8 +507,8 @@ class _VariantSelectionDialog(QDialog):
         btn_row = QHBoxLayout()
         sel_all = QPushButton("Select All")
         desel_all = QPushButton("Deselect All")
-        sel_all.clicked.connect(lambda: [cb.setChecked(True) for cb in self._checkboxes])
-        desel_all.clicked.connect(lambda: [cb.setChecked(False) for cb in self._checkboxes])
+        sel_all.clicked.connect(self._select_all)
+        desel_all.clicked.connect(self._deselect_all)
         btn_row.addWidget(sel_all)
         btn_row.addWidget(desel_all)
         layout.addLayout(btn_row)
@@ -507,5 +518,13 @@ class _VariantSelectionDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
+    def _select_all(self):
+        for checkbox in self._checkboxes:
+            checkbox.setChecked(True)
+
+    def _deselect_all(self):
+        for checkbox in self._checkboxes:
+            checkbox.setChecked(False)
+
     def selected_indices(self) -> list[int]:
-        return [i for i, cb in enumerate(self._checkboxes) if cb.isChecked()]
+        return [index for index, checkbox in enumerate(self._checkboxes) if checkbox.isChecked()]
