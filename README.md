@@ -28,15 +28,14 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
     - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
     - In Steam, right click the game, select Manage > Browse local files
 - **New for Season 12** The saapi64.dll must be locally signed for D4 to pick it up. We have written a script to do this for you. It is a one-time process per computer.
-  - Install the Windows SDK Signing Tools
-    - If you are on Windows 10, install from this link: https://go.microsoft.com/fwlink/?linkid=2311805
-    - If you are on Windows 11, install from this link: https://go.microsoft.com/fwlink/?linkid=2349110
-    - You only need to install Windows SDK Signing Tools, nothing else.
   - Navigate to your d4lf directory
   - Right click anywhere that isn't an icon and choose "Open in Terminal". If you don't see this option, google how to open powershell and navigate to your d4lf directory.
-  - Type the following: `.\sign_dll.ps1`
-    - If you get any issues that say scripts can't be run on this system, run `Set-ExecutionPolicy Unrestricted -Scope CurrentUser` first then run the above command
+  - Type the following: `.\sign_dll.bat`
+    - This wrapper runs the PowerShell script with a bypassed execution policy and requests administrator access if needed
+    - If no installed `signtool.exe` is found, the script automatically downloads the official Microsoft `Microsoft.Windows.SDK.BuildTools` package into a local `.tools` folder next to the script
+    - If you prefer PowerShell directly, run `.\sign_dll.ps1`
   - When prompted for d4_path, paste in the D4 directory you located previously
+    - If you extracted `signtool.exe` somewhere else, run `.\sign_dll.ps1 -signtool_path "<full path to signtool.exe>"`
 - Generate a profile of what you want to filter for. To do so you have a few options:
   - Run d4lf.exe and import a profile using the import window by pasting a build page from popular planner websites
   - Create one yourself by looking at the [examples](#how-to-filter--profiles) below
