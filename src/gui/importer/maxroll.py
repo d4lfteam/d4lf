@@ -380,6 +380,10 @@ def _attr_desc_special_handling(affix_id: str) -> str:
     match affix_id:
         case 1014505 | 2051010:
             return "evade grants movement speed for second"
+        case 2568489:
+            return "hunger increased reputation from kill streaks"
+        case 2568491:
+            return "hunger increased experience from kill streaks"
         case 2057810:
             return "damage reduction from bleeding enemies"
         case 2067844:
