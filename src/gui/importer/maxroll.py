@@ -269,6 +269,10 @@ def _corrections(input_str: str) -> str:
             return "On_Hit_Vulnerable_Proc"
         case "Movement_Bonus_On_Elite_Kill":
             return "Movement_Speed_Bonus_On_Elite_Kill"
+        case "S12_KillStreak_Hunger_KillstreakRep":
+            return "hunger_increased_reputation_from_kill_streaks"
+        case "S12_KillStreak_Hunger_KillstreakXP":
+            return "hunger_increased_experience_from_kill_streaks"
     return input_str
 
 
