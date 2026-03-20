@@ -269,10 +269,6 @@ def _corrections(input_str: str) -> str:
             return "On_Hit_Vulnerable_Proc"
         case "Movement_Bonus_On_Elite_Kill":
             return "Movement_Speed_Bonus_On_Elite_Kill"
-        case "S12_KillStreak_Hunger_KillstreakRep":
-            return "hunger_increased_reputation_from_kill_streaks"
-        case "S12_KillStreak_Hunger_KillstreakXP":
-            return "hunger_increased_experience_from_kill_streaks"
     return input_str
 
 
@@ -384,6 +380,10 @@ def _attr_desc_special_handling(affix_id: str) -> str:
     match affix_id:
         case 1014505 | 2051010:
             return "evade grants movement speed for second"
+        case 2568489:
+            return "hunger increased reputation from kill streaks"
+        case 2568491:
+            return "hunger increased experience from kill streaks"
         case 2057810:
             return "damage reduction from bleeding enemies"
         case 2067844:
