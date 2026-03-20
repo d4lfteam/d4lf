@@ -69,6 +69,12 @@ class MoveItemsType(enum.StrEnum):
     unmarked = enum.auto()
 
 
+class JunkRaresType(enum.StrEnum):
+    disabled = "disabled"
+    three_affixes = "3 affixes"
+    all = "all"
+
+
 class UnfilteredUniquesType(enum.StrEnum):
     favorite = enum.auto()
     ignore = enum.auto()
@@ -344,8 +350,9 @@ class GeneralModel(_IniBaseModel):
     ignore_escalation_sigils: bool = Field(
         default=True, description="When filtering Sigils, should escalation sigils be ignored?"
     )
-    junk_rares: bool = Field(
-        default=False, description="Should rares be automatically marked as junk even if they match a filter?"
+    junk_rares: JunkRaresType = Field(
+        default=JunkRaresType.disabled,
+        description="How rare items should be automatically junked while filtering. `disabled` keeps normal rare filtering, `3 affixes` junks only rare items with exactly three affixes, and `all` junks every rare item even if it matches a filter.",
     )
     keep_aspects: AspectFilterType = Field(
         default=AspectFilterType.upgrade, description="Whether to keep aspects that didn't match a filter"
@@ -388,6 +395,26 @@ class GeneralModel(_IniBaseModel):
         description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
         json_schema_extra={LIVE_RELOAD_GROUP_KEY: "restart_app"},
     )
+
+    @model_validator(mode="before")
+    def check_deprecation(cls, data):
+        if not isinstance(data, dict):
+            return data
+
+        migrated_data = dict(data)
+        junk_rares = migrated_data.get("junk_rares")
+        if isinstance(junk_rares, bool):
+            migrated_data["junk_rares"] = JunkRaresType.all if junk_rares else JunkRaresType.disabled
+        elif isinstance(junk_rares, str):
+            normalized = junk_rares.strip().lower()
+            if normalized in {"true", "1", "yes", "on"}:
+                migrated_data["junk_rares"] = JunkRaresType.all
+            elif normalized in {"false", "0", "no", "off"}:
+                migrated_data["junk_rares"] = JunkRaresType.disabled
+            elif normalized in {"3 affixes", "3_affixes", "three_affixes"}:
+                migrated_data["junk_rares"] = JunkRaresType.three_affixes
+
+        return migrated_data
 
     @field_validator("check_chest_tabs", mode="before")
     def check_chest_tabs_index(cls, v: str) -> list[int]:

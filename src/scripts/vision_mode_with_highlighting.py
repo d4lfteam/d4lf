@@ -366,7 +366,9 @@ class VisionModeWithHighlighting:
 
                         if item_descr == self.current_item:
                             # We need to get the item_descr again but this time with affix locations
-                            if is_sigil(item_descr.item_type) or is_junk_rarity(item_descr.rarity):
+                            if is_sigil(item_descr.item_type) or is_junk_rarity(
+                                item_descr.rarity, len(item_descr.affixes)
+                            ):
                                 # We won't highlight specific affixes for sigils. We'll see if people complain
                                 # We're also marking all common/magic/potentially rares as junk so no need to do the image lookup
                                 item_descr_with_loc = item_descr

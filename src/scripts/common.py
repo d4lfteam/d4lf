@@ -16,6 +16,7 @@ if sys.platform != "darwin":
 
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
+from src.config.models import JunkRaresType
 from src.item.data.item_type import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
 from src.item.data.rarity import ItemRarity
 from src.utils.custom_mouse import mouse
@@ -159,10 +160,19 @@ def is_ignored_item(item_descr: Item):
     return False
 
 
-def is_junk_rarity(item_rarity: ItemRarity) -> bool:
-    if IniConfigLoader().general.junk_rares:
-        return item_rarity in [ItemRarity.Common, ItemRarity.Magic, ItemRarity.Rare]
-    return item_rarity in [ItemRarity.Common, ItemRarity.Magic]
+def is_junk_rarity(item_rarity: ItemRarity, affix_count: int | None = None) -> bool:
+    if item_rarity in [ItemRarity.Common, ItemRarity.Magic]:
+        return True
+    if item_rarity != ItemRarity.Rare:
+        return False
+
+    match IniConfigLoader().general.junk_rares:
+        case JunkRaresType.all:
+            return True
+        case JunkRaresType.three_affixes:
+            return affix_count == 3
+        case _:
+            return False
 
 
 # --- Shared overlay text helper (used by paragon_overlay & vision modes) ---
