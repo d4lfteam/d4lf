@@ -318,7 +318,7 @@ def _format_build_display_name(raw_name: object) -> str:
     parts = [re.sub(r"\s+", " ", part).strip(" _-") for part in text.split("_")]
     parts = [part for part in parts if part]
 
-    if parts and parts[0].casefold() in BUILD_SOURCES:
+    if parts and parts[0].lower() in BUILD_SOURCES:
         parts = parts[1:]
     if parts and parts[0].lower() in PLAYER_CLASSES:
         parts = parts[1:]

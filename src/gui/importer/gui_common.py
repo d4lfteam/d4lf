@@ -35,7 +35,7 @@ HEADERS = {
 }
 
 PLAYER_CLASSES = ["barbarian", "druid", "necromancer", "rogue", "sorcerer", "spiritborn", "paladin", "warlock"]
-BUILD_SOURCES = {"d4builds", "maxroll", "mobalytics"}
+BUILD_SOURCES = ["d4builds", "maxroll", "mobalytics"]
 
 
 def extract_digits(text: str) -> int:
