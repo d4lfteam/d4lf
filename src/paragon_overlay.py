@@ -30,6 +30,14 @@ from src.config.models import ProfileModel
 from src.config.ui import ResManager
 from src.item.filter import _UniqueKeyLoader
 
+try:
+    from src.utils.window import enable_windows_dpi_awareness
+except Exception:
+
+    def enable_windows_dpi_awareness() -> None:
+        """Fallback when the shared Windows DPI helper is unavailable."""
+
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -53,8 +61,6 @@ def _tk_thread_main() -> None:
     """Own the dedicated Tk root and execute queued UI work on that thread."""
     global _UI_ROOT
     with suppress(Exception):
-        from src.utils.window import enable_windows_dpi_awareness  # noqa: PLC0415
-
         enable_windows_dpi_awareness()
     # Create a hidden root window. The actual overlay is a Toplevel that is
     # opened later, but Tk still needs one root that owns the event loop.
