@@ -73,7 +73,25 @@ if %errorlevel% neq 0 (
     exit /b
 )
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0sign_dll.ps1"
+echo.
+set /p d4_path=Paste your Diablo IV folder path and press Enter:
+if "%d4_path%"=="" (
+    echo No Diablo IV folder path was provided.
+    pause
+    exit /b 1
+)
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0sign_dll.ps1" -d4_path "%d4_path%"
+set "exit_code=%errorlevel%"
+echo.
+if not "%exit_code%"=="0" (
+    echo Signing failed with exit code %exit_code%.
+    pause
+    exit /b %exit_code%
+)
+
+echo Signing completed.
+pause
 """,
         encoding="utf-8",
     )

@@ -20,21 +20,20 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 ## How to Setup
 
-### Installation and quick start guide (New instructions for season 12 that must be followed!)
+### Installation and quick start guide
 
 - Download and extract the latest version (.zip) from the releases: https://github.com/d4lfteam/d4lf/releases
 - Copy `saapi64.dll` from the downloaded folder to your "Diablo IV" directory
   - To find your D4 directory:
     - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
     - In Steam, right click the game, select Manage > Browse local files
-- **New for Season 12** The saapi64.dll must be locally signed for D4 to pick it up. We have written a script to do this for you. It is a one-time process per computer.
+- The `saapi64.dll` file must be locally signed for D4 to pick it up. We have written a script to do this for you. It is a one-time process per computer.
   - Navigate to your d4lf directory
-  - Right click anywhere that isn't an icon and choose "Open in Terminal". If you don't see this option, google how to open powershell and navigate to your d4lf directory.
-  - Type the following: `.\sign_dll.bat`
+  - Run `sign_dll.bat`
     - This wrapper runs the PowerShell script with a bypassed execution policy and requests administrator access if needed
     - If no installed `signtool.exe` is found, the script automatically downloads the official Microsoft `Microsoft.Windows.SDK.BuildTools` package into a local `.tools` folder next to the script
     - If you prefer PowerShell directly, run `.\sign_dll.ps1`
-  - When prompted for d4_path, paste in the D4 directory you located previously
+  - When prompted, paste in the D4 directory you located previously
     - If you extracted `signtool.exe` somewhere else, run `.\sign_dll.ps1 -signtool_path "<full path to signtool.exe>"`
 - Generate a profile of what you want to filter for. To do so you have a few options:
   - Run d4lf.exe and import a profile using the import window by pasting a build page from popular planner websites

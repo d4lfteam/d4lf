@@ -165,7 +165,7 @@ function Resolve-SignTool {
     return Install-LightweightSignTool -DestinationRoot (Join-Path $PSScriptRoot ".tools")
 }
 
-Write-UiBanner -Title "D4LF DLL Signing Helper" -Subtitle "Season 12 local signing for saapi64.dll"
+Write-UiBanner -Title "D4LF DLL Signing Helper" -Subtitle "Local signing for saapi64.dll"
 Write-InfoLine "Diablo IV folder: $d4_path"
 if ($signtool_path) {
     Write-InfoLine "Requested signtool.exe: $signtool_path"
