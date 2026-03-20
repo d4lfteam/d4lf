@@ -53,7 +53,9 @@ def _tk_thread_main() -> None:
     """Own the dedicated Tk root and execute queued UI work on that thread."""
     global _UI_ROOT
     with suppress(Exception):
-        _enable_windows_dpi_awareness()
+        from src.utils.window import enable_windows_dpi_awareness  # noqa: PLC0415
+
+        enable_windows_dpi_awareness()
     # Create a hidden root window. The actual overlay is a Toplevel that is
     # opened later, but Tk still needs one root that owns the event loop.
     root = tk.Tk()
@@ -179,26 +181,6 @@ def _tk_lbl(parent: tk.Misc, text: str = "", **kw) -> tk.Label:
 # =============================================================================
 
 _TK_BASELINE_SCALING = 96 / 72
-
-
-def _enable_windows_dpi_awareness() -> None:
-    """Enable the highest DPI awareness mode available on Windows."""
-    if sys.platform != "win32":
-        return
-
-    funcs = (
-        lambda: ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)),
-        lambda: ctypes.windll.shcore.SetProcessDpiAwareness(2),
-        lambda: ctypes.windll.user32.SetProcessDPIAware(),
-    )
-    for func in funcs:
-        try:
-            func()
-        except Exception as exc:
-            LOGGER.debug("DPI awareness call failed: %s", exc, exc_info=True)
-            continue
-        else:
-            return
 
 
 def _dpi_scale_for_widget(w: tk.Misc) -> float:
