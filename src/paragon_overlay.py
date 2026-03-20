@@ -147,6 +147,9 @@ FS_CARD_FRAME, FS_GRID_FRAME = 1, 6
 PANEL_W, GRID = 370, 21
 NODES_LEN = GRID * GRID
 
+KNOWN_BUILD_SOURCES = {"d4builds", "maxroll", "mobalytics"}
+KNOWN_BUILD_CLASSES = {"barbarian", "druid", "necromancer", "paladin", "rogue", "sorcerer", "spiritborn"}
+
 
 # =============================================================================
 # UI FACTORY HELPERS
@@ -300,6 +303,32 @@ def _iter_paragon_payloads(paragon: object) -> list[dict[str, Any]]:
         if isinstance(paragon, list)
         else []
     )
+
+
+def _format_build_display_name(raw_name: object) -> str:
+    """Convert stored build/profile names into a cleaner title-card label."""
+    text = str(raw_name or "").strip()
+    if not text:
+        return ""
+
+    step_suffix = ""
+    if step_match := re.search(r"(\s+-\s+Step\s+\d+)\s*$", text, flags=re.IGNORECASE):
+        step_suffix = step_match.group(1)
+        text = text[: step_match.start()].rstrip()
+
+    parts = [re.sub(r"\s+", " ", part).strip(" _-") for part in text.split("_")]
+    parts = [part for part in parts if part]
+
+    if parts and parts[0].casefold() in KNOWN_BUILD_SOURCES:
+        parts = parts[1:]
+    if parts and parts[0].casefold() in KNOWN_BUILD_CLASSES:
+        parts = parts[1:]
+
+    display_name = " ".join(parts).strip()
+    if not display_name:
+        display_name = re.sub(r"\s+", " ", text.replace("_", " ")).strip()
+
+    return f"{display_name}{step_suffix}" if step_suffix else display_name
 
 
 def _load_profile_model(profile_path: Path, profile_name: str) -> ProfileModel | None:
@@ -1344,11 +1373,9 @@ class ParagonOverlay(tk.Toplevel):
         t = "Paragon"
         if self.builds:
             b = self.builds[self.current_build_idx]
-            t = str(b.get("profile") or "").strip()
+            t = _format_build_display_name(b.get("name"))
             if not t:
-                nm = str(b.get("name") or "").strip()
-                mt = re.search(r"\[([^\[\]]+)\]\s*$", nm)
-                t = mt.group(1).strip() if mt else nm
+                t = _format_build_display_name(b.get("profile"))
         self.lbl_title.config(text=t or "Paragon")
 
         if not self.boards:
