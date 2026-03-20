@@ -19,6 +19,8 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 
+from src.gui.importer.gui_common import BUILD_SOURCES, PLAYER_CLASSES
+
 try:
     from PIL import Image, ImageDraw, ImageFont
 except ImportError:
@@ -147,9 +149,6 @@ FS_CARD_FRAME, FS_GRID_FRAME = 1, 6
 PANEL_W, GRID = 370, 21
 NODES_LEN = GRID * GRID
 
-KNOWN_BUILD_SOURCES = {"d4builds", "maxroll", "mobalytics"}
-KNOWN_BUILD_CLASSES = {"barbarian", "druid", "necromancer", "paladin", "rogue", "sorcerer", "spiritborn"}
-
 
 # =============================================================================
 # UI FACTORY HELPERS
@@ -249,7 +248,7 @@ def _load_overlay_settings() -> dict[str, Any]:
                 return True
             if v.lower() in ("false", "0", "no", "off"):
                 return False
-            return None  # unbekannter Wert → Default verwenden
+            return None
         try:
             return t(v)
         except Exception:
@@ -319,9 +318,9 @@ def _format_build_display_name(raw_name: object) -> str:
     parts = [re.sub(r"\s+", " ", part).strip(" _-") for part in text.split("_")]
     parts = [part for part in parts if part]
 
-    if parts and parts[0].casefold() in KNOWN_BUILD_SOURCES:
+    if parts and parts[0].casefold() in BUILD_SOURCES:
         parts = parts[1:]
-    if parts and parts[0].casefold() in KNOWN_BUILD_CLASSES:
+    if parts and parts[0].lower() in PLAYER_CLASSES:
         parts = parts[1:]
 
     display_name = " ".join(parts).strip()
