@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 
 import pytest
@@ -5,20 +7,20 @@ from natsort import natsorted
 
 from src.config.loader import IniConfigLoader
 from src.config.models import GeneralModel, JunkRaresType, SigilPriority
-from src.item.data.affix import Affix
-from src.item.data.item_type import ItemType
-from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter, FilterResult
-from src.item.models import Item
+from src.scripts.common import is_junk_rarity
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.aspects import aspects
+from tests.item.filter.data.items import four_affix_rare, three_affix_rare
 from tests.item.filter.data.sigils import sigil_jalal, sigil_priority, sigils
 from tests.item.filter.data.tributes import tributes
 from tests.item.filter.data.uniques import aspect_only_mythic_tests, simple_mythics, uniques
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
+
+    from src.item.models import Item
 
 
 def _create_mocked_filter(mocker: MockerFixture) -> Filter:
@@ -123,33 +125,8 @@ def test_three_affix_rares_are_junked_without_affecting_four_affix_rares(mocker:
     mocker.patch.object(loader, "reload_if_changed", return_value=False)
 
     test_filter = _create_mocked_filter(mocker)
-    test_filter.affix_filters = {}
-    test_filter.aspect_upgrade_filters = {}
-    test_filter.unique_filters = {}
-    test_filter.sigil_filters = {}
-    test_filter.tribute_filters = {}
 
-    three_affix_rare = Item(
-        item_type=ItemType.Boots,
-        power=900,
-        rarity=ItemRarity.Rare,
-        affixes=[
-            Affix(name="movement_speed", value=5),
-            Affix(name="cold_resistance", value=5),
-            Affix(name="shadow_resistance", value=5),
-        ],
-    )
-    four_affix_rare = Item(
-        item_type=ItemType.Boots,
-        power=900,
-        rarity=ItemRarity.Rare,
-        affixes=[
-            Affix(name="movement_speed", value=5),
-            Affix(name="cold_resistance", value=5),
-            Affix(name="shadow_resistance", value=5),
-            Affix(name="maximum_life", value=5),
-        ],
-    )
-
+    assert is_junk_rarity(three_affix_rare) is True
+    assert is_junk_rarity(four_affix_rare) is False
     assert test_filter.should_keep(three_affix_rare).keep is False
     assert test_filter.should_keep(four_affix_rare).keep is True

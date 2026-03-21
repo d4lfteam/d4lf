@@ -351,7 +351,7 @@ class GeneralModel(_IniBaseModel):
         default=True, description="When filtering Sigils, should escalation sigils be ignored?"
     )
     junk_rares: JunkRaresType = Field(
-        default=JunkRaresType.disabled,
+        default=JunkRaresType.three_affixes,
         description="Which, if any, rare items should be automatically junked during filtering. `disabled` keeps normal rare filtering, `3 affixes` junks all rare items with exactly three affixes, and `all` junks every rare item even if it matches a filter.",
     )
     keep_aspects: AspectFilterType = Field(
@@ -403,16 +403,19 @@ class GeneralModel(_IniBaseModel):
 
         migrated_data = dict(data)
         junk_rares = migrated_data.get("junk_rares")
-        if isinstance(junk_rares, bool):
-            migrated_data["junk_rares"] = JunkRaresType.all if junk_rares else JunkRaresType.disabled
-        elif isinstance(junk_rares, str):
-            normalized = junk_rares.strip().lower()
-            if normalized in {"true", "1", "yes", "on"}:
-                migrated_data["junk_rares"] = JunkRaresType.all
-            elif normalized in {"false", "0", "no", "off"}:
-                migrated_data["junk_rares"] = JunkRaresType.disabled
-            elif normalized in {"3 affixes", "3_affixes", "three_affixes"}:
-                migrated_data["junk_rares"] = JunkRaresType.three_affixes
+        migrated_junk_rares = None
+        if junk_rares == "True":
+            migrated_junk_rares = JunkRaresType.all
+        elif junk_rares == "False":
+            migrated_junk_rares = JunkRaresType.three_affixes
+
+        if migrated_junk_rares is not None:
+            MODULE_LOGGER.warning(
+                "Deprecated general.junk_rares value=%s found in params.ini. Converting it to %s. Please save your settings to persist the new value.",
+                junk_rares,
+                migrated_junk_rares.value,
+            )
+            migrated_data["junk_rares"] = migrated_junk_rares
 
         return migrated_data
 

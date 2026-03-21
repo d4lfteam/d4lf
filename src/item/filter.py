@@ -600,11 +600,7 @@ class Filter:
         if item.item_type == ItemType.Tribute:
             return self._check_tribute(item)
 
-        if (
-            item.item_type is None
-            or item.power is None
-            or (is_junk_rarity(item.rarity, len(item.affixes)) and not item.cosmetic_upgrade)
-        ):
+        if item.item_type is None or item.power is None or (is_junk_rarity(item) and not item.cosmetic_upgrade):
             return res
 
         if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:

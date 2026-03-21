@@ -160,17 +160,17 @@ def is_ignored_item(item_descr: Item):
     return False
 
 
-def is_junk_rarity(item_rarity: ItemRarity, affix_count: int | None = None) -> bool:
-    if item_rarity in [ItemRarity.Common, ItemRarity.Magic]:
+def is_junk_rarity(item: Item) -> bool:
+    if item.rarity in [ItemRarity.Common, ItemRarity.Magic]:
         return True
-    if item_rarity != ItemRarity.Rare:
+    if item.rarity != ItemRarity.Rare:
         return False
 
     match IniConfigLoader().general.junk_rares:
         case JunkRaresType.all:
             return True
         case JunkRaresType.three_affixes:
-            return affix_count == 3
+            return len(item.affixes) == 3
         case _:
             return False
 

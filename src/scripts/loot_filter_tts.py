@@ -84,7 +84,7 @@ def check_items(
                 mouse.click("right")
             continue
 
-        if not is_junk_rarity(item_descr.rarity, len(item_descr.affixes)):
+        if not is_junk_rarity(item_descr):
             num_of_affixed_items_checked += 1
             if item_descr.affixes and all(affix.type == AffixType.greater for affix in item_descr.affixes):
                 num_of_items_with_all_ga += 1
