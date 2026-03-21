@@ -20,3 +20,26 @@ items = [
         False,
     )
 ]
+
+three_affix_rare = Item(
+    item_type=ItemType.Boots,
+    power=900,
+    rarity=ItemRarity.Rare,
+    affixes=[
+        Affix(name="movement_speed", value=5),
+        Affix(name="cold_resistance", value=5),
+        Affix(name="shadow_resistance", value=5),
+    ],
+)
+
+four_affix_rare = Item(
+    item_type=ItemType.Boots,
+    power=900,
+    rarity=ItemRarity.Rare,
+    affixes=[
+        Affix(name="movement_speed", value=5),
+        Affix(name="cold_resistance", value=5),
+        Affix(name="shadow_resistance", value=5),
+        Affix(name="maximum_life", value=5),
+    ],
+)

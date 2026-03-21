@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 import typing
 
 import pytest
 from natsort import natsorted
 
-from src.config.models import SigilPriority
+from src.config.loader import IniConfigLoader
+from src.config.models import GeneralModel, JunkRaresType, SigilPriority
 from src.item.filter import Filter, FilterResult
+from src.scripts.common import is_junk_rarity
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.aspects import aspects
+from tests.item.filter.data.items import four_affix_rare, three_affix_rare
 from tests.item.filter.data.sigils import sigil_jalal, sigil_priority, sigils
 from tests.item.filter.data.tributes import tributes
 from tests.item.filter.data.uniques import aspect_only_mythic_tests, simple_mythics, uniques
@@ -112,3 +117,16 @@ def test_unfiltered_unique_is_kept(
     test_filter_result = test_filter.should_keep(item)
     assert natsorted([match.profile for match in test_filter_result.matched]) == natsorted(matched)
     assert test_filter_result.keep == should_keep
+
+
+def test_three_affix_rares_are_junked_without_affecting_four_affix_rares(mocker: MockerFixture):
+    loader = IniConfigLoader()
+    mocker.patch.object(loader, "_general", new=GeneralModel(junk_rares=JunkRaresType.three_affixes))
+    mocker.patch.object(loader, "reload_if_changed", return_value=False)
+
+    test_filter = _create_mocked_filter(mocker)
+
+    assert is_junk_rarity(three_affix_rare) is True
+    assert is_junk_rarity(four_affix_rare) is False
+    assert test_filter.should_keep(three_affix_rare).keep is False
+    assert test_filter.should_keep(four_affix_rare).keep is True
