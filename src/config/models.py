@@ -352,7 +352,7 @@ class GeneralModel(_IniBaseModel):
     )
     junk_rares: JunkRaresType = Field(
         default=JunkRaresType.disabled,
-        description="How rare items should be automatically junked while filtering. `disabled` keeps normal rare filtering, `3 affixes` junks only rare items with exactly three affixes, and `all` junks every rare item even if it matches a filter.",
+        description="Which, if any, rare items should be automatically junked during filtering. `disabled` keeps normal rare filtering, `3 affixes` junks all rare items with exactly three affixes, and `all` junks every rare item even if it matches a filter.",
     )
     keep_aspects: AspectFilterType = Field(
         default=AspectFilterType.upgrade, description="Whether to keep aspects that didn't match a filter"
