@@ -20,7 +20,7 @@ from src.config.models import (
     UniqueModel,
 )
 from src.dataloader import Dataloader
-from src.gui.importer.common import (
+from src.gui.importer.gui_common import (
     add_to_profiles,
     fix_offhand_type,
     fix_weapon_type,

@@ -13,7 +13,7 @@ import src.logger
 from src.config.loader import IniConfigLoader
 from src.config.models import AffixFilterCountModel, AffixFilterModel, ItemFilterModel, ProfileModel
 from src.dataloader import Dataloader
-from src.gui.importer.common import format_number_as_short_string, match_to_enum, retry_importer, save_as_profile
+from src.gui.importer.gui_common import format_number_as_short_string, match_to_enum, retry_importer, save_as_profile
 from src.item.data.affix import Affix
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity

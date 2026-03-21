@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 
 from src.config.loader import IniConfigLoader
 from src.dataloader import Dataloader
-from src.gui.importer.common import ProfileModel
+from src.gui.importer.gui_common import ProfileModel
 from src.gui.profile_editor.profile_editor import ProfileEditor
 from src.item.filter import _UniqueKeyLoader
 
