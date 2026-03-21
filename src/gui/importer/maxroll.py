@@ -16,14 +16,16 @@ from src.config.models import (
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_to_profiles,
+    build_default_profile_name,
     get_class_name,
     get_with_retry,
+    log_import_summary,
     match_to_enum,
     retry_importer,
     save_as_profile,
     update_mingreateraffixcount,
 )
-from src.gui.importer.importer_config import ImportConfig
+from src.gui.importer.importer_config import ImportConfig, ImportVariantOption
 from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_maxroll_paragon_steps
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
@@ -37,6 +39,12 @@ BUILD_GUIDE_PLANNER_EMBED_XPATH = "//*[contains(@class, 'd4-embed')]"
 PLANNER_API_BASE_URL = "https://planners.maxroll.gg/profiles/d4/"
 PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?7659ec67"
 PLANNER_BASE_URL = "https://maxroll.gg/d4/planner/"
+_MAXROLL_ITEM_TYPE_PREFIX_ALIASES = {
+    "1hfocus": ItemType.Focus,
+    "1hshield": ItemType.Shield,
+    "1htotem": ItemType.OffHandTotem,
+    "focusbookoffhand": ItemType.Tome,
+}
 
 
 class MaxrollException(Exception):
@@ -45,23 +53,10 @@ class MaxrollException(Exception):
 
 @retry_importer
 def import_maxroll(config: ImportConfig):
-    url = config.url.strip().replace("\n", "")
-    if PLANNER_BASE_URL not in url and BUILD_GUIDE_BASE_URL not in url:
-        LOGGER.error("Invalid url, please use a maxroll build guide or maxroll planner url")
-        return
-    LOGGER.info(f"Loading {url}")
-    api_url, build_id = (
-        _extract_planner_url_and_id_from_guide(url)
-        if BUILD_GUIDE_BASE_URL in url
-        else _extract_planner_url_and_id_from_planner(url)
-    )
     try:
-        r = get_with_retry(url=api_url)
-    except ConnectionError:
-        LOGGER.error("Couldn't get planner")
+        url, all_data, build_data, build_id = _load_maxroll_build_data(config.url)
+    except MaxrollException:
         return
-    all_data = r.json()
-    build_data = json.loads(all_data["data"])
     items = build_data["items"]
     try:
         mapping_data = get_with_retry(url=PLANNER_API_DATA_URL).json()
@@ -69,7 +64,9 @@ def import_maxroll(config: ImportConfig):
         LOGGER.error("Couldn't get planner data")
         return
 
-    profile_indices = _resolve_profile_indices(url=url, build_data=build_data, selected_profile_index=build_id)
+    profile_indices = _resolve_profile_indices(
+        url=url, build_data=build_data, selected_profile_index=build_id, config=config
+    )
     created_profiles: list[str] = []
     for profile_index in profile_indices:
         active_profile = build_data["profiles"][profile_index]
@@ -93,6 +90,7 @@ def import_maxroll(config: ImportConfig):
                 profile.Paragon = build_paragon_profile_payload(
                     build_name=build_name, source_url=url, paragon_boards_list=steps
                 )
+                LOGGER.info("Paragon imported successfully")
             else:
                 LOGGER.warning("Paragon export enabled, but no paragon steps were found in this Maxroll profile.")
 
@@ -102,21 +100,74 @@ def import_maxroll(config: ImportConfig):
         if config.add_to_profiles:
             add_to_profiles(corrected_file_name)
 
-    if created_profiles:
-        LOGGER.info(f"Finished importing {len(created_profiles)} Maxroll profile(s)")
-    else:
-        LOGGER.warning("No Maxroll profiles were imported")
+    log_import_summary(LOGGER, "Maxroll", created_profiles)
 
 
-def _resolve_profile_indices(url: str, build_data: dict, selected_profile_index: int) -> list[int]:
+def get_maxroll_variant_options(url: str) -> list[ImportVariantOption]:
+    _, _, build_data, selected_profile_index = _load_maxroll_build_data(url)
+    profiles = build_data.get("profiles", [])
+    if not profiles:
+        return [ImportVariantOption(id=str(selected_profile_index), label=f"profile_{selected_profile_index + 1}")]
+
+    options = []
+    for profile_index, profile in enumerate(profiles):
+        if not profile.get("items"):
+            continue
+        label = str(profile.get("name", "")).strip() or f"profile_{profile_index + 1}"
+        options.append(ImportVariantOption(id=str(profile_index), label=label))
+    return options
+
+
+def _load_maxroll_build_data(url: str) -> tuple[str, dict, dict, int]:
+    url = url.strip().replace("\n", "")
+    if PLANNER_BASE_URL not in url and BUILD_GUIDE_BASE_URL not in url:
+        LOGGER.error("Invalid url, please use a maxroll build guide or maxroll planner url")
+        msg = "Invalid Maxroll URL"
+        raise MaxrollException(msg)
+
+    LOGGER.info(f"Loading {url}")
+    api_url, build_id = (
+        _extract_planner_url_and_id_from_guide(url)
+        if BUILD_GUIDE_BASE_URL in url
+        else _extract_planner_url_and_id_from_planner(url)
+    )
+    try:
+        response = get_with_retry(url=api_url)
+    except ConnectionError as exc:
+        LOGGER.error("Couldn't get planner")
+        msg = "Couldn't get planner"
+        raise MaxrollException(msg) from exc
+
+    all_data = response.json()
+    build_data = json.loads(all_data["data"])
+    return url, all_data, build_data, build_id
+
+
+def _resolve_profile_indices(
+    url: str, build_data: dict, selected_profile_index: int, config: ImportConfig
+) -> list[int]:
     profiles = build_data.get("profiles", [])
     if not profiles:
         return [selected_profile_index]
-    if BUILD_GUIDE_BASE_URL not in url:
+
+    if not config.import_multiple_variants:
         return [selected_profile_index]
-    if len(profiles) > 1:
-        LOGGER.info(f"Found {len(profiles)} Maxroll planner variants. Importing all variants.")
-    return list(range(len(profiles)))
+
+    importable_indices = [profile_index for profile_index, profile in enumerate(profiles) if profile.get("items")]
+    if config.selected_variants:
+        selected_indices = []
+        for variant_id in config.selected_variants:
+            try:
+                profile_index = int(variant_id)
+            except ValueError:
+                continue
+            if profile_index in importable_indices:
+                selected_indices.append(profile_index)
+        return selected_indices or [selected_profile_index]
+
+    if len(importable_indices) > 1:
+        LOGGER.info(f"Found {len(importable_indices)} Maxroll planner variants. Importing selected variants.")
+    return importable_indices or [selected_profile_index]
 
 
 def _resolve_output_file_name(
@@ -249,18 +300,9 @@ def _build_default_file_name(all_data: dict, active_profile: dict, build_id: int
     class_name = get_class_name(str(all_data.get("class", "")))
     build_name = str(all_data.get("name", "")).strip() or class_name
     variant_name = str(active_profile.get("name", "")).strip()
-
-    file_name_parts = ["maxroll"]
-    if class_name and class_name != "Unknown":
-        file_name_parts.append(class_name)
-    if build_name:
-        file_name_parts.append(build_name)
-    if variant_name:
-        file_name_parts.append(variant_name)
-    elif active_profile.get("items"):
-        file_name_parts.append(f"profile_{build_id + 1}")
-
-    return "_".join(part for part in file_name_parts if part)
+    variant_suffix = variant_name or (f"profile_{build_id + 1}" if active_profile.get("items") else "")
+    fallback = class_name if class_name and class_name != "Unknown" else f"profile_{build_id + 1}"
+    return build_default_profile_name("maxroll", build_name, variant_suffix, fallback=fallback)
 
 
 def _corrections(input_str: str) -> str:
@@ -415,10 +457,22 @@ def _unique_name_special_handling(unique_name: str) -> str:
 def _find_item_type(mapping_data: dict, value: str) -> ItemType | None:
     for d_key, d_value in mapping_data.items():
         if d_key == value:
-            if (res := match_to_enum(enum_class=ItemType, target_string=d_value["type"], check_keys=True)) is None:
-                LOGGER.error("Couldn't match item type to enum")
-                return None
-            return res
+            if (res := match_to_enum(enum_class=ItemType, target_string=d_value["type"], check_keys=True)) is not None:
+                return res
+            if (res := _match_maxroll_item_type_alias(d_value["type"])) is not None:
+                return res
+            if (res := _match_maxroll_item_type_alias(value)) is not None:
+                return res
+            LOGGER.error("Couldn't match item type to enum")
+            return None
+    return None
+
+
+def _match_maxroll_item_type_alias(raw_value: str) -> ItemType | None:
+    normalized_value = re.sub(r"[^a-z0-9]", "", str(raw_value or "").lower())
+    for prefix, item_type in _MAXROLL_ITEM_TYPE_PREFIX_ALIASES.items():
+        if normalized_value.startswith(prefix):
+            return item_type
     return None
 
 

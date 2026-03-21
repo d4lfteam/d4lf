@@ -184,10 +184,34 @@ def retry_importer(func=None, inject_webdriver: bool = False, uc=False):
     return decorator_retry_importer if func is None else decorator_retry_importer(func)
 
 
-def save_as_profile(file_name: str, profile: ProfileModel, url: str, exclude=None, backup_file=False) -> str:
+def build_default_profile_name(source: str, *parts: str, fallback: str = "") -> str:
+    """Build a readable default profile stem from a source and descriptive labels."""
+    normalized_parts: list[str] = []
+    for part in parts:
+        normalized_part = str(part or "").strip()
+        if not normalized_part:
+            continue
+        if any(existing.casefold() == normalized_part.casefold() for existing in normalized_parts):
+            continue
+        normalized_parts.append(normalized_part)
+
+    if not normalized_parts and fallback.strip():
+        normalized_parts.append(fallback.strip())
+
+    return "_".join(part for part in [source.strip(), *normalized_parts] if part)
+
+
+def sanitize_profile_file_name(file_name: str) -> str:
+    """Normalize a profile file name while keeping user-visible separators readable."""
+    file_name = re.sub(r"\s+", "_", file_name.strip())
     file_name = file_name.replace("'", "")
-    file_name = re.sub(r"\W", "_", file_name)
-    file_name = re.sub(r"_+", "_", file_name).rstrip("_")
+    file_name = re.sub(r"[^\w-]", "_", file_name)
+    file_name = re.sub(r"_+", "_", file_name)
+    return file_name.strip("_.")
+
+
+def save_as_profile(file_name: str, profile: ProfileModel, url: str, exclude=None, backup_file=False) -> str:
+    file_name = sanitize_profile_file_name(file_name)
     save_path = IniConfigLoader().user_dir / f"profiles/{file_name}.yaml"
     save_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -216,6 +240,15 @@ def add_to_profiles(build_name):
         LOGGER.info(f"Added {build_name} to active profiles configuration")
 
 
+def log_import_summary(logger: logging.Logger, source_name: str, created_profiles: list[str]) -> None:
+    """Log a consistent importer completion summary for all supported build sources."""
+    imported_count = len(created_profiles)
+    if imported_count:
+        logger.info("Finished importing %s %s profile(s)", imported_count, source_name)
+    else:
+        logger.warning("No %s profiles were imported", source_name)
+
+
 # Built in to_yaml_str does not preserve the order of the attributes of the model, which is important for uniques
 def _to_yaml_str(profile: ProfileModel, exclude_defaults: bool, exclude: set[str]) -> str:
     str_val = profile.model_dump_json(exclude_defaults=exclude_defaults, exclude=exclude)
@@ -241,23 +274,26 @@ def _rm_style_info(d):
             _rm_style_info(elem)
 
 
-def setup_webdriver(uc: bool = False) -> ChromiumDriver:
+def setup_webdriver(uc: bool = False, headless: bool = True) -> ChromiumDriver:
     if uc:
-        return SB(uc=uc, headless2=True)
+        return SB(uc=uc, headless2=headless)
     match IniConfigLoader().general.browser:
         case BrowserType.edge:
             options = webdriver.EdgeOptions()
-            options.add_argument("--headless=new")
+            if headless:
+                options.add_argument("--headless=new")
             options.add_argument("log-level=3")
             driver = webdriver.Edge(options=options)
         case BrowserType.chrome:
             options = webdriver.ChromeOptions()
-            options.add_argument("--headless=new")
+            if headless:
+                options.add_argument("--headless=new")
             options.add_argument("log-level=3")
             driver = webdriver.Chrome(options=options)
         case BrowserType.firefox:
             options = webdriver.FirefoxOptions()
-            options.add_argument("--headless")
+            if headless:
+                options.add_argument("--headless")
             options.add_argument("log-level=3")
             driver = webdriver.Firefox(options=options)
     return driver  # It must be one of the 3 browsers due to ini validation
