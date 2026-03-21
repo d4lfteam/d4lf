@@ -167,7 +167,7 @@ class ImporterWindow(QMainWindow):
         # Setup logging
         self.log_handler = _GuiLogHandler(self.log_output)
 
-        # Attach directly to each importer logger AND common.py
+        # Attach directly to each importer logger AND gui_common.py
         for name in (
             "src.gui.importer.mobalytics",
             "src.gui.importer.maxroll",

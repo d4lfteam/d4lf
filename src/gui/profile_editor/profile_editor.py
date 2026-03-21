@@ -4,7 +4,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QMessageBox, QTabWidget
 
 from src.config.models import ProfileModel
-from src.gui.importer.common import save_as_profile
+from src.gui.importer.gui_common import save_as_profile
 from src.gui.profile_editor.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.profile_editor.aspect_upgrades_tab import ASPECT_UPGRADES_TABNAME, AspectUpgradesTab
 from src.gui.profile_editor.sigils_tab import SIGILS_TABNAME, SigilsTab
