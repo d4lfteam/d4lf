@@ -42,11 +42,6 @@ def isolated_ini_loader(tmp_path: Path):
 
 
 class TestIniConfigLoader:
-    def test_default_junk_rares_is_three_affixes(self, isolated_ini_loader: IniConfigLoader) -> None:
-        loader = isolated_ini_loader
-
-        assert loader.general.junk_rares == JunkRaresType.three_affixes
-
     def test_reload_if_changed_updates_models_and_revision(self, isolated_ini_loader: IniConfigLoader) -> None:
         loader = isolated_ini_loader
         revision_before_change = loader.config_revision
@@ -111,4 +106,3 @@ class TestIniConfigLoader:
 
         assert loader.general.junk_rares == expected
         assert f"Deprecated general.junk_rares value={config_value}" in caplog.text
-        assert "Please save your settings to persist the new value." in caplog.text

@@ -411,7 +411,7 @@ class GeneralModel(_IniBaseModel):
 
         if migrated_junk_rares is not None:
             MODULE_LOGGER.warning(
-                "Deprecated general.junk_rares value=%s found in params.ini. Converting it to %s. Please save your settings to persist the new value.",
+                "Deprecated general.junk_rares value=%s found in params.ini. Converting it to %s. Change this value to what you want to remove this warning.",
                 junk_rares,
                 migrated_junk_rares.value,
             )
