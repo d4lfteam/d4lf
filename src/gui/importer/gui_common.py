@@ -34,6 +34,9 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 }
 
+PLAYER_CLASSES = ["barbarian", "druid", "necromancer", "rogue", "sorcerer", "spiritborn", "paladin", "warlock"]
+BUILD_SOURCES = ["d4builds", "maxroll", "mobalytics"]
+
 
 def extract_digits(text: str) -> int:
     return int("".join([char for char in text if char.isdigit()]))
@@ -102,20 +105,10 @@ def format_number_as_short_string(n: int) -> str:
 
 def get_class_name(input_str: str) -> str:
     input_str = input_str.lower()
-    if "barbarian" in input_str:
-        return "Barbarian"
-    if "druid" in input_str:
-        return "Druid"
-    if "necromancer" in input_str:
-        return "Necromancer"
-    if "rogue" in input_str:
-        return "Rogue"
-    if "sorcerer" in input_str:
-        return "Sorcerer"
-    if "spiritborn" in input_str:
-        return "Spiritborn"
-    if "paladin" in input_str:
-        return "Paladin"
+    for class_name in PLAYER_CLASSES:
+        if class_name in input_str:
+            return class_name.title()
+
     LOGGER.error(f"Couldn't match class name {input_str=}")
     return "Unknown"
 

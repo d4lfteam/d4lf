@@ -18,17 +18,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
-
-try:
-    from PIL import Image, ImageDraw, ImageFont
-except ImportError:
-    Image = ImageDraw = ImageFont = None  # type: ignore[assignment]
+from PIL import Image, ImageDraw, ImageFont
 
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import ProfileModel
 from src.config.ui import ResManager
+from src.gui.importer.gui_common import BUILD_SOURCES, PLAYER_CLASSES
 from src.item.filter import _UniqueKeyLoader
+from src.utils.window import enable_windows_dpi_awareness
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -52,8 +50,7 @@ _UI_READY = threading.Event()
 def _tk_thread_main() -> None:
     """Own the dedicated Tk root and execute queued UI work on that thread."""
     global _UI_ROOT
-    with suppress(Exception):
-        _enable_windows_dpi_awareness()
+    enable_windows_dpi_awareness()
     # Create a hidden root window. The actual overlay is a Toplevel that is
     # opened later, but Tk still needs one root that owns the event loop.
     root = tk.Tk()
@@ -181,26 +178,6 @@ def _tk_lbl(parent: tk.Misc, text: str = "", **kw) -> tk.Label:
 _TK_BASELINE_SCALING = 96 / 72
 
 
-def _enable_windows_dpi_awareness() -> None:
-    """Enable the highest DPI awareness mode available on Windows."""
-    if sys.platform != "win32":
-        return
-
-    funcs = (
-        lambda: ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)),
-        lambda: ctypes.windll.shcore.SetProcessDpiAwareness(2),
-        lambda: ctypes.windll.user32.SetProcessDPIAware(),
-    )
-    for func in funcs:
-        try:
-            func()
-        except Exception as exc:
-            LOGGER.debug("DPI awareness call failed: %s", exc, exc_info=True)
-            continue
-        else:
-            return
-
-
 def _dpi_scale_for_widget(w: tk.Misc) -> float:
     """Read the effective DPI scale for a widget, falling back safely."""
     with suppress(Exception):
@@ -246,7 +223,7 @@ def _load_overlay_settings() -> dict[str, Any]:
                 return True
             if v.lower() in ("false", "0", "no", "off"):
                 return False
-            return None  # unbekannter Wert → Default verwenden
+            return None
         try:
             return t(v)
         except Exception:
@@ -300,6 +277,32 @@ def _iter_paragon_payloads(paragon: object) -> list[dict[str, Any]]:
         if isinstance(paragon, list)
         else []
     )
+
+
+def _format_build_display_name(raw_name: object) -> str:
+    """Convert stored build/profile names into a cleaner title-card label."""
+    text = str(raw_name or "").strip()
+    if not text:
+        return ""
+
+    step_suffix = ""
+    if step_match := re.search(r"(\s+-\s+Step\s+\d+)\s*$", text, flags=re.IGNORECASE):
+        step_suffix = step_match.group(1)
+        text = text[: step_match.start()].rstrip()
+
+    parts = [re.sub(r"\s+", " ", part).strip(" _-") for part in text.split("_")]
+    parts = [part for part in parts if part]
+
+    if parts and parts[0].lower() in BUILD_SOURCES:
+        parts = parts[1:]
+    if parts and parts[0].lower() in PLAYER_CLASSES:
+        parts = parts[1:]
+
+    display_name = " ".join(parts).strip()
+    if not display_name:
+        display_name = re.sub(r"\s+", " ", text.replace("_", " ")).strip()
+
+    return f"{display_name}{step_suffix}" if step_suffix else display_name
 
 
 def _load_profile_model(profile_path: Path, profile_name: str) -> ProfileModel | None:
@@ -1344,11 +1347,9 @@ class ParagonOverlay(tk.Toplevel):
         t = "Paragon"
         if self.builds:
             b = self.builds[self.current_build_idx]
-            t = str(b.get("profile") or "").strip()
+            t = _format_build_display_name(b.get("name"))
             if not t:
-                nm = str(b.get("name") or "").strip()
-                mt = re.search(r"\[([^\[\]]+)\]\s*$", nm)
-                t = mt.group(1).strip() if mt else nm
+                t = _format_build_display_name(b.get("profile"))
         self.lbl_title.config(text=t or "Paragon")
 
         if not self.boards:
