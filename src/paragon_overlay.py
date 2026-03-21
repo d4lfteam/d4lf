@@ -18,27 +18,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
-
-from src.gui.importer.gui_common import BUILD_SOURCES, PLAYER_CLASSES
-
-try:
-    from PIL import Image, ImageDraw, ImageFont
-except ImportError:
-    Image = ImageDraw = ImageFont = None  # type: ignore[assignment]
+from PIL import Image, ImageDraw, ImageFont
 
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.models import ProfileModel
 from src.config.ui import ResManager
+from src.gui.importer.gui_common import BUILD_SOURCES, PLAYER_CLASSES
 from src.item.filter import _UniqueKeyLoader
-
-try:
-    from src.utils.window import enable_windows_dpi_awareness
-except Exception:
-
-    def enable_windows_dpi_awareness() -> None:
-        """Fallback when the shared Windows DPI helper is unavailable."""
-
+from src.utils.window import enable_windows_dpi_awareness
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -62,8 +50,7 @@ _UI_READY = threading.Event()
 def _tk_thread_main() -> None:
     """Own the dedicated Tk root and execute queued UI work on that thread."""
     global _UI_ROOT
-    with suppress(Exception):
-        enable_windows_dpi_awareness()
+    enable_windows_dpi_awareness()
     # Create a hidden root window. The actual overlay is a Toplevel that is
     # opened later, but Tk still needs one root that owns the event loop.
     root = tk.Tk()
