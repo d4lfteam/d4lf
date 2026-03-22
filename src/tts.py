@@ -31,6 +31,7 @@ class ItemIdentifiers(enum.Enum):
 class Publisher:
     def __init__(self):
         self._subscribers = set()
+        self._subscriber_lock = threading.Lock()
 
     def find_item(self) -> None:
         local_cache = []
@@ -48,14 +49,17 @@ class Publisher:
                 self.publish(LAST_ITEM)
 
     def publish(self, data):
-        for subscriber in self._subscribers:
-            subscriber(data)
+        with self._subscriber_lock:
+            for subscriber in self._subscribers:
+                subscriber(data)
 
     def subscribe(self, subscriber):
-        self._subscribers.add(subscriber)
+        with self._subscriber_lock:
+            self._subscribers.add(subscriber)
 
     def unsubscribe(self, subscriber):
-        self._subscribers.remove(subscriber)
+        with self._subscriber_lock:
+            self._subscribers.remove(subscriber)
 
 
 def create_pipe():
