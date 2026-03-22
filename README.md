@@ -28,7 +28,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
   - In Steam, right click the game, select Manage > Browse local files
 - **New for Season 12** The `saapi64.dll` file must be locally signed for D4 to pick it up. We have written a script to do this for you. It is a one-time process per computer.
   - Navigate to your d4lf directory
-  - Run `sign_dll.bat`
+  - Double-click `sign_dll.bat`
     - This wrapper runs the PowerShell script with a bypassed execution policy and requests administrator access if needed
     - If no installed `signtool.exe` is found, the script automatically downloads the official Microsoft `Microsoft.Windows.SDK.BuildTools` package into a local `.tools` folder next to the script
     - If you prefer PowerShell directly, run `.\sign_dll.ps1`
