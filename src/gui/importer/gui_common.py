@@ -230,6 +230,14 @@ def save_as_profile(file_name: str, profile: ProfileModel, url: str, exclude=Non
     return file_name
 
 
+def save_imported_profile(file_name: str, profile: ProfileModel, url: str, *, add_to_active_profiles: bool) -> str:
+    """Save an imported profile and optionally enable it in active profiles."""
+    corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
+    if add_to_active_profiles:
+        add_to_profiles(corrected_file_name)
+    return corrected_file_name
+
+
 def add_to_profiles(build_name):
     profiles = IniConfigLoader().general.profiles
     if build_name in profiles:

@@ -45,10 +45,7 @@ def test_maxroll_default_file_name_uses_source_build_variant():
 def test_mobalytics_default_file_name_uses_source_build_variant():
     assert (
         build_mobalytics_default_file_name(
-            build_name="Pulverize Endgame",
-            class_name="druid",
-            variant_name="Speed Farm",
-            variant_id="123",
+            build_name="Pulverize Endgame", class_name="druid", variant_name="Speed Farm", variant_id="123"
         )
         == "mobalytics_Pulverize Endgame_Speed Farm"
     )

@@ -22,7 +22,6 @@ from src.config.models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
-    add_to_profiles,
     build_default_profile_name,
     fix_offhand_type,
     fix_weapon_type,
@@ -30,12 +29,12 @@ from src.gui.importer.gui_common import (
     log_import_summary,
     match_to_enum,
     retry_importer,
-    save_as_profile,
+    save_imported_profile,
     setup_webdriver,
     update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig, ImportVariantOption
-from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_d4builds_paragon_steps
+from src.gui.importer.paragon_export import attach_paragon_payload, extract_d4builds_paragon_steps
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
@@ -498,21 +497,18 @@ def _import_d4builds_variant(
         import_count=import_count,
     )
 
-    # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
-        steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
-        if steps:
-            profile.Paragon = build_paragon_profile_payload(
-                build_name=file_name, source_url=url, paragon_boards_list=steps
-            )
-            LOGGER.info("Paragon imported successfully")
-        else:
-            LOGGER.warning("Paragon export enabled, but no paragon data was found on this D4Builds page.")
+        attach_paragon_payload(
+            profile,
+            build_name=file_name,
+            source_url=url,
+            paragon_boards_list=extract_d4builds_paragon_steps(driver, class_name=class_name),
+            missing_data_message="Paragon export enabled, but no paragon data was found on this D4Builds page.",
+        )
 
-    corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
-    if config.add_to_profiles:
-        add_to_profiles(corrected_file_name)
-    return corrected_file_name
+    return save_imported_profile(
+        file_name=file_name, profile=profile, url=url, add_to_active_profiles=config.add_to_profiles
+    )
 
 
 def _get_build_class_name(data: lxml.html.HtmlElement, source_url: str) -> str:

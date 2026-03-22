@@ -24,9 +24,9 @@ def test_maxroll_resolve_profile_indices_single_import_uses_selected_profile():
     )
     build_data = {"profiles": [{"items": {"a": 1}}, {"items": {"b": 2}}]}
 
-    assert _resolve_profile_indices(
-        url=config.url, build_data=build_data, selected_profile_index=1, config=config
-    ) == [1]
+    assert _resolve_profile_indices(url=config.url, build_data=build_data, selected_profile_index=1, config=config) == [
+        1
+    ]
 
 
 def test_maxroll_resolve_profile_indices_multi_import_honors_selected_variants():
@@ -42,9 +42,9 @@ def test_maxroll_resolve_profile_indices_multi_import_honors_selected_variants()
     )
     build_data = {"profiles": [{"items": {"a": 1}}, {"items": {"b": 2}}, {"items": {}}]}
 
-    assert _resolve_profile_indices(
-        url=config.url, build_data=build_data, selected_profile_index=0, config=config
-    ) == [1]
+    assert _resolve_profile_indices(url=config.url, build_data=build_data, selected_profile_index=0, config=config) == [
+        1
+    ]
 
 
 def test_mobalytics_resolve_variants_to_import_returns_all_for_multi_import():
@@ -81,13 +81,7 @@ def test_mobalytics_resolve_variants_to_import_honors_selected_variants():
 def test_mobalytics_variant_options_return_implicit_current_build_when_no_variants(monkeypatch):
     monkeypatch.setattr(
         "src.gui.importer.mobalytics._load_mobalytics_build_context",
-        lambda _url: (
-            "https://mobalytics.gg/diablo-4/builds/example",
-            {},
-            "RootDocument",
-            "Starter Build",
-            "sorcerer",
-        ),
+        lambda _url: ("https://mobalytics.gg/diablo-4/builds/example", {}, "RootDocument", "Starter Build", "sorcerer"),
     )
     monkeypatch.setattr("src.gui.importer.mobalytics._get_variants", lambda **_kwargs: [])
 
@@ -122,8 +116,7 @@ def test_d4builds_variant_probe_ids_cover_current_variant_and_padding():
     known_variants = [ImportVariantOption(id="1", label="No Uber")]
 
     assert _get_variant_probe_ids(
-        source_url="https://d4builds.gg/builds/pulverize-druid-endgame/?var=5",
-        known_variants=known_variants,
+        source_url="https://d4builds.gg/builds/pulverize-druid-endgame/?var=5", known_variants=known_variants
     ) == [str(index) for index in range(12)]
 
 
@@ -140,16 +133,14 @@ def test_d4builds_load_variant_options_falls_back_to_url_probing(monkeypatch):
     def fake_probe_variant_options_by_url(**_kwargs):
         return probed_variants
 
-    monkeypatch.setattr(
-        d4builds,
-        "_probe_variant_options_by_url",
-        fake_probe_variant_options_by_url,
-    )
+    monkeypatch.setattr(d4builds, "_probe_variant_options_by_url", fake_probe_variant_options_by_url)
 
-    assert _load_variant_options(
-        driver=object(),
-        source_url="https://d4builds.gg/builds/crackling-energy-sorcerer-endgame/?var=1",
-    ) == probed_variants
+    assert (
+        _load_variant_options(
+            driver=object(), source_url="https://d4builds.gg/builds/crackling-energy-sorcerer-endgame/?var=1"
+        )
+        == probed_variants
+    )
 
 
 def test_d4builds_probe_variant_options_stops_after_consecutive_misses(monkeypatch):
@@ -170,10 +161,7 @@ def test_d4builds_probe_variant_options_stops_after_consecutive_misses(monkeypat
         driver=object(),
         source_url="https://d4builds.gg/builds/crackling-energy-sorcerer-endgame/?var=1",
         known_variants=known_variants,
-    ) == [
-        ImportVariantOption(id="0", label="Uber"),
-        ImportVariantOption(id="1", label="No Uber"),
-    ]
+    ) == [ImportVariantOption(id="0", label="Uber"), ImportVariantOption(id="1", label="No Uber")]
     assert probed_ids == ["0", "2"]
 
 
@@ -207,11 +195,5 @@ def test_d4builds_variant_options_use_headless_browser(monkeypatch):
 
     assert result == expected_options
     assert webdriver_calls == [{"headless": True, "uc": False}]
-    assert wait_calls == [
-        (
-            driver,
-            "https://d4builds.gg/builds/golem-necromancer-endgame/?var=1",
-            ("wait", driver, 10),
-        )
-    ]
+    assert wait_calls == [(driver, "https://d4builds.gg/builds/golem-necromancer-endgame/?var=1", ("wait", driver, 10))]
     assert driver.quit_called is True

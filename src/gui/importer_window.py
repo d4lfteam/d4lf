@@ -46,6 +46,7 @@ IMPORTER_LOGGER_NAMES = (
     "src.gui.importer.maxroll",
     "src.gui.importer.d4builds",
     "src.gui.importer.gui_common",
+    "src.gui.importer.paragon_export",
 )
 
 

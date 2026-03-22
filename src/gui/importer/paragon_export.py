@@ -18,6 +18,8 @@ except ImportError:  # pragma: no cover
 if TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver
 
+    from src.config.models import ProfileModel
+
 
 def _class_slug_from_name(class_name: str) -> str:
     class_name = (class_name or "").strip().lower()
@@ -302,6 +304,24 @@ def build_paragon_profile_payload(
         "Generator": f"d4lf v{__version__}",
         "ParagonBoardsList": paragon_boards_list,
     }
+
+
+def attach_paragon_payload(
+    profile: ProfileModel,
+    *,
+    build_name: str,
+    source_url: str,
+    paragon_boards_list: list[list[dict[str, Any]]],
+    missing_data_message: str,
+) -> None:
+    """Attach Paragon data to a profile when exporter output exists."""
+    if paragon_boards_list:
+        profile.Paragon = build_paragon_profile_payload(
+            build_name=build_name, source_url=source_url, paragon_boards_list=paragon_boards_list
+        )
+        LOGGER.info("Paragon imported successfully")
+        return
+    LOGGER.warning(missing_data_message)
 
 
 def extract_maxroll_paragon_steps(active_profile: dict[str, Any]) -> list[list[dict[str, Any]]]:

@@ -16,9 +16,10 @@ from src.gui.importer_window import (
 )
 
 
-def test_importer_window_includes_gui_common_logger():
+def test_importer_window_includes_shared_importer_loggers():
     assert "src.gui.importer_window" in IMPORTER_LOGGER_NAMES
     assert "src.gui.importer.gui_common" in IMPORTER_LOGGER_NAMES
+    assert "src.gui.importer.paragon_export" in IMPORTER_LOGGER_NAMES
     assert "src.gui.importer.common" not in IMPORTER_LOGGER_NAMES
 
 
@@ -47,12 +48,10 @@ def test_profile_import_cancelled_no_variant_selected_message_matches_ui_copy():
 
 def test_variant_selection_dialog_uses_importer_checkbox_widgets():
     _ = QApplication.instance() or QApplication([])
-    dialog = _VariantSelectionDialog(
-        [
-            ImportVariantOption(id="0", label="Starter"),
-            ImportVariantOption(id="1", label="Pit Push"),
-        ]
-    )
+    dialog = _VariantSelectionDialog([
+        ImportVariantOption(id="0", label="Starter"),
+        ImportVariantOption(id="1", label="Pit Push"),
+    ])
 
     try:
         first_item = dialog.variant_list.item(0)
