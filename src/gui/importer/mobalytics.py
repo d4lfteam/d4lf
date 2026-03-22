@@ -17,17 +17,18 @@ from src.config.models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
-    add_to_profiles,
+    build_default_profile_name,
     fix_offhand_type,
     fix_weapon_type,
     get_with_retry,
+    log_import_summary,
     match_to_enum,
     retry_importer,
-    save_as_profile,
+    save_imported_profile,
     update_mingreateraffixcount,
 )
-from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_mobalytics_paragon_steps
+from src.gui.importer.importer_config import ImportConfig, ImportVariantOption
+from src.gui.importer.paragon_export import attach_paragon_payload, extract_mobalytics_paragon_steps
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
@@ -46,35 +47,93 @@ class MobalyticsException(Exception):
 
 @retry_importer
 def import_mobalytics(config: ImportConfig):
-    url = config.url.strip().replace("\n", "")
+    url, full_script_data_json, root_document_name, build_name, class_name = _load_mobalytics_build_context(config.url)
+    variant_id = _extract_variant_id_from_url(url)
+    variants = _get_variants(root_document_name=root_document_name, full_script_data_json=full_script_data_json)
+    created_profiles: list[str] = []
+
+    if variants:
+        variants_to_import = _resolve_variants_to_import(
+            variants=variants, selected_variant_id=variant_id, config=config
+        )
+    else:
+        selected_variant, selected_variant_id = _get_selected_variant(
+            root_document_name=root_document_name, full_script_data_json=full_script_data_json, variant_id=variant_id
+        )
+        variants_to_import = [(selected_variant, selected_variant_id)]
+
+    for variant, resolved_variant_id in variants_to_import:
+        items = variant.get("genericBuilder", {}).get("slots", [])
+        variant_name = _extract_variant_name(
+            variant=variant, variant_id=resolved_variant_id, full_script_data_json=full_script_data_json
+        )
+
+        if not items:
+            LOGGER.error(msg := "No items found")
+            raise MobalyticsException(msg)
+
+        profile = _build_profile(items=items, class_name=class_name, config=config)
+        file_name = _resolve_output_file_name(
+            config=config,
+            build_name=build_name,
+            class_name=class_name,
+            variant_name=variant_name,
+            variant_id=resolved_variant_id,
+            import_count=len(variants_to_import),
+        )
+        if config.export_paragon:
+            attach_paragon_payload(
+                profile,
+                build_name=file_name,
+                source_url=url,
+                paragon_boards_list=extract_mobalytics_paragon_steps(variant if isinstance(variant, dict) else {}),
+                missing_data_message="Paragon export enabled, but no paragon data was found for this Mobalytics variant.",
+            )
+
+        corrected_file_name = save_imported_profile(
+            file_name=file_name, profile=profile, url=url, add_to_active_profiles=config.add_to_profiles
+        )
+        created_profiles.append(corrected_file_name)
+
+    log_import_summary(LOGGER, "Mobalytics", created_profiles)
+
+
+def get_mobalytics_variant_options(url: str) -> list[ImportVariantOption]:
+    normalized_url, full_script_data_json, root_document_name, build_name, class_name = _load_mobalytics_build_context(
+        url
+    )
+    variants = _get_variants(root_document_name=root_document_name, full_script_data_json=full_script_data_json)
+    if not variants:
+        implicit_variant_id = _extract_variant_id_from_url(normalized_url) or "current"
+        implicit_variant_label = build_name.strip() or class_name.strip().title() or "current_build"
+        return [ImportVariantOption(id=implicit_variant_id, label=implicit_variant_label)]
+
+    options = []
+    for index, variant in enumerate(variants, start=1):
+        variant_id = str(variant.get("id", "")).strip() or f"variant_{index}"
+        variant_name = _extract_variant_name(
+            variant=variant, variant_id=variant_id, full_script_data_json=full_script_data_json
+        )
+        options.append(ImportVariantOption(id=variant_id, label=variant_name or f"variant_{index}"))
+    return options
+
+
+def _load_mobalytics_build_context(url: str) -> tuple[str, dict, str, str, str]:
+    url = url.strip().replace("\n", "")
     if BUILD_GUIDE_BASE_URL not in url:
         LOGGER.error("Invalid url, please use a mobalytics build guide")
-        return
+        msg = "Invalid Mobalytics URL"
+        raise MobalyticsException(msg)
     url = _fix_input_url(url=url)
     LOGGER.info(f"Loading {url}")
     try:
-        r = get_with_retry(url=url, custom_headers={})
+        response = get_with_retry(url=url, custom_headers={})
     except ConnectionError as exc:
         LOGGER.exception(msg := "Couldn't get build")
         raise MobalyticsException(msg) from exc
-    variant_id = _extract_variant_id_from_url(url)
-    raw_html_data = lxml.html.fromstring(r.text)
-    # The build is shoved in a massive JSON in one of the script tags. We find that json now.
-    scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
-    full_script_data_json = None
-    for script in scripts_elem:
-        if script.text and script.text.strip().startswith(BUILD_SCRIPT_PREFIX):
-            full_script_data_json = json.loads(script.text.strip().replace(BUILD_SCRIPT_PREFIX, "")[:-1])
-            break
 
-    if not full_script_data_json:
-        LOGGER.error(
-            msg
-            := "No script containing build data was found. This means Mobalytics has changed how they present data, please submit a bung."
-        )
-        raise MobalyticsException(msg)
-
-    # This gets the name of the root document, ie the one that will contain the name of the build
+    raw_html_data = lxml.html.fromstring(response.text)
+    full_script_data_json = _extract_full_script_data(raw_html_data)
     root_document_name = jsonpath.findall("$..['Diablo4Query:{}'].documents..data.__ref", full_script_data_json)[0]
     build_name = jsonpath.findall(f"$..['{root_document_name}'].data.name", full_script_data_json)[0]
     if not build_name:
@@ -86,18 +145,142 @@ def import_mobalytics(config: ImportConfig):
     if not class_name:
         LOGGER.error(msg := "No class name found")
         raise MobalyticsException(msg)
+    return url, full_script_data_json, root_document_name, build_name, class_name
 
-    variant, variant_id = _get_selected_variant(
-        root_document_name=root_document_name, full_script_data_json=full_script_data_json, variant_id=variant_id
-    )
-    items = variant.get("genericBuilder", {}).get("slots", [])
-    variant_name = _extract_variant_name(
-        variant=variant, variant_id=variant_id, full_script_data_json=full_script_data_json
-    )
 
-    if not items:
-        LOGGER.error(msg := "No items found")
-        raise MobalyticsException(msg)
+def _extract_full_script_data(raw_html_data: lxml.html.HtmlElement) -> dict:
+    scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
+    for script in scripts_elem:
+        if script.text and script.text.strip().startswith(BUILD_SCRIPT_PREFIX):
+            return json.loads(script.text.strip().replace(BUILD_SCRIPT_PREFIX, "")[:-1])
+    LOGGER.error(
+        msg
+        := "No script containing build data was found. This means Mobalytics has changed how they present data, please submit a bung."
+    )
+    raise MobalyticsException(msg)
+
+
+def _get_variants(root_document_name: str, full_script_data_json: dict) -> list[dict]:
+    return jsonpath.findall(f"$..['{root_document_name}'].data.buildVariants.values[*]", full_script_data_json)
+
+
+def _resolve_variants_to_import(
+    variants: list[dict], selected_variant_id: str | None, config: ImportConfig
+) -> list[tuple[dict, str | None]]:
+    if not config.import_multiple_variants:
+        selected_variant, resolved_variant_id = _select_variant_by_id(variants, selected_variant_id)
+        return [(selected_variant, resolved_variant_id)]
+
+    if config.selected_variants:
+        variants_by_id = {
+            str(variant.get("id", "")).strip(): variant for variant in variants if str(variant.get("id", "")).strip()
+        }
+        selected_variants = []
+        for variant_id in config.selected_variants:
+            variant = variants_by_id.get(variant_id)
+            if variant is not None:
+                selected_variants.append((variant, variant_id))
+        if selected_variants:
+            return selected_variants
+
+    return [(variant, str(variant.get("id", "")).strip() or None) for variant in variants]
+
+
+def _select_variant_by_id(variants: list[dict], variant_id: str | None) -> tuple[dict, str | None]:
+    if variant_id:
+        for variant in variants:
+            if variant.get("id") == variant_id:
+                return variant, variant_id
+
+    selected_variant = variants[0]
+    return selected_variant, str(selected_variant.get("id", "")).strip() or None
+
+
+def _resolve_output_file_name(
+    config: ImportConfig, build_name: str, class_name: str, variant_name: str, variant_id: str | None, import_count: int
+) -> str:
+    if not config.custom_file_name:
+        return _build_default_file_name(build_name, class_name, variant_name, variant_id)
+    if import_count <= 1:
+        return config.custom_file_name
+
+    variant_suffix = variant_name.strip() or (f"variant_{variant_id}" if variant_id else "variant")
+    return build_default_profile_name(config.custom_file_name, variant_suffix)
+
+
+def _corrections(input_str: str) -> str:
+    match input_str.lower():
+        case "max life":
+            return "maximum life"
+    return input_str
+
+
+def _fix_input_url(url: str) -> str:
+    return unquote(url)
+
+
+def _extract_variant_id_from_url(url: str) -> str | None:
+    query = parse_qs(urlparse(url).query)
+    for values in query.values():
+        for value in values:
+            if "activeVariantId," not in value:
+                continue
+            return value.split("activeVariantId,", maxsplit=1)[1].split("#", maxsplit=1)[0]
+    return None
+
+
+def _get_selected_variant(
+    root_document_name: str, full_script_data_json: dict, variant_id: str | None
+) -> tuple[dict, str | None]:
+    variants = _get_variants(root_document_name=root_document_name, full_script_data_json=full_script_data_json)
+    if not variants:
+        return {}, variant_id
+
+    return _select_variant_by_id(variants, variant_id)
+
+
+def _extract_variant_name(variant: dict, variant_id: str | None, full_script_data_json: dict) -> str:
+    direct_candidates = [
+        variant.get("title"),
+        variant.get("name"),
+        variant.get("label"),
+        variant.get("variantTitle"),
+        variant.get("variantName"),
+    ]
+    for candidate in direct_candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+
+    if variant_id:
+        for path in (
+            f"..['NgfDocumentCmWidgetContentVariantsV1DataChildVariant:{variant_id}'].title",
+            f"..['NgfDocumentCmWidgetContentVariantsV1DataChildVariant:{variant_id}'].name",
+            f"$..[?@.id=='{variant_id}'].title",
+            f"$..[?@.id=='{variant_id}'].name",
+            f"$..[?@.id=='{variant_id}'].label",
+        ):
+            variant_names = jsonpath.findall(path, full_script_data_json)
+            for candidate in variant_names:
+                if isinstance(candidate, str) and candidate.strip():
+                    return candidate.strip()
+
+    return ""
+
+
+def _build_default_file_name(build_name: str, class_name: str, variant_name: str, variant_id: str | None) -> str:
+    normalized_build_name = build_name.strip()
+    normalized_variant_name = variant_name.strip()
+    variant_suffix = ""
+    if normalized_variant_name and normalized_variant_name.casefold() not in normalized_build_name.casefold():
+        variant_suffix = normalized_variant_name
+    elif variant_id:
+        variant_suffix = f"variant_{variant_id}"
+
+    fallback = class_name.strip().title()
+    return build_default_profile_name("mobalytics", normalized_build_name, variant_suffix, fallback=fallback)
+
+
+def _build_profile(items: list[dict], class_name: str, config: ImportConfig) -> ProfileModel:
     finished_filters = []
     unique_filters = []
     aspect_upgrade_filters = []
@@ -120,15 +303,9 @@ def import_mobalytics(config: ImportConfig):
 
         is_unique = entity_type == "uniqueItems"
         if is_unique:
-            # This has proven unreliable, just like MaxRoll, so the affix portion is getting removed
-            # if not raw_affixes:
-            #     LOGGER.warning(f"Unique {item_name} had no affixes listed for it, only the aspect will be imported.")
-            # affixes = _convert_raw_to_affixes(raw_affixes)
             unique_model = UniqueModel()
             try:
                 unique_model.aspect = AspectUniqueFilterModel(name=item_name)
-                # if affixes:
-                #     unique_model.affix = [AffixFilterModel(name=x.name) for x in affixes]
                 unique_filters.append(unique_model)
             except Exception:
                 LOGGER.exception(f"Unexpected error importing unique {item_name}, please report a bug.")
@@ -143,7 +320,6 @@ def import_mobalytics(config: ImportConfig):
             continue
 
         item_type = None
-        # Item type is hidden in the inherents. If it's in there, then we assume there are no further inherents
         is_weapon = "weapon" in slot_type
         for inherent in raw_inherents:
             potential_item_type = " ".join(inherent["id"].split("-")[:2]).lower()
@@ -160,7 +336,6 @@ def import_mobalytics(config: ImportConfig):
         if item_type:
             raw_inherents.clear()
 
-        # Druid and sorc have a default offhand item type that we may have missed if there were no inherents
         if not item_type and "offhand" in slot_type:
             item_type = fix_offhand_type("", class_name)
 
@@ -201,112 +376,13 @@ def import_mobalytics(config: ImportConfig):
             filter_name = f"{filter_name_template}{i}"
             i += 1
         finished_filters.append({filter_name: item_filter})
+
     profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))))
     if config.import_uniques and unique_filters:
         profile.Uniques = unique_filters
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
-
-    file_name = config.custom_file_name or _build_default_file_name(build_name, class_name, variant_name, variant_id)
-    # Optionally embed Paragon data into the profile model before saving
-    if config.export_paragon:
-        steps = extract_mobalytics_paragon_steps(variant if isinstance(variant, dict) else {})
-        if steps:
-            profile.Paragon = build_paragon_profile_payload(
-                build_name=file_name, source_url=url, paragon_boards_list=steps
-            )
-        else:
-            LOGGER.warning("Paragon export enabled, but no paragon data was found for this Mobalytics variant.")
-
-    corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
-
-    if config.add_to_profiles:
-        add_to_profiles(corrected_file_name)
-
-    LOGGER.info("Finished")
-
-
-def _corrections(input_str: str) -> str:
-    match input_str.lower():
-        case "max life":
-            return "maximum life"
-    return input_str
-
-
-def _fix_input_url(url: str) -> str:
-    return unquote(url)
-
-
-def _extract_variant_id_from_url(url: str) -> str | None:
-    query = parse_qs(urlparse(url).query)
-    for values in query.values():
-        for value in values:
-            if "activeVariantId," not in value:
-                continue
-            return value.split("activeVariantId,", maxsplit=1)[1].split("#", maxsplit=1)[0]
-    return None
-
-
-def _get_selected_variant(
-    root_document_name: str, full_script_data_json: dict, variant_id: str | None
-) -> tuple[dict, str | None]:
-    variants = jsonpath.findall(f"$..['{root_document_name}'].data.buildVariants.values[*]", full_script_data_json)
-    if not variants:
-        return {}, variant_id
-
-    if variant_id:
-        for variant in variants:
-            if variant.get("id") == variant_id:
-                return variant, variant_id
-
-    selected_variant = variants[0]
-    return selected_variant, selected_variant.get("id")
-
-
-def _extract_variant_name(variant: dict, variant_id: str | None, full_script_data_json: dict) -> str:
-    direct_candidates = [
-        variant.get("title"),
-        variant.get("name"),
-        variant.get("label"),
-        variant.get("variantTitle"),
-        variant.get("variantName"),
-    ]
-    for candidate in direct_candidates:
-        if isinstance(candidate, str) and candidate.strip():
-            return candidate.strip()
-
-    if variant_id:
-        for path in (
-            f"..['NgfDocumentCmWidgetContentVariantsV1DataChildVariant:{variant_id}'].title",
-            f"..['NgfDocumentCmWidgetContentVariantsV1DataChildVariant:{variant_id}'].name",
-            f"$..[?@.id=='{variant_id}'].title",
-            f"$..[?@.id=='{variant_id}'].name",
-            f"$..[?@.id=='{variant_id}'].label",
-        ):
-            variant_names = jsonpath.findall(path, full_script_data_json)
-            for candidate in variant_names:
-                if isinstance(candidate, str) and candidate.strip():
-                    return candidate.strip()
-
-    return ""
-
-
-def _build_default_file_name(build_name: str, class_name: str, variant_name: str, variant_id: str | None) -> str:
-    parts = ["mobalytics"]
-
-    normalized_class_name = class_name.strip().title()
-    if normalized_class_name:
-        parts.append(normalized_class_name)
-
-    if build_name.strip():
-        parts.append(build_name)
-
-    if variant_name and variant_name.lower() not in build_name.lower():
-        parts.append(variant_name)
-    elif variant_id:
-        parts.append(f"variant_{variant_id}")
-
-    return "_".join(part.strip() for part in parts if part and part.strip())
+    return profile
 
 
 def _get_legendary_aspect(name: str) -> str:

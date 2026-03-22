@@ -10,13 +10,16 @@ from src import __version__
 
 try:
     from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support.ui import WebDriverWait as _WebDriverWait
 except ImportError:  # pragma: no cover
     By = None  # type: ignore[assignment]
-    WebDriverWait = None  # type: ignore[assignment]
+    _WebDriverWait = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver
+    from selenium.webdriver.support.ui import WebDriverWait
+
+    from src.config.models import ProfileModel
 
 
 def _class_slug_from_name(class_name: str) -> str:
@@ -304,6 +307,24 @@ def build_paragon_profile_payload(
     }
 
 
+def attach_paragon_payload(
+    profile: ProfileModel,
+    *,
+    build_name: str,
+    source_url: str,
+    paragon_boards_list: list[list[dict[str, Any]]],
+    missing_data_message: str,
+) -> None:
+    """Attach Paragon data to a profile when exporter output exists."""
+    if paragon_boards_list:
+        profile.Paragon = build_paragon_profile_payload(
+            build_name=build_name, source_url=source_url, paragon_boards_list=paragon_boards_list
+        )
+        LOGGER.info("Paragon imported successfully")
+        return
+    LOGGER.warning(missing_data_message)
+
+
 def extract_maxroll_paragon_steps(active_profile: dict[str, Any]) -> list[list[dict[str, Any]]]:
     """Extract paragon steps from Maxroll planner data.
 
@@ -527,12 +548,12 @@ def extract_d4builds_paragon_steps(
     """
     class_slug = _class_slug_from_name(class_name)
 
-    if By is None or WebDriverWait is None:  # pragma: no cover
+    if By is None or _WebDriverWait is None:  # pragma: no cover
         msg = "Selenium not available, cannot export D4Builds paragon"
         raise RuntimeError(msg)
 
     if wait is None:
-        wait = WebDriverWait(driver, 10)
+        wait = _WebDriverWait(driver, 10)
 
     # Fast path: if boards are already present, don't click/wait again.
     try:
