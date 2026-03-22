@@ -114,7 +114,7 @@ def check_for_proper_tts_configuration():
             tts_dll = d4_dir / "saapi64.dll"
             if not tts_dll.exists():
                 LOGGER.warning(
-                    f"TTS DLL was not found in {d4_dir}. Have you followed the instructions in {SETUP_INSTRUCTIONS_URL} ?"
+                    f"TTS DLL was not found in {d4_dir}. Have you followed the instructions in {SETUP_INSTRUCTIONS_URL}?"
                 )
             else:
                 LOGGER.debug(f"TTS DLL found at {tts_dll}")
@@ -132,7 +132,8 @@ def check_for_proper_tts_configuration():
             else:
                 LOGGER.error(
                     f"As of season 12, the saapi64.dll must be locally signed. Follow all instructions in "
-                    f"{SETUP_INSTRUCTIONS_URL} to get the dll signed. It currently has a status of {status}"
+                    f"{SETUP_INSTRUCTIONS_URL} to get the dll signed (specifically, run install_dll.bat). "
+                    f"It currently has a status of {status}"
                 )
         except subprocess.CalledProcessError as e:
             LOGGER.error(f"Error checking saapi64.dll signature: {e}")
