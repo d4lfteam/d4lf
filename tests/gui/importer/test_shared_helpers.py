@@ -11,18 +11,11 @@ def test_save_imported_profile_saves_and_optionally_activates(mocker):
     add_to_profiles = mocker.patch("src.gui.importer.gui_common.add_to_profiles")
 
     result = save_imported_profile(
-        file_name="profile_name",
-        profile=profile,
-        url="https://example.com/build",
-        add_to_active_profiles=True,
+        file_name="profile_name", profile=profile, url="https://example.com/build", add_to_active_profiles=True
     )
 
     assert result == "saved_profile"
-    save_as_profile.assert_called_once_with(
-        file_name="profile_name",
-        profile=profile,
-        url="https://example.com/build",
-    )
+    save_as_profile.assert_called_once_with(file_name="profile_name", profile=profile, url="https://example.com/build")
     add_to_profiles.assert_called_once_with("saved_profile")
 
 
@@ -32,10 +25,7 @@ def test_save_imported_profile_skips_activation_when_disabled(mocker):
     add_to_profiles = mocker.patch("src.gui.importer.gui_common.add_to_profiles")
 
     save_imported_profile(
-        file_name="profile_name",
-        profile=profile,
-        url="https://example.com/build",
-        add_to_active_profiles=False,
+        file_name="profile_name", profile=profile, url="https://example.com/build", add_to_active_profiles=False
     )
 
     add_to_profiles.assert_not_called()

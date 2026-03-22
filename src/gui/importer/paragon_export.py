@@ -10,13 +10,14 @@ from src import __version__
 
 try:
     from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support.ui import WebDriverWait as _WebDriverWait
 except ImportError:  # pragma: no cover
     By = None  # type: ignore[assignment]
-    WebDriverWait = None  # type: ignore[assignment]
+    _WebDriverWait = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver
+    from selenium.webdriver.support.ui import WebDriverWait
 
     from src.config.models import ProfileModel
 
@@ -547,12 +548,12 @@ def extract_d4builds_paragon_steps(
     """
     class_slug = _class_slug_from_name(class_name)
 
-    if By is None or WebDriverWait is None:  # pragma: no cover
+    if By is None or _WebDriverWait is None:  # pragma: no cover
         msg = "Selenium not available, cannot export D4Builds paragon"
         raise RuntimeError(msg)
 
     if wait is None:
-        wait = WebDriverWait(driver, 10)
+        wait = _WebDriverWait(driver, 10)
 
     # Fast path: if boards are already present, don't click/wait again.
     try:
