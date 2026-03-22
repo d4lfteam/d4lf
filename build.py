@@ -74,7 +74,7 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-set /p d4_path=Paste your Diablo IV folder path and press Enter:
+set /p d4_path=Paste the folder path that contains Diablo IV.exe and press Enter:
 if "%d4_path%"=="" (
     echo No Diablo IV folder path was provided.
     pause

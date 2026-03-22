@@ -71,6 +71,24 @@ function Stop-WithError {
     exit $ExitCode
 }
 
+function Resolve-D4InstallPath {
+    param(
+        [string]$ProvidedPath
+    )
+
+    if (-not (Test-Path $ProvidedPath -PathType Container)) {
+        Stop-WithError "The Diablo IV folder path does not exist: $ProvidedPath"
+    }
+
+    $resolvedPath = (Resolve-Path $ProvidedPath).Path
+    $diabloExePath = Join-Path $resolvedPath "Diablo IV.exe"
+    if (-not (Test-Path $diabloExePath -PathType Leaf)) {
+        Stop-WithError "Diablo IV.exe was not found in: $resolvedPath. Please paste the folder that contains Diablo IV.exe."
+    }
+
+    return $resolvedPath
+}
+
 function Install-LightweightSignTool {
     param(
         [string]$DestinationRoot
@@ -166,12 +184,39 @@ function Resolve-SignTool {
 }
 
 Write-UiBanner -Title "D4LF DLL Signing Helper" -Subtitle "Local signing for saapi64.dll"
+$d4_path = Resolve-D4InstallPath -ProvidedPath $d4_path
+$sourceDllPath = Join-Path $PSScriptRoot "saapi64.dll"
+
 Write-InfoLine "Diablo IV folder: $d4_path"
 if ($signtool_path) {
     Write-InfoLine "Requested signtool.exe: $signtool_path"
 }
 
-# -- 1. Create self-signed code-signing certificate (10-year validity) ---------
+# -- 1. Validate and place the DLL ---------------------------------------------
+Start-Step "Validating Diablo IV folder"
+Write-OkLine "Found Diablo IV.exe in $d4_path"
+
+if (-not (Test-Path $sourceDllPath -PathType Leaf)) {
+    Stop-WithError "saapi64.dll was not found next to sign_dll.ps1. Re-extract the D4LF release zip and try again."
+}
+
+$dllPath = Join-Path $d4_path "saapi64.dll"
+$sourceDllResolved = (Resolve-Path $sourceDllPath).Path
+$targetDllResolved = $dllPath
+if (Test-Path $dllPath -PathType Leaf) {
+    $targetDllResolved = (Resolve-Path $dllPath).Path
+}
+
+if ($sourceDllResolved -eq $targetDllResolved) {
+    Write-OkLine "saapi64.dll is already in the Diablo IV folder."
+}
+else {
+    Write-InfoLine "Copying saapi64.dll into the Diablo IV folder..."
+    Copy-Item -Path $sourceDllPath -Destination $dllPath -Force
+    Write-OkLine "saapi64.dll copied to $dllPath"
+}
+
+# -- 2. Create self-signed code-signing certificate (10-year validity) ---------
 Start-Step "Preparing code-signing certificate"
 $cert = Get-ChildItem -Path "Cert:\CurrentUser\My" |
     Where-Object { $_.Subject -eq "CN=Cert for D4LF" -and $_.HasPrivateKey } |
@@ -190,7 +235,7 @@ else {
     Write-OkLine "Certificate created: $($cert.Thumbprint)"
 }
 
-# -- 2. Copy cert to Trusted Root Certification Authorities --------------------
+# -- 3. Copy cert to Trusted Root Certification Authorities --------------------
 Start-Step "Trusting the certificate for this Windows user"
 $rootStore = New-Object System.Security.Cryptography.X509Certificates.X509Store(
     [System.Security.Cryptography.X509Certificates.StoreName]::Root,
@@ -208,20 +253,14 @@ else {
 }
 $rootStore.Close()
 
-# -- 3. Locate signtool.exe ----------------------------------------------------
+# -- 4. Locate signtool.exe ----------------------------------------------------
 Start-Step "Locating signtool.exe"
 $signtool = Resolve-SignTool -ProvidedPath $signtool_path
 Write-InfoLine "Using signtool.exe at:"
 Write-InfoLine $signtool
 
-# -- 4. Sign the DLL -----------------------------------------------------------
+# -- 5. Sign the DLL -----------------------------------------------------------
 Start-Step "Signing saapi64.dll"
-$dllPath = Join-Path $d4_path "saapi64.dll"
-
-if (-not (Test-Path $dllPath)) {
-    Stop-WithError "DLL not found at: $dllPath"
-}
-
 Write-InfoLine "Target DLL: $dllPath"
 $sig = Get-AuthenticodeSignature -FilePath $dllPath
 if ($sig.Status -eq "Valid") {
