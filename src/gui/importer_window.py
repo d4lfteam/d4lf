@@ -193,7 +193,7 @@ class ImporterWindow(QMainWindow):
             "or\n"
             "https://mobalytics.gg/diablo-4/builds/barbarian/bash\n\n"
             f"It will create a file based on the label of the build in the planner in: {IniConfigLoader().user_dir / 'profiles'}\n\n"
-            "For d4builds you need to specify your browser in the config tab"
+            "For d4builds you need to specify your browser in the Settings window"
         )
         instructions_text.setReadOnly(True)
         font_metrics = instructions_text.fontMetrics()

@@ -58,7 +58,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 - The GUI crashes immediately upon opening, with no error message given
   - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
-    your params.ini through the config tab. Using the GUI for configuration will ensure the file is always accurate.
+    your params.ini through the Settings window in D4LF. Using the GUI for configuration will ensure the file is always accurate.
 - Mouse control isn't possible
   - Due to your local windows settings, the tool might not be able to control the mouse. Just run the tool as admin
     and it should work. If you don't want to run it as admin, you can disable the mouse control in the params.ini
