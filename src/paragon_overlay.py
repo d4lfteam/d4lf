@@ -136,13 +136,13 @@ GOLD = FS_ACCENT_GOLD
 SELECT_BG = "#1f1f1f"
 NODE_GREEN = FS_ACCENT_GREEN
 NODE_BLUE = FS_ACCENT_BLUE
+PANEL_W = 370
+GRID = 21
+NODES_LEN = GRID * GRID
 
 FS_PANEL_TITLE, FS_MODE_LABEL, FS_BUTTON, FS_BOARD_CARD = 13, 9, 12, 10
 FS_BUILDS_MENU, FS_SETTINGS_ICON, FS_SETTINGS_LABEL, FS_ZOOM_BTN, FS_HINT = (12, 13, 10, 15, 10)
 FS_CARD_FRAME, FS_GRID_FRAME = 1, 6
-
-PANEL_W, GRID = 370, 21
-NODES_LEN = GRID * GRID
 
 
 # =============================================================================
@@ -188,7 +188,7 @@ def _dpi_scale_for_widget(w: tk.Misc) -> float:
 
 
 # =============================================================================
-# SETTINGS & DATA LOADERS
+# SETTINGS & PROFILE LOADERS
 # =============================================================================
 
 
@@ -270,13 +270,11 @@ def _clamp_int(v: int | None, lo: int, hi: int, default: int) -> int:
 
 def _iter_paragon_payloads(paragon: object) -> list[dict[str, Any]]:
     """Normalize Paragon data so the rest of the loader can iterate one shape."""
-    return (
-        [paragon]
-        if isinstance(paragon, dict)
-        else [x for x in paragon if isinstance(x, dict)]
-        if isinstance(paragon, list)
-        else []
-    )
+    if isinstance(paragon, dict):
+        return [paragon]
+    if isinstance(paragon, list):
+        return [payload for payload in paragon if isinstance(payload, dict)]
+    return []
 
 
 def _format_build_display_name(raw_name: object) -> str:
@@ -356,19 +354,27 @@ def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]
         if not model or not model.Paragon:
             continue
         for payload in _iter_paragon_payloads(model.Paragon):
-            steps = payload.get("ParagonBoardsList", [])
-            steps = (
-                [s for s in steps if isinstance(s, list) and s]
-                if steps and isinstance(steps[0], list)
-                else [steps]
-                if steps
-                else []
-            )
+            payload_steps = payload.get("ParagonBoardsList", [])
+            if payload_steps and isinstance(payload_steps, list) and isinstance(payload_steps[0], list):
+                steps = [step for step in payload_steps if isinstance(step, list) and step]
+            elif isinstance(payload_steps, list) and payload_steps:
+                # Older/smaller payloads may store only one board-state list instead
+                # of a list-of-steps. Wrap that shape so the overlay can iterate one way.
+                steps = [payload_steps]
+            else:
+                steps = []
             bname = payload.get("Name") or payload.get("name") or "Unknown Build"
+            # Newest step first keeps the build selector aligned with the latest
+            # imported planner state while still exposing earlier progression steps.
             for idx in range(len(steps) - 1, -1, -1):
                 sname = f"{bname} - Step {idx + 1}" if len(steps) > 1 else bname
                 builds.append({"name": sname, "boards": steps[idx], "profile": pname})
     return builds
+
+
+# =============================================================================
+# GRID DATA HELPERS
+# =============================================================================
 
 
 def parse_rotation(rot_str: str) -> int:
@@ -759,6 +765,9 @@ class ParagonOverlay(tk.Toplevel):
             if not (new_builds := load_builds_from_path()):
                 return
             self.builds = new_builds
+            # Preserve the current numeric selection when it is still in range.
+            # This keeps reloads stable without changing the overlay's existing
+            # selection semantics.
             self.current_build_idx = self.current_build_idx if 0 <= self.current_build_idx < len(self.builds) else 0
             self.boards = self.builds[self.current_build_idx]["boards"] if self.builds else []
             self.selected_board_idx = min(self.selected_board_idx, max(0, len(self.boards) - 1))
@@ -828,6 +837,7 @@ class ParagonOverlay(tk.Toplevel):
                 setattr(self, attr, None)
 
     def _close_settings_dropdown(self) -> None:
+        """Hide the anchored settings popup and remove its temporary bindings."""
         self._close_popup(
             "_settings_popup", self.btn_settings, "_settings_popup_escape_bind_id", "_settings_popup_bind_id"
         )
@@ -1539,6 +1549,8 @@ class ParagonOverlay(tk.Toplevel):
 
     def _apply_geometry(self) -> None:
         """Resize the overlay to match the tracked game window or full screen."""
+        # The floating builds popup is a separate Toplevel, so its screen-space
+        # coordinates become stale whenever the tracked game window moves/resizes.
         self._close_build_dropdown()
         roi = self._get_cam_roi()
         rx, ry, rw, rh = roi or (0, 0, *self._get_resolution())
@@ -1616,6 +1628,8 @@ class ParagonOverlay(tk.Toplevel):
         try:
             _save_overlay_settings({
                 "cell_size": int(self._cfg.cell_size),
+                # Persist both the profile key and the numeric index so current
+                # settings remain compatible with older restore logic.
                 "profile": str(self.builds[self.current_build_idx].get("profile") or "") if self.builds else "",
                 "build_idx": int(self.current_build_idx),
                 "board_idx": int(self.selected_board_idx),
@@ -1681,6 +1695,8 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
             _CLOSE_REQUESTED.clear()
 
     _call_on_ui_thread(_open_overlay)
+    # The caller owns a worker thread per overlay session and expects that thread
+    # to stay alive until the overlay closes, so block here on the close signal.
     closed.wait()
     return None
 
