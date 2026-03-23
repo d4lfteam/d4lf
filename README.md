@@ -23,26 +23,22 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 ### Installation and quick start guide (New instructions for season 12 that must be followed!)
 
 - Download and extract the latest version (.zip) from the releases: https://github.com/d4lfteam/d4lf/releases
-- Copy `saapi64.dll` from the downloaded folder to your "Diablo IV" directory
-  - To find your D4 directory:
-    - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
-    - In Steam, right click the game, select Manage > Browse local files
-- **New for Season 12** The saapi64.dll must be locally signed for D4 to pick it up. We have written a script to do this for you. It is a one-time process per computer.
-  - Install the Windows SDK Signing Tools
-    - If you are on Windows 10, install from this link: https://go.microsoft.com/fwlink/?linkid=2311805
-    - If you are on Windows 11, install from this link: https://go.microsoft.com/fwlink/?linkid=2349110
-    - You only need to install Windows SDK Signing Tools, nothing else.
+- Find your "Diablo IV" directory. Copy the path and have it in your clipboard:
+  - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
+  - In Steam, right click the game, select Manage > Browse local files
+- D4LF gets item information by reading the screen and using TTS information sent for accessibility. TTS setup takes additional steps, detailed below. For more information on the install_dll.bat script, see [the TTS section](https://github.com/d4lfteam/d4lf/blob/main/README.md#tts)
   - Navigate to your d4lf directory
-  - Right click anywhere that isn't an icon and choose "Open in Terminal". If you don't see this option, google how to open powershell and navigate to your d4lf directory.
-  - Type the following: `.\sign_dll.ps1`
-    - If you get any issues that say scripts can't be run on this system, run `Set-ExecutionPolicy Unrestricted -Scope CurrentUser` first then run the above command
-  - When prompted for d4_path, paste in the D4 directory you located previously
-- Generate a profile of what you want to filter for. To do so you have a few options:
+  - Double-click `install_dll.bat`
+    - If asked for administrator permissions, provide them.
+    - When asked for your Diablo 4 path, provide it
+    - When asked to install a certificate, allow it.
+    - If everything is successful, proceed with the guide. Otherwise join the [discord](https://discord.gg/YyzaPhAN6T) or post an issue in github.
+- Generate a profile of what Diablo 4 items you want to filter for. To do so you have a few options:
   - Run d4lf.exe and import a profile using the import window by pasting a build page from popular planner websites
   - Create one yourself by looking at the [examples](#how-to-filter--profiles) below
 - If created manually, place the profile in the `C:/Users/<WINDOWS_USER>/.d4lf/profiles` folder. The D4LF
   importer window has a button to open this folder directly. If imported they are placed there automatically.
-- Run d4lf.exe and use the config button to configure the profiles. Select the '...' next to profiles to activate which
+- Run d4lf.exe and use the config button to configure the profiles in the general section. Select the '...' next to profiles to activate which
   profiles you want to use.
 - Ensure all [game settings](#game-settings) are configured properly.
 - If you made changes, restart d4lf.exe and launch Diablo 4.
@@ -62,7 +58,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 - The GUI crashes immediately upon opening, with no error message given
   - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
-    your params.ini through the config tab. Using the GUI for configuration will ensure the file is always accurate.
+    your params.ini through the Settings window in D4LF. Using the GUI for configuration will ensure the file is always accurate.
 - Mouse control isn't possible
   - Due to your local windows settings, the tool might not be able to control the mouse. Just run the tool as admin
     and it should work. If you don't want to run it as admin, you can disable the mouse control in the params.ini
@@ -86,6 +82,16 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 D4 uses a third-party TTS engine called Tolk. Tolk has a feature that allows custom third-party TTS DLLs to be loaded.
 D4 automatically loads the DLL, which actually just sends the text to another application rather than reading it aloud.
 This is similar to having a Braille TTS application for D4.
+
+The TTS dll (saapi64.dll) must be signed for Diablo 4 to pick it up. The install_dll.bat script handles all of this for you. It will:
+
+- Copy the dll file to the Diablo 4 directory
+- Download the signtool needed to add a local signature to the dll
+- Runs the signtool and signs the dll
+
+If you prefer powershell directly for installation, you can run `.\sign_dll.ps1`.
+
+For very advanced users that don't want to automatically download signtool.exe, you can run `.\sign_dll.ps1 -signtool_path "<full path to signtool.exe>"`
 
 ### Configs
 

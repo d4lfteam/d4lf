@@ -23,10 +23,11 @@ def clean_up():
 
 
 def copy_additional_resources(release_dir: Path):
+    (release_dir / "tts").mkdir()
     shutil.copy("README.md", release_dir)
-    shutil.copy("tts/saapi64.dll", release_dir)
+    shutil.copy("tts/saapi64.dll", release_dir / "tts")
     shutil.copytree("assets", release_dir / "assets")
-    shutil.copy("tts/sign_dll.ps1", release_dir)
+    shutil.copy("tts/sign_dll.ps1", release_dir / "tts")
 
 
 def create_batch_for_consoleonly(release_dir: Path, exe_name: str):
@@ -61,6 +62,42 @@ if %errorlevel% == 1 (
     )
 
 
+def create_batch_for_install_dll(release_dir: Path):
+    batch_file_path = release_dir / "install_dll.bat"
+    Path(batch_file_path).write_text(
+        """@echo off
+cd /d "%~dp0"
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Requesting administrator access...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+    exit /b
+)
+
+echo.
+set /p d4_path=Paste the folder path that contains Diablo IV.exe and press Enter:
+if "%d4_path%"=="" (
+    echo No Diablo IV folder path was provided.
+    pause
+    exit /b 1
+)
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tts/sign_dll.ps1" -d4_path "%d4_path%"
+set "exit_code=%errorlevel%"
+echo.
+if not "%exit_code%"=="0" (
+    echo Signing failed with exit code %exit_code%.
+    pause
+    exit /b %exit_code%
+)
+
+echo Signing completed.
+pause
+""",
+        encoding="utf-8",
+    )
+
+
 if __name__ == "__main__":
     os.chdir(Path(__file__).parent)
     print(f"Building version: {__version__}")
@@ -73,4 +110,5 @@ if __name__ == "__main__":
     copy_additional_resources(RELEASE_DIR)
     create_batch_for_consoleonly(release_dir=RELEASE_DIR, exe_name=EXE_NAME)
     create_batch_for_autoupdater(release_dir=RELEASE_DIR, exe_name=EXE_NAME)
+    create_batch_for_install_dll(release_dir=RELEASE_DIR)
     clean_up()
