@@ -12,7 +12,12 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
 if sys.platform != "darwin":
-    import keyboard
+    try:
+        import keyboard
+    except Exception:  # pragma: no cover
+        keyboard = None  # type: ignore[assignment]
+else:
+    keyboard = None  # type: ignore[assignment]
 
 import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
@@ -32,6 +37,20 @@ from src.dataloader import Dataloader
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
 from src.paragon_overlay import request_close, run_paragon_overlay
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
+from src.scripts.hotkeys import (
+    HOTKEY_SETTING_KEYS,
+    LANGUAGE_SETTING_KEYS,
+    LOG_LEVEL_SETTING_KEYS,
+    MANUAL_RESTART_SETTING_KEYS,
+    VISION_MODE_TYPE_SETTING_KEY,
+    build_hotkey_signature,
+    has_any_changed,
+)
+from src.scripts.runtime_lifecycle import (
+    refresh_language_assets,
+    refresh_logging_level,
+    should_notify_manual_restart,
+)
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
 from src.utils.custom_mouse import mouse
@@ -41,43 +60,6 @@ from src.utils.window import screenshot
 LOGGER = logging.getLogger(__name__)
 
 LOCK = threading.Lock()
-
-
-def _setting_key(section: str, field_name: str) -> str:
-    return f"{section}.{field_name}"
-
-
-def _field_metadata(model_class: type[Any], field_name: str) -> dict[str, Any]:
-    return model_class.model_fields[field_name].json_schema_extra or {}
-
-
-def _collect_reload_group_keys(section: str, model_class: type[Any], group_name: str) -> set[str]:
-    return {
-        _setting_key(section, field_name)
-        for field_name in model_class.model_fields
-        if _field_metadata(model_class, field_name).get(LIVE_RELOAD_GROUP_KEY) == group_name
-    }
-
-
-def _collect_hotkey_setting_keys() -> set[str]:
-    hotkey_keys = {
-        _setting_key("advanced_options", field_name)
-        for field_name in AdvancedOptionsModel.model_fields
-        if _field_metadata(AdvancedOptionsModel, field_name).get(IS_HOTKEY_KEY) == "True"
-    }
-    hotkey_keys.update(_collect_reload_group_keys("advanced_options", AdvancedOptionsModel, "hotkeys"))
-    return hotkey_keys
-
-
-def _has_any_changed(changed_keys: AbstractSet[str], relevant_keys: set[str]) -> bool:
-    return any(key in changed_keys for key in relevant_keys)
-
-
-HOTKEY_SETTING_KEYS = _collect_hotkey_setting_keys()
-LANGUAGE_SETTING_KEYS = _collect_reload_group_keys("general", GeneralModel, "language")
-LOG_LEVEL_SETTING_KEYS = _collect_reload_group_keys("advanced_options", AdvancedOptionsModel, "log_level")
-MANUAL_RESTART_SETTING_KEYS = _collect_reload_group_keys("general", GeneralModel, "restart_app")
-VISION_MODE_TYPE_SETTING_KEY = _setting_key("general", "vision_mode_type")
 
 
 class ScriptHandler:
@@ -110,31 +92,19 @@ class ScriptHandler:
     def _on_config_changed(self, changed_keys: AbstractSet[str]) -> None:
         """Apply relevant settings after a config change event."""
         with self._runtime_config_lock:
-            if _has_any_changed(changed_keys, LOG_LEVEL_SETTING_KEYS):
+            if has_any_changed(changed_keys, LOG_LEVEL_SETTING_KEYS):
                 self._refresh_logging_level(self._config)
-            if _has_any_changed(changed_keys, HOTKEY_SETTING_KEYS):
+            if has_any_changed(changed_keys, HOTKEY_SETTING_KEYS):
                 self._refresh_hotkeys(self._config)
-            if _has_any_changed(changed_keys, LANGUAGE_SETTING_KEYS):
+            if has_any_changed(changed_keys, LANGUAGE_SETTING_KEYS):
                 self._refresh_language_assets(self._config)
             if VISION_MODE_TYPE_SETTING_KEY in changed_keys:
                 self._notify_manual_restart_required("vision mode changes")
-            elif _has_any_changed(changed_keys, MANUAL_RESTART_SETTING_KEYS):
+            elif has_any_changed(changed_keys, MANUAL_RESTART_SETTING_KEYS):
                 self._notify_manual_restart_required("settings changes")
 
     def _hotkey_signature(self, config: IniConfigLoader) -> tuple[str | bool, ...]:
-        advanced_options = config.advanced_options
-        return (
-            advanced_options.run_vision_mode,
-            advanced_options.exit_key,
-            advanced_options.toggle_paragon_overlay,
-            advanced_options.vision_mode_only,
-            advanced_options.run_filter,
-            advanced_options.run_filter_drop,
-            advanced_options.run_filter_force_refresh,
-            advanced_options.force_refresh_only,
-            advanced_options.move_to_inv,
-            advanced_options.move_to_chest,
-        )
+        return build_hotkey_signature(config.advanced_options)
 
     def _refresh_hotkeys(self, config: IniConfigLoader) -> None:
         if sys.platform == "darwin":
@@ -149,26 +119,22 @@ class ScriptHandler:
         LOGGER.info("Reloaded hotkeys from updated settings")
 
     def _refresh_language_assets(self, config: IniConfigLoader) -> None:
-        if config.general.language == self._language:
+        updated_language = refresh_language_assets(self._language, config.general.language, Dataloader())
+        if updated_language == self._language:
             return
-
-        Dataloader().load_data()
-        self._language = config.general.language
+        self._language = updated_language
         LOGGER.info("Reloaded language assets for %s", self._language)
 
     def _refresh_logging_level(self, config: IniConfigLoader) -> None:
         current_log_level = config.advanced_options.log_lvl.value.upper()
-        if current_log_level == self._log_level:
+        updated_log_level = refresh_logging_level(self._log_level, current_log_level, logging.getLogger())
+        if updated_log_level == self._log_level:
             return
-
-        root_logger = logging.getLogger()
-        for handler in root_logger.handlers:
-            handler.setLevel(current_log_level)
-        self._log_level = current_log_level
+        self._log_level = updated_log_level
         LOGGER.info("Updated log level to %s", current_log_level)
 
     def _notify_manual_restart_required(self, reason: str) -> None:
-        if self._manual_restart_warning:
+        if not should_notify_manual_restart(self._manual_restart_warning):
             return
 
         self._manual_restart_warning = True
@@ -225,7 +191,7 @@ class ScriptHandler:
                 self.paragon_overlay_thread = None
 
     def _clear_key_binds(self) -> None:
-        if sys.platform == "darwin":
+        if sys.platform == "darwin" or keyboard is None:
             return
 
         while self._hotkey_handles:
@@ -234,10 +200,12 @@ class ScriptHandler:
                 keyboard.remove_hotkey(handle)
 
     def _register_hotkey(self, hotkey: str, callback: Callable[[], None]) -> None:
+        if keyboard is None:
+            return
         self._hotkey_handles.append(keyboard.add_hotkey(hotkey, callback))
 
     def setup_key_binds(self):
-        if sys.platform == "darwin":
+        if sys.platform == "darwin" or keyboard is None:
             LOGGER.info("Global hotkeys are disabled on macOS")
             return
 

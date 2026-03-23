@@ -5,7 +5,12 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 if sys.platform != "darwin":
-    import keyboard
+    try:
+        import keyboard
+    except Exception:  # pragma: no cover
+        keyboard = None  # type: ignore[assignment]
+else:
+    keyboard = None  # type: ignore[assignment]
 from src.utils.misc import run_until_condition
 
 if TYPE_CHECKING:
@@ -40,6 +45,9 @@ class Menu:
             return False
         if not (is_open := self.is_open()):
             LOGGER.debug(f"Opening {self.menu_name} using hotkey {self.open_hotkey}")
+            if keyboard is None:
+                LOGGER.warning("Keyboard library unavailable; cannot open %s using hotkey", self.menu_name)
+                return False
             keyboard.send(self.open_hotkey)
         else:
             LOGGER.debug(f"{self.menu_name} already open")

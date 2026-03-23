@@ -1,7 +1,6 @@
 import logging
 import re
 import sys
-import time
 from contextlib import suppress
 from pathlib import Path
 
@@ -18,22 +17,17 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src import __version__, tts
-from src.autoupdater import notify_if_update
-from src.cam import Cam
+from src.app_runtime import create_default_runtime
+from src import __version__
 from src.config.loader import IniConfigLoader
 from src.gui.activity_log_widget import ActivityLogWidget
 from src.gui.config_window import ConfigWindow
 from src.gui.importer_window import ImporterWindow
 from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.themes import DARK_THEME, LIGHT_THEME
-from src.item.filter import Filter
 from src.logger import ThreadNameFilter, create_formatter
 from src.logger import setup as setup_logging
-from src.main import check_for_proper_tts_configuration
-from src.overlay import Overlay
-from src.scripts.handler import ScriptHandler
-from src.utils.window import WindowSpec, start_detecting_window
+from src.runtime_checks import check_for_proper_tts_configuration
 
 BASE_DIR = (
     Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent.parent
@@ -136,29 +130,11 @@ class BackendWorker(QObject):
     finished = pyqtSignal()
 
     def run(self):
-        Filter().load_files()
-
         running_from_source = not getattr(sys, "frozen", False)
         if running_from_source:
             LOGGER.debug("Skipping autoupdate check as code is being run from source.")
-        else:
-            notify_if_update()
-
-        win_spec = WindowSpec(IniConfigLoader().advanced_options.process_name)
-        start_detecting_window(win_spec)
-
-        while not Cam().is_offset_set():
-            time.sleep(0.2)
-
-        time.sleep(0.5)
-
-        ScriptHandler()
-
-        check_for_proper_tts_configuration()
-        tts.start_connection()
-
-        overlay = Overlay()
-        overlay.run()
+        runtime = create_default_runtime(tts_validator=check_for_proper_tts_configuration)
+        runtime.start_runtime(running_from_source=running_from_source)
 
         self.finished.emit()
 

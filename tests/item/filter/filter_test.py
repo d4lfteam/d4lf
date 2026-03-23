@@ -27,6 +27,9 @@ def _create_mocked_filter(mocker: MockerFixture) -> Filter:
     filter_obj = Filter()
     filter_obj.files_loaded = True
     mocker.patch.object(filter_obj, "_did_files_change", return_value=False)
+    loader = IniConfigLoader()
+    mocker.patch.object(loader, "_general", new=GeneralModel())
+    mocker.patch.object(loader, "reload_if_changed", return_value=False)
     return filter_obj
 
 

@@ -1,10 +1,42 @@
+@echo off
+setlocal
+cd /d "%~dp0"
+
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Requesting administrator access...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+    exit /b
+)
+
+set "_self=%~f0"
+set "_temp_ps1=%TEMP%\install_dll_%RANDOM%%RANDOM%.ps1"
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$marker = '#===POWERSHELL==='; $lines = Get-Content -LiteralPath '%_self%'; $index = [Array]::IndexOf($lines, $marker); if ($index -lt 0) { Write-Error 'Embedded PowerShell payload not found.'; exit 1 }; Set-Content -LiteralPath '%_temp_ps1%' -Value $lines[($index + 1)..($lines.Length - 1)] -Encoding UTF8"
+
+if errorlevel 1 (
+    echo Failed to extract the embedded PowerShell payload.
+    pause
+    exit /b 1
+)
+
+powershell -NoProfile -ExecutionPolicy Bypass -NoExit -File "%_temp_ps1%" -script_root "%~dp0" %*
+set "exit_code=%errorlevel%"
+del "%_temp_ps1%" >nul 2>&1
+exit /b %exit_code%
+
+#===POWERSHELL===
 param(
     [string]$d4_path,
 
-    [string]$signtool_path
+    [string]$signtool_path,
+
+    [string]$script_root
 )
 
 $script:StepNumber = 0
+$script:InstallerRoot = if ([string]::IsNullOrWhiteSpace($script_root)) { $PSScriptRoot } else { $script_root.TrimEnd('\') }
 
 function Write-UiRule {
     Write-Host ("=" * 72) -ForegroundColor DarkGray
@@ -92,6 +124,23 @@ function Resolve-D4InstallPath {
     }
 
     return $resolvedPath
+}
+
+function Resolve-InstallerFilePath {
+    param(
+        [string[]]$RelativeCandidates,
+        [string]$Description
+    )
+
+    foreach ($candidate in $RelativeCandidates) {
+        $fullPath = Join-Path $script:InstallerRoot $candidate
+        if (Test-Path $fullPath -PathType Leaf) {
+            return (Resolve-Path $fullPath).Path
+        }
+    }
+
+    $searchedPaths = $RelativeCandidates | ForEach-Object { Join-Path $script:InstallerRoot $_ }
+    Stop-WithError "$Description was not found. Checked: $($searchedPaths -join ', '). Re-extract the D4LF release zip and try again."
 }
 
 function Get-D4InstallPathFromRunningProcess {
@@ -245,25 +294,20 @@ function Resolve-SignTool {
     }
 
     Write-WarnLine "signtool.exe was not found locally. Switching to the lightweight Microsoft package."
-    return Install-LightweightSignTool -DestinationRoot (Join-Path $PSScriptRoot ".tools")
+    return Install-LightweightSignTool -DestinationRoot (Join-Path $script:InstallerRoot ".tools")
 }
 
 Write-UiBanner -Title "D4LF DLL Signing Helper" -Subtitle "Local signing for saapi64.dll"
 $d4_path = Read-D4InstallPathInteractively -ProvidedPath $d4_path
-$sourceDllPath = Join-Path $PSScriptRoot "saapi64.dll"
+$sourceDllPath = Resolve-InstallerFilePath -RelativeCandidates @("saapi64.dll", "tts\saapi64.dll") -Description "saapi64.dll"
 
 Write-InfoLine "Diablo IV folder: $d4_path"
 if ($signtool_path) {
     Write-InfoLine "Requested signtool.exe: $signtool_path"
 }
 
-# -- 1. Validate and place the DLL ---------------------------------------------
 Start-Step "Validating Diablo IV folder"
 Write-OkLine "Found Diablo IV.exe in $d4_path"
-
-if (-not (Test-Path $sourceDllPath -PathType Leaf)) {
-    Stop-WithError "saapi64.dll was not found next to sign_dll.ps1. Re-extract the D4LF release zip and try again."
-}
 
 $dllPath = Join-Path $d4_path "saapi64.dll"
 $sourceDllResolved = (Resolve-Path $sourceDllPath).Path
@@ -281,7 +325,6 @@ else {
     Write-OkLine "saapi64.dll copied to $dllPath"
 }
 
-# -- 2. Create self-signed code-signing certificate (10-year validity) ---------
 Start-Step "Preparing code-signing certificate"
 $cert = Get-ChildItem -Path "Cert:\CurrentUser\My" |
     Where-Object { $_.Subject -eq "CN=Cert for D4LF" -and $_.HasPrivateKey } |
@@ -300,7 +343,6 @@ else {
     Write-OkLine "Certificate created: $($cert.Thumbprint)"
 }
 
-# -- 3. Copy cert to Trusted Root Certification Authorities --------------------
 Start-Step "Trusting the certificate for this Windows user"
 $rootStore = New-Object System.Security.Cryptography.X509Certificates.X509Store(
     [System.Security.Cryptography.X509Certificates.StoreName]::Root,
@@ -318,13 +360,11 @@ else {
 }
 $rootStore.Close()
 
-# -- 4. Locate signtool.exe ----------------------------------------------------
 Start-Step "Locating signtool.exe"
 $signtool = Resolve-SignTool -ProvidedPath $signtool_path
 Write-InfoLine "Using signtool.exe at:"
 Write-InfoLine $signtool
 
-# -- 5. Sign the DLL -----------------------------------------------------------
 Start-Step "Signing saapi64.dll"
 Write-InfoLine "Target DLL: $dllPath"
 $sig = Get-AuthenticodeSignature -FilePath $dllPath

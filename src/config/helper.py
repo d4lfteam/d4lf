@@ -4,7 +4,12 @@ import sys
 import threading
 
 if sys.platform != "darwin":
-    import keyboard
+    try:
+        import keyboard
+    except Exception:  # pragma: no cover
+        keyboard = None  # type: ignore[assignment]
+else:
+    keyboard = None  # type: ignore[assignment]
 
 
 def check_greater_than_zero(v: int) -> int:
@@ -15,6 +20,8 @@ def check_greater_than_zero(v: int) -> int:
 
 
 def validate_hotkey(k: str) -> str:
+    if keyboard is None:
+        return k
     keyboard.parse_hotkey(k)
     return k
 

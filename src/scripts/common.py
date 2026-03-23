@@ -6,13 +6,18 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from item.data.seasonal_attribute import SeasonalAttribute
+from src.item.data.seasonal_attribute import SeasonalAttribute
 
 if TYPE_CHECKING:
     from tkinter import Canvas
 
 if sys.platform != "darwin":
-    import keyboard
+    try:
+        import keyboard
+    except Exception:  # pragma: no cover
+        keyboard = None  # type: ignore[assignment]
+else:
+    keyboard = None  # type: ignore[assignment]
 
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
@@ -80,11 +85,15 @@ ASPECT_UPGRADES_LABEL = "AspectUpgrades"
 
 
 def mark_as_junk():
+    if keyboard is None:
+        return
     keyboard.send("space")
     time.sleep(0.13)
 
 
 def mark_as_favorite():
+    if keyboard is None:
+        return
     LOGGER.info("Mark as favorite")
     keyboard.send("space")
     time.sleep(0.17)
@@ -101,6 +110,8 @@ def reset_canvas(root, canvas):
 
 
 def reset_item_status(occupied, inv):
+    if keyboard is None:
+        return
     for item_slot in occupied:
         if item_slot.is_fav:
             inv.hover_item_with_delay(item_slot)
