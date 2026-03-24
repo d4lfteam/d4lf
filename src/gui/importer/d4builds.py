@@ -1,4 +1,3 @@
-import datetime
 import logging
 import re
 import time
@@ -21,6 +20,7 @@ from src.config.models import (
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_to_profiles,
+    build_default_profile_file_name,
     fix_offhand_type,
     fix_weapon_type,
     get_class_name,
@@ -44,6 +44,14 @@ LOGGER = logging.getLogger(__name__)
 BASE_URL = "https://d4builds.gg/builds"
 BUILD_OVERVIEW_XPATH = "//*[@class='builder__stats__list']"
 CLASS_XPATH = "//*[contains(@class, 'builder__header__name')]"
+CLASS_ICON_XPATH = "//*[contains(@class, 'builder__header__icon')]"
+BUILD_DESCRIPTION_XPATH = "//*[contains(@class, 'builder__header__description')]"
+BUILD_HEADER_INPUT_XPATH = "//*[contains(@class, 'builder__header__input')]"
+VARIANT_INPUT_XPATH = "//*[contains(@class, 'builder__variant__input')]"
+SEASON_DROPDOWN_XPATH = (
+    "//*[contains(@class, 'builder__gear')]/*[contains(@class, 'builder__dropdown__wrapper')]"
+    "//*[contains(@class, 'dropdown__button') and starts-with(normalize-space(), 'Season ')]"
+)
 ITEM_GROUP_XPATH = ".//*[contains(@class, 'builder__stats__group')]"
 ITEM_SLOT_XPATH = ".//*[contains(@class, 'builder__stats__slot')]"
 ITEM_STATS_XPATH = ".//*[contains(@class, 'dropdown__button__wrapper')]"
@@ -79,10 +87,8 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         5
     )  # super hacky but I didn't find anything else. The page is not fully loaded when the above wait is done
     data = lxml.html.fromstring(driver.page_source)
-    if (elem := data.xpath(CLASS_XPATH + "/*")) or (elem := data.xpath(CLASS_XPATH)):
-        class_name = get_class_name(f"{elem[0].tail} {elem[0].text}")
-    else:
-        class_name = "Unknown"
+    class_name, build_header, variant_name = _extract_build_metadata(data=data, page_title=driver.title.strip())
+    build_name = build_header or class_name
     if not (items := data.xpath(BUILD_OVERVIEW_XPATH)):
         LOGGER.error(msg := "No items found")
         raise D4BuildsException(msg)
@@ -205,9 +211,8 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 
-    file_name = (
-        config.custom_file_name
-        or f"d4build_{class_name}_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}"
+    file_name = config.custom_file_name or build_default_profile_file_name(
+        url=url, class_name=class_name, build_header=build_header, variant_name=variant_name
     )
 
     # Optionally embed Paragon data into the profile model before saving
@@ -215,7 +220,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
         if steps:
             profile.Paragon = build_paragon_profile_payload(
-                build_name=file_name, source_url=url, paragon_boards_list=steps
+                build_name=build_name, source_url=url, paragon_boards_list=steps
             )
         else:
             LOGGER.warning("Paragon export enabled, but no paragon data was found on this D4Builds page.")
@@ -237,6 +242,101 @@ def _corrections(input_str: str) -> str:
     if "ranks to" in input_str or "ranks of" in input_str or "ranks" in input_str:
         return input_str.replace("ranks to", "to").replace("ranks of", "to").replace("ranks", "to")
     return input_str
+
+
+def _extract_build_metadata(data: lxml.html.HtmlElement, page_title: str) -> tuple[str, str, str]:
+    class_name = _extract_class_name(data=data)
+    build_header = _extract_build_header(data=data, class_name=class_name, page_title=page_title)
+    season_number = _extract_d4builds_season_number(data=data)
+    build_header = _apply_d4builds_season_to_build_header(build_header=build_header, season_number=season_number)
+    variant_name = _extract_variant_name(data=data)
+    return class_name, build_header, variant_name
+
+
+def _extract_class_name(data: lxml.html.HtmlElement) -> str:
+    for icon in data.xpath(CLASS_ICON_XPATH):
+        class_name = get_class_name(f"{icon.get('class', '')} {icon.get('alt', '')}")
+        if class_name != "Unknown":
+            return class_name
+
+    if (elem := data.xpath(CLASS_XPATH + "/*")) or (elem := data.xpath(CLASS_XPATH)):
+        class_name = get_class_name(f"{elem[0].tail} {elem[0].text}")
+        if class_name != "Unknown":
+            return class_name
+    return "Unknown"
+
+
+def _extract_build_header(data: lxml.html.HtmlElement, class_name: str, page_title: str) -> str:
+    header_name = ""
+    if header_nodes := data.xpath(CLASS_XPATH):
+        header_name = _get_header_name_text(header_nodes[0])
+
+    description = ""
+    if description_nodes := data.xpath(BUILD_DESCRIPTION_XPATH):
+        description = " ".join(description_nodes[0].text_content().split())
+
+    for candidate in (header_name, description, page_title.strip()):
+        if candidate and not _is_generic_build_header(candidate, class_name):
+            return candidate
+    return description or header_name or page_title.strip()
+
+
+def _get_header_name_text(header_node: lxml.html.HtmlElement) -> str:
+    if input_nodes := header_node.xpath(BUILD_HEADER_INPUT_XPATH):
+        input_value = str(input_nodes[0].get("value") or "").strip()
+        if input_value:
+            return input_value
+    return " ".join(header_node.text_content().split())
+
+
+def _is_generic_build_header(build_header: str, class_name: str) -> bool:
+    normalized_header = " ".join(build_header.split()).casefold()
+    normalized_class_name = class_name.casefold()
+    generic_headers = {
+        f"{normalized_class_name} build",
+        f"diablo 4 {normalized_class_name} build",
+        f"diablo 4 {normalized_class_name} build · d4 builds",
+    }
+    return normalized_header in generic_headers or normalized_header.endswith("build guide - diablo 4")
+
+
+def _extract_variant_name(data: lxml.html.HtmlElement) -> str:
+    if variant_nodes := data.xpath(VARIANT_INPUT_XPATH):
+        if variant_value := str(variant_nodes[0].get("value") or "").strip():
+            return variant_value
+        return " ".join(variant_nodes[0].text_content().split())
+    return ""
+
+
+def _extract_d4builds_season_number(data: lxml.html.HtmlElement) -> str:
+    if season_nodes := data.xpath(SEASON_DROPDOWN_XPATH):
+        season_text = " ".join(season_nodes[0].text_content().split())
+        if season_match := re.search(r"\bSeason\s+(\d+)\b", season_text, flags=re.IGNORECASE):
+            return season_match.group(1)
+
+    top_level_text = " ".join(data.text_content().split()).split("Active Runes", 1)[0]
+    if season_match := re.search(r"\bSeason\s+(\d+)\b", top_level_text, flags=re.IGNORECASE):
+        return season_match.group(1)
+    return ""
+
+
+def _apply_d4builds_season_to_build_header(build_header: str, season_number: str) -> str:
+    if not build_header:
+        return build_header
+    if not season_number:
+        if (season_match := re.search(r"\bSeason\s+(\d+)\b", build_header, flags=re.IGNORECASE)) or (
+            season_match := re.search(r"\bS(\d+)\b", build_header, flags=re.IGNORECASE)
+        ):
+            season_number = season_match.group(1)
+        else:
+            return build_header
+    normalized_build_header = re.sub(r"\(\s*(?:S\d+|Season\s+\d+)\s*\)", "", build_header, count=1, flags=re.IGNORECASE)
+    normalized_build_header = re.sub(
+        r"\b(?:S\d+|Season\s+\d+)\b", "", normalized_build_header, count=1, flags=re.IGNORECASE
+    )
+    normalized_build_header = re.sub(r"\(\s*\)", "", normalized_build_header)
+    normalized_build_header = re.sub(r"\s+", " ", normalized_build_header).strip(" -_:")
+    return f"S{season_number} {normalized_build_header}".strip()
 
 
 def _get_item_slots(data: lxml.html.HtmlElement) -> dict[str, str]:

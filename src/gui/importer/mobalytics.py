@@ -18,6 +18,7 @@ from src.config.models import (
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_to_profiles,
+    build_default_profile_file_name,
     fix_offhand_type,
     fix_weapon_type,
     get_with_retry,
@@ -76,10 +77,12 @@ def import_mobalytics(config: ImportConfig):
 
     # This gets the name of the root document, ie the one that will contain the name of the build
     root_document_name = jsonpath.findall("$..['Diablo4Query:{}'].documents..data.__ref", full_script_data_json)[0]
-    build_name = jsonpath.findall(f"$..['{root_document_name}'].data.name", full_script_data_json)[0]
-    if not build_name:
+    season_number = _extract_mobalytics_season_number(full_script_data_json, root_document_name, raw_html_data)
+    build_header = jsonpath.findall(f"$..['{root_document_name}'].data.name", full_script_data_json)[0]
+    if not build_header:
         LOGGER.error(msg := "No build name found")
         raise MobalyticsException(msg)
+    build_header = _apply_mobalytics_season_to_build_header(build_header, season_number)
     class_name = jsonpath.findall(
         f"$..['{root_document_name}'].tags.data[?@.groupSlug=='class'].name", full_script_data_json
     )[0].lower()
@@ -115,8 +118,8 @@ def import_mobalytics(config: ImportConfig):
     variant_name = jsonpath.findall(
         f"..['NgfDocumentCmWidgetContentVariantsV1DataChildVariant:{variant_id}'].title", full_script_data_json
     )
-    if variant_name:
-        build_name = f"{build_name} {variant_name[0]}"
+    variant_name = variant_name[0] if variant_name else ""
+    build_name = f"{build_header} {variant_name}".strip() if variant_name else build_header
 
     if not items:
         LOGGER.error(msg := "No items found")
@@ -230,8 +233,9 @@ def import_mobalytics(config: ImportConfig):
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 
-    if config.custom_file_name:
-        build_name = config.custom_file_name
+    file_name = config.custom_file_name or build_default_profile_file_name(
+        url=url, class_name=class_name, build_header=build_header, variant_name=variant_name
+    )
     # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
         steps = extract_mobalytics_paragon_steps(variant if isinstance(variant, dict) else {})
@@ -242,7 +246,7 @@ def import_mobalytics(config: ImportConfig):
         else:
             LOGGER.warning("Paragon export enabled, but no paragon data was found for this Mobalytics variant.")
 
-    corrected_file_name = save_as_profile(file_name=build_name, profile=profile, url=url)
+    corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
 
     if config.add_to_profiles:
         add_to_profiles(corrected_file_name)
@@ -259,6 +263,31 @@ def _corrections(input_str: str) -> str:
 
 def _fix_input_url(url: str) -> str:
     return unquote(url)
+
+
+def _extract_mobalytics_season_number(
+    full_script_data_json: dict, root_document_name: str, data: lxml.html.HtmlElement
+) -> str:
+    tag_names = jsonpath.findall(f"$..['{root_document_name}'].tags.data[*].name", full_script_data_json)
+    for tag_name in tag_names:
+        if season_match := re.search(r"\bSeason\s+(\d+)\b", str(tag_name), flags=re.IGNORECASE):
+            return season_match.group(1)
+
+    top_level_text = " ".join(data.text_content().split()).split("Build Overview", 1)[0]
+    if season_match := re.search(r"\bSeason\s+(\d+)\b", top_level_text, flags=re.IGNORECASE):
+        return season_match.group(1)
+    return ""
+
+
+def _apply_mobalytics_season_to_build_header(build_header: str, season_number: str) -> str:
+    if not build_header or not season_number:
+        return build_header
+    if season_match := re.search(r"\bSeason\s+\d+\b", build_header, flags=re.IGNORECASE):
+        return re.sub(r"\bSeason\s+\d+\b", f"Season {season_number}", build_header, count=1, flags=re.IGNORECASE)
+    if season_match := re.search(r"\bS\d+\b", build_header, flags=re.IGNORECASE):
+        replacement = "S" if season_match.group(0).startswith("S") else "s"
+        return re.sub(r"\bS\d+\b", f"{replacement}{season_number}", build_header, count=1, flags=re.IGNORECASE)
+    return f"S{season_number} {build_header}"
 
 
 def _get_legendary_aspect(name: str) -> str:

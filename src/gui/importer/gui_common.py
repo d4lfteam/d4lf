@@ -36,6 +36,7 @@ HEADERS = {
 
 PLAYER_CLASSES = ["barbarian", "druid", "necromancer", "rogue", "sorcerer", "spiritborn", "paladin", "warlock"]
 BUILD_SOURCES = ["d4builds", "maxroll", "mobalytics"]
+_SOURCE_TITLE_SUFFIXES = {"d4builds": ("D4Builds", "D4 Builds"), "maxroll": ("Maxroll",), "mobalytics": ("Mobalytics",)}
 
 
 def extract_digits(text: str) -> int:
@@ -113,6 +114,48 @@ def get_class_name(input_str: str) -> str:
     return "Unknown"
 
 
+def normalize_profile_file_name(file_name: str) -> str:
+    file_name = file_name.replace("'", "")
+    file_name = re.sub(r"\W", "_", file_name)
+    return re.sub(r"_+", "_", file_name).rstrip("_")
+
+
+def build_default_profile_file_name(
+    url: str, class_name: str = "", build_header: str = "", variant_name: str = ""
+) -> str:
+    source_name = next((source for source in BUILD_SOURCES if source in url.casefold()), "imported")
+    clean_title = _clean_build_header(source_name, build_header)
+    normalized_class_name = _normalize_profile_name_part(class_name)
+    normalized_variant_name = _normalize_profile_name_part(variant_name)
+    file_name_parts = [source_name]
+    if normalized_class_name and normalized_class_name != "unknown":
+        file_name_parts.append(normalized_class_name)
+    if clean_title:
+        file_name_parts.append(clean_title)
+    if normalized_variant_name:
+        file_name_parts.append(normalized_variant_name)
+    return normalize_profile_file_name("_".join(file_name_parts))
+
+
+def _clean_build_header(source_name: str, build_header: str) -> str:
+    clean_header = _normalize_profile_name_part(build_header)
+    if not clean_header:
+        return ""
+
+    source_labels = _SOURCE_TITLE_SUFFIXES.get(source_name, (source_name.title(),))
+    for source_label in source_labels:
+        normalized_source_label = source_label.casefold()
+        for separator in (" - ", " | ", " · "):
+            suffix = f"{separator}{normalized_source_label}"
+            if clean_header.endswith(suffix):
+                return clean_header.removesuffix(suffix)
+    return clean_header
+
+
+def _normalize_profile_name_part(name_part: str) -> str:
+    return re.sub(r"\s+", " ", str(name_part or "").strip()).casefold()
+
+
 def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool):
     if require_gas:
         num_greater = 0
@@ -185,9 +228,7 @@ def retry_importer(func=None, inject_webdriver: bool = False, uc=False):
 
 
 def save_as_profile(file_name: str, profile: ProfileModel, url: str, exclude=None, backup_file=False) -> str:
-    file_name = file_name.replace("'", "")
-    file_name = re.sub(r"\W", "_", file_name)
-    file_name = re.sub(r"_+", "_", file_name).rstrip("_")
+    file_name = normalize_profile_file_name(file_name)
     save_path = IniConfigLoader().user_dir / f"profiles/{file_name}.yaml"
     save_path.parent.mkdir(parents=True, exist_ok=True)
 

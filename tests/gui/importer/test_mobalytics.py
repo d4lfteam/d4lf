@@ -1,11 +1,16 @@
 import os
 import typing
 
+import lxml.html
 import pytest
 
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.mobalytics import import_mobalytics
+from src.gui.importer.mobalytics import (
+    _apply_mobalytics_season_to_build_header,
+    _extract_mobalytics_season_number,
+    import_mobalytics,
+)
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -25,6 +30,41 @@ URLS = [
     # This has two rogue offhand weapons
     "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
 ]
+
+
+def test_extract_mobalytics_season_number_from_tag_metadata() -> None:
+    data = lxml.html.fromstring("<html><body></body></html>")
+    full_script_data_json = {
+        "Diablo4Query:{}": {"documents": {"data": {"__ref": "Document:1"}}},
+        "Document:1": {
+            "tags": {"data": [{"groupSlug": "class", "name": "Sorcerer"}, {"groupSlug": "season", "name": "Season 12"}]}
+        },
+    }
+
+    assert _extract_mobalytics_season_number(full_script_data_json, "Document:1", data) == "12"
+
+
+def test_extract_mobalytics_season_number_from_top_level_page_text() -> None:
+    data = lxml.html.fromstring("""
+        <html>
+          <body>
+            <h1>MrRonit's Charge Auradin (1 Button Zoomer/AFK Build)</h1>
+            <div>Paladin</div>
+            <div>Season 12</div>
+            <div>Updated on Mar 11, 2026</div>
+            <h2>Build Overview</h2>
+            <p>This section may mention older seasons later on.</p>
+          </body>
+        </html>
+    """)
+
+    assert _extract_mobalytics_season_number({}, "Document:1", data) == "12"
+
+
+def test_apply_mobalytics_season_to_build_header_prefixes_when_missing() -> None:
+    assert _apply_mobalytics_season_to_build_header("MrRonit's Charge Auradin", "12") == (
+        "S12 MrRonit's Charge Auradin"
+    )
 
 
 @pytest.mark.parametrize("url", URLS)

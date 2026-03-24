@@ -16,6 +16,7 @@ from src.config.models import (
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_to_profiles,
+    build_default_profile_file_name,
     get_with_retry,
     match_to_enum,
     retry_importer,
@@ -36,6 +37,7 @@ BUILD_GUIDE_PLANNER_EMBED_XPATH = "//*[contains(@class, 'd4-embed')]"
 PLANNER_API_BASE_URL = "https://planners.maxroll.gg/profiles/d4/"
 PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?7659ec67"
 PLANNER_BASE_URL = "https://maxroll.gg/d4/planner/"
+BUILD_GUIDE_PLANNER_LINK_XPATH = f"//a[starts-with(@href, '{PLANNER_BASE_URL}') and contains(@href, '#')]"
 
 
 class MaxrollException(Exception):
@@ -49,18 +51,17 @@ def import_maxroll(config: ImportConfig):
         LOGGER.error("Invalid url, please use a maxroll build guide or maxroll planner url")
         return
     LOGGER.info(f"Loading {url}")
-    api_url, build_id = (
-        _extract_planner_url_and_id_from_guide(url)
-        if BUILD_GUIDE_BASE_URL in url
-        else _extract_planner_url_and_id_from_planner(url)
-    )
+    if BUILD_GUIDE_BASE_URL in url:
+        api_url, build_id, guide_season = _extract_planner_url_and_id_from_guide(url)
+    else:
+        api_url, build_id = _extract_planner_url_and_id_from_planner(url)
+        guide_season = ""
     try:
         r = get_with_retry(url=api_url)
     except ConnectionError:
         LOGGER.error("Couldn't get planner")
         return
     all_data = r.json()
-    build_name = all_data["name"]
     build_data = json.loads(all_data["data"])
     items = build_data["items"]
     try:
@@ -69,6 +70,14 @@ def import_maxroll(config: ImportConfig):
         LOGGER.error("Couldn't get planner data")
         return
     active_profile = build_data["profiles"][build_id]
+    # Guide headings are sometimes newer than the embedded planner title, so only patch the season marker.
+    build_header = _apply_guide_season_override(all_data["name"] or all_data["class"], guide_season)
+    variant_name = active_profile["name"] or ""
+    build_name = build_header
+    if not build_name:
+        build_name = all_data["class"]
+    if variant_name:
+        build_name += f"_{variant_name}"
     finished_filters = []
     unique_filters = []
     aspect_upgrade_filters = []
@@ -172,13 +181,15 @@ def import_maxroll(config: ImportConfig):
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 
-    if config.custom_file_name:
-        build_name = config.custom_file_name
-
-    if not build_name:
-        build_name = all_data["class"]
-    if active_profile["name"]:
-        build_name += f"_{active_profile['name']}"
+    file_name = (
+        f"{config.custom_file_name}_{variant_name}"
+        if config.custom_file_name and variant_name
+        else config.custom_file_name
+    )
+    if not file_name:
+        file_name = build_default_profile_file_name(
+            url=url, class_name=all_data["class"], build_header=build_header, variant_name=variant_name
+        )
 
     # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
@@ -190,7 +201,7 @@ def import_maxroll(config: ImportConfig):
         else:
             LOGGER.warning("Paragon export enabled, but no paragon steps were found in this Maxroll profile.")
 
-    corrected_file_name = save_as_profile(file_name=build_name, profile=profile, url=url)
+    corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
 
     if config.add_to_profiles:
         add_to_profiles(corrected_file_name)
@@ -377,27 +388,83 @@ def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int]:
     return PLANNER_API_BASE_URL + planner_id, data_id
 
 
-def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int]:
+def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, str]:
     try:
         r = get_with_retry(url=url)
     except ConnectionError as exc:
         LOGGER.exception(msg := "Couldn't get build guide")
         raise MaxrollException(msg) from exc
     data = lxml.html.fromstring(r.text)
+    guide_season = _extract_guide_season_number(data)
+    if planner_link := _extract_planner_link_from_guide(data):
+        api_url, build_id = _extract_planner_url_and_id_from_planner(planner_link)
+        return api_url, build_id, guide_season
     msg = "Couldn't find planner url in build guide. Use planner link directly and report bug"
     if not (embed := data.xpath(BUILD_GUIDE_PLANNER_EMBED_XPATH)):
         LOGGER.error(msg)
         raise MaxrollException(msg)
     try:
         planner_id = embed[0].get("data-d4-profile")
-        if "data-d4-id" in embed[0]:
-            data_id = int(embed[0].get("data-d4-id").split(",")[0]) - 1
-        else:
-            data_id = int(embed[0].get("data-d4-data").split(",")[0]) - 1
+        data_id = _extract_guide_profile_id(embed[0])
     except Exception as ex:
         LOGGER.exception(msg)
         raise MaxrollException(msg) from ex
-    return PLANNER_API_BASE_URL + planner_id, data_id
+    return PLANNER_API_BASE_URL + planner_id, data_id, guide_season
+
+
+def _extract_planner_link_from_guide(data: lxml.html.HtmlElement) -> str:
+    planner_links = data.xpath(BUILD_GUIDE_PLANNER_LINK_XPATH)
+    if not planner_links:
+        return ""
+    return planner_links[0].get("href") or ""
+
+
+def _extract_guide_season_number(data: lxml.html.HtmlElement) -> str:
+    for text in (data.xpath("string(//h1[1])").strip(), data.xpath("string(//title)").strip()):
+        if season_match := re.search(r"\bSeason\s+(\d+)\b", text, flags=re.IGNORECASE):
+            return season_match.group(1)
+    return ""
+
+
+def _apply_guide_season_override(build_header: str, guide_season: str) -> str:
+    if not guide_season:
+        return build_header
+    if season_match := re.search(r"\bSeason\s+\d+\b", build_header, flags=re.IGNORECASE):
+        replacement = _format_guide_season_replacement(season_match.group(0), guide_season)
+        return re.sub(r"\bSeason\s+\d+\b", replacement, build_header, count=1, flags=re.IGNORECASE)
+    if season_match := re.search(r"\bS\d+\b", build_header, flags=re.IGNORECASE):
+        replacement = _format_guide_season_replacement(season_match.group(0), guide_season)
+        return re.sub(r"\bS\d+\b", replacement, build_header, count=1, flags=re.IGNORECASE)
+    return build_header
+
+
+def _format_guide_season_replacement(existing_label: str, guide_season: str) -> str:
+    if existing_label.casefold().startswith("season"):
+        prefix = "Season" if existing_label.startswith("Season") else "season"
+        return f"{prefix} {guide_season}"
+    prefix = "S" if existing_label.startswith("S") else "s"
+    return f"{prefix}{guide_season}"
+
+
+def _extract_guide_profile_id(embed: lxml.html.HtmlElement) -> int:
+    if data_id := embed.get("data-d4-id"):
+        return int(data_id.split(",")[0])
+    if data_ids := embed.get("data-d4-data"):
+        guide_profile_ids = [int(value) for value in data_ids.split(",") if value]
+        if (active_tab_index := _extract_active_guide_embed_tab_index(embed)) is not None and active_tab_index < len(
+            guide_profile_ids
+        ):
+            return guide_profile_ids[active_tab_index]
+        return guide_profile_ids[0]
+    msg = "Couldn't find profile id in build guide embed"
+    raise ValueError(msg)
+
+
+def _extract_active_guide_embed_tab_index(embed: lxml.html.HtmlElement) -> int | None:
+    for index, tab in enumerate(embed.xpath(".//*[contains(@class, 'd4t-tabs')]/li")):
+        if "d4t-active" in (tab.get("class") or ""):
+            return index
+    return None
 
 
 if __name__ == "__main__":
