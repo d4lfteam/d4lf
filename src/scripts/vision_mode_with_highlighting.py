@@ -110,10 +110,9 @@ class VisionModeWithHighlighting:
         item_descr_width = ResManager().offsets.item_descr_width
         _, window_height = ResManager().pos.window_dimensions
         # Controller mode: once the tooltip position is stable, a tight position check is enough to confirm it.
-        return (
-            abs(item_roi[0] - preferred_top_left[0]) <= int(item_descr_width * 0.08)
-            and abs(item_roi[1] - preferred_top_left[1]) <= int(window_height * 0.06)
-        )
+        return abs(item_roi[0] - preferred_top_left[0]) <= int(item_descr_width * 0.08) and abs(
+            item_roi[1] - preferred_top_left[1]
+        ) <= int(window_height * 0.06)
 
     def draw_rect(self, canvas: tk.Canvas, bullet_width, obj, off, color):
         offset_loc = np.array(obj.loc) + off
@@ -325,10 +324,7 @@ class VisionModeWithHighlighting:
     ):
         if prefer_unanchored:
             found, rarity, cropped_descr, item_roi = find_descr_anywhere(
-                img,
-                item_center,
-                expected_rarity=expected_rarity,
-                preferred_top_left=preferred_unanchored_top_left,
+                img, item_center, expected_rarity=expected_rarity, preferred_top_left=preferred_unanchored_top_left
             )
             LOGGER.debug(
                 "Vision mode tooltip search mode=unanchored found=%s roi=%s rarity=%s expected_rarity=%s preferred_top_left=%s",

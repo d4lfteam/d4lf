@@ -76,12 +76,7 @@ def _template_search_near_top_left(img: np.ndarray, top_left: tuple[int, int]) -
     vertical_padding = int(window_height * 0.05)
     search_width = int(item_descr_width * 0.45) + (2 * horizontal_padding)
     search_height = int(window_height * 0.18) + (2 * vertical_padding)
-    roi = [
-        top_left[0] - horizontal_padding,
-        top_left[1] - vertical_padding,
-        search_width,
-        search_height,
-    ]
+    roi = [top_left[0] - horizontal_padding, top_left[1] - vertical_padding, search_width, search_height]
     return _template_search_in_roi(img, roi)
 
 
@@ -109,7 +104,9 @@ def _build_descr_result(
     off_bottom_of_descr = ResManager().offsets.item_descr_off_bottom_edge
     roi_height = ResManager().pos.window_dimensions[1] - (2 * off_bottom_of_descr) - match.region[1]
     if (
-        res_bottom := search(ref=["item_bottom_edge"], inp_img=img, roi=roi, threshold=0.54, use_grayscale=True, mode="all")
+        res_bottom := search(
+            ref=["item_bottom_edge"], inp_img=img, roi=roi, threshold=0.54, use_grayscale=True, mode="all"
+        )
     ).success:
         roi_height = res_bottom.matches[0].center[1] - off_bottom_of_descr - match.region[1]
     crop_roi = [
@@ -154,8 +151,9 @@ def find_descr_anywhere(
         if preferred_top_left is not None:
             matches = sorted(
                 res.matches,
-                key=lambda match: abs(match.region[0] - preferred_top_left[0])
-                + abs(match.region[1] - preferred_top_left[1]),
+                key=lambda match: (
+                    abs(match.region[0] - preferred_top_left[0]) + abs(match.region[1] - preferred_top_left[1])
+                ),
             )
         else:
             matches = sorted(res.matches, key=lambda match: abs(match.region[0] - anchor[0]))
