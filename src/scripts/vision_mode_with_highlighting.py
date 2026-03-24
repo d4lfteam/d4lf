@@ -286,22 +286,12 @@ class VisionModeWithHighlighting:
         item_descr = None
         try:
             item_descr = src.item.descr.read_descr_tts.read_descr()
-            LOGGER.debug(f"Parsed item based on TTS: {item_descr}")
         except Exception:
             screenshot("tts_error", img=img)
             LOGGER.exception(f"Error in TTS read_descr. {src.tts.LAST_ITEM=}")
         if item_descr is None:
-            LOGGER.debug(f"Vision mode received no parsed item from TTS. {src.tts.LAST_ITEM=}")
             self.request_clear()
             return
-
-        LOGGER.debug(
-            "Vision mode item received: name=%s rarity=%s item_type=%s is_in_shop=%s",
-            item_descr.name,
-            item_descr.rarity,
-            item_descr.item_type,
-            item_descr.is_in_shop,
-        )
         self.current_item = item_descr
 
         # Kick off a thread that will evaluate the item and queue up the appropriate drawings.
@@ -329,24 +319,9 @@ class VisionModeWithHighlighting:
             found, rarity, cropped_descr, item_roi = find_descr_anywhere(
                 img, item_center, expected_rarity=expected_rarity, preferred_top_left=preferred_unanchored_top_left
             )
-            LOGGER.debug(
-                "Vision mode tooltip search mode=unanchored found=%s roi=%s rarity=%s expected_rarity=%s preferred_top_left=%s",
-                found,
-                item_roi,
-                rarity,
-                expected_rarity,
-                preferred_unanchored_top_left,
-            )
             return found, rarity, cropped_descr, item_roi, found
 
         found, rarity, cropped_descr, item_roi = find_descr(img, item_center)
-        LOGGER.debug(
-            "Vision mode tooltip search mode=anchored center=%s found=%s roi=%s rarity=%s",
-            item_center,
-            found,
-            item_roi,
-            rarity,
-        )
         return found, rarity, cropped_descr, item_roi, False
 
     def evaluate_item_and_queue_draw(
@@ -392,13 +367,6 @@ class VisionModeWithHighlighting:
                 distances = np.linalg.norm(delta, axis=1)
                 closest_index = np.argmin(distances)
                 item_center = centers_to_use[closest_index]
-                LOGGER.debug(
-                    "Vision mode retry=%s prefer_unanchored=%s mouse_pos=%s anchor_center=%s",
-                    retry_count,
-                    prefer_unanchored_search,
-                    mouse_pos,
-                    item_center,
-                )
 
                 self.check_for_thread_cancellation(cancel_event)
 
@@ -433,11 +401,6 @@ class VisionModeWithHighlighting:
                             # Controller mode: skip the second full lookup when the tooltip stayed in the learned area.
                             is_confirmed = True
                             just_confirmed = True
-                            LOGGER.debug(
-                                "Vision mode controller fast-confirm accepted: roi=%s preferred_top_left=%s",
-                                item_roi,
-                                preferred_unanchored_top_left,
-                            )
                         else:
                             found_check, _, cropped_descr_check, _, _ = self._find_selected_item_descr(
                                 Cam().grab(),
@@ -449,24 +412,13 @@ class VisionModeWithHighlighting:
                             if found_check:
                                 score = compare_histograms(cropped_descr, cropped_descr_check)
                                 if score < 0.99:
-                                    LOGGER.debug(
-                                        "Vision mode confirmation mismatch: score=%.4f mode=%s",
-                                        score,
-                                        "unanchored" if used_unanchored_search else "anchored",
-                                    )
                                     continue
                                 is_confirmed = True
                                 just_confirmed = True
 
-                        if just_confirmed:
-                            LOGGER.debug(
-                                "Vision mode tooltip confirmed: mode=%s roi=%s",
-                                "unanchored" if used_unanchored_search else "anchored",
-                                item_roi,
-                            )
-                            if can_cache_controller_hint and used_unanchored_search:
-                                preferred_unanchored_top_left = (item_roi[0], item_roi[1])
-                                self.last_confirmed_unanchored_top_left = preferred_unanchored_top_left
+                        if just_confirmed and can_cache_controller_hint and used_unanchored_search:
+                            preferred_unanchored_top_left = (item_roi[0], item_roi[1])
+                            self.last_confirmed_unanchored_top_left = preferred_unanchored_top_left
 
                     self.check_for_thread_cancellation(cancel_event)
 
@@ -551,7 +503,6 @@ class VisionModeWithHighlighting:
                     self.request_clear()
                     self.check_for_thread_cancellation(cancel_event)
                     if not prefer_unanchored_search and retry_count >= unanchored_retry_threshold:
-                        LOGGER.debug("Vision mode switching to unanchored tooltip fallback after anchored misses")
                         prefer_unanchored_search = True
                     last_center = None
                     last_top_left_corner = None
@@ -599,11 +550,6 @@ class VisionModeWithHighlighting:
                     preferred_unanchored_top_left=preferred_unanchored_top_left,
                 )
                 if not found_check:
-                    LOGGER.debug(
-                        "Vision mode selection cleared: mode=%s anchor_center=%s",
-                        "unanchored" if prefer_unanchored else "anchored",
-                        item_center,
-                    )
                     self.request_clear()
                     break
                 cancel_event.wait(0.15)
