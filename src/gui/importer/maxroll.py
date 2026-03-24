@@ -16,7 +16,6 @@ from src.config.models import (
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_to_profiles,
-    get_class_name,
     get_with_retry,
     match_to_enum,
     retry_importer,
@@ -61,6 +60,7 @@ def import_maxroll(config: ImportConfig):
         LOGGER.error("Couldn't get planner")
         return
     all_data = r.json()
+    build_name = all_data["name"]
     build_data = json.loads(all_data["data"])
     items = build_data["items"]
     try:
@@ -68,71 +68,7 @@ def import_maxroll(config: ImportConfig):
     except ConnectionError:
         LOGGER.error("Couldn't get planner data")
         return
-
-    profile_indices = _resolve_profile_indices(url=url, build_data=build_data, selected_profile_index=build_id)
-    created_profiles: list[str] = []
-    for profile_index in profile_indices:
-        active_profile = build_data["profiles"][profile_index]
-        if not active_profile.get("items"):
-            LOGGER.warning(f"Skipping empty Maxroll planner profile {profile_index + 1}")
-            continue
-
-        profile = _build_profile(active_profile=active_profile, items=items, mapping_data=mapping_data, config=config)
-        build_name = _resolve_output_file_name(
-            config=config,
-            all_data=all_data,
-            active_profile=active_profile,
-            build_id=profile_index,
-            import_count=len(profile_indices),
-        )
-
-        # Optionally embed Paragon data into the profile model before saving
-        if config.export_paragon:
-            steps = extract_maxroll_paragon_steps(active_profile)
-            if steps:
-                profile.Paragon = build_paragon_profile_payload(
-                    build_name=build_name, source_url=url, paragon_boards_list=steps
-                )
-            else:
-                LOGGER.warning("Paragon export enabled, but no paragon steps were found in this Maxroll profile.")
-
-        corrected_file_name = save_as_profile(file_name=build_name, profile=profile, url=url)
-        created_profiles.append(corrected_file_name)
-
-        if config.add_to_profiles:
-            add_to_profiles(corrected_file_name)
-
-    if created_profiles:
-        LOGGER.info(f"Finished importing {len(created_profiles)} Maxroll profile(s)")
-    else:
-        LOGGER.warning("No Maxroll profiles were imported")
-
-
-def _resolve_profile_indices(url: str, build_data: dict, selected_profile_index: int) -> list[int]:
-    profiles = build_data.get("profiles", [])
-    if not profiles:
-        return [selected_profile_index]
-    if BUILD_GUIDE_BASE_URL not in url:
-        return [selected_profile_index]
-    if len(profiles) > 1:
-        LOGGER.info(f"Found {len(profiles)} Maxroll planner variants. Importing all variants.")
-    return list(range(len(profiles)))
-
-
-def _resolve_output_file_name(
-    config: ImportConfig, all_data: dict, active_profile: dict, build_id: int, import_count: int
-) -> str:
-    if not config.custom_file_name:
-        return _build_default_file_name(all_data=all_data, active_profile=active_profile, build_id=build_id)
-
-    if import_count <= 1:
-        return config.custom_file_name
-
-    variant_name = str(active_profile.get("name", "")).strip() or f"profile_{build_id + 1}"
-    return f"{config.custom_file_name}_{variant_name}"
-
-
-def _build_profile(active_profile: dict, items: dict, mapping_data: dict, config: ImportConfig) -> ProfileModel:
+    active_profile = build_data["profiles"][build_id]
     finished_filters = []
     unique_filters = []
     aspect_upgrade_filters = []
@@ -188,16 +124,10 @@ def _build_profile(active_profile: dict, items: dict, mapping_data: dict, config
                 else:
                     aspect_upgrade_filters.append(legendary_aspect)
             else:
-                msg = (
-                    f"Unable to find legendary aspect in maxroll data for {item_type}, can not automatically add "
-                    f"to AspectUpgrades."
-                )
+                msg = f"Unable to find legendary aspect in maxroll data for {item_type}, can not automatically add to AspectUpgrades."
                 # MaxRoll reports all rares as legendaries so this is an attempt to reduce false warnings for rares
                 if len(resolved_item["explicits"]) == 3:
-                    msg += (
-                        " We suspect this item is actually a rare and maxroll is falsely reporting it as a legendary, "
-                        "please double check."
-                    )
+                    msg += " We suspect this item is actually a rare and maxroll is falsely reporting it as a legendary, please double check."
                     LOGGER.debug(msg)
                 else:
                     LOGGER.warning(msg)
@@ -236,31 +166,36 @@ def _build_profile(active_profile: dict, items: dict, mapping_data: dict, config
             i += 1
 
         finished_filters.append({filter_name: item_filter})
-
     profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))))
     if config.import_uniques and unique_filters:
         profile.Uniques = unique_filters
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
-    return profile
 
+    if config.custom_file_name:
+        build_name = config.custom_file_name
 
-def _build_default_file_name(all_data: dict, active_profile: dict, build_id: int) -> str:
-    class_name = get_class_name(str(all_data.get("class", "")))
-    build_name = str(all_data.get("name", "")).strip() or class_name
-    variant_name = str(active_profile.get("name", "")).strip()
+    if not build_name:
+        build_name = all_data["class"]
+    if active_profile["name"]:
+        build_name += f"_{active_profile['name']}"
 
-    file_name_parts = ["maxroll"]
-    if class_name and class_name != "Unknown":
-        file_name_parts.append(class_name)
-    if build_name:
-        file_name_parts.append(build_name)
-    if variant_name:
-        file_name_parts.append(variant_name)
-    elif active_profile.get("items"):
-        file_name_parts.append(f"profile_{build_id + 1}")
+    # Optionally embed Paragon data into the profile model before saving
+    if config.export_paragon:
+        steps = extract_maxroll_paragon_steps(active_profile)
+        if steps:
+            profile.Paragon = build_paragon_profile_payload(
+                build_name=build_name, source_url=url, paragon_boards_list=steps
+            )
+        else:
+            LOGGER.warning("Paragon export enabled, but no paragon steps were found in this Maxroll profile.")
 
-    return "_".join(part for part in file_name_parts if part)
+    corrected_file_name = save_as_profile(file_name=build_name, profile=profile, url=url)
+
+    if config.add_to_profiles:
+        add_to_profiles(corrected_file_name)
+
+    LOGGER.info("Finished")
 
 
 def _corrections(input_str: str) -> str:
@@ -453,32 +388,15 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int]:
     if not (embed := data.xpath(BUILD_GUIDE_PLANNER_EMBED_XPATH)):
         LOGGER.error(msg)
         raise MaxrollException(msg)
-
-    planner_id = embed[0].get("data-d4-profile")
-    if not planner_id:
-        LOGGER.error(msg)
-        raise MaxrollException(msg)
-
-    data_id_attr = embed[0].get("data-d4-id")
-    if data_id_attr:
-        return PLANNER_API_BASE_URL + planner_id, int(data_id_attr.split(",")[0]) - 1
-
-    data_attr = embed[0].get("data-d4-data")
-    if data_attr:
-        return PLANNER_API_BASE_URL + planner_id, int(data_attr.split(",")[0]) - 1
-
     try:
-        r = get_with_retry(url=PLANNER_API_BASE_URL + planner_id)
-    except ConnectionError as exc:
-        LOGGER.exception(msg)
-        raise MaxrollException(msg) from exc
-
-    try:
-        data_id = json.loads(r.json()["data"])["activeProfile"]
+        planner_id = embed[0].get("data-d4-profile")
+        if "data-d4-id" in embed[0]:
+            data_id = int(embed[0].get("data-d4-id").split(",")[0]) - 1
+        else:
+            data_id = int(embed[0].get("data-d4-data").split(",")[0]) - 1
     except Exception as ex:
         LOGGER.exception(msg)
         raise MaxrollException(msg) from ex
-
     return PLANNER_API_BASE_URL + planner_id, data_id
 
 
