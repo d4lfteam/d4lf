@@ -19,7 +19,7 @@ from src.config.ui import ResManager
 from src.item.data.item_type import is_sigil
 from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.item.filter import Filter, FilterResult
-from src.item.find_descr import find_descr
+from src.item.find_descr import find_descr, find_descr_anywhere
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item, is_junk_rarity, reset_canvas
 from src.tts import Publisher
 from src.ui.char_inventory import CharInventory
@@ -30,6 +30,7 @@ from src.utils.image_operations import compare_histograms
 from src.utils.window import screenshot
 
 if TYPE_CHECKING:
+    from src.item.data.rarity import ItemRarity
     from src.item.models import Item
 
 LOGGER = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ class VisionModeWithHighlighting:
         self.queue = queue.Queue()
         self.draw_from_queue()
         self.is_running = False
+        self.last_confirmed_unanchored_top_left = None
         self.root.geometry("0x0+0+0")
         self.thick = int(Cam().window_roi["height"] * 0.0047)
 
@@ -90,6 +92,28 @@ class VisionModeWithHighlighting:
 
         self.screen_off_x = Cam().window_roi["left"]
         self.screen_off_y = Cam().window_roi["top"]
+
+    @staticmethod
+    def _get_default_controller_tooltip_top_left() -> tuple[int, int]:
+        window_width, window_height = ResManager().pos.window_dimensions
+        item_descr_width = ResManager().offsets.item_descr_width
+        # Controller mode: seed the first search with the usual tooltip position before a live hint exists.
+        return int(window_width * 0.53) - (item_descr_width // 2), int(window_height * 0.09)
+
+    @staticmethod
+    def _can_fast_confirm_controller_tooltip(
+        item_roi: tuple[int, int, int, int], preferred_top_left: tuple[int, int] | None
+    ) -> bool:
+        if preferred_top_left is None:
+            return False
+
+        item_descr_width = ResManager().offsets.item_descr_width
+        _, window_height = ResManager().pos.window_dimensions
+        # Controller mode: once the tooltip position is stable, a tight position check is enough to confirm it.
+        return (
+            abs(item_roi[0] - preferred_top_left[0]) <= int(item_descr_width * 0.08)
+            and abs(item_roi[1] - preferred_top_left[1]) <= int(window_height * 0.06)
+        )
 
     def draw_rect(self, canvas: tk.Canvas, bullet_width, obj, off, color):
         offset_loc = np.array(obj.loc) + off
@@ -258,6 +282,7 @@ class VisionModeWithHighlighting:
 
     def on_tts(self, _):
         img = Cam().grab()
+        trigger = src.tts.LAST_TRIGGER
         item_descr = None
         try:
             item_descr = src.item.descr.read_descr_tts.read_descr()
@@ -266,9 +291,17 @@ class VisionModeWithHighlighting:
             screenshot("tts_error", img=img)
             LOGGER.exception(f"Error in TTS read_descr. {src.tts.LAST_ITEM=}")
         if item_descr is None:
+            LOGGER.debug(f"Vision mode received no parsed item from TTS. {src.tts.LAST_ITEM=}")
             self.request_clear()
             return
 
+        LOGGER.debug(
+            "Vision mode item received: name=%s rarity=%s item_type=%s is_in_shop=%s",
+            item_descr.name,
+            item_descr.rarity,
+            item_descr.item_type,
+            item_descr.is_in_shop,
+        )
         self.current_item = item_descr
 
         # Kick off a thread that will evaluate the item and queue up the appropriate drawings.
@@ -278,11 +311,46 @@ class VisionModeWithHighlighting:
 
         self.evaluate_item_thread_cancel_event = threading.Event()
         self.evaluate_item_thread = threading.Thread(
-            target=self.evaluate_item_and_queue_draw, args=(item_descr,), daemon=True
+            target=self.evaluate_item_and_queue_draw, args=(item_descr, trigger == "action button"), daemon=True
         )
         self.evaluate_item_thread.start()
 
-    def evaluate_item_and_queue_draw(self, item_descr: Item):
+    @staticmethod
+    def _find_selected_item_descr(
+        img,
+        item_center,
+        prefer_unanchored: bool = False,
+        expected_rarity: ItemRarity | None = None,
+        preferred_unanchored_top_left: tuple[int, int] | None = None,
+    ):
+        if prefer_unanchored:
+            found, rarity, cropped_descr, item_roi = find_descr_anywhere(
+                img,
+                item_center,
+                expected_rarity=expected_rarity,
+                preferred_top_left=preferred_unanchored_top_left,
+            )
+            LOGGER.debug(
+                "Vision mode tooltip search mode=unanchored found=%s roi=%s rarity=%s expected_rarity=%s preferred_top_left=%s",
+                found,
+                item_roi,
+                rarity,
+                expected_rarity,
+                preferred_unanchored_top_left,
+            )
+            return found, rarity, cropped_descr, item_roi, found
+
+        found, rarity, cropped_descr, item_roi = find_descr(img, item_center)
+        LOGGER.debug(
+            "Vision mode tooltip search mode=anchored center=%s found=%s roi=%s rarity=%s",
+            item_center,
+            found,
+            item_roi,
+            rarity,
+        )
+        return found, rarity, cropped_descr, item_roi, False
+
+    def evaluate_item_and_queue_draw(self, item_descr: Item, is_controller_trigger: bool = False):
         if not self.is_cleared:
             self.request_clear()
         if self.clear_when_item_not_selected_thread:
@@ -296,7 +364,18 @@ class VisionModeWithHighlighting:
         # Each item must be detected twice and the image must match, this is to avoid
         # getting in item while the fade-in animation and failing to read it properly
         is_confirmed = False
+        prefer_unanchored_search = is_controller_trigger
         retry_count = 0
+        unanchored_retry_threshold = 2
+        preferred_unanchored_top_left = None
+        has_confirmed_unanchored_hint = False
+        if is_controller_trigger:
+            # Controller mode: use the last confirmed tooltip position instead of relying on the mouse anchor.
+            has_confirmed_unanchored_hint = self.last_confirmed_unanchored_top_left is not None
+            preferred_unanchored_top_left = (
+                self.last_confirmed_unanchored_top_left or self._get_default_controller_tooltip_top_left()
+            )
+        controller_initial_settle_pending = is_controller_trigger
         try:
             while retry_count < 5 and not is_confirmed:
                 self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
@@ -308,23 +387,79 @@ class VisionModeWithHighlighting:
                 distances = np.linalg.norm(delta, axis=1)
                 closest_index = np.argmin(distances)
                 item_center = centers_to_use[closest_index]
+                LOGGER.debug(
+                    "Vision mode retry=%s prefer_unanchored=%s mouse_pos=%s anchor_center=%s",
+                    retry_count,
+                    prefer_unanchored_search,
+                    mouse_pos,
+                    item_center,
+                )
 
                 self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
 
                 # Before we get the cropped_descr we need to ensure there is no previous overlay on screen
                 while not self.is_cleared:
                     time.sleep(0.10)
-                found, rarity, cropped_descr, item_roi = find_descr(Cam().grab(), item_center)
+                if controller_initial_settle_pending and prefer_unanchored_search:
+                    time.sleep(0.25)
+                    controller_initial_settle_pending = False
+                img = Cam().grab()
+                found, rarity, cropped_descr, item_roi, used_unanchored_search = self._find_selected_item_descr(
+                    img,
+                    item_center,
+                    prefer_unanchored=prefer_unanchored_search,
+                    expected_rarity=item_descr.rarity,
+                    preferred_unanchored_top_left=preferred_unanchored_top_left,
+                )
 
                 top_left_corner = None if not found else item_roi[:2]
                 if found:
+                    tracked_item_center = None if used_unanchored_search else item_center
                     if not is_confirmed:
-                        found_check, _, cropped_descr_check, _ = find_descr(Cam().grab(), item_center)
-                        if found_check:
-                            score = compare_histograms(cropped_descr, cropped_descr_check)
-                            if score < 0.99:
-                                continue
+                        just_confirmed = False
+                        if (
+                            is_controller_trigger
+                            and used_unanchored_search
+                            and has_confirmed_unanchored_hint
+                            and self._can_fast_confirm_controller_tooltip(item_roi, preferred_unanchored_top_left)
+                        ):
+                            # Controller mode: skip the second full lookup when the tooltip stayed in the learned area.
                             is_confirmed = True
+                            just_confirmed = True
+                            LOGGER.debug(
+                                "Vision mode controller fast-confirm accepted: roi=%s preferred_top_left=%s",
+                                item_roi,
+                                preferred_unanchored_top_left,
+                            )
+                        else:
+                            found_check, _, cropped_descr_check, _, _ = self._find_selected_item_descr(
+                                Cam().grab(),
+                                item_center,
+                                prefer_unanchored=used_unanchored_search,
+                                expected_rarity=item_descr.rarity,
+                                preferred_unanchored_top_left=preferred_unanchored_top_left,
+                            )
+                            if found_check:
+                                score = compare_histograms(cropped_descr, cropped_descr_check)
+                                if score < 0.99:
+                                    LOGGER.debug(
+                                        "Vision mode confirmation mismatch: score=%.4f mode=%s",
+                                        score,
+                                        "unanchored" if used_unanchored_search else "anchored",
+                                    )
+                                    continue
+                                is_confirmed = True
+                                just_confirmed = True
+
+                        if just_confirmed:
+                            LOGGER.debug(
+                                "Vision mode tooltip confirmed: mode=%s roi=%s",
+                                "unanchored" if used_unanchored_search else "anchored",
+                                item_roi,
+                            )
+                            if is_controller_trigger and used_unanchored_search:
+                                preferred_unanchored_top_left = (item_roi[0], item_roi[1])
+                                self.last_confirmed_unanchored_top_left = preferred_unanchored_top_left
 
                     self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
 
@@ -332,7 +467,11 @@ class VisionModeWithHighlighting:
                         last_top_left_corner is None
                         or last_top_left_corner[0] != top_left_corner[0]
                         or last_top_left_corner[1] != top_left_corner[1]
-                        or (last_center is not None and last_center[1] != item_center[1])
+                        or (
+                            last_center is not None
+                            and tracked_item_center is not None
+                            and last_center[1] != tracked_item_center[1]
+                        )
                     ):
                         ignored_item = is_ignored_item(item_descr)
                         # Make the canvas gray for "found the item" or blue for "ignored this item"
@@ -353,7 +492,14 @@ class VisionModeWithHighlighting:
                         if not self.clear_when_item_not_selected_thread:
                             self.clear_when_item_not_selected_thread_cancel_event = threading.Event()
                             self.clear_when_item_not_selected_thread = threading.Thread(
-                                target=self.check_for_item_still_selected, args=(item_center,), daemon=True
+                                target=self.check_for_item_still_selected,
+                                args=(
+                                    item_center,
+                                    used_unanchored_search,
+                                    item_descr.rarity,
+                                    preferred_unanchored_top_left,
+                                ),
+                                daemon=True,
                             )
                             self.clear_when_item_not_selected_thread.start()
 
@@ -362,7 +508,7 @@ class VisionModeWithHighlighting:
 
                         # Check if the item is a match based on our filters
                         last_top_left_corner = top_left_corner
-                        last_center = item_center
+                        last_center = tracked_item_center
 
                         if item_descr == self.current_item:
                             # We need to get the item_descr again but this time with affix locations
@@ -371,7 +517,14 @@ class VisionModeWithHighlighting:
                                 # We're also marking all common/magic/potentially rares as junk so no need to do the image lookup
                                 item_descr_with_loc = item_descr
                             else:
-                                item_descr_with_loc = src.item.descr.read_descr_tts.read_descr_mixed(cropped_descr)
+                                item_descr_with_loc = item_descr
+                                try:
+                                    mixed_item_descr = src.item.descr.read_descr_tts.read_descr_mixed(cropped_descr)
+                                except Exception:
+                                    LOGGER.exception("Error in mixed item parsing. Falling back to TTS-only filtering")
+                                else:
+                                    if mixed_item_descr is not None:
+                                        item_descr_with_loc = mixed_item_descr
                             res = Filter().should_keep(item_descr_with_loc)
                             match = res.keep
 
@@ -388,10 +541,14 @@ class VisionModeWithHighlighting:
                 else:
                     self.request_clear()
                     self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
+                    if not prefer_unanchored_search and retry_count >= unanchored_retry_threshold:
+                        LOGGER.debug("Vision mode switching to unanchored tooltip fallback after anchored misses")
+                        prefer_unanchored_search = True
                     last_center = None
                     last_top_left_corner = None
                     is_confirmed = False
-                    time.sleep(0.15)
+                    retry_sleep = 0.05 if is_controller_trigger and prefer_unanchored_search else 0.15
+                    time.sleep(retry_sleep)
         except CancellationRequested:
             pass
         except Exception:
@@ -409,12 +566,29 @@ class VisionModeWithHighlighting:
         cancel_event.set()
         thread.join()
 
-    def check_for_item_still_selected(self, item_center):
+    def check_for_item_still_selected(
+        self,
+        item_center,
+        prefer_unanchored: bool = False,
+        expected_rarity: ItemRarity | None = None,
+        preferred_unanchored_top_left: tuple[int, int] | None = None,
+    ):
         try:
             while True:
                 self.check_for_thread_cancellation(self.clear_when_item_not_selected_thread_cancel_event)
-                found_check, _, _, _ = find_descr(Cam().grab(), item_center)
+                found_check, _, _, _, _ = self._find_selected_item_descr(
+                    Cam().grab(),
+                    item_center,
+                    prefer_unanchored=prefer_unanchored,
+                    expected_rarity=expected_rarity,
+                    preferred_unanchored_top_left=preferred_unanchored_top_left,
+                )
                 if not found_check:
+                    LOGGER.debug(
+                        "Vision mode selection cleared: mode=%s anchor_center=%s",
+                        "unanchored" if prefer_unanchored else "anchored",
+                        item_center,
+                    )
                     self.request_clear()
                     self.clear_when_item_not_selected_thread = None
                     break
