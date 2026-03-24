@@ -43,7 +43,7 @@ LOGGER = logging.getLogger(__name__)
 
 BASE_URL = "https://d4builds.gg/builds"
 BUILD_OVERVIEW_XPATH = "//*[@class='builder__stats__list']"
-CLASS_XPATH = "//*[contains(@class, 'builder__header__description')]"
+CLASS_XPATH = "//*[contains(@class, 'builder__header__name')]"
 ITEM_GROUP_XPATH = ".//*[contains(@class, 'builder__stats__group')]"
 ITEM_SLOT_XPATH = ".//*[contains(@class, 'builder__stats__slot')]"
 ITEM_STATS_XPATH = ".//*[contains(@class, 'dropdown__button__wrapper')]"
@@ -125,7 +125,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 continue
             if "filled" not in stat.xpath("../..")[0].attrib["class"]:
                 continue
-            affix_name = stat.xpath("./span")[0].text
+            affix_name = _get_affix_name(stat)
             if not affix_name:
                 LOGGER.warning(f"Slot {slot} is missing an affix, skipping import of that affix.")
                 continue
@@ -275,6 +275,15 @@ def _get_legendary_aspects(data: lxml.html.HtmlElement) -> list[str]:
             result.append(aspect_name)
 
     return result
+
+
+def _get_affix_name(stat: lxml.html.HtmlElement) -> str:
+    """Bloodied attributes are saved in some special HTML that we need to remove here."""
+    for span in stat.xpath("./span"):
+        affix_name = " ".join(span.text_content().split())
+        if affix_name:
+            return affix_name
+    return ""
 
 
 if __name__ == "__main__":
