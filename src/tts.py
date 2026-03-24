@@ -13,8 +13,6 @@ from src.config.helper import singleton
 
 CONNECTED = False
 LAST_ITEM = []
-# Controller mode: remember which input source produced the latest TTS item.
-LAST_TRIGGER = None
 TO_FILTER = ["Champions who earn the favor of"]
 _DATA_QUEUE = queue.Queue(maxsize=100)
 
@@ -44,17 +42,9 @@ class Publisher:
                 any(word in data.lower() for word in ["mouse button", "action button"])
                 and (start := find_item_start(local_cache)) is not None
             ):
-                global LAST_ITEM, LAST_TRIGGER
+                global LAST_ITEM
                 LAST_ITEM = local_cache[start:]
                 LOGGER.debug(f"TTS Found: {LAST_ITEM}")
-                trigger = "action button" if "action button" in data.lower() else "mouse button"
-                LAST_TRIGGER = trigger
-                LOGGER.debug(
-                    "Vision mode TTS trigger=%s first_line=%s lines=%s",
-                    trigger,
-                    LAST_ITEM[0] if LAST_ITEM else None,
-                    len(LAST_ITEM),
-                )
                 local_cache = []
                 self.publish(LAST_ITEM)
 

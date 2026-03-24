@@ -279,9 +279,10 @@ class VisionModeWithHighlighting:
         self.root.update_idletasks()
         self.root.update()
 
-    def on_tts(self, _):
+    def on_tts(self, tts_item):
         img = Cam().grab()
-        trigger = src.tts.LAST_TRIGGER
+        # Controller mode: derive the trigger from the published TTS payload instead of extra shared state.
+        is_controller_trigger = any("action button" in line.lower() for line in tts_item) if tts_item else False
         item_descr = None
         try:
             item_descr = src.item.descr.read_descr_tts.read_descr()
@@ -304,13 +305,15 @@ class VisionModeWithHighlighting:
         self.current_item = item_descr
 
         # Kick off a thread that will evaluate the item and queue up the appropriate drawings.
-        # If one already exists we'll kill it since a new item has come in
-        if self.evaluate_item_thread:
-            self.stop_thread_and_wait(self.evaluate_item_thread, self.evaluate_item_thread_cancel_event)
+        # If one already exists, signal cancellation without blocking the TTS thread.
+        if self.evaluate_item_thread_cancel_event:
+            self.evaluate_item_thread_cancel_event.set()
 
         self.evaluate_item_thread_cancel_event = threading.Event()
         self.evaluate_item_thread = threading.Thread(
-            target=self.evaluate_item_and_queue_draw, args=(item_descr, trigger == "action button"), daemon=True
+            target=self.evaluate_item_and_queue_draw,
+            args=(item_descr, is_controller_trigger, self.evaluate_item_thread_cancel_event),
+            daemon=True,
         )
         self.evaluate_item_thread.start()
 
@@ -346,14 +349,15 @@ class VisionModeWithHighlighting:
         )
         return found, rarity, cropped_descr, item_roi, False
 
-    def evaluate_item_and_queue_draw(self, item_descr: Item, is_controller_trigger: bool = False):
+    def evaluate_item_and_queue_draw(
+        self, item_descr: Item, is_controller_trigger: bool = False, cancel_event: Event | None = None
+    ):
+        if cancel_event is None:
+            cancel_event = threading.Event()
         if not self.is_cleared:
             self.request_clear()
-        if self.clear_when_item_not_selected_thread:
-            self.stop_thread_and_wait(
-                self.clear_when_item_not_selected_thread, self.clear_when_item_not_selected_thread_cancel_event
-            )
-            self.clear_when_item_not_selected_thread = None
+        if self.clear_when_item_not_selected_thread_cancel_event:
+            self.clear_when_item_not_selected_thread_cancel_event.set()
 
         last_top_left_corner = None
         last_center = None
@@ -365,16 +369,21 @@ class VisionModeWithHighlighting:
         unanchored_retry_threshold = 2
         preferred_unanchored_top_left = None
         has_confirmed_unanchored_hint = False
+        can_cache_controller_hint = is_controller_trigger and item_descr.rarity is not None
         if is_controller_trigger:
-            # Controller mode: use the last confirmed tooltip position instead of relying on the mouse anchor.
-            has_confirmed_unanchored_hint = self.last_confirmed_unanchored_top_left is not None
+            # Controller mode: only reuse the learned tooltip position for items that have a stable rarity template.
+            has_confirmed_unanchored_hint = (
+                can_cache_controller_hint and self.last_confirmed_unanchored_top_left is not None
+            )
             preferred_unanchored_top_left = (
-                self.last_confirmed_unanchored_top_left or self._get_default_controller_tooltip_top_left()
+                self.last_confirmed_unanchored_top_left
+                if has_confirmed_unanchored_hint
+                else self._get_default_controller_tooltip_top_left()
             )
         controller_initial_settle_pending = is_controller_trigger
         try:
             while retry_count < 5 and not is_confirmed:
-                self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
+                self.check_for_thread_cancellation(cancel_event)
                 retry_count += 1
                 mouse_pos = Cam().monitor_to_window(mouse.get_position())
                 # get closest pos to a item center
@@ -391,13 +400,15 @@ class VisionModeWithHighlighting:
                     item_center,
                 )
 
-                self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
+                self.check_for_thread_cancellation(cancel_event)
 
                 # Before we get the cropped_descr we need to ensure there is no previous overlay on screen
                 while not self.is_cleared:
+                    self.check_for_thread_cancellation(cancel_event)
                     time.sleep(0.10)
                 if controller_initial_settle_pending and prefer_unanchored_search:
-                    time.sleep(0.25)
+                    cancel_event.wait(0.25)
+                    self.check_for_thread_cancellation(cancel_event)
                     controller_initial_settle_pending = False
                 img = Cam().grab()
                 found, rarity, cropped_descr, item_roi, used_unanchored_search = self._find_selected_item_descr(
@@ -453,11 +464,11 @@ class VisionModeWithHighlighting:
                                 "unanchored" if used_unanchored_search else "anchored",
                                 item_roi,
                             )
-                            if is_controller_trigger and used_unanchored_search:
+                            if can_cache_controller_hint and used_unanchored_search:
                                 preferred_unanchored_top_left = (item_roi[0], item_roi[1])
                                 self.last_confirmed_unanchored_top_left = preferred_unanchored_top_left
 
-                    self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
+                    self.check_for_thread_cancellation(cancel_event)
 
                     if (
                         last_top_left_corner is None
@@ -484,9 +495,10 @@ class VisionModeWithHighlighting:
                         # Since we've now drawn something we kick off a thread to remove the drawing
                         # if the item is unselected. It is also automatically removed if a different
                         # TTS item comes in.
-                        self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
+                        self.check_for_thread_cancellation(cancel_event)
                         if not self.clear_when_item_not_selected_thread:
-                            self.clear_when_item_not_selected_thread_cancel_event = threading.Event()
+                            clear_cancel_event = threading.Event()
+                            self.clear_when_item_not_selected_thread_cancel_event = clear_cancel_event
                             self.clear_when_item_not_selected_thread = threading.Thread(
                                 target=self.check_for_item_still_selected,
                                 args=(
@@ -494,6 +506,7 @@ class VisionModeWithHighlighting:
                                     used_unanchored_search,
                                     item_descr.rarity,
                                     preferred_unanchored_top_left,
+                                    clear_cancel_event,
                                 ),
                                 daemon=True,
                             )
@@ -536,7 +549,7 @@ class VisionModeWithHighlighting:
                                 self.request_no_match_box(item_descr, item_roi)
                 else:
                     self.request_clear()
-                    self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
+                    self.check_for_thread_cancellation(cancel_event)
                     if not prefer_unanchored_search and retry_count >= unanchored_retry_threshold:
                         LOGGER.debug("Vision mode switching to unanchored tooltip fallback after anchored misses")
                         prefer_unanchored_search = True
@@ -544,13 +557,16 @@ class VisionModeWithHighlighting:
                     last_top_left_corner = None
                     is_confirmed = False
                     retry_sleep = 0.05 if is_controller_trigger and prefer_unanchored_search else 0.15
-                    time.sleep(retry_sleep)
+                    cancel_event.wait(retry_sleep)
+                    self.check_for_thread_cancellation(cancel_event)
         except CancellationRequested:
             pass
         except Exception:
             LOGGER.exception("Error in vision mode. Please create a bug report")
         finally:
-            self.evaluate_item_thread = None
+            if self.evaluate_item_thread_cancel_event is cancel_event:
+                self.evaluate_item_thread = None
+                self.evaluate_item_thread_cancel_event = None
 
     @staticmethod
     def check_for_thread_cancellation(cancel_event: Event):
@@ -568,10 +584,13 @@ class VisionModeWithHighlighting:
         prefer_unanchored: bool = False,
         expected_rarity: ItemRarity | None = None,
         preferred_unanchored_top_left: tuple[int, int] | None = None,
+        cancel_event: Event | None = None,
     ):
+        if cancel_event is None:
+            cancel_event = threading.Event()
         try:
             while True:
-                self.check_for_thread_cancellation(self.clear_when_item_not_selected_thread_cancel_event)
+                self.check_for_thread_cancellation(cancel_event)
                 found_check, _, _, _, _ = self._find_selected_item_descr(
                     Cam().grab(),
                     item_center,
@@ -586,11 +605,15 @@ class VisionModeWithHighlighting:
                         item_center,
                     )
                     self.request_clear()
-                    self.clear_when_item_not_selected_thread = None
                     break
-                time.sleep(0.15)
+                cancel_event.wait(0.15)
+                self.check_for_thread_cancellation(cancel_event)
         except CancellationRequested:
-            self.clear_when_item_not_selected_thread = None
+            pass
+        finally:
+            if self.clear_when_item_not_selected_thread_cancel_event is cancel_event:
+                self.clear_when_item_not_selected_thread = None
+                self.clear_when_item_not_selected_thread_cancel_event = None
 
     def get_coords_from_roi(self, item_roi):
         x, y, w, h = item_roi
