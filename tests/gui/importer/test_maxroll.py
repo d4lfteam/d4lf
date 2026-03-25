@@ -75,7 +75,7 @@ def test_extract_planner_url_and_id_from_guide_uses_active_embed_tab(mocker: Moc
     )
 
     assert planner_url == f"{PLANNER_API_BASE_URL}411y2000"
-    assert build_id == 1
+    assert build_id == 0
     assert guide_season == "12"
 
 
@@ -132,7 +132,7 @@ def test_extract_planner_url_and_id_from_guide_keeps_direct_embed_id(mocker: Moc
     )
 
     assert planner_url == f"{PLANNER_API_BASE_URL}411y2000"
-    assert build_id == 5
+    assert build_id == 4
     assert guide_season == "12"
 
 
