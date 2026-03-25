@@ -17,17 +17,26 @@ except ImportError:  # pragma: no cover
 
 if TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver
+    from selenium.webdriver.support.ui import WebDriverWait as SeleniumWebDriverWait
+
+
+#
+# =============================================================================
+# SHARED SLUG HELPERS
+# =============================================================================
 
 
 def _class_slug_from_name(class_name: str) -> str:
+    """Normalize a build class label into the shared export slug format."""
     class_name = (class_name or "").strip().lower()
     if not class_name or class_name == "unknown":
         return ""
-    # normalize spaces/underscores
+    # Normalize planner-provided labels so all exporters use the same class prefix.
     return re.sub(r"[^a-z0-9\-]", "", re.sub(r"[\s_]+", "-", class_name))
 
 
 def _prefix_with_class_slug(slug: str, class_slug: str) -> str:
+    """Prefix a slug with its class name once, matching the other exporters."""
     if not slug:
         return slug
     if not class_slug:
@@ -43,10 +52,12 @@ GRID = 21
 NODES_LEN = GRID * GRID
 
 
-# ---------------------------------------------------------------------------
+#
+# =============================================================================
+# MAXROLL NAME MAPS
+# =============================================================================
 # Maxroll ID -> human friendly names (ported from Diablo4Companion data files).
-# Used to export Paragon JSON with readable identifiers (similar to Mobalytics).
-# ---------------------------------------------------------------------------
+# Used to export Paragon JSON with readable identifiers similar to Mobalytics.
 
 _MAXROLL_BOARD_ID_TO_NAME = {
     "Paragon_Barb_00": "Start",
@@ -261,7 +272,14 @@ _MAXROLL_GLYPH_ID_TO_NAME = {
 }
 
 
+#
+# =============================================================================
+# GENERAL EXPORT HELPERS
+# =============================================================================
+
+
 def _slugify(s: str) -> str:
+    """Collapse planner labels into stable lowercase slug tokens."""
     s = (s or "").strip().lower()
     s = re.sub(r"[^a-z0-9]+", "-", s)
     return s.strip("-")
@@ -288,6 +306,12 @@ def _maxroll_glyph_slug(glyph_id: str, board_id: str) -> str:
     return f"{cls}-{name_slug}" if cls and name_slug else _slugify(glyph_id)
 
 
+#
+# =============================================================================
+# PAYLOAD BUILDER
+# =============================================================================
+
+
 def build_paragon_profile_payload(
     build_name: str, source_url: str, paragon_boards_list: list[list[dict[str, Any]]]
 ) -> dict[str, Any]:
@@ -302,6 +326,12 @@ def build_paragon_profile_payload(
         "Generator": f"d4lf v{__version__}",
         "ParagonBoardsList": paragon_boards_list,
     }
+
+
+#
+# =============================================================================
+# MAXROLL EXPORT
+# =============================================================================
 
 
 def extract_maxroll_paragon_steps(active_profile: dict[str, Any]) -> list[list[dict[str, Any]]]:
@@ -321,6 +351,7 @@ def extract_maxroll_paragon_steps(active_profile: dict[str, Any]) -> list[list[d
             rotation = int((bd or {}).get("rotation", 0))
             nodes_bool = [False] * NODES_LEN
 
+            # Maxroll stores active nodes as a dict keyed by flat node indices.
             nodes_dict = (bd or {}).get("nodes") or {}
             for loc_key in nodes_dict:
                 try:
@@ -348,6 +379,26 @@ def extract_maxroll_paragon_steps(active_profile: dict[str, Any]) -> list[list[d
     return steps_out
 
 
+#
+# =============================================================================
+# MOBALYTICS EXPORT
+# =============================================================================
+
+
+def _fix_mobalytics_starting_board_slug(board_slug: str) -> str:
+    """Normalize Mobalytics' starter-board naming to the shared starting-board form."""
+    return (
+        board_slug
+        .replace("barbarian-starter-board", "barbarian-starting-board")
+        .replace("druid-starter-board", "druid-starting-board")
+        .replace("necromancer-starter-board", "necromancer-starting-board")
+        .replace("paladin-starter-board", "paladin-starting-board")
+        .replace("rogue-starter-board", "rogue-starting-board")
+        .replace("sorcerer-starter-board", "sorcerer-starting-board")
+        .replace("spiritborn-starter-board", "spiritborn-starting-board")
+    )
+
+
 def extract_mobalytics_paragon_steps(variant: dict[str, Any]) -> list[list[dict[str, Any]]]:
     """Extract paragon boards from Mobalytics preloaded-state build variant.
 
@@ -367,6 +418,7 @@ def extract_mobalytics_paragon_steps(variant: dict[str, Any]) -> list[list[dict[
         rotation = int((board or {}).get("rotation", 0))
 
         nodes_bool = [False] * NODES_LEN
+        # Mobalytics exposes nodes as one flat list, so filter it back down to the current board first.
         board_nodes = [
             n
             for n in nodes_data
@@ -400,8 +452,18 @@ def extract_mobalytics_paragon_steps(variant: dict[str, Any]) -> list[list[dict[
     return [boards_out] if boards_out else []
 
 
+#
+# =============================================================================
+# D4BUILDS EXPORT
+# =============================================================================
+
+
 def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[list[dict[str, Any]]]:
-    """Parse D4Builds paragon boards from the currently loaded page."""
+    """Parse D4Builds paragon boards from the currently loaded page.
+
+    D4Builds does not expose the board export as a ready-made JSON payload, so this
+    parser reconstructs one from DOM text, element attributes, and active tile classes.
+    """
     boards_out: list[dict[str, Any]] = []
     try:
         board_elements = driver.find_elements(By.CLASS_NAME, "paragon__board")
@@ -477,6 +539,7 @@ def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[l
         except Exception:
             tile_elems = []
 
+        # D4Builds encodes the active grid coordinates in CSS class tokens like "r2 c10".
         for tile in tile_elems:
             cls = tile.get_attribute("class") or ""
             if "active" not in cls:
@@ -518,7 +581,7 @@ def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[l
 
 
 def extract_d4builds_paragon_steps(
-    driver: WebDriver, class_name: str = "", *, wait: WebDriverWait | None = None
+    driver: WebDriver, class_name: str = "", *, wait: SeleniumWebDriverWait | None = None
 ) -> list[list[dict[str, Any]]]:
     """Extract paragon boards from D4Builds using Selenium.
 
@@ -570,7 +633,10 @@ def extract_d4builds_paragon_steps(
     return _parse_d4builds_paragon_boards(driver, class_slug)
 
 
-# --- Helper functions (ported from Diablo4Companion) ---
+#
+# =============================================================================
+# SHARED COORDINATE TRANSFORMS
+# =============================================================================
 
 
 def _rotation_info_maxroll(rot: int) -> str:
@@ -647,17 +713,3 @@ def _transform_xy_common(x: int, y: int, rotation_deg: int, base: str) -> int:
             xt -= 1
 
     return yt * GRID + xt
-
-
-def _fix_mobalytics_starting_board_slug(board_slug: str) -> str:
-    # Fix naming inconsistency (ported from Diablo4Companion)
-    return (
-        board_slug
-        .replace("barbarian-starter-board", "barbarian-starting-board")
-        .replace("druid-starter-board", "druid-starting-board")
-        .replace("necromancer-starter-board", "necromancer-starting-board")
-        .replace("paladin-starter-board", "paladin-starting-board")
-        .replace("rogue-starter-board", "rogue-starting-board")
-        .replace("sorcerer-starter-board", "sorcerer-starting-board")
-        .replace("spiritborn-starter-board", "spiritborn-starting-board")
-    )

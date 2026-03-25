@@ -17,15 +17,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import yaml
 from PIL import Image, ImageDraw, ImageFont
 
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
-from src.config.models import ProfileModel
 from src.config.ui import ResManager
 from src.gui.importer.gui_common import BUILD_SOURCES, PLAYER_CLASSES
-from src.item.filter import _UniqueKeyLoader
+from src.item.filter import Filter
 from src.utils.window import enable_windows_dpi_awareness
 
 if TYPE_CHECKING:
@@ -136,13 +134,13 @@ GOLD = FS_ACCENT_GOLD
 SELECT_BG = "#1f1f1f"
 NODE_GREEN = FS_ACCENT_GREEN
 NODE_BLUE = FS_ACCENT_BLUE
+PANEL_W = 370
+GRID = 21
+NODES_LEN = GRID * GRID
 
 FS_PANEL_TITLE, FS_MODE_LABEL, FS_BUTTON, FS_BOARD_CARD = 13, 9, 12, 10
 FS_BUILDS_MENU, FS_SETTINGS_ICON, FS_SETTINGS_LABEL, FS_ZOOM_BTN, FS_HINT = (12, 13, 10, 15, 10)
 FS_CARD_FRAME, FS_GRID_FRAME = 1, 6
-
-PANEL_W, GRID = 370, 21
-NODES_LEN = GRID * GRID
 
 
 # =============================================================================
@@ -188,7 +186,7 @@ def _dpi_scale_for_widget(w: tk.Misc) -> float:
 
 
 # =============================================================================
-# SETTINGS & DATA LOADERS
+# SETTINGS & PROFILE LOADERS
 # =============================================================================
 
 
@@ -232,6 +230,7 @@ def _load_overlay_settings() -> dict[str, Any]:
     return {
         "cell_size": parse("cell_size", int),
         "profile": parse("profile", str),
+        "build_name": parse("build_name", str),
         "build_idx": parse("build_idx", int),
         "board_idx": parse("board_idx", int),
         "grid_x": parse("grid_x", int),
@@ -270,13 +269,11 @@ def _clamp_int(v: int | None, lo: int, hi: int, default: int) -> int:
 
 def _iter_paragon_payloads(paragon: object) -> list[dict[str, Any]]:
     """Normalize Paragon data so the rest of the loader can iterate one shape."""
-    return (
-        [paragon]
-        if isinstance(paragon, dict)
-        else [x for x in paragon if isinstance(x, dict)]
-        if isinstance(paragon, list)
-        else []
-    )
+    if isinstance(paragon, dict):
+        return [paragon]
+    if isinstance(paragon, list):
+        return [payload for payload in paragon if isinstance(payload, dict)]
+    return []
 
 
 def _format_build_display_name(raw_name: object) -> str:
@@ -305,16 +302,28 @@ def _format_build_display_name(raw_name: object) -> str:
     return f"{display_name}{step_suffix}" if step_suffix else display_name
 
 
-def _load_profile_model(profile_path: Path, profile_name: str) -> ProfileModel | None:
-    """Load one YAML profile file into the validated ProfileModel."""
-    try:
-        with profile_path.open(encoding="utf-8") as f:
-            cfg = yaml.load(stream=f, Loader=_UniqueKeyLoader)
-        if isinstance(cfg, dict):
-            return ProfileModel(name=profile_name, **cfg)
-    except Exception:
-        LOGGER.debug("Profile load failed: %s", profile_path, exc_info=True)
-    return None
+def _resolve_build_index(
+    builds: list[dict[str, Any]],
+    *,
+    profile_name: str | None = None,
+    build_name: str | None = None,
+    fallback_idx: int | None = None,
+) -> int:
+    """Resolve the selected build from persisted identifiers with index fallback."""
+    if build_name:
+        for idx, build in enumerate(builds):
+            if build.get("name") != build_name:
+                continue
+            if profile_name and build.get("profile") != profile_name:
+                continue
+            return idx
+
+    if profile_name:
+        for idx, build in enumerate(builds):
+            if build.get("profile") == profile_name:
+                return idx
+
+    return _clamp_int(fallback_idx, 0, max(0, len(builds) - 1), 0)
 
 
 def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]]:
@@ -323,52 +332,36 @@ def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]
     Each returned entry contains the visible build name, its board list, and the
     source profile name that is later used for grouping inside the popup.
     """
-    config = IniConfigLoader()
-    profiles_dir = config.user_dir / "profiles"
-    names = [p.strip() for p in config.general.profiles if p.strip()]
-    candidates: list[tuple[str, Path]] = []
-
-    # Prefer the configured profile list when one exists. Otherwise fall back to
-    # scanning the profiles directory, newest file first.
-    if names:
-        for n in names:
-            p_yaml, p_yml = profiles_dir / f"{n}.yaml", profiles_dir / f"{n}.yml"
-            if p_yaml.is_file():
-                candidates.append((n, p_yaml))
-            elif p_yml.is_file():
-                candidates.append((n, p_yml))
-            else:
-                LOGGER.debug("Profile not found: %s", p_yaml)
-    else:
-        sd = Path(preset_path) if preset_path else profiles_dir
-        if sd.is_file():
-            sd = sd.parent
-        candidates.extend([
-            (fp.stem, fp) for fp in sorted(sd.glob("*.ya*"), key=lambda x: x.stat().st_mtime, reverse=True)
-        ])
+    _ = preset_path
+    paragon_filters = Filter().get_paragon_filters()
 
     builds: list[dict[str, Any]] = []
-    for pname, ppath in candidates:
+    for pname, paragon_payload in paragon_filters.items():
         # A profile can contain one or many Paragon payloads, and each payload can
         # contain multiple step states. The overlay shows each step as its own
         # selectable build entry.
-        model = _load_profile_model(ppath, pname)
-        if not model or not model.Paragon:
-            continue
-        for payload in _iter_paragon_payloads(model.Paragon):
-            steps = payload.get("ParagonBoardsList", [])
-            steps = (
-                [s for s in steps if isinstance(s, list) and s]
-                if steps and isinstance(steps[0], list)
-                else [steps]
-                if steps
-                else []
-            )
+        for payload in _iter_paragon_payloads(paragon_payload):
+            payload_steps = payload.get("ParagonBoardsList", [])
+            if payload_steps and isinstance(payload_steps, list) and isinstance(payload_steps[0], list):
+                steps = [step for step in payload_steps if isinstance(step, list) and step]
+            elif isinstance(payload_steps, list) and payload_steps:
+                # Older/smaller payloads may store only one board-state list instead
+                # of a list-of-steps. Wrap that shape so the overlay can iterate one way.
+                steps = [payload_steps]
+            else:
+                steps = []
             bname = payload.get("Name") or payload.get("name") or "Unknown Build"
+            # Newest step first keeps the build selector aligned with the latest
+            # imported planner state while still exposing earlier progression steps.
             for idx in range(len(steps) - 1, -1, -1):
                 sname = f"{bname} - Step {idx + 1}" if len(steps) > 1 else bname
                 builds.append({"name": sname, "boards": steps[idx], "profile": pname})
     return builds
+
+
+# =============================================================================
+# GRID DATA HELPERS
+# =============================================================================
 
 
 def parse_rotation(rot_str: str) -> int:
@@ -455,11 +448,14 @@ class ParagonOverlay(tk.Toplevel):
         self._res = ResManager()
         self.builds = list(builds)
 
-        # Restore the previously selected build by profile name when possible.
-        # Falling back to the stored numeric index keeps old settings compatible.
-        prof, b_idx = self._settings.get("profile"), self._settings.get("build_idx")
-        idx = next((i for i, b in enumerate(self.builds) if b.get("profile") == prof), b_idx) if prof else b_idx
-        self.current_build_idx = _clamp_int(idx, 0, max(0, len(self.builds) - 1), 0)
+        # Restore the previously selected build by its persisted identity first.
+        # Falling back to profile and then index keeps older settings compatible.
+        self.current_build_idx = _resolve_build_index(
+            self.builds,
+            profile_name=self._settings.get("profile"),
+            build_name=self._settings.get("build_name"),
+            fallback_idx=self._settings.get("build_idx"),
+        )
         self.boards = self.builds[self.current_build_idx]["boards"] if self.builds else []
         self.selected_board_idx = _clamp_int(self._settings.get("board_idx"), 0, max(0, len(self.boards) - 1), 0)
 
@@ -758,12 +754,19 @@ class ParagonOverlay(tk.Toplevel):
         try:
             if not (new_builds := load_builds_from_path()):
                 return
+            current_build = self.builds[self.current_build_idx] if self.builds else {}
             self.builds = new_builds
-            self.current_build_idx = self.current_build_idx if 0 <= self.current_build_idx < len(self.builds) else 0
+            self.current_build_idx = _resolve_build_index(
+                self.builds,
+                profile_name=current_build.get("profile"),
+                build_name=current_build.get("name"),
+                fallback_idx=self.current_build_idx,
+            )
             self.boards = self.builds[self.current_build_idx]["boards"] if self.builds else []
             self.selected_board_idx = min(self.selected_board_idx, max(0, len(self.boards) - 1))
             self._refresh_lists()
             self.redraw()
+            self._persist_state()
         except Exception:
             LOGGER.exception("Failed to reload profiles")
 
@@ -828,6 +831,7 @@ class ParagonOverlay(tk.Toplevel):
                 setattr(self, attr, None)
 
     def _close_settings_dropdown(self) -> None:
+        """Hide the anchored settings popup and remove its temporary bindings."""
         self._close_popup(
             "_settings_popup", self.btn_settings, "_settings_popup_escape_bind_id", "_settings_popup_bind_id"
         )
@@ -1539,6 +1543,8 @@ class ParagonOverlay(tk.Toplevel):
 
     def _apply_geometry(self) -> None:
         """Resize the overlay to match the tracked game window or full screen."""
+        # The floating builds popup is a separate Toplevel, so its screen-space
+        # coordinates become stale whenever the tracked game window moves/resizes.
         self._close_build_dropdown()
         roi = self._get_cam_roi()
         rx, ry, rw, rh = roi or (0, 0, *self._get_resolution())
@@ -1616,7 +1622,10 @@ class ParagonOverlay(tk.Toplevel):
         try:
             _save_overlay_settings({
                 "cell_size": int(self._cfg.cell_size),
+                # Persist both the stable build identity and numeric index so old
+                # settings continue to restore sensibly.
                 "profile": str(self.builds[self.current_build_idx].get("profile") or "") if self.builds else "",
+                "build_name": str(self.builds[self.current_build_idx].get("name") or "") if self.builds else "",
                 "build_idx": int(self.current_build_idx),
                 "board_idx": int(self.selected_board_idx),
                 "grid_x": int(self.grid_x),
@@ -1681,6 +1690,8 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
             _CLOSE_REQUESTED.clear()
 
     _call_on_ui_thread(_open_overlay)
+    # The caller owns a worker thread per overlay session and expects that thread
+    # to stay alive until the overlay closes, so block here on the close signal.
     closed.wait()
     return None
 

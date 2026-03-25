@@ -70,6 +70,7 @@ class _UniqueKeyLoader(yaml.SafeLoader):
 class Filter:
     affix_filters = {}
     aspect_upgrade_filters = {}
+    paragon_filters = {}
     unique_filters = {}
     sigil_filters = {}
     tribute_filters = {}
@@ -474,6 +475,7 @@ class Filter:
         self.files_loaded = True
         self.affix_filters: dict[str, list[DynamicItemFilterModel]] = {}
         self.aspect_upgrade_filters: dict[str, list[str]] = {}
+        self.paragon_filters: dict[str, object] = {}
         self.sigil_filters: dict[str, SigilFilterModel] = {}
         self.tribute_filters: dict[str, list[TributeFilterModel]] = {}
         self.unique_filters: dict[str, list[UniqueModel]] = {}
@@ -577,6 +579,7 @@ class Filter:
                     self.unique_filters[data.name] = data.Uniques
                     sections.append("Uniques")
                 if data.Paragon:
+                    self.paragon_filters[data.name] = data.Paragon
                     sections.append("Paragon")
 
                 info_str += " ".join(sections)
@@ -587,6 +590,12 @@ class Filter:
                 sys.exit(1)
             self.last_loaded = time.time()
             self.last_profile_list = IniConfigLoader().general.profiles.copy()
+
+    def get_paragon_filters(self) -> dict[str, object]:
+        """Return the loaded Paragon payloads, reloading profiles when needed."""
+        if not self.files_loaded or self._did_files_change():
+            self.load_files()
+        return self.paragon_filters
 
     def should_keep(self, item: Item) -> FilterResult:
         if not self.files_loaded or self._did_files_change():
