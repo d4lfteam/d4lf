@@ -361,7 +361,12 @@ def _unique_name_special_handling(unique_name: str) -> str:
 def _find_item_type(mapping_data: dict, value: str) -> ItemType | None:
     for d_key, d_value in mapping_data.items():
         if d_key == value:
-            if (res := match_to_enum(enum_class=ItemType, target_string=d_value["type"], check_keys=True)) is None:
+            item_type_str = d_value["type"]
+            if item_type_str.lower().replace(" ", "").replace("-", "") == "1hfocus":
+                return ItemType.Focus
+            if item_type_str == "FocusBookOffHand":
+                return ItemType.Focus
+            if (res := match_to_enum(enum_class=ItemType, target_string=item_type_str, check_keys=True)) is None:
                 LOGGER.error("Couldn't match item type to enum")
                 return None
             return res
@@ -448,14 +453,14 @@ def _format_guide_season_replacement(existing_label: str, guide_season: str) -> 
 
 def _extract_guide_profile_id(embed: lxml.html.HtmlElement) -> int:
     if data_id := embed.get("data-d4-id"):
-        return int(data_id.split(",")[0])
+        return int(data_id.split(",")[0]) - 1
     if data_ids := embed.get("data-d4-data"):
         guide_profile_ids = [int(value) for value in data_ids.split(",") if value]
         if (active_tab_index := _extract_active_guide_embed_tab_index(embed)) is not None and active_tab_index < len(
             guide_profile_ids
         ):
-            return guide_profile_ids[active_tab_index]
-        return guide_profile_ids[0]
+            return guide_profile_ids[active_tab_index] - 1
+        return guide_profile_ids[0] - 1
     msg = "Couldn't find profile id in build guide embed"
     raise ValueError(msg)
 

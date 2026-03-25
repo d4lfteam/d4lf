@@ -14,9 +14,7 @@ def test_build_default_profile_file_name_maxroll() -> None:
 
 def test_build_default_profile_file_name_d4builds_strips_title_suffix() -> None:
     file_name = build_default_profile_file_name(
-        url="https://d4builds.gg/builds/example",
-        class_name="Barbarian",
-        build_header="Bash Build - D4Builds",
+        url="https://d4builds.gg/builds/example", class_name="Barbarian", build_header="Bash Build - D4Builds"
     )
 
     assert file_name == "d4builds_barbarian_bash_build"
@@ -24,9 +22,7 @@ def test_build_default_profile_file_name_d4builds_strips_title_suffix() -> None:
 
 def test_build_default_profile_file_name_d4builds_strips_spaced_title_suffix() -> None:
     file_name = build_default_profile_file_name(
-        url="https://d4builds.gg/builds/example",
-        class_name="Barbarian",
-        build_header="Bash Build · D4 Builds",
+        url="https://d4builds.gg/builds/example", class_name="Barbarian", build_header="Bash Build · D4 Builds"
     )
 
     assert file_name == "d4builds_barbarian_bash_build"
