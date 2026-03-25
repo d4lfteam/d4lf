@@ -734,6 +734,20 @@ Otherwise just run:
 prek run -a
 ```
 
+### A note on use of AI for PRs
+
+AI usage is not banned for D4LF, but some things need to be kept in mind:
+
+- You are responsible for any PR you submit.
+  - It is expected you have tested your code
+  - It is expected you will fix any bugs resulting from your work
+  - You need to have an understanding of the changes you're making and why you're making them
+- PRs should change as little code as possible, only what needs to be changed for the new feature you are implementing.
+- There should be 1 PR per feature. Try to keep PRs small. The release notes are generated from the PR titles so if you put a lot of items into one PR we can't properly describe it in the release notes.
+- Be prepared for a lot of comments on your PR. Everything that's being done needs to be understandable by the maintainer because he has to fix it 3 months later when something goes wrong.
+
+Ultimately, please understand there is only 1 full-time maintainer of D4LF and that maintainer does not use AI. The code needs to remain human readable, and humans are who initially wrote it. If an AI and a human disagree, the human always wins. AIs are very stupid.
+
 ## Credits
 
 - Icon based of: [CarbotAnimations](https://www.youtube.com/carbotanimations/about)
