@@ -6,12 +6,13 @@ import pytest
 from natsort import natsorted
 
 from src.config.loader import IniConfigLoader
-from src.config.models import GeneralModel, JunkRaresType, SigilPriority
+from src.config.models import AspectFilterType, CosmeticFilterType, GeneralModel, JunkRaresType, SigilPriority
+from src.item.data.aspect import Aspect
 from src.item.filter import Filter, FilterResult
 from src.scripts.common import is_junk_rarity
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
-from tests.item.filter.data.aspects import aspects
+from tests.item.filter.data.aspects import TestItem, aspects
 from tests.item.filter.data.items import four_affix_rare, three_affix_rare
 from tests.item.filter.data.sigils import sigil_jalal, sigil_priority, sigils
 from tests.item.filter.data.tributes import tributes
@@ -21,6 +22,14 @@ if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
     from src.item.models import Item
+
+
+@pytest.fixture(autouse=True)
+def _isolate_general_settings(mocker: MockerFixture):
+    loader = IniConfigLoader()
+    mocker.patch.object(loader, "_general", new=GeneralModel())
+    mocker.patch.object(loader, "reload_if_changed", return_value=False)
+    return loader
 
 
 def _create_mocked_filter(mocker: MockerFixture) -> Filter:
@@ -47,6 +56,60 @@ def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixtur
     mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
     test_filter.aspect_upgrade_filters = {filters.aspects_filters.name: filters.aspects_filters.AspectUpgrades}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
+
+
+def test_handle_codex_upgrade_can_junk_unmatched_codex_upgrades(mocker: MockerFixture):
+    loader = IniConfigLoader()
+    mocker.patch.object(
+        loader,
+        "_general",
+        new=GeneralModel(keep_aspects=AspectFilterType.all, handle_codex_upgrade=CosmeticFilterType.junk),
+    )
+    mocker.patch.object(loader, "reload_if_changed", return_value=False)
+
+    test_filter = _create_mocked_filter(mocker)
+    mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
+
+    result = test_filter.should_keep(TestItem(aspect=Aspect(name="no_profile_aspect")))
+
+    assert result.keep is False
+    assert result.matched == []
+
+
+def test_handle_codex_upgrade_does_not_change_non_codex_aspects(mocker: MockerFixture):
+    loader = IniConfigLoader()
+    mocker.patch.object(
+        loader,
+        "_general",
+        new=GeneralModel(keep_aspects=AspectFilterType.all, handle_codex_upgrade=CosmeticFilterType.junk),
+    )
+    mocker.patch.object(loader, "reload_if_changed", return_value=False)
+
+    test_filter = _create_mocked_filter(mocker)
+    mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
+
+    result = test_filter.should_keep(TestItem(aspect=Aspect(name="no_profile_aspect"), is_codex_upgrade=False))
+
+    assert result.keep is True
+    assert [match.profile for match in result.matched] == ["AspectUpgrades"]
+
+
+def test_keep_aspects_none_still_disables_unmatched_codex_upgrades(mocker: MockerFixture):
+    loader = IniConfigLoader()
+    mocker.patch.object(
+        loader,
+        "_general",
+        new=GeneralModel(keep_aspects=AspectFilterType.none, handle_codex_upgrade=CosmeticFilterType.ignore),
+    )
+    mocker.patch.object(loader, "reload_if_changed", return_value=False)
+
+    test_filter = _create_mocked_filter(mocker)
+    mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
+
+    result = test_filter.should_keep(TestItem(aspect=Aspect(name="no_profile_aspect")))
+
+    assert result.keep is False
+    assert result.matched == []
 
 
 @pytest.mark.parametrize(("_name", "result", "item"), natsorted(sigils), ids=[name for name, _, _ in natsorted(sigils)])

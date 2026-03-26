@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from src.config.loader import PARAMS_INI, IniConfigLoader
-from src.config.models import JunkRaresType
+from src.config.models import CosmeticFilterType, JunkRaresType
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -86,6 +86,14 @@ class TestIniConfigLoader:
         loader.reload_if_changed()
 
         assert notified_changes == [frozenset({"general.vision_mode_type"})]
+
+    def test_reload_if_changed_reads_handle_codex_upgrade(self, isolated_ini_loader: IniConfigLoader) -> None:
+        loader = isolated_ini_loader
+        config_path = loader.user_dir / PARAMS_INI
+        config_path.write_text("[general]\nhandle_codex_upgrade = junk\n", encoding="utf-8")
+
+        assert loader.reload_if_changed() is True
+        assert loader.general.handle_codex_upgrade == CosmeticFilterType.junk
 
     @pytest.mark.parametrize(
         ("config_value", "expected"), [("True", JunkRaresType.all), ("False", JunkRaresType.three_affixes)]

@@ -157,8 +157,22 @@ class Filter:
             if res.keep:
                 return res
 
-        if IniConfigLoader().general.keep_aspects == AspectFilterType.none or (
-            IniConfigLoader().general.keep_aspects == AspectFilterType.upgrade and not item.codex_upgrade
+        if IniConfigLoader().general.keep_aspects == AspectFilterType.none:
+            return res
+        if item.codex_upgrade:
+            return self._check_codex_upgrade(item)
+        if IniConfigLoader().general.keep_aspects == AspectFilterType.upgrade:
+            return res
+        LOGGER.info(f"{item.original_name} -- Matched Aspects that updates codex")
+        res.keep = True
+        res.matched.append(MatchedFilter(ASPECT_UPGRADES_LABEL, did_match_aspect=True))
+        return res
+
+    @staticmethod
+    def _check_codex_upgrade(item: Item) -> FilterResult:
+        res = FilterResult(False, [])
+        if IniConfigLoader().general.handle_codex_upgrade == CosmeticFilterType.junk or (
+            IniConfigLoader().general.handle_codex_upgrade == CosmeticFilterType.ignore and not item.codex_upgrade
         ):
             return res
         LOGGER.info(f"{item.original_name} -- Matched Aspects that updates codex")

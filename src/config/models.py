@@ -343,6 +343,10 @@ class GeneralModel(_IniBaseModel):
         default=CosmeticFilterType.ignore,
         description="What should be done with cosmetic upgrades that do not match any filter",
     )
+    handle_codex_upgrade: CosmeticFilterType = Field(
+        default=CosmeticFilterType.ignore,
+        description="What should be done with codex upgrades that do not match any filter",
+    )
     handle_uniques: UnfilteredUniquesType = Field(
         default=UnfilteredUniquesType.favorite,
         description="What should be done with uniques that do not match any profile. Mythics are always favorited. If mark_as_favorite is unchecked then uniques that match a profile will not be favorited.",
