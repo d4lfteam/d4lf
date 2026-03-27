@@ -1,11 +1,47 @@
+@echo off
+setlocal
+cd /d "%~dp0"
+
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Requesting administrator access...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+    exit /b
+)
+
+set "_self=%~f0"
+set "_temp_ps1=%TEMP%\install_dll_%RANDOM%%RANDOM%.ps1"
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$marker = '#===POWERSHELL==='; $lines = Get-Content -LiteralPath '%_self%'; $index = [Array]::IndexOf($lines, $marker); if ($index -lt 0) { Write-Error 'Embedded PowerShell payload not found.'; exit 1 }; Set-Content -LiteralPath '%_temp_ps1%' -Value $lines[($index + 1)..($lines.Length - 1)] -Encoding UTF8"
+
+if errorlevel 1 (
+    echo Failed to extract the embedded PowerShell payload.
+    pause
+    exit /b 1
+)
+
+powershell -NoProfile -ExecutionPolicy Bypass -NoExit -File "%_temp_ps1%" -script_root "%~dp0" %*
+set "exit_code=%errorlevel%"
+del "%_temp_ps1%" >nul 2>&1
+exit /b %exit_code%
+
+#===POWERSHELL===
 param(
-    [Parameter(Mandatory = $true)]
     [string]$d4_path,
 
-    [string]$signtool_path
+    [string]$signtool_path,
+
+    [string]$script_root
 )
 
 $script:StepNumber = 0
+$script:InstallerRoot = if ([string]::IsNullOrWhiteSpace($script_root)) {
+    $PSScriptRoot
+}
+else {
+    $script_root.Trim().Trim('"').TrimEnd('\')
+}
 
 function Write-UiRule {
     Write-Host ("=" * 72) -ForegroundColor DarkGray
@@ -76,17 +112,141 @@ function Resolve-D4InstallPath {
         [string]$ProvidedPath
     )
 
+    if ([string]::IsNullOrWhiteSpace($ProvidedPath)) {
+        return $null
+    }
+
     if (-not (Test-Path $ProvidedPath -PathType Container)) {
-        Stop-WithError "The Diablo IV folder path does not exist: $ProvidedPath"
+        Write-WarnLine "The Diablo IV folder path does not exist: $ProvidedPath"
+        return $null
     }
 
     $resolvedPath = (Resolve-Path $ProvidedPath).Path
     $diabloExePath = Join-Path $resolvedPath "Diablo IV.exe"
     if (-not (Test-Path $diabloExePath -PathType Leaf)) {
-        Stop-WithError "Diablo IV.exe was not found in: $resolvedPath. Please paste the folder that contains Diablo IV.exe."
+        Write-WarnLine "Diablo IV.exe was not found in: $resolvedPath"
+        return $null
     }
 
     return $resolvedPath
+}
+
+function Resolve-InstallerFilePath {
+    param(
+        [string[]]$RelativeCandidates,
+        [string]$Description
+    )
+
+    foreach ($candidate in $RelativeCandidates) {
+        $fullPath = Join-Path $script:InstallerRoot $candidate
+        if (Test-Path $fullPath -PathType Leaf) {
+            return (Resolve-Path $fullPath).Path
+        }
+    }
+
+    $searchedPaths = $RelativeCandidates | ForEach-Object { Join-Path $script:InstallerRoot $_ }
+    Stop-WithError "$Description was not found. Checked: $($searchedPaths -join ', '). Re-extract the D4LF release zip and try again."
+}
+
+function Get-D4InstallPathFromRunningProcess {
+    try {
+        $diabloProcess = Get-Process -Name "Diablo IV" -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $diabloProcess) {
+            return $null
+        }
+
+        $exePath = $diabloProcess.MainModule.FileName
+        if ([string]::IsNullOrWhiteSpace($exePath)) {
+            return $null
+        }
+
+        return Split-Path -Path $exePath -Parent
+    }
+    catch {
+        Write-WarnLine "Diablo IV is running, but its install folder could not be read automatically."
+        return $null
+    }
+}
+
+function Get-D4Process {
+    return @(Get-Process -Name "Diablo IV" -ErrorAction SilentlyContinue)
+}
+
+function Stop-D4ProcessIfRunning {
+    $diabloProcesses = Get-D4Process
+    if (-not $diabloProcesses -or $diabloProcesses.Count -eq 0) {
+        return
+    }
+
+    Start-Step "Closing Diablo IV"
+    Write-WarnLine "Diablo IV is currently running. It needs to be closed before saapi64.dll can be replaced."
+
+    try {
+        $diabloProcesses | Stop-Process -Force -ErrorAction Stop
+        Write-OkLine "Closed Diablo IV."
+    }
+    catch {
+        Stop-WithError "Unable to close Diablo IV automatically. Please close the game and run install_dll.cmd again."
+    }
+
+    $maxWaitSeconds = 15
+    for ($i = 0; $i -lt $maxWaitSeconds; $i++) {
+        Start-Sleep -Seconds 1
+        $remainingProcesses = Get-D4Process
+        if (-not $remainingProcesses -or $remainingProcesses.Count -eq 0) {
+            return
+        }
+    }
+
+    $remainingProcessText = (Get-D4Process | ForEach-Object { "$($_.ProcessName) (PID $($_.Id))" }) -join ", "
+    if ([string]::IsNullOrWhiteSpace($remainingProcessText)) {
+        $remainingProcessText = "unknown process instance"
+    }
+
+    Write-WarnLine "Diablo IV is still shutting down."
+    Write-InfoLine "Remaining process: $remainingProcessText"
+    Write-InfoLine "Please wait a few seconds, make sure the game is fully closed, then run install_dll.cmd again."
+    Stop-WithError "Diablo IV is still running and saapi64.dll cannot be replaced yet."
+}
+
+function Read-D4InstallPathInteractively {
+    param(
+        [string]$ProvidedPath
+    )
+
+    $resolvedProvidedPath = Resolve-D4InstallPath -ProvidedPath $ProvidedPath
+    if ($resolvedProvidedPath) {
+        return $resolvedProvidedPath
+    }
+
+    Start-Step "Locating Diablo IV folder"
+    Write-InfoLine "To make installation easier, launch Diablo IV now."
+    Write-InfoLine "If the game is already running, this helper will try to grab the folder automatically."
+
+    while ($true) {
+        $runningPath = Get-D4InstallPathFromRunningProcess
+        if ($runningPath) {
+            $resolvedRunningPath = Resolve-D4InstallPath -ProvidedPath $runningPath
+            if ($resolvedRunningPath) {
+                Write-OkLine "Detected Diablo IV folder from the running game."
+                return $resolvedRunningPath
+            }
+        }
+
+        Write-Host ""
+        Write-Host "  Open Diablo IV, then press Enter to try auto-detect again." -ForegroundColor Cyan
+        $manualPath = Read-Host "  Or paste the folder that contains Diablo IV.exe"
+
+        if (-not [string]::IsNullOrWhiteSpace($manualPath)) {
+            $resolvedManualPath = Resolve-D4InstallPath -ProvidedPath $manualPath
+            if ($resolvedManualPath) {
+                return $resolvedManualPath
+            }
+
+            Write-InfoLine "Please open the game or paste the exact folder that contains Diablo IV.exe."
+            continue
+        }
+    }
 }
 
 function Install-LightweightSignTool {
@@ -153,7 +313,7 @@ function Resolve-SignTool {
     }
 
     $searchRoots = @(
-        (Join-Path $PSScriptRoot ".tools"),
+        (Join-Path $script:InstallerRoot ".tools"),
         "C:\Program Files (x86)\Windows Kits\10\bin\"
     )
 
@@ -180,25 +340,20 @@ function Resolve-SignTool {
     }
 
     Write-WarnLine "signtool.exe was not found locally. Switching to the lightweight Microsoft package."
-    return Install-LightweightSignTool -DestinationRoot (Join-Path $PSScriptRoot ".tools")
+    return Install-LightweightSignTool -DestinationRoot (Join-Path $script:InstallerRoot ".tools")
 }
 
 Write-UiBanner -Title "D4LF DLL Signing Helper" -Subtitle "Local signing for saapi64.dll"
-$d4_path = Resolve-D4InstallPath -ProvidedPath $d4_path
-$sourceDllPath = Join-Path $PSScriptRoot "saapi64.dll"
+$d4_path = Read-D4InstallPathInteractively -ProvidedPath $d4_path
+$sourceDllPath = Resolve-InstallerFilePath -RelativeCandidates @("saapi64.dll", "tts\saapi64.dll") -Description "saapi64.dll"
 
 Write-InfoLine "Diablo IV folder: $d4_path"
 if ($signtool_path) {
     Write-InfoLine "Requested signtool.exe: $signtool_path"
 }
 
-# -- 1. Validate and place the DLL ---------------------------------------------
 Start-Step "Validating Diablo IV folder"
 Write-OkLine "Found Diablo IV.exe in $d4_path"
-
-if (-not (Test-Path $sourceDllPath -PathType Leaf)) {
-    Stop-WithError "saapi64.dll was not found next to sign_dll.ps1. Re-extract the D4LF release zip and try again."
-}
 
 $dllPath = Join-Path $d4_path "saapi64.dll"
 $sourceDllResolved = (Resolve-Path $sourceDllPath).Path
@@ -211,12 +366,17 @@ if ($sourceDllResolved -eq $targetDllResolved) {
     Write-OkLine "saapi64.dll is already in the Diablo IV folder."
 }
 else {
+    Stop-D4ProcessIfRunning
     Write-InfoLine "Copying saapi64.dll into the Diablo IV folder..."
-    Copy-Item -Path $sourceDllPath -Destination $dllPath -Force
+    try {
+        Copy-Item -Path $sourceDllPath -Destination $dllPath -Force -ErrorAction Stop
+    }
+    catch {
+        Stop-WithError "Failed to copy saapi64.dll to $dllPath. $($_.Exception.Message)"
+    }
     Write-OkLine "saapi64.dll copied to $dllPath"
 }
 
-# -- 2. Create self-signed code-signing certificate (10-year validity) ---------
 Start-Step "Preparing code-signing certificate"
 $cert = Get-ChildItem -Path "Cert:\CurrentUser\My" |
     Where-Object { $_.Subject -eq "CN=Cert for D4LF" -and $_.HasPrivateKey } |
@@ -235,7 +395,6 @@ else {
     Write-OkLine "Certificate created: $($cert.Thumbprint)"
 }
 
-# -- 3. Copy cert to Trusted Root Certification Authorities --------------------
 Start-Step "Trusting the certificate for this Windows user"
 $rootStore = New-Object System.Security.Cryptography.X509Certificates.X509Store(
     [System.Security.Cryptography.X509Certificates.StoreName]::Root,
@@ -253,13 +412,11 @@ else {
 }
 $rootStore.Close()
 
-# -- 4. Locate signtool.exe ----------------------------------------------------
 Start-Step "Locating signtool.exe"
 $signtool = Resolve-SignTool -ProvidedPath $signtool_path
 Write-InfoLine "Using signtool.exe at:"
 Write-InfoLine $signtool
 
-# -- 5. Sign the DLL -----------------------------------------------------------
 Start-Step "Signing saapi64.dll"
 Write-InfoLine "Target DLL: $dllPath"
 $sig = Get-AuthenticodeSignature -FilePath $dllPath
