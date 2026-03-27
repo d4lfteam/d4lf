@@ -5,7 +5,6 @@ from pathlib import Path
 from src import __version__
 
 EXE_NAME = "d4lf.exe"
-RELEASE_DIR = Path("d4lf")
 
 
 def build(release_dir: Path):
@@ -63,28 +62,16 @@ if %errorlevel% == 1 (
     )
 
 
-def create_batch_for_install_dll(release_dir: Path):
-    return
-
-
-def prepare_release_dir(release_dir: Path):
+if __name__ == "__main__":
+    os.chdir(Path(__file__).parent)
+    print(f"Building version: {__version__}")
+    release_dir = Path("d4lf")
     if release_dir.exists():
         shutil.rmtree(release_dir.absolute())
     release_dir.mkdir(exist_ok=True, parents=True)
-
-
-def create_release_variant(release_dir: Path):
-    prepare_release_dir(release_dir)
+    clean_up()
     build(release_dir=release_dir)
     copy_additional_resources(release_dir)
     create_batch_for_consoleonly(release_dir=release_dir, exe_name=EXE_NAME)
     create_batch_for_autoupdater(release_dir=release_dir, exe_name=EXE_NAME)
-    create_batch_for_install_dll(release_dir=release_dir)
-
-
-if __name__ == "__main__":
-    os.chdir(Path(__file__).parent)
-    print(f"Building version: {__version__}")
-    clean_up()
-    create_release_variant(RELEASE_DIR)
     clean_up()
