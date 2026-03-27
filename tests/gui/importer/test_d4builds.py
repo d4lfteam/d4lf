@@ -33,51 +33,53 @@ URLS = [
 def test_extract_build_metadata_from_planner_header() -> None:
     data = lxml.html.fromstring("""
         <div class="builder__header">
-            <div class="builder__header__class">
-                <img class="builder__header__icon Necromancer" alt="Diablo 4 Necromancer">
-            </div>
             <div class="builder__header__title">
                 <div class="builder__header__selection builder__header__selection--planner">
                     <h1 class="builder__header__name">
+                        <span>Necromancer Build</span>
                         <form class="builder__header__form">
                             <input class="builder__header__input" value="Rob&#39;s Golem Minion Necro (S4) Pit 142+">
                         </form>
                     </h1>
                 </div>
-                <h2 class="builder__header__description">Necromancer Build</h2>
             </div>
             <div class="variant__navigation">
                 <input class="builder__variant__input" value="Standard Build">
             </div>
         </div>
+        <div class="builder__gear">
+            <div class="builder__dropdown__wrapper">
+                <div class="dropdown">
+                    <div class="dropdown__button">Season 4</div>
+                </div>
+            </div>
+        </div>
     """)
 
-    assert _extract_build_metadata(data, "Diablo 4 Necromancer Build · D4 Builds") == (
-        "Necromancer",
-        "S4 Rob's Golem Minion Necro Pit 142+",
-        "Standard Build",
-    )
+    assert _extract_build_metadata(data) == ("Necromancer", "S4 Rob's Golem Minion Necro Pit 142+", "Standard Build")
 
 
 def test_extract_build_metadata_prefers_description_for_guides() -> None:
     data = lxml.html.fromstring("""
-        <div class="builder__header">
-            <div class="builder__header__class">
-                <img class="builder__header__icon Paladin" alt="Diablo 4 Paladin">
-            </div>
+        <div class="builder">
+          <div class="builder__header">
             <h1 class="builder__header__name">Blessed Shield Paladin Build Guide - Diablo 4</h1>
             <h2 class="builder__header__description">Rob's Cpt. America (S12)</h2>
             <div class="variant__navigation">
                 <input class="builder__variant__input" value="Pit Push (Glasscannon)">
             </div>
+          </div>
+          <div class="builder__gear">
+            <div class="builder__dropdown__wrapper">
+                <div class="dropdown">
+                    <div class="dropdown__button">Season 12</div>
+                </div>
+            </div>
+          </div>
         </div>
     """)
 
-    assert _extract_build_metadata(data, "Blessed Shield Paladin Build Guide - Diablo 4 · D4 Builds") == (
-        "Paladin",
-        "S12 Rob's Cpt. America",
-        "Pit Push (Glasscannon)",
-    )
+    assert _extract_build_metadata(data) == ("Paladin", "S12 Rob's Cpt. America", "Pit Push (Glasscannon)")
 
 
 def test_extract_d4builds_season_number_from_gear_dropdown() -> None:
@@ -105,8 +107,14 @@ def test_apply_d4builds_season_to_build_header_prefixes_when_missing() -> None:
     assert _apply_d4builds_season_to_build_header("Chain Lightning Sorcerer", "12") == "S12 Chain Lightning Sorcerer"
 
 
-def test_apply_d4builds_season_to_build_header_moves_trailing_season_to_front() -> None:
-    assert _apply_d4builds_season_to_build_header("Lunging Strike Barb S12", "12") == "S12 Lunging Strike Barb"
+def test_apply_d4builds_season_to_build_header_keeps_existing_prefix() -> None:
+    assert _apply_d4builds_season_to_build_header("S12 Lunging Strike Barb", "12") == "S12 Lunging Strike Barb"
+
+
+def test_apply_d4builds_season_to_build_header_removes_matching_trailing_marker() -> None:
+    assert (
+        _apply_d4builds_season_to_build_header("Summon Golem Necromancer (S12)", "12") == "S12 Summon Golem Necromancer"
+    )
 
 
 @pytest.mark.parametrize("url", URLS)

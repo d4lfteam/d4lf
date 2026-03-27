@@ -1,3 +1,4 @@
+import json
 import os
 import typing
 from types import SimpleNamespace
@@ -10,8 +11,10 @@ from src.gui.importer.maxroll import (
     PLANNER_API_BASE_URL,
     _apply_guide_season_override,
     _extract_planner_url_and_id_from_guide,
+    _find_item_type,
     import_maxroll,
 )
+from src.item.data.item_type import ItemType
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -138,3 +141,68 @@ def test_extract_planner_url_and_id_from_guide_keeps_direct_embed_id(mocker: Moc
 
 def test_apply_guide_season_override_replaces_stale_short_marker() -> None:
     assert _apply_guide_season_override("S11 Crackling Energy Sorc", "12") == "S12 Crackling Energy Sorc"
+
+
+def test_find_item_type_uses_fix_weapon_type_with_slot_context() -> None:
+    assert (
+        _find_item_type(
+            mapping_data={"item-1": {"type": "2H Sword"}},
+            value="item-1",
+            slot_name="mainWeapon",
+            class_name="Barbarian",
+        )
+        == ItemType.Sword2H
+    )
+
+
+def test_find_item_type_uses_fix_offhand_type_with_slot_and_class_context() -> None:
+    assert (
+        _find_item_type(
+            mapping_data={"item-1": {"type": "FocusBookOffHand"}},
+            value="item-1",
+            slot_name="offHand",
+            class_name="Sorcerer",
+        )
+        == ItemType.Focus
+    )
+
+
+def test_find_item_type_uses_fix_offhand_type_when_item_type_implies_offhand() -> None:
+    assert (
+        _find_item_type(
+            mapping_data={"item-1": {"type": "1HFocus"}}, value="item-1", slot_name="weapon2", class_name="Sorcerer"
+        )
+        == ItemType.Focus
+    )
+
+
+def test_import_maxroll_keeps_custom_file_name_unchanged(mocker: MockerFixture) -> None:
+    build_data = {"items": {}, "profiles": [{"name": "Pit Push", "items": {}}]}
+
+    mocker.patch(
+        "src.gui.importer.maxroll.get_with_retry",
+        side_effect=[
+            SimpleNamespace(
+                json=lambda: {"data": json.dumps(build_data), "name": "Chain Lightning Sorcerer", "class": "Sorcerer"}
+            ),
+            SimpleNamespace(json=lambda: {"items": {}}),
+        ],
+    )
+    save_as_profile = mocker.patch("src.gui.importer.maxroll.save_as_profile", return_value="custom_name")
+    build_default_profile_file_name = mocker.patch("src.gui.importer.maxroll.build_default_profile_file_name")
+
+    config = ImportConfig(
+        url="https://maxroll.gg/d4/planner/example#1",
+        import_uniques=False,
+        import_aspect_upgrades=False,
+        add_to_profiles=False,
+        import_greater_affixes=False,
+        require_greater_affixes=False,
+        custom_file_name="my_custom_name",
+    )
+
+    import_maxroll(config=config)
+
+    save_as_profile.assert_called_once()
+    assert save_as_profile.call_args.kwargs["file_name"] == "my_custom_name"
+    build_default_profile_file_name.assert_not_called()

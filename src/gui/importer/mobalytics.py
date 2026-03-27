@@ -77,7 +77,7 @@ def import_mobalytics(config: ImportConfig):
 
     # This gets the name of the root document, ie the one that will contain the name of the build
     root_document_name = jsonpath.findall("$..['Diablo4Query:{}'].documents..data.__ref", full_script_data_json)[0]
-    season_number = _extract_mobalytics_season_number(full_script_data_json, root_document_name, raw_html_data)
+    season_number = _extract_mobalytics_season_number(full_script_data_json, root_document_name)
     build_header = jsonpath.findall(f"$..['{root_document_name}'].data.name", full_script_data_json)[0]
     if not build_header:
         LOGGER.error(msg := "No build name found")
@@ -234,7 +234,7 @@ def import_mobalytics(config: ImportConfig):
         profile.AspectUpgrades = aspect_upgrade_filters
 
     file_name = config.custom_file_name or build_default_profile_file_name(
-        url=url, class_name=class_name, build_header=build_header, variant_name=variant_name
+        url=url, class_name=class_name, build_header=build_name
     )
     # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
@@ -265,18 +265,15 @@ def _fix_input_url(url: str) -> str:
     return unquote(url)
 
 
-def _extract_mobalytics_season_number(
-    full_script_data_json: dict, root_document_name: str, data: lxml.html.HtmlElement
-) -> str:
+def _extract_mobalytics_season_number(full_script_data_json: dict, root_document_name: str) -> str:
     tag_names = jsonpath.findall(f"$..['{root_document_name}'].tags.data[*].name", full_script_data_json)
     for tag_name in tag_names:
         if season_match := re.search(r"\bSeason\s+(\d+)\b", str(tag_name), flags=re.IGNORECASE):
-            return season_match.group(1)
-
-    top_level_text = " ".join(data.text_content().split()).split("Build Overview", 1)[0]
-    if season_match := re.search(r"\bSeason\s+(\d+)\b", top_level_text, flags=re.IGNORECASE):
-        return season_match.group(1)
-    return ""
+            season_number = season_match.group(1)
+            break
+    else:
+        season_number = ""
+    return season_number
 
 
 def _apply_mobalytics_season_to_build_header(build_header: str, season_number: str) -> str:

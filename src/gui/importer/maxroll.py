@@ -17,6 +17,8 @@ from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_to_profiles,
     build_default_profile_file_name,
+    fix_offhand_type,
+    fix_weapon_type,
     get_with_retry,
     match_to_enum,
     retry_importer,
@@ -81,7 +83,7 @@ def import_maxroll(config: ImportConfig):
     finished_filters = []
     unique_filters = []
     aspect_upgrade_filters = []
-    for item_id in active_profile["items"].values():
+    for slot_name, item_id in active_profile["items"].items():
         resolved_item = items[str(item_id)]
         resolved_item_id = resolved_item["id"]
         # magic/rare = 0, legendary = 1, unique = 2, mythic = 4
@@ -108,7 +110,14 @@ def import_maxroll(config: ImportConfig):
             continue
 
         item_filter = ItemFilterModel()
-        if (item_type := _find_item_type(mapping_data=mapping_data["items"], value=resolved_item["id"])) is None:
+        if (
+            item_type := _find_item_type(
+                mapping_data=mapping_data["items"],
+                value=resolved_item["id"],
+                slot_name=slot_name,
+                class_name=all_data["class"],
+            )
+        ) is None:
             LOGGER.warning(
                 f"Couldn't find item type for {resolved_item['id']} from mapping data provided by Maxroll. Skipping item."
             )
@@ -181,11 +190,7 @@ def import_maxroll(config: ImportConfig):
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 
-    file_name = (
-        f"{config.custom_file_name}_{variant_name}"
-        if config.custom_file_name and variant_name
-        else config.custom_file_name
-    )
+    file_name = config.custom_file_name
     if not file_name:
         file_name = build_default_profile_file_name(
             url=url, class_name=all_data["class"], build_header=build_header, variant_name=variant_name
@@ -358,19 +363,32 @@ def _unique_name_special_handling(unique_name: str) -> str:
             return unique_name.replace("\xa0", " ")
 
 
-def _find_item_type(mapping_data: dict, value: str) -> ItemType | None:
+def _find_item_type(mapping_data: dict, value: str, slot_name: str = "", class_name: str = "") -> ItemType | None:
     for d_key, d_value in mapping_data.items():
         if d_key == value:
             item_type_str = d_value["type"]
-            if item_type_str.lower().replace(" ", "").replace("-", "") == "1hfocus":
-                return ItemType.Focus
-            if item_type_str == "FocusBookOffHand":
-                return ItemType.Focus
+            normalized_item_type_str = _normalize_item_type_str_for_import_helpers(item_type_str)
+            normalized_slot_name = slot_name.casefold()
+            if (item_type := fix_weapon_type(input_str=normalized_item_type_str)) is not None:
+                return item_type
+            if (
+                "offhand" in normalized_slot_name
+                or any(substring in normalized_item_type_str for substring in ["focus", "off hand", "shield", "totem"])
+            ) and (item_type := fix_offhand_type(input_str=normalized_item_type_str, class_str=class_name)) is not None:
+                return item_type
             if (res := match_to_enum(enum_class=ItemType, target_string=item_type_str, check_keys=True)) is None:
                 LOGGER.error("Couldn't match item type to enum")
                 return None
             return res
     return None
+
+
+def _normalize_item_type_str_for_import_helpers(item_type_str: str) -> str:
+    normalized_item_type = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", item_type_str)
+    normalized_item_type = re.sub(r"(?<=[A-Za-z])(?=[12]H\b)", " ", normalized_item_type)
+    normalized_item_type = normalized_item_type.replace("-", " ").lower()
+    normalized_item_type = " ".join(normalized_item_type.split())
+    return re.sub(r"\b([a-z]+)\s+(1h|2h)\b", r"\2 \1", normalized_item_type)
 
 
 def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int]:
@@ -394,6 +412,7 @@ def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int]:
 
 
 def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, str]:
+    """Resolve a build guide to the underlying planner API url, active profile id, and guide season."""
     try:
         r = get_with_retry(url=url)
     except ConnectionError as exc:
@@ -402,6 +421,7 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, str]:
     data = lxml.html.fromstring(r.text)
     guide_season = _extract_guide_season_number(data)
     if planner_link := _extract_planner_link_from_guide(data):
+        # Prefer the explicit "Open in Planner" link because its fragment already points at the active guide variant.
         api_url, build_id = _extract_planner_url_and_id_from_planner(planner_link)
         return api_url, build_id, guide_season
     msg = "Couldn't find planner url in build guide. Use planner link directly and report bug"
@@ -409,6 +429,7 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, str]:
         LOGGER.error(msg)
         raise MaxrollException(msg)
     try:
+        # Older guides only expose planner metadata on the embedded widget, so reconstruct the planner target from that.
         planner_id = embed[0].get("data-d4-profile")
         data_id = _extract_guide_profile_id(embed[0])
     except Exception as ex:
