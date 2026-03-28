@@ -7,11 +7,7 @@ import pytest
 
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.mobalytics import (
-    _apply_mobalytics_season_to_build_header,
-    _extract_mobalytics_season_number,
-    import_mobalytics,
-)
+from src.gui.importer.mobalytics import _extract_mobalytics_season_number, import_mobalytics
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -48,13 +44,7 @@ def test_extract_mobalytics_season_number_returns_empty_without_tag_metadata() -
     assert not _extract_mobalytics_season_number({}, "Document:1")
 
 
-def test_apply_mobalytics_season_to_build_header_prefixes_when_missing() -> None:
-    assert _apply_mobalytics_season_to_build_header("MrRonit's Charge Auradin", "12") == (
-        "S12 MrRonit's Charge Auradin"
-    )
-
-
-def test_import_mobalytics_uses_seasoned_build_name_for_default_file_name(mocker: MockerFixture) -> None:
+def test_import_mobalytics_uses_season_parameter_for_default_file_name(mocker: MockerFixture) -> None:
     full_script_data_json = {
         "Diablo4Query:{}": {"documents": {"data": {"__ref": "Document:1"}}},
         "Document:1": {

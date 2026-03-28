@@ -5,12 +5,7 @@ import lxml.html
 import pytest
 
 from src.dataloader import Dataloader
-from src.gui.importer.d4builds import (
-    _apply_d4builds_season_to_build_header,
-    _extract_build_metadata,
-    _extract_d4builds_season_number,
-    import_d4builds,
-)
+from src.gui.importer.d4builds import _extract_build_metadata, _extract_d4builds_season_number, import_d4builds
 from src.gui.importer.importer_config import ImportConfig
 
 if typing.TYPE_CHECKING:
@@ -56,7 +51,12 @@ def test_extract_build_metadata_from_planner_header() -> None:
         </div>
     """)
 
-    assert _extract_build_metadata(data) == ("Necromancer", "S4 Rob's Golem Minion Necro Pit 142+", "Standard Build")
+    assert _extract_build_metadata(data) == (
+        "Necromancer",
+        "Rob's Golem Minion Necro (S4) Pit 142+",
+        "4",
+        "Standard Build",
+    )
 
 
 def test_extract_build_metadata_prefers_description_for_guides() -> None:
@@ -79,7 +79,7 @@ def test_extract_build_metadata_prefers_description_for_guides() -> None:
         </div>
     """)
 
-    assert _extract_build_metadata(data) == ("Paladin", "S12 Rob's Cpt. America", "Pit Push (Glasscannon)")
+    assert _extract_build_metadata(data) == ("Paladin", "Rob's Cpt. America (S12)", "12", "Pit Push (Glasscannon)")
 
 
 def test_extract_d4builds_season_number_from_gear_dropdown() -> None:
@@ -101,20 +101,6 @@ def test_extract_d4builds_season_number_from_gear_dropdown() -> None:
     """)
 
     assert _extract_d4builds_season_number(data) == "12"
-
-
-def test_apply_d4builds_season_to_build_header_prefixes_when_missing() -> None:
-    assert _apply_d4builds_season_to_build_header("Chain Lightning Sorcerer", "12") == "S12 Chain Lightning Sorcerer"
-
-
-def test_apply_d4builds_season_to_build_header_keeps_existing_prefix() -> None:
-    assert _apply_d4builds_season_to_build_header("S12 Lunging Strike Barb", "12") == "S12 Lunging Strike Barb"
-
-
-def test_apply_d4builds_season_to_build_header_removes_matching_trailing_marker() -> None:
-    assert (
-        _apply_d4builds_season_to_build_header("Summon Golem Necromancer (S12)", "12") == "S12 Summon Golem Necromancer"
-    )
 
 
 @pytest.mark.parametrize("url", URLS)

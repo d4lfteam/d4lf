@@ -82,7 +82,6 @@ def import_mobalytics(config: ImportConfig):
     if not build_header:
         LOGGER.error(msg := "No build name found")
         raise MobalyticsException(msg)
-    build_header = _apply_mobalytics_season_to_build_header(build_header, season_number)
     class_name = jsonpath.findall(
         f"$..['{root_document_name}'].tags.data[?@.groupSlug=='class'].name", full_script_data_json
     )[0].lower()
@@ -234,7 +233,11 @@ def import_mobalytics(config: ImportConfig):
         profile.AspectUpgrades = aspect_upgrade_filters
 
     file_name = config.custom_file_name or build_default_profile_file_name(
-        url=url, class_name=class_name, build_header=build_name
+        source_name="mobalytics",
+        class_name=class_name,
+        season_number=season_number,
+        build_header=build_header,
+        variant_name=variant_name,
     )
     # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
@@ -274,17 +277,6 @@ def _extract_mobalytics_season_number(full_script_data_json: dict, root_document
     else:
         season_number = ""
     return season_number
-
-
-def _apply_mobalytics_season_to_build_header(build_header: str, season_number: str) -> str:
-    if not build_header or not season_number:
-        return build_header
-    if season_match := re.search(r"\bSeason\s+\d+\b", build_header, flags=re.IGNORECASE):
-        return re.sub(r"\bSeason\s+\d+\b", f"Season {season_number}", build_header, count=1, flags=re.IGNORECASE)
-    if season_match := re.search(r"\bS\d+\b", build_header, flags=re.IGNORECASE):
-        replacement = "S" if season_match.group(0).startswith("S") else "s"
-        return re.sub(r"\bS\d+\b", f"{replacement}{season_number}", build_header, count=1, flags=re.IGNORECASE)
-    return f"S{season_number} {build_header}"
 
 
 def _get_legendary_aspect(name: str) -> str:

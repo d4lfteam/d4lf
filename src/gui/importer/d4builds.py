@@ -86,7 +86,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         5
     )  # super hacky but I didn't find anything else. The page is not fully loaded when the above wait is done
     data = lxml.html.fromstring(driver.page_source)
-    class_name, build_header, variant_name = _extract_build_metadata(data=data)
+    class_name, build_header, season_number, variant_name = _extract_build_metadata(data=data)
     build_name = build_header or class_name
     if not (items := data.xpath(BUILD_OVERVIEW_XPATH)):
         LOGGER.error(msg := "No items found")
@@ -211,7 +211,11 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         profile.AspectUpgrades = aspect_upgrade_filters
 
     file_name = config.custom_file_name or build_default_profile_file_name(
-        url=url, class_name=class_name, build_header=build_header, variant_name=variant_name
+        source_name="d4builds",
+        class_name=class_name,
+        season_number=season_number,
+        build_header=build_header,
+        variant_name=variant_name,
     )
 
     # Optionally embed Paragon data into the profile model before saving
@@ -243,43 +247,28 @@ def _corrections(input_str: str) -> str:
     return input_str
 
 
-def _extract_build_metadata(data: lxml.html.HtmlElement) -> tuple[str, str, str]:
-    class_name = _extract_class_name(data=data)
-    build_header = _extract_build_header(data=data)
-    season_number = _extract_d4builds_season_number(data=data)
-    build_header = _apply_d4builds_season_to_build_header(build_header=build_header, season_number=season_number)
-    variant_name = _extract_variant_name(data=data)
-    return class_name, build_header, variant_name
-
-
-def _extract_class_name(data: lxml.html.HtmlElement) -> str:
+def _extract_build_metadata(data: lxml.html.HtmlElement) -> tuple[str, str, str, str]:
+    class_name = "Unknown"
     if header_nodes := data.xpath(CLASS_XPATH):
         class_name = get_class_name(" ".join(header_nodes[0].text_content().split()))
-        if class_name != "Unknown":
-            return class_name
-    return "Unknown"
+    build_header = _extract_build_header(data=data)
+    season_number = _extract_d4builds_season_number(data=data)
+    variant_name = _extract_variant_name(data=data)
+    return class_name, build_header, season_number, variant_name
 
 
 def _extract_build_header(data: lxml.html.HtmlElement) -> str:
-    if not (header_nodes := data.xpath(CLASS_XPATH)):
-        return ""
-
-    header_name = _get_header_name_text(header_nodes[0])
-    if header_name.casefold().endswith("build guide - diablo 4") and (
-        description_nodes := data.xpath(BUILD_DESCRIPTION_XPATH)
-    ):
+    if description_nodes := data.xpath(BUILD_DESCRIPTION_XPATH):
         description = " ".join(description_nodes[0].text_content().split())
         if description:
             return description
-    return header_name
-
-
-def _get_header_name_text(header_node: lxml.html.HtmlElement) -> str:
-    if input_nodes := header_node.xpath(BUILD_HEADER_INPUT_XPATH):
+    if input_nodes := data.xpath(BUILD_HEADER_INPUT_XPATH):
         input_value = str(input_nodes[0].get("value") or "").strip()
         if input_value:
             return input_value
-    return " ".join(header_node.text_content().split())
+    if header_nodes := data.xpath(CLASS_XPATH):
+        return " ".join(header_nodes[0].text_content().split())
+    return ""
 
 
 def _extract_variant_name(data: lxml.html.HtmlElement) -> str:
@@ -297,30 +286,6 @@ def _extract_d4builds_season_number(data: lxml.html.HtmlElement) -> str:
     if season_match := re.search(r"\bSeason\s+(\d+)\b", season_text, flags=re.IGNORECASE):
         return season_match.group(1)
     return ""
-
-
-def _apply_d4builds_season_to_build_header(build_header: str, season_number: str) -> str:
-    if not build_header or not season_number:
-        return build_header
-    normalized_build_header = " ".join(build_header.split())
-    if normalized_build_header.casefold().startswith(f"s{season_number} "):
-        return normalized_build_header
-    normalized_build_header = re.sub(
-        rf"\(\s*(?:S{re.escape(season_number)}|Season\s+{re.escape(season_number)})\s*\)",
-        "",
-        normalized_build_header,
-        count=1,
-        flags=re.IGNORECASE,
-    )
-    normalized_build_header = re.sub(
-        rf"\b(?:S{re.escape(season_number)}|Season\s+{re.escape(season_number)})\b",
-        "",
-        normalized_build_header,
-        count=1,
-        flags=re.IGNORECASE,
-    )
-    normalized_build_header = re.sub(r"\s+", " ", normalized_build_header).strip(" -_:")
-    return f"S{season_number} {normalized_build_header}"
 
 
 def _get_item_slots(data: lxml.html.HtmlElement) -> dict[str, str]:

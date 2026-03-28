@@ -9,6 +9,7 @@ from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.maxroll import (
     PLANNER_API_BASE_URL,
+    MaxrollException,
     _apply_guide_season_override,
     _extract_planner_url_and_id_from_guide,
     _find_item_type,
@@ -137,6 +138,26 @@ def test_extract_planner_url_and_id_from_guide_keeps_direct_embed_id(mocker: Moc
     assert planner_url == f"{PLANNER_API_BASE_URL}411y2000"
     assert build_id == 4
     assert guide_season == "12"
+
+
+def test_extract_planner_url_and_id_from_guide_reports_bug_for_missing_embed_profile_id(mocker: MockerFixture) -> None:
+    html = """
+    <html>
+      <body>
+        <h1>Example Build Guide - Season 12 - Slaughter</h1>
+        <div class="d4-embed" data-d4-profile="411y2000" data-d4-type="paperdoll"></div>
+      </body>
+    </html>
+    """
+    mocker.patch("src.gui.importer.maxroll.get_with_retry", return_value=SimpleNamespace(text=html))
+
+    with pytest.raises(MaxrollException) as exc_info:
+        _extract_planner_url_and_id_from_guide("https://maxroll.gg/d4/build-guides/example")
+
+    assert str(exc_info.value) == (
+        "Couldn't resolve a planner profile from this Maxroll build guide. Use the planner link directly and "
+        "please report a bug."
+    )
 
 
 def test_apply_guide_season_override_replaces_stale_short_marker() -> None:

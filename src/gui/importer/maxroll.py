@@ -193,7 +193,11 @@ def import_maxroll(config: ImportConfig):
     file_name = config.custom_file_name
     if not file_name:
         file_name = build_default_profile_file_name(
-            url=url, class_name=all_data["class"], build_header=build_header, variant_name=variant_name
+            source_name="maxroll",
+            class_name=all_data["class"],
+            season_number=guide_season,
+            build_header=build_header,
+            variant_name=variant_name,
         )
 
     # Optionally embed Paragon data into the profile model before saving
@@ -420,11 +424,12 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, str]:
         raise MaxrollException(msg) from exc
     data = lxml.html.fromstring(r.text)
     guide_season = _extract_guide_season_number(data)
-    if planner_link := _extract_planner_link_from_guide(data):
+    planner_links = data.xpath(BUILD_GUIDE_PLANNER_LINK_XPATH)
+    if planner_links and (planner_link := planner_links[0].get("href")):
         # Prefer the explicit "Open in Planner" link because its fragment already points at the active guide variant.
         api_url, build_id = _extract_planner_url_and_id_from_planner(planner_link)
         return api_url, build_id, guide_season
-    msg = "Couldn't find planner url in build guide. Use planner link directly and report bug"
+    msg = "Couldn't resolve a planner profile from this Maxroll build guide. Use the planner link directly and please report a bug."
     if not (embed := data.xpath(BUILD_GUIDE_PLANNER_EMBED_XPATH)):
         LOGGER.error(msg)
         raise MaxrollException(msg)
@@ -436,13 +441,6 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, str]:
         LOGGER.exception(msg)
         raise MaxrollException(msg) from ex
     return PLANNER_API_BASE_URL + planner_id, data_id, guide_season
-
-
-def _extract_planner_link_from_guide(data: lxml.html.HtmlElement) -> str:
-    planner_links = data.xpath(BUILD_GUIDE_PLANNER_LINK_XPATH)
-    if not planner_links:
-        return ""
-    return planner_links[0].get("href") or ""
 
 
 def _extract_guide_season_number(data: lxml.html.HtmlElement) -> str:
@@ -482,7 +480,7 @@ def _extract_guide_profile_id(embed: lxml.html.HtmlElement) -> int:
         ):
             return guide_profile_ids[active_tab_index] - 1
         return guide_profile_ids[0] - 1
-    msg = "Couldn't find profile id in build guide embed"
+    msg = "Couldn't resolve a planner profile from this Maxroll build guide embed."
     raise ValueError(msg)
 
 
