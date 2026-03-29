@@ -79,6 +79,15 @@ def import_maxroll(config: ImportConfig):
         build_name = all_data["class"]
     if variant_name:
         build_name += f"_{variant_name}"
+    if guide_season and (season_match := re.search(r"\bSeason\s+\d+\b|\bS\d+\b", build_name, flags=re.IGNORECASE)):
+        existing_label = season_match.group(0)
+        if existing_label.casefold().startswith("season"):
+            prefix = "Season" if existing_label.startswith("Season") else "season"
+            replacement = f"{prefix} {guide_season}"
+        else:
+            prefix = "S" if existing_label.startswith("S") else "s"
+            replacement = f"{prefix}{guide_season}"
+        build_name = build_name[: season_match.start()] + replacement + build_name[season_match.end() :]
     finished_filters = []
     unique_filters = []
     aspect_upgrade_filters = []
@@ -203,22 +212,8 @@ def import_maxroll(config: ImportConfig):
     if config.export_paragon:
         steps = extract_maxroll_paragon_steps(active_profile)
         if steps:
-            paragon_build_name = build_name
-            if guide_season and (
-                season_match := re.search(r"\bSeason\s+\d+\b|\bS\d+\b", paragon_build_name, flags=re.IGNORECASE)
-            ):
-                existing_label = season_match.group(0)
-                if existing_label.casefold().startswith("season"):
-                    prefix = "Season" if existing_label.startswith("Season") else "season"
-                    replacement = f"{prefix} {guide_season}"
-                else:
-                    prefix = "S" if existing_label.startswith("S") else "s"
-                    replacement = f"{prefix}{guide_season}"
-                paragon_build_name = (
-                    paragon_build_name[: season_match.start()] + replacement + paragon_build_name[season_match.end() :]
-                )
             profile.Paragon = build_paragon_profile_payload(
-                build_name=paragon_build_name, source_url=url, paragon_boards_list=steps
+                build_name=build_name, source_url=url, paragon_boards_list=steps
             )
         else:
             LOGGER.warning("Paragon export enabled, but no paragon steps were found in this Maxroll profile.")
