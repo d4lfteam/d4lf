@@ -295,13 +295,16 @@ def _get_legendary_aspect(name: str) -> str:
 def _convert_raw_to_affixes(raw_stats: list[dict], import_greater_affixes=False) -> list[Affix]:
     result = []
     for stat in raw_stats:
-        affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=stat["id"])), Dataloader().affix_dict))
-        if affix_obj.name is None:
-            LOGGER.error(f"Couldn't match {stat=}")
-            continue
-        if import_greater_affixes and stat.get("isGreater", False):
-            affix_obj.type = AffixType.greater
-        result.append(affix_obj)
+        if stat:
+            affix_obj = Affix(
+                name=closest_match(clean_str(_corrections(input_str=stat["id"])), Dataloader().affix_dict)
+            )
+            if affix_obj.name is None:
+                LOGGER.error(f"Couldn't match {stat=}")
+                continue
+            if import_greater_affixes and stat.get("isGreater", False):
+                affix_obj.type = AffixType.greater
+            result.append(affix_obj)
     return result
 
 
