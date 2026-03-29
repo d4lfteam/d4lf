@@ -16,6 +16,9 @@ from src.config.models import (
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_to_profiles,
+    build_default_profile_file_name,
+    fix_offhand_type,
+    fix_weapon_type,
     get_with_retry,
     match_to_enum,
     retry_importer,
@@ -36,6 +39,7 @@ BUILD_GUIDE_PLANNER_EMBED_XPATH = "//*[contains(@class, 'd4-embed')]"
 PLANNER_API_BASE_URL = "https://planners.maxroll.gg/profiles/d4/"
 PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?7659ec67"
 PLANNER_BASE_URL = "https://maxroll.gg/d4/planner/"
+BUILD_GUIDE_PLANNER_LINK_XPATH = f"//a[starts-with(@href, '{PLANNER_BASE_URL}') and contains(@href, '#')]"
 
 
 class MaxrollException(Exception):
@@ -49,18 +53,17 @@ def import_maxroll(config: ImportConfig):
         LOGGER.error("Invalid url, please use a maxroll build guide or maxroll planner url")
         return
     LOGGER.info(f"Loading {url}")
-    api_url, build_id = (
-        _extract_planner_url_and_id_from_guide(url)
-        if BUILD_GUIDE_BASE_URL in url
-        else _extract_planner_url_and_id_from_planner(url)
-    )
+    if BUILD_GUIDE_BASE_URL in url:
+        api_url, build_id, guide_season = _extract_planner_url_and_id_from_guide(url)
+    else:
+        api_url, build_id = _extract_planner_url_and_id_from_planner(url)
+        guide_season = ""
     try:
         r = get_with_retry(url=api_url)
     except ConnectionError:
         LOGGER.error("Couldn't get planner")
         return
     all_data = r.json()
-    build_name = all_data["name"]
     build_data = json.loads(all_data["data"])
     items = build_data["items"]
     try:
@@ -69,10 +72,26 @@ def import_maxroll(config: ImportConfig):
         LOGGER.error("Couldn't get planner data")
         return
     active_profile = build_data["profiles"][build_id]
+    build_header = all_data["name"] or all_data["class"]
+    variant_name = active_profile["name"] or ""
+    build_name = build_header
+    if not build_name:
+        build_name = all_data["class"]
+    if variant_name:
+        build_name += f"_{variant_name}"
+    if guide_season and (season_match := re.search(r"\bSeason\s+\d+\b|\bS\d+\b", build_name, flags=re.IGNORECASE)):
+        existing_label = season_match.group(0)
+        if existing_label.casefold().startswith("season"):
+            prefix = "Season" if existing_label.startswith("Season") else "season"
+            replacement = f"{prefix} {guide_season}"
+        else:
+            prefix = "S" if existing_label.startswith("S") else "s"
+            replacement = f"{prefix}{guide_season}"
+        build_name = build_name[: season_match.start()] + replacement + build_name[season_match.end() :]
     finished_filters = []
     unique_filters = []
     aspect_upgrade_filters = []
-    for item_id in active_profile["items"].values():
+    for slot_name, item_id in active_profile["items"].items():
         resolved_item = items[str(item_id)]
         resolved_item_id = resolved_item["id"]
         # magic/rare = 0, legendary = 1, unique = 2, mythic = 4
@@ -99,7 +118,14 @@ def import_maxroll(config: ImportConfig):
             continue
 
         item_filter = ItemFilterModel()
-        if (item_type := _find_item_type(mapping_data=mapping_data["items"], value=resolved_item["id"])) is None:
+        if (
+            item_type := _find_item_type(
+                mapping_data=mapping_data["items"],
+                value=resolved_item["id"],
+                slot_name=slot_name,
+                class_name=all_data["class"],
+            )
+        ) is None:
             LOGGER.warning(
                 f"Couldn't find item type for {resolved_item['id']} from mapping data provided by Maxroll. Skipping item."
             )
@@ -172,13 +198,15 @@ def import_maxroll(config: ImportConfig):
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 
-    if config.custom_file_name:
-        build_name = config.custom_file_name
-
-    if not build_name:
-        build_name = all_data["class"]
-    if active_profile["name"]:
-        build_name += f"_{active_profile['name']}"
+    file_name = config.custom_file_name
+    if not file_name:
+        file_name = build_default_profile_file_name(
+            source_name="maxroll",
+            class_name=all_data["class"],
+            season_number=guide_season,
+            build_header=build_header,
+            variant_name=variant_name,
+        )
 
     # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
@@ -190,7 +218,7 @@ def import_maxroll(config: ImportConfig):
         else:
             LOGGER.warning("Paragon export enabled, but no paragon steps were found in this Maxroll profile.")
 
-    corrected_file_name = save_as_profile(file_name=build_name, profile=profile, url=url)
+    corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
 
     if config.add_to_profiles:
         add_to_profiles(corrected_file_name)
@@ -347,14 +375,32 @@ def _unique_name_special_handling(unique_name: str) -> str:
             return unique_name.replace("\xa0", " ")
 
 
-def _find_item_type(mapping_data: dict, value: str) -> ItemType | None:
+def _find_item_type(mapping_data: dict, value: str, slot_name: str = "", class_name: str = "") -> ItemType | None:
     for d_key, d_value in mapping_data.items():
         if d_key == value:
-            if (res := match_to_enum(enum_class=ItemType, target_string=d_value["type"], check_keys=True)) is None:
+            item_type_str = d_value["type"]
+            normalized_item_type_str = _normalize_item_type_str_for_import_helpers(item_type_str)
+            normalized_slot_name = slot_name.casefold()
+            if (item_type := fix_weapon_type(input_str=normalized_item_type_str)) is not None:
+                return item_type
+            if (
+                "offhand" in normalized_slot_name
+                or any(substring in normalized_item_type_str for substring in ["focus", "off hand", "shield", "totem"])
+            ) and (item_type := fix_offhand_type(input_str=normalized_item_type_str, class_str=class_name)) is not None:
+                return item_type
+            if (res := match_to_enum(enum_class=ItemType, target_string=item_type_str, check_keys=True)) is None:
                 LOGGER.error("Couldn't match item type to enum")
                 return None
             return res
     return None
+
+
+def _normalize_item_type_str_for_import_helpers(item_type_str: str) -> str:
+    normalized_item_type = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", item_type_str)
+    normalized_item_type = re.sub(r"(?<=[A-Za-z])(?=[12]H\b)", " ", normalized_item_type)
+    normalized_item_type = normalized_item_type.replace("-", " ").lower()
+    normalized_item_type = " ".join(normalized_item_type.split())
+    return re.sub(r"\b([a-z]+)\s+(1h|2h)\b", r"\2 \1", normalized_item_type)
 
 
 def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int]:
@@ -377,27 +423,61 @@ def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int]:
     return PLANNER_API_BASE_URL + planner_id, data_id
 
 
-def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int]:
+def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, str]:
+    """Resolve a build guide to the underlying planner API url, active profile id, and guide season."""
     try:
         r = get_with_retry(url=url)
     except ConnectionError as exc:
         LOGGER.exception(msg := "Couldn't get build guide")
         raise MaxrollException(msg) from exc
     data = lxml.html.fromstring(r.text)
-    msg = "Couldn't find planner url in build guide. Use planner link directly and report bug"
+    guide_season = _extract_guide_season_number(data)
+    planner_links = data.xpath(BUILD_GUIDE_PLANNER_LINK_XPATH)
+    if planner_links and (planner_link := planner_links[0].get("href")):
+        # Prefer the explicit "Open in Planner" link because its fragment already points at the active guide variant.
+        api_url, build_id = _extract_planner_url_and_id_from_planner(planner_link)
+        return api_url, build_id, guide_season
+    msg = "Couldn't resolve a planner profile from this Maxroll build guide. Use the planner link directly and please report a bug."
     if not (embed := data.xpath(BUILD_GUIDE_PLANNER_EMBED_XPATH)):
         LOGGER.error(msg)
         raise MaxrollException(msg)
     try:
-        planner_id = embed[0].get("data-d4-profile")
-        if "data-d4-id" in embed[0]:
-            data_id = int(embed[0].get("data-d4-id").split(",")[0]) - 1
-        else:
-            data_id = int(embed[0].get("data-d4-data").split(",")[0]) - 1
-    except Exception as ex:
+        # Older guides only expose planner metadata on the embedded widget, so reconstruct the planner target from that.
+        data_id = _extract_guide_profile_id(embed[0])
+    except ValueError as ex:
         LOGGER.exception(msg)
         raise MaxrollException(msg) from ex
-    return PLANNER_API_BASE_URL + planner_id, data_id
+    if not (planner_id := embed[0].get("data-d4-profile")) or data_id is None:
+        LOGGER.error(msg)
+        raise MaxrollException(msg)
+    return PLANNER_API_BASE_URL + planner_id, data_id, guide_season
+
+
+def _extract_guide_season_number(data: lxml.html.HtmlElement) -> str:
+    for text in (data.xpath("string(//h1[1])").strip(), data.xpath("string(//title)").strip()):
+        if season_match := re.search(r"\bSeason\s+(\d+)\b", text, flags=re.IGNORECASE):
+            return season_match.group(1)
+    return ""
+
+
+def _extract_guide_profile_id(embed: lxml.html.HtmlElement) -> int | None:
+    if data_id := embed.get("data-d4-id"):
+        return int(data_id.split(",")[0]) - 1
+    if data_ids := embed.get("data-d4-data"):
+        guide_profile_ids = [int(value) for value in data_ids.split(",") if value]
+        if (active_tab_index := _extract_active_guide_embed_tab_index(embed)) is not None and active_tab_index < len(
+            guide_profile_ids
+        ):
+            return guide_profile_ids[active_tab_index] - 1
+        return guide_profile_ids[0] - 1
+    return None
+
+
+def _extract_active_guide_embed_tab_index(embed: lxml.html.HtmlElement) -> int | None:
+    for index, tab in enumerate(embed.xpath(".//*[contains(@class, 'd4t-tabs')]/li")):
+        if "d4t-active" in (tab.get("class") or ""):
+            return index
+    return None
 
 
 if __name__ == "__main__":
