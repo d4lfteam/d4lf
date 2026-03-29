@@ -25,7 +25,7 @@ def clean_up():
 def copy_additional_resources(release_dir: Path):
     (release_dir / "tts").mkdir()
     shutil.copy("README.md", release_dir)
-    shutil.copy("tts/saapi64.dll", release_dir / "tts")
+    shutil.copy("tts/saapi64.dll", release_dir)
     shutil.copytree("assets", release_dir / "assets")
     shutil.copy("tts/install_dll.cmd", release_dir)
 
