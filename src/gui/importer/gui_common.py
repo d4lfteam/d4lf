@@ -125,13 +125,11 @@ def build_default_profile_file_name(
 ) -> str:
     normalized_source_name = _normalize_profile_name_part(source_name) or "imported"
     clean_title = _clean_build_header(normalized_source_name, build_header, season_number)
-    normalized_class_name = _normalize_profile_name_part(class_name)
+    normalized_class_name = _normalize_profile_name_part(class_name) or "unknown"
     normalized_variant_name = _normalize_profile_name_part(variant_name)
     season_match = re.search(r"\d+", str(season_number))
     normalized_season_name = f"s{season_match.group(0)}" if season_match else ""
-    file_name_parts = [normalized_source_name]
-    if normalized_class_name and normalized_class_name != "unknown":
-        file_name_parts.append(normalized_class_name)
+    file_name_parts = [normalized_source_name, normalized_class_name]
     if normalized_season_name:
         file_name_parts.append(normalized_season_name)
     if clean_title:
@@ -155,28 +153,10 @@ def _clean_build_header(source_name: str, build_header: str, season_number: str 
                 clean_header = clean_header.removesuffix(suffix)
                 break
 
-    if season_match := re.search(r"\d+", str(season_number)):
-        clean_header = re.sub(
-            rf"^\s*(?:S{season_match.group(0)}|Season\s+{season_match.group(0)})\b",
-            "",
-            clean_header,
-            count=1,
-            flags=re.IGNORECASE,
-        )
-        clean_header = re.sub(
-            rf"\(\s*(?:S{season_match.group(0)}|Season\s+{season_match.group(0)})\s*\)",
-            "",
-            clean_header,
-            count=1,
-            flags=re.IGNORECASE,
-        )
-        clean_header = re.sub(
-            rf"\b(?:S{season_match.group(0)}|Season\s+{season_match.group(0)})\b",
-            "",
-            clean_header,
-            count=1,
-            flags=re.IGNORECASE,
-        )
+    if re.search(r"\d+", str(season_number)):
+        clean_header = re.sub(r"^\s*(?:S\d+|Season\s+\d+)\b", "", clean_header, count=1, flags=re.IGNORECASE)
+        clean_header = re.sub(r"\(\s*(?:S\d+|Season\s+\d+)\s*\)", "", clean_header, flags=re.IGNORECASE)
+        clean_header = re.sub(r"\b(?:S\d+|Season\s+\d+)\b", "", clean_header, flags=re.IGNORECASE)
     return re.sub(r"\s+", " ", clean_header).strip(" -_:")
 
 

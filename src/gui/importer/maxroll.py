@@ -72,8 +72,7 @@ def import_maxroll(config: ImportConfig):
         LOGGER.error("Couldn't get planner data")
         return
     active_profile = build_data["profiles"][build_id]
-    # Guide headings are sometimes newer than the embedded planner title, so only patch the season marker.
-    build_header = _apply_guide_season_override(all_data["name"] or all_data["class"], guide_season)
+    build_header = all_data["name"] or all_data["class"]
     variant_name = active_profile["name"] or ""
     build_name = build_header
     if not build_name:
@@ -204,8 +203,22 @@ def import_maxroll(config: ImportConfig):
     if config.export_paragon:
         steps = extract_maxroll_paragon_steps(active_profile)
         if steps:
+            paragon_build_name = build_name
+            if guide_season and (
+                season_match := re.search(r"\bSeason\s+\d+\b|\bS\d+\b", paragon_build_name, flags=re.IGNORECASE)
+            ):
+                existing_label = season_match.group(0)
+                if existing_label.casefold().startswith("season"):
+                    prefix = "Season" if existing_label.startswith("Season") else "season"
+                    replacement = f"{prefix} {guide_season}"
+                else:
+                    prefix = "S" if existing_label.startswith("S") else "s"
+                    replacement = f"{prefix}{guide_season}"
+                paragon_build_name = (
+                    paragon_build_name[: season_match.start()] + replacement + paragon_build_name[season_match.end() :]
+                )
             profile.Paragon = build_paragon_profile_payload(
-                build_name=build_name, source_url=url, paragon_boards_list=steps
+                build_name=paragon_build_name, source_url=url, paragon_boards_list=steps
             )
         else:
             LOGGER.warning("Paragon export enabled, but no paragon steps were found in this Maxroll profile.")
@@ -435,11 +448,13 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, str]:
         raise MaxrollException(msg)
     try:
         # Older guides only expose planner metadata on the embedded widget, so reconstruct the planner target from that.
-        planner_id = embed[0].get("data-d4-profile")
         data_id = _extract_guide_profile_id(embed[0])
-    except Exception as ex:
+    except ValueError as ex:
         LOGGER.exception(msg)
         raise MaxrollException(msg) from ex
+    if not (planner_id := embed[0].get("data-d4-profile")) or data_id is None:
+        LOGGER.error(msg)
+        raise MaxrollException(msg)
     return PLANNER_API_BASE_URL + planner_id, data_id, guide_season
 
 
@@ -450,27 +465,7 @@ def _extract_guide_season_number(data: lxml.html.HtmlElement) -> str:
     return ""
 
 
-def _apply_guide_season_override(build_header: str, guide_season: str) -> str:
-    if not guide_season:
-        return build_header
-    if season_match := re.search(r"\bSeason\s+\d+\b", build_header, flags=re.IGNORECASE):
-        replacement = _format_guide_season_replacement(season_match.group(0), guide_season)
-        return re.sub(r"\bSeason\s+\d+\b", replacement, build_header, count=1, flags=re.IGNORECASE)
-    if season_match := re.search(r"\bS\d+\b", build_header, flags=re.IGNORECASE):
-        replacement = _format_guide_season_replacement(season_match.group(0), guide_season)
-        return re.sub(r"\bS\d+\b", replacement, build_header, count=1, flags=re.IGNORECASE)
-    return build_header
-
-
-def _format_guide_season_replacement(existing_label: str, guide_season: str) -> str:
-    if existing_label.casefold().startswith("season"):
-        prefix = "Season" if existing_label.startswith("Season") else "season"
-        return f"{prefix} {guide_season}"
-    prefix = "S" if existing_label.startswith("S") else "s"
-    return f"{prefix}{guide_season}"
-
-
-def _extract_guide_profile_id(embed: lxml.html.HtmlElement) -> int:
+def _extract_guide_profile_id(embed: lxml.html.HtmlElement) -> int | None:
     if data_id := embed.get("data-d4-id"):
         return int(data_id.split(",")[0]) - 1
     if data_ids := embed.get("data-d4-data"):
@@ -480,8 +475,7 @@ def _extract_guide_profile_id(embed: lxml.html.HtmlElement) -> int:
         ):
             return guide_profile_ids[active_tab_index] - 1
         return guide_profile_ids[0] - 1
-    msg = "Couldn't resolve a planner profile from this Maxroll build guide embed."
-    raise ValueError(msg)
+    return None
 
 
 def _extract_active_guide_embed_tab_index(embed: lxml.html.HtmlElement) -> int | None:

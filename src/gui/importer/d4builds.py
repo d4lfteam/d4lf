@@ -251,24 +251,14 @@ def _extract_build_metadata(data: lxml.html.HtmlElement) -> tuple[str, str, str,
     class_name = "Unknown"
     if header_nodes := data.xpath(CLASS_XPATH):
         class_name = get_class_name(" ".join(header_nodes[0].text_content().split()))
-    build_header = _extract_build_header(data=data)
+    build_header = ""
+    if description_nodes := data.xpath(BUILD_DESCRIPTION_XPATH):
+        build_header = " ".join(description_nodes[0].text_content().split())
+    elif input_nodes := data.xpath(BUILD_HEADER_INPUT_XPATH):
+        build_header = str(input_nodes[0].get("value") or "").strip()
     season_number = _extract_d4builds_season_number(data=data)
     variant_name = _extract_variant_name(data=data)
     return class_name, build_header, season_number, variant_name
-
-
-def _extract_build_header(data: lxml.html.HtmlElement) -> str:
-    if description_nodes := data.xpath(BUILD_DESCRIPTION_XPATH):
-        description = " ".join(description_nodes[0].text_content().split())
-        if description:
-            return description
-    if input_nodes := data.xpath(BUILD_HEADER_INPUT_XPATH):
-        input_value = str(input_nodes[0].get("value") or "").strip()
-        if input_value:
-            return input_value
-    if header_nodes := data.xpath(CLASS_XPATH):
-        return " ".join(header_nodes[0].text_content().split())
-    return ""
 
 
 def _extract_variant_name(data: lxml.html.HtmlElement) -> str:

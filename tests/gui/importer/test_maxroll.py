@@ -10,7 +10,6 @@ from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.maxroll import (
     PLANNER_API_BASE_URL,
     MaxrollException,
-    _apply_guide_season_override,
     _extract_planner_url_and_id_from_guide,
     _find_item_type,
     import_maxroll,
@@ -160,8 +159,40 @@ def test_extract_planner_url_and_id_from_guide_reports_bug_for_missing_embed_pro
     )
 
 
-def test_apply_guide_season_override_replaces_stale_short_marker() -> None:
-    assert _apply_guide_season_override("S11 Crackling Energy Sorc", "12") == "S12 Crackling Energy Sorc"
+def test_import_maxroll_keeps_guide_season_in_paragon_name(mocker: MockerFixture) -> None:
+    build_data = {"items": {}, "profiles": [{"name": "Pit Push", "items": {}}]}
+
+    mocker.patch(
+        "src.gui.importer.maxroll._extract_planner_url_and_id_from_guide",
+        return_value=("https://planners.maxroll.gg/profiles/d4/example", 0, "12"),
+    )
+    mocker.patch(
+        "src.gui.importer.maxroll.get_with_retry",
+        side_effect=[
+            SimpleNamespace(
+                json=lambda: {"data": json.dumps(build_data), "name": "S11 Crackling Energy Sorc", "class": "Sorcerer"}
+            ),
+            SimpleNamespace(json=lambda: {"items": {}}),
+        ],
+    )
+    mocker.patch("src.gui.importer.maxroll.extract_maxroll_paragon_steps", return_value=[[{"Name": "Start"}]])
+    save_as_profile = mocker.patch("src.gui.importer.maxroll.save_as_profile", return_value="saved_profile")
+
+    config = ImportConfig(
+        url="https://maxroll.gg/d4/build-guides/example",
+        import_uniques=False,
+        import_aspect_upgrades=False,
+        add_to_profiles=False,
+        import_greater_affixes=False,
+        require_greater_affixes=False,
+        export_paragon=True,
+        custom_file_name=None,
+    )
+
+    import_maxroll(config=config)
+
+    save_as_profile.assert_called_once()
+    assert save_as_profile.call_args.kwargs["profile"].Paragon["Name"] == "S12 Crackling Energy Sorc_Pit Push"
 
 
 def test_find_item_type_uses_fix_weapon_type_with_slot_context() -> None:
