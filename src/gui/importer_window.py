@@ -172,7 +172,7 @@ class ImporterWindow(QMainWindow):
             "src.gui.importer.mobalytics",
             "src.gui.importer.maxroll",
             "src.gui.importer.d4builds",
-            "src.gui.importer.common",
+            "src.gui.importer.gui_common",
         ):
             logger = logging.getLogger(name)
             logger.setLevel(logging.DEBUG)

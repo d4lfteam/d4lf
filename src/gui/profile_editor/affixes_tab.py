@@ -136,7 +136,7 @@ class AffixGroupEditor(QWidget):
         remove_affix_pool_btn = QPushButton("Remove Affix Pool")
         remove_affix_pool_btn.clicked.connect(lambda: self.remove_selected(self.affix_pool_layout))
         remove_inherent_pool_btn = QPushButton("Remove Inherent Pool")
-        remove_inherent_pool_btn.clicked.connect(lambda: self.remove_selected(self.inherent_pool_layout))
+        remove_inherent_pool_btn.clicked.connect(lambda: self.remove_selected(self.inherent_pool_layout, inherent=True))
 
         pool_btn_layout.addWidget(add_affix_pool_btn)
         pool_btn_layout.addWidget(add_inherent_pool_btn)
@@ -233,7 +233,10 @@ class AffixGroupEditor(QWidget):
             to_delete_list.reverse()
             for widget, index in to_delete_list:
                 widget.setParent(None)
-                self.config.affixPool.pop(index)
+                if inherent:
+                    self.config.inherentPool.pop(index)
+                else:
+                    self.config.affixPool.pop(index)
             self.reorganize_pool(layout_widget)
 
     def reorganize_pool(self, layout_widget: QVBoxLayout):

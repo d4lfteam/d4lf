@@ -1,4 +1,3 @@
-import datetime
 import logging
 import re
 import time
@@ -21,6 +20,7 @@ from src.config.models import (
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_to_profiles,
+    build_default_profile_file_name,
     fix_offhand_type,
     fix_weapon_type,
     get_class_name,
@@ -44,6 +44,13 @@ LOGGER = logging.getLogger(__name__)
 BASE_URL = "https://d4builds.gg/builds"
 BUILD_OVERVIEW_XPATH = "//*[@class='builder__stats__list']"
 CLASS_XPATH = "//*[contains(@class, 'builder__header__name')]"
+BUILD_DESCRIPTION_XPATH = "//*[contains(@class, 'builder__header__description')]"
+BUILD_HEADER_INPUT_XPATH = "//*[contains(@class, 'builder__header__input')]"
+VARIANT_INPUT_XPATH = "//*[contains(@class, 'builder__variant__input')]"
+SEASON_DROPDOWN_XPATH = (
+    "//*[contains(@class, 'builder__gear')]/*[contains(@class, 'builder__dropdown__wrapper')]"
+    "//*[contains(@class, 'dropdown__button') and starts-with(normalize-space(), 'Season ')]"
+)
 ITEM_GROUP_XPATH = ".//*[contains(@class, 'builder__stats__group')]"
 ITEM_SLOT_XPATH = ".//*[contains(@class, 'builder__stats__slot')]"
 ITEM_STATS_XPATH = ".//*[contains(@class, 'dropdown__button__wrapper')]"
@@ -79,10 +86,8 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         5
     )  # super hacky but I didn't find anything else. The page is not fully loaded when the above wait is done
     data = lxml.html.fromstring(driver.page_source)
-    if (elem := data.xpath(CLASS_XPATH + "/*")) or (elem := data.xpath(CLASS_XPATH)):
-        class_name = get_class_name(f"{elem[0].tail} {elem[0].text}")
-    else:
-        class_name = "Unknown"
+    class_name, build_header, season_number, variant_name = _extract_build_metadata(data=data)
+    build_name = build_header or class_name
     if not (items := data.xpath(BUILD_OVERVIEW_XPATH)):
         LOGGER.error(msg := "No items found")
         raise D4BuildsException(msg)
@@ -205,9 +210,12 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 
-    file_name = (
-        config.custom_file_name
-        or f"d4build_{class_name}_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}"
+    file_name = config.custom_file_name or build_default_profile_file_name(
+        source_name="d4builds",
+        class_name=class_name,
+        season_number=season_number,
+        build_header=build_header,
+        variant_name=variant_name,
     )
 
     # Optionally embed Paragon data into the profile model before saving
@@ -215,7 +223,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
         if steps:
             profile.Paragon = build_paragon_profile_payload(
-                build_name=file_name, source_url=url, paragon_boards_list=steps
+                build_name=build_name, source_url=url, paragon_boards_list=steps
             )
         else:
             LOGGER.warning("Paragon export enabled, but no paragon data was found on this D4Builds page.")
@@ -237,6 +245,37 @@ def _corrections(input_str: str) -> str:
     if "ranks to" in input_str or "ranks of" in input_str or "ranks" in input_str:
         return input_str.replace("ranks to", "to").replace("ranks of", "to").replace("ranks", "to")
     return input_str
+
+
+def _extract_build_metadata(data: lxml.html.HtmlElement) -> tuple[str, str, str, str]:
+    class_name = "Unknown"
+    if header_nodes := data.xpath(CLASS_XPATH):
+        class_name = get_class_name(" ".join(header_nodes[0].text_content().split()))
+    build_header = ""
+    if description_nodes := data.xpath(BUILD_DESCRIPTION_XPATH):
+        build_header = " ".join(description_nodes[0].text_content().split())
+    elif input_nodes := data.xpath(BUILD_HEADER_INPUT_XPATH):
+        build_header = str(input_nodes[0].get("value") or "").strip()
+    season_number = _extract_d4builds_season_number(data=data)
+    variant_name = _extract_variant_name(data=data)
+    return class_name, build_header, season_number, variant_name
+
+
+def _extract_variant_name(data: lxml.html.HtmlElement) -> str:
+    if variant_nodes := data.xpath(VARIANT_INPUT_XPATH):
+        if variant_value := str(variant_nodes[0].get("value") or "").strip():
+            return variant_value
+        return " ".join(variant_nodes[0].text_content().split())
+    return ""
+
+
+def _extract_d4builds_season_number(data: lxml.html.HtmlElement) -> str:
+    if not (season_nodes := data.xpath(SEASON_DROPDOWN_XPATH)):
+        return ""
+    season_text = " ".join(season_nodes[0].text_content().split())
+    if season_match := re.search(r"\bSeason\s+(\d+)\b", season_text, flags=re.IGNORECASE):
+        return season_match.group(1)
+    return ""
 
 
 def _get_item_slots(data: lxml.html.HtmlElement) -> dict[str, str]:

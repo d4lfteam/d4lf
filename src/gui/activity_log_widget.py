@@ -80,7 +80,7 @@ class ActivityLogWidget(QWidget):
         self.editor_btn.setMinimumHeight(40)
         button_layout.addWidget(self.editor_btn)
 
-        self.user_dir_btn = QPushButton("Open User Config")
+        self.user_dir_btn = QPushButton("Open User Config Directory")
         self.user_dir_btn.setMinimumHeight(40)
         self.user_dir_btn.setToolTip("Open the D4LF user config directory")
         button_layout.addWidget(self.user_dir_btn)
