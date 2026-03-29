@@ -344,6 +344,8 @@ function Resolve-SignTool {
 }
 
 Write-UiBanner -Title "D4LF DLL Signing Helper" -Subtitle "Local signing for saapi64.dll"
+
+# -- 0. Gather installer inputs ------------------------------------------------
 $d4_path = Read-D4InstallPathInteractively -ProvidedPath $d4_path
 $sourceDllPath = Resolve-InstallerFilePath -RelativeCandidates @("saapi64.dll", "tts\saapi64.dll") -Description "saapi64.dll"
 
@@ -352,6 +354,7 @@ if ($signtool_path) {
     Write-InfoLine "Requested signtool.exe: $signtool_path"
 }
 
+# -- 1. Validate and place the DLL ---------------------------------------------
 Start-Step "Validating Diablo IV folder"
 Write-OkLine "Found Diablo IV.exe in $d4_path"
 
@@ -377,6 +380,7 @@ else {
     Write-OkLine "saapi64.dll copied to $dllPath"
 }
 
+# -- 2. Create or reuse the signing certificate --------------------------------
 Start-Step "Preparing code-signing certificate"
 $cert = Get-ChildItem -Path "Cert:\CurrentUser\My" |
     Where-Object { $_.Subject -eq "CN=Cert for D4LF" -and $_.HasPrivateKey } |
@@ -412,11 +416,13 @@ else {
 }
 $rootStore.Close()
 
+# -- 3. Locate signtool --------------------------------------------------------
 Start-Step "Locating signtool.exe"
 $signtool = Resolve-SignTool -ProvidedPath $signtool_path
 Write-InfoLine "Using signtool.exe at:"
 Write-InfoLine $signtool
 
+# -- 4. Sign the DLL and verify the result -------------------------------------
 Start-Step "Signing saapi64.dll"
 Write-InfoLine "Target DLL: $dllPath"
 $sig = Get-AuthenticodeSignature -FilePath $dllPath
