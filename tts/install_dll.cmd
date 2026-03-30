@@ -347,7 +347,7 @@ Write-UiBanner -Title "D4LF DLL Signing Helper" -Subtitle "Local signing for saa
 
 # -- 0. Gather installer inputs ------------------------------------------------
 $d4_path = Read-D4InstallPathInteractively -ProvidedPath $d4_path
-$sourceDllPath = Resolve-InstallerFilePath -RelativeCandidates @("saapi64.dll", "tts\saapi64.dll") -Description "saapi64.dll"
+$sourceDllPath = Resolve-InstallerFilePath -RelativeCandidates @("saapi64.dll") -Description "saapi64.dll"
 
 Write-InfoLine "Diablo IV folder: $d4_path"
 if ($signtool_path) {
