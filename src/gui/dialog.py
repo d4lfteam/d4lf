@@ -103,6 +103,36 @@ class MinGreaterDialog(QDialog):
         return self.spinBox.value()
 
 
+class MinPercentDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Set Min Percent Of Affix")
+        self.setFixedSize(250, 150)
+        self.main_layout = QVBoxLayout()
+
+        self.form_layout = QFormLayout()
+        self.label = QLabel("Min Percent Of Affix:")
+        self.spinBox = IgnoreScrollWheelSpinBox()
+        self.spinBox.setRange(0, 100)
+        self.spinBox.setValue(80)
+        self.form_layout.addRow(self.label, self.spinBox)
+        self.main_layout.addLayout(self.form_layout)
+
+        self.buttonLayout = QHBoxLayout()
+        self.okButton = QPushButton("OK")
+        self.okButton.clicked.connect(self.accept)
+        self.cancelButton = QPushButton("Cancel")
+        self.cancelButton.clicked.connect(self.reject)
+        self.buttonLayout.addWidget(self.okButton)
+        self.buttonLayout.addWidget(self.cancelButton)
+
+        self.main_layout.addLayout(self.buttonLayout)
+        self.setLayout(self.main_layout)
+
+    def get_value(self):
+        return self.spinBox.value()
+
+
 class CreateItem(QDialog):
     def __init__(self, item_list: list[str], parent=None):
         super().__init__(parent)

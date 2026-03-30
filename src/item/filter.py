@@ -289,7 +289,7 @@ class Filter:
                 ):
                     continue
                 # check aspect is in percent range
-                if not self._match_aspect_is_in_percent_range(
+                if not self._match_item_roll_is_in_percent_range(
                     expected_percent=filter_item.minPercentOfAspect, item_aspect=item.aspect
                 ):
                     continue
@@ -425,7 +425,7 @@ class Filter:
         return expected_min_count <= len([x for x in item_affixes if x.type == AffixType.greater])
 
     @staticmethod
-    def _match_aspect_is_in_percent_range(expected_percent: int, item_aspect: Aspect) -> bool:
+    def _match_item_roll_is_in_percent_range(expected_percent: int, item_aspect: Aspect | Affix) -> bool:
         if expected_percent == 0 or item_aspect.max_value is None or item_aspect.min_value is None:
             return True
 
@@ -457,6 +457,14 @@ class Filter:
                 return bool(is_fixed_aspect_value)
             if (expected_aspect.comparison == ComparisonType.larger and item_aspect.value < expected_aspect.value) or (
                 expected_aspect.comparison == ComparisonType.smaller and item_aspect.value > expected_aspect.value
+            ):
+                return False
+        expected_affix_percent = getattr(expected_aspect, "minPercentOfAffix", 0)
+        if expected_affix_percent:
+            if isinstance(item_aspect, Affix) and item_aspect.type == AffixType.greater:
+                return True
+            if not Filter._match_item_roll_is_in_percent_range(
+                expected_percent=expected_affix_percent, item_aspect=item_aspect
             ):
                 return False
         return True

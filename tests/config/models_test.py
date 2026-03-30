@@ -44,3 +44,20 @@ class TestUnique:
     @staticmethod
     def test_all_good_cases() -> None:
         assert ProfileModel(**uniques.all_good_cases)
+
+
+class TestAffixPercent:
+    @pytest.fixture(autouse=True)
+    def _setup(self, mock_ini_loader: IniConfigLoader) -> None:
+        self.mock_ini_loader = mock_ini_loader
+
+    @staticmethod
+    def test_affix_percent_is_allowed() -> None:
+        assert ProfileModel(name="good", Uniques=[{"affix": [{"name": "maximum_life", "minPercentOfAffix": 80}]}])
+
+    @staticmethod
+    def test_affix_percent_and_value_are_mutually_exclusive() -> None:
+        with pytest.raises(ValidationError, match="value and minPercentOfAffix cannot both be set"):
+            ProfileModel(
+                name="bad", Uniques=[{"affix": [{"name": "maximum_life", "value": 450, "minPercentOfAffix": 80}]}]
+            )

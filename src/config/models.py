@@ -126,6 +126,7 @@ class AffixAspectFilterModel(BaseModel):
 
 class AffixFilterModel(AffixAspectFilterModel):
     want_greater: bool = False
+    minPercentOfAffix: int = 0
 
     @field_validator("name")
     def name_must_exist(cls, name: str) -> str:
@@ -136,6 +137,21 @@ class AffixFilterModel(AffixAspectFilterModel):
             msg = f"affix {name} does not exist"
             raise ValueError(msg)
         return name
+
+    @field_validator("minPercentOfAffix")
+    def percent_validator(cls, v: int) -> int:
+        check_greater_than_zero(v)
+        if v > 100:
+            msg = "must be less than or equal to 100"
+            raise ValueError(msg)
+        return v
+
+    @model_validator(mode="after")
+    def value_and_percent_are_mutually_exclusive(self) -> AffixFilterModel:
+        if self.value is not None and self.minPercentOfAffix:
+            msg = "value and minPercentOfAffix cannot both be set"
+            raise ValueError(msg)
+        return self
 
 
 class AffixFilterCountModel(BaseModel):
