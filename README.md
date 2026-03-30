@@ -26,9 +26,9 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Find your "Diablo IV" directory. Copy the path and have it in your clipboard:
   - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
   - In Steam, right click the game, select Manage > Browse local files
-- D4LF gets item information by reading the screen and using TTS information sent for accessibility. TTS setup takes additional steps, detailed below. For more information on the install_dll.bat script, see [the TTS section](https://github.com/d4lfteam/d4lf/blob/main/README.md#tts)
+- D4LF gets item information by reading the screen and using TTS information sent for accessibility. TTS setup takes additional steps, detailed below. For more information on the install_dll.cmd script, see [the TTS section](https://github.com/d4lfteam/d4lf/blob/main/README.md#tts)
   - Navigate to your d4lf directory
-  - Double-click `install_dll.bat`
+  - Double-click `install_dll.cmd`
     - If asked for administrator permissions, provide them.
     - When asked for your Diablo 4 path, provide it
     - When asked to install a certificate, allow it.
@@ -83,15 +83,15 @@ D4 uses a third-party TTS engine called Tolk. Tolk has a feature that allows cus
 D4 automatically loads the DLL, which actually just sends the text to another application rather than reading it aloud.
 This is similar to having a Braille TTS application for D4.
 
-The TTS dll (saapi64.dll) must be signed for Diablo 4 to pick it up. The install_dll.bat script handles all of this for you. It will:
+The TTS dll (saapi64.dll) must be signed for Diablo 4 to pick it up. The install_dll.cmd script handles all of this for you. It will:
 
 - Copy the dll file to the Diablo 4 directory
 - Download the signtool needed to add a local signature to the dll
 - Runs the signtool and signs the dll
 
-If you prefer powershell directly for installation, you can run `.\sign_dll.ps1`.
+If you prefer running it from a terminal, you can run `.\install_dll.cmd`.
 
-For very advanced users that don't want to automatically download signtool.exe, you can run `.\sign_dll.ps1 -signtool_path "<full path to signtool.exe>"`
+For very advanced users that don't want to automatically download signtool.exe, you can run `.\install_dll.cmd -signtool_path "<full path to signtool.exe>"`
 
 ### Configs
 
