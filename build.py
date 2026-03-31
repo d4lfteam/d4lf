@@ -25,9 +25,9 @@ def clean_up():
 def copy_additional_resources(release_dir: Path):
     (release_dir / "tts").mkdir()
     shutil.copy("README.md", release_dir)
-    shutil.copy("tts/saapi64.dll", release_dir / "tts")
+    shutil.copy("tts/saapi64.dll", release_dir)
     shutil.copytree("assets", release_dir / "assets")
-    shutil.copy("tts/sign_dll.ps1", release_dir / "tts")
+    shutil.copy("tts/install_dll.cmd", release_dir)
 
 
 def create_batch_for_consoleonly(release_dir: Path, exe_name: str):
@@ -62,53 +62,16 @@ if %errorlevel% == 1 (
     )
 
 
-def create_batch_for_install_dll(release_dir: Path):
-    batch_file_path = release_dir / "install_dll.bat"
-    Path(batch_file_path).write_text(
-        """@echo off
-cd /d "%~dp0"
-net session >nul 2>&1
-if %errorlevel% neq 0 (
-    echo Requesting administrator access...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
-    exit /b
-)
-
-echo.
-set /p d4_path=Paste the folder path that contains Diablo IV.exe and press Enter:
-if "%d4_path%"=="" (
-    echo No Diablo IV folder path was provided.
-    pause
-    exit /b 1
-)
-
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tts/sign_dll.ps1" -d4_path "%d4_path%"
-set "exit_code=%errorlevel%"
-echo.
-if not "%exit_code%"=="0" (
-    echo Signing failed with exit code %exit_code%.
-    pause
-    exit /b %exit_code%
-)
-
-echo Signing completed.
-pause
-""",
-        encoding="utf-8",
-    )
-
-
 if __name__ == "__main__":
     os.chdir(Path(__file__).parent)
     print(f"Building version: {__version__}")
-    RELEASE_DIR = Path("d4lf")
-    if RELEASE_DIR.exists():
-        shutil.rmtree(RELEASE_DIR.absolute())
-    RELEASE_DIR.mkdir(exist_ok=True, parents=True)
+    release_dir = Path("d4lf")
+    if release_dir.exists():
+        shutil.rmtree(release_dir.absolute())
+    release_dir.mkdir(exist_ok=True, parents=True)
     clean_up()
-    build(release_dir=RELEASE_DIR)
-    copy_additional_resources(RELEASE_DIR)
-    create_batch_for_consoleonly(release_dir=RELEASE_DIR, exe_name=EXE_NAME)
-    create_batch_for_autoupdater(release_dir=RELEASE_DIR, exe_name=EXE_NAME)
-    create_batch_for_install_dll(release_dir=RELEASE_DIR)
+    build(release_dir=release_dir)
+    copy_additional_resources(release_dir)
+    create_batch_for_consoleonly(release_dir=release_dir, exe_name=EXE_NAME)
+    create_batch_for_autoupdater(release_dir=release_dir, exe_name=EXE_NAME)
     clean_up()
