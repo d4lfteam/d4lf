@@ -24,20 +24,6 @@ DETECTION_WINDOW_FLAG = True
 DETECT_WINDOW_THREAD = None
 
 
-def enable_windows_dpi_awareness() -> None:
-    """Enable the highest DPI awareness mode available on Windows."""
-    try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)
-    except Exception:
-        LOGGER.exception(
-            "This program requires Windows 10 or higher. The program will try to continue to run, but results may be inaccurate."
-        )
-        ctypes.windll.user32.SetProcessDPIAware()
-
-
-enable_windows_dpi_awareness()
-
-
 @dataclass
 class WindowSpec:
     process_name: str
