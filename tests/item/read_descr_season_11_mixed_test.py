@@ -1,10 +1,18 @@
 import cv2
+import numpy as np
 import pytest
 
+import src.item.descr.read_descr_tts
 import src.tts
 from src.cam import Cam
 from src.config import BASE_DIR
+from src.item.data.affix import Affix
+from src.item.data.item_type import ItemType
+from src.item.data.rarity import ItemRarity
+from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.item.descr.read_descr_tts import read_descr_mixed
+from src.item.models import Item
+from src.template_finder import TemplateMatch
 
 BASE_PATH = BASE_DIR / "tests/assets/item/season11"
 
@@ -100,3 +108,104 @@ def test_item(img_res: tuple[int, int], input_img: str, tts: list[str], expected
     _run_test_helper(
         img_res=img_res, input_img=input_img, tts=tts, expected_affix_bullet_count=expected_affix_bullet_count
     )
+
+
+def test_add_affixes_from_tts_mixed_raises_when_one_bullet_is_missing(monkeypatch):
+    def fake_get_affix_starting_location_from_tts_section(_tts_section, _item):
+        return 0
+
+    def fake_get_affix_counts(_tts_section, _item, _start):
+        return (1, 1)
+
+    def fake_get_affixes_from_tts_section(_tts_section, _start, _length):
+        return ["Armor", ""]
+
+    def fake_get_aspect_from_tts_section(*_args, **_kwargs):
+        return None
+
+    def fake_screenshot(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(
+        src.item.descr.read_descr_tts,
+        "_get_affix_starting_location_from_tts_section",
+        fake_get_affix_starting_location_from_tts_section,
+    )
+    monkeypatch.setattr(src.item.descr.read_descr_tts, "_get_affix_counts", fake_get_affix_counts)
+    monkeypatch.setattr(
+        src.item.descr.read_descr_tts, "_get_affixes_from_tts_section", fake_get_affixes_from_tts_section
+    )
+    monkeypatch.setattr(src.item.descr.read_descr_tts, "_get_aspect_from_tts_section", fake_get_aspect_from_tts_section)
+    monkeypatch.setattr(src.item.descr.read_descr_tts, "screenshot", fake_screenshot)
+
+    item = Item(item_type=ItemType.Helm, rarity=ItemRarity.Legendary, name="test_legendary")
+    affix_bullets = [TemplateMatch(center=(10, 20), name="affix_bullet_point_1")]
+
+    with pytest.raises(IndexError, match="Found more affixes than we found bullets"):
+        src.item.descr.read_descr_tts._add_affixes_from_tts_mixed(
+            tts_section=[],
+            item=item,
+            affix_bullets=affix_bullets,
+            img_item_descr=np.zeros((1, 1, 3), dtype=np.uint8),
+            aspect_bullet=None,
+        )
+
+
+def test_add_affixes_from_tts_mixed_allows_missing_last_bloodied_bullet(monkeypatch):
+    def fake_get_affix_starting_location_from_tts_section(_tts_section, _item):
+        return 0
+
+    def fake_get_affix_counts(_tts_section, _item, _start):
+        return (0, 4)
+
+    def fake_get_affixes_from_tts_section(_tts_section, _start, _length):
+        return ["first", "second", "third", "Hunger"]
+
+    def fake_get_aspect_from_tts_section(*_args, **_kwargs):
+        return None
+
+    def fake_get_affix_from_text(text):
+        return Affix(name=text, text=text)
+
+    def fail_if_called(*_args, **_kwargs):
+        msg = "_raise_index_error should not be called for the missing bloodied bullet fallback"
+        raise AssertionError(msg)
+
+    monkeypatch.setattr(
+        src.item.descr.read_descr_tts,
+        "_get_affix_starting_location_from_tts_section",
+        fake_get_affix_starting_location_from_tts_section,
+    )
+    monkeypatch.setattr(src.item.descr.read_descr_tts, "_get_affix_counts", fake_get_affix_counts)
+    monkeypatch.setattr(
+        src.item.descr.read_descr_tts, "_get_affixes_from_tts_section", fake_get_affixes_from_tts_section
+    )
+    monkeypatch.setattr(src.item.descr.read_descr_tts, "_get_aspect_from_tts_section", fake_get_aspect_from_tts_section)
+    monkeypatch.setattr(src.item.descr.read_descr_tts, "_get_affix_from_text", fake_get_affix_from_text)
+    monkeypatch.setattr(src.item.descr.read_descr_tts, "_raise_index_error", fail_if_called)
+
+    item = Item(
+        item_type=ItemType.Ring,
+        rarity=ItemRarity.Legendary,
+        name="bloodied_ring",
+        seasonal_attribute=SeasonalAttribute.bloodied,
+    )
+    affix_bullets = [
+        TemplateMatch(center=(10, 20), name="affix_bullet_point_1"),
+        TemplateMatch(center=(10, 40), name="affix_bullet_point_1"),
+        TemplateMatch(center=(10, 60), name="affix_bullet_point_1"),
+    ]
+
+    result = src.item.descr.read_descr_tts._add_affixes_from_tts_mixed(
+        tts_section=[],
+        item=item,
+        affix_bullets=affix_bullets,
+        img_item_descr=np.zeros((1, 1, 3), dtype=np.uint8),
+        aspect_bullet=None,
+    )
+
+    assert [affix.name for affix in result.affixes] == ["first", "second", "third", "Hunger"]
+    assert result.affixes[0].loc == (10, 20)
+    assert result.affixes[1].loc == (10, 40)
+    assert result.affixes[2].loc == (10, 60)
+    assert result.affixes[3].loc is None
