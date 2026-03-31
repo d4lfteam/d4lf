@@ -34,9 +34,9 @@ LOGGER = logging.getLogger(__name__)
 # Set DPI awareness before Qt loads
 if sys.platform == "win32":
     try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)
-    except Exception:
-        LOGGER.exception("Failed to set DPI awareness")
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    except AttributeError:
+        ctypes.windll.user32.SetProcessDPIAware()
 
 
 def main():
