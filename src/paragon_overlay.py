@@ -9,7 +9,6 @@ import io
 import logging
 import queue
 import re
-import sys
 import threading
 import tkinter as tk
 from contextlib import suppress
@@ -24,7 +23,6 @@ from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
 from src.gui.importer.gui_common import BUILD_SOURCES, PLAYER_CLASSES
 from src.item.filter import Filter
-from src.utils.window import enable_windows_dpi_awareness
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -48,7 +46,6 @@ _UI_READY = threading.Event()
 def _tk_thread_main() -> None:
     """Own the dedicated Tk root and execute queued UI work on that thread."""
     global _UI_ROOT
-    enable_windows_dpi_awareness()
     # Create a hidden root window. The actual overlay is a Toplevel that is
     # opened later, but Tk still needs one root that owns the event loop.
     root = tk.Tk()
