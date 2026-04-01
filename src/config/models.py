@@ -148,7 +148,7 @@ class AffixFilterModel(AffixAspectFilterModel):
 
     @model_validator(mode="after")
     def value_and_percent_are_mutually_exclusive(self) -> AffixFilterModel:
-        if self.value is not None and self.minPercentOfAffix:
+        if self.value and self.minPercentOfAffix:
             msg = "value and minPercentOfAffix cannot both be set"
             raise ValueError(msg)
         return self
