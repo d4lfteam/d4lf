@@ -6,23 +6,8 @@ import pytest
 from natsort import natsorted
 
 from src.config.loader import IniConfigLoader
-from src.config.models import (
-    AffixFilterCountModel,
-    AffixFilterModel,
-    AspectUniqueFilterModel,
-    GeneralModel,
-    ItemFilterModel,
-    JunkRaresType,
-    ProfileModel,
-    SigilPriority,
-    UniqueModel,
-)
-from src.item.data.affix import Affix, AffixType
-from src.item.data.aspect import Aspect
-from src.item.data.item_type import ItemType
-from src.item.data.rarity import ItemRarity
+from src.config.models import GeneralModel, JunkRaresType, SigilPriority
 from src.item.filter import Filter, FilterResult
-from src.item.models import Item
 from src.scripts.common import is_junk_rarity
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
@@ -34,6 +19,8 @@ from tests.item.filter.data.uniques import aspect_only_mythic_tests, simple_myth
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
+
+    from src.item.models import Item
 
 
 def _create_mocked_filter(mocker: MockerFixture) -> Filter:
@@ -50,40 +37,6 @@ def test_affixes(_name: str, result: list[str], item: Item, mocker: MockerFixtur
     test_filter = _create_mocked_filter(mocker)
     test_filter.affix_filters = {filters.affix.name: filters.affix.Affixes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
-
-
-def test_affix_percent_matches_normal_affixes(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    profile = ProfileModel(
-        name="percent_affix",
-        Affixes=[
-            {
-                "Boots": ItemFilterModel(
-                    itemType=[ItemType.Boots],
-                    affixPool=[
-                        AffixFilterCountModel(count=[AffixFilterModel(name="movement_speed", minPercentOfAffix=80)])
-                    ],
-                )
-            }
-        ],
-    )
-    test_filter.affix_filters = {profile.name: profile.Affixes}
-
-    passing_item = Item(
-        affixes=[Affix(name="movement_speed", value=9.0, min_value=5.0, max_value=10.0)],
-        item_type=ItemType.Boots,
-        power=910,
-        rarity=ItemRarity.Rare,
-    )
-    failing_item = Item(
-        affixes=[Affix(name="movement_speed", value=8.0, min_value=5.0, max_value=10.0)],
-        item_type=ItemType.Boots,
-        power=910,
-        rarity=ItemRarity.Rare,
-    )
-
-    assert [match.profile for match in test_filter.should_keep(passing_item).matched] == ["percent_affix.Boots"]
-    assert test_filter.should_keep(failing_item).matched == []
 
 
 @pytest.mark.parametrize(
@@ -140,31 +93,6 @@ def test_uniques(_name: str, result: list[str], item: Item, mocker: MockerFixtur
     test_filter = _create_mocked_filter(mocker)
     test_filter.unique_filters = {filters.unique.name: filters.unique.Uniques}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
-
-
-def test_affix_percent_matches_greater_unique_affixes_without_range(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    profile = ProfileModel(
-        name="percent_unique",
-        Uniques=[
-            UniqueModel(
-                affix=[AffixFilterModel(name="maximum_life", minPercentOfAffix=90)],
-                aspect=AspectUniqueFilterModel(name="lidless_wall"),
-                minPower=900,
-            )
-        ],
-    )
-    test_filter.unique_filters = {profile.name: profile.Uniques}
-
-    item = Item(
-        affixes=[Affix(name="maximum_life", value=450.0, type=AffixType.greater)],
-        aspect=Aspect(name="lidless_wall", value=22),
-        item_type=ItemType.Shield,
-        power=910,
-        rarity=ItemRarity.Unique,
-    )
-
-    assert [match.profile for match in test_filter.should_keep(item).matched] == ["percent_unique.lidless_wall"]
 
 
 @pytest.mark.parametrize(

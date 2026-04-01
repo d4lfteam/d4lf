@@ -305,22 +305,22 @@ class AffixGroupEditor(QWidget):
     def iter_affix_widgets(self):
         self._ensure_pool_widgets_initialized()
 
-        for layout_widget in (self.affix_pool_layout, self.inherent_pool_layout):
-            for i in range(layout_widget.count()):
-                container = layout_widget.itemAt(i).widget()
-                if container is None or not hasattr(container, "contentWidget"):
-                    continue
-                pool_item = container.contentWidget.layout().itemAt(0)
-                if pool_item is None:
-                    continue
-                pool_widget = pool_item.widget()
-                if not isinstance(pool_widget, AffixPoolWidget):
-                    continue
-                for j in range(pool_widget.affix_list.count()):
-                    list_item = pool_widget.affix_list.item(j)
-                    affix_widget = pool_widget.affix_list.itemWidget(list_item)
-                    if isinstance(affix_widget, AffixWidget):
-                        yield affix_widget
+        # Inherents do not participate in Greater Affix auto-sync or bulk Min % updates.
+        for i in range(self.affix_pool_layout.count()):
+            container = self.affix_pool_layout.itemAt(i).widget()
+            if container is None or not hasattr(container, "contentWidget"):
+                continue
+            pool_item = container.contentWidget.layout().itemAt(0)
+            if pool_item is None:
+                continue
+            pool_widget = pool_item.widget()
+            if not isinstance(pool_widget, AffixPoolWidget):
+                continue
+            for j in range(pool_widget.affix_list.count()):
+                list_item = pool_widget.affix_list.item(j)
+                affix_widget = pool_widget.affix_list.itemWidget(list_item)
+                if isinstance(affix_widget, AffixWidget):
+                    yield affix_widget
 
     def count_want_greater_affixes(self):
         want_greater_count = 0
@@ -342,10 +342,6 @@ class AffixGroupEditor(QWidget):
             self.greater_count_label.setText("(1 greater affix marked)")
         else:
             self.greater_count_label.setText(f"({count} greater affixes marked)")
-
-    def set_all_min_percent_of_affix(self, percent: int):
-        for affix_widget in self.iter_affix_widgets():
-            affix_widget.set_min_percent(percent)
 
     def convert_all_to_min_percent_of_affix(self, percent: int):
         for affix_widget in self.iter_affix_widgets():
@@ -680,18 +676,15 @@ class AffixesTab(QWidget):
         remove_item_button.clicked.connect(self.remove_item_type)
 
         set_all_minGreaterAffix_button = QPushButton("Set All Min GAs (Excludes Auto Synced Items)")
-        set_all_min_percent_button = QPushButton("Set All Min %")
         convert_all_to_min_percent_button = QPushButton("Convert All To Min %")
         set_all_minPower_button = QPushButton("Set all minPower")
         set_all_minGreaterAffix_button.clicked.connect(self.set_all_minGreaterAffix)
-        set_all_min_percent_button.clicked.connect(self.set_all_min_percent_of_affix)
         convert_all_to_min_percent_button.clicked.connect(self.convert_all_to_min_percent_of_affix)
         set_all_minPower_button.clicked.connect(self.set_all_minPower)
 
         self.toolbar.addWidget(add_item_button)
         self.toolbar.addWidget(remove_item_button)
         self.toolbar.addWidget(set_all_minGreaterAffix_button)
-        self.toolbar.addWidget(set_all_min_percent_button)
         self.toolbar.addWidget(convert_all_to_min_percent_button)
         self.toolbar.addWidget(set_all_minPower_button)
 
@@ -738,13 +731,6 @@ class AffixesTab(QWidget):
                     continue
                 tab.min_greater.setValue(minGreaterAffix)
                 tab.update_min_greater_affix()
-
-    def set_all_min_percent_of_affix(self):
-        current_tab = self.tab_widget.currentWidget()
-        if isinstance(current_tab, AffixGroupEditor):
-            dialog = MinPercentDialog(self)
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                current_tab.set_all_min_percent_of_affix(dialog.get_value())
 
     def convert_all_to_min_percent_of_affix(self):
         current_tab = self.tab_widget.currentWidget()

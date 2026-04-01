@@ -130,6 +130,20 @@ affix = ProfileModel(
                 ],
             )
         },
+        {
+            "PercentBoots": ItemFilterModel(
+                itemType=[ItemType.Boots],
+                minPower=725,
+                affixPool=[
+                    AffixFilterCountModel(
+                        count=[
+                            AffixFilterModel(name="movement_speed", minPercentOfAffix=80),
+                            AffixFilterModel(name="dodge_chance"),
+                        ]
+                    )
+                ],
+            )
+        },
         {"GreaterAffixes": ItemFilterModel(minGreaterAffixCount=1)},
         {
             "CountBoots": ItemFilterModel(
@@ -253,6 +267,11 @@ unique = ProfileModel(
         UniqueModel(
             affix=[AffixFilterModel(name="attack_speed", value=8.4)],
             aspect=AspectUniqueFilterModel(name="soulbrand", value=20),
+            minPower=900,
+        ),
+        UniqueModel(
+            affix=[AffixFilterModel(name="maximum_life", minPercentOfAffix=90), AffixFilterModel(name="dexterity")],
+            aspect=AspectUniqueFilterModel(name="lidless_wall"),
             minPower=900,
         ),
         UniqueModel(

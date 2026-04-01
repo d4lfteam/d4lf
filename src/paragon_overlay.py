@@ -9,6 +9,7 @@ import io
 import logging
 import queue
 import re
+import sys
 import threading
 import tkinter as tk
 from contextlib import suppress

@@ -80,11 +80,6 @@ def _find_bullets(
     return sorted(filtered_matches, key=lambda match: match.center[1])
 
 
-def _filter_defined_templates(template_list: list[str]) -> list[str]:
-    defined_templates = ResManager().templates
-    return [template_name for template_name in template_list if template_name in defined_templates]
-
-
 def find_affix_bullets(img_item_descr: np.ndarray, sep_short_match: TemplateMatch) -> list[TemplateMatch]:
     affix_icons = [f"affix_bullet_point_{x}" for x in range(1, 3)]
     rerolled_icons = [f"rerolled_bullet_point_{x}" for x in range(1, 3)]
@@ -106,7 +101,7 @@ def find_affix_bullets(img_item_descr: np.ndarray, sep_short_match: TemplateMatc
     return _find_bullets(
         img_item_descr=img_item_descr,
         sep_short_match=sep_short_match,
-        template_list=_filter_defined_templates(all_templates),
+        template_list=all_templates,
         threshold=0.8,
         mode="all",
     )
@@ -120,7 +115,7 @@ def find_aspect_bullet(img_item_descr: np.ndarray, sep_short_match: TemplateMatc
     aspect_bullets = _find_bullets(
         img_item_descr=img_item_descr,
         sep_short_match=sep_short_match,
-        template_list=_filter_defined_templates(all_templates),
+        template_list=all_templates,
         threshold=0.8,
         mode="all",
     )
