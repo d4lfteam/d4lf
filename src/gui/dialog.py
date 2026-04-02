@@ -114,7 +114,7 @@ class MinPercentDialog(QDialog):
         self.label = QLabel("Min Percent Of Affix:")
         self.spinBox = IgnoreScrollWheelSpinBox()
         self.spinBox.setRange(0, 100)
-        self.spinBox.setValue(80)
+        self.spinBox.setValue(70)
         self.form_layout.addRow(self.label, self.spinBox)
         self.main_layout.addLayout(self.form_layout)
 

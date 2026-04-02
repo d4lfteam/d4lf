@@ -458,7 +458,7 @@ class GeneralModel(_IniBaseModel):
         elif not isinstance(v, list):
             msg = "must be a list or a string"
             raise ValueError(msg)
-        return [v.strip() for v in v]
+        return [profile_name for profile_name in (item.strip() for item in v) if profile_name]
 
     @field_validator("language")
     def language_must_exist(cls, v: str) -> str:

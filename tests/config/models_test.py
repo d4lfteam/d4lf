@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from pydantic import ValidationError
 
-from src.config.models import ProfileModel
+from src.config.models import GeneralModel, ProfileModel
 from tests.config.data import sigils, uniques
 
 if TYPE_CHECKING:
@@ -61,3 +61,9 @@ class TestAffixPercent:
             ProfileModel(
                 name="bad", Uniques=[{"affix": [{"name": "maximum_life", "value": 450, "minPercentOfAffix": 80}]}]
             )
+
+
+class TestGeneralProfiles:
+    @staticmethod
+    def test_profiles_empty_entries_are_removed() -> None:
+        assert GeneralModel(profiles="alpha, , beta,   ,").profiles == ["alpha", "beta"]
