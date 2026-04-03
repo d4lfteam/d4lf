@@ -52,8 +52,17 @@ class TestAffixPercent:
         self.mock_ini_loader = mock_ini_loader
 
     @staticmethod
+    def test_affix_percent_zero_is_allowed() -> None:
+        assert ProfileModel(name="good", Uniques=[{"affix": [{"name": "maximum_life", "minPercentOfAffix": 0}]}])
+
+    @staticmethod
     def test_affix_percent_is_allowed() -> None:
         assert ProfileModel(name="good", Uniques=[{"affix": [{"name": "maximum_life", "minPercentOfAffix": 80}]}])
+
+    @staticmethod
+    def test_affix_percent_negative_values_are_rejected() -> None:
+        with pytest.raises(ValidationError, match="must be greater than or equal to 0"):
+            ProfileModel(name="bad", Uniques=[{"affix": [{"name": "maximum_life", "minPercentOfAffix": -1}]}])
 
     @staticmethod
     def test_affix_percent_and_value_are_mutually_exclusive() -> None:

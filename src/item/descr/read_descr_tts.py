@@ -126,26 +126,33 @@ def _add_affixes_from_tts_mixed(
     inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
     affixes = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
     aspect_text = _get_aspect_from_tts_section(tts_section, item, starting_index, len(affixes))
+    allow_missing_bloodied_bullet = (
+        item.seasonal_attribute == SeasonalAttribute.bloodied and len(affixes) == len(affix_bullets) + 1
+    )
 
-    # With advanced item compare on we'll actually find more bullets than we need, so we don't rely on them for number of affixes
-    if len(affixes) - 1 > len(affix_bullets):
+    # With advanced item compare on we can find more bullets than affixes, but we still need
+    # at least one bullet per affix to assign locations safely.
+    if len(affixes) > len(affix_bullets) and not allow_missing_bloodied_bullet:
         _raise_index_error(affixes, affix_bullets, item, img_item_descr)
 
     for i, affix_text in enumerate(affixes):
+        bullet_match = affix_bullets[i] if i < len(affix_bullets) else None
         if i < inherent_num:
             affix = _get_affix_from_text(affix_text)
             affix.type = AffixType.inherent
-            affix.loc = affix_bullets[i].center
+            if bullet_match is not None:
+                affix.loc = bullet_match.center
             item.inherent.append(affix)
         elif i < inherent_num + affixes_num:
             affix = _get_affix_from_text(affix_text)
-            affix.loc = affix_bullets[i].center
-            if affix_bullets[i].name.startswith("greater_affix"):
-                affix.type = AffixType.greater
-            elif affix_bullets[i].name.startswith("rerolled"):
-                affix.type = AffixType.rerolled
-            else:
-                affix.type = AffixType.normal
+            if bullet_match is not None:
+                affix.loc = bullet_match.center
+                if bullet_match.name.startswith("greater_affix"):
+                    affix.type = AffixType.greater
+                elif bullet_match.name.startswith("rerolled"):
+                    affix.type = AffixType.rerolled
+                else:
+                    affix.type = AffixType.normal
             item.affixes.append(affix)
 
     if aspect_text:
