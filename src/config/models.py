@@ -140,11 +140,8 @@ class AffixFilterModel(AffixAspectFilterModel):
 
     @field_validator("minPercentOfAffix")
     def percent_validator(cls, v: int) -> int:
-        if v < 0:
-            msg = "must be greater than or equal to 0"
-            raise ValueError(msg)
-        if v > 100:
-            msg = "must be less than or equal to 100"
+        if not 0 <= v <= 100:
+            msg = "must be in [0, 100]"
             raise ValueError(msg)
         return v
 

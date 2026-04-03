@@ -61,7 +61,7 @@ class TestAffixPercent:
 
     @staticmethod
     def test_affix_percent_negative_values_are_rejected() -> None:
-        with pytest.raises(ValidationError, match="must be greater than or equal to 0"):
+        with pytest.raises(ValidationError, match=r"must be in \[0, 100\]"):
             ProfileModel(name="bad", Uniques=[{"affix": [{"name": "maximum_life", "minPercentOfAffix": -1}]}])
 
     @staticmethod
