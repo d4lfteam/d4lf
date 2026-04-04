@@ -126,6 +126,7 @@ class AffixAspectFilterModel(BaseModel):
 
 class AffixFilterModel(AffixAspectFilterModel):
     want_greater: bool = False
+    minPercentOfAffix: int = 0
 
     @field_validator("name")
     def name_must_exist(cls, name: str) -> str:
@@ -136,6 +137,20 @@ class AffixFilterModel(AffixAspectFilterModel):
             msg = f"affix {name} does not exist"
             raise ValueError(msg)
         return name
+
+    @field_validator("minPercentOfAffix")
+    def percent_validator(cls, v: int) -> int:
+        if not 0 <= v <= 100:
+            msg = "must be in [0, 100]"
+            raise ValueError(msg)
+        return v
+
+    @model_validator(mode="after")
+    def value_and_percent_are_mutually_exclusive(self) -> AffixFilterModel:
+        if self.value and self.minPercentOfAffix:
+            msg = "value and minPercentOfAffix cannot both be set"
+            raise ValueError(msg)
+        return self
 
 
 class AffixFilterCountModel(BaseModel):
@@ -442,7 +457,7 @@ class GeneralModel(_IniBaseModel):
         elif not isinstance(v, list):
             msg = "must be a list or a string"
             raise ValueError(msg)
-        return [v.strip() for v in v]
+        return [profile_name for profile_name in (item.strip() for item in v) if profile_name]
 
     @field_validator("language")
     def language_must_exist(cls, v: str) -> str:

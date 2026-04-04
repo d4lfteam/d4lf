@@ -181,17 +181,12 @@ no `Sigils` section in any profile), all corresponding items (in this case, sigi
 
 ### Affix / Unique Aspect Filter Syntax
 
-You have three choices on how to specify aspects or affixes of an item:
+You have two choices on how to specify aspects or affixes of an item. For both options we recommend importing a profile first and then working from there.
 
-- You can use the shorthand and just specify the aspect name
-- For more sophisticated filtering, you can use the following syntax: `[NAME, THRESHOLD, CONDITION]`. The
-  condition can be any of `[larger, smaller]` and defaults to `larger` if no value is given.
-- Affixes generated through the importer have a different format but function the exact same. An
-  example of an imported affix is `{name: dexterity, value: 33, comparison: larger}`. This is completely interchangeable
-  with the shorthand notation.
+- You can use the Edit Profile window in the GUI, which is the recommended approach
+- You can also manually edit your profile.
 
-As we recommend using the importer for a base version of your build, even if you intend to then manually create your own
-build, the examples below will use the same format as the importer.
+The instructions below are all about editing the file manually, but the explanations apply to the GUI as well.
 
 <details><summary>Examples</summary>
 
@@ -201,16 +196,10 @@ build, the examples below will use the same format as the importer.
 - { name: attack_speed }
 # Filter for attack speed larger than 4
 - { name: attack_speed, value: 4 }
+# Filter for attack speed where the affix is greater than 50% of the potential maximum
+- { name: attack_speed, minPercentOfAffix: 50 }
 # Filter for attack speed smaller than 4
 - { name: attack_speed, value: 4, comparison: smaller }
-
-# Below is the older shorthand, which is still valid to use
-# Filter for attack speed
-- attack_speed
-# Filter for attack speed larger than 4
-- [ attack_speed, 4 ]
-# Filter for attack speed smaller than 4
-- [ attack_speed, 4, smaller ]
 ```
 
 </details>
@@ -312,6 +301,36 @@ Affixes:
 
 Affix names are lower case and spaces are replaced by underscore. You can find the full list of names
 in [assets/lang/enUS/affixes.json](assets/lang/enUS/affixes.json).
+
+### Filtering on percent of affix instead of value
+
+You also have the option to filter on the minimum percent of the affix you want instead of a specific value. For example, say you want strength on an item. The potential values for strength are 100-150. If you say the `minPercentOfAffix` for strength is 50 (which means 50%), then strength rolls of 125 and up are kept and rolls below 125 would be discarded.
+
+A greater affix is considered to always match a `minPercentOfAffix`. You do not need to designate larger/smaller for `minPercentOfAffix`, that is automatically determined.
+
+If you put in `minPercentOfAffix` you can not also put `value` for that affix. It must be one or the other.
+
+<details><summary>Config Examples</summary>
+
+```yaml
+Affixes:
+  # Search for chest armor that is at least item level 925 and have at least 3 affixes of the affixPool.
+  # It must have more than 40 damage_reduction, and armor must be at least 70% of its potential maximum affix value
+  - NiceArmor:
+      itemType: chest armor
+      minPower: 925
+      affixPool:
+        - count:
+            - { name: dexterity }
+            - { name: damage_reduction, value: 40 }
+            - { name: lucky_hit_chance }
+            - { name: armor, minPercentOfAffix: 70 }
+            - { name: maximum_life }
+          minCount: 3
+
+```
+
+</details>
 
 ### Greater Affix Filtering
 

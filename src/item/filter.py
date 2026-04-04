@@ -289,8 +289,8 @@ class Filter:
                 ):
                     continue
                 # check aspect is in percent range
-                if not self._match_aspect_is_in_percent_range(
-                    expected_percent=filter_item.minPercentOfAspect, item_aspect=item.aspect
+                if not self._match_item_roll_is_in_percent_range(
+                    expected_percent=filter_item.minPercentOfAspect, item_aspect_or_affix=item.aspect
                 ):
                     continue
                 LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Uniques: {item.aspect.name}")
@@ -425,25 +425,27 @@ class Filter:
         return expected_min_count <= len([x for x in item_affixes if x.type == AffixType.greater])
 
     @staticmethod
-    def _match_aspect_is_in_percent_range(expected_percent: int, item_aspect: Aspect) -> bool:
-        if expected_percent == 0 or item_aspect.max_value is None or item_aspect.min_value is None:
+    def _match_item_roll_is_in_percent_range(expected_percent: int, item_aspect_or_affix: Aspect | Affix) -> bool:
+        if expected_percent == 0 or item_aspect_or_affix.max_value is None or item_aspect_or_affix.min_value is None:
             return True
 
-        if item_aspect.max_value > item_aspect.min_value:
+        if item_aspect_or_affix.max_value > item_aspect_or_affix.min_value:
             percent_float = expected_percent / 100.0
-            return (item_aspect.value - item_aspect.min_value) / (
-                item_aspect.max_value - item_aspect.min_value
+            return (item_aspect_or_affix.value - item_aspect_or_affix.min_value) / (
+                item_aspect_or_affix.max_value - item_aspect_or_affix.min_value
             ) >= percent_float
 
         # This is the case where a smaller number is better
         percent_float = (100 - expected_percent) / 100.0
-        return (item_aspect.value - item_aspect.max_value) / (
-            item_aspect.min_value - item_aspect.max_value
+        return (item_aspect_or_affix.value - item_aspect_or_affix.max_value) / (
+            item_aspect_or_affix.min_value - item_aspect_or_affix.max_value
         ) <= percent_float
 
-    @staticmethod
     def _match_item_aspect_or_affix(
-        expected_aspect: AffixAspectFilterModel | None, item_aspect: Aspect | Affix, is_fixed_aspect_value: bool = False
+        self,
+        expected_aspect: AffixAspectFilterModel | None,
+        item_aspect: Aspect | Affix,
+        is_fixed_aspect_value: bool = False,
     ) -> bool:
         if expected_aspect is None:
             return True
@@ -457,6 +459,14 @@ class Filter:
                 return bool(is_fixed_aspect_value)
             if (expected_aspect.comparison == ComparisonType.larger and item_aspect.value < expected_aspect.value) or (
                 expected_aspect.comparison == ComparisonType.smaller and item_aspect.value > expected_aspect.value
+            ):
+                return False
+        expected_affix_percent = getattr(expected_aspect, "minPercentOfAffix", 0)
+        if expected_affix_percent:
+            if isinstance(item_aspect, Affix) and item_aspect.type == AffixType.greater:
+                return True
+            if not self._match_item_roll_is_in_percent_range(
+                expected_percent=expected_affix_percent, item_aspect_or_affix=item_aspect
             ):
                 return False
         return True

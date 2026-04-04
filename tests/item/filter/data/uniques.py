@@ -1,4 +1,4 @@
-from src.item.data.affix import Affix
+from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
@@ -68,6 +68,17 @@ uniques = [
                 Affix(name="lucky_hit_up_to_a_chance_to_restore_primary_resource", value=13.5),
                 Affix(name="maximum_life", value=1111),
                 Affix(name="maximum_essence", value=13),
+            ],
+        ),
+    ),
+    (
+        "greater unique affix percent without range",
+        ["test.lidless_wall"],
+        TestUnique(
+            aspect=Aspect(name="lidless_wall", value=22),
+            affixes=[
+                Affix(name="maximum_life", value=450.0, type=AffixType.greater),
+                Affix(name="dexterity", value=100.0),
             ],
         ),
     ),

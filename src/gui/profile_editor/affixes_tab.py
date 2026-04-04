@@ -1,6 +1,7 @@
 import logging
 
 from PyQt6.QtCore import QSettings, Qt, QTimer
+from PyQt6.QtGui import QDoubleValidator, QIntValidator
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -34,6 +35,7 @@ from src.gui.dialog import (
     IgnoreScrollWheelComboBox,
     IgnoreScrollWheelSpinBox,
     MinGreaterDialog,
+    MinPercentDialog,
     MinPowerDialog,
 )
 from src.item.data.item_type import ItemType, is_armor, is_jewelry, is_weapon
@@ -41,6 +43,8 @@ from src.item.data.item_type import ItemType, is_armor, is_jewelry, is_weapon
 LOGGER = logging.getLogger(__name__)
 
 AFFIXES_TABNAME = "Affixes"
+AFFIX_VALUE_MODE = "Value"
+AFFIX_PERCENT_MODE = "Min %"
 
 
 class AffixGroupEditor(QWidget):
@@ -290,33 +294,43 @@ class AffixGroupEditor(QWidget):
             count = self.count_want_greater_affixes()
             self.min_greater.setValue(count)
 
+    def _ensure_pool_widgets_initialized(self):
+        for container in (self.affix_pool_container, self.inherent_pool_container):
+            was_visible = container.contentWidget.isVisible()
+            if container.header.first_expansion:
+                container.expand()
+                if not was_visible:
+                    container.collapse()
+
+    def iter_affix_widgets(self):
+        self._ensure_pool_widgets_initialized()
+
+        # Inherents do not participate in Greater Affix auto-sync or bulk Min % updates.
+        for i in range(self.affix_pool_layout.count()):
+            container = self.affix_pool_layout.itemAt(i).widget()
+            if container is None or not hasattr(container, "contentWidget"):
+                continue
+            pool_item = container.contentWidget.layout().itemAt(0)
+            if pool_item is None:
+                continue
+            pool_widget = pool_item.widget()
+            if not isinstance(pool_widget, AffixPoolWidget):
+                continue
+            for j in range(pool_widget.affix_list.count()):
+                list_item = pool_widget.affix_list.item(j)
+                affix_widget = pool_widget.affix_list.itemWidget(list_item)
+                if isinstance(affix_widget, AffixWidget):
+                    yield affix_widget
+
     def count_want_greater_affixes(self):
         want_greater_count = 0
 
         if not hasattr(self, "affix_pool_layout") or not hasattr(self, "inherent_pool_layout"):
             return 0
 
-        for i in range(self.affix_pool_layout.count()):
-            container = self.affix_pool_layout.itemAt(i).widget()
-            if container and hasattr(container, "contentWidget"):
-                pool_widget = container.contentWidget.layout().itemAt(0).widget()
-                if isinstance(pool_widget, AffixPoolWidget):
-                    for j in range(pool_widget.affix_list.count()):
-                        list_item = pool_widget.affix_list.item(j)
-                        affix_widget = pool_widget.affix_list.itemWidget(list_item)
-                        if isinstance(affix_widget, AffixWidget) and affix_widget.greater_checkbox.isChecked():
-                            want_greater_count += 1
-
-        for i in range(self.inherent_pool_layout.count()):
-            container = self.inherent_pool_layout.itemAt(i).widget()
-            if container and hasattr(container, "contentWidget"):
-                pool_widget = container.contentWidget.layout().itemAt(0).widget()
-                if isinstance(pool_widget, AffixPoolWidget):
-                    for j in range(pool_widget.affix_list.count()):
-                        list_item = pool_widget.affix_list.item(j)
-                        affix_widget = pool_widget.affix_list.itemWidget(list_item)
-                        if isinstance(affix_widget, AffixWidget) and affix_widget.greater_checkbox.isChecked():
-                            want_greater_count += 1
+        for affix_widget in self.iter_affix_widgets():
+            if affix_widget.greater_checkbox.isChecked():
+                want_greater_count += 1
 
         return want_greater_count
 
@@ -328,6 +342,10 @@ class AffixGroupEditor(QWidget):
             self.greater_count_label.setText("(1 greater affix marked)")
         else:
             self.greater_count_label.setText(f"({count} greater affixes marked)")
+
+    def convert_all_to_min_percent_of_affix(self, percent: int):
+        for affix_widget in self.iter_affix_widgets():
+            affix_widget.set_min_percent(percent, convert_mode=True)
 
 
 class AffixPoolWidget(QWidget):
@@ -381,7 +399,11 @@ class AffixPoolWidget(QWidget):
         greater_label.setProperty("affixHeaderLabel", True)
         self._refresh_widget_style(greater_label)
 
-        value_label = QLabel("Value")
+        mode_label = QLabel("Mode")
+        mode_label.setProperty("affixHeaderLabel", True)
+        self._refresh_widget_style(mode_label)
+
+        value_label = QLabel("Threshold")
         value_label.setProperty("affixHeaderLabel", True)
         self._refresh_widget_style(value_label)
 
@@ -393,9 +415,11 @@ class AffixPoolWidget(QWidget):
         title_layout.addWidget(affix_label)
         title_layout.addSpacing(400)
         title_layout.addWidget(greater_label)
-        title_layout.addSpacing(95)
+        title_layout.addSpacing(70)
+        title_layout.addWidget(mode_label)
+        title_layout.addSpacing(85)
         title_layout.addWidget(value_label)
-        title_layout.addSpacing(95)
+        title_layout.addSpacing(85)
         title_layout.addWidget(comparison_label)
 
         self.affix_list = QListWidget()
@@ -463,11 +487,15 @@ class AffixWidget(QWidget):
 
         self.create_affix_name_combobox()
         self.create_greater_checkbox()
+        self.create_mode_combobox()
         self.create_value_input()
         self.create_comparison_combobox()
+        self.mode_combo.currentTextChanged.connect(self.update_mode)
+        self.update_mode(self.mode_combo.currentText())
 
         layout.addWidget(self.name_combo)
         layout.addWidget(self.greater_checkbox)
+        layout.addWidget(self.mode_combo)
         layout.addWidget(self.value_edit)
         layout.addWidget(self.comparison_combo)
 
@@ -508,14 +536,19 @@ class AffixWidget(QWidget):
                 break
             parent = parent.parent()
 
+    def create_mode_combobox(self):
+        self.mode_combo = IgnoreScrollWheelComboBox()
+        self.mode_combo.setFixedSize(100, self.mode_combo.sizeHint().height())
+        self.mode_combo.addItems([AFFIX_VALUE_MODE, AFFIX_PERCENT_MODE])
+        if self.affix.minPercentOfAffix:
+            self.mode_combo.setCurrentText(AFFIX_PERCENT_MODE)
+        else:
+            self.mode_combo.setCurrentText(AFFIX_VALUE_MODE)
+
     def create_value_input(self):
         self.value_edit = QLineEdit()
         self.value_edit.setFixedSize(100, self.value_edit.sizeHint().height())
-        self.value_edit.setPlaceholderText("Value (optional)")
-        if self.affix.value is not None:
-            self.value_edit.setText(str(self.affix.value))
         self.value_edit.textChanged.connect(self.update_value)
-        self.affix.value = self.affix.value
 
     def create_comparison_combobox(self):
         self.comparison_combo = IgnoreScrollWheelComboBox()
@@ -536,11 +569,49 @@ class AffixWidget(QWidget):
             return
         self.affix.name = affix_name
 
+    def refresh_value_input(self):
+        if self.mode_combo.currentText() == AFFIX_PERCENT_MODE:
+            self.value_edit.setPlaceholderText("Percent (0-100)")
+            self.value_edit.setValidator(QIntValidator(0, 100, self.value_edit))
+            display_value = "" if self.affix.minPercentOfAffix == 0 else str(self.affix.minPercentOfAffix)
+            self.comparison_combo.setEnabled(False)
+        else:
+            self.value_edit.setPlaceholderText("Value (optional)")
+            self.value_edit.setValidator(QDoubleValidator(self.value_edit))
+            display_value = "" if self.affix.value is None else str(self.affix.value)
+            self.comparison_combo.setEnabled(True)
+
+        self.value_edit.blockSignals(True)
+        self.value_edit.setText(display_value)
+        self.value_edit.blockSignals(False)
+
+    def update_mode(self, current_text=None):
+        mode = current_text or self.mode_combo.currentText()
+        if mode == AFFIX_PERCENT_MODE:
+            self.affix.value = None
+        else:
+            self.affix.minPercentOfAffix = 0
+        self.refresh_value_input()
+
     def update_value(self, value):
+        if self.mode_combo.currentText() == AFFIX_PERCENT_MODE:
+            try:
+                percent = int(value) if value else 0
+            except ValueError:
+                return
+            if not 0 <= percent <= 100:
+                QMessageBox.warning(self, "Warning", "Min % must be between 0 and 100.")
+                self.refresh_value_input()
+                return
+            self.affix.minPercentOfAffix = percent
+            self.affix.value = None
+            return
+
         try:
             self.affix.value = float(value) if value else None
         except ValueError:
             return
+        self.affix.minPercentOfAffix = 0
 
     def update_comparison(self, current_text=None):
         comparison = current_text or self.comparison_combo.currentText()
@@ -550,6 +621,13 @@ class AffixWidget(QWidget):
 
     def update_greater(self):
         self.affix.want_greater = self.greater_checkbox.isChecked()
+
+    def set_min_percent(self, percent: int, convert_mode: bool = False):
+        if convert_mode and self.mode_combo.currentText() != AFFIX_PERCENT_MODE:
+            self.mode_combo.setCurrentText(AFFIX_PERCENT_MODE)
+        if self.mode_combo.currentText() != AFFIX_PERCENT_MODE:
+            return
+        self.value_edit.setText(str(percent))
 
 
 class AffixesTab(QWidget):
@@ -598,13 +676,16 @@ class AffixesTab(QWidget):
         remove_item_button.clicked.connect(self.remove_item_type)
 
         set_all_minGreaterAffix_button = QPushButton("Set All Min GAs (Excludes Auto Synced Items)")
+        convert_all_to_min_percent_button = QPushButton("Convert All To Min %")
         set_all_minPower_button = QPushButton("Set all minPower")
         set_all_minGreaterAffix_button.clicked.connect(self.set_all_minGreaterAffix)
+        convert_all_to_min_percent_button.clicked.connect(self.convert_all_to_min_percent_of_affix)
         set_all_minPower_button.clicked.connect(self.set_all_minPower)
 
         self.toolbar.addWidget(add_item_button)
         self.toolbar.addWidget(remove_item_button)
         self.toolbar.addWidget(set_all_minGreaterAffix_button)
+        self.toolbar.addWidget(convert_all_to_min_percent_button)
         self.toolbar.addWidget(set_all_minPower_button)
 
         self.main_layout.addWidget(self.toolbar)
@@ -650,6 +731,13 @@ class AffixesTab(QWidget):
                     continue
                 tab.min_greater.setValue(minGreaterAffix)
                 tab.update_min_greater_affix()
+
+    def convert_all_to_min_percent_of_affix(self):
+        current_tab = self.tab_widget.currentWidget()
+        if isinstance(current_tab, AffixGroupEditor):
+            dialog = MinPercentDialog(self)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                current_tab.convert_all_to_min_percent_of_affix(dialog.get_value())
 
     def set_all_minPower(self):
         dialog = MinPowerDialog(self)

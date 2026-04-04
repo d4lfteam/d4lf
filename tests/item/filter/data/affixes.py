@@ -123,6 +123,28 @@ affixes = [
         ),
     ),
     (
+        "percent affix pass",
+        ["test.PercentBoots"],
+        TestItem(
+            item_type=ItemType.Boots,
+            affixes=[
+                Affix(name="movement_speed", value=9.0, min_value=5.0, max_value=10.0),
+                Affix(name="dodge_chance", value=3.0),
+            ],
+        ),
+    ),
+    (
+        "percent affix fail",
+        [],
+        TestItem(
+            item_type=ItemType.Boots,
+            affixes=[
+                Affix(name="movement_speed", value=8.0, min_value=5.0, max_value=10.0),
+                Affix(name="dodge_chance", value=3.0),
+            ],
+        ),
+    ),
+    (
         "greater affix",
         ["test.CountBootsMatch", "test.GreaterAffixes"],
         TestItem(

@@ -127,7 +127,8 @@ def _add_affixes_from_tts_mixed(
     affixes = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
     aspect_text = _get_aspect_from_tts_section(tts_section, item, starting_index, len(affixes))
 
-    # With advanced item compare on we'll actually find more bullets than we need, so we don't rely on them for number of affixes
+    # With advanced item compare on we'll actually find more bullets than we need, so we don't rely on them for
+    # number of affixes
     if len(affixes) - 1 > len(affix_bullets):
         _raise_index_error(affixes, affix_bullets, item, img_item_descr)
 
