@@ -203,7 +203,7 @@ affix = ProfileModel(
 
 always_keep_mythics = ProfileModel(name="keep_mythics", Uniques=[UniqueModel(minPower=900)])
 
-aspects_filters = ProfileModel(name="aspect_profile", AspectUpgrades=["accelerating", "of_occult_dominion"])
+aspects_filters = ProfileModel(name="aspect_profile", AspectUpgrades=["accelerating", "aggressive"])
 
 aspect_only_unique_filters = ProfileModel(
     name="aspect_only",
@@ -243,8 +243,8 @@ sigil_priority = ProfileModel(
 tributes = ProfileModel(
     name="tributes",
     Tributes=[
-        TributeFilterModel(name="tribute_of_pride"),
-        TributeFilterModel(name="mystique"),
+        TributeFilterModel(name="tribute_of_andariel"),
+        TributeFilterModel(name="harmony"),
         TributeFilterModel(rarities=[ItemRarity.Legendary, ItemRarity.Unique]),
     ],
 )

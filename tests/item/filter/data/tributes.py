@@ -9,8 +9,8 @@ class TestTribute(Item):
 
 
 tributes = [
-    ("ok_1", ["tributes"], TestTribute(name="tribute_of_pride", rarity=ItemRarity.Magic)),
-    ("ok_2", ["tributes"], TestTribute(name="tribute_of_mystique", rarity=ItemRarity.Magic)),
+    ("ok_1", ["tributes"], TestTribute(name="tribute_of_andariel", rarity=ItemRarity.Magic)),
+    ("ok_2", ["tributes"], TestTribute(name="tribute_of_harmony", rarity=ItemRarity.Magic)),
     ("rarity_matches", ["tributes"], TestTribute(name="tribute_of_ascendance_resolute", rarity=ItemRarity.Unique)),
     ("not_in_list", [], TestTribute(name="tribute_of_fake")),
 ]
