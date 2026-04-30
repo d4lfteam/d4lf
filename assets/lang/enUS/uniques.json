@@ -1,18 +1,27 @@
 {
     "100000_steps": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "accord_of_the_wilds": {
+        "num_inherents": 0
+    },
+    "aegroms_schism": {
+        "num_inherents": 0
     },
     "ahavarion_spear_of_lycander": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "airidahs_inexorable_will": {
         "num_inherents": 0
     },
+    "anathema_of_the_primes": {
+        "num_inherents": 0
+    },
     "ancients_oath": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "andariels_visage": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "arcadia": {
         "num_inherents": 0
@@ -24,16 +33,19 @@
         "num_inherents": 0
     },
     "ashearas_khanjar": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "assassins_stride": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "autumnal_crown": {
+        "num_inherents": 0
     },
     "axial_conduit": {
         "num_inherents": 0
     },
     "azurewrath": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "balazans_maxtlatl": {
         "num_inherents": 0
@@ -42,7 +54,7 @@
         "num_inherents": 0
     },
     "bands_of_ichorous_rose": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "bane_of_ahjad-den": {
         "num_inherents": 0
@@ -51,16 +63,19 @@
         "num_inherents": 0
     },
     "bastion_of_sir_matthias": {
-        "num_inherents": 3
+        "num_inherents": 2
     },
     "battle_trance": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "beastfall_boots": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "bindings_of_attrition": {
+        "num_inherents": 0
     },
     "black_river": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "blood-mad_idol": {
         "num_inherents": 0
@@ -71,29 +86,44 @@
     "blood_moon_breeches": {
         "num_inherents": 0
     },
+    "blood_wake": {
+        "num_inherents": 0
+    },
     "bloodless_scream": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "blue_rose": {
         "num_inherents": 0
     },
+    "bridle_of_torbaalos": {
+        "num_inherents": 0
+    },
+    "cage_of_madness": {
+        "num_inherents": 0
+    },
+    "cassias_grace": {
+        "num_inherents": 0
+    },
     "cathedrals_song": {
-        "num_inherents": 3
+        "num_inherents": 2
     },
     "chainscourged_mail": {
         "num_inherents": 0
     },
     "cluckeye": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "cluckonomicon": {
         "num_inherents": 0
     },
     "condemnation": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "coop_de_grâce": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "cowl_of_malefic_torment": {
+        "num_inherents": 0
     },
     "cowl_of_the_nameless": {
         "num_inherents": 0
@@ -107,7 +137,16 @@
     "cruors_embrace": {
         "num_inherents": 0
     },
+    "dark_howl": {
+        "num_inherents": 0
+    },
+    "dark_stalkers_medallion": {
+        "num_inherents": 0
+    },
     "dawnfire": {
+        "num_inherents": 0
+    },
+    "deathgrip": {
         "num_inherents": 0
     },
     "deathless_visage": {
@@ -117,19 +156,31 @@
         "num_inherents": 0
     },
     "deaths_pavane": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "deathspeakers_pendant": {
+        "num_inherents": 0
+    },
+    "desperate_march": {
+        "num_inherents": 0
+    },
+    "dirge_of_airidah": {
+        "num_inherents": 0
+    },
+    "dirge_of_odium": {
         "num_inherents": 0
     },
     "dolmen_stone": {
         "num_inherents": 0
     },
     "doombringer": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "drognans_anguish": {
+        "num_inherents": 0
     },
     "eaglehorn": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "earthbreaker": {
         "num_inherents": 0
@@ -137,11 +188,26 @@
     "ebonpiercer": {
         "num_inherents": 0
     },
+    "echo_of_kwatli": {
+        "num_inherents": 0
+    },
     "eggcecutioner": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "eggis": {
-        "num_inherents": 3
+        "num_inherents": 2
+    },
+    "eldruin_sword_of_justice": {
+        "num_inherents": 1
+    },
+    "elegy": {
+        "num_inherents": 0
+    },
+    "emberfury": {
+        "num_inherents": 0
+    },
+    "emblem_of_staalbreak": {
+        "num_inherents": 0
     },
     "endurant_faith": {
         "num_inherents": 0
@@ -150,43 +216,76 @@
         "num_inherents": 0
     },
     "esus_heirloom": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "etnas_lost_dagger": {
+        "num_inherents": 0
+    },
+    "eye_of_baal": {
+        "num_inherents": 0
     },
     "eyes_in_the_dark": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "fang_of_the_vipermagi": {
+        "num_inherents": 0
     },
     "fields_of_crimson": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "fist_of_the_iron_rose": {
+        "num_inherents": 0
     },
     "fists_of_fate": {
         "num_inherents": 0
     },
     "flamescar": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "flameweaver": {
         "num_inherents": 0
     },
     "fleshrender": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "fleshwrit_carapace": {
+        "num_inherents": 0
     },
     "flickerstep": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "footfalls_of_the_waning_world": {
+        "num_inherents": 0
+    },
+    "fractured_runestone": {
+        "num_inherents": 0
     },
     "fractured_winterglass": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "frostburn": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "fury_of_the_wilds": {
+        "num_inherents": 0
     },
     "galvanic_azurite": {
         "num_inherents": 0
     },
     "gate_of_the_red_dawn": {
-        "num_inherents": 3
+        "num_inherents": 2
     },
     "gathlens_birthright": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "gauntlets_of_sheol": {
+        "num_inherents": 0
+    },
+    "gift_of_frost": {
+        "num_inherents": 0
+    },
+    "gladiators_triumph": {
+        "num_inherents": 0
     },
     "gloves_of_the_illuminator": {
         "num_inherents": 0
@@ -201,22 +300,37 @@
         "num_inherents": 0
     },
     "grasp_of_shadow": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
-    "gravebloom": {
-        "num_inherents": 1
+    "gravewalkers_hand": {
+        "num_inherents": 0
     },
     "greatstaff_of_the_crone": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "greaves_of_the_empty_tomb": {
-        "num_inherents": 2
+        "num_inherents": 0
+    },
+    "greenwalkers_oath": {
+        "num_inherents": 0
+    },
+    "greenwalkers_signet": {
+        "num_inherents": 0
     },
     "griswolds_opus": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "hail_of_verglas": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "hand_of_apotheosis": {
+        "num_inherents": 0
+    },
+    "hands_of_the_worldbreaker": {
+        "num_inherents": 0
+    },
+    "hangmans_hand": {
+        "num_inherents": 0
     },
     "harlequin_crest": {
         "num_inherents": 0
@@ -224,23 +338,35 @@
     "harmony_of_ebewaka": {
         "num_inherents": 0
     },
+    "heart_of_azgar": {
+        "num_inherents": 0
+    },
+    "hecaton_chasm": {
+        "num_inherents": 0
+    },
     "heir_of_perdition": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "hellbrand_signet": {
+        "num_inherents": 0
     },
     "hellhammer": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "hellhounds_sabatons": {
+        "num_inherents": 0
     },
     "herald_of_zakarum": {
-        "num_inherents": 4
+        "num_inherents": 3
     },
     "heralds_morningstar": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "hesha_e_kesungi": {
         "num_inherents": 0
     },
     "hooves_of_the_mountain_god": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "howl_from_below": {
         "num_inherents": 0
@@ -251,7 +377,13 @@
     "iceheart_brais": {
         "num_inherents": 0
     },
+    "ifehs_dire_totem": {
+        "num_inherents": 0
+    },
     "indiras_memory": {
+        "num_inherents": 0
+    },
+    "infernal_homunculus": {
         "num_inherents": 0
     },
     "insatiable_fury": {
@@ -266,20 +398,29 @@
     "judicants_glaivehelm": {
         "num_inherents": 0
     },
+    "kabraxis_will": {
+        "num_inherents": 0
+    },
     "kessimes_legacy": {
         "num_inherents": 0
     },
     "khamsin_steppewalkers": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "kilt_of_blackwing": {
         "num_inherents": 0
     },
+    "levin_grasp": {
+        "num_inherents": 0
+    },
     "lidless_wall": {
-        "num_inherents": 4
+        "num_inherents": 2
     },
     "lights_rebuke": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "litany_of_sable": {
+        "num_inherents": 0
     },
     "locrans_talisman": {
         "num_inherents": 0
@@ -287,25 +428,52 @@
     "loyaltys_mantle": {
         "num_inherents": 0
     },
+    "lurid_pact": {
+        "num_inherents": 0
+    },
+    "mace_of_king_leoric": {
+        "num_inherents": 0
+    },
     "mad_wolfs_glee": {
         "num_inherents": 0
     },
     "malefic_crescent": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "mantle_of_mountains_fury": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "mantle_of_the_grey": {
         "num_inherents": 0
     },
     "march_of_the_stalwart_soul": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "mark_of_the_old_wolf": {
+        "num_inherents": 0
     },
     "melted_heart_of_selig": {
         "num_inherents": 0
     },
+    "might_of_qual-kehk": {
+        "num_inherents": 0
+    },
+    "might_of_the_ursine": {
+        "num_inherents": 0
+    },
+    "misericorde": {
+        "num_inherents": 0
+    },
     "mjölnic_ryng": {
+        "num_inherents": 0
+    },
+    "molochs_beating_flame": {
+        "num_inherents": 0
+    },
+    "molten_band": {
+        "num_inherents": 0
+    },
+    "morlu_fleshward": {
         "num_inherents": 0
     },
     "mothers_embrace": {
@@ -314,43 +482,67 @@
     "mutilator_plate": {
         "num_inherents": 0
     },
+    "nails_of_the_gore-crowned": {
+        "num_inherents": 0
+    },
     "nesekem_the_herald": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "night_terror": {
+        "num_inherents": 0
+    },
+    "nomads_longing_heart": {
+        "num_inherents": 0
     },
     "okuns_catalyst": {
         "num_inherents": 1
     },
+    "omen_of_pain": {
+        "num_inherents": 0
+    },
+    "onyx_soul": {
+        "num_inherents": 0
+    },
     "ophidian_iris": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "orphan_maker": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "orsivane": {
         "num_inherents": 0
     },
     "overkill": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "pact_of_bone": {
+        "num_inherents": 0
     },
     "paingorgers_gauntlets": {
         "num_inherents": 0
     },
     "path_of_the_emissary": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "path_of_tragoul": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "peacemongers_signet": {
         "num_inherents": 0
     },
     "penitent_greaves": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "pitfighters_gull": {
         "num_inherents": 0
     },
+    "protean_heart": {
+        "num_inherents": 0
+    },
     "protection_of_the_prime": {
+        "num_inherents": 0
+    },
+    "purified_lightbringer": {
         "num_inherents": 0
     },
     "rage_of_harrogath": {
@@ -359,17 +551,29 @@
     "raiment_of_the_infinite": {
         "num_inherents": 0
     },
+    "raiment_of_the_sea": {
+        "num_inherents": 0
+    },
     "rakanoths_wake": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "ramaladnis_magnum_opus": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "razorplate": {
         "num_inherents": 0
     },
+    "red_blessing": {
+        "num_inherents": 0
+    },
     "red_sermon": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "rictus_of_terror": {
+        "num_inherents": 0
+    },
+    "rimeblood": {
+        "num_inherents": 0
     },
     "ring_of_mendeln": {
         "num_inherents": 0
@@ -378,7 +582,7 @@
         "num_inherents": 0
     },
     "ring_of_starless_skies": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "ring_of_the_midday_hunt": {
         "num_inherents": 0
@@ -396,94 +600,133 @@
         "num_inherents": 0
     },
     "rod_of_kepeleke": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "rotting_lightbringer": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "rustbitten_dirk": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "saboteurs_signet": {
         "num_inherents": 0
     },
     "sabre_of_tsasgal": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "sanctis_of_kethamar": {
         "num_inherents": 0
     },
     "sanguivor_blade_of_zir": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "sashes_of_the_wretched": {
+        "num_inherents": 0
+    },
+    "scepter_of_the_three": {
+        "num_inherents": 0
     },
     "scorn_of_the_earth": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "scoundrels_kiss": {
         "num_inherents": 0
     },
     "scoundrels_leathers": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "scourge_of_duriel": {
+        "num_inherents": 0
+    },
+    "sea_lords_fine_gloves": {
+        "num_inherents": 0
+    },
+    "seal_of_the_ophanim": {
+        "num_inherents": 0
     },
     "seal_of_the_second_trumpet": {
         "num_inherents": 0
     },
+    "seed_of_horazon": {
+        "num_inherents": 0
+    },
     "sepazontec": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "shanars_resonance": {
+        "num_inherents": 0
     },
     "shard_of_verathiel": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "shattered_vow": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "shroud_of_false_death": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "shroud_of_khanduras": {
+        "num_inherents": 0
+    },
+    "shrouded_gift": {
         "num_inherents": 0
     },
     "sidhe_bindings": {
         "num_inherents": 0
     },
+    "signet_of_pelghain": {
+        "num_inherents": 0
+    },
+    "sire_of_sin": {
+        "num_inherents": 0
+    },
     "skyhunter": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "sliver_of_hate": {
+        "num_inherents": 0
     },
     "soulbrand": {
         "num_inherents": 0
     },
+    "spine_of_tathamet": {
+        "num_inherents": 0
+    },
     "staff_of_endless_rage": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "staff_of_lam_esen": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "staff_of_zerae": {
+        "num_inherents": 0
     },
     "starfall_coronet": {
         "num_inherents": 0
     },
     "stone_of_vehemen": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "storms_companion": {
         "num_inherents": 0
     },
     "strike_of_stormhorn": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "sunbirds_gorget": {
         "num_inherents": 0
     },
     "sunbrand": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "sundered_night": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "sunstained_war-crozier": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "supplication": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "tal_rashas_iridescent_loop": {
         "num_inherents": 0
@@ -498,34 +741,67 @@
         "num_inherents": 0
     },
     "the_basilisk": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "the_blade_of_sight_aflame": {
+        "num_inherents": 0
     },
     "the_butchers_cleaver": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "the_eightfold_idol": {
+        "num_inherents": 0
+    },
+    "the_fecund_seal": {
+        "num_inherents": 0
+    },
+    "the_gloom_ward": {
+        "num_inherents": 2
     },
     "the_grandfather": {
-        "num_inherents": 2
+        "num_inherents": 1
     },
     "the_hand_of_naz": {
         "num_inherents": 0
     },
+    "the_hemat_stone": {
+        "num_inherents": 0
+    },
+    "the_maestro": {
+        "num_inherents": 0
+    },
     "the_mortacrux": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "the_oculus": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "the_open_eye_of_gorgorra": {
+        "num_inherents": 0
+    },
+    "the_relentless_heart": {
+        "num_inherents": 0
     },
     "the_third_blade": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "the_umbracrux": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "the_undercrown": {
+        "num_inherents": 0
     },
     "the_unmaker": {
         "num_inherents": 0
     },
     "thousand-eye_reaver": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "thrice-woven_nightmare": {
+        "num_inherents": 0
+    },
+    "thundergods_blessing": {
+        "num_inherents": 0
     },
     "tibaults_will": {
         "num_inherents": 0
@@ -539,11 +815,8 @@
     "tyraels_might": {
         "num_inherents": 1
     },
-    "tyraels_shopping_list": {
-        "num_inherents": 1
-    },
     "ugly_bastard_helm": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "unbroken_chain": {
         "num_inherents": 0
@@ -554,23 +827,38 @@
     "vasilys_prayer": {
         "num_inherents": 0
     },
+    "vengeful_sinew": {
+        "num_inherents": 0
+    },
+    "vision_of_the_firestorm": {
+        "num_inherents": 0
+    },
     "vox_omnium": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "ward_of_the_white_dove": {
-        "num_inherents": 3
+        "num_inherents": 2
     },
     "waxing_gibbous": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "wendigo_brand": {
         "num_inherents": 0
     },
+    "widows_web": {
+        "num_inherents": 0
+    },
     "wildheart_hunger": {
-        "num_inherents": 1
+        "num_inherents": 0
+    },
+    "will_of_rathma": {
+        "num_inherents": 0
+    },
+    "will_of_stone": {
+        "num_inherents": 0
     },
     "windforce": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "word_of_hakan": {
         "num_inherents": 0
@@ -585,7 +873,7 @@
         "num_inherents": 0
     },
     "wushe_nak_pa": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "wyrdskin": {
         "num_inherents": 0
@@ -594,9 +882,6 @@
         "num_inherents": 0
     },
     "yens_blessing": {
-        "num_inherents": 1
-    },
-    "yens_blessing_(legacy)": {
-        "num_inherents": 1
+        "num_inherents": 0
     }
 }

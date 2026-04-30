@@ -1,5 +1,7 @@
 # ![logo](assets/logo.png)
 
+\*\*\* Note: D4LF will be supported for Season 13. However, there were a lot of itemization updates and it may take a few weeks for all the bugs to get ironed out. \*\*\*
+
 Filter items and sigils in your inventory based on affixes, aspects and thresholds of their values. For questions,
 feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6T) or use github issues.
 
