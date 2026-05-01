@@ -61,10 +61,6 @@ LOGGER = logging.getLogger(__name__)
 def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[int, int]:
     inherent_num = 0
     affixes_num = 4
-    if is_weapon(item.item_type) or item.item_type == ItemType.Boots:
-        inherent_num = 1
-    elif item.item_type == ItemType.Shield:
-        inherent_num = 3
 
     if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
         # Uniques can have variable amounts of inherents.
@@ -302,6 +298,8 @@ def _get_affix_starting_location_from_tts_section(tts_section: list[str], item: 
         start = _get_index_of_armor_dps_or_all_resist(tts_section, "damage per second") + 2
     elif is_jewelry(item.item_type):
         start = _get_index_of_armor_dps_or_all_resist(tts_section, "all resist")
+    elif item.item_type == ItemType.Shield:
+        start = _get_index_of_armor_dps_or_all_resist(tts_section, "armor") + 2
     elif is_armor(item.item_type):
         start = _get_index_of_armor_dps_or_all_resist(tts_section, "armor")
     start += 1
