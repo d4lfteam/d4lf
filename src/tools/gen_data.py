@@ -250,6 +250,7 @@ def main(d4data_dir: Path, companion_app_dir: Path):
                 desc: str = affix["Description"]
                 desc = desc.lower().strip().replace("'", "").replace("’", "").replace(".", "")
                 desc = remove_content_in_braces(desc)
+                desc = desc.removeprefix("x ")
                 name = desc.replace(",", "").replace(" ", "_")
                 if len(desc) > 2:
                     affix_dict[name] = desc
