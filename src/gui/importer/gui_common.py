@@ -85,7 +85,7 @@ def fix_weapon_type(input_str: str) -> ItemType | None:
 def fix_offhand_type(input_str: str, class_str: str) -> ItemType | None:
     input_str = input_str.lower()
     class_str = class_str.lower()
-    if "sorc" in class_str:
+    if "sorc" in class_str or "warlock" in class_str:
         return ItemType.Focus
     if "druid" in class_str:
         return ItemType.OffHandTotem
