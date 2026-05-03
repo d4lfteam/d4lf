@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import re
 import sys
 import time
 from dataclasses import dataclass, field
@@ -505,7 +506,6 @@ class Filter:
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
         self.all_file_paths = []
 
-        errors = False
         for profile_str in profiles:
             custom_file_path = custom_profile_path / f"{profile_str}.yaml"
             if custom_file_path.is_file():
@@ -520,7 +520,6 @@ class Filter:
                     config = yaml.load(stream=f, Loader=_UniqueKeyLoader)
                 except Exception as e:
                     LOGGER.error(f"Error in the YAML file {profile_path}: {e}")
-                    errors = True
                     continue
                 if config is None:
                     LOGGER.error(f"Empty YAML file {profile_path}, please remove it")
@@ -530,46 +529,15 @@ class Filter:
                 try:
                     data = ProfileModel(name=profile_str, **config)
                 except ValidationError as e:
-                    errors = True
-
-                    if "minGreaterAffixCount" in str(e):
-                        LOGGER.error("[CLEAN]%s", "=" * 80)
-                        LOGGER.error("[CLEAN]%s", f"PROFILE VALIDATION FAILED: {profile_path}")
-                        LOGGER.error("[CLEAN]%s", "=" * 80)
-                        LOGGER.error("[CLEAN]")
-                        LOGGER.error(
-                            "[CLEAN]%s", "You are using an old, outdated field that must be removed from your profile."
-                        )
-                        LOGGER.error("[CLEAN]")
-                        LOGGER.error("[CLEAN]%s", "WRONG (old way - pool level):")
-                        LOGGER.error("[CLEAN]%s", "- Ring:")
-                        LOGGER.error("[CLEAN]%s", "    itemType: [ring]")
-                        LOGGER.error("[CLEAN]%s", "    minPower: 100")
-                        LOGGER.error("[CLEAN]%s", "    affixPool:")
-                        LOGGER.error("[CLEAN]%s", "    - count:")
-                        LOGGER.error("[CLEAN]%s", "      - {name: strength}")
-                        LOGGER.error("[CLEAN]%s", "      minCount: 2")
-                        LOGGER.error("[CLEAN]%s", "      minGreaterAffixCount: 1  ← DELETE THIS LINE")
-                        LOGGER.error("[CLEAN]")
-                        LOGGER.error("[CLEAN]%s", "CORRECT (new way - item level):")
-                        LOGGER.error("[CLEAN]%s", "- Ring:")
-                        LOGGER.error("[CLEAN]%s", "    itemType: [ring]")
-                        LOGGER.error("[CLEAN]%s", "    minPower: 100")
-                        LOGGER.error("[CLEAN]%s", "    minGreaterAffixCount: 1  ← PUT IT HERE INSTEAD")
-                        LOGGER.error("[CLEAN]%s", "    affixPool:")
-                        LOGGER.error("[CLEAN]%s", "    - count:")
-                        LOGGER.error("[CLEAN]%s", "      - {name: strength}")
-                        LOGGER.error("[CLEAN]%s", "      minCount: 2")
-                        LOGGER.error("[CLEAN]%s", "      # NO minGreaterAffixCount here anymore!")
-                        LOGGER.error("[CLEAN]")
-                        LOGGER.error("[CLEAN]%s", "=" * 80)
-                        LOGGER.error(
-                            "[CLEAN]%s", f"ACTION REQUIRED: Please make the above adjustments in: {profile_path}"
-                        )
-                        LOGGER.error("[CLEAN]%s", "=" * 80)
-                    else:
-                        LOGGER.error(f"Validation error in {profile_path}: {e}")
-
+                    LOGGER.error(
+                        f"There were errors validating the profile at {profile_path}. This most likely means it is an old profile and the code has changed since it was created. The easiest solution is to delete the profile and import it again, or edit it manually using the errors below to guide you. The profile is skipped."
+                    )
+                    profile_errors = re.sub(
+                        r"For further information visit https://errors\.pydantic\.dev/\d+(\.\d+)+/v/value_error\s*",
+                        "",
+                        str(e),
+                    )
+                    LOGGER.error(f"Validation error in {profile_path}: {profile_errors}")
                     continue
 
                 sections: list[str] = []
@@ -594,10 +562,6 @@ class Filter:
 
                 info_str += " ".join(sections)
                 LOGGER.info(info_str.rstrip())
-            if errors:
-                fatal_msg = "\n" + "\n".join(["=" * 80, "❌ FATAL: Cannot continue with invalid profiles", "=" * 80])
-                LOGGER.error(fatal_msg)
-                sys.exit(1)
             self.last_loaded = time.time()
             self.last_profile_list = IniConfigLoader().general.profiles.copy()
 
