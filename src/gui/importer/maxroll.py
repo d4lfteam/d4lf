@@ -35,11 +35,12 @@ from src.scripts import correct_name
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://maxroll.gg/d4/build-guides/"
-BUILD_GUIDE_PLANNER_EMBED_XPATH = "//*[contains(@class, 'd4-embed')]"
 PLANNER_API_BASE_URL = "https://planners.maxroll.gg/profiles/d4/"
-PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?7659ec67"
+PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?aac01320"
 PLANNER_BASE_URL = "https://maxroll.gg/d4/planner/"
-BUILD_GUIDE_PLANNER_LINK_XPATH = f"//a[starts-with(@href, '{PLANNER_BASE_URL}') and contains(@href, '#')]"
+SCRIPT_XPATH = "//div[@id='root']/script"
+BUILD_SCRIPT_PREFIX = "window.__remixContext = "
+PLANNER_API_REGEX = re.compile(r'(https://maxroll\.gg/d4/planner/[^"|\\]*)')
 
 
 class MaxrollException(Exception):
@@ -54,16 +55,16 @@ def import_maxroll(config: ImportConfig):
         return
     LOGGER.info(f"Loading {url}")
     if BUILD_GUIDE_BASE_URL in url:
-        api_url, build_id, guide_season = _extract_planner_url_and_id_from_guide(url)
+        api_url, build_id = _extract_planner_url_and_id_from_guide(url)
     else:
         api_url, build_id = _extract_planner_url_and_id_from_planner(url)
-        guide_season = ""
     try:
         r = get_with_retry(url=api_url)
     except ConnectionError:
         LOGGER.error("Couldn't get planner")
         return
     all_data = r.json()
+    guide_season = all_data.get("season", "")
     build_data = json.loads(all_data["data"])
     items = build_data["items"]
     try:
@@ -71,6 +72,8 @@ def import_maxroll(config: ImportConfig):
     except ConnectionError:
         LOGGER.error("Couldn't get planner data")
         return
+    # The attribute descriptions are not always consistent with the casing for the key so we fix that here
+    mapping_data["attributeDescriptions"] = {k.lower(): v for k, v in mapping_data["attributeDescriptions"].items()}
     active_profile = build_data["profiles"][build_id]
     build_header = all_data["name"] or all_data["class"]
     variant_name = active_profile["name"] or ""
@@ -79,19 +82,10 @@ def import_maxroll(config: ImportConfig):
         build_name = all_data["class"]
     if variant_name:
         build_name += f"_{variant_name}"
-    if guide_season and (season_match := re.search(r"\bSeason\s+\d+\b|\bS\d+\b", build_name, flags=re.IGNORECASE)):
-        existing_label = season_match.group(0)
-        if existing_label.casefold().startswith("season"):
-            prefix = "Season" if existing_label.startswith("Season") else "season"
-            replacement = f"{prefix} {guide_season}"
-        else:
-            prefix = "S" if existing_label.startswith("S") else "s"
-            replacement = f"{prefix}{guide_season}"
-        build_name = build_name[: season_match.start()] + replacement + build_name[season_match.end() :]
     finished_filters = []
     unique_filters = []
     aspect_upgrade_filters = []
-    for slot_name, item_id in active_profile["items"].items():
+    for item_id in active_profile["items"].values():
         resolved_item = items[str(item_id)]
         resolved_item_id = resolved_item["id"]
         # magic/rare = 0, legendary = 1, unique = 2, mythic = 4
@@ -106,8 +100,7 @@ def import_maxroll(config: ImportConfig):
             try:
                 unique_name = _unique_name_special_handling(unique_name)
                 unique_model.aspect = AspectUniqueFilterModel(name=unique_name)
-                # Maxroll's uniques are all over the place in quality when it comes to affixes and names.
-                # Removing support for this for now.
+                # This will actually work now but I don't think it's what people will want, so leaving out for now
                 # unique_model.affix = [
                 #     AffixFilterModel(name=x.name)
                 #     for x in _find_item_affixes(mapping_data=mapping_data, item_affixes=resolved_item["explicits"])
@@ -120,16 +113,18 @@ def import_maxroll(config: ImportConfig):
         item_filter = ItemFilterModel()
         if (
             item_type := _find_item_type(
-                mapping_data=mapping_data["items"],
-                value=resolved_item["id"],
-                slot_name=slot_name,
-                class_name=all_data["class"],
+                mapping_data=mapping_data["items"], value=resolved_item["id"], class_name=all_data["class"]
             )
         ) is None:
             LOGGER.warning(
                 f"Couldn't find item type for {resolved_item['id']} from mapping data provided by Maxroll. Skipping item."
             )
             continue
+
+        if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
+            LOGGER.warning(f"Seals and Charms are not currently supported, skipping {resolved_item['name']}.")
+            continue
+
         item_filter.itemType = [item_type]
 
         # Legendary aspect upgrade handling
@@ -149,14 +144,6 @@ def import_maxroll(config: ImportConfig):
                     )
                 else:
                     aspect_upgrade_filters.append(legendary_aspect)
-            else:
-                msg = f"Unable to find legendary aspect in maxroll data for {item_type}, can not automatically add to AspectUpgrades."
-                # MaxRoll reports all rares as legendaries so this is an attempt to reduce false warnings for rares
-                if len(resolved_item["explicits"]) == 3:
-                    msg += " We suspect this item is actually a rare and maxroll is falsely reporting it as a legendary, please double check."
-                    LOGGER.debug(msg)
-                else:
-                    LOGGER.warning(msg)
 
         # Standard item handling
         item_filter.affixPool = [
@@ -166,6 +153,7 @@ def import_maxroll(config: ImportConfig):
                     for x in _find_item_affixes(
                         mapping_data=mapping_data,
                         item_affixes=resolved_item["explicits"],
+                        item_type=item_type,
                         import_greater_affixes=config.import_greater_affixes,
                     )
                 ],
@@ -175,16 +163,6 @@ def import_maxroll(config: ImportConfig):
         item_filter.minPower = 100
         update_mingreateraffixcount(item_filter, config.require_greater_affixes)
 
-        # maxroll has some outdated data, so we need to clean it up by using item_type
-        if "implicits" in resolved_item and item_type in [ItemType.Boots]:
-            item_filter.inherentPool = [
-                AffixFilterCountModel(
-                    count=[
-                        AffixFilterModel(name=x.name)
-                        for x in _find_item_affixes(mapping_data=mapping_data, item_affixes=resolved_item["implicits"])
-                    ]
-                )
-            ]
         filter_name = item_filter.itemType[0].name
         i = 2
         while any(filter_name == next(iter(x)) for x in finished_filters):
@@ -226,16 +204,18 @@ def import_maxroll(config: ImportConfig):
     LOGGER.info("Finished")
 
 
-def _corrections(input_str: str) -> str:
+def _attribute_description_corrections(input_str: str) -> str:
     match input_str:
         case "On_Hit_Vulnerable_Proc_Chance":
-            return "On_Hit_Vulnerable_Proc"
+            return "On_Hit_Vulnerable_Proc".lower()
         case "Movement_Bonus_On_Elite_Kill":
-            return "Movement_Speed_Bonus_On_Elite_Kill"
-    return input_str
+            return "Movement_Speed_Bonus_On_Elite_Kill".lower()
+    return input_str.lower()
 
 
-def _find_item_affixes(mapping_data: dict, item_affixes: dict, import_greater_affixes=False) -> list[Affix]:
+def _find_item_affixes(
+    mapping_data: dict, item_affixes: dict, item_type: ItemType, import_greater_affixes=False
+) -> list[Affix]:
     res = []
     for affix_id in item_affixes:
         for affix in mapping_data["affixes"].values():
@@ -246,42 +226,38 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict, import_greater_af
             attr_desc = _attr_desc_special_handling(affix["id"])
             if not attr_desc:
                 if "formula" in affix["attributes"][0] and affix["attributes"][0]["formula"] in [
-                    "Affix40%_SingleResist",
-                    "AffixFlatResourceUpto4",
-                    "AffixResourceOnKill",
-                    "AffixSingleResist",
-                    "S04_AffixResistance_Single_Flat",
+                    "GearAffix_Resource_Per_Second",
+                    "GearAffix_DamageType",
+                    "GearAffix_DamageType_Greater",
+                    "GearAffix_Resource_On_Kill",
+                    "GearAffix_Resource_On_Kill_Warlock",
                 ]:
-                    if affix["attributes"][0]["formula"] in [
-                        "Affix40%_SingleResist",
-                        "AffixSingleResist",
-                        "S04_AffixResistance_Single_Flat",
-                    ]:
+                    if affix["attributes"][0]["formula"] in ["GearAffix_DamageType", "GearAffix_DamageType_Greater"]:
                         attr_desc = (
                             mapping_data["uiStrings"]["damageType"][str(affix["attributes"][0]["param"])]
-                            + " Resistance"
+                            + " Damage Multiplier"
                         )
-                    elif affix["attributes"][0]["formula"] in ["AffixFlatResourceUpto4"]:
+                    elif affix["attributes"][0]["formula"] in ["GearAffix_Resource_Per_Second"]:
                         param = str(affix["attributes"][0]["param"])
-                        # Maxroll doesn't have Faith in their data
-                        attr_desc = (
-                            "Faith per Second"
-                            if param == "9"
-                            else mapping_data["uiStrings"]["resourceType"][param] + " per Second"
-                        )
-                    elif affix["attributes"][0]["formula"] in ["AffixResourceOnKill"]:
+                        attr_desc = mapping_data["uiStrings"]["resourceType"][param] + " Regeneration"
+                    elif affix["attributes"][0]["formula"] in [
+                        "GearAffix_Resource_On_Kill",
+                        "GearAffix_Resource_On_Kill_Warlock",
+                    ]:
                         attr_desc = (
                             mapping_data["uiStrings"]["resourceType"][str(affix["attributes"][0]["param"])] + " On Kill"
                         )
                 elif "param" not in affix["attributes"][0]:
                     attr_id = affix["attributes"][0]["id"]
                     attr_obj = mapping_data["attributes"][str(attr_id)]
-                    # Maxroll continues to not know what faith per second is
-                    attr_desc = (
-                        "Faith per Second"
-                        if attr_obj["name"] == "Affix_Value_1"
-                        else mapping_data["attributeDescriptions"][_corrections(attr_obj["name"])]
+                    attr_desc = mapping_data["attributeDescriptions"].get(
+                        _attribute_description_corrections(attr_obj["name"])
                     )
+                    if not attr_desc:
+                        LOGGER.warning(
+                            f"Unable to map {attr_obj['name']} from MaxRoll data to an affix, skipping affix and please report a bug."
+                        )
+                        continue
                 else:  # must be + to talent or skill
                     attr_param = affix["attributes"][0]["param"]
                     for skill_data in mapping_data["skills"].values():
@@ -289,21 +265,28 @@ def _find_item_affixes(mapping_data: dict, item_affixes: dict, import_greater_af
                             attr_desc = f"to {skill_data['name']}"
                             break
                     else:
-                        if affix["attributes"][0]["param"] == -1460542966 and affix["attributes"][0]["id"] == 1033:
+                        param_id = affix["attributes"][0]["param"]
+                        attribute_id = affix["attributes"][0]["id"]
+                        if param_id == -1460542966 and attribute_id in [1033, 1155]:
                             attr_desc = "to core skills"
-                        elif affix["attributes"][0]["param"] == -755407686 and affix["attributes"][0]["id"] in [
-                            1034,
-                            1091,
-                        ]:
+                        elif param_id == -755407686 and attribute_id in [1034, 1091]:
                             attr_desc = "to defensive skills"
-                        elif affix["attributes"][0]["param"] == 746476422 and affix["attributes"][0]["id"] == 1034:
+                        elif param_id == 746476422 and attribute_id == 1034:
                             attr_desc = "to mastery skills"
-                        elif affix["attributes"][0]["param"] == -954965341 and affix["attributes"][0]["id"] == 1091:
+                        elif param_id == -954965341 and attribute_id == 1091:
                             attr_desc = "to basic skills"
-                        elif affix["attributes"][0]["param"] == -1460608310 and affix["attributes"][0]["id"] == 1138:
+                        elif param_id == -1460608310 and attribute_id == 1138:
                             attr_desc = "to aura skills"
+                        elif param_id == 850110203 and attribute_id == 1155:
+                            attr_desc = "to demonology skills"
             clean_desc = re.sub(r"\[.*?\]|[^a-zA-Z ]", "", attr_desc)
             clean_desc = clean_desc.replace("SecondSeconds", "seconds")
+            if not clean_desc:
+                LOGGER.warning(
+                    f"We were unable to map an attribute on item type {item_type.value} to an affix. Please report a bug and include a link to the build, we are skipping that affix."
+                )
+                continue
+
             affix_obj = Affix(name=closest_match(clean_str(clean_desc), Dataloader().affix_dict))
             if import_greater_affixes and affix_id.get("greater", False):
                 affix_obj.type = AffixType.greater
@@ -375,17 +358,15 @@ def _unique_name_special_handling(unique_name: str) -> str:
             return unique_name.replace("\xa0", " ")
 
 
-def _find_item_type(mapping_data: dict, value: str, slot_name: str = "", class_name: str = "") -> ItemType | None:
+def _find_item_type(mapping_data: dict, value: str, class_name: str = "") -> ItemType | None:
     for d_key, d_value in mapping_data.items():
         if d_key == value:
             item_type_str = d_value["type"]
             normalized_item_type_str = _normalize_item_type_str_for_import_helpers(item_type_str)
-            normalized_slot_name = slot_name.casefold()
             if (item_type := fix_weapon_type(input_str=normalized_item_type_str)) is not None:
                 return item_type
             if (
-                "offhand" in normalized_slot_name
-                or any(substring in normalized_item_type_str for substring in ["focus", "off hand", "shield", "totem"])
+                any(substring in normalized_item_type_str for substring in ["focus", "off hand", "shield", "totem"])
             ) and (item_type := fix_offhand_type(input_str=normalized_item_type_str, class_str=class_name)) is not None:
                 return item_type
             if (res := match_to_enum(enum_class=ItemType, target_string=item_type_str, check_keys=True)) is None:
@@ -423,7 +404,7 @@ def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int]:
     return PLANNER_API_BASE_URL + planner_id, data_id
 
 
-def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, str]:
+def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int]:
     """Resolve a build guide to the underlying planner API url, active profile id, and guide season."""
     try:
         r = get_with_retry(url=url)
@@ -431,33 +412,18 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, str]:
         LOGGER.exception(msg := "Couldn't get build guide")
         raise MaxrollException(msg) from exc
     data = lxml.html.fromstring(r.text)
-    guide_season = _extract_guide_season_number(data)
-    planner_links = data.xpath(BUILD_GUIDE_PLANNER_LINK_XPATH)
-    if planner_links and (planner_link := planner_links[0].get("href")):
-        # Prefer the explicit "Open in Planner" link because its fragment already points at the active guide variant.
-        api_url, build_id = _extract_planner_url_and_id_from_planner(planner_link)
-        return api_url, build_id, guide_season
+    # As of season 13, the link to the planner is stuck in a script so we get it from there
+    script_elements = data.xpath(SCRIPT_XPATH)
+    for script_element in script_elements:
+        if script_element.text and script_element.text.strip().startswith(BUILD_SCRIPT_PREFIX):
+            planner_link = PLANNER_API_REGEX.search(script_element.text).group()
+            if planner_link:
+                api_url, build_id = _extract_planner_url_and_id_from_planner(planner_link)
+                return api_url, build_id
+
     msg = "Couldn't resolve a planner profile from this Maxroll build guide. Use the planner link directly and please report a bug."
-    if not (embed := data.xpath(BUILD_GUIDE_PLANNER_EMBED_XPATH)):
-        LOGGER.error(msg)
-        raise MaxrollException(msg)
-    try:
-        # Older guides only expose planner metadata on the embedded widget, so reconstruct the planner target from that.
-        data_id = _extract_guide_profile_id(embed[0])
-    except ValueError as ex:
-        LOGGER.exception(msg)
-        raise MaxrollException(msg) from ex
-    if not (planner_id := embed[0].get("data-d4-profile")) or data_id is None:
-        LOGGER.error(msg)
-        raise MaxrollException(msg)
-    return PLANNER_API_BASE_URL + planner_id, data_id, guide_season
-
-
-def _extract_guide_season_number(data: lxml.html.HtmlElement) -> str:
-    for text in (data.xpath("string(//h1[1])").strip(), data.xpath("string(//title)").strip()):
-        if season_match := re.search(r"\bSeason\s+(\d+)\b", text, flags=re.IGNORECASE):
-            return season_match.group(1)
-    return ""
+    LOGGER.error(msg)
+    raise MaxrollException(msg)
 
 
 def _extract_guide_profile_id(embed: lxml.html.HtmlElement) -> int | None:
@@ -482,7 +448,7 @@ def _extract_active_guide_embed_tab_index(embed: lxml.html.HtmlElement) -> int |
 
 if __name__ == "__main__":
     src.logger.setup()
-    URLS = ["https://maxroll.gg/d4/planner/19390ugy#1"]
+    URLS = ["https://maxroll.gg/d4/build-guides/ball-lightning-sorcerer-guide"]
     for X in URLS:
         config = ImportConfig(
             url=X,
@@ -491,7 +457,7 @@ if __name__ == "__main__":
             add_to_profiles=False,
             import_greater_affixes=True,
             require_greater_affixes=True,
-            export_paragon=False,
+            export_paragon=True,
             custom_file_name=None,
         )
         import_maxroll(config)

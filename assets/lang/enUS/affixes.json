@@ -890,6 +890,7 @@
     "x_critical_strike_damage_multiplier": "x critical strike damage multiplier",
     "x_damage_over_time_multiplier": "x damage over time multiplier",
     "x_fire_damage_multiplier": "x fire damage multiplier",
+    "x_holy_damage_multiplier": "x holy damage multiplier",
     "x_lightning_damage_multiplier": "x lightning damage multiplier",
     "x_non_physical_damage_multiplier": "x non physical damage multiplier",
     "x_physical_damage_multiplier": "x physical damage multiplier",

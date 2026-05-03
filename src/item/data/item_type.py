@@ -32,6 +32,9 @@ class ItemType(Enum):
     Sword2H = "two-handed sword"
     Tome = "tome"
     Wand = "wand"
+    # Seals and charms
+    HoradricSeal = "horadric seal"
+    Charm = "charm"
     # Custom Types
     Cache = "cache"
     Compass = "compass"
