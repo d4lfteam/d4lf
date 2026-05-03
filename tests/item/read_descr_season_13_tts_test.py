@@ -40,7 +40,7 @@ items = [
                 Affix(
                     max_value=10.0,
                     min_value=6.0,
-                    name="x_all_damage_multiplier",
+                    name="all_damage_multiplier",
                     text="x7% All Damage Multiplier [6 - 10]%",
                     type=AffixType.normal,
                     value=7.0,
@@ -48,7 +48,7 @@ items = [
                 Affix(
                     max_value=25.0,
                     min_value=13.0,
-                    name="x_critical_strike_damage_multiplier",
+                    name="critical_strike_damage_multiplier",
                     text="x24% Critical Strike Damage Multiplier [13 - 25]%",
                     type=AffixType.normal,
                     value=24.0,
@@ -177,7 +177,7 @@ items = [
                 Affix(
                     max_value=10.0,
                     min_value=6.0,
-                    name="x_all_damage_multiplier",
+                    name="all_damage_multiplier",
                     text="x8% All Damage Multiplier [6 - 10]%",
                     type=AffixType.normal,
                     value=8.0,
