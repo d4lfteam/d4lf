@@ -399,12 +399,12 @@ def _fix_mobalytics_starting_board_slug(board_slug: str) -> str:
     )
 
 
-def extract_mobalytics_paragon_steps(variant: dict[str, Any]) -> list[list[dict[str, Any]]]:
+def extract_mobalytics_paragon_steps(paragon_data: dict[str, Any]) -> list[list[dict[str, Any]]]:
     """Extract paragon boards from Mobalytics preloaded-state build variant.
 
     Matches the rotation + node-index transformation used in Diablo4Companion.
     """
-    paragon = (variant or {}).get("paragon") or {}
+    paragon = paragon_data or {}
     boards_data = paragon.get("boards") or []
     nodes_data = paragon.get("nodes") or []
 

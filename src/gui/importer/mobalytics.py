@@ -75,48 +75,28 @@ def import_mobalytics(config: ImportConfig):
         )
         raise MobalyticsException(msg)
 
-    # This gets the name of the root document, ie the one that will contain the name of the build
-    root_document_name = jsonpath.findall("$..['Diablo4Query:{}'].documents..data.__ref", full_script_data_json)[0]
-    season_number = _extract_mobalytics_season_number(full_script_data_json, root_document_name)
-    build_header = jsonpath.findall(f"$..['{root_document_name}'].data.name", full_script_data_json)[0]
+    # Get the JSON block that contains the build and its variants
+    build_data = dict(jsonpath.findall("$..userGeneratedDocumentBySlug.data.data", full_script_data_json)[0])
+    season_number = _extract_mobalytics_season_number(full_script_data_json)
+    build_header = build_data["name"]
     if not build_header:
         LOGGER.error(msg := "No build name found")
         raise MobalyticsException(msg)
     class_name = jsonpath.findall(
-        f"$..['{root_document_name}'].tags.data[?@.groupSlug=='class'].name", full_script_data_json
+        "$..userGeneratedDocumentBySlug.data.tags.data[?@.groupSlug=='class'].name", full_script_data_json
     )[0].lower()
     if not class_name:
         LOGGER.error(msg := "No class name found")
         raise MobalyticsException(msg)
     if variant_id:
-        items = jsonpath.findall(
-            f"$..['{root_document_name}'].data.buildVariants.values[?@.id=='{variant_id}'].genericBuilder.slots",
-            full_script_data_json,
-        )[0]
+        items = jsonpath.findall(f"$..buildVariants.values[?@.id=='{variant_id}'].genericBuilder.slots", build_data)[0]
     else:
-        items = jsonpath.findall(
-            f"$..['{root_document_name}'].data.buildVariants.values[0].genericBuilder.slots", full_script_data_json
-        )[0]
-        variant_id = jsonpath.findall(
-            f"$..['{root_document_name}'].data.buildVariants.values[0].id", full_script_data_json
-        )[0]
+        items = jsonpath.findall("$..buildVariants.values[0].genericBuilder.slots", build_data)[0]
+        variant_id = jsonpath.findall("$..buildVariants.values[0].id", build_data)[0]
 
-    # Keep the full build variant object around (needed for optional paragon export)
-    try:
-        if variant_id:
-            variant = jsonpath.findall(
-                f"$..['{root_document_name}'].data.buildVariants.values[?@.id=='{variant_id}']", full_script_data_json
-            )[0]
-        else:
-            variant = jsonpath.findall(
-                f"$..['{root_document_name}'].data.buildVariants.values[0]", full_script_data_json
-            )[0]
-    except Exception:
-        variant = {}
+    paragon_data = jsonpath.findall(f"$..buildVariants.values[?@.id=='{variant_id}'].paragon", build_data)[0]
 
-    variant_name = jsonpath.findall(
-        f"..['NgfDocumentCmWidgetContentVariantsV1DataChildVariant:{variant_id}'].title", full_script_data_json
-    )
+    variant_name = jsonpath.findall(f"$..childrenVariants[?@.id=='{variant_id}'].title", full_script_data_json)
     variant_name = variant_name[0] if variant_name else ""
     build_name = f"{build_header} {variant_name}".strip() if variant_name else build_header
 
@@ -131,7 +111,7 @@ def import_mobalytics(config: ImportConfig):
         entity_type = jsonpath.findall(".gameEntity.type", item)[0]
         if entity_type not in ["aspects", "uniqueItems"]:
             continue
-        if not (item_name := str(jsonpath.findall(".gameEntity.entity.name", item)[0])):
+        if not (item_name := str(jsonpath.findall(".gameEntity.entity.title", item)[0])):
             LOGGER.error(msg := "No item name found")
             raise MobalyticsException(msg)
         if not (slot_type := str(jsonpath.findall(".gameSlotSlug", item)[0])):
@@ -241,7 +221,7 @@ def import_mobalytics(config: ImportConfig):
     )
     # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
-        steps = extract_mobalytics_paragon_steps(variant if isinstance(variant, dict) else {})
+        steps = extract_mobalytics_paragon_steps(paragon_data if isinstance(paragon_data, dict) else {})
         if steps:
             profile.Paragon = build_paragon_profile_payload(
                 build_name=build_name, source_url=url, paragon_boards_list=steps
@@ -268,8 +248,8 @@ def _fix_input_url(url: str) -> str:
     return unquote(url)
 
 
-def _extract_mobalytics_season_number(full_script_data_json: dict, root_document_name: str) -> str:
-    tag_names = jsonpath.findall(f"$..['{root_document_name}'].tags.data[*].name", full_script_data_json)
+def _extract_mobalytics_season_number(full_script_data_json: dict) -> str:
+    tag_names = jsonpath.findall("$..userGeneratedDocumentBySlug.data.tags.data[*].name", full_script_data_json)
     for tag_name in tag_names:
         if season_match := re.search(r"\bSeason\s+(\d+)\b", str(tag_name), flags=re.IGNORECASE):
             season_number = season_match.group(1)
@@ -311,18 +291,20 @@ def _convert_raw_to_affixes(raw_stats: list[dict], import_greater_affixes=False)
 if __name__ == "__main__":
     src.logger.setup()
     URLS = [
-        # No frills and no uniques
-        "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb",
-        # Is a variant of the one above
-        "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb?ws-ngf5-1=activeVariantId%2C7a9c6d51-18e9-4090-a804-7b73ff00879d",
-        # This one has no variants at all, just to make sure that works too
-        "https://mobalytics.gg/diablo-4/profile/screamheart/builds/15x-thrash-out-of-date",
-        # This one has an item type for the weapon
-        "https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
-        # This has a necro offhand
-        "https://mobalytics.gg/diablo-4/builds/necromancer-kripp-golem-summoner",
-        # This has two rogue offhand weapons
-        "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
+        # # No frills and no uniques
+        # "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb",
+        # # Is a variant of the one above
+        # "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb?ws-ngf5-1=activeVariantId%2C7a9c6d51-18e9-4090-a804-7b73ff00879d",
+        # # This one has no variants at all, just to make sure that works too
+        # "https://mobalytics.gg/diablo-4/profile/screamheart/builds/15x-thrash-out-of-date",
+        # # This one has an item type for the weapon
+        # "https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
+        # # This has a necro offhand
+        # "https://mobalytics.gg/diablo-4/builds/necromancer-kripp-golem-summoner",
+        # # This has two rogue offhand weapons
+        # "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
+        # Warlock test for season 13
+        "https://mobalytics.gg/diablo-4/builds/dread-claws-warlock-leveling-guide"
     ]
     for X in URLS:
         config = ImportConfig(
@@ -332,7 +314,7 @@ if __name__ == "__main__":
             add_to_profiles=False,
             import_greater_affixes=True,
             require_greater_affixes=True,
-            export_paragon=False,
+            export_paragon=True,
             custom_file_name=None,
         )
         import_mobalytics(config)
