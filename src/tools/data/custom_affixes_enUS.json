@@ -2,6 +2,7 @@
     "corpse_damage": "corpse damage",
     "crowd_control_duration_lucky_hit_up_to_a_chance_to_heal_life": "crowd control duration lucky hit up to a chance to heal life",
     "fire_damage_ranks_of_the_inner_flames_passive": "fire damage ranks of the inner flames passive",
+    "holy_damage_multiplier": "holy damage multiplier",
     "lucky_hit_up_to_a_chance_to_gain_damage_for_seconds": "lucky hit up to a chance to gain damage for seconds",
     "nature_magic_skill_cooldown_reduction": "nature magic skill cooldown reduction",
     "rain_of_arrows_skill_cooldown_reduction": "rain of arrows skill cooldown reduction",
@@ -11,6 +12,5 @@
     "ranks_of_the_heightened_senses_passive": "ranks of the heightened senses passive",
     "ranks_of_the_hewed_flesh_passive": "ranks of the hewed flesh passive",
     "resource_regeneration": "resource regeneration",
-    "to_deaths_reach": "to deaths reach",
-    "x_holy_damage_multiplier": "x holy damage multiplier"
+    "to_deaths_reach": "to deaths reach"
 }
