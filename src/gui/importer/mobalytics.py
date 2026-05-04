@@ -1,8 +1,9 @@
 import json
 import logging
 import re
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 
+import httpx
 import jsonpath
 import lxml.html
 
@@ -37,8 +38,125 @@ from src.scripts import correct_name
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
+MOBALYTICS_GRAPHQL_URL = "https://mobalytics.gg/api/diablo-4/v1/graphql/query"
 SCRIPT_XPATH = "//script"
 BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
+PROFILE_BUILD_PATH_REGEX = re.compile(r"/diablo-4/profile/(?P<author>[^/]+)/builds/(?P<document>[^/?#]+)")
+UUID_REGEX = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
+
+DOCUMENT_BY_ID_QUERY = """
+query D4LFDocumentById($input: Diablo4UserGeneratedDocumentInputById!) {
+  game: diablo4 {
+    documents {
+      userGeneratedDocumentById(input: $input) {
+        error
+        data {
+          id
+          slugifiedName
+          tags { data { groupSlug slug name } }
+          data {
+            ... on Diablo4UserGeneratedDocumentData {
+              name
+              childrenIds
+              buildVariants {
+                values {
+                  id
+                  genericBuilder {
+                    slots {
+                      gameSlotSlug
+                      gameEntity {
+                        type
+                        modifiers {
+                          gearStats { id isGreater isMasterwork }
+                          implicitStats { id }
+                        }
+                        entity {
+                          ... on D4Aspect { __typename iconUrl title: name }
+                          ... on D4UniqueItem { __typename iconUrl title: name chaos mythic }
+                          ... on D4ChaosPerk { __typename iconUrl title: name rarity }
+                        }
+                      }
+                    }
+                  }
+                  paragon {
+                    nodes { slug }
+                    boards {
+                      x
+                      y
+                      rotation
+                      board { slug }
+                      glyph { slug }
+                      glyphLevel
+                    }
+                    priorityList { iconURL slug type }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
+DOCUMENT_BY_SLUGIFIED_NAME_QUERY = """
+query D4LFDocumentBySlugifiedName($input: NgfUserGeneratedDocumentInputBySlugifiedName!) {
+  game: diablo4 {
+    documents {
+      userGeneratedDocumentBySlugifiedName(input: $input) {
+        error
+        data {
+          id
+          slugifiedName
+          tags { data { groupSlug slug name } }
+          data {
+            ... on Diablo4UserGeneratedDocumentData {
+              name
+              childrenIds
+              buildVariants {
+                values {
+                  id
+                  genericBuilder {
+                    slots {
+                      gameSlotSlug
+                      gameEntity {
+                        type
+                        modifiers {
+                          gearStats { id isGreater isMasterwork }
+                          implicitStats { id }
+                        }
+                        entity {
+                          ... on D4Aspect { __typename iconUrl title: name }
+                          ... on D4UniqueItem { __typename iconUrl title: name chaos mythic }
+                          ... on D4ChaosPerk { __typename iconUrl title: name rarity }
+                        }
+                      }
+                    }
+                  }
+                  paragon {
+                    nodes { slug }
+                    boards {
+                      x
+                      y
+                      rotation
+                      board { slug }
+                      glyph { slug }
+                      glyphLevel
+                    }
+                    priorityList { iconURL slug type }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
 
 
 class MobalyticsException(Exception):
@@ -75,16 +193,19 @@ def import_mobalytics(config: ImportConfig):
         )
         raise MobalyticsException(msg)
 
+    document = _get_mobalytics_document(full_script_data_json, url)
+    if not document:
+        LOGGER.error(msg := "No Mobalytics build data was found.")
+        raise MobalyticsException(msg)
+
     # Get the JSON block that contains the build and its variants
-    build_data = dict(jsonpath.findall("$..userGeneratedDocumentBySlug.data.data", full_script_data_json)[0])
-    season_number = _extract_mobalytics_season_number(full_script_data_json)
+    build_data = dict(document["data"])
+    season_number = _extract_mobalytics_season_number(document)
     build_header = build_data["name"]
     if not build_header:
         LOGGER.error(msg := "No build name found")
         raise MobalyticsException(msg)
-    class_name = jsonpath.findall(
-        "$..userGeneratedDocumentBySlug.data.tags.data[?@.groupSlug=='class'].name", full_script_data_json
-    )[0].lower()
+    class_name = _get_mobalytics_tag_name(document, "class").lower()
     if not class_name:
         LOGGER.error(msg := "No class name found")
         raise MobalyticsException(msg)
@@ -94,7 +215,9 @@ def import_mobalytics(config: ImportConfig):
         items = jsonpath.findall("$..buildVariants.values[0].genericBuilder.slots", build_data)[0]
         variant_id = jsonpath.findall("$..buildVariants.values[0].id", build_data)[0]
 
-    paragon_data = jsonpath.findall(f"$..buildVariants.values[?@.id=='{variant_id}'].paragon", build_data)[0]
+    paragon_data = {}
+    if paragon_matches := jsonpath.findall(f"$..buildVariants.values[?@.id=='{variant_id}'].paragon", build_data):
+        paragon_data = paragon_matches[0]
 
     variant_name = jsonpath.findall(f"$..childrenVariants[?@.id=='{variant_id}'].title", full_script_data_json)
     variant_name = variant_name[0] if variant_name else ""
@@ -189,6 +312,10 @@ def import_mobalytics(config: ImportConfig):
         affixes = _convert_raw_to_affixes(raw_affixes, config.import_greater_affixes)
         inherents = _convert_raw_to_affixes(raw_inherents)
 
+        if not affixes:
+            LOGGER.debug(f"Skipping {slot_type} because it had no importable affixes.")
+            continue
+
         item_filter.affixPool = [
             AffixFilterCountModel(
                 count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
@@ -248,8 +375,67 @@ def _fix_input_url(url: str) -> str:
     return unquote(url)
 
 
-def _extract_mobalytics_season_number(full_script_data_json: dict) -> str:
-    tag_names = jsonpath.findall("$..userGeneratedDocumentBySlug.data.tags.data[*].name", full_script_data_json)
+def _get_mobalytics_document(full_script_data_json: dict, url: str) -> dict | None:
+    document_matches = jsonpath.findall("$..userGeneratedDocumentBySlug.data", full_script_data_json)
+    if document_matches:
+        return document_matches[0]
+
+    document_matches = jsonpath.findall("$..userGeneratedDocumentBySlugifiedName.data", full_script_data_json)
+    if document_matches:
+        return document_matches[0]
+
+    document_matches = jsonpath.findall("$..userGeneratedDocumentById.data", full_script_data_json)
+    if document_matches:
+        return document_matches[0]
+
+    return _fetch_mobalytics_document(url)
+
+
+def _fetch_mobalytics_document(url: str) -> dict | None:
+    profile_match = PROFILE_BUILD_PATH_REGEX.search(urlparse(url).path)
+    if not profile_match:
+        return None
+
+    document_identifier = profile_match.group("document")
+    if UUID_REGEX.fullmatch(document_identifier):
+        query = DOCUMENT_BY_ID_QUERY
+        variables = {"input": {"id": document_identifier}}
+        response_key = "userGeneratedDocumentById"
+    else:
+        query = DOCUMENT_BY_SLUGIFIED_NAME_QUERY
+        variables = {
+            "input": {"authorProfileName": profile_match.group("author"), "slugifiedName": document_identifier}
+        }
+        response_key = "userGeneratedDocumentBySlugifiedName"
+
+    try:
+        response = httpx.post(MOBALYTICS_GRAPHQL_URL, json={"query": query, "variables": variables}, timeout=20)
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        LOGGER.exception(msg := "Couldn't get Mobalytics profile build data")
+        raise MobalyticsException(msg) from exc
+
+    payload = response.json()
+    if payload.get("errors"):
+        LOGGER.error(msg := f"Mobalytics returned GraphQL errors: {payload['errors']}")
+        raise MobalyticsException(msg)
+
+    document = payload.get("data", {}).get("game", {}).get("documents", {}).get(response_key, {})
+    if document.get("error"):
+        LOGGER.error(msg := f"Mobalytics returned document error: {document['error']}")
+        raise MobalyticsException(msg)
+    return document.get("data")
+
+
+def _get_mobalytics_tag_name(document: dict, group_slug: str) -> str:
+    for tag in document.get("tags", {}).get("data", []):
+        if tag.get("groupSlug") == group_slug:
+            return str(tag.get("name") or "")
+    return ""
+
+
+def _extract_mobalytics_season_number(document: dict) -> str:
+    tag_names = [str(tag.get("name") or "") for tag in document.get("tags", {}).get("data", [])]
     for tag_name in tag_names:
         if season_match := re.search(r"\bSeason\s+(\d+)\b", str(tag_name), flags=re.IGNORECASE):
             season_number = season_match.group(1)

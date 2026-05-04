@@ -6,8 +6,6 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from item.data.seasonal_attribute import SeasonalAttribute
-
 if TYPE_CHECKING:
     from tkinter import Canvas
 
@@ -19,6 +17,7 @@ from src.config.loader import IniConfigLoader
 from src.config.models import JunkRaresType
 from src.item.data.item_type import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
 from src.item.data.rarity import ItemRarity
+from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.utils.custom_mouse import mouse
 
 try:
