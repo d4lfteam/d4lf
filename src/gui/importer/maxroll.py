@@ -36,7 +36,7 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://maxroll.gg/d4/build-guides/"
 PLANNER_API_BASE_URL = "https://planners.maxroll.gg/profiles/d4/"
-PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?aac01320"
+PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?376b600d"
 PLANNER_BASE_URL = "https://maxroll.gg/d4/planner/"
 SCRIPT_XPATH = "//div[@id='root']/script"
 BUILD_SCRIPT_PREFIX = "window.__remixContext = "
@@ -275,7 +275,7 @@ def _find_item_affixes(
                             attr_desc = "to mastery skills"
                         elif param_id == -954965341 and attribute_id == 1091:
                             attr_desc = "to basic skills"
-                        elif param_id == -1460608310 and attribute_id == 1138:
+                        elif param_id == -1460608310 and attribute_id in [1138, 1155]:
                             attr_desc = "to aura skills"
                         elif param_id == 850110203 and attribute_id == 1155:
                             attr_desc = "to demonology skills"
@@ -448,7 +448,7 @@ def _extract_active_guide_embed_tab_index(embed: lxml.html.HtmlElement) -> int |
 
 if __name__ == "__main__":
     src.logger.setup()
-    URLS = ["https://maxroll.gg/d4/build-guides/ball-lightning-sorcerer-guide"]
+    URLS = ["https://maxroll.gg/d4/build-guides/blessed-hammer-paladin-leveling-guide"]
     for X in URLS:
         config = ImportConfig(
             url=X,
