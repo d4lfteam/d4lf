@@ -37,6 +37,7 @@ from src.scripts import correct_name
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
+PROFILE_GUIDE_BASE_URL = f"{BUILD_GUIDE_BASE_URL}profile"
 SCRIPT_XPATH = "//script"
 BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
 
@@ -50,6 +51,9 @@ def import_mobalytics(config: ImportConfig):
     url = config.url.strip().replace("\n", "")
     if BUILD_GUIDE_BASE_URL not in url:
         LOGGER.error("Invalid url, please use a mobalytics build guide")
+        return
+    if PROFILE_GUIDE_BASE_URL in url:
+        LOGGER.error("Builds from user profiles are not supported at this time.")
         return
     url = _fix_input_url(url=url)
     LOGGER.info(f"Loading {url}")
@@ -189,6 +193,10 @@ def import_mobalytics(config: ImportConfig):
         affixes = _convert_raw_to_affixes(raw_affixes, config.import_greater_affixes)
         inherents = _convert_raw_to_affixes(raw_inherents)
 
+        if not affixes:
+            LOGGER.warning(f"Skipping slot {slot_type} because the item had no affixes on the Mobalytics website.")
+            continue
+
         item_filter.affixPool = [
             AffixFilterCountModel(
                 count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
@@ -304,7 +312,7 @@ if __name__ == "__main__":
         # # This has two rogue offhand weapons
         # "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
         # Warlock test for season 13
-        "https://mobalytics.gg/diablo-4/builds/dread-claws-warlock-leveling-guide"
+        "https://mobalytics.gg/diablo-4/builds/warlock-profane-sentinel-endgame"
     ]
     for X in URLS:
         config = ImportConfig(
