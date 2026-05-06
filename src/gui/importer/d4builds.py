@@ -154,17 +154,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 continue
             if config.import_greater_affixes and stat.xpath("../../../..")[0].xpath(GA_XPATH):
                 affix_obj.type = AffixType.greater
-            if (
-                "ring" in slot.lower()
-                and any(substring in affix_name.lower() for substring in ["resistance"])
-                and not any(
-                    substring in affix_name.lower() for substring in ["elements"]
-                )  # Exclude resistance to all elements
-            ) or (
-                "boots" in slot.lower()
-                and any(substring in affix_name.lower() for substring in ["max evade charges", "attacks reduce"])
-            ):
-                inherents.append(affix_obj)
             else:
                 affixes.append(affix_obj)
 
@@ -327,7 +316,15 @@ def _get_affix_name(stat: lxml.html.HtmlElement) -> str:
 
 if __name__ == "__main__":
     src.logger.setup()
-    URLS = ["https://d4builds.gg/builds/e3aab60e-15a0-47ee-99ec-648788901104/?var=1"]
+    URLS = ["https://d4builds.gg/builds/whirlwind-barbarian-endgame/?var=4"]
+
+    from selenium import webdriver
+
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless=new")
+    options.add_argument("log-level=3")
+    driver = webdriver.Chrome(options=options)
+
     for X in URLS:
         config = ImportConfig(
             url=X,
@@ -336,7 +333,7 @@ if __name__ == "__main__":
             add_to_profiles=False,
             import_greater_affixes=True,
             require_greater_affixes=True,
-            export_paragon=False,
+            export_paragon=True,
             custom_file_name=None,
         )
-        import_d4builds(config)
+        import_d4builds(config, driver)
