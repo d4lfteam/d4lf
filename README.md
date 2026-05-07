@@ -217,7 +217,7 @@ has a name and can filter for any combination of the following:
 - `minGreaterAffixCount`: Minimum number of greater affixes expected on the overall item. See [Greater Affix Filtering](#greater-affix-filtering) for more information on filtering GAs.
 - `affixPool`: A list of multiple different rulesets to filter for. Each ruleset must be fulfilled or the item is
   discarded
-  - `count`: Define a list of affixes (see [syntax](#affix--aspects-filter-syntax)) and
+  - `count`: Define a list of affixes (see [syntax](#affix--unique-aspect-filter-syntax)) and
     optionally `minCount`, `maxCount` and `minGreaterAffixCount`
     - `minCount`: specifies the minimum number of affixes that must match the item. defaults to amount of specified
       affixes

@@ -97,7 +97,7 @@ def read_pipe() -> None:
         LOGGER.debug("Waiting for TTS client to connect")
 
         win32pipe.ConnectNamedPipe(handle, None)
-        LOGGER.debug("TTS client connected")
+        LOGGER.info("TTS client connected")
         global CONNECTED
         CONNECTED = True
 
@@ -119,7 +119,7 @@ def read_pipe() -> None:
                 LOGGER.exception("Error while reading data")
 
         win32file.CloseHandle(handle)
-        LOGGER.debug("TTS client disconnected")
+        LOGGER.info("TTS client disconnected")
         CONNECTED = False
 
 
@@ -154,6 +154,6 @@ def fix_data(data: str) -> str:
 
 
 def start_connection() -> None:
-    LOGGER.info("Starting tts listener")
+    LOGGER.info("Starting TTS listener. Hover over an item or button to perform the TTS connection.")
     threading.Thread(target=Publisher().find_item, daemon=True).start()
     threading.Thread(target=read_pipe, daemon=True).start()
