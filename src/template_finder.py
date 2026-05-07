@@ -13,7 +13,7 @@ from src.config.ui import ResManager
 from src.utils.image_operations import alpha_to_mask, color_filter, crop
 from src.utils.misc import run_until_condition
 from src.utils.roi_operations import get_center
-from utils.window import screenshot
+from src.utils.window import screenshot
 
 LOGGER = logging.getLogger(__name__)
 

@@ -5,8 +5,19 @@ import lxml.html
 import pytest
 
 from src.dataloader import Dataloader
-from src.gui.importer.d4builds import _extract_build_metadata, _extract_d4builds_season_number, import_d4builds
+from src.gui.importer.d4builds import (
+    PAPERDOLL_ITEM_NAME_XPATH,
+    PAPERDOLL_ITEM_SLOT_XPATH,
+    PAPERDOLL_ITEM_TOOLTIP_TARGET_XPATH,
+    VISIBLE_TOOLTIP_TEXT_SCRIPT,
+    _extract_build_metadata,
+    _extract_d4builds_season_number,
+    _get_item_slots,
+    _get_item_types_from_paperdoll_tooltips,
+    import_d4builds,
+)
 from src.gui.importer.importer_config import ImportConfig
+from src.item.data.item_type import ItemType
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -101,6 +112,214 @@ def test_extract_d4builds_season_number_from_gear_dropdown() -> None:
     """)
 
     assert _extract_d4builds_season_number(data) == "12"
+
+
+def test_get_item_slots_extracts_unique_name_only() -> None:
+    data = lxml.html.fromstring("""
+        <div class="builder__gear__items">
+            <div class="builder__gear__item">
+                <div class="builder__gear__slot">Bludgeoning Weapon</div>
+                <div class="builder__gear__name">Heavy Hitting Aspect</div>
+            </div>
+        </div>
+    """)
+
+    item_slots = _get_item_slots(data=data)
+
+    assert not item_slots["Bludgeoning Weapon"]
+
+
+def test_import_d4builds_reads_weapon_type_from_unfilled_stat(mocker: MockerFixture) -> None:
+    Dataloader()
+    html = """
+        <div class="builder__header__name">Whirlwind Barbarian Endgame Build Guide - Diablo 4</div>
+        <div class="builder__gear">
+            <div class="builder__dropdown__wrapper">
+                <div class="dropdown">
+                    <div class="dropdown__button">Season 9</div>
+                </div>
+            </div>
+            <div class="builder__gear__items">
+                <div class="builder__gear__item">
+                    <div class="builder__gear__slot">Bludgeoning Weapon</div>
+                    <div class="builder__gear__name">Heavy Hitting Aspect</div>
+                </div>
+            </div>
+        </div>
+        <div class="builder__stats__list">
+            <div class="builder__stats__group">
+                <span class="builder__stats__slot"></span>
+                <span class="builder__stats__slot"></span>Bludgeoning Weapon
+                <div class="builder__stats__type">
+                    <span>2h Mace: 392.7% Overpower Damage</span>
+                </div>
+                <div class="builder__stats__affix">
+                    <div>
+                        <div class="dropdown__button__wrapper">
+                            <span></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="builder__stats__affix filled">
+                    <div>
+                        <div class="dropdown__button__wrapper">
+                            <span>Strength</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="builder__stats__affix filled">
+                    <div>
+                        <div class="dropdown__button__wrapper">
+                            <span>Critical Strike Chance</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    """
+    driver = mocker.Mock(page_source=html)
+    driver.find_elements.return_value = []
+    wait = mocker.Mock()
+    wait.until.return_value = True
+    mocker.patch("src.gui.importer.d4builds.WebDriverWait", return_value=wait)
+    save_as_profile_mock = mocker.patch("src.gui.importer.d4builds.save_as_profile", return_value="profile")
+    config = ImportConfig(
+        url="https://d4builds.gg/builds/whirlwind-barbarian-endgame/?var=4",
+        import_uniques=True,
+        import_aspect_upgrades=False,
+        add_to_profiles=False,
+        import_greater_affixes=False,
+        require_greater_affixes=False,
+        custom_file_name="test",
+    )
+
+    import_d4builds(config=config, driver=driver)
+
+    profile = save_as_profile_mock.call_args.kwargs["profile"]
+    assert next(iter(profile.Affixes[0].root)) == "BludgeoningWeapon"
+    item_filter = next(iter(profile.Affixes[0].root.values()))
+    assert item_filter.itemType == [ItemType.Mace2H]
+
+
+def test_import_d4builds_preserves_weapon_type_from_tooltip_map(mocker: MockerFixture) -> None:
+    Dataloader()
+    html = """
+        <div class="builder__header__name">Whirlwind Barbarian Endgame Build Guide - Diablo 4</div>
+        <div class="builder__gear">
+            <div class="builder__dropdown__wrapper">
+                <div class="dropdown">
+                    <div class="dropdown__button">Season 9</div>
+                </div>
+            </div>
+            <div class="builder__gear__items">
+                <div class="builder__gear__item">
+                    <div class="builder__gear__slot">Boots</div>
+                    <div class="builder__gear__name">Aspect of Anger Management</div>
+                </div>
+                <div class="builder__gear__item">
+                    <div class="builder__gear__slot">Bludgeoning Weapon</div>
+                    <div class="builder__gear__name">Heavy Hitting Aspect</div>
+                </div>
+            </div>
+        </div>
+        <div class="builder__stats__list">
+            <div class="builder__stats__group">
+                <span class="builder__stats__slot"></span>
+                <span class="builder__stats__slot"></span>Boots
+                <div class="builder__stats__affix filled">
+                    <div>
+                        <div class="dropdown__button__wrapper">
+                            <span>Strength</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="builder__stats__affix filled">
+                    <div>
+                        <div class="dropdown__button__wrapper">
+                            <span>Movement Speed</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="builder__stats__group">
+                <span class="builder__stats__slot"></span>
+                <span class="builder__stats__slot"></span>Bludgeoning Weapon
+                <div class="builder__stats__affix filled">
+                    <div>
+                        <div class="dropdown__button__wrapper">
+                            <span>Strength</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="builder__stats__affix filled">
+                    <div>
+                        <div class="dropdown__button__wrapper">
+                            <span>Critical Strike Chance</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    """
+    driver = mocker.Mock(page_source=html)
+    wait = mocker.Mock()
+    wait.until.return_value = True
+    mocker.patch("src.gui.importer.d4builds.WebDriverWait", return_value=wait)
+    mocker.patch(
+        "src.gui.importer.d4builds._get_item_types_from_paperdoll_tooltips",
+        return_value={"Bludgeoning Weapon": ItemType.Mace2H},
+    )
+    save_as_profile_mock = mocker.patch("src.gui.importer.d4builds.save_as_profile", return_value="profile")
+    config = ImportConfig(
+        url="https://d4builds.gg/builds/whirlwind-barbarian-endgame/?var=4",
+        import_uniques=True,
+        import_aspect_upgrades=False,
+        add_to_profiles=False,
+        import_greater_affixes=False,
+        require_greater_affixes=False,
+        custom_file_name="test",
+    )
+
+    import_d4builds(config=config, driver=driver)
+
+    profile = save_as_profile_mock.call_args.kwargs["profile"]
+    assert [next(iter(affix_filter.root)) for affix_filter in profile.Affixes] == ["Boots", "BludgeoningWeapon"]
+    item_filter = next(iter(profile.Affixes[1].root.values()))
+    assert item_filter.itemType == [ItemType.Mace2H]
+
+
+def test_get_item_types_from_paperdoll_tooltips_reads_visible_tooltip(mocker: MockerFixture) -> None:
+    slot_element = mocker.Mock(text="Bludgeoning Weapon")
+    name_element = mocker.Mock(text="Heavy Hitting Aspect")
+    item_without_slot = mocker.Mock(text="builder gear item child")
+    item_without_slot.find_elements.return_value = []
+    hover_element = mocker.Mock()
+    item = mocker.Mock(text="Heavy Hitting Aspect")
+
+    def find_item_elements(_by: str, value: str) -> list[object]:
+        if value == PAPERDOLL_ITEM_SLOT_XPATH:
+            return [slot_element]
+        if value == PAPERDOLL_ITEM_NAME_XPATH:
+            return [name_element]
+        if value == PAPERDOLL_ITEM_TOOLTIP_TARGET_XPATH:
+            return [hover_element]
+        return []
+
+    item.find_elements.side_effect = find_item_elements
+    driver = mocker.Mock()
+    driver.find_elements.return_value = [item_without_slot, item]
+    driver.execute_script.return_value = "2h Mace: 392.7% Overpower Damage"
+    actions = mocker.Mock()
+    actions.move_to_element.return_value = actions
+    mocker.patch("src.gui.importer.d4builds.ActionChains", return_value=actions)
+    mocker.patch("src.gui.importer.d4builds.time.sleep")
+
+    item_types = _get_item_types_from_paperdoll_tooltips(driver=driver)
+
+    assert item_types["Bludgeoning Weapon"] == ItemType.Mace2H
+    driver.execute_script.assert_any_call(VISIBLE_TOOLTIP_TEXT_SCRIPT, "Heavy Hitting Aspect")
+    actions.move_to_element.assert_called_once_with(hover_element)
+    actions.perform.assert_called_once()
 
 
 @pytest.mark.parametrize("url", URLS)
