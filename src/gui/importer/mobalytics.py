@@ -124,8 +124,8 @@ def import_mobalytics(config: ImportConfig):
 
         raw_affixes = jsonpath.findall(".gameEntity.modifiers.gearStats[*]", item)
         raw_inherents = jsonpath.findall(".gameEntity.modifiers.implicitStats[*]", item)
-        if raw_inherents and raw_inherents[0] is None:
-            raw_inherents.clear()
+        raw_affixes = [x for x in raw_affixes if x is not None]
+        raw_inherents = [x for x in raw_inherents if x is not None]
 
         is_unique = entity_type == "uniqueItems"
         if is_unique:
@@ -148,7 +148,7 @@ def import_mobalytics(config: ImportConfig):
             aspect_upgrade_filters.append(legendary_aspect)
 
         if not raw_affixes and not raw_inherents:
-            LOGGER.debug(f"Skipping {slot_type} because it had no stats provided.")
+            LOGGER.warning(f"Skipping {slot_type} because it had no stats provided.")
             continue
 
         item_type = None
@@ -192,10 +192,6 @@ def import_mobalytics(config: ImportConfig):
 
         affixes = _convert_raw_to_affixes(raw_affixes, config.import_greater_affixes)
         inherents = _convert_raw_to_affixes(raw_inherents)
-
-        if not affixes:
-            LOGGER.warning(f"Skipping slot {slot_type} because the item had no affixes on the Mobalytics website.")
-            continue
 
         item_filter.affixPool = [
             AffixFilterCountModel(
