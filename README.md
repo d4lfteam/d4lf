@@ -626,13 +626,13 @@ The following global filters are available:
 
 ```yaml
 # Take all uniques with item power > 900
-Uniques:
+GlobalUniques:
   - minPower: 900
 ```
 
 ```yaml
 # Take all uniques with at least 1 greater affix. It would show in logs/vision mode as cool_stuff.<name of unique>
-Uniques:
+GlobalUniques:
   - minGreaterAffixCount: 1
     profileAlias: cool_stuff
 ```
@@ -640,14 +640,14 @@ Uniques:
 ```yaml
 # Note that if a unique matches any filter, it is kept. Each - denotes a new filter.
 # For example, the below will keep all uniques that have two greater affixes OR an aspect percentage greater than 80
-Uniques:
+GlobalUniques:
   - minGreaterAffixCount: 2
   - minPercentOfAspect: 80
 ```
 
 ```yaml
 # Conversely, this will match all uniques that have two greater affixes AND an aspect percentage greater than 80
-Uniques:
+GlobalUniques:
   - minGreaterAffixCount: 2
     minPercentOfAspect: 80
 ```
