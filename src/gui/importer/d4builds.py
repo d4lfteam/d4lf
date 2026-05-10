@@ -9,13 +9,13 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
-from src.config.models import (
+from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
+    GlobalUniqueModel,
     ItemFilterModel,
     ProfileModel,
-    UniqueModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
@@ -111,7 +111,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         inherents = []
 
         if slot_to_unique_name_map[slot]:
-            unique_model = UniqueModel()
+            unique_model = GlobalUniqueModel()
             unique_name = slot_to_unique_name_map[slot]
             try:
                 unique_model.aspect = AspectUniqueFilterModel(name=unique_name)
@@ -195,7 +195,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         finished_filters.append({filter_name: item_filter})
     profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))))
     if config.import_uniques and unique_filters:
-        profile.Uniques = unique_filters
+        profile.GlobalUniques = unique_filters
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 

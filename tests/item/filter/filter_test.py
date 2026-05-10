@@ -6,7 +6,8 @@ import pytest
 from natsort import natsorted
 
 from src.config.loader import IniConfigLoader
-from src.config.models import GeneralModel, JunkRaresType, SigilPriority
+from src.config.profile_models import SigilPriority
+from src.config.settings_models import GeneralModel, JunkRaresType
 from src.item.filter import Filter, FilterResult
 from src.scripts.common import is_junk_rarity
 from tests.item.filter.data import filters
@@ -15,7 +16,7 @@ from tests.item.filter.data.aspects import aspects
 from tests.item.filter.data.items import four_affix_rare, three_affix_rare
 from tests.item.filter.data.sigils import sigil_jalal, sigil_priority, sigils
 from tests.item.filter.data.tributes import tributes
-from tests.item.filter.data.uniques import aspect_only_mythic_tests, simple_mythics, uniques
+from tests.item.filter.data.uniques import global_uniques, simple_mythics, uniques_with_affixes
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -25,6 +26,13 @@ if typing.TYPE_CHECKING:
 
 def _create_mocked_filter(mocker: MockerFixture) -> Filter:
     filter_obj = Filter()
+    # Filter is singleton so we need to reset the filters to be safe
+    filter_obj.affix_filters = {}
+    filter_obj.aspect_upgrade_filters = {}
+    filter_obj.paragon_filters = {}
+    filter_obj.global_unique_filters = {}
+    filter_obj.sigil_filters = {}
+    filter_obj.tribute_filters = {}
     filter_obj.files_loaded = True
     mocker.patch.object(filter_obj, "_did_files_change", return_value=False)
     return filter_obj
@@ -46,6 +54,15 @@ def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixtur
     test_filter = _create_mocked_filter(mocker)
     mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
     test_filter.aspect_upgrade_filters = {filters.aspects_filters.name: filters.aspects_filters.AspectUpgrades}
+    assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
+
+
+@pytest.mark.parametrize(
+    ("_name", "result", "item"), natsorted(global_uniques), ids=[name for name, _, _ in natsorted(global_uniques)]
+)
+def test_global_uniques(_name: str, result: list[str], item: Item, mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.global_unique_filters = {filters.global_unique.name: filters.global_unique.GlobalUniques}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
@@ -87,11 +104,13 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
 
 
 @pytest.mark.parametrize(
-    ("_name", "result", "item"), natsorted(uniques), ids=[name for name, _, _ in natsorted(uniques)]
+    ("_name", "result", "item"),
+    natsorted(uniques_with_affixes),
+    ids=[name for name, _, _ in natsorted(uniques_with_affixes)],
 )
-def test_uniques(_name: str, result: list[str], item: Item, mocker: MockerFixture):
+def test_uniques_with_affixes(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.unique_filters = {filters.unique.name: filters.unique.Uniques}
+    test_filter.affix_filters = {filters.unique_affixes.name: filters.unique_affixes.Affixes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
@@ -100,23 +119,8 @@ def test_uniques(_name: str, result: list[str], item: Item, mocker: MockerFixtur
 )
 def test_mythic_always_kept(_name: str, result: bool, item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.unique_filters = {filters.always_keep_mythics.name: filters.always_keep_mythics.Uniques}
+    test_filter.global_unique_filters = {filters.always_keep_mythics.name: filters.always_keep_mythics.GlobalUniques}
     assert test_filter.should_keep(item).keep == result
-
-
-@pytest.mark.parametrize(
-    ("_name", "should_keep", "matched", "item"),
-    natsorted(aspect_only_mythic_tests),
-    ids=[name for name, _, _, _ in natsorted(aspect_only_mythic_tests)],
-)
-def test_unfiltered_unique_is_kept(
-    _name: str, should_keep: bool, matched: list[str], item: Item, mocker: MockerFixture
-):
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.unique_filters = {filters.aspect_only_unique_filters.name: filters.aspect_only_unique_filters.Uniques}
-    test_filter_result = test_filter.should_keep(item)
-    assert natsorted([match.profile for match in test_filter_result.matched]) == natsorted(matched)
-    assert test_filter_result.keep == should_keep
 
 
 def test_three_affix_rares_are_junked_without_affecting_four_affix_rares(mocker: MockerFixture):
@@ -125,6 +129,7 @@ def test_three_affix_rares_are_junked_without_affecting_four_affix_rares(mocker:
     mocker.patch.object(loader, "reload_if_changed", return_value=False)
 
     test_filter = _create_mocked_filter(mocker)
+    test_filter.affix_filters = {filters.rare_testing.name: filters.rare_testing.Affixes}
 
     assert is_junk_rarity(three_affix_rare) is True
     assert is_junk_rarity(four_affix_rare) is False

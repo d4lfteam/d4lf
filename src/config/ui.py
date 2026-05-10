@@ -5,7 +5,7 @@ import numpy as np
 
 from src.config.data import POSITIONS, Template, load_templates
 from src.config.helper import singleton
-from src.config.models import UiOffsetsModel, UiPosModel, UiRoiModel
+from src.config.settings_models import UiOffsetsModel, UiPosModel, UiRoiModel
 
 LOGGER = logging.getLogger("d4lf")
 

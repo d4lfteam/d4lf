@@ -1,6 +1,6 @@
 # ![logo](assets/logo.png)
 
-\*\*\* Note: D4LF will be supported for Season 13. However, there were a lot of itemization updates and it may take a few weeks for all the bugs to get ironed out. \*\*\*
+## Note: D4LF will be updated for Season 13. However, there were a lot of itemization updates and it may take a few weeks for the new features to be complete. You can monitor progress and make suggestions in discord: https://discord.com/channels/1168807680295571456/1499898416572928115
 
 Filter items and sigils in your inventory based on affixes, aspects and thresholds of their values. For questions,
 feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6T) or use github issues.
@@ -58,22 +58,23 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 
 ### Common problems
 
+- The tool shows a warning saying "TTS connection has not been made yet." but I've set everything up correctly.
+  - If you're seeing this error, it means D4LF has found the DLL is in the correct location but the TTS connection is
+    still not being made. This is most likely due to an issue with your windows user not allowing Diablo to connect to
+    the third party screen reader. The following steps should resolve it:
+    - Set Diablo 4 to run as administrator. First, navigate to your Diablo 4 directory.
+      - Steam User: Right click on the game and choose Properties. In that menu, go to Installed Files and hit Browse.
+      - Battle.net User: On the game page, click the gear icon and choose Show in Explorer
+    - Right-click on Diablo IV.exe and go to Properties. In the Compatibility tab, check the box that says "Run this program as an administrator"
+    - Run Diablo 4 again through Steam/Battle.net and see if that resolved the issue.
+    - If it did not, set Steam/Battle.net to run as administrator as well and make sure you are running Diablo through Steam. This should resolve the issue.
 - The GUI crashes immediately upon opening, with no error message given
-  - This almost always means there is an issue in your params.ini. Delete the file and then open the GUI and configure
+  - This almost always means there is an issue in your params.ini. Delete the file in `C:/Users/<WINDOWS_USER>/.d4lf/` and then open the GUI and configure
     your params.ini through the Settings window in D4LF. Using the GUI for configuration will ensure the file is always accurate.
 - Mouse control isn't possible
   - Due to your local windows settings, the tool might not be able to control the mouse. Just run the tool as admin
     and it should work. If you don't want to run it as admin, you can disable the mouse control in the params.ini
     by setting `vision_mode_only` to `true`.
-- Steam user: The tool shows a warning saying "TTS connection has not been made yet." but I've set everything up correctly.
-  - If you're seeing this error, it means D4LF has found the DLL is in the correct location but the TTS connection is
-    still not being made. This is most likely due to an issue with your windows user not allowing Diablo to connect to
-    the third party screen reader. The following steps should resolve it:
-    - Set Diablo 4 to run as administrator. First, navigate to your Diablo 4 directory. You can get there through Steam by right clicking on the game and
-      choosing Properties. In that menu, go to Installed Files and hit Browse. Right-click on Diablo IV.exe and go to Properties. In the Compatibility tab, check the box
-      that says "Run this program as an administrator"
-    - Run Diablo 4 again through Steam and see if that resolved the issue.
-    - If it did not, set Steam to run as administrator as well and make sure you are running Diablo through Steam. This should resolve the issue.
 - Paragon overlay does not appear / does nothing
   - Ensure Diablo IV is running in **borderless windowed** (exclusive fullscreen may block overlays).
   - Ensure your profiles folder contains `*.yaml`/`*.yml` profile files with a top-level `Paragon:` section (default: `C:/Users/<WINDOWS_USER>/.d4lf/profiles`).
@@ -105,7 +106,7 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
   file should be done through the GUI in the config window.
 - **profiles/\*.yaml**: Profiles including embedded Paragon data for the integrated overlay (top-level `Paragon:`). Generated/updated by the importer when "Import Paragon" is enabled. Default location: `C:/Users/<WINDOWS_USER>/.d4lf/profiles`
 
-### params.ini
+### params.ini (Settings window in GUI)
 
 | [general]                                         | Description                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -155,12 +156,12 @@ d4lf.exe is the one-stop shop for all operations, including running the D4LF pro
 If you prefer a standalone console-only experience, you can run d4lf-consoleonly.bat instead which will not open a GUI
 as well. It is still recommended you open the GUI for any configurations management.
 
-If you make any configuration changes, you will need to restart D4LF. If you make changes to a profile, those will be
+Except for changing the vision mode, all changes are automatically applied when made. If you make changes to a profile, those will be
 automatically picked up and no restart is necessary.
 
 Current functionality:
 
-- Import builds from maxroll/d4builds/mobalytics (optionally import Paragon data)
+- Import builds from maxroll/d4builds/mobalytics
 - Toggle the integrated Paragon overlay (default hotkey: F10)
 - Complete management of your settings through the config tab
 - A beta version of a manual profile editor/creator
@@ -225,6 +226,10 @@ has a name and can filter for any combination of the following:
       affixes
 - `inherentPool`: The same rules as for `affixPool` apply, but this is evaluated against the inherent affixes of the
   item
+- `uniqueAspect`: If you're looking for a specific unique, this is how you define it. It has the following properties:
+  - `name`: (Required) The name of the unique you are looking for. You can find a list in [uniques.json](assets/lang/enUS/uniques.json)
+  - `value`: What is the minimum value the aspect must have. You can not have both this and minPercentOfAspect
+  - `minPercentOfAspect`: Instead of defining a specific value, what percent of the potential maximum value of the aspect should we keep. See [this section](#filtering-on-percent-of-affix-instead-of-value) for more information.
 
 <details><summary>Config Examples</summary>
 
@@ -273,6 +278,22 @@ Affixes:
             - { name: lightning_resistance }
           minCount: 2
 
+    # Search for boots that have at least 2 of the specified affixes AND are a Penitent Greaves
+    # The Greaves must have at least 19% damage multiplier to chilled enemies (Greaves's range is 15-25)
+    # Note this would not match non-unique boots that have movement speed and cold resistance, it will only match a Penitent Greaves
+  - GreatUniqueBoots:
+      itemType: boots
+      minPower: 800
+      affixPool:
+        - count:
+            - { name: movement_speed, value: 16 }
+            - { name: cold_resistance }
+            - { name: lightning_resistance }
+          minCount: 2
+      uniqueAspect:
+        - name: penitent_greaves
+          minPercentOfAspect: 50
+
   # Search for boots with movement speed and 1 resistances from a pool of all resistances.
   # No need to add maxCount to the resistance group since it isn't possible for an item to have more than one resistance affix
   - ResBoots:
@@ -289,7 +310,7 @@ Affixes:
             - { name: poison_resistance }
           minCount: 1
 
-  # Search for boots with movement speed. At least two of all item affixes must be a greater affix
+  # Search for boots with movement speed. At least two of all item affixes must be a greater affix, but we don't care which
   - GreaterAffixBoots:
       itemType: boots
       minPower: 800
@@ -311,6 +332,8 @@ You also have the option to filter on the minimum percent of the affix you want 
 A greater affix is considered to always match a `minPercentOfAffix`. You do not need to designate larger/smaller for `minPercentOfAffix`, that is automatically determined.
 
 If you put in `minPercentOfAffix` you can not also put `value` for that affix. It must be one or the other.
+
+These rules also apply for `minPercentOfAspect` on the `uniqueAspect` and in `GlobalUniques`.
 
 <details><summary>Config Examples</summary>
 
@@ -578,45 +601,28 @@ Tribute names are lower case and spaces are replaced by underscore. Parentheses 
 Resolute identifiers are part of the names in [assets/lang/enUS/tributes.json](assets/lang/enUS/tributes.json). You can find the list of item rarities
 in [rarity.py](src/item/data/rarity.py)
 
-### Uniques
+### GlobalUniques
 
-Uniques are defined by the top-level key `Uniques`. It contains a list of parameters that you want to filter for. If no
-Unique filter is provided, uniques will be handled according to the handle_uniques configuration. All mythics are
-marked as favorite regardless of any filter or configuration.
+If you are searching for a specific Unique, use the `uniqueAspect` key in [the Affixes section](#affixes). If you
+additionally want to keep other uniques that have particular stats, use the `GlobalUniques` key.
 
-Uniques can be filtered in two ways. First the aspect and affix for a specific unique can be filtered directly.
-This is how imported profiles are configured. If only aspect filtering is applied, then all other uniques will be
-handled according to the handle_uniques property. For aspect filtering, since uniques all have a predefined affix,
-you'll only need to specify the threshold that you want to apply (see examples below).
+Global unique filters are defined by the top-level key `GlobalUniques`. It contains a list of parameters that you want
+to filter for. If no global unique filter is provided or if the item does not match any unique filter (affix or otherwise),
+uniques will be handled according to the handle_uniques configuration. All mythics are marked as favorite regardless of
+any filter or configuration.
 
-Additionally, you can filter all uniques based on a generic property like their item power or if they have greater
-affixes. Once a "global" filter like this is applied then all uniques will have a filter that now applies to them
-and handle_uniques will be ignored.
+The following global filters are available:
 
-The following global filters are available. As a reminder, these will apply to all uniques that are not specifically
-being filtered by aspect:
-
-- `itemType`: The name of the type or a list of multiple types.
-  See [assets/lang/enUS/item_types.json](assets/lang/enUS/item_types.json)
 - `minGreaterAffixCount`: Only keep uniques with a specific number of greater affixes
-- `minPercentOfAspect` (experimental): Only keep uniques whose aspect is above a percentage of the total possible.
+- `minPercentOfAspect`: Only keep uniques whose aspect is above a percentage of the total possible.
   For example, if this is set to 80 and an aspect has a range of 100-200, then a value of 180 would be kept but a value
   of 150 would be marked as junk. Situations where a smaller value is what is wanted are automatically handled as well.
-  This functionality is new so please report any issues found with it.
 - `minPower`: The minimum item power of uniques to keep
-- `mythic`: If set to true, only keep mythic uniques.
-
-In vision mode, uniques show as <filename>.<aspect>. For example myuniques.yaml with fists_of_fate aspect defined
-would show as myuniques.fists_of_fate. The label for the filename can be configured at the aspect level using the
-profileAlias flag (see examples).
+- `profileAlias`: In vision mode, uniques show as <filename>.<aspect>. For example myuniques.yaml with fists_of_fate aspect defined
+  would show as myuniques.fists_of_fate. The label for the filename can be configured at the aspect level using the
+  profileAlias flag (see examples).
 
 <details><summary>Config Examples</summary>
-
-```yaml
-# Take only mythic uniques
-Uniques:
-  - mythic: true
-```
 
 ```yaml
 # Take all uniques with item power > 900
@@ -625,52 +631,10 @@ Uniques:
 ```
 
 ```yaml
-# Take all uniques with at least 1 greater affix
+# Take all uniques with at least 1 greater affix. It would show in logs/vision mode as cool_stuff.<name of unique>
 Uniques:
   - minGreaterAffixCount: 1
-```
-
-```yaml
-# Take all unique pants
-Uniques:
-  - itemType: pants
-```
-
-```yaml
-# Take all unique chest armors and pants
-Uniques:
-  - itemType: [ chest armor, pants ]
-```
-
-```yaml
-# Take all unique chest armors and pants with min item power > 900
-Uniques:
-  - itemType: [ chest armor, pants ]
-    minPower: 900
-```
-
-```yaml
-# Take all Tibault's Will pants
-Uniques:
-  - aspect: { name: tibaults_will }
-```
-
-```yaml
-# Take all Tibault's Will pants with at least 2 greater affixes.
-# Have vision mode show this as my_cool_items.tibaults_will instead of <filename>.tibaults_will
-Uniques:
-  - aspect: { name: tibaults_will }
-    minGreaterAffixCount: 2
-    profileAlias: my_cool_items
-```
-
-```yaml
-# Take all Tibault's Will pants that have item power > 900 and dmg reduction from close > 12 as well as aspect value > 25
-Uniques:
-  - aspect: { name: tibaults_will, value: 25 }
-    minPower: 900
-    affix:
-      - { name: damage_reduction_from_close_enemies, value: 12 }
+    profileAlias: cool_stuff
 ```
 
 ```yaml
@@ -689,9 +653,6 @@ Uniques:
 ```
 
 </details>
-
-Unique names are lower case and spaces are replaced by underscore. You can find the full list of names
-in [assets/lang/enUS/uniques.json](assets/lang/enUS/uniques.json). Occasionally a unique is missing. If you find one missing just raise an issue and we can add it.
 
 ## Paragon overlay
 

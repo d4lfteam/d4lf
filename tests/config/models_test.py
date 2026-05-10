@@ -1,9 +1,11 @@
+import re
 from typing import TYPE_CHECKING, Any
 
 import pytest
 from pydantic import ValidationError
 
-from src.config.models import GeneralModel, ProfileModel
+from src.config.profile_models import ProfileModel
+from src.config.settings_models import GeneralModel
 from tests.config.data import sigils, uniques
 
 if TYPE_CHECKING:
@@ -35,41 +37,15 @@ class TestUnique:
         self.mock_ini_loader = mock_ini_loader
 
     @staticmethod
-    @pytest.mark.parametrize("data", uniques.all_bad_cases)
-    def test_all_bad_cases(data: dict[str, Any]) -> None:
+    @pytest.mark.parametrize(("data", "expected_msg"), uniques.all_bad_cases)
+    def test_all_bad_cases(data: dict[str, Any], expected_msg: str) -> None:
         data["name"] = "bad"
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match=re.escape(expected_msg)):
             ProfileModel(**data)
 
     @staticmethod
     def test_all_good_cases() -> None:
         assert ProfileModel(**uniques.all_good_cases)
-
-
-class TestAffixPercent:
-    @pytest.fixture(autouse=True)
-    def _setup(self, mock_ini_loader: IniConfigLoader) -> None:
-        self.mock_ini_loader = mock_ini_loader
-
-    @staticmethod
-    def test_affix_percent_zero_is_allowed() -> None:
-        assert ProfileModel(name="good", Uniques=[{"affix": [{"name": "maximum_life", "minPercentOfAffix": 0}]}])
-
-    @staticmethod
-    def test_affix_percent_is_allowed() -> None:
-        assert ProfileModel(name="good", Uniques=[{"affix": [{"name": "maximum_life", "minPercentOfAffix": 80}]}])
-
-    @staticmethod
-    def test_affix_percent_negative_values_are_rejected() -> None:
-        with pytest.raises(ValidationError, match=r"must be in \[0, 100\]"):
-            ProfileModel(name="bad", Uniques=[{"affix": [{"name": "maximum_life", "minPercentOfAffix": -1}]}])
-
-    @staticmethod
-    def test_affix_percent_and_value_are_mutually_exclusive() -> None:
-        with pytest.raises(ValidationError, match="value and minPercentOfAffix cannot both be set"):
-            ProfileModel(
-                name="bad", Uniques=[{"affix": [{"name": "maximum_life", "value": 450, "minPercentOfAffix": 80}]}]
-            )
 
 
 class TestGeneralProfiles:

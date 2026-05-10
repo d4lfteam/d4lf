@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.models import ItemRarity, TributeFilterModel
+from src.config.profile_models import ItemRarity, TributeFilterModel
 from src.dataloader import Dataloader
 from src.gui.dialog import AddTributeRarity, CreateTribute
 

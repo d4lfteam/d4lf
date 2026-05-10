@@ -6,7 +6,7 @@ from src.item.models import Item
 
 
 class TestUnique(Item):
-    def __init__(self, rarity=ItemRarity.Unique, item_type=ItemType.Shield, power=910, **kwargs):
+    def __init__(self, rarity=ItemRarity.Unique, item_type: ItemType = ItemType.Shield, power=910, **kwargs):
         super().__init__(rarity=rarity, item_type=item_type, power=power, **kwargs)
 
 
@@ -26,67 +26,104 @@ simple_mythics = [
     ),
 ]
 
-uniques = [
-    ("item power too low", [], TestUnique(power=800)),
-    ("wrong type", [], TestUnique(item_type=ItemType.Helm, aspect=Aspect(name="deathless_visage", value=1862))),
-    ("wrong aspect", [], TestUnique(aspect=Aspect(name="bloodless_scream", value=40.0))),
-    ("aspect power too low", [], TestUnique(aspect=Aspect(name="lidless_wall", value=15))),
-    ("aspect power too high", [], TestUnique(aspect=Aspect(name="soulbrand", value=22))),
+global_uniques = [
     (
-        "affix power too low",
+        "item power too low",
         [],
-        TestUnique(
-            aspect=Aspect(name="lidless_wall", value=22),
-            affixes=[
-                Affix(name="attack_speed", value=9.6),
-                Affix(name="lucky_hit_up_to_a_chance_to_restore_primary_resource", value=13.5),
-                Affix(name="maximum_life", value=638),
-                Affix(name="maximum_essence", value=8),
-            ],
-        ),
+        TestUnique(power=800, aspect=Aspect(name="penitent_greaves", value=10, min_value=9, max_value=100)),
     ),
     (
-        "only filter one affix",
-        ["test.soulbrand"],
-        TestUnique(
-            aspect=Aspect(name="soulbrand", value=22),
-            affixes=[
-                Affix(name="attack_speed", value=9.6),
-                Affix(name="lucky_hit_up_to_a_chance_to_restore_primary_resource", value=13.5),
-                Affix(name="maximum_life", value=638),
-                Affix(name="maximum_essence", value=8),
-            ],
-        ),
-    ),
-    (
-        "ok_1",
+        "has greater affixes",
         ["test.lidless_wall"],
         TestUnique(
-            aspect=Aspect(name="lidless_wall", value=22),
+            aspect=Aspect(name="lidless_wall", value=22, min_value=20, max_value=300),
             affixes=[
-                Affix(name="attack_speed", value=9.6),
-                Affix(name="lucky_hit_up_to_a_chance_to_restore_primary_resource", value=13.5),
+                Affix(name="attack_speed", value=9.6, type=AffixType.greater),
+                Affix(name="lucky_hit_up_to_a_chance_to_restore_primary_resource", value=13.5, type=AffixType.greater),
                 Affix(name="maximum_life", value=1111),
                 Affix(name="maximum_essence", value=13),
             ],
+            power=800,
         ),
     ),
     (
-        "greater unique affix percent without range",
-        ["test.lidless_wall"],
+        "percent of affix is good",
+        ["good_stuff.black_river"],
+        TestUnique(aspect=Aspect(name="black_river", value=128, min_value=1, max_value=130), power=800),
+    ),
+]
+
+uniques_with_affixes = [
+    ("matches nothing", [], TestUnique(item_type=ItemType.Amulet, aspect=Aspect(name="dolmen_stone"))),
+    (
+        "matches aspect value",
+        ["test.Helm"],
         TestUnique(
-            aspect=Aspect(name="lidless_wall", value=22),
-            affixes=[
-                Affix(name="maximum_life", value=450.0, type=AffixType.greater),
-                Affix(name="dexterity", value=100.0),
-            ],
+            item_type=ItemType.Helm,
+            aspect=Aspect(name="crown_of_lucion", value=13),
+            affixes=[Affix(name="maximum_life", value=641)],
         ),
     ),
     (
-        "ok_2",
-        ["test.black_river", "test.black_river"],
-        TestUnique(item_type=ItemType.Scythe, aspect=Aspect(name="black_river", value=128)),
+        "does not match aspect value",
+        [],
+        TestUnique(
+            item_type=ItemType.Helm,
+            aspect=Aspect(name="crown_of_lucion", value=10),
+            affixes=[Affix(name="maximum_life", value=5)],
+        ),
     ),
-    ("ok_3", ["test.soulbrand"], TestUnique(aspect=Aspect(name="soulbrand", value=11))),
-    ("mythic", ["test.black_river"], TestUnique(aspect=Aspect(name="black_river"), rarity=ItemRarity.Mythic)),
+    (
+        "percent affix/aspect pass",
+        ["test.PercentBoots"],
+        TestUnique(
+            item_type=ItemType.Boots,
+            affixes=[
+                Affix(name="movement_speed", value=9.0, min_value=5.0, max_value=10.0),
+                Affix(name="dodge_chance", value=3.0),
+            ],
+            aspect=Aspect(name="penitent_greaves", value=10, min_value=1, max_value=11),
+        ),
+    ),
+    (
+        "percent affix pass but aspect fail",
+        [],
+        TestUnique(
+            item_type=ItemType.Boots,
+            affixes=[
+                Affix(name="movement_speed", value=9.0, min_value=5.0, max_value=10.0),
+                Affix(name="dodge_chance", value=3.0),
+            ],
+            aspect=Aspect(name="penitent_greaves", value=2, min_value=1, max_value=11),
+        ),
+    ),
+    (
+        "greater affix",
+        ["test.CountBoots", "test.UniqueAspectWithGA"],
+        TestUnique(
+            item_type=ItemType.Boots,
+            affixes=[
+                Affix(name="movement_speed", value=4, type=AffixType.greater),
+                Affix(name="intelligence", value=4, type=AffixType.greater),
+                Affix(name="maximum_life", value=4),
+                Affix(name="shadow_resistance", value=4),
+            ],
+            aspect=Aspect(name="flickerstep"),
+        ),
+    ),
+    (
+        "greater affix but aspect is wrong",
+        [],
+        TestUnique(
+            item_type=ItemType.Boots,
+            affixes=[
+                Affix(name="movement_speed", value=4, type=AffixType.greater),
+                Affix(name="intelligence", value=4, type=AffixType.greater),
+                Affix(name="maximum_life", value=4),
+                Affix(name="shadow_resistance", value=4),
+            ],
+            aspect=Aspect(name="blood_wake"),
+        ),
+    ),
+    ("aspect only", ["test.UniqueAspectOnly"], TestUnique(aspect=Aspect(name="battle_trance"))),
 ]

@@ -165,4 +165,11 @@ class VisionModeFast:
 
 
 def create_match_text(matches: list[MatchedFilter]):
-    return [f"{match.profile}\n" + "\n".join(f"  - {ma.name}" for ma in match.matched_affixes) for match in matches]
+    result = []
+    for match in matches:
+        match_list = [f"  - {ma.name}" for ma in match.matched_affixes]
+        if match.aspect_match:
+            match_list.append("  - Aspect")
+        result.append(f"{match.profile}\n" + "\n".join(match_list))
+
+    return result

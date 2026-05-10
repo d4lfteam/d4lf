@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.models import AffixFilterCountModel, AffixFilterModel, ComparisonType, DynamicItemFilterModel
+from src.config.profile_models import AffixFilterCountModel, AffixFilterModel, ComparisonType, DynamicItemFilterModel
 from src.dataloader import Dataloader
 from src.gui.collapsible_widget import Container
 from src.gui.dialog import (

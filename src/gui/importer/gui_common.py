@@ -18,7 +18,8 @@ from seleniumbase import SB
 
 from src import __version__
 from src.config.loader import IniConfigLoader
-from src.config.models import BrowserType, ItemFilterModel, ProfileModel
+from src.config.profile_models import ItemFilterModel, ProfileModel  # noqa: TC001
+from src.config.settings_models import BrowserType
 from src.item.data.item_type import ItemType
 
 if TYPE_CHECKING:

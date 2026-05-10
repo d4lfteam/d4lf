@@ -17,7 +17,7 @@ from src import __version__, tts
 from src.autoupdater import notify_if_update, start_auto_update
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
-from src.config.models import VisionModeType
+from src.config.settings_models import VisionModeType
 from src.item.filter import Filter
 from src.logger import LOG_DIR
 from src.overlay import Overlay

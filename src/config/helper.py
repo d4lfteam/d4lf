@@ -1,5 +1,3 @@
-"""New config loading and verification using pydantic. For now, both will exist in parallel hence _new."""
-
 import sys
 import threading
 
@@ -10,6 +8,14 @@ if sys.platform != "darwin":
 def check_greater_than_zero(v: int) -> int:
     if v < 0:
         msg = "must be greater than zero"
+        raise ValueError(msg)
+    return v
+
+
+def validate_percent(v: int) -> int:
+    check_greater_than_zero(v)
+    if v > 100:
+        msg = "must be less than or equal to 100"
         raise ValueError(msg)
     return v
 

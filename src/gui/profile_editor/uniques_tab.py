@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.models import AffixFilterModel, AspectUniqueFilterModel, ComparisonType, UniqueModel
+from src.config.profile_models import AffixFilterModel, AspectUniqueFilterModel, ComparisonType, GlobalUniqueModel
 from src.dataloader import Dataloader
 from src.gui.dialog import (
     DeleteItem,
@@ -37,7 +37,7 @@ UNIQUES_TABNAME = "Uniques"
 
 
 class UniqueWidget(QWidget):
-    def __init__(self, unique_model: UniqueModel, parent=None):
+    def __init__(self, unique_model: GlobalUniqueModel, parent=None):
         super().__init__(parent)
         self.unique_model = unique_model
 
@@ -244,7 +244,7 @@ class UniqueWidget(QWidget):
 
 
 class UniquesTab(QWidget):
-    def __init__(self, unique_model_list: list[UniqueModel], parent=None):
+    def __init__(self, unique_model_list: list[GlobalUniqueModel], parent=None):
         super().__init__(parent)
         self.unique_model_list = unique_model_list
         self.loaded = False
@@ -325,7 +325,7 @@ class UniquesTab(QWidget):
             self.tab_widget.setTabText(i, f"Unique {i}")
 
     def add_item_type(self):
-        unique_model = UniqueModel()
+        unique_model = GlobalUniqueModel()
         group = UniqueWidget(unique_model)
         self.tab_widget.addTab(group, f"Unique {self.tab_widget.count()}")
         self.unique_model_list.append(unique_model)
