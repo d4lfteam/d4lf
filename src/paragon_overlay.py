@@ -1364,15 +1364,7 @@ class ParagonOverlay(tk.Toplevel):
             rn, rg = str(bd.get("Name", "?") or "?"), bd.get("Glyph")
             np = rn.split("-", 1)
             cs, bs = ((np[0] if np else rn).strip().lower(), (np[1] if len(np) > 1 else rn).strip())
-            cn = {
-                "paladin": "Paladin",
-                "spiritborn": "Spiritborn",
-                "necromancer": "Necromancer",
-                "barbarian": "Barbarian",
-                "druid": "Druid",
-                "rogue": "Rogue",
-                "sorcerer": "Sorcerer",
-            }.get(cs, cs.title() if cs else "?")
+            cn = {c: c.title() for c in PLAYER_CLASSES}.get(cs, cs.title() if cs else "?")
             gn = "No Glyph"
             if rg:
                 gp = str(rg).strip().split("-", 1)
