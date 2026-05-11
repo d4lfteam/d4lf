@@ -12,8 +12,8 @@ import numpy as np
 
 import src.item.descr.read_descr_tts
 import src.tts
-from config.helper import singleton
 from src.cam import Cam
+from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
 from src.item.data.item_type import is_sigil

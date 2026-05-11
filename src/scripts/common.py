@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from item.data.seasonal_attribute import SeasonalAttribute
+from src.item.data.seasonal_attribute import SeasonalAttribute
 
 if TYPE_CHECKING:
     from tkinter import Canvas

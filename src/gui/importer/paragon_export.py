@@ -396,6 +396,7 @@ def _fix_mobalytics_starting_board_slug(board_slug: str) -> str:
         .replace("rogue-starter-board", "rogue-starting-board")
         .replace("sorcerer-starter-board", "sorcerer-starting-board")
         .replace("spiritborn-starter-board", "spiritborn-starting-board")
+        .replace("warlock-starter-board", "warlock-starting-board")
     )
 
 
