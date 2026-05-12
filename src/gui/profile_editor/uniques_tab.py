@@ -15,9 +15,9 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config.profile_models import GlobalUniqueModel
-from src.gui.dialog import DeleteItem, IgnoreScrollWheelSpinBox, MinGreaterDialog, MinPercentDialog, MinPowerDialog
+from src.gui.dialog import DeleteItem, IgnoreScrollWheelSpinBox
 
-UNIQUES_TABNAME = "Uniques"
+UNIQUES_TABNAME = "GlobalUniques"
 
 
 class UniqueWidget(QWidget):
@@ -125,19 +125,10 @@ class UniquesTab(QWidget):
 
         add_item_button = QPushButton("Create Rule")
         remove_item_button = QPushButton("Remove Rule")
-        set_all_minGreaterAffix_button = QPushButton("Set all minGreaterAffix")
-        set_all_minPercentOfAspect_button = QPushButton("Set all minPercentOfAspect")
-        set_all_minPower_button = QPushButton("Set all minPower")
         add_item_button.clicked.connect(self.add_item_type)
         remove_item_button.clicked.connect(self.remove_item_type)
-        set_all_minGreaterAffix_button.clicked.connect(self.set_all_minGreaterAffix)
-        set_all_minPercentOfAspect_button.clicked.connect(self.set_all_minPercentOfAspect)
-        set_all_minPower_button.clicked.connect(self.set_all_minPower)
         self.toolbar.addWidget(add_item_button)
         self.toolbar.addWidget(remove_item_button)
-        self.toolbar.addWidget(set_all_minGreaterAffix_button)
-        self.toolbar.addWidget(set_all_minPercentOfAspect_button)
-        self.toolbar.addWidget(set_all_minPower_button)
         self.main_layout.addWidget(self.toolbar)
         self.main_layout.addWidget(self.tab_widget)
 
@@ -169,30 +160,3 @@ class UniquesTab(QWidget):
         group = UniqueWidget(unique_model)
         self.tab_widget.addTab(group, f"Unique Rule {self.tab_widget.count()}")
         self.unique_model_list.append(unique_model)
-
-    def set_all_minGreaterAffix(self):
-        dialog = MinGreaterDialog(self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            minGreaterAffix = dialog.get_value()
-            for i in range(self.tab_widget.count()):
-                tab: UniqueWidget = self.tab_widget.widget(i)
-                tab.min_greater.setValue(minGreaterAffix)
-                tab.update_min_greater_affix()
-
-    def set_all_minPercentOfAspect(self):
-        dialog = MinPercentDialog(self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            minPercentOfAspect = dialog.get_value()
-            for i in range(self.tab_widget.count()):
-                tab: UniqueWidget = self.tab_widget.widget(i)
-                tab.min_percent.setValue(minPercentOfAspect)
-                tab.update_min_percent()
-
-    def set_all_minPower(self):
-        dialog = MinPowerDialog(self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            minPower = dialog.get_value()
-            for i in range(self.tab_widget.count()):
-                tab: UniqueWidget = self.tab_widget.widget(i)
-                tab.min_power.setValue(minPower)
-                tab.update_min_power()
