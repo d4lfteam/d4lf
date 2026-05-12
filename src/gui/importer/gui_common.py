@@ -220,10 +220,10 @@ def retry_importer(func=None, inject_webdriver: bool = False, uc=False):
         def wrapper(*args, **kwargs):
             if inject_webdriver and "driver" not in kwargs and not args:
                 kwargs["driver"] = setup_webdriver(uc=uc)
-            for _ in range(5):
+            for _ in range(2):
                 try:
                     res = wrap_function(*args, **kwargs)
-                    if inject_webdriver:
+                    if inject_webdriver and "driver" in kwargs:
                         kwargs["driver"].quit()
                 except Exception:
                     LOGGER.exception("An error occurred while importing. Retrying...")

@@ -13,7 +13,6 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
-    GlobalUniqueModel,
     ItemFilterModel,
     ProfileModel,
 )
@@ -33,6 +32,7 @@ from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_d4builds_paragon_steps
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
+from src.item.data.rarity import ItemRarity
 from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
 
@@ -107,22 +107,18 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             LOGGER.error(f"No stats found for {slot=}")
             continue
         item_type = None
+        rarity = None
         affixes = []
         inherents = []
 
         if slot_to_unique_name_map[slot]:
-            unique_model = GlobalUniqueModel()
-            unique_name = slot_to_unique_name_map[slot]
+            unique_name, rarity = slot_to_unique_name_map[slot]
             try:
-                unique_model.aspect = AspectUniqueFilterModel(name=unique_name)
-                # We just can't trust their data well enough so removing this just like the other importers.
-                # unique_model.affix = [AffixFilterModel(name=x.name) for x in affixes]
-                unique_filters.append(unique_model)
+                item_filter.uniqueAspect = AspectUniqueFilterModel(name=unique_name)
             except Exception:
                 LOGGER.exception(
-                    f"Unexpected error importing unique {unique_name}, please report a bug and include a link to the build you were trying to import."
+                    f"Unexpected error adding unique aspect for {unique_name}, please report a bug and include a link to the build you were trying to import."
                 )
-            continue
 
         is_weapon = "weapon" in slot.lower()
         for stat in stats:
@@ -154,8 +150,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 continue
             if config.import_greater_affixes and stat.xpath("../../../..")[0].xpath(GA_XPATH):
                 affix_obj.type = AffixType.greater
-            else:
-                affixes.append(affix_obj)
+            affixes.append(affix_obj)
 
         if not affixes:
             continue
@@ -176,16 +171,21 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 LOGGER.warning(f"Couldn't match item_type: {slot}. Please edit manually")
         else:
             item_filter.itemType = [item_type]
-        item_filter.affixPool = [
-            AffixFilterCountModel(
-                count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
-                minCount=3,
-            )
-        ]
+
+        # We don't bother importing affixes for mythics
+        if rarity != ItemRarity.Mythic:
+            item_filter.affixPool = [
+                AffixFilterCountModel(
+                    count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
+                    minCount=1 if rarity == ItemRarity.Unique else 3,
+                )
+            ]
+            update_mingreateraffixcount(item_filter, config.require_greater_affixes)
+            if inherents:
+                item_filter.inherentPool = [
+                    AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
+                ]
         item_filter.minPower = 100
-        update_mingreateraffixcount(item_filter, config.require_greater_affixes)
-        if inherents:
-            item_filter.inherentPool = [AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])]
         filter_name_template = item_filter.itemType[0].name if item_type else slot.replace(" ", "")
         filter_name = filter_name_template
         i = 2
@@ -267,7 +267,7 @@ def _extract_d4builds_season_number(data: lxml.html.HtmlElement) -> str:
     return ""
 
 
-def _get_item_slots(data: lxml.html.HtmlElement) -> dict[str, str]:
+def _get_item_slots(data: lxml.html.HtmlElement) -> dict[str, tuple[str, ItemRarity] | None]:
     result = {}
     if not (paperdoll := data.xpath(PAPERDOLL_XPATH)):
         LOGGER.error(msg := "No paperdoll found")
@@ -280,8 +280,13 @@ def _get_item_slots(data: lxml.html.HtmlElement) -> dict[str, str]:
             slot = item.xpath(PAPERDOLL_ITEM_SLOT_XPATH)[0].text
             if slot == "2H Weapon":  # This happens when a build has a weapon and no offhand
                 slot = "Weapon"
-            unique_name = item.xpath(PAPERDOLL_ITEM_UNIQUE_NAME_XPATH)
-            result[slot] = unique_name[0].text if unique_name else ""
+            unique_name_elem = item.xpath(PAPERDOLL_ITEM_UNIQUE_NAME_XPATH)
+            if unique_name_elem:
+                unique_name = unique_name_elem[0].text
+                rarity = ItemRarity.Mythic if "mythic" in str(unique_name_elem[0].attrib) else ItemRarity.Unique
+                result[slot] = (unique_name, rarity)
+            else:
+                result[slot] = None
     return result
 
 
