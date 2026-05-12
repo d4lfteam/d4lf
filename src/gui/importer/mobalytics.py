@@ -7,13 +7,13 @@ import jsonpath
 import lxml.html
 
 import src.logger
-from src.config.models import (
+from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
+    GlobalUniqueModel,
     ItemFilterModel,
     ProfileModel,
-    UniqueModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
@@ -133,7 +133,7 @@ def import_mobalytics(config: ImportConfig):
             # if not raw_affixes:
             #     LOGGER.warning(f"Unique {item_name} had no affixes listed for it, only the aspect will be imported.")
             # affixes = _convert_raw_to_affixes(raw_affixes)
-            unique_model = UniqueModel()
+            unique_model = GlobalUniqueModel()
             try:
                 unique_model.aspect = AspectUniqueFilterModel(name=item_name)
                 # if affixes:
@@ -212,7 +212,7 @@ def import_mobalytics(config: ImportConfig):
         finished_filters.append({filter_name: item_filter})
     profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))))
     if config.import_uniques and unique_filters:
-        profile.Uniques = unique_filters
+        profile.GlobalUniques = unique_filters
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 

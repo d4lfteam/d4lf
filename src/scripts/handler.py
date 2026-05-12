@@ -20,7 +20,7 @@ import src.scripts.vision_mode_with_highlighting
 import src.tts
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
-from src.config.models import (
+from src.config.settings_models import (
     IS_HOTKEY_KEY,
     LIVE_RELOAD_GROUP_KEY,
     AdvancedOptionsModel,

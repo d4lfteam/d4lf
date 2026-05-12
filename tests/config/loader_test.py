@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from src.config.loader import PARAMS_INI, IniConfigLoader
-from src.config.models import JunkRaresType
+from src.config.settings_models import JunkRaresType
 
 if TYPE_CHECKING:
     from pathlib import Path

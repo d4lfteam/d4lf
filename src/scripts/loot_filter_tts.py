@@ -5,13 +5,12 @@ from typing import TYPE_CHECKING
 import src.item.descr.read_descr_tts
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
-from src.config.models import ItemRefreshType, UnfilteredUniquesType
+from src.config.settings_models import ItemRefreshType, UnfilteredUniquesType
 from src.item.data.affix import AffixType
 from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter
 from src.scripts.common import (
-    ASPECT_UPGRADES_LABEL,
     drop_item_from_inventory,
     is_ignored_item,
     is_junk_rarity,
@@ -92,23 +91,19 @@ def check_items(
         # Check if we want to keep the item
         res = Filter().should_keep(item_descr)
         matched_any_affixes = len(res.matched) > 0 and len(res.matched[0].matched_affixes) > 0
-        matched_profile_legendary_aspect = any(
-            match.profile.endswith(f".{ASPECT_UPGRADES_LABEL}") for match in res.matched
-        )
+        matched_aspect = any(match.aspect_match for match in res.matched)
 
-        # Uniques have special handling. If they have an aspect specifically called out by a profile they are treated
-        # like any other item. If not, and there are no non-aspect filters, then they are handled by the handle_uniques
-        # property
+        # Uniques have special handling. They might be a keep but should actually be ignored
         if item_descr.rarity == ItemRarity.Unique and item_descr.item_type != ItemType.Tribute:
             if not res.keep:
                 _handle_no_match()
             elif res.keep:
                 if len(res.matched) == 1 and res.matched[0].profile.lower() == "cosmetics":
                     LOGGER.info("Ignoring unique because it matches no filters and is a cosmetic upgrade.")
-                elif res.all_unique_filters_are_aspects and not res.unique_aspect_in_profile:
-                    if IniConfigLoader().general.handle_uniques == UnfilteredUniquesType.favorite:
-                        mark_as_favorite()
-                elif IniConfigLoader().general.mark_as_favorite:
+                elif any(match.aspect_match for match in res.matched) and IniConfigLoader().general.mark_as_favorite:
+                    # This means it was a legitimate match, not an ignore
+                    mark_as_favorite()
+                elif IniConfigLoader().general.handle_uniques == UnfilteredUniquesType.favorite:
                     mark_as_favorite()
         elif not res.keep:
             if IniConfigLoader().general.do_not_junk_ancestral_legendaries and any(
@@ -121,7 +116,7 @@ def check_items(
             res.keep
             and (
                 matched_any_affixes
-                or matched_profile_legendary_aspect
+                or matched_aspect
                 or item_descr.rarity == ItemRarity.Mythic
                 or is_sigil(item_descr.item_type)
                 or item_descr.item_type == ItemType.Tribute

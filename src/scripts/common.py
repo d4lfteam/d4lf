@@ -16,7 +16,7 @@ if sys.platform != "darwin":
 
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
-from src.config.models import JunkRaresType
+from src.config.settings_models import JunkRaresType
 from src.item.data.item_type import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
 from src.item.data.rarity import ItemRarity
 from src.utils.custom_mouse import mouse

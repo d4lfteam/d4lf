@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.models import (
+from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     DynamicItemFilterModel,

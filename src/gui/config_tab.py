@@ -31,7 +31,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config.loader import IniConfigLoader
-from src.config.models import HIDE_FROM_GUI_KEY, IS_HOTKEY_KEY, MoveItemsType
+from src.config.settings_models import HIDE_FROM_GUI_KEY, IS_HOTKEY_KEY, MoveItemsType
 from src.gui.open_user_config_button import OpenUserConfigButton
 
 CONFIG_TABNAME = "config"

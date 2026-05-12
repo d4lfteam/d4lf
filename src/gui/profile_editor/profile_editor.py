@@ -3,7 +3,7 @@ import logging
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QMessageBox, QTabWidget
 
-from src.config.models import ProfileModel
+from src.config.profile_models import ProfileModel
 from src.gui.importer.gui_common import save_as_profile
 from src.gui.profile_editor.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.profile_editor.aspect_upgrades_tab import ASPECT_UPGRADES_TABNAME, AspectUpgradesTab
@@ -27,7 +27,7 @@ class ProfileEditor(QTabWidget):
         self.aspect_upgrades_tab = AspectUpgradesTab(self.profile_model.AspectUpgrades)
         self.sigils_tab = SigilsTab(self.profile_model.Sigils)
         self.tributes_tab = TributesTab(self.profile_model.Tributes)
-        self.uniques_tab = UniquesTab(self.profile_model.Uniques)
+        self.uniques_tab = UniquesTab(self.profile_model.GlobalUniques)
 
         self.currentChanged.connect(self.tab_changed)
         # Add tabs with icons

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config.helper import singleton
-from src.config.models import DEPRECATED_INI_KEYS, AdvancedOptionsModel, CharModel, GeneralModel
+from src.config.settings_models import DEPRECATED_INI_KEYS, AdvancedOptionsModel, CharModel, GeneralModel
 
 LOGGER = logging.getLogger(__name__)
 PARAMS_INI = "params.ini"

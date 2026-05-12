@@ -3,7 +3,7 @@ import typing
 import pytest
 
 from src.config.loader import IniConfigLoader
-from src.config.models import BrowserType
+from src.config.settings_models import BrowserType
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture

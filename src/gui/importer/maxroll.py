@@ -5,13 +5,13 @@ import re
 import lxml.html
 
 import src.logger
-from src.config.models import (
+from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
+    GlobalUniqueModel,
     ItemFilterModel,
     ProfileModel,
-    UniqueModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
@@ -95,7 +95,7 @@ def import_maxroll(config: ImportConfig):
             and mapping_data["items"][resolved_item_id]["magicType"] in [2, 4]
             and config.import_uniques
         ):
-            unique_model = UniqueModel()
+            unique_model = GlobalUniqueModel()
             unique_name = mapping_data["items"][resolved_item_id]["name"]
             try:
                 unique_name = _unique_name_special_handling(unique_name)
@@ -172,7 +172,7 @@ def import_maxroll(config: ImportConfig):
         finished_filters.append({filter_name: item_filter})
     profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))))
     if config.import_uniques and unique_filters:
-        profile.Uniques = unique_filters
+        profile.GlobalUniques = unique_filters
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 

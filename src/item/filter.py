@@ -11,26 +11,23 @@ from pydantic import ValidationError
 from yaml import MappingNode, MarkedYAMLError
 
 from src.config.loader import IniConfigLoader
-from src.config.models import (
+from src.config.profile_models import (
     AffixAspectFilterModel,
     AffixFilterCountModel,
     AffixFilterModel,
-    AspectFilterType,
     ComparisonType,
-    CosmeticFilterType,
     DynamicItemFilterModel,
+    GlobalUniqueModel,
     ProfileModel,
     SigilConditionModel,
     SigilFilterModel,
     SigilPriority,
     TributeFilterModel,
-    UnfilteredUniquesType,
-    UniqueModel,
 )
+from src.config.settings_models import AspectFilterType, CosmeticFilterType, UnfilteredUniquesType
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity
-from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.scripts.common import ASPECT_UPGRADES_LABEL, is_junk_rarity
 
 if TYPE_CHECKING:
@@ -44,15 +41,13 @@ LOGGER = logging.getLogger(__name__)
 class MatchedFilter:
     profile: str
     matched_affixes: list[Affix] = field(default_factory=list)
-    did_match_aspect: bool = False
+    aspect_match: bool = False
 
 
 @dataclass
 class FilterResult:
     keep: bool
     matched: list[MatchedFilter]
-    unique_aspect_in_profile = False
-    all_unique_filters_are_aspects = False
 
 
 class _UniqueKeyLoader(yaml.SafeLoader):
@@ -72,7 +67,7 @@ class Filter:
     affix_filters = {}
     aspect_upgrade_filters = {}
     paragon_filters = {}
-    unique_filters = {}
+    global_unique_filters = {}
     sigil_filters = {}
     tribute_filters = {}
 
@@ -92,7 +87,7 @@ class Filter:
     def _check_affixes(self, item: Item) -> FilterResult:
         res = FilterResult(False, [])
         if not self.affix_filters:
-            return FilterResult(True, [])
+            return FilterResult(False, [])
         non_tempered_affixes = [affix for affix in item.affixes if affix.type != AffixType.tempered]
         for profile_name, profile_filter in self.affix_filters.items():
             for filter_item in profile_filter:
@@ -107,6 +102,16 @@ class Filter:
                 # check greater affixes
                 if not self._match_greater_affix_count(
                     expected_min_count=filter_spec.minGreaterAffixCount, item_affixes=non_tempered_affixes
+                ):
+                    continue
+                # check the unique aspect
+                if not self._match_item_aspect_or_affix(
+                    expected_aspect=filter_spec.uniqueAspect, item_aspect=item.aspect
+                ):
+                    continue
+                # check the aspect matches the min percent
+                if filter_spec.uniqueAspect and not self._match_item_roll_is_in_percent_range(
+                    expected_percent=filter_spec.uniqueAspect.minPercentOfAspect, item_aspect_or_affix=item.aspect
                 ):
                     continue
                 # check affixes
@@ -138,8 +143,12 @@ class Filter:
                     else:
                         match_details.append(affix.name)
                 LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Affixes.{filter_name}: {match_details}")
+                if filter_spec.uniqueAspect:
+                    LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Affixes.{filter_name}: Unique aspect")
                 res.keep = True
-                res.matched.append(MatchedFilter(f"{profile_name}.{filter_name}", all_matches))
+                res.matched.append(
+                    MatchedFilter(f"{profile_name}.{filter_name}", all_matches, bool(filter_spec.uniqueAspect))
+                )
         return res
 
     def _check_legendary_aspect(self, item: Item) -> FilterResult:
@@ -153,7 +162,7 @@ class Filter:
                 ):
                     LOGGER.info(f"{item.original_name} -- Matched build-specific aspects that updates codex")
                     res.keep = True
-                    res.matched.append(MatchedFilter(f"{profile_name}.{ASPECT_UPGRADES_LABEL}", did_match_aspect=True))
+                    res.matched.append(MatchedFilter(f"{profile_name}.{ASPECT_UPGRADES_LABEL}", aspect_match=True))
 
             if res.keep:
                 return res
@@ -164,7 +173,7 @@ class Filter:
             return res
         LOGGER.info(f"{item.original_name} -- Matched Aspects that updates codex")
         res.keep = True
-        res.matched.append(MatchedFilter(ASPECT_UPGRADES_LABEL, did_match_aspect=True))
+        res.matched.append(MatchedFilter(ASPECT_UPGRADES_LABEL, aspect_match=True))
         return res
 
     @staticmethod
@@ -245,45 +254,17 @@ class Filter:
                 res.matched.append(MatchedFilter(f"{profile_name}"))
         return res
 
-    def _check_unique_item(self, item: Item) -> FilterResult:
+    def _check_global_unique_filter(self, item: Item) -> FilterResult:
         res = FilterResult(False, [])
-        all_filters_are_aspect = True
-        if not self.unique_filters:
-            keep = (
-                IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
-                or item.rarity == ItemRarity.Mythic
-            )
+
+        if not self.global_unique_filters:
+            keep = IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
             return FilterResult(keep, [])
-        for profile_name, profile_filter in self.unique_filters.items():
+        for profile_name, profile_filter in self.global_unique_filters.items():
             for filter_item in profile_filter:
-                if not filter_item.aspect:
-                    all_filters_are_aspect = False
-                elif item.aspect and filter_item.aspect.name == item.aspect.name:
-                    res.unique_aspect_in_profile = True
-                # check mythic
-                if filter_item.mythic and item.rarity != ItemRarity.Mythic:
-                    continue
-                # check item type
-                if not self._match_item_type(expected_item_types=filter_item.itemType, item_type=item.item_type):
-                    continue
                 # check item power
                 if not self._match_item_power(min_power=filter_item.minPower, item_power=item.power):
                     continue
-                # check aspect
-                if not self._match_item_aspect_or_affix(
-                    expected_aspect=filter_item.aspect,
-                    item_aspect=item.aspect,
-                    is_fixed_aspect_value=item.seasonal_attribute == SeasonalAttribute.bloodied,
-                ):
-                    continue
-                # check affixes
-                if not self._match_affixes_uniques(
-                    expected_affixes=filter_item.affix,
-                    item_affixes=item.affixes,
-                    min_greater_affix_count=filter_item.minGreaterAffixCount,
-                ):
-                    continue
-
                 # check greater affixes - Checks total item-level GAs
                 if not self._match_greater_affix_count(
                     expected_min_count=filter_item.minGreaterAffixCount, item_affixes=item.affixes
@@ -294,25 +275,12 @@ class Filter:
                     expected_percent=filter_item.minPercentOfAspect, item_aspect_or_affix=item.aspect
                 ):
                     continue
-                LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Uniques: {item.aspect.name}")
+                LOGGER.info(f"{item.original_name} -- Matched {profile_name}.GlobalUniques: {item.aspect.name}")
                 res.keep = True
                 matched_full_name = f"{profile_name}.{item.aspect.name}"
                 if filter_item.profileAlias:
                     matched_full_name = f"{filter_item.profileAlias}.{item.aspect.name}"
-                res.matched.append(MatchedFilter(matched_full_name, did_match_aspect=True))
-        res.all_unique_filters_are_aspects = all_filters_are_aspect
-
-        # Always keep mythics no matter what
-        # If all filters are for aspects specifically and none apply to this item, we default to handle_uniques config
-        if not res.keep and (
-            item.rarity == ItemRarity.Mythic
-            or (
-                res.all_unique_filters_are_aspects
-                and not res.unique_aspect_in_profile
-                and IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
-            )
-        ):
-            res.keep = True
+                res.matched.append(MatchedFilter(matched_full_name, aspect_match=True))
 
         return res
 
@@ -489,7 +457,7 @@ class Filter:
         self.paragon_filters: dict[str, object] = {}
         self.sigil_filters: dict[str, SigilFilterModel] = {}
         self.tribute_filters: dict[str, list[TributeFilterModel]] = {}
-        self.unique_filters: dict[str, list[UniqueModel]] = {}
+        self.global_unique_filters: dict[str, list[GlobalUniqueModel]] = {}
         profiles: list[str] = IniConfigLoader().general.profiles
 
         # Filter out empty strings
@@ -553,9 +521,9 @@ class Filter:
                 if data.Tributes:
                     self.tribute_filters[data.name] = data.Tributes
                     sections.append("Tributes")
-                if data.Uniques:
-                    self.unique_filters[data.name] = data.Uniques
-                    sections.append("Uniques")
+                if data.GlobalUniques:
+                    self.global_unique_filters[data.name] = data.GlobalUniques
+                    sections.append("GlobalUniques")
                 if data.Paragon:
                     self.paragon_filters[data.name] = data.Paragon
                     sections.append("Paragon")
@@ -586,14 +554,16 @@ class Filter:
         if item.item_type is None or item.power is None or (is_junk_rarity(item) and not item.cosmetic_upgrade):
             return res
 
-        if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
-            res = self._check_unique_item(item)
-        else:
-            keep_affixes = self._check_affixes(item)
-            if keep_affixes.keep:
-                return keep_affixes
-            if item.rarity == ItemRarity.Legendary:
-                res = self._check_legendary_aspect(item)
+        keep_affixes = self._check_affixes(item)
+        if keep_affixes.keep:
+            return keep_affixes
+        if item.rarity == ItemRarity.Legendary:
+            res = self._check_legendary_aspect(item)
+        elif item.rarity == ItemRarity.Unique:
+            res = self._check_global_unique_filter(item)
+        elif item.rarity == ItemRarity.Mythic:
+            # We always keep mythics
+            res = FilterResult(keep=True, matched=[MatchedFilter(profile="Mythics always kept", aspect_match=True)])
 
         # After checking all possible options, if we still don't match, we check for a cosmetic upgrade
         if not res.keep:

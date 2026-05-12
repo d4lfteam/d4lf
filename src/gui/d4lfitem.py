@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from src.config.models import AffixFilterCountModel, AffixFilterModel, DynamicItemFilterModel, ItemFilterModel
+from src.config.profile_models import AffixFilterCountModel, AffixFilterModel, DynamicItemFilterModel, ItemFilterModel
 from src.gui.dialog import IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox
 
 
