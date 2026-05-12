@@ -9,7 +9,6 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
-    GlobalUniqueModel,
     ItemFilterModel,
     ProfileModel,
 )
@@ -29,6 +28,7 @@ from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_maxroll_paragon_steps
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
+from src.item.data.rarity import ItemRarity
 from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
 
@@ -88,27 +88,7 @@ def import_maxroll(config: ImportConfig):
     for item_id in active_profile["items"].values():
         resolved_item = items[str(item_id)]
         resolved_item_id = resolved_item["id"]
-        # magic/rare = 0, legendary = 1, unique = 2, mythic = 4
-        # Unique aspect handling
-        if (
-            resolved_item_id in mapping_data["items"]
-            and mapping_data["items"][resolved_item_id]["magicType"] in [2, 4]
-            and config.import_uniques
-        ):
-            unique_model = GlobalUniqueModel()
-            unique_name = mapping_data["items"][resolved_item_id]["name"]
-            try:
-                unique_name = _unique_name_special_handling(unique_name)
-                unique_model.aspect = AspectUniqueFilterModel(name=unique_name)
-                # This will actually work now but I don't think it's what people will want, so leaving out for now
-                # unique_model.affix = [
-                #     AffixFilterModel(name=x.name)
-                #     for x in _find_item_affixes(mapping_data=mapping_data, item_affixes=resolved_item["explicits"])
-                # ]
-                unique_filters.append(unique_model)
-            except Exception:
-                LOGGER.exception(f"Unexpected error importing unique {unique_name}, please report a bug.")
-            continue
+        rarity = _find_item_rarity(resolved_item_id, mapping_data)
 
         item_filter = ItemFilterModel()
         if (
@@ -122,17 +102,15 @@ def import_maxroll(config: ImportConfig):
             continue
 
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
-            LOGGER.warning(f"Seals and Charms are not currently supported, skipping {resolved_item['name']}.")
+            LOGGER.warning(
+                f"Seals and Charms are not currently supported, skipping {resolved_item.get('name', '(could not determine item name)')}."
+            )
             continue
 
         item_filter.itemType = [item_type]
 
         # Legendary aspect upgrade handling
-        if (
-            resolved_item["id"] in mapping_data["items"]
-            and mapping_data["items"][resolved_item["id"]]["magicType"] == 1
-            and config.import_aspect_upgrades
-        ):
+        if rarity == ItemRarity.Legendary and config.import_aspect_upgrades:
             legendary_aspect = _find_legendary_aspect(
                 mapping_data, resolved_item.get("legendaryPower", resolved_item.get("aspects", {}))
             )
@@ -145,24 +123,34 @@ def import_maxroll(config: ImportConfig):
                 else:
                     aspect_upgrade_filters.append(legendary_aspect)
 
-        # Standard item handling
-        item_filter.affixPool = [
-            AffixFilterCountModel(
-                count=[
-                    AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater)
-                    for x in _find_item_affixes(
-                        mapping_data=mapping_data,
-                        item_affixes=resolved_item["explicits"],
-                        item_type=item_type,
-                        import_greater_affixes=config.import_greater_affixes,
-                    )
-                ],
-                minCount=3,
-            )
-        ]
-        item_filter.minPower = 100
-        update_mingreateraffixcount(item_filter, config.require_greater_affixes)
+        # Unique aspect, if the item is a unique
+        if rarity in [ItemRarity.Unique, ItemRarity.Mythic] and config.import_uniques:
+            unique_name = mapping_data["items"][resolved_item_id]["name"]
+            try:
+                unique_name = _unique_name_special_handling(unique_name)
+                item_filter.uniqueAspect = AspectUniqueFilterModel(name=unique_name)
+            except Exception:
+                LOGGER.exception(f"Unexpected error adding unique aspect for {unique_name}, please report a bug.")
 
+        # Standard item handling. For mythics we don't import affixes
+        if rarity != ItemRarity.Mythic:
+            item_filter.affixPool = [
+                AffixFilterCountModel(
+                    count=[
+                        AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater)
+                        for x in _find_item_affixes(
+                            mapping_data=mapping_data,
+                            item_affixes=resolved_item["explicits"],
+                            item_type=item_type,
+                            import_greater_affixes=config.import_greater_affixes,
+                        )
+                    ],
+                    minCount=1 if rarity == ItemRarity.Unique else 3,
+                )
+            ]
+            update_mingreateraffixcount(item_filter, config.require_greater_affixes)
+
+        item_filter.minPower = 100
         filter_name = item_filter.itemType[0].name
         i = 2
         while any(filter_name == next(iter(x)) for x in finished_filters):
@@ -211,6 +199,20 @@ def _attribute_description_corrections(input_str: str) -> str:
         case "Movement_Bonus_On_Elite_Kill":
             return "Movement_Speed_Bonus_On_Elite_Kill".lower()
     return input_str.lower()
+
+
+def _find_item_rarity(resolved_item_id, mapping_data) -> ItemRarity:
+    # magic/rare = 0, legendary = 1, unique = 2, mythic = 4
+    if resolved_item_id in mapping_data["items"]:
+        rarity_id = mapping_data["items"][resolved_item_id]["magicType"]
+        if rarity_id == 1:
+            return ItemRarity.Legendary
+        if rarity_id == 2:
+            return ItemRarity.Unique
+        if rarity_id == 4:
+            return ItemRarity.Mythic
+
+    return ItemRarity.Common
 
 
 def _find_item_affixes(
@@ -448,7 +450,7 @@ def _extract_active_guide_embed_tab_index(embed: lxml.html.HtmlElement) -> int |
 
 if __name__ == "__main__":
     src.logger.setup()
-    URLS = ["https://maxroll.gg/d4/build-guides/blessed-hammer-paladin-leveling-guide"]
+    URLS = ["https://maxroll.gg/d4/planner/n51lwl0u#3"]
     for X in URLS:
         config = ImportConfig(
             url=X,
