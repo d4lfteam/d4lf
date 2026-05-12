@@ -691,7 +691,7 @@ Before beginning, [install uv](https://docs.astral.sh/uv/getting-started/install
 git clone https://github.com/d4lfteam/d4lf
 cd d4lf
 uv sync
-python -m src.main
+uv run python -m src.main
 ```
 
 If you receive an error about missing Visual Studio code, follow the link it provides. Install Visual Studio Build Tools 2022 with the defaults selected and also select "MSVC VS 2022 C++ ..." and "Windows 11 SDK ...". Restart your terminal and try again.

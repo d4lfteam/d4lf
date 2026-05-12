@@ -113,6 +113,8 @@ def import_mobalytics(config: ImportConfig):
     for item in items:
         item_filter = ItemFilterModel()
         entity_type = jsonpath.findall(".gameEntity.type", item)[0]
+        mythic_result = jsonpath.findall(".gameEntity.entity.mythic", item)
+        is_mythic = mythic_result[0] if mythic_result else False
         if entity_type not in ["aspects", "uniqueItems"]:
             continue
         if not (item_name := str(jsonpath.findall(".gameEntity.entity.title", item)[0])):
@@ -129,19 +131,10 @@ def import_mobalytics(config: ImportConfig):
 
         is_unique = entity_type == "uniqueItems"
         if is_unique:
-            # This has proven unreliable, just like MaxRoll, so the affix portion is getting removed
-            # if not raw_affixes:
-            #     LOGGER.warning(f"Unique {item_name} had no affixes listed for it, only the aspect will be imported.")
-            # affixes = _convert_raw_to_affixes(raw_affixes)
-            unique_model = GlobalUniqueModel()
             try:
-                unique_model.aspect = AspectUniqueFilterModel(name=item_name)
-                # if affixes:
-                #     unique_model.affix = [AffixFilterModel(name=x.name) for x in affixes]
-                unique_filters.append(unique_model)
+                item_filter.uniqueAspect = AspectUniqueFilterModel(name=item_name)
             except Exception:
-                LOGGER.exception(f"Unexpected error importing unique {item_name}, please report a bug.")
-            continue
+                LOGGER.exception(f"Unexpected error adding unique aspect for {item_name}, please report a bug.")
 
         legendary_aspect = _get_legendary_aspect(item_name)
         if legendary_aspect:
@@ -193,15 +186,16 @@ def import_mobalytics(config: ImportConfig):
         affixes = _convert_raw_to_affixes(raw_affixes, config.import_greater_affixes)
         inherents = _convert_raw_to_affixes(raw_inherents)
 
-        item_filter.affixPool = [
-            AffixFilterCountModel(
-                count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
-                minCount=3,
-            )
-        ]
+        if not is_mythic:
+            item_filter.affixPool = [
+                AffixFilterCountModel(
+                    count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
+                    minCount=1 if is_unique else 3,
+                )
+            ]
+            update_mingreateraffixcount(item_filter, config.require_greater_affixes)
         item_filter.minPower = 100
-        update_mingreateraffixcount(item_filter, config.require_greater_affixes)
-        if inherents:
+        if inherents and not is_mythic:
             item_filter.inherentPool = [AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])]
         filter_name_template = item_filter.itemType[0].name if item_type else slot_type.replace(" ", "")
         filter_name = filter_name_template
@@ -307,7 +301,7 @@ if __name__ == "__main__":
         # "https://mobalytics.gg/diablo-4/builds/necromancer-kripp-golem-summoner",
         # # This has two rogue offhand weapons
         # "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
-        # Warlock test for season 13
+        # Season 13 testing
         "https://mobalytics.gg/diablo-4/builds/warlock-profane-sentinel-endgame"
     ]
     for X in URLS:
