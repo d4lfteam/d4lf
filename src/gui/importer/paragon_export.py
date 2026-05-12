@@ -7,6 +7,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from src import __version__
+from src.gui.importer.gui_common import PLAYER_CLASSES
 
 try:
     from selenium.webdriver.common.by import By
@@ -387,16 +388,9 @@ def extract_maxroll_paragon_steps(active_profile: dict[str, Any]) -> list[list[d
 
 def _fix_mobalytics_starting_board_slug(board_slug: str) -> str:
     """Normalize Mobalytics' starter-board naming to the shared starting-board form."""
-    return (
-        board_slug
-        .replace("barbarian-starter-board", "barbarian-starting-board")
-        .replace("druid-starter-board", "druid-starting-board")
-        .replace("necromancer-starter-board", "necromancer-starting-board")
-        .replace("paladin-starter-board", "paladin-starting-board")
-        .replace("rogue-starter-board", "rogue-starting-board")
-        .replace("sorcerer-starter-board", "sorcerer-starting-board")
-        .replace("spiritborn-starter-board", "spiritborn-starting-board")
-    )
+    for player_class in PLAYER_CLASSES:
+        board_slug = board_slug.replace(f"{player_class}-starter-board", f"{player_class}-starting-board")
+    return board_slug
 
 
 def extract_mobalytics_paragon_steps(paragon_data: dict[str, Any]) -> list[list[dict[str, Any]]]:

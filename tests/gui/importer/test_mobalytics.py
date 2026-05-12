@@ -6,6 +6,7 @@ import pytest
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.mobalytics import import_mobalytics
+from src.gui.importer.paragon_export import extract_mobalytics_paragon_steps
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -25,6 +26,20 @@ URLS = [
     # This has two rogue offhand weapons
     "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
 ]
+
+
+def test_extract_mobalytics_paragon_steps_normalizes_warlock_starting_board():
+    steps = extract_mobalytics_paragon_steps({
+        "boards": [{"board": {"slug": "warlock-starter-board"}, "glyph": {"slug": "warlock-hellforge"}, "rotation": 0}],
+        "nodes": [{"slug": "warlock-starting-board-x11-y14"}],
+    })
+
+    board = steps[0][0]
+    node_index = (14 - 1) * 21 + (11 - 1)
+
+    assert board["Name"] == "warlock-starting-board"
+    assert board["Nodes"].count(True) == 1
+    assert board["Nodes"][node_index] is True
 
 
 @pytest.mark.parametrize("url", URLS)
