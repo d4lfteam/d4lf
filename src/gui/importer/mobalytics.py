@@ -11,6 +11,7 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
+    GlobalUniqueModel,
     ItemFilterModel,
     ProfileModel,
 )
