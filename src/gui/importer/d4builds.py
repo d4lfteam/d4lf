@@ -93,7 +93,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         raise D4BuildsException(msg)
     slot_to_unique_name_map = _get_item_slots(data=data)
     finished_filters = []
-    unique_filters = []
     aspect_upgrade_filters = _get_legendary_aspects(data=data)
     for item in items[0]:
         item_filter = ItemFilterModel()
@@ -194,8 +193,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             i += 1
         finished_filters.append({filter_name: item_filter})
     profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))))
-    if config.import_uniques and unique_filters:
-        profile.GlobalUniques = unique_filters
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 
@@ -333,7 +330,6 @@ if __name__ == "__main__":
     for X in URLS:
         config = ImportConfig(
             url=X,
-            import_uniques=True,
             import_aspect_upgrades=True,
             add_to_profiles=False,
             import_greater_affixes=True,
