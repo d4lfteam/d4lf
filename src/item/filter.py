@@ -429,11 +429,13 @@ class Filter:
     def _match_item_aspect_or_affix(
         self,
         expected_aspect: AffixAspectFilterModel | None,
-        item_aspect: Aspect | Affix,
+        item_aspect: Aspect | Affix | None,
         is_fixed_aspect_value: bool = False,
     ) -> bool:
         if expected_aspect is None:
             return True
+        if item_aspect is None:
+            return False
         if expected_aspect.name != item_aspect.name:
             return False
 

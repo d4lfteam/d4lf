@@ -55,6 +55,7 @@ global_uniques = [
 
 uniques_with_affixes = [
     ("matches nothing", [], TestUnique(item_type=ItemType.Amulet, aspect=Aspect(name="dolmen_stone"))),
+    ("unique aspect missing", [], TestUnique(item_type=ItemType.Helm, affixes=[Affix(name="maximum_life", value=641)])),
     (
         "matches aspect value",
         ["test.Helm"],
