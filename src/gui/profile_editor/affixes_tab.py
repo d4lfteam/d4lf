@@ -180,11 +180,6 @@ class AffixGroupEditor(QWidget):
         self.unique_aspect_groupbox = QGroupBox("Unique Aspect")
         self.unique_aspect_form = QFormLayout()
 
-        self.unique_aspect_enabled = QCheckBox("Match unique aspect")
-        self.unique_aspect_enabled.setChecked(self.config.uniqueAspect is not None)
-        self.unique_aspect_enabled.stateChanged.connect(self.toggle_unique_aspect)
-        self.unique_aspect_form.addRow("Enabled:", self.unique_aspect_enabled)
-
         self.unique_aspect_name_combo = IgnoreScrollWheelComboBox()
         self.unique_aspect_name_combo.setEditable(True)
         self.unique_aspect_name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
@@ -195,7 +190,12 @@ class AffixGroupEditor(QWidget):
             self.unique_aspect_name_combo.setCurrentText(self.config.uniqueAspect.name)
         else:
             self.unique_aspect_name_combo.setCurrentText("")
-        self.unique_aspect_name_combo.setMinimumWidth(400)
+        self.unique_aspect_name_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.unique_aspect_name_combo.setMinimumContentsLength(24)
+        self.unique_aspect_name_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.unique_aspect_name_combo.setMaximumWidth(600)
         self.unique_aspect_name_combo.currentTextChanged.connect(self.update_unique_aspect_name)
         self.unique_aspect_form.addRow("Name:", self.unique_aspect_name_combo)
 
@@ -243,27 +243,22 @@ class AffixGroupEditor(QWidget):
             enabled and self.unique_aspect_mode_combo.currentText() == AFFIX_VALUE_MODE
         )
 
-    def toggle_unique_aspect(self):
-        if self.unique_aspect_enabled.isChecked():
-            if self.config.uniqueAspect is None:
-                aspect_name = self.unique_aspect_name_combo.currentText()
-                if aspect_name not in Dataloader().aspect_unique_dict:
-                    aspect_name = min(Dataloader().aspect_unique_dict)
-                    self.unique_aspect_name_combo.setCurrentText(aspect_name)
-                self.config.uniqueAspect = AspectUniqueFilterModel(name=aspect_name)
-        else:
-            self.config.uniqueAspect = None
-
-        self.refresh_unique_aspect_value_input()
-        self.set_unique_aspect_controls_enabled()
-
     def update_unique_aspect_name(self, current_text=None):
-        if self.config.uniqueAspect is None:
+        aspect_name = self.unique_aspect_name_combo.currentText() if current_text is None else current_text
+        aspect_name = aspect_name.strip()
+        if not aspect_name:
+            self.config.uniqueAspect = None
+            self.refresh_unique_aspect_value_input()
+            self.set_unique_aspect_controls_enabled()
             return
-        aspect_name = current_text or self.unique_aspect_name_combo.currentText()
         if aspect_name not in Dataloader().aspect_unique_dict:
             return
-        self.config.uniqueAspect.name = aspect_name
+        if self.config.uniqueAspect is None:
+            self.config.uniqueAspect = AspectUniqueFilterModel(name=aspect_name)
+        else:
+            self.config.uniqueAspect.name = aspect_name
+        self.refresh_unique_aspect_value_input()
+        self.set_unique_aspect_controls_enabled()
 
     def refresh_unique_aspect_value_input(self):
         self.unique_aspect_value_edit.blockSignals(True)
