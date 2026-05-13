@@ -9,7 +9,6 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
-    GlobalUniqueModel,
     ItemFilterModel,
     ProfileModel,
 )
@@ -84,7 +83,6 @@ def import_maxroll(config: ImportConfig):
     if variant_name:
         build_name += f"_{variant_name}"
     finished_filters = []
-    unique_filters = []
     aspect_upgrade_filters = []
     for item_id in active_profile["items"].values():
         resolved_item = items[str(item_id)]
@@ -125,7 +123,7 @@ def import_maxroll(config: ImportConfig):
                     aspect_upgrade_filters.append(legendary_aspect)
 
         # Unique aspect, if the item is a unique
-        if rarity in [ItemRarity.Unique, ItemRarity.Mythic] and config.import_uniques:
+        if rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
             unique_name = mapping_data["items"][resolved_item_id]["name"]
             try:
                 unique_name = _unique_name_special_handling(unique_name)
@@ -160,8 +158,6 @@ def import_maxroll(config: ImportConfig):
 
         finished_filters.append({filter_name: item_filter})
     profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))))
-    if config.import_uniques and unique_filters:
-        profile.GlobalUniques = unique_filters
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 
@@ -455,7 +451,6 @@ if __name__ == "__main__":
     for X in URLS:
         config = ImportConfig(
             url=X,
-            import_uniques=True,
             import_aspect_upgrades=True,
             add_to_profiles=False,
             import_greater_affixes=True,

@@ -80,11 +80,6 @@ class ImporterWindow(QMainWindow):
         layout.addLayout(filename_hbox)
 
         # Checkboxes
-        self.import_uniques_checkbox = self._generate_checkbox(
-            "Import Uniques",
-            "import_uniques",
-            "Should uniques be included in the profile if they exist on the build page?",
-        )
         self.import_aspect_upgrades_checkbox = self._generate_checkbox(
             "Import Aspect Upgrades",
             "import_aspect_upgrades",
@@ -134,15 +129,14 @@ class ImporterWindow(QMainWindow):
         self.import_gas_checkbox.stateChanged.connect(lambda: disable_require_if_import_disabled())
 
         checkbox_hbox = QHBoxLayout()
-        checkbox_hbox.addWidget(self.import_uniques_checkbox)
         checkbox_hbox.addWidget(self.import_aspect_upgrades_checkbox)
-        checkbox_hbox.addWidget(self.add_to_profiles_checkbox)
+        checkbox_hbox.addWidget(self.import_gas_checkbox)
+        checkbox_hbox.addWidget(self.require_all_gas_checkbox)
         layout.addLayout(checkbox_hbox)
         # Second row of checkboxes, probably need a better solution for this one day
         checkbox_hbox = QHBoxLayout()
-        checkbox_hbox.addWidget(self.import_gas_checkbox)
-        checkbox_hbox.addWidget(self.require_all_gas_checkbox)
         checkbox_hbox.addWidget(self.export_paragon_checkbox)
+        checkbox_hbox.addWidget(self.add_to_profiles_checkbox)
         layout.addLayout(checkbox_hbox)
 
         # Generate button
@@ -226,7 +220,6 @@ class ImporterWindow(QMainWindow):
 
         importer_config = ImportConfig(
             url,
-            self.import_uniques_checkbox.isChecked(),
             self.import_aspect_upgrades_checkbox.isChecked(),
             self.add_to_profiles_checkbox.isChecked(),
             self.import_gas_checkbox.isChecked(),

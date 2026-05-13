@@ -11,7 +11,6 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
-    GlobalUniqueModel,
     ItemFilterModel,
     ProfileModel,
 )
@@ -108,7 +107,6 @@ def import_mobalytics(config: ImportConfig):
         LOGGER.error(msg := "No items found")
         raise MobalyticsException(msg)
     finished_filters = []
-    unique_filters = []
     aspect_upgrade_filters = []
     for item in items:
         item_filter = ItemFilterModel()
@@ -205,8 +203,6 @@ def import_mobalytics(config: ImportConfig):
             i += 1
         finished_filters.append({filter_name: item_filter})
     profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))))
-    if config.import_uniques and unique_filters:
-        profile.GlobalUniques = unique_filters
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 
@@ -307,7 +303,6 @@ if __name__ == "__main__":
     for X in URLS:
         config = ImportConfig(
             url=X,
-            import_uniques=True,
             import_aspect_upgrades=True,
             add_to_profiles=False,
             import_greater_affixes=True,
