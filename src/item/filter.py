@@ -15,7 +15,6 @@ from src.config.profile_models import (
     AffixAspectFilterModel,
     AffixFilterCountModel,
     AffixFilterModel,
-    ComparisonType,
     DynamicItemFilterModel,
     GlobalUniqueModel,
     ProfileModel,
@@ -398,7 +397,10 @@ class Filter:
         if expected_percent == 0 or item_aspect_or_affix.max_value is None or item_aspect_or_affix.min_value is None:
             return True
 
-        if item_aspect_or_affix.max_value > item_aspect_or_affix.min_value:
+        if item_aspect_or_affix.max_value == item_aspect_or_affix.min_value:
+            return True
+
+        if not Filter._is_smaller_roll_better(item_aspect_or_affix):
             percent_float = expected_percent / 100.0
             return (item_aspect_or_affix.value - item_aspect_or_affix.min_value) / (
                 item_aspect_or_affix.max_value - item_aspect_or_affix.min_value
@@ -409,6 +411,20 @@ class Filter:
         return (item_aspect_or_affix.value - item_aspect_or_affix.max_value) / (
             item_aspect_or_affix.min_value - item_aspect_or_affix.max_value
         ) <= percent_float
+
+    @staticmethod
+    def _is_smaller_roll_better(item_aspect_or_affix: Aspect | Affix) -> bool:
+        return (
+            item_aspect_or_affix.max_value is not None
+            and item_aspect_or_affix.min_value is not None
+            and item_aspect_or_affix.max_value < item_aspect_or_affix.min_value
+        )
+
+    @staticmethod
+    def _match_item_value_threshold(expected_value: float, item_aspect_or_affix: Aspect | Affix) -> bool:
+        if Filter._is_smaller_roll_better(item_aspect_or_affix):
+            return item_aspect_or_affix.value <= expected_value
+        return item_aspect_or_affix.value >= expected_value
 
     def _match_item_aspect_or_affix(
         self,
@@ -426,9 +442,7 @@ class Filter:
                 # Chaos uniques and probably bloodied items have a fixed aspect number.
                 # There is no reason to compare it, it is always at max
                 return bool(is_fixed_aspect_value)
-            if (expected_aspect.comparison == ComparisonType.larger and item_aspect.value < expected_aspect.value) or (
-                expected_aspect.comparison == ComparisonType.smaller and item_aspect.value > expected_aspect.value
-            ):
+            if not self._match_item_value_threshold(expected_aspect.value, item_aspect):
                 return False
         expected_affix_percent = getattr(expected_aspect, "minPercentOfAffix", 0)
         if expected_affix_percent:

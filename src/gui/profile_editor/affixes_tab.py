@@ -30,7 +30,6 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
-    ComparisonType,
     DynamicItemFilterModel,
 )
 from src.dataloader import Dataloader
@@ -214,17 +213,6 @@ class AffixGroupEditor(QWidget):
         self.unique_aspect_value_edit.textChanged.connect(self.update_unique_aspect_value)
         self.unique_aspect_form.addRow("Threshold:", self.unique_aspect_value_edit)
 
-        self.unique_aspect_comparison_combo = IgnoreScrollWheelComboBox()
-        self.unique_aspect_comparison_combo.setEditable(True)
-        self.unique_aspect_comparison_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.unique_aspect_comparison_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.unique_aspect_comparison_combo.setFixedSize(100, self.unique_aspect_comparison_combo.sizeHint().height())
-        self.unique_aspect_comparison_combo.addItems([ct.value for ct in ComparisonType])
-        if self.config.uniqueAspect is not None:
-            self.unique_aspect_comparison_combo.setCurrentText(self.config.uniqueAspect.comparison.value)
-        self.unique_aspect_comparison_combo.currentTextChanged.connect(self.update_unique_aspect_comparison)
-        self.unique_aspect_form.addRow("Comparison:", self.unique_aspect_comparison_combo)
-
         self.unique_aspect_groupbox.setLayout(self.unique_aspect_form)
         self.content_layout.addWidget(self.unique_aspect_groupbox)
         self.refresh_unique_aspect_value_input()
@@ -239,9 +227,6 @@ class AffixGroupEditor(QWidget):
         self.unique_aspect_name_combo.setEnabled(True)
         self.unique_aspect_mode_combo.setEnabled(enabled)
         self.unique_aspect_value_edit.setEnabled(enabled)
-        self.unique_aspect_comparison_combo.setEnabled(
-            enabled and self.unique_aspect_mode_combo.currentText() == AFFIX_VALUE_MODE
-        )
 
     def update_unique_aspect_name(self, current_text=None):
         aspect_name = self.unique_aspect_name_combo.currentText() if current_text is None else current_text
@@ -316,14 +301,6 @@ class AffixGroupEditor(QWidget):
             return
         self.config.uniqueAspect.minPercentOfAspect = 0
 
-    def update_unique_aspect_comparison(self, current_text=None):
-        if self.config.uniqueAspect is None:
-            return
-        comparison = current_text or self.unique_aspect_comparison_combo.currentText()
-        if comparison not in {comparison_type.value for comparison_type in ComparisonType}:
-            return
-        self.config.uniqueAspect.comparison = ComparisonType(comparison)
-
     def init_affix_pool(self):
         """Initialize affix pool content on first expansion."""
         for pool in self.config.affixPool:
@@ -358,7 +335,6 @@ class AffixGroupEditor(QWidget):
         default_affix = AffixFilterModel(
             name=next(iter(Dataloader().affix_dict.keys())),  # First valid affix name
             value=None,
-            comparison=ComparisonType.larger,
         )
 
         new_pool = AffixFilterCountModel(count=[default_affix], minCount=1, maxCount=3)
@@ -369,7 +345,6 @@ class AffixGroupEditor(QWidget):
         default_affix = AffixFilterModel(
             name=next(iter(Dataloader().affix_dict.keys())),  # First valid affix name
             value=None,
-            comparison=ComparisonType.larger,
         )
 
         new_pool = AffixFilterCountModel(count=[default_affix], minCount=1, maxCount=3)
@@ -559,10 +534,6 @@ class AffixPoolWidget(QWidget):
         value_label.setProperty("affixHeaderLabel", True)
         self._refresh_widget_style(value_label)
 
-        comparison_label = QLabel("Comparison")
-        comparison_label.setProperty("affixHeaderLabel", True)
-        self._refresh_widget_style(comparison_label)
-
         title_layout.addSpacing(250)
         title_layout.addWidget(affix_label)
         title_layout.addSpacing(400)
@@ -571,8 +542,6 @@ class AffixPoolWidget(QWidget):
         title_layout.addWidget(mode_label)
         title_layout.addSpacing(85)
         title_layout.addWidget(value_label)
-        title_layout.addSpacing(85)
-        title_layout.addWidget(comparison_label)
 
         self.affix_list = QListWidget()
         self.affix_list.setMinimumHeight(200)
@@ -607,9 +576,7 @@ class AffixPoolWidget(QWidget):
         self.affix_list.setItemWidget(item, widget)
 
     def add_affix(self):
-        new_affix = AffixFilterModel(
-            name=next(iter(Dataloader().affix_dict.keys())), value=None, comparison=ComparisonType.larger
-        )
+        new_affix = AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())), value=None)
         self.pool.count.append(new_affix)
         self.add_affix_item(new_affix)
 
@@ -641,7 +608,6 @@ class AffixWidget(QWidget):
         self.create_greater_checkbox()
         self.create_mode_combobox()
         self.create_value_input()
-        self.create_comparison_combobox()
         self.mode_combo.currentTextChanged.connect(self.update_mode)
         self.update_mode(self.mode_combo.currentText())
 
@@ -649,7 +615,6 @@ class AffixWidget(QWidget):
         layout.addWidget(self.greater_checkbox)
         layout.addWidget(self.mode_combo)
         layout.addWidget(self.value_edit)
-        layout.addWidget(self.comparison_combo)
 
         self.setLayout(layout)
 
@@ -702,17 +667,6 @@ class AffixWidget(QWidget):
         self.value_edit.setFixedSize(100, self.value_edit.sizeHint().height())
         self.value_edit.textChanged.connect(self.update_value)
 
-    def create_comparison_combobox(self):
-        self.comparison_combo = IgnoreScrollWheelComboBox()
-        self.comparison_combo.setEditable(True)
-        self.comparison_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.comparison_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.comparison_combo.setFixedSize(100, self.comparison_combo.sizeHint().height())
-        self.comparison_combo.addItems([ct.value for ct in ComparisonType])
-        self.comparison_combo.setCurrentText(self.affix.comparison.value)
-        self.comparison_combo.currentTextChanged.connect(self.update_comparison)
-        self.affix.comparison = ComparisonType(self.affix.comparison.value)
-
     def update_name(self, current_text=None):
         """Update the model only when the editable combobox contains a valid affix."""
         reverse_dict = {v: k for k, v in Dataloader().affix_dict.items()}
@@ -726,12 +680,10 @@ class AffixWidget(QWidget):
             self.value_edit.setPlaceholderText("Percent (0-100)")
             self.value_edit.setValidator(QIntValidator(0, 100, self.value_edit))
             display_value = "" if self.affix.minPercentOfAffix == 0 else str(self.affix.minPercentOfAffix)
-            self.comparison_combo.setEnabled(False)
         else:
             self.value_edit.setPlaceholderText("Value (optional)")
             self.value_edit.setValidator(QDoubleValidator(self.value_edit))
             display_value = "" if self.affix.value is None else str(self.affix.value)
-            self.comparison_combo.setEnabled(True)
 
         self.value_edit.blockSignals(True)
         self.value_edit.setText(display_value)
@@ -764,12 +716,6 @@ class AffixWidget(QWidget):
         except ValueError:
             return
         self.affix.minPercentOfAffix = 0
-
-    def update_comparison(self, current_text=None):
-        comparison = current_text or self.comparison_combo.currentText()
-        if comparison not in {comparison_type.value for comparison_type in ComparisonType}:
-            return
-        self.affix.comparison = ComparisonType(comparison)
 
     def update_greater(self):
         self.affix.want_greater = self.greater_checkbox.isChecked()

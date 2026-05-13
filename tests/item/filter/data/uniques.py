@@ -126,4 +126,9 @@ uniques_with_affixes = [
         ),
     ),
     ("aspect only", ["test.UniqueAspectOnly"], TestUnique(aspect=Aspect(name="battle_trance"))),
+    (
+        "smaller aspect value",
+        ["test.SmallerUniqueAspectValue"],
+        TestUnique(aspect=Aspect(name="crown_of_lucion", value=10, min_value=15, max_value=10)),
+    ),
 ]

@@ -197,12 +197,11 @@ The instructions below are all about editing the file manually, but the explanat
 
 # Filter for attack speed
 - { name: attack_speed }
-# Filter for attack speed larger than 4
+# Filter for attack speed with a threshold value.
+# The filter keeps larger rolls when the tooltip range increases and smaller rolls when the range decreases.
 - { name: attack_speed, value: 4 }
 # Filter for attack speed where the affix is greater than 50% of the potential maximum
 - { name: attack_speed, minPercentOfAffix: 50 }
-# Filter for attack speed smaller than 4
-- { name: attack_speed, value: 4, comparison: smaller }
 ```
 
 </details>
@@ -329,7 +328,7 @@ in [assets/lang/enUS/affixes.json](assets/lang/enUS/affixes.json).
 
 You also have the option to filter on the minimum percent of the affix you want instead of a specific value. For example, say you want strength on an item. The potential values for strength are 100-150. If you say the `minPercentOfAffix` for strength is 50 (which means 50%), then strength rolls of 125 and up are kept and rolls below 125 would be discarded.
 
-A greater affix is considered to always match a `minPercentOfAffix`. You do not need to designate larger/smaller for `minPercentOfAffix`, that is automatically determined.
+A greater affix is considered to always match a `minPercentOfAffix`. You do not need to designate larger/smaller for `value` or `minPercentOfAffix`; that is automatically determined from the roll range.
 
 If you put in `minPercentOfAffix` you can not also put `value` for that affix. It must be one or the other.
 

@@ -1,7 +1,6 @@
 from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
-    ComparisonType,
     GlobalUniqueModel,
     ItemFilterModel,
     ProfileModel,
@@ -59,11 +58,11 @@ affix = ProfileModel(
                     AffixFilterCountModel(count=[AffixFilterModel(name="movement_speed")]),
                     AffixFilterCountModel(
                         count=[
-                            AffixFilterModel(name="shadow_resistance", value=4, comparison=ComparisonType.smaller),
-                            AffixFilterModel(name="cold_resistance", value=4, comparison=ComparisonType.smaller),
-                            AffixFilterModel(name="lightning_resistance", value=4, comparison=ComparisonType.smaller),
-                            AffixFilterModel(name="poison_resistance", value=4, comparison=ComparisonType.smaller),
-                            AffixFilterModel(name="fire_resistance", value=4, comparison=ComparisonType.smaller),
+                            AffixFilterModel(name="shadow_resistance", value=4),
+                            AffixFilterModel(name="cold_resistance", value=4),
+                            AffixFilterModel(name="lightning_resistance", value=4),
+                            AffixFilterModel(name="poison_resistance", value=4),
+                            AffixFilterModel(name="fire_resistance", value=4),
                         ],
                         minCount=2,
                     ),
@@ -313,6 +312,11 @@ unique_affixes = ProfileModel(
             )
         },
         {"UniqueAspectOnly": ItemFilterModel(uniqueAspect={"name": "battle_trance"})},
+        {
+            "SmallerUniqueAspectValue": ItemFilterModel(
+                itemType=[ItemType.Shield], uniqueAspect={"name": "crown_of_lucion", "value": 12}
+            )
+        },
         {"UniqueAspectWithGA": ItemFilterModel(uniqueAspect={"name": "flickerstep"}, minGreaterAffixCount=2)},
     ],
 )
