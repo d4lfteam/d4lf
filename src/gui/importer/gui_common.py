@@ -175,6 +175,17 @@ def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool)
         item_filter.minGreaterAffixCount = 0
 
 
+def sort_profile_filters(filters: list[dict[str, ItemFilterModel]]) -> list[dict[str, ItemFilterModel]]:
+    return sorted(filters, key=_profile_filter_sort_key)
+
+
+def _profile_filter_sort_key(filter_entry: dict[str, ItemFilterModel]) -> str:
+    filter_name, item_filter = next(iter(filter_entry.items()))
+    if item_filter.uniqueAspect is not None:
+        return item_filter.uniqueAspect.name.casefold()
+    return filter_name.casefold()
+
+
 def get_with_retry(url: str, custom_headers: dict[str, str] | None = None) -> httpx.Response:
     for _ in range(10):
         try:
@@ -272,11 +283,23 @@ def _to_yaml_str(profile: ProfileModel, exclude_defaults: bool, exclude: set[str
     yaml = YAML()
     yaml.default_flow_style = None  # Back to original
     dict_val = yaml.load(str_val)
+    _sort_profile_sections(dict_val)
     _rm_style_info(dict_val)
+    _use_block_style(dict_val.get("AspectUpgrades"))
     stream = StringIO()
     yaml.dump(dict_val, stream)
     stream.seek(0)
     return stream.read()
+
+
+def _sort_profile_sections(d):
+    if isinstance(d, dict) and isinstance(d.get("AspectUpgrades"), list):
+        d["AspectUpgrades"].sort(key=str.casefold)
+
+
+def _use_block_style(d):
+    if hasattr(d, "fa"):
+        d.fa.set_block_style()
 
 
 def _rm_style_info(d):
