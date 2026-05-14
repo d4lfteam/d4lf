@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config.helper import singleton
-from src.config.settings_models import DEPRECATED_INI_KEYS, AdvancedOptionsModel, CharModel, GeneralModel
+from src.config.settings_models import AdvancedOptionsModel, CharModel, GeneralModel
 
 LOGGER = logging.getLogger(__name__)
 PARAMS_INI = "params.ini"
@@ -91,7 +91,7 @@ class IniConfigLoader:
                 if key in valid_keys:
                     continue
 
-                LOGGER.warning("Defunct key=%s found in [%s]. Removing it from %s.", key, section, PARAMS_INI)
+                LOGGER.warning("Deprecated key=%s found in [%s]. Removing it from %s.", key, section, PARAMS_INI)
                 self._parser.remove_option(section, key)
                 removed_key = True
 
@@ -153,18 +153,8 @@ class IniConfigLoader:
             self._parser = configparser.ConfigParser()
             self._parser.read(config_path, encoding="utf-8")
 
-            all_keys = [key for section in self._parser.sections() for key in self._parser[section]]
-            deprecated_keys = [key for key in DEPRECATED_INI_KEYS if key in all_keys]
-            for key in deprecated_keys:
-                LOGGER.warning(
-                    "Deprecated key=%s found in %s. Please remove this key from your config file.", key, PARAMS_INI
-                )
-                for section in self._parser.sections():
-                    if key in self._parser[section]:
-                        self._parser.remove_option(section, key)
-
             defunct_keys_removed = self._remove_defunct_model_keys()
-            if deprecated_keys or defunct_keys_removed:
+            if defunct_keys_removed:
                 self._write_parser()
 
             if "advanced_options" in self._parser:
