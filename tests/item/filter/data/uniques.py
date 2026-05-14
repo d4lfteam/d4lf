@@ -6,7 +6,9 @@ from src.item.models import Item
 
 
 class TestUnique(Item):
-    def __init__(self, rarity=ItemRarity.Unique, item_type: ItemType = ItemType.Shield, power=910, **kwargs):
+    def __init__(
+        self, rarity: ItemRarity = ItemRarity.Unique, item_type: ItemType = ItemType.Shield, power=910, **kwargs
+    ):
         super().__init__(rarity=rarity, item_type=item_type, power=power, **kwargs)
 
 
