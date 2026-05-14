@@ -23,6 +23,7 @@ def isolated_ini_loader(tmp_path: Path):
     original_signature = loader._last_config_signature
     original_revision = loader._config_revision
     original_listeners = list(loader._change_listeners)
+    original_pending_cleanup_log_messages = list(loader._pending_cleanup_log_messages)
 
     loader._user_dir = tmp_path
     loader._change_listeners = []
@@ -39,6 +40,7 @@ def isolated_ini_loader(tmp_path: Path):
         loader._last_config_signature = original_signature
         loader._config_revision = original_revision
         loader._change_listeners = original_listeners
+        loader._pending_cleanup_log_messages = original_pending_cleanup_log_messages
 
 
 class TestIniConfigLoader:
@@ -106,6 +108,23 @@ class TestIniConfigLoader:
         assert "removed_setting" not in config_text
         assert "[paragon_overlay]" in config_text
         assert "cell_size = 12" in config_text
+        assert "Defunct key=removed_setting" in caplog.text
+
+    def test_initial_load_defers_defunct_key_logs_until_requested(
+        self, isolated_ini_loader: IniConfigLoader, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        loader = isolated_ini_loader
+        config_path = loader.user_dir / PARAMS_INI
+        config_path.write_text("[general]\nremoved_setting = true\n", encoding="utf-8")
+
+        with caplog.at_level(logging.WARNING, logger="src.config.loader"):
+            loader.load(notify=False)
+
+        assert "Defunct key=removed_setting" not in caplog.text
+
+        with caplog.at_level(logging.WARNING, logger="src.config.loader"):
+            loader.emit_pending_cleanup_logs()
+
         assert "Defunct key=removed_setting" in caplog.text
 
     @pytest.mark.parametrize(

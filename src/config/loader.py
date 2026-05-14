@@ -35,6 +35,7 @@ class IniConfigLoader:
         self._last_config_signature: tuple[int, int] | None = None
         self._config_revision = 0
         self._state_snapshot: dict[str, Any] = {}
+        self._pending_cleanup_log_messages: list[str] = []
         self.load(notify=False)
 
     def _config_path(self) -> Path:
@@ -76,12 +77,12 @@ class IniConfigLoader:
         with self._config_path().open("w", encoding="utf-8") as config_file:
             self._parser.write(config_file)
 
-    def _remove_defunct_model_keys(self) -> bool:
+    def _remove_defunct_model_keys(self) -> list[str]:
         if self._parser is None:
             msg = "Config parser has not been initialized"
             raise RuntimeError(msg)
 
-        removed_key = False
+        cleanup_log_messages: list[str] = []
         for section, model in self._section_models().items():
             if section not in self._parser:
                 continue
@@ -91,11 +92,18 @@ class IniConfigLoader:
                 if key in valid_keys:
                     continue
 
-                LOGGER.warning("Defunct key=%s found in [%s]. Removing it from %s.", key, section, PARAMS_INI)
+                cleanup_log_messages.append(f"Defunct key={key} found in [{section}]. Removing it from {PARAMS_INI}.")
                 self._parser.remove_option(section, key)
-                removed_key = True
 
-        return removed_key
+        return cleanup_log_messages
+
+    def emit_pending_cleanup_logs(self) -> None:
+        with self._lock:
+            cleanup_log_messages = self._pending_cleanup_log_messages
+            self._pending_cleanup_log_messages = []
+
+        for cleanup_log_message in cleanup_log_messages:
+            LOGGER.warning(cleanup_log_message)
 
     def _format_value_for_log(self, value: Any) -> str:
         if isinstance(value, bool):
@@ -144,6 +152,7 @@ class IniConfigLoader:
         self.unregister_change_listener(listener)
 
     def load(self, clear: bool = False, notify: bool = True) -> None:
+        cleanup_log_messages: list[str] = []
         with self._lock:
             previous_snapshot = self._state_snapshot.copy()
             config_path = self._config_path()
@@ -156,15 +165,15 @@ class IniConfigLoader:
             all_keys = [key for section in self._parser.sections() for key in self._parser[section]]
             deprecated_keys = [key for key in DEPRECATED_INI_KEYS if key in all_keys]
             for key in deprecated_keys:
-                LOGGER.warning(
-                    "Deprecated key=%s found in %s. Please remove this key from your config file.", key, PARAMS_INI
+                cleanup_log_messages.append(
+                    f"Deprecated key={key} found in {PARAMS_INI}. Please remove this key from your config file."
                 )
                 for section in self._parser.sections():
                     if key in self._parser[section]:
                         self._parser.remove_option(section, key)
 
-            defunct_keys_removed = self._remove_defunct_model_keys()
-            if deprecated_keys or defunct_keys_removed:
+            cleanup_log_messages.extend(self._remove_defunct_model_keys())
+            if cleanup_log_messages:
                 self._write_parser()
 
             if "advanced_options" in self._parser:
@@ -186,8 +195,12 @@ class IniConfigLoader:
             self._config_revision += 1
             self._state_snapshot = self._capture_state_snapshot()
             changed_keys = self._changed_keys(previous_snapshot, self._state_snapshot)
+            if cleanup_log_messages and not notify:
+                self._pending_cleanup_log_messages.extend(cleanup_log_messages)
 
         if notify:
+            for cleanup_log_message in cleanup_log_messages:
+                LOGGER.warning(cleanup_log_message)
             self._log_changed_values(changed_keys)
             self._notify_listeners(changed_keys)
 

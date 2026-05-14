@@ -263,6 +263,8 @@ class UnifiedMainWindow(QMainWindow):
         # Activity handler → original log_viewer
         self.activity_handler.log_signal.connect(self.activity_tab.log_viewer.appendPlainText)
 
+        config.emit_pending_cleanup_logs()
+
         # --- Startup banner ---
         self.emit_startup_direct_to_console()
 
