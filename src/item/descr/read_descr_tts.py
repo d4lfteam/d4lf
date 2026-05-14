@@ -277,7 +277,10 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         item.name = Dataloader().bad_tts_uniques[item.name]
     for line in tts_item:
         if "item power" in line.lower():
-            item.power = int(find_number(line))
+            item_power = find_number(line)
+            if item_power is None:
+                return None
+            item.power = int(item_power)
             break
     return item
 
