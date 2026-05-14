@@ -1,4 +1,5 @@
-from src.gui.importer.gui_common import build_default_profile_file_name
+from src.config.profile_models import ProfileModel
+from src.gui.importer.gui_common import _to_yaml_str, build_default_profile_file_name
 
 
 def test_build_default_profile_file_name_maxroll() -> None:
@@ -51,3 +52,12 @@ def test_build_default_profile_file_name_replaces_stale_season_marker_in_header(
     )
 
     assert file_name == "maxroll_sorcerer_s12_crackling_energy_sorc"
+
+
+def test_to_yaml_str_sorts_aspect_upgrades_and_uses_block_style(mock_ini_loader) -> None:
+    profile = ProfileModel(name="test", AspectUpgrades=["snowveiled", "accelerating"])
+
+    yaml_str = _to_yaml_str(profile, exclude_defaults=True, exclude={"name", "Sigils"})
+
+    assert "AspectUpgrades:\n- accelerating\n- snowveiled\n" in yaml_str
+    assert "AspectUpgrades: [" not in yaml_str
