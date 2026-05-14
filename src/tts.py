@@ -124,7 +124,7 @@ def read_pipe() -> None:
 
 
 def find_item_start(data: list[str]) -> int | None:
-    ignored_words = ["COMPASS AFFIXES", "DUNGEON AFFIXES", "AFFIXES"]
+    ignored_words = ["COMPASS AFFIXES", "DUNGEON AFFIXES", "AFFIXES", "SELECT ALL"]
 
     for index, item in reversed(list(enumerate(data))):
         if any(ignored in item for ignored in ignored_words):
