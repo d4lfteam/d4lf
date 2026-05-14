@@ -6,7 +6,9 @@ from src.item.models import Item
 
 
 class TestUnique(Item):
-    def __init__(self, rarity=ItemRarity.Unique, item_type: ItemType = ItemType.Shield, power=910, **kwargs):
+    def __init__(
+        self, rarity: ItemRarity = ItemRarity.Unique, item_type: ItemType = ItemType.Shield, power=910, **kwargs
+    ):
         super().__init__(rarity=rarity, item_type=item_type, power=power, **kwargs)
 
 
@@ -55,6 +57,11 @@ global_uniques = [
 
 uniques_with_affixes = [
     ("matches nothing", [], TestUnique(item_type=ItemType.Amulet, aspect=Aspect(name="dolmen_stone"))),
+    (
+        "rare does not match unique aspect filter",
+        [],
+        TestUnique(rarity=ItemRarity.Rare, item_type=ItemType.Helm, affixes=[Affix(name="maximum_life", value=641)]),
+    ),
     (
         "matches aspect value",
         ["test.Helm"],
@@ -126,4 +133,9 @@ uniques_with_affixes = [
         ),
     ),
     ("aspect only", ["test.UniqueAspectOnly"], TestUnique(aspect=Aspect(name="battle_trance"))),
+    (
+        "smaller aspect value",
+        ["test.SmallerUniqueAspectValue"],
+        TestUnique(aspect=Aspect(name="crown_of_lucion", value=10, min_value=15, max_value=10)),
+    ),
 ]

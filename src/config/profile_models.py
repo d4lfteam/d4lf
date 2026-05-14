@@ -13,11 +13,6 @@ from src.item.data.rarity import ItemRarity
 MODULE_LOGGER = logging.getLogger(__name__)
 
 
-class ComparisonType(enum.StrEnum):
-    larger = enum.auto()
-    smaller = enum.auto()
-
-
 def _parse_item_type_or_rarities(data: str | list[str]) -> list[str]:
     if isinstance(data, str):
         return [data]
@@ -28,7 +23,6 @@ class AffixAspectFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str
     value: float | None = None
-    comparison: ComparisonType = ComparisonType.larger
 
     @model_validator(mode="before")
     @classmethod
@@ -38,16 +32,14 @@ class AffixAspectFilterModel(BaseModel):
         if isinstance(data, str):
             return {"name": data}
         if isinstance(data, list):
-            if not data or len(data) > 3:
-                msg = "list, cannot be empty or larger than 3 items"
+            if not data or len(data) > 2:
+                msg = "list, cannot be empty or larger than 2 items"
                 raise ValueError(msg)
             result = {}
             if len(data) >= 1:
                 result["name"] = data[0]
             if len(data) >= 2:
                 result["value"] = data[1]
-            if len(data) == 3:
-                result["comparison"] = data[2]
             return result
         msg = "must be str or list"
         raise ValueError(msg)
