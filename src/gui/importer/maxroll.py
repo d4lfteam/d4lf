@@ -22,6 +22,7 @@ from src.gui.importer.gui_common import (
     match_to_enum,
     retry_importer,
     save_as_profile,
+    sort_profile_filters,
     update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
@@ -157,7 +158,7 @@ def import_maxroll(config: ImportConfig):
             i += 1
 
         finished_filters.append({filter_name: item_filter})
-    profile = ProfileModel(name="imported profile", Affixes=sorted(finished_filters, key=lambda x: next(iter(x))))
+    profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
 
@@ -278,6 +279,8 @@ def _find_item_affixes(
                             attr_desc = "to aura skills"
                         elif param_id == 850110203 and attribute_id == 1155:
                             attr_desc = "to demonology skills"
+                        elif param_id == -2005545408 and attribute_id == 1155:
+                            attr_desc = "to ancient skills"
             clean_desc = re.sub(r"\[.*?\]|[^a-zA-Z ]", "", attr_desc)
             clean_desc = clean_desc.replace("SecondSeconds", "seconds")
             if not clean_desc:

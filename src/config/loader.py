@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config.helper import singleton
-from src.config.settings_models import DEPRECATED_INI_KEYS, AdvancedOptionsModel, CharModel, GeneralModel
+from src.config.settings_models import AdvancedOptionsModel, CharModel, GeneralModel
 
 LOGGER = logging.getLogger(__name__)
 PARAMS_INI = "params.ini"
@@ -92,7 +92,9 @@ class IniConfigLoader:
                 if key in valid_keys:
                     continue
 
-                cleanup_log_messages.append(f"Defunct key={key} found in [{section}]. Removing it from {PARAMS_INI}.")
+                cleanup_log_messages.append(
+                    f"Deprecated key={key} found in [{section}]. Removing it from {PARAMS_INI}."
+                )
                 self._parser.remove_option(section, key)
 
         return cleanup_log_messages
@@ -161,16 +163,6 @@ class IniConfigLoader:
 
             self._parser = configparser.ConfigParser()
             self._parser.read(config_path, encoding="utf-8")
-
-            all_keys = [key for section in self._parser.sections() for key in self._parser[section]]
-            deprecated_keys = [key for key in DEPRECATED_INI_KEYS if key in all_keys]
-            for key in deprecated_keys:
-                cleanup_log_messages.append(
-                    f"Deprecated key={key} found in {PARAMS_INI}. Please remove this key from your config file."
-                )
-                for section in self._parser.sections():
-                    if key in self._parser[section]:
-                        self._parser.remove_option(section, key)
 
             cleanup_log_messages.extend(self._remove_defunct_model_keys())
             if cleanup_log_messages:

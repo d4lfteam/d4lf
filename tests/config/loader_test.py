@@ -108,7 +108,7 @@ class TestIniConfigLoader:
         assert "removed_setting" not in config_text
         assert "[paragon_overlay]" in config_text
         assert "cell_size = 12" in config_text
-        assert "Defunct key=removed_setting" in caplog.text
+        assert "Deprecated key=removed_setting" in caplog.text
 
     def test_initial_load_defers_defunct_key_logs_until_requested(
         self, isolated_ini_loader: IniConfigLoader, caplog: pytest.LogCaptureFixture
