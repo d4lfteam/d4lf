@@ -279,6 +279,8 @@ def _find_item_affixes(
                             attr_desc = "to aura skills"
                         elif param_id == 850110203 and attribute_id == 1155:
                             attr_desc = "to demonology skills"
+                        elif param_id == -2005545408 and attribute_id == 1155:
+                            attr_desc = "to ancient skills"
             clean_desc = re.sub(r"\[.*?\]|[^a-zA-Z ]", "", attr_desc)
             clean_desc = clean_desc.replace("SecondSeconds", "seconds")
             if not clean_desc:
