@@ -106,7 +106,7 @@ class TestIniConfigLoader:
         assert "removed_setting" not in config_text
         assert "[paragon_overlay]" in config_text
         assert "cell_size = 12" in config_text
-        assert "Defunct key=removed_setting" in caplog.text
+        assert "Deprecated key=removed_setting" in caplog.text
 
     @pytest.mark.parametrize(
         ("config_value", "expected"), [("True", JunkRaresType.all), ("False", JunkRaresType.three_affixes)]
