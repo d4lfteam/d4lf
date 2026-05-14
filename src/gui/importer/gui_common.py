@@ -180,9 +180,7 @@ def sort_profile_filters(filters: list[dict[str, ItemFilterModel]]) -> list[dict
 
 
 def _profile_filter_sort_key(filter_entry: dict[str, ItemFilterModel]) -> str:
-    filter_name, item_filter = next(iter(filter_entry.items()))
-    if item_filter.uniqueAspect is not None:
-        return item_filter.uniqueAspect.name.casefold()
+    filter_name, _ = next(iter(filter_entry.items()))
     return filter_name.casefold()
 
 
