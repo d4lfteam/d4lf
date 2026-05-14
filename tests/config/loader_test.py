@@ -120,12 +120,12 @@ class TestIniConfigLoader:
         with caplog.at_level(logging.WARNING, logger="src.config.loader"):
             loader.load(notify=False)
 
-        assert "Defunct key=removed_setting" not in caplog.text
+        assert "Deprecated key=removed_setting" not in caplog.text
 
         with caplog.at_level(logging.WARNING, logger="src.config.loader"):
             loader.emit_pending_cleanup_logs()
 
-        assert "Defunct key=removed_setting" in caplog.text
+        assert "Deprecated key=removed_setting" in caplog.text
 
     @pytest.mark.parametrize(
         ("config_value", "expected"), [("True", JunkRaresType.all), ("False", JunkRaresType.three_affixes)]
