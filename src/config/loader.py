@@ -76,6 +76,27 @@ class IniConfigLoader:
         with self._config_path().open("w", encoding="utf-8") as config_file:
             self._parser.write(config_file)
 
+    def _remove_defunct_model_keys(self) -> bool:
+        if self._parser is None:
+            msg = "Config parser has not been initialized"
+            raise RuntimeError(msg)
+
+        removed_key = False
+        for section, model in self._section_models().items():
+            if section not in self._parser:
+                continue
+
+            valid_keys = type(model).model_fields
+            for key in list(self._parser[section]):
+                if key in valid_keys:
+                    continue
+
+                LOGGER.warning("Defunct key=%s found in [%s]. Removing it from %s.", key, section, PARAMS_INI)
+                self._parser.remove_option(section, key)
+                removed_key = True
+
+        return removed_key
+
     def _format_value_for_log(self, value: Any) -> str:
         if isinstance(value, bool):
             return "on" if value else "off"
@@ -141,6 +162,10 @@ class IniConfigLoader:
                 for section in self._parser.sections():
                     if key in self._parser[section]:
                         self._parser.remove_option(section, key)
+
+            defunct_keys_removed = self._remove_defunct_model_keys()
+            if deprecated_keys or defunct_keys_removed:
+                self._write_parser()
 
             if "advanced_options" in self._parser:
                 self._advanced_options = AdvancedOptionsModel(**self._parser["advanced_options"])

@@ -87,6 +87,27 @@ class TestIniConfigLoader:
 
         assert notified_changes == [frozenset({"general.vision_mode_type"})]
 
+    def test_reload_if_changed_removes_defunct_model_keys(
+        self, isolated_ini_loader: IniConfigLoader, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        loader = isolated_ini_loader
+        config_path = loader.user_dir / PARAMS_INI
+        config_path.write_text(
+            "[general]\nrun_vision_mode_on_startup = false\nremoved_setting = true\n\n"
+            "[paragon_overlay]\ncell_size = 12\n",
+            encoding="utf-8",
+        )
+
+        with caplog.at_level(logging.WARNING, logger="src.config.loader"):
+            assert loader.reload_if_changed() is True
+
+        config_text = config_path.read_text(encoding="utf-8")
+        assert loader.general.run_vision_mode_on_startup is False
+        assert "removed_setting" not in config_text
+        assert "[paragon_overlay]" in config_text
+        assert "cell_size = 12" in config_text
+        assert "Defunct key=removed_setting" in caplog.text
+
     @pytest.mark.parametrize(
         ("config_value", "expected"), [("True", JunkRaresType.all), ("False", JunkRaresType.three_affixes)]
     )
