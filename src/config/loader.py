@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config.helper import singleton
-from src.config.settings_models import DEPRECATED_INI_KEYS, AdvancedOptionsModel, CharModel, GeneralModel
+from src.config.settings_models import AdvancedOptionsModel, CharModel, GeneralModel
 
 LOGGER = logging.getLogger(__name__)
 PARAMS_INI = "params.ini"
@@ -35,6 +35,8 @@ class IniConfigLoader:
         self._last_config_signature: tuple[int, int] | None = None
         self._config_revision = 0
         self._state_snapshot: dict[str, Any] = {}
+        self._deferred_cleanup_log_records: list[logging.LogRecord] = []
+        self._defer_cleanup_log_records = True
         self.load(notify=False)
 
     def _config_path(self) -> Path:
@@ -75,6 +77,50 @@ class IniConfigLoader:
 
         with self._config_path().open("w", encoding="utf-8") as config_file:
             self._parser.write(config_file)
+
+    def _remove_defunct_model_keys(self) -> bool:
+        if self._parser is None:
+            msg = "Config parser has not been initialized"
+            raise RuntimeError(msg)
+
+        removed_key = False
+        for section, model in self._section_models().items():
+            if section not in self._parser:
+                continue
+
+            valid_keys = type(model).model_fields
+            for key in list(self._parser[section]):
+                if key in valid_keys:
+                    continue
+
+                self._log_defunct_model_key(section, key)
+                self._parser.remove_option(section, key)
+                removed_key = True
+
+        return removed_key
+
+    def _log_defunct_model_key(self, section: str, key: str) -> None:
+        path_name, line_number, _, _ = LOGGER.findCaller(stacklevel=2)
+        record = LOGGER.makeRecord(
+            LOGGER.name,
+            logging.WARNING,
+            path_name,
+            line_number,
+            "Deprecated key=%s found in [%s]. Removing it from %s.",
+            (key, section, PARAMS_INI),
+            None,
+        )
+        if self._defer_cleanup_log_records:
+            self._deferred_cleanup_log_records.append(record)
+        if LOGGER.isEnabledFor(logging.WARNING):
+            LOGGER.handle(record)
+
+    def consume_deferred_cleanup_log_records(self) -> list[logging.LogRecord]:
+        with self._lock:
+            records = self._deferred_cleanup_log_records.copy()
+            self._deferred_cleanup_log_records.clear()
+            self._defer_cleanup_log_records = False
+            return records
 
     def _format_value_for_log(self, value: Any) -> str:
         if isinstance(value, bool):
@@ -132,15 +178,9 @@ class IniConfigLoader:
             self._parser = configparser.ConfigParser()
             self._parser.read(config_path, encoding="utf-8")
 
-            all_keys = [key for section in self._parser.sections() for key in self._parser[section]]
-            deprecated_keys = [key for key in DEPRECATED_INI_KEYS if key in all_keys]
-            for key in deprecated_keys:
-                LOGGER.warning(
-                    "Deprecated key=%s found in %s. Please remove this key from your config file.", key, PARAMS_INI
-                )
-                for section in self._parser.sections():
-                    if key in self._parser[section]:
-                        self._parser.remove_option(section, key)
+            defunct_keys_removed = self._remove_defunct_model_keys()
+            if defunct_keys_removed:
+                self._write_parser()
 
             if "advanced_options" in self._parser:
                 self._advanced_options = AdvancedOptionsModel(**self._parser["advanced_options"])
