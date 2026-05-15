@@ -199,20 +199,6 @@ affix = ProfileModel(
     ],
 )
 
-# noinspection PyTypeChecker
-rare_testing = ProfileModel(
-    name="test",
-    Affixes=[
-        {
-            "RareTest": ItemFilterModel(
-                itemType=[ItemType.Boots],
-                minPower=725,
-                affixPool=[AffixFilterCountModel(count=[AffixFilterModel(name="movement_speed")])],
-            )
-        }
-    ],
-)
-
 always_keep_mythics = ProfileModel(name="keep_mythics", GlobalUniques=[GlobalUniqueModel(minPower=900)])
 
 aspects_filters = ProfileModel(name="aspect_profile", AspectUpgrades=["accelerating", "aggressive"])
