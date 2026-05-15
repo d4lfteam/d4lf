@@ -27,7 +27,7 @@ from src.config.settings_models import AspectFilterType, CosmeticFilterType, Unf
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity
-from src.scripts.common import ASPECT_UPGRADES_LABEL, is_junk_rarity
+from src.scripts.common import ASPECT_UPGRADES_LABEL
 
 if TYPE_CHECKING:
     from src.item.data.aspect import Aspect
@@ -567,7 +567,7 @@ class Filter:
         if item.item_type == ItemType.Tribute:
             return self._check_tribute(item)
 
-        if item.item_type is None or item.power is None or (is_junk_rarity(item) and not item.cosmetic_upgrade):
+        if item.item_type is None or item.power is None:
             return res
 
         keep_affixes = self._check_affixes(item)

@@ -15,7 +15,6 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Filter uniques by their affix and aspect values
 - Filter sigils by blacklisting and whitelisting locations and affixes
 - Filter tributes by name or rarity
-- Automatically marks all common, magic, and optionally rare gear as junk
 - Quickly move items from your stash or inventory
 - Supported resolutions are all aspect ratios between 16:10 and 21:9
 - Paragon Overlay with import from supported build planners (Mobalytics, Maxroll, D4Builds)
@@ -317,6 +316,11 @@ Affixes:
       affixPool:
         - count:
             - { name: movement_speed, value: 16 }
+
+  # Keep all ancestral items, even if they don't match a different filter
+  - AncestralMatch:
+      itemType: [amulet, axe, two-handed axe, boots, bow, chest armor, crossbow, dagger, flail, focus, glaive, gloves, helm, pants, mace, two-handed mace, totem, polearm, quarterstaff, ring, scythe, two-handed scythe, shield, staff, sword, two-handed sword, tome, wand]
+      minPower: 900
 ```
 
 </details>

@@ -1,12 +1,7 @@
 import src.tts
 from src.item.descr.read_descr_tts import read_descr
 
-LOOT_FILTER_TTS = [
-    "SELECT ALL",
-    "Checkbox Disabled",
-    "Item Power Range",
-    "Left mouse button",
-]
+LOOT_FILTER_TTS = ["SELECT ALL", "Checkbox Disabled", "Item Power Range", "Left mouse button"]
 
 
 def test_loot_filter_controls_are_not_tts_item_start():
