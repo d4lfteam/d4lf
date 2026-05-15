@@ -13,7 +13,6 @@ from src.item.filter import Filter
 from src.scripts.common import (
     drop_item_from_inventory,
     is_ignored_item,
-    is_junk_rarity,
     mark_as_favorite,
     mark_as_junk,
     reset_item_status,
@@ -83,10 +82,9 @@ def check_items(
                 mouse.click("right")
             continue
 
-        if not is_junk_rarity(item_descr):
-            num_of_affixed_items_checked += 1
-            if item_descr.affixes and all(affix.type == AffixType.greater for affix in item_descr.affixes):
-                num_of_items_with_all_ga += 1
+        num_of_affixed_items_checked += 1
+        if item_descr.affixes and all(affix.type == AffixType.greater for affix in item_descr.affixes):
+            num_of_items_with_all_ga += 1
 
         # Check if we want to keep the item
         res = Filter().should_keep(item_descr)

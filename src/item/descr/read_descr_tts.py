@@ -61,6 +61,13 @@ LOGGER = logging.getLogger(__name__)
 def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[int, int]:
     inherent_num = 0
     affixes_num = 4
+    # We assume these objects have the minimum number of affixes and then try to determine if they have more.
+    if item.rarity == ItemRarity.Rare:
+        affixes_num = 3
+    elif item.rarity == ItemRarity.Magic:
+        affixes_num = 1
+    elif item.rarity == ItemRarity.Common:
+        affixes_num = 0
 
     if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
         # Uniques can have variable amounts of inherents.
@@ -70,11 +77,11 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
 
     # Rares have either 3 or 4 affixes so we have to do special handling to figure out where exactly the affixes end.
     # This will also grab up slotted gems but we really don't have much choice
-    if item.rarity == ItemRarity.Rare and any(
-        tts_section[start + inherent_num + affixes_num - 1].lower().startswith(x)
+    if item.rarity in [ItemRarity.Magic, ItemRarity.Rare] and not any(
+        tts_section[start + inherent_num + affixes_num].lower().startswith(x)
         for x in ["empty socket", "requires level", "properties lost when equipped", "rampage:", "feast:", "hunger:"]
     ):
-        affixes_num = 3
+        affixes_num = affixes_num + 1
     elif item.rarity == ItemRarity.Legendary and tts_section[start + inherent_num + affixes_num - 1].lower().startswith(
         "imprinted:"
     ):
@@ -507,9 +514,6 @@ def read_descr() -> Item | None:
         item.item_type != ItemType.Shield,
     ]):
         return None
-
-    if item.rarity not in [ItemRarity.Rare, ItemRarity.Legendary, ItemRarity.Mythic, ItemRarity.Unique]:
-        return item
 
     if item.rarity == ItemRarity.Mythic and item.is_in_shop:
         return None

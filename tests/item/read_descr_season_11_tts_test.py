@@ -202,10 +202,7 @@ items = [
             ],
             aspect=Aspect(
                 name="shepherds",
-                min_value=None,
-                max_value=None,
                 text="Imprinted: Companion Skills deal an additional 14.3%[x] [7.5 - 19.5]% damage per Companion you have.",
-                value=None,
             ),
             codex_upgrade=False,
             cosmetic_upgrade=False,
