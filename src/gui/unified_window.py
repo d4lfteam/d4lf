@@ -262,10 +262,11 @@ class UnifiedMainWindow(QMainWindow):
         self.console_handler.log_signal.connect(self.console_output.append_ansi_text)
         # Activity handler → original log_viewer
         self.activity_handler.log_signal.connect(self.activity_tab.log_viewer.appendPlainText)
-        self._emit_deferred_config_cleanup_logs(config)
 
         # --- Startup banner ---
         self.emit_startup_direct_to_console()
+
+        self._emit_deferred_config_cleanup_logs(config)
 
         # --- Backend worker thread ---
         self.thread = QThread()
