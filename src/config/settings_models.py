@@ -241,10 +241,6 @@ class GeneralModel(_IniBaseModel):
     ignore_escalation_sigils: bool = Field(
         default=True, description="When filtering Sigils, should escalation sigils be ignored?"
     )
-    junk_rares: JunkRaresType = Field(
-        default=JunkRaresType.three_affixes,
-        description="Which, if any, rare items should be automatically junked during filtering. `disabled` keeps normal rare filtering, `3 affixes` junks all rare items with exactly three affixes, and `all` junks every rare item even if it matches a filter.",
-    )
     keep_aspects: AspectFilterType = Field(
         default=AspectFilterType.upgrade, description="Whether to keep aspects that didn't match a filter"
     )
@@ -286,30 +282,6 @@ class GeneralModel(_IniBaseModel):
         description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
         json_schema_extra={LIVE_RELOAD_GROUP_KEY: "restart_app"},
     )
-
-    @model_validator(mode="before")
-    @classmethod
-    def check_deprecation(cls, data) -> Any:
-        if not isinstance(data, dict):
-            return data
-
-        migrated_data = dict(data)
-        junk_rares = migrated_data.get("junk_rares")
-        migrated_junk_rares = None
-        if junk_rares == "True":
-            migrated_junk_rares = JunkRaresType.all
-        elif junk_rares == "False":
-            migrated_junk_rares = JunkRaresType.three_affixes
-
-        if migrated_junk_rares is not None:
-            MODULE_LOGGER.warning(
-                "Deprecated general.junk_rares value=%s found in params.ini. Converting it to %s. Change this value to what you want to remove this warning.",
-                junk_rares,
-                migrated_junk_rares.value,
-            )
-            migrated_data["junk_rares"] = migrated_junk_rares
-
-        return migrated_data
 
     @field_validator("check_chest_tabs", mode="before")
     @classmethod

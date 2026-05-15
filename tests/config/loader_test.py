@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from src.config.loader import PARAMS_INI, IniConfigLoader
-from src.config.settings_models import JunkRaresType
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -118,23 +117,3 @@ class TestIniConfigLoader:
             "Deprecated key=removed_setting found in [general]. Removing it from params.ini."
         ]
         assert loader.consume_deferred_cleanup_log_records() == []
-
-    @pytest.mark.parametrize(
-        ("config_value", "expected"), [("True", JunkRaresType.all), ("False", JunkRaresType.three_affixes)]
-    )
-    def test_reload_if_changed_migrates_junk_rares_values(
-        self,
-        isolated_ini_loader: IniConfigLoader,
-        config_value: str,
-        expected: JunkRaresType,
-        caplog: pytest.LogCaptureFixture,
-    ) -> None:
-        loader = isolated_ini_loader
-        config_path = loader.user_dir / PARAMS_INI
-        config_path.write_text(f"[general]\njunk_rares = {config_value}\n", encoding="utf-8")
-
-        with caplog.at_level(logging.WARNING, logger="src.config.models"):
-            assert loader.reload_if_changed() is True
-
-        assert loader.general.junk_rares == expected
-        assert f"Deprecated general.junk_rares value={config_value}" in caplog.text
