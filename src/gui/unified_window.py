@@ -262,6 +262,7 @@ class UnifiedMainWindow(QMainWindow):
         self.console_handler.log_signal.connect(self.console_output.append_ansi_text)
         # Activity handler → original log_viewer
         self.activity_handler.log_signal.connect(self.activity_tab.log_viewer.appendPlainText)
+        self._emit_deferred_config_cleanup_logs(config)
 
         # --- Startup banner ---
         self.emit_startup_direct_to_console()
@@ -310,6 +311,15 @@ class UnifiedMainWindow(QMainWindow):
 
         win.show()
         return win
+
+    def _emit_deferred_config_cleanup_logs(self, config):
+        for record in config.consume_deferred_cleanup_log_records():
+            if not logging.getLogger(record.name).isEnabledFor(record.levelno):
+                continue
+            if record.levelno >= self.console_handler.level:
+                self.console_handler.handle(record)
+            if record.levelno >= self.activity_handler.level:
+                self.activity_handler.handle(record)
 
     def open_import_dialog(self):
         try:

@@ -35,6 +35,8 @@ class IniConfigLoader:
         self._last_config_signature: tuple[int, int] | None = None
         self._config_revision = 0
         self._state_snapshot: dict[str, Any] = {}
+        self._deferred_cleanup_log_records: list[logging.LogRecord] = []
+        self._defer_cleanup_log_records = True
         self.load(notify=False)
 
     def _config_path(self) -> Path:
@@ -91,11 +93,34 @@ class IniConfigLoader:
                 if key in valid_keys:
                     continue
 
-                LOGGER.warning("Deprecated key=%s found in [%s]. Removing it from %s.", key, section, PARAMS_INI)
+                self._log_defunct_model_key(section, key)
                 self._parser.remove_option(section, key)
                 removed_key = True
 
         return removed_key
+
+    def _log_defunct_model_key(self, section: str, key: str) -> None:
+        path_name, line_number, _, _ = LOGGER.findCaller(stacklevel=2)
+        record = LOGGER.makeRecord(
+            LOGGER.name,
+            logging.WARNING,
+            path_name,
+            line_number,
+            "Deprecated key=%s found in [%s]. Removing it from %s.",
+            (key, section, PARAMS_INI),
+            None,
+        )
+        if self._defer_cleanup_log_records:
+            self._deferred_cleanup_log_records.append(record)
+        if LOGGER.isEnabledFor(logging.WARNING):
+            LOGGER.handle(record)
+
+    def consume_deferred_cleanup_log_records(self) -> list[logging.LogRecord]:
+        with self._lock:
+            records = self._deferred_cleanup_log_records.copy()
+            self._deferred_cleanup_log_records.clear()
+            self._defer_cleanup_log_records = False
+            return records
 
     def _format_value_for_log(self, value: Any) -> str:
         if isinstance(value, bool):

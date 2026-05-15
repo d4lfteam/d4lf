@@ -23,9 +23,13 @@ def isolated_ini_loader(tmp_path: Path):
     original_signature = loader._last_config_signature
     original_revision = loader._config_revision
     original_listeners = list(loader._change_listeners)
+    original_deferred_cleanup_logs = list(loader._deferred_cleanup_log_records)
+    original_defer_cleanup_logs = loader._defer_cleanup_log_records
 
     loader._user_dir = tmp_path
     loader._change_listeners = []
+    loader._deferred_cleanup_log_records = []
+    loader._defer_cleanup_log_records = True
     loader.load(clear=True)
 
     try:
@@ -39,6 +43,8 @@ def isolated_ini_loader(tmp_path: Path):
         loader._last_config_signature = original_signature
         loader._config_revision = original_revision
         loader._change_listeners = original_listeners
+        loader._deferred_cleanup_log_records = original_deferred_cleanup_logs
+        loader._defer_cleanup_log_records = original_defer_cleanup_logs
 
 
 class TestIniConfigLoader:
@@ -107,6 +113,11 @@ class TestIniConfigLoader:
         assert "[paragon_overlay]" in config_text
         assert "cell_size = 12" in config_text
         assert "Deprecated key=removed_setting" in caplog.text
+        cleanup_records = loader.consume_deferred_cleanup_log_records()
+        assert [record.getMessage() for record in cleanup_records] == [
+            "Deprecated key=removed_setting found in [general]. Removing it from params.ini."
+        ]
+        assert loader.consume_deferred_cleanup_log_records() == []
 
     @pytest.mark.parametrize(
         ("config_value", "expected"), [("True", JunkRaresType.all), ("False", JunkRaresType.three_affixes)]
