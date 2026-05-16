@@ -28,6 +28,7 @@ from src.config.profile_models import (
 )
 from src.dataloader import Dataloader
 from src.gui.config_tab import IgnoreScrollWheelComboBox
+from src.gui.importer.gui_common import MAX_POWER
 from src.item.data.item_type import ItemType
 
 
@@ -53,8 +54,8 @@ class MinPowerDialog(QDialog):
         self.form_layout = QFormLayout()
         self.label = QLabel("Min Power:")
         self.spinBox = IgnoreScrollWheelSpinBox()
-        self.spinBox.setRange(0, 800)
-        self.spinBox.setValue(800)
+        self.spinBox.setRange(0, MAX_POWER)
+        self.spinBox.setValue(MAX_POWER)
         self.form_layout.addRow(self.label, self.spinBox)
         self.main_layout.addLayout(self.form_layout)
 

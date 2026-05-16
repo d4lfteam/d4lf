@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 
 from src.config.profile_models import GlobalUniqueModel
 from src.gui.dialog import DeleteItem, IgnoreScrollWheelSpinBox
+from src.gui.importer.gui_common import MAX_POWER
 
 UNIQUES_TABNAME = "GlobalUniques"
 
@@ -56,7 +57,7 @@ class UniqueWidget(QWidget):
         self.general_form.addRow("Profile Alias:", self.profile_alias)
 
         self.min_power = IgnoreScrollWheelSpinBox()
-        self.min_power.setRange(0, 800)
+        self.min_power.setRange(0, MAX_POWER)
         self.min_power.setValue(self.unique_model.minPower)
         self.min_power.setMaximumWidth(150)
         self.min_power.valueChanged.connect(self.update_min_power)

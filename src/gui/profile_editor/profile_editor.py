@@ -7,9 +7,9 @@ from src.config.profile_models import ProfileModel
 from src.gui.importer.gui_common import save_as_profile
 from src.gui.profile_editor.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.profile_editor.aspect_upgrades_tab import ASPECT_UPGRADES_TABNAME, AspectUpgradesTab
+from src.gui.profile_editor.global_uniques_tab import UNIQUES_TABNAME, UniquesTab
 from src.gui.profile_editor.sigils_tab import SIGILS_TABNAME, SigilsTab
 from src.gui.profile_editor.tributes_tab import TRIBUTES_TABNAME, TributesTab
-from src.gui.profile_editor.uniques_tab import UNIQUES_TABNAME, UniquesTab
 
 LOGGER = logging.getLogger(__name__)
 
