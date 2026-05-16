@@ -5,7 +5,9 @@ import typing
 import pytest
 from natsort import natsorted
 
+from src.config.loader import IniConfigLoader
 from src.config.profile_models import SigilPriority
+from src.config.settings_models import AspectFilterType
 from src.item.filter import Filter, FilterResult
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
@@ -48,6 +50,8 @@ def test_affixes(_name: str, result: list[str], item: Item, mocker: MockerFixtur
 )
 def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
+    general_mock = mocker.patch.object(IniConfigLoader(), "_general")
+    general_mock.keep_aspects = AspectFilterType.upgrade
     mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
     test_filter.aspect_upgrade_filters = {filters.aspects_filters.name: filters.aspects_filters.AspectUpgrades}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)

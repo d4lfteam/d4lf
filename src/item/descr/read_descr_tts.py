@@ -49,7 +49,7 @@ _ASPECT_RE = re.compile(
     r" - (?P<maxvalue>[0-9]+[.]?[0-9]*)]"
 )
 
-_FOR_SECONDS_RE = re.compile(r"for (?P<forsecondsvalue>\d) Seconds")
+_FOR_SECONDS_RE = re.compile(r"for (?P<forsecondsvalue>\d+(?:\.\d+)?) Seconds")
 
 _REPLACE_COMPARE_RE = re.compile(r"\(.*\)")
 
