@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QCompleter,
     QDialog,
+    QDialogButtonBox,
     QFormLayout,
     QFrame,
     QGroupBox,
@@ -53,6 +54,75 @@ AFFIX_VALUE_MODE = "Value"
 AFFIX_PERCENT_MODE = "Min %"
 
 
+def _item_type_summary(item_types: list[ItemType]) -> str:
+    if not item_types:
+        return "All item types"
+    return ", ".join(item_type.value for item_type in item_types)
+
+
+class ItemTypePicker(QDialog):
+    def __init__(self, parent: QWidget, item_types: list[ItemType], selected_item_types: list[ItemType]):
+        super().__init__(parent)
+        self.setWindowTitle("Select Item Types")
+        self.resize(650, 500)
+        self.checkboxes: dict[ItemType, QCheckBox] = {}
+
+        selected_item_type_set = set(selected_item_types)
+        weapon_item_types = [
+            item_type for item_type in item_types if is_weapon(item_type) or item_type == ItemType.Shield
+        ]
+        weapon_item_type_set = set(weapon_item_types)
+        non_weapon_item_types = [item_type for item_type in item_types if item_type not in weapon_item_type_set]
+
+        layout = QVBoxLayout(self)
+        picker_layout = QHBoxLayout()
+        picker_layout.addWidget(self._create_item_type_group("Weapons", weapon_item_types, selected_item_type_set))
+        picker_layout.addWidget(
+            self._create_item_type_group("Non-weapons", non_weapon_item_types, selected_item_type_set)
+        )
+        layout.addLayout(picker_layout)
+
+        note_label = QLabel("If no item types are selected, all item types will be evaluated for this filter.")
+        note_label.setWordWrap(True)
+        layout.addWidget(note_label)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        clear_button = button_box.addButton("Clear", QDialogButtonBox.ButtonRole.ResetRole)
+        clear_button.clicked.connect(self.clear_selection)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+    def _create_item_type_group(
+        self, title: str, item_types: list[ItemType], selected_item_types: set[ItemType]
+    ) -> QGroupBox:
+        group_box = QGroupBox(title)
+        group_layout = QVBoxLayout(group_box)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        for item_type in item_types:
+            checkbox = QCheckBox(item_type.value)
+            checkbox.setChecked(item_type in selected_item_types)
+            self.checkboxes[item_type] = checkbox
+            content_layout.addWidget(checkbox)
+
+        scroll_area.setWidget(content_widget)
+        group_layout.addWidget(scroll_area)
+        return group_box
+
+    def clear_selection(self):
+        for checkbox in self.checkboxes.values():
+            checkbox.setChecked(False)
+
+    def get_selected_item_types(self) -> list[ItemType]:
+        return [item_type for item_type, checkbox in self.checkboxes.items() if checkbox.isChecked()]
+
+
 class AffixGroupEditor(QWidget):
     def __init__(self, dynamic_filter: DynamicItemFilterModel, parent=None):
         super().__init__(parent)
@@ -75,19 +145,23 @@ class AffixGroupEditor(QWidget):
 
         general_form = QFormLayout()
 
-        self.item_type_combo = IgnoreScrollWheelComboBox()
-        self.item_type_combo.setEditable(True)
-        self.item_type_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.item_type_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        item_types_names = [
-            item.name for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)
+        self.item_types = [
+            item for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)
         ]
-        self.item_type_combo.addItems(item_types_names)
-        self.item_type_combo.setCurrentText(self.config.itemType[0].name if self.config.itemType else None)
-        self.item_type_combo.setMaximumWidth(150)
-        # Keep the model in sync for both mouse selection and keyboard/completer selection.
-        self.item_type_combo.currentTextChanged.connect(self.update_item_type)
-        general_form.addRow("Item Type:", self.item_type_combo)
+        self.item_type_line_edit = QLineEdit()
+        self.item_type_line_edit.setReadOnly(True)
+        self.item_type_line_edit.setMinimumWidth(360)
+        self.item_type_line_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.refresh_item_type_summary()
+
+        item_type_layout = QHBoxLayout()
+        item_type_layout.addWidget(self.item_type_line_edit)
+        edit_item_types_btn = QPushButton("...")
+        edit_item_types_btn.setMaximumWidth(40)
+        edit_item_types_btn.clicked.connect(self.edit_item_types)
+        item_type_layout.addWidget(edit_item_types_btn)
+        item_type_layout.addStretch()
+        general_form.addRow("Item Types:", item_type_layout)
 
         self.min_power = IgnoreScrollWheelSpinBox()
         self.min_power.setMaximum(800)
@@ -376,11 +450,14 @@ class AffixGroupEditor(QWidget):
             if item and item.widget() is not None:
                 item.widget().header.set_name(f"Count {i}")
 
-    def update_item_type(self, current_text=None):
-        item_type_name = current_text or self.item_type_combo.currentText()
-        if item_type_name not in ItemType._member_map_:
-            return
-        self.config.itemType = [ItemType(ItemType._member_map_[item_type_name])]
+    def refresh_item_type_summary(self):
+        self.item_type_line_edit.setText(_item_type_summary(self.config.itemType))
+
+    def edit_item_types(self):
+        item_type_picker = ItemTypePicker(self, self.item_types, self.config.itemType)
+        if item_type_picker.exec() == QDialog.DialogCode.Accepted:
+            self.config.itemType = item_type_picker.get_selected_item_types()
+            self.refresh_item_type_summary()
 
     def update_min_power(self):
         self.config.minPower = self.min_power.value()
