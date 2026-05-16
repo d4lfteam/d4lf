@@ -52,22 +52,12 @@ LOGGER = logging.getLogger(__name__)
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
 AFFIX_PERCENT_MODE = "Min %"
-ALL_ITEM_TYPES_TEXT = "All item types"
-ITEM_TYPE_HELP_TEXT = "If no item types are selected, all item types will be evaluated for this filter."
-
-
-def _item_type_display_text(item_type: ItemType) -> str:
-    return item_type.value
 
 
 def _item_type_summary(item_types: list[ItemType]) -> str:
     if not item_types:
-        return ALL_ITEM_TYPES_TEXT
-    return ", ".join(_item_type_display_text(item_type) for item_type in item_types)
-
-
-def _is_weapon_picker_item_type(item_type: ItemType) -> bool:
-    return is_weapon(item_type) or item_type == ItemType.Shield
+        return "All item types"
+    return ", ".join(item_type.value for item_type in item_types)
 
 
 class ItemTypePicker(QDialog):
@@ -78,7 +68,9 @@ class ItemTypePicker(QDialog):
         self.checkboxes: dict[ItemType, QCheckBox] = {}
 
         selected_item_type_set = set(selected_item_types)
-        weapon_item_types = [item_type for item_type in item_types if _is_weapon_picker_item_type(item_type)]
+        weapon_item_types = [
+            item_type for item_type in item_types if is_weapon(item_type) or item_type == ItemType.Shield
+        ]
         weapon_item_type_set = set(weapon_item_types)
         non_weapon_item_types = [item_type for item_type in item_types if item_type not in weapon_item_type_set]
 
@@ -90,7 +82,7 @@ class ItemTypePicker(QDialog):
         )
         layout.addLayout(picker_layout)
 
-        note_label = QLabel(ITEM_TYPE_HELP_TEXT)
+        note_label = QLabel("If no item types are selected, all item types will be evaluated for this filter.")
         note_label.setWordWrap(True)
         layout.addWidget(note_label)
 
@@ -114,7 +106,7 @@ class ItemTypePicker(QDialog):
         content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         for item_type in item_types:
-            checkbox = QCheckBox(_item_type_display_text(item_type))
+            checkbox = QCheckBox(item_type.value)
             checkbox.setChecked(item_type in selected_item_types)
             self.checkboxes[item_type] = checkbox
             content_layout.addWidget(checkbox)
