@@ -1,6 +1,6 @@
 import logging
 
-from PyQt6.QtCore import QSettings, Qt, QTimer
+from PyQt6.QtCore import QEvent, QSettings, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QDoubleValidator, QIntValidator
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -53,6 +53,77 @@ AFFIX_VALUE_MODE = "Value"
 AFFIX_PERCENT_MODE = "Min %"
 
 
+class CheckableComboBox(IgnoreScrollWheelComboBox):
+    checked_items_changed = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self.setEditable(True)
+        self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.lineEdit().setReadOnly(True)
+        self.view().viewport().installEventFilter(self)
+
+    def add_checkable_item(self, text: str, checked: bool):
+        self.addItem(text)
+        index = self.count() - 1
+        item = self.model().item(index, self.modelColumn())
+        if item is not None:
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+        check_state = Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
+        self.setItemData(index, check_state, Qt.ItemDataRole.CheckStateRole)
+        self.refresh_text()
+
+    def checked_item_texts(self):
+        return [
+            self.itemText(i)
+            for i in range(self.count())
+            if self.itemData(i, Qt.ItemDataRole.CheckStateRole) == Qt.CheckState.Checked
+        ]
+
+    def set_all_checked(self):
+        self.blockSignals(True)
+        for i in range(self.count()):
+            self.setItemData(i, Qt.CheckState.Checked, Qt.ItemDataRole.CheckStateRole)
+        self.blockSignals(False)
+        self.refresh_text()
+        self.checked_items_changed.emit()
+
+    def set_all_unchecked(self):
+        self.blockSignals(True)
+        for i in range(self.count()):
+            self.setItemData(i, Qt.CheckState.Unchecked, Qt.ItemDataRole.CheckStateRole)
+        self.blockSignals(False)
+        self.refresh_text()
+        self.checked_items_changed.emit()
+
+    def toggle_item(self, index: int):
+        check_state = self.itemData(index, Qt.ItemDataRole.CheckStateRole)
+        new_state = Qt.CheckState.Unchecked if check_state == Qt.CheckState.Checked else Qt.CheckState.Checked
+        self.setItemData(index, new_state, Qt.ItemDataRole.CheckStateRole)
+        self.refresh_text()
+        self.checked_items_changed.emit()
+
+    def refresh_text(self):
+        checked_items = self.checked_item_texts()
+        if len(checked_items) == self.count():
+            text = "All"
+        elif not checked_items:
+            text = "None"
+        elif len(checked_items) <= 2:
+            text = ", ".join(checked_items)
+        else:
+            text = f"{len(checked_items)} selected"
+        self.lineEdit().setText(text)
+
+    def eventFilter(self, watched, event):
+        if watched == self.view().viewport() and event.type() == QEvent.Type.MouseButtonRelease:
+            index = self.view().indexAt(event.position().toPoint())
+            if index.isValid():
+                self.toggle_item(index.row())
+                return True
+        return super().eventFilter(watched, event)
+
+
 class AffixGroupEditor(QWidget):
     def __init__(self, dynamic_filter: DynamicItemFilterModel, parent=None):
         super().__init__(parent)
@@ -75,19 +146,28 @@ class AffixGroupEditor(QWidget):
 
         general_form = QFormLayout()
 
-        self.item_type_combo = IgnoreScrollWheelComboBox()
-        self.item_type_combo.setEditable(True)
-        self.item_type_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.item_type_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        item_types_names = [
-            item.name for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)
+        self.item_types = [
+            item for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)
         ]
-        self.item_type_combo.addItems(item_types_names)
-        self.item_type_combo.setCurrentText(self.config.itemType[0].name if self.config.itemType else None)
-        self.item_type_combo.setMaximumWidth(150)
-        # Keep the model in sync for both mouse selection and keyboard/completer selection.
-        self.item_type_combo.currentTextChanged.connect(self.update_item_type)
-        general_form.addRow("Item Type:", self.item_type_combo)
+        selected_item_types = self.config.itemType or self.item_types
+        self.item_type_combo = CheckableComboBox()
+        self.item_type_combo.setMaximumWidth(180)
+        for item_type in self.item_types:
+            self.item_type_combo.add_checkable_item(item_type.name, item_type in selected_item_types)
+        self.item_type_combo.checked_items_changed.connect(self.update_item_types)
+
+        item_type_layout = QHBoxLayout()
+        item_type_layout.addWidget(self.item_type_combo)
+        all_item_types_btn = QPushButton("All")
+        all_item_types_btn.setMaximumWidth(50)
+        all_item_types_btn.clicked.connect(self.select_all_item_types)
+        reset_item_types_btn = QPushButton("Reset")
+        reset_item_types_btn.setMaximumWidth(60)
+        reset_item_types_btn.clicked.connect(self.reset_item_types)
+        item_type_layout.addWidget(all_item_types_btn)
+        item_type_layout.addWidget(reset_item_types_btn)
+        item_type_layout.addStretch()
+        general_form.addRow("Item Types:", item_type_layout)
 
         self.min_power = IgnoreScrollWheelSpinBox()
         self.min_power.setMaximum(800)
@@ -376,11 +456,18 @@ class AffixGroupEditor(QWidget):
             if item and item.widget() is not None:
                 item.widget().header.set_name(f"Count {i}")
 
-    def update_item_type(self, current_text=None):
-        item_type_name = current_text or self.item_type_combo.currentText()
-        if item_type_name not in ItemType._member_map_:
-            return
-        self.config.itemType = [ItemType(ItemType._member_map_[item_type_name])]
+    def update_item_types(self):
+        self.config.itemType = [
+            ItemType[item_name]
+            for item_name in self.item_type_combo.checked_item_texts()
+            if item_name in ItemType.__members__
+        ]
+
+    def select_all_item_types(self):
+        self.item_type_combo.set_all_checked()
+
+    def reset_item_types(self):
+        self.item_type_combo.set_all_unchecked()
 
     def update_min_power(self):
         self.config.minPower = self.min_power.value()
