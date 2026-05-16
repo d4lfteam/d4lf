@@ -182,6 +182,8 @@ class Filter:
             IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.ignore and not item.cosmetic_upgrade
         ):
             return res
+        if not item.cosmetic_upgrade:
+            return res
         LOGGER.info(f"{item.original_name} -- Matched new cosmetic")
         res.keep = True
         res.matched.append(MatchedFilter("Cosmetics"))

@@ -391,18 +391,14 @@ def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int]:
     if len(planner_suffix) != 2:
         LOGGER.error(msg := "Invalid planner url")
         raise MaxrollException(msg)
-    if "#" in planner_suffix[1]:
-        planner_id, data_id = planner_suffix[1].split("#")
-        data_id = int(data_id) - 1
-    else:
-        planner_id = planner_suffix[1]
 
-        try:
-            r = get_with_retry(url=PLANNER_API_BASE_URL + planner_id)
-        except ConnectionError as exc:
-            LOGGER.exception(msg := "Couldn't get planner")
-            raise MaxrollException(msg) from exc
-        data_id = json.loads(r.json()["data"])["activeProfile"]
+    planner_id = planner_suffix[1]
+    try:
+        r = get_with_retry(url=PLANNER_API_BASE_URL + planner_id)
+    except ConnectionError as exc:
+        LOGGER.exception(msg := "Couldn't get planner")
+        raise MaxrollException(msg) from exc
+    data_id = json.loads(r.json()["data"])["activeProfile"]
     return PLANNER_API_BASE_URL + planner_id, data_id
 
 
