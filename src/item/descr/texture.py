@@ -102,7 +102,7 @@ def find_affix_bullets(img_item_descr: np.ndarray, sep_short_match: TemplateMatc
         img_item_descr=img_item_descr,
         sep_short_match=sep_short_match,
         template_list=all_templates,
-        threshold=0.8,
+        threshold=0.85,
         mode="all",
     )
 
