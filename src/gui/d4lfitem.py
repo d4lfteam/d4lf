@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 
 from src.config.profile_models import AffixFilterCountModel, AffixFilterModel, DynamicItemFilterModel, ItemFilterModel
 from src.gui.dialog import IgnoreScrollWheelComboBox, IgnoreScrollWheelSpinBox
+from src.gui.importer.gui_common import MAX_POWER
 
 
 class D4LFItem(QGroupBox):
@@ -50,7 +51,7 @@ class D4LFItem(QGroupBox):
         self.form_layout.addRow(self.item_type_label, self.item_type_label_info)
 
         self.minPowerEdit = IgnoreScrollWheelSpinBox()
-        self.minPowerEdit.setMaximum(800)
+        self.minPowerEdit.setMaximum(MAX_POWER)
         self.minPowerEdit.setMaximumWidth(75)
         self.minPowerEdit.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.form_layout.addRow(QLabel("minPower:"), self.minPowerEdit)

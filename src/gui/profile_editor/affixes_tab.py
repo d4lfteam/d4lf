@@ -45,6 +45,7 @@ from src.gui.dialog import (
     MinPercentDialog,
     MinPowerDialog,
 )
+from src.gui.importer.gui_common import MAX_POWER
 from src.item.data.item_type import ItemType, is_armor, is_jewelry, is_weapon
 
 LOGGER = logging.getLogger(__name__)
@@ -164,7 +165,7 @@ class AffixGroupEditor(QWidget):
         general_form.addRow("Item Types:", item_type_layout)
 
         self.min_power = IgnoreScrollWheelSpinBox()
-        self.min_power.setMaximum(800)
+        self.min_power.setMaximum(MAX_POWER)
         self.min_power.setValue(self.config.minPower)
         self.min_power.setMaximumWidth(150)
         self.min_power.valueChanged.connect(self.update_min_power)
