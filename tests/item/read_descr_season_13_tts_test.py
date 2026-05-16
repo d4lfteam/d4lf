@@ -75,7 +75,7 @@ items = [
             seasonal_attribute=None,
         ),
     ),
-    # Boots also lost their inherents
+    # Boots also lost their inherents and Evade grants whatever for 1.5 seconds was being read as a GA
     (
         [
             "MARCH INCEPTION",
@@ -118,12 +118,12 @@ items = [
                     value=439.0,
                 ),
                 Affix(
-                    max_value=None,
-                    min_value=None,
+                    max_value=125.0,
+                    min_value=100.0,
                     name="evade_grants_movement_speed_for_seconds",
                     text="Evade Grants +114% Movement Speed for 1.5 Seconds [100 - 125]%[1.5]",
-                    type=AffixType.greater,
-                    value=1.5,
+                    type=AffixType.normal,
+                    value=114.0,
                 ),
             ],
             aspect=None,
