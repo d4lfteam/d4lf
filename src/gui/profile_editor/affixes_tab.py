@@ -1,12 +1,13 @@
 import logging
 
-from PyQt6.QtCore import QEvent, QSettings, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QSettings, Qt, QTimer
 from PyQt6.QtGui import QDoubleValidator, QIntValidator
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QCompleter,
     QDialog,
+    QDialogButtonBox,
     QFormLayout,
     QFrame,
     QGroupBox,
@@ -51,77 +52,83 @@ LOGGER = logging.getLogger(__name__)
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
 AFFIX_PERCENT_MODE = "Min %"
+ALL_ITEM_TYPES_TEXT = "All item types"
+ITEM_TYPE_HELP_TEXT = "If no item types are selected, all item types will be evaluated for this filter."
 
 
-class CheckableComboBox(IgnoreScrollWheelComboBox):
-    checked_items_changed = pyqtSignal()
+def _item_type_display_text(item_type: ItemType) -> str:
+    return item_type.value
 
-    def __init__(self):
-        super().__init__()
-        self.setEditable(True)
-        self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.lineEdit().setReadOnly(True)
-        self.view().viewport().installEventFilter(self)
 
-    def add_checkable_item(self, text: str, checked: bool):
-        self.addItem(text)
-        index = self.count() - 1
-        item = self.model().item(index, self.modelColumn())
-        if item is not None:
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-        check_state = Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
-        self.setItemData(index, check_state, Qt.ItemDataRole.CheckStateRole)
-        self.refresh_text()
+def _item_type_summary(item_types: list[ItemType]) -> str:
+    if not item_types:
+        return ALL_ITEM_TYPES_TEXT
+    return ", ".join(_item_type_display_text(item_type) for item_type in item_types)
 
-    def checked_item_texts(self):
-        return [
-            self.itemText(i)
-            for i in range(self.count())
-            if self.itemData(i, Qt.ItemDataRole.CheckStateRole) == Qt.CheckState.Checked
-        ]
 
-    def set_all_checked(self):
-        self.blockSignals(True)
-        for i in range(self.count()):
-            self.setItemData(i, Qt.CheckState.Checked, Qt.ItemDataRole.CheckStateRole)
-        self.blockSignals(False)
-        self.refresh_text()
-        self.checked_items_changed.emit()
+def _is_weapon_picker_item_type(item_type: ItemType) -> bool:
+    return is_weapon(item_type) or item_type == ItemType.Shield
 
-    def set_all_unchecked(self):
-        self.blockSignals(True)
-        for i in range(self.count()):
-            self.setItemData(i, Qt.CheckState.Unchecked, Qt.ItemDataRole.CheckStateRole)
-        self.blockSignals(False)
-        self.refresh_text()
-        self.checked_items_changed.emit()
 
-    def toggle_item(self, index: int):
-        check_state = self.itemData(index, Qt.ItemDataRole.CheckStateRole)
-        new_state = Qt.CheckState.Unchecked if check_state == Qt.CheckState.Checked else Qt.CheckState.Checked
-        self.setItemData(index, new_state, Qt.ItemDataRole.CheckStateRole)
-        self.refresh_text()
-        self.checked_items_changed.emit()
+class ItemTypePicker(QDialog):
+    def __init__(self, parent: QWidget, item_types: list[ItemType], selected_item_types: list[ItemType]):
+        super().__init__(parent)
+        self.setWindowTitle("Select Item Types")
+        self.resize(650, 500)
+        self.checkboxes: dict[ItemType, QCheckBox] = {}
 
-    def refresh_text(self):
-        checked_items = self.checked_item_texts()
-        if len(checked_items) == self.count():
-            text = "All"
-        elif not checked_items:
-            text = "None"
-        elif len(checked_items) <= 2:
-            text = ", ".join(checked_items)
-        else:
-            text = f"{len(checked_items)} selected"
-        self.lineEdit().setText(text)
+        selected_item_type_set = set(selected_item_types)
+        weapon_item_types = [item_type for item_type in item_types if _is_weapon_picker_item_type(item_type)]
+        weapon_item_type_set = set(weapon_item_types)
+        non_weapon_item_types = [item_type for item_type in item_types if item_type not in weapon_item_type_set]
 
-    def eventFilter(self, watched, event):
-        if watched == self.view().viewport() and event.type() == QEvent.Type.MouseButtonRelease:
-            index = self.view().indexAt(event.position().toPoint())
-            if index.isValid():
-                self.toggle_item(index.row())
-                return True
-        return super().eventFilter(watched, event)
+        layout = QVBoxLayout(self)
+        picker_layout = QHBoxLayout()
+        picker_layout.addWidget(self._create_item_type_group("Weapons", weapon_item_types, selected_item_type_set))
+        picker_layout.addWidget(
+            self._create_item_type_group("Non-weapons", non_weapon_item_types, selected_item_type_set)
+        )
+        layout.addLayout(picker_layout)
+
+        note_label = QLabel(ITEM_TYPE_HELP_TEXT)
+        note_label.setWordWrap(True)
+        layout.addWidget(note_label)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        clear_button = button_box.addButton("Clear", QDialogButtonBox.ButtonRole.ResetRole)
+        clear_button.clicked.connect(self.clear_selection)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+    def _create_item_type_group(
+        self, title: str, item_types: list[ItemType], selected_item_types: set[ItemType]
+    ) -> QGroupBox:
+        group_box = QGroupBox(title)
+        group_layout = QVBoxLayout(group_box)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        for item_type in item_types:
+            checkbox = QCheckBox(_item_type_display_text(item_type))
+            checkbox.setChecked(item_type in selected_item_types)
+            self.checkboxes[item_type] = checkbox
+            content_layout.addWidget(checkbox)
+
+        scroll_area.setWidget(content_widget)
+        group_layout.addWidget(scroll_area)
+        return group_box
+
+    def clear_selection(self):
+        for checkbox in self.checkboxes.values():
+            checkbox.setChecked(False)
+
+    def get_selected_item_types(self) -> list[ItemType]:
+        return [item_type for item_type, checkbox in self.checkboxes.items() if checkbox.isChecked()]
 
 
 class AffixGroupEditor(QWidget):
@@ -149,23 +156,18 @@ class AffixGroupEditor(QWidget):
         self.item_types = [
             item for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)
         ]
-        selected_item_types = self.config.itemType or self.item_types
-        self.item_type_combo = CheckableComboBox()
-        self.item_type_combo.setMaximumWidth(180)
-        for item_type in self.item_types:
-            self.item_type_combo.add_checkable_item(item_type.name, item_type in selected_item_types)
-        self.item_type_combo.checked_items_changed.connect(self.update_item_types)
+        self.item_type_line_edit = QLineEdit()
+        self.item_type_line_edit.setReadOnly(True)
+        self.item_type_line_edit.setMinimumWidth(360)
+        self.item_type_line_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.refresh_item_type_summary()
 
         item_type_layout = QHBoxLayout()
-        item_type_layout.addWidget(self.item_type_combo)
-        all_item_types_btn = QPushButton("All")
-        all_item_types_btn.setMaximumWidth(50)
-        all_item_types_btn.clicked.connect(self.select_all_item_types)
-        reset_item_types_btn = QPushButton("Reset")
-        reset_item_types_btn.setMaximumWidth(60)
-        reset_item_types_btn.clicked.connect(self.reset_item_types)
-        item_type_layout.addWidget(all_item_types_btn)
-        item_type_layout.addWidget(reset_item_types_btn)
+        item_type_layout.addWidget(self.item_type_line_edit)
+        edit_item_types_btn = QPushButton("...")
+        edit_item_types_btn.setMaximumWidth(40)
+        edit_item_types_btn.clicked.connect(self.edit_item_types)
+        item_type_layout.addWidget(edit_item_types_btn)
         item_type_layout.addStretch()
         general_form.addRow("Item Types:", item_type_layout)
 
@@ -456,18 +458,14 @@ class AffixGroupEditor(QWidget):
             if item and item.widget() is not None:
                 item.widget().header.set_name(f"Count {i}")
 
-    def update_item_types(self):
-        self.config.itemType = [
-            ItemType[item_name]
-            for item_name in self.item_type_combo.checked_item_texts()
-            if item_name in ItemType.__members__
-        ]
+    def refresh_item_type_summary(self):
+        self.item_type_line_edit.setText(_item_type_summary(self.config.itemType))
 
-    def select_all_item_types(self):
-        self.item_type_combo.set_all_checked()
-
-    def reset_item_types(self):
-        self.item_type_combo.set_all_unchecked()
+    def edit_item_types(self):
+        item_type_picker = ItemTypePicker(self, self.item_types, self.config.itemType)
+        if item_type_picker.exec() == QDialog.DialogCode.Accepted:
+            self.config.itemType = item_type_picker.get_selected_item_types()
+            self.refresh_item_type_summary()
 
     def update_min_power(self):
         self.config.minPower = self.min_power.value()
