@@ -42,6 +42,20 @@ PLANNER_BASE_URL = "https://maxroll.gg/d4/planner/"
 SCRIPT_XPATH = "//div[@id='root']/script"
 BUILD_SCRIPT_PREFIX = "window.__remixContext = "
 PLANNER_API_REGEX = re.compile(r'(https://maxroll\.gg/d4/planner/[^"|\\]*)')
+SKILL_AFFIX_NAME_KEYS = ("name", "displayName", "label", "title", "text", "slug")
+SKILL_AFFIX_SOURCE_KEYS = (
+    "skillTags",
+    "skillTag",
+    "skillCategories",
+    "skillCategory",
+    "powerTags",
+    "powerTag",
+    "tags",
+    "tag",
+    "categories",
+    "category",
+)
+SKILL_AFFIX_SOURCE_KEYWORDS = ("skill", "tag", "category", "power")
 
 
 class MaxrollException(Exception):
@@ -217,6 +231,8 @@ def _find_item_affixes(
     mapping_data: dict, item_affixes: dict, item_type: ItemType, import_greater_affixes=False
 ) -> list[Affix]:
     res = []
+    dataloader = Dataloader()
+    skill_affix_descriptions = None
     for affix_id in item_affixes:
         for affix in mapping_data["affixes"].values():
             if affix["id"] != affix_id["nid"]:
@@ -266,21 +282,11 @@ def _find_item_affixes(
                             break
                     else:
                         param_id = affix["attributes"][0]["param"]
-                        attribute_id = affix["attributes"][0]["id"]
-                        if param_id == -1460542966 and attribute_id in [1033, 1155]:
-                            attr_desc = "to core skills"
-                        elif param_id == -755407686 and attribute_id in [1034, 1091]:
-                            attr_desc = "to defensive skills"
-                        elif param_id == 746476422 and attribute_id == 1034:
-                            attr_desc = "to mastery skills"
-                        elif param_id == -954965341 and attribute_id == 1091:
-                            attr_desc = "to basic skills"
-                        elif param_id == -1460608310 and attribute_id in [1138, 1155]:
-                            attr_desc = "to aura skills"
-                        elif param_id == 850110203 and attribute_id == 1155:
-                            attr_desc = "to demonology skills"
-                        elif param_id == -2005545408 and attribute_id == 1155:
-                            attr_desc = "to ancient skills"
+                        if skill_affix_descriptions is None:
+                            skill_affix_descriptions = _build_skill_affix_description_lookup(
+                                mapping_data=mapping_data, affix_dict=dataloader.affix_dict
+                            )
+                        attr_desc = skill_affix_descriptions.get(param_id, "")
             clean_desc = re.sub(r"\[.*?\]|[^a-zA-Z ]", "", attr_desc)
             clean_desc = clean_desc.replace("SecondSeconds", "seconds")
             if not clean_desc:
@@ -289,7 +295,7 @@ def _find_item_affixes(
                 )
                 continue
 
-            affix_obj = Affix(name=closest_match(clean_str(clean_desc), Dataloader().affix_dict))
+            affix_obj = Affix(name=closest_match(clean_str(clean_desc), dataloader.affix_dict))
             if import_greater_affixes and affix_id.get("greater", False):
                 affix_obj.type = AffixType.greater
             if affix_obj.name is not None:
@@ -302,6 +308,92 @@ def _find_item_affixes(
                 LOGGER.error(f"Couldn't match {affix_id=}")
             break
     return res
+
+
+def _build_skill_affix_description_lookup(mapping_data: dict, affix_dict: dict) -> dict[int, str]:
+    valid_affix_names = {clean_str(affix_name) for affix_name in affix_dict.values()}
+    descriptions: dict[int, str] = {}
+    for source_data in _iter_skill_affix_sources(mapping_data):
+        _collect_skill_affix_descriptions(source_data, valid_affix_names, descriptions)
+    if not descriptions:
+        _collect_skill_affix_descriptions(mapping_data, valid_affix_names, descriptions)
+    return descriptions
+
+
+def _iter_skill_affix_sources(mapping_data: dict):
+    for source_key in SKILL_AFFIX_SOURCE_KEYS:
+        if source_key in mapping_data:
+            yield mapping_data[source_key]
+    for source_key, source_data in mapping_data.get("uiStrings", {}).items():
+        if _is_skill_affix_source_key(source_key):
+            yield source_data
+
+
+def _is_skill_affix_source_key(source_key: str) -> bool:
+    normalized_key = source_key.lower()
+    return any(keyword in normalized_key for keyword in SKILL_AFFIX_SOURCE_KEYWORDS)
+
+
+def _collect_skill_affix_descriptions(
+    source_data: dict | list, valid_affix_names: set[str], descriptions: dict[int, str]
+) -> None:
+    pending = [source_data]
+    while pending:
+        current = pending.pop()
+        if isinstance(current, dict):
+            entry_id = _numeric_value(current.get("id"))
+            description = _skill_affix_description_from_name(
+                _display_name_from_mapping_value(current), valid_affix_names
+            )
+            if entry_id is not None and description:
+                descriptions[entry_id] = description
+
+            for key, value in current.items():
+                entry_id = _numeric_value(key)
+                description = _skill_affix_description_from_name(
+                    _display_name_from_mapping_value(value), valid_affix_names
+                )
+                if entry_id is not None and description:
+                    descriptions[entry_id] = description
+                if isinstance(value, dict | list):
+                    pending.append(value)
+
+
+def _display_name_from_mapping_value(value) -> str:
+    if isinstance(value, str):
+        return value
+    if not isinstance(value, dict):
+        return ""
+    for name_key in SKILL_AFFIX_NAME_KEYS:
+        name = value.get(name_key)
+        if isinstance(name, str) and name:
+            return name
+    return ""
+
+
+def _skill_affix_description_from_name(name: str, valid_affix_names: set[str]) -> str:
+    skill_group_name = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name)
+    skill_group_name = clean_str(re.sub(r"[_\-.]+", " ", skill_group_name))
+    for prefix in ("skill tag ", "skill tags ", "power tag ", "power tags ", "tag ", "category "):
+        if skill_group_name.startswith(prefix):
+            skill_group_name = skill_group_name.removeprefix(prefix)
+            break
+    if not skill_group_name:
+        return ""
+    if not skill_group_name.endswith(" skills"):
+        skill_group_name = f"{skill_group_name} skills"
+    description = f"to {skill_group_name}"
+    if description in valid_affix_names:
+        return description
+    return ""
+
+
+def _numeric_value(value) -> int | None:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and re.fullmatch(r"-?\d+", value):
+        return int(value)
+    return None
 
 
 def _find_legendary_aspect(mapping_data: dict, legendary_aspect: dict) -> str | None:

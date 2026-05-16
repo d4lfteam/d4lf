@@ -5,7 +5,8 @@ import pytest
 
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.maxroll import _find_item_type, import_maxroll
+from src.gui.importer.maxroll import _find_item_affixes, _find_item_type, import_maxroll
+from src.item.data.affix import AffixType
 from src.item.data.item_type import ItemType
 
 if typing.TYPE_CHECKING:
@@ -61,3 +62,37 @@ def test_find_item_type_uses_fix_offhand_type_when_item_type_implies_offhand() -
         _find_item_type(mapping_data={"item-1": {"type": "1HFocus"}}, value="item-1", class_name="Sorcerer")
         == ItemType.Focus
     )
+
+
+def test_find_item_affixes_resolves_skill_group_from_mapping_entry() -> None:
+    result = _find_item_affixes(
+        mapping_data={
+            "affixes": {"affix-1": {"id": "rank-core", "magicType": 0, "attributes": [{"id": 1033, "param": -123}]}},
+            "skills": {},
+            "skillTags": {"core": {"id": -123, "name": "Core"}},
+        },
+        item_affixes=[{"nid": "rank-core", "greater": True}],
+        item_type=ItemType.ChestArmor,
+        import_greater_affixes=True,
+    )
+
+    assert len(result) == 1
+    assert result[0].name == "to_core_skills"
+    assert result[0].type == AffixType.greater
+
+
+def test_find_item_affixes_resolves_skill_group_from_string_map() -> None:
+    result = _find_item_affixes(
+        mapping_data={
+            "affixes": {
+                "affix-1": {"id": "rank-defensive", "magicType": 0, "attributes": [{"id": 1034, "param": -456}]}
+            },
+            "skills": {},
+            "uiStrings": {"skillTag": {"-456": "Defensive Skills"}},
+        },
+        item_affixes=[{"nid": "rank-defensive"}],
+        item_type=ItemType.ChestArmor,
+    )
+
+    assert len(result) == 1
+    assert result[0].name == "to_defensive_skills"
