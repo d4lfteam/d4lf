@@ -158,12 +158,19 @@ class ScriptHandler:
             and (match := re.search(r"([0-9,.]+)\s+Gold", raw_line, re.IGNORECASE))
         ):
             item_name = "gold_balance"
-            val = int(match.group(1).replace(",", "").replace(".", ""))
+            raw_val = re.sub(r"\D", "", match.group(1))
+            if not raw_val:
+                return
+            val = int(raw_val)
         # Handle Experience statistics (e.g., 'Level 209 Experience: 55,843,725 / 74,304,757')
         elif "experience" in raw_line.lower() and (match := re.search(r"Experience:\s+([0-9,.]+)\s+/\s+([0-9,.]+)", raw_line, re.IGNORECASE)):
             item_name = "experience_gain"
-            val = int(match.group(1).replace(",", "").replace(".", ""))
-            mx_val = int(match.group(2).replace(",", "").replace(".", ""))
+            raw_val = re.sub(r"\D", "", match.group(1))
+            raw_mx = re.sub(r"\D", "", match.group(2))
+            if not raw_val or not raw_mx:
+                return
+            val = int(raw_val)
+            mx_val = int(raw_mx)
 
         # Fallback to standard item parser if raw string wasn't a recognized stat
         if not item_name:
