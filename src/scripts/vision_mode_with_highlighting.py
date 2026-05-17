@@ -265,7 +265,8 @@ class VisionModeWithHighlighting:
         except Exception:
             screenshot("tts_error", img=img)
             LOGGER.exception(f"Error in TTS read_descr. {src.tts.LAST_ITEM=}")
-        if item_descr is None:
+
+        if item_descr is None or item_descr.name in ["gold_balance", "experience_gain"]:
             self.request_clear()
             return
 
@@ -446,12 +447,16 @@ class VisionModeWithHighlighting:
         self.queue.put(("codex_upgrade", item_descr, item_roi, res))
 
     def start(self):
-        LOGGER.info("Starting Vision Mode")
+        if self.is_running:
+            return
+        LOGGER.debug("Starting Vision Mode")
         Publisher().subscribe(self.on_tts)
         self.is_running = True
 
     def stop(self):
-        LOGGER.info("Stopping Vision Mode")
+        if not self.is_running:
+            return
+        LOGGER.debug("Stopping Vision Mode")
         self.request_clear()
         if self.evaluate_item_thread:
             self.stop_thread_and_wait(self.evaluate_item_thread, self.evaluate_item_thread_cancel_event)

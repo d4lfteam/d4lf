@@ -3,6 +3,7 @@ import time
 from typing import TYPE_CHECKING
 
 import src.item.descr.read_descr_tts
+import src.info_overlay
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.settings_models import ItemRefreshType, UnfilteredUniquesType
@@ -69,7 +70,7 @@ def check_items(
                 screenshot("tts_error", img=img)
                 LOGGER.exception(f"Error in TTS read_descr. {src.tts.LAST_ITEM=}")
 
-        if item_descr is None:
+        if item_descr is None or item_descr.name in ["gold_balance", "experience_gain"]:
             continue
 
         # Hardcoded filters

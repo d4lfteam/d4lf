@@ -9,6 +9,7 @@ import pywintypes
 import win32file
 import win32pipe
 
+from src.config.loader import IniConfigLoader
 from src.config.helper import singleton
 
 CONNECTED = False
@@ -34,19 +35,38 @@ class Publisher:
         self._subscriber_lock = threading.Lock()
 
     def find_item(self) -> None:
+        global LAST_ITEM
         local_cache = []
         while True:
             data = fix_data(_DATA_QUEUE.get())
             local_cache.append(data)
-            if not filter_data(data) and (
-                any(word in data.lower() for word in ["mouse button", "action button"])
-                and (start := find_item_start(local_cache)) is not None
-            ):
-                global LAST_ITEM
-                LAST_ITEM = local_cache[start:]
-                LOGGER.debug(f"TTS Found: {LAST_ITEM}")
-                local_cache = []
+
+            # Debug logging for potential stat readouts
+            if any(word in data.lower() for word in ["gold", "experience", "currency"]):
+                if IniConfigLoader().general.debug_tts:
+                    LOGGER.info(f"TTS Raw Stat String: '{data}'")
+
+            if filter_data(data):
+                continue
+
+            is_stat = any(word in data.lower() for word in ["gold", "experience"])
+            is_item_end = any(word in data.lower() for word in ["mouse button", "action button"])
+
+            if is_stat:
+                # Standalone stats (Gold/EXP balance) are usually single lines.
+                # We publish them immediately to ensure they aren't trapped in an item description block.
+                LAST_ITEM = [data, ""]
+                LOGGER.debug(f"TTS Found Stat: {LAST_ITEM}")
+                # We keep the data in the cache in case it's actually part of an item,
+                # but we publish the event now for the statistics handler.
                 self.publish(LAST_ITEM)
+            elif is_item_end:
+                start = find_item_start(local_cache)
+                if start is not None:
+                    LAST_ITEM = local_cache[start:]
+                    LOGGER.debug(f"TTS Found: {LAST_ITEM}")
+                    local_cache = []
+                    self.publish(LAST_ITEM)
 
     def publish(self, data):
         with self._subscriber_lock:
