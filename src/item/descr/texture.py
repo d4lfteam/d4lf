@@ -96,17 +96,20 @@ def find_affix_bullets(img_item_descr: np.ndarray, sep_short_match: TemplateMatc
         + tempered_icons
     )
     all_templates = [f"{x}_medium" for x in template_list] + template_list
+    search_threshold = 0.80
     if ResManager().resolution[1] <= 1200:
         all_templates += [
             "greater_affix_bullet_point_1080p_special",
             "greater_affix_bullet_point_masterworked_medium_1080p_special",
             "masterworking_affix_bullet_medium_1080p_special",
         ]
+        # At lower resolutions it starts reading text as bullet points. We'll see if this fixes it
+        search_threshold = 0.85
     return _find_bullets(
         img_item_descr=img_item_descr,
         sep_short_match=sep_short_match,
         template_list=all_templates,
-        threshold=0.85,
+        threshold=search_threshold,
         mode="all",
     )
 
