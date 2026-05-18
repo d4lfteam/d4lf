@@ -6,7 +6,7 @@ import yaml
 from pydantic import ValidationError
 from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtWidgets import (
-    QFileDialog,
+    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -58,13 +58,14 @@ class ProfileTab(QWidget):
 
         tools_groupbox = QGroupBox("Tools")
         tools_groupbox_layout = QHBoxLayout()
-        self.file_button = QPushButton("Open")
+        self.profile_combo = QComboBox()
+        self.profile_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.save_button = QPushButton("Save")
         self.refresh_button = QPushButton("Undo Changes")
-        self.file_button.clicked.connect(self.load_file)
+        self.profile_combo.currentIndexChanged.connect(self.load_selected_profile)
         self.save_button.clicked.connect(self.save_yaml)
         self.refresh_button.clicked.connect(self.refresh)
-        tools_groupbox_layout.addWidget(self.file_button)
+        tools_groupbox_layout.addWidget(self.profile_combo)
         tools_groupbox_layout.addWidget(self.save_button)
         tools_groupbox_layout.addWidget(self.refresh_button)
         tools_groupbox.setLayout(tools_groupbox_layout)
@@ -83,12 +84,13 @@ class ProfileTab(QWidget):
 
         instructions_text = QTextBrowser()
         instructions_text.append(
-            "You load a profile by clicking the 'Open' button. Click 'Save' to save your changes. Click 'Undo Changes' to revert your changes."
+            "Select a profile from the dropdown. Click 'Save' to save your changes. Click 'Undo Changes' to revert your changes."
         )
 
         instructions_text.setFixedHeight(50)
         self.main_layout.addWidget(instructions_text)
         self.setLayout(self.main_layout)
+        self.populate_profile_dropdown()
 
     def confirm_discard_changes(self):
         reply = QMessageBox.warning(
@@ -111,46 +113,74 @@ class ProfileTab(QWidget):
             self.first_show = False
             return
 
-    def load_file(self):
-        if self.open_file():
+    def load_selected_profile(self, selected_index=None):
+        file_path = self.profile_combo.currentData()
+        if selected_index is not None:
+            file_path = self.profile_combo.itemData(selected_index)
+        if not file_path:
+            return
+        self.file_path = pathlib.Path(file_path)
+        if self.load_yaml():
             if self.model_editor:
                 self.scrollable_layout.removeWidget(self.model_editor)
             self.model_editor = ProfileEditor(self.root)
             self.scrollable_layout.addWidget(self.model_editor)
             LOGGER.info(f"Profile {self.root.name} loaded into profile editor.")
 
-    def open_file(self):
+    def populate_profile_dropdown(self):
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Open YAML File", str(custom_profile_path), "YAML Files (*.yaml *.yml)"
+        custom_profile_path.mkdir(parents=True, exist_ok=True)
+        profile_paths = {
+            profile_file.stem: profile_file
+            for profile_file in custom_profile_path.iterdir()
+            if profile_file.is_file() and profile_file.suffix.lower() in {".yaml", ".yml"}
+        }
+
+        active_profiles = []
+        for profile_name in IniConfigLoader().general.profiles:
+            if profile_name in profile_paths and profile_name not in active_profiles:
+                active_profiles.append(profile_name)
+        inactive_profiles = sorted(
+            (profile_name for profile_name in profile_paths if profile_name not in active_profiles), key=str.lower
         )
-        if file_path:
-            self.file_path = file_path
-            return self.load_yaml()
-        return False
+
+        self.profile_combo.blockSignals(True)
+        self.profile_combo.clear()
+        for profile_name in active_profiles:
+            self.profile_combo.addItem(profile_name, str(profile_paths[profile_name]))
+        if active_profiles and inactive_profiles:
+            self.profile_combo.insertSeparator(self.profile_combo.count())
+        for profile_name in inactive_profiles:
+            self.profile_combo.addItem(profile_name, str(profile_paths[profile_name]))
+
+        if not active_profiles and not inactive_profiles:
+            self.profile_combo.addItem("No profiles found")
+            self.profile_combo.setEnabled(False)
+            self.save_button.setEnabled(False)
+            self.refresh_button.setEnabled(False)
+            self.profile_combo.blockSignals(False)
+            return
+
+        self.profile_combo.setEnabled(True)
+        self.save_button.setEnabled(True)
+        self.refresh_button.setEnabled(True)
+        self.select_initial_profile(profile_paths)
+        self.profile_combo.blockSignals(False)
+        self.load_selected_profile()
 
     def load(self):
-        profiles: list[str] = IniConfigLoader().general.profiles
-        custom_profile_path = IniConfigLoader().user_dir / "profiles"
-
-        # Try to load last opened profile first
-        last_opened = self.settings.value("last_opened_profile", None, type=str)
-        if last_opened and not self.file_path:
-            custom_file_path = custom_profile_path / f"{last_opened}.yaml"
-            if custom_file_path.is_file():
-                self.file_path = custom_file_path
-                return self.load_yaml()
-
-        if not self.file_path and profiles:  # at start, set default file to build in params.ini
-            custom_file_path = custom_profile_path / f"{profiles[0]}.yaml"
-            if not custom_file_path.is_file():
-                LOGGER.error(f"Could not load profile {profiles[0]}. Checked: {custom_file_path}")
-                return False
-            self.file_path = custom_file_path
+        file_path = self.profile_combo.currentData()
+        if not self.file_path and file_path:
+            self.file_path = pathlib.Path(file_path)
             return self.load_yaml()
-        if not self.file_path and not profiles:
-            return self.open_file()
         return False
+
+    def select_initial_profile(self, profile_paths):
+        last_opened = self.settings.value("last_opened_profile", None, type=str)
+        if last_opened in profile_paths:
+            last_opened_index = self.profile_combo.findData(str(profile_paths[last_opened]))
+            if last_opened_index >= 0:
+                self.profile_combo.setCurrentIndex(last_opened_index)
 
     def create_profile_editor(self):
         if not self.profile_editor_created and self.root:
