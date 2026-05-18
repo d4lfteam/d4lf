@@ -677,6 +677,9 @@ D4LF can import Paragon boards from supported build planners and show them in-ga
 
 ## Info Panel Overlay
 
+![sample](assets/infopanel_vert.png)
+![sample](assets/infopanel_hort.png)
+
 The Info Panel provides real-time tracking for World Events and session-based statistics for Gold and Experience.
 
 **How to use**
@@ -687,6 +690,8 @@ The Info Panel provides real-time tracking for World Events and session-based st
 1. **Lock**: Once positioned, select **Lock Position** from the right-click menu to prevent accidental movement.
 
 **Features and Settings (Right-Click Menu)**
+![sample](assets/infopanel_menu.png)
+
 
 - **Timers**: Toggle visibility for **World Boss**, **Legion**, and **Helltide** timers.
   - Timers automatically sync with [Helltides.com](https://helltides.com).
