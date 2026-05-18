@@ -447,16 +447,12 @@ class VisionModeWithHighlighting:
         self.queue.put(("codex_upgrade", item_descr, item_roi, res))
 
     def start(self):
-        if self.is_running:
-            return
-        LOGGER.debug("Starting Vision Mode")
+        LOGGER.info("Starting Vision Mode")
         Publisher().subscribe_item(self.on_tts)
         self.is_running = True
 
     def stop(self):
-        if not self.is_running:
-            return
-        LOGGER.debug("Stopping Vision Mode")
+        LOGGER.info("Stopping Vision Mode")
         self.request_clear()
         if self.evaluate_item_thread:
             self.stop_thread_and_wait(self.evaluate_item_thread, self.evaluate_item_thread_cancel_event)

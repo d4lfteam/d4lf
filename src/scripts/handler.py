@@ -214,11 +214,6 @@ class ScriptHandler:
                     overlay_dir,
                 )
 
-            # Disable vision mode while the overlay is active; restore it when the overlay closes.
-            self._vision_mode_was_running_before_overlay = self.vision_mode.running()
-            if self._vision_mode_was_running_before_overlay:
-                self.vision_mode.stop()
-
             LOGGER.info("Opening Paragon overlay (source: %s)", overlay_dir)
             self.paragon_overlay_thread = threading.Thread(
                 target=self._run_paragon_overlay, args=(str(overlay_dir),), daemon=True
@@ -234,13 +229,7 @@ class ScriptHandler:
         except Exception:
             LOGGER.exception("Paragon overlay crashed")
         finally:
-            try:
-                if self._vision_mode_was_running_before_overlay and not self.vision_mode.running():
-                    self.vision_mode.start()
-            except Exception:
-                LOGGER.exception("Failed to restore vision mode after Paragon overlay")
-            finally:
-                self.paragon_overlay_thread = None
+            self.paragon_overlay_thread = None
 
     def toggle_info_overlay(self):
         """Toggle the Info Panel overlay."""
