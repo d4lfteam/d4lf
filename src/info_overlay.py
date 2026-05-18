@@ -1,3 +1,4 @@
+from __future__ import annotations
 import datetime
 import logging
 import tkinter as tk
@@ -8,11 +9,13 @@ import re
 import threading
 import time
 from contextlib import suppress
-from typing import Any, Callable
+from typing import Any, Callable, TYPE_CHECKING
 from src.config.loader import IniConfigLoader
 from src.config.helper import singleton
 from src.utils.custom_mouse import mouse
 from src.cam import Cam
+if TYPE_CHECKING:
+    from src.tts import InfoStat
 
 LOGGER = logging.getLogger(__name__)
 
@@ -128,27 +131,11 @@ class SessionStats:
         self.last_exp = None
         LOGGER.info("Experience session stats reset")
 
-    def on_tts_data(self, tts_item: list[str]):
-        """Callback for TTS data to track gold and experience gains."""
-        from src.item.descr.read_descr_tts import _create_base_item_from_tts
-        if not tts_item or len(tts_item) < 1: return
-        raw_line, item_name, val, mx_val = tts_item[0], "", 0, None
-
-        if "gold" in raw_line.lower() and not any(x in raw_line.lower() for x in ["sell value", "repair", "cost", "price", "buy", "fee", "spent", "purchase"]):
-            if (match := re.search(r"([0-9,.]+)\s+Gold", raw_line, re.IGNORECASE)):
-                item_name, raw_val = "gold_balance", re.sub(r"\D", "", match.group(1))
-                if raw_val: val = int(raw_val)
-        elif "experience" in raw_line.lower() and (match := re.search(r"Experience:\s+([0-9,.]+)\s+/\s+([0-9,.]+)", raw_line, re.IGNORECASE)):
-            item_name, raw_val, raw_mx = "experience_gain", re.sub(r"\D", "", match.group(1)), re.sub(r"\D", "", match.group(2))
-            if raw_val and raw_mx: val, mx_val = int(raw_val), int(raw_mx)
-
-        if not item_name:
-            if len(tts_item) < 2: return
-            item = _create_base_item_from_tts(tts_item)
-            if not item: return
-            item_name, val, mx_val = item.name, item.power, getattr(item, "max_exp", None)
-
-        if item_name: LOGGER.debug(f"TTS Stat detected: {item_name}={val}")
+    def on_info_stat(self, stat: InfoStat):
+        """Callback for parsed info statistics."""
+        item_name, val, mx_val = stat.name, stat.value, stat.max_value
+        if item_name:
+            LOGGER.debug(f"TTS Stat detected: {item_name}={val}")
 
         if item_name == "gold_balance":
             if self.last_gold is None:
@@ -550,15 +537,13 @@ class BossTimerOverlay(tk.Toplevel):
         menu.post(event.x_root, event.y_root)
 
     def _reset_gold_stats(self):
-        from src.scripts.handler import ScriptHandler
-        ScriptHandler().reset_gold_stats()
+        SessionStats().reset_gold()
         self._gold_initialized = False
         self.update_stats(gph=0, total_gained=0)
         self._repack()
 
     def _reset_exp_stats(self):
-        from src.scripts.handler import ScriptHandler
-        ScriptHandler().reset_exp_stats()
+        SessionStats().reset_exp()
         self._exp_initialized = False
         self.update_stats(eph=0, total_exp=0, t2l="-")
         self._repack()

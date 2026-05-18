@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import enum
 import logging
 import queue
@@ -19,6 +20,12 @@ _DATA_QUEUE = queue.Queue(maxsize=100)
 
 LOGGER = logging.getLogger(__name__)
 
+@dataclass(frozen=True)
+class InfoStat:
+    name: str
+    value: int
+    max_value: int | None = None
+
 
 class ItemIdentifiers(enum.Enum):
     COMPASS = "Compass"
@@ -31,7 +38,8 @@ class ItemIdentifiers(enum.Enum):
 @singleton
 class Publisher:
     def __init__(self):
-        self._subscribers = set()
+        self._item_subscribers = set()
+        self._info_subscribers = set()
         self._subscriber_lock = threading.Lock()
 
     def find_item(self) -> None:
@@ -54,33 +62,61 @@ class Publisher:
             is_item_end = any(word in data.lower() for word in ["mouse button", "action button"])
 
             if is_stat:
-                # Standalone stats (Gold/EXP balance) are usually single lines.
-                # We publish them immediately to ensure they aren't trapped in an item description block.
-                LAST_ITEM = [data, ""]
-                LOGGER.debug(f"TTS Found Stat: {LAST_ITEM}")
-                # We keep the data in the cache in case it's actually part of an item,
-                # but we publish the event now for the statistics handler.
-                self.publish(LAST_ITEM)
+                stat = _parse_stat(data)
+                if stat:
+                    self.publish_info(stat)
             elif is_item_end:
                 start = find_item_start(local_cache)
                 if start is not None:
                     LAST_ITEM = local_cache[start:]
                     LOGGER.debug(f"TTS Found: {LAST_ITEM}")
                     local_cache = []
-                    self.publish(LAST_ITEM)
+                    self.publish_item(LAST_ITEM)
 
-    def publish(self, data):
+    def publish_item(self, data):
         with self._subscriber_lock:
-            for subscriber in self._subscribers:
+            for subscriber in self._item_subscribers:
                 subscriber(data)
 
-    def subscribe(self, subscriber):
+    def subscribe_item(self, subscriber):
         with self._subscriber_lock:
-            self._subscribers.add(subscriber)
+            self._item_subscribers.add(subscriber)
 
-    def unsubscribe(self, subscriber):
+    def unsubscribe_item(self, subscriber):
         with self._subscriber_lock:
-            self._subscribers.remove(subscriber)
+            self._item_subscribers.remove(subscriber)
+
+    def publish_info(self, data: InfoStat):
+        with self._subscriber_lock:
+            for subscriber in self._info_subscribers:
+                subscriber(data)
+
+    def subscribe_info(self, subscriber):
+        with self._subscriber_lock:
+            self._info_subscribers.add(subscriber)
+
+    def unsubscribe_info(self, subscriber):
+        with self._subscriber_lock:
+            self._info_subscribers.remove(subscriber)
+
+
+def _parse_stat(raw_line: str) -> InfoStat | None:
+    # Handle Gold statistics from raw TTS string (e.g., '2,225,130,802 Gold')
+    if (
+        "gold" in raw_line.lower()
+        and not any(x in raw_line.lower() for x in ["sell value", "repair", "cost", "price", "buy", "fee", "spent", "purchase"])
+        and (match := re.search(r"([0-9,.]+)\s+Gold", raw_line, re.IGNORECASE))
+    ):
+        raw_val = re.sub(r"\D", "", match.group(1))
+        if raw_val:
+            return InfoStat(name="gold_balance", value=int(raw_val))
+    # Handle Experience statistics (e.g., 'Level 209 Experience: 55,843,725 / 74,304,757')
+    elif "experience" in raw_line.lower() and (match := re.search(r"Experience:\s+([0-9,.]+)\s+/\s+([0-9,.]+)", raw_line, re.IGNORECASE)):
+        raw_val = re.sub(r"\D", "", match.group(1))
+        raw_mx = re.sub(r"\D", "", match.group(2))
+        if raw_val and raw_mx:
+            return InfoStat(name="experience_gain", value=int(raw_val), max_value=int(raw_mx))
+    return None
 
 
 def create_pipe():

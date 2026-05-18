@@ -450,7 +450,7 @@ class VisionModeWithHighlighting:
         if self.is_running:
             return
         LOGGER.debug("Starting Vision Mode")
-        Publisher().subscribe(self.on_tts)
+        Publisher().subscribe_item(self.on_tts)
         self.is_running = True
 
     def stop(self):
@@ -466,7 +466,7 @@ class VisionModeWithHighlighting:
                 self.clear_when_item_not_selected_thread, self.clear_when_item_not_selected_thread_cancel_event
             )
             self.clear_when_item_not_selected_thread = None
-        Publisher().unsubscribe(self.on_tts)
+        Publisher().unsubscribe_item(self.on_tts)
         self.is_running = False
 
     def running(self):

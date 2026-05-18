@@ -23,9 +23,10 @@ from src.info_overlay import (
     InventoryExpTracker,
     SessionStats,
     _hover_experience_balance,
-    request_close,
+    request_close as request_info_close,
     run_boss_timer_overlay,
 )
+import src.info_overlay
 from src.cam import Cam
 from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
@@ -107,9 +108,8 @@ class ScriptHandler:
         self.vision_mode = self._create_vision_mode(self._config.general.vision_mode_type)
 
         # Initialize Info Overlay hooks and subscriptions
-        import src.info_overlay
         src.info_overlay._BUSY_CHECKER = lambda: self.loot_interaction_thread is not None
-        src.tts.Publisher().subscribe(SessionStats().on_tts_data)
+        src.tts.Publisher().subscribe_info(SessionStats().on_info_stat)
 
         self.setup_key_binds()
         self._config.register_change_listener(self._on_config_changed)
@@ -253,14 +253,12 @@ class ScriptHandler:
                 self._last_info_overlay_toggle = now
 
                 if self.info_overlay_thread is not None and self.info_overlay_thread.is_alive():
-                    from src.info_overlay import request_close
                     LOGGER.info("Closing Info Panel overlay")
-                    request_close()
+                    request_info_close()
                     self.info_overlay_thread.join(timeout=2.0)
                     if not self.info_overlay_thread.is_alive():
                         self.info_overlay_thread = None
                 else:
-                    from src.info_overlay import run_boss_timer_overlay
                     LOGGER.info("Opening Info Panel overlay")
                     self.info_overlay_thread = threading.Thread(target=run_boss_timer_overlay, daemon=True)
                     self.info_overlay_thread.start()

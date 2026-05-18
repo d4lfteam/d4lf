@@ -122,6 +122,10 @@ class VisionModeFast:
             if item_descr is None:
                 return None
 
+            if item_descr.name in ["gold_balance", "experience_gain"]:
+                self.request_clear()
+                return None
+
             ignored_item = is_ignored_item(item_descr)
             if ignored_item:
                 self.request_clear()
@@ -151,13 +155,13 @@ class VisionModeFast:
 
     def start(self):
         LOGGER.info("Starting Vision Mode")
-        Publisher().subscribe(self.on_tts)
+        Publisher().subscribe_item(self.on_tts)
         self.is_running = True
 
     def stop(self):
         LOGGER.info("Stopping Vision Mode")
         self.request_clear()
-        Publisher().unsubscribe(self.on_tts)
+        Publisher().unsubscribe_item(self.on_tts)
         self.is_running = False
 
     def running(self):
