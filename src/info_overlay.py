@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 _OVERLAY_INSTANCE: BossTimerOverlay | None = None
-_OVERLAY_LOCK = threading.Lock()
+_OVERLAY_LOCK = threading.RLock()
 _OVERLAY_THREAD: threading.Thread | None = None
 _LAST_TOGGLE_TIME = 0
 
@@ -559,7 +559,7 @@ class BossTimerOverlay(tk.Toplevel):
 
         menu.add_separator()
         add_check(menu, "Lock Position", "locked", self._toggle_lock)
-        menu.add_command(label="Close Overlay", command=self.destroy)
+        menu.add_command(label="Close Overlay", command=request_close)
         
         menu.post(event.x_root, event.y_root)
 
@@ -627,8 +627,6 @@ class BossTimerOverlay(tk.Toplevel):
         self.frame.bind("<Button-1>", self._start_drag)
         self.frame.bind("<B1-Motion>", self._do_drag)
         self.frame.bind("<ButtonRelease-1>", self._stop_drag)
-        self.bind("<F6>", self._toggle_lock)
-        self.frame.bind("<F6>", self._toggle_lock)
         self.frame.bind("<Button-3>", self._show_context_menu)
         self.bind("<Button-3>", self._show_context_menu)
 
@@ -892,6 +890,7 @@ def _hover_experience_balance(info_config: dict[str, Any] | None = None):
 def toggle_info_overlay():
     """Toggle the Info Panel overlay (thread-safe with debouncing)."""
     global _LAST_TOGGLE_TIME, _OVERLAY_THREAD
+    to_stop = False
     with _OVERLAY_LOCK:
         now = time.time()
         # Debounce to prevent rapid key-repeat triggers
@@ -900,14 +899,17 @@ def toggle_info_overlay():
         _LAST_TOGGLE_TIME = now
 
         if _OVERLAY_INSTANCE and _OVERLAY_INSTANCE.winfo_exists():
-            LOGGER.info("Closing Info Panel overlay")
+            to_stop = True
             request_close()
-            if _OVERLAY_THREAD and _OVERLAY_THREAD.is_alive():
-                _OVERLAY_THREAD.join(timeout=2.0)
-            _OVERLAY_THREAD = None
         else:
             LOGGER.info("Opening Info Panel overlay")
             _OVERLAY_THREAD = threading.Thread(target=run_boss_timer_overlay, daemon=True)
             _OVERLAY_THREAD.start()
             # Ensure the thread starts and registers the instance before releasing lock
             time.sleep(0.1)
+
+    if to_stop:
+        LOGGER.info("Closing Info Panel overlay")
+        if _OVERLAY_THREAD and _OVERLAY_THREAD.is_alive():
+            _OVERLAY_THREAD.join(timeout=2.0)
+        _OVERLAY_THREAD = None

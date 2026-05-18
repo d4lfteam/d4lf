@@ -21,14 +21,10 @@ import src.scripts.vision_mode_with_highlighting
 import src.tts
 from src.info_overlay import (
     InventoryExpTracker,
-    SessionStats,
     _hover_experience_balance,
-    request_close as request_info_close,
-    run_boss_timer_overlay,
     set_busy_checker as set_info_busy_checker,
     toggle_info_overlay,
 )
-import src.info_overlay
 from src.cam import Cam
 from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
