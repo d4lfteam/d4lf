@@ -6,10 +6,16 @@ import yaml
 from pydantic import ValidationError
 from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtWidgets import (
-    QFileDialog,
+    QAbstractItemView,
+    QDialog,
+    QDialogButtonBox,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMessageBox,
     QPushButton,
     QScrollArea,
@@ -29,6 +35,67 @@ LOGGER = logging.getLogger(__name__)
 PROFILE_TABNAME = "edit profile (beta)"
 
 
+class ProfilePickerDialog(QDialog):
+    def __init__(self, parent, active_profiles, inactive_profiles, current_profile):
+        super().__init__(parent)
+        self.setWindowTitle("Select profile")
+        self.setGeometry(0, 0, 700, 500)
+
+        overall_layout = QVBoxLayout()
+        list_widget_layout = QGridLayout()
+
+        self.disabled_profiles_list_widget = QListWidget()
+        self.disabled_profiles_list_widget.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.disabled_profiles_list_widget.itemDoubleClicked.connect(self.accept)
+        self.disabled_profiles_list_widget.itemSelectionChanged.connect(self.clear_enabled_selection)
+
+        self.enabled_profiles_list_widget = QListWidget()
+        self.enabled_profiles_list_widget.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.enabled_profiles_list_widget.itemDoubleClicked.connect(self.accept)
+        self.enabled_profiles_list_widget.itemSelectionChanged.connect(self.clear_disabled_selection)
+
+        for profile_name in inactive_profiles:
+            item = QListWidgetItem(profile_name, self.disabled_profiles_list_widget)
+            if profile_name == current_profile:
+                self.disabled_profiles_list_widget.setCurrentItem(item)
+
+        for profile_name in active_profiles:
+            item = QListWidgetItem(profile_name, self.enabled_profiles_list_widget)
+            if profile_name == current_profile:
+                self.enabled_profiles_list_widget.setCurrentItem(item)
+
+        list_widget_layout.addWidget(QLabel("Disabled Profiles"), 0, 0)
+        list_widget_layout.addWidget(self.disabled_profiles_list_widget, 1, 0)
+        list_widget_layout.addWidget(QLabel("Enabled Profiles"), 0, 1)
+        list_widget_layout.addWidget(self.enabled_profiles_list_widget, 1, 1)
+        overall_layout.addLayout(list_widget_layout)
+
+        ok_cancel_buttons = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        self.buttonBox = QDialogButtonBox(ok_cancel_buttons)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+        overall_layout.addWidget(self.buttonBox)
+        self.setLayout(overall_layout)
+
+    def clear_disabled_selection(self):
+        if self.enabled_profiles_list_widget.selectedItems():
+            self.disabled_profiles_list_widget.clearSelection()
+
+    def clear_enabled_selection(self):
+        if self.disabled_profiles_list_widget.selectedItems():
+            self.enabled_profiles_list_widget.clearSelection()
+
+    def get_selected_profile(self):
+        selected_enabled_profiles = self.enabled_profiles_list_widget.selectedItems()
+        if selected_enabled_profiles:
+            return selected_enabled_profiles[0].text()
+
+        selected_disabled_profiles = self.disabled_profiles_list_widget.selectedItems()
+        if selected_disabled_profiles:
+            return selected_disabled_profiles[0].text()
+        return ""
+
+
 class ProfileTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -36,6 +103,9 @@ class ProfileTab(QWidget):
 
         self.root = None
         self.file_path = None
+        self.profile_paths = {}
+        self.active_profiles = []
+        self.inactive_profiles = []
         self.model_editor = None
         self.first_show = True
         self.main_layout = QVBoxLayout(self)
@@ -58,13 +128,17 @@ class ProfileTab(QWidget):
 
         tools_groupbox = QGroupBox("Tools")
         tools_groupbox_layout = QHBoxLayout()
-        self.file_button = QPushButton("Open")
+        self.current_profile_line_edit = QLineEdit()
+        self.current_profile_line_edit.setReadOnly(True)
+        self.profile_picker_button = QPushButton("...")
+        self.profile_picker_button.setMinimumWidth(20)
         self.save_button = QPushButton("Save")
         self.refresh_button = QPushButton("Undo Changes")
-        self.file_button.clicked.connect(self.load_file)
+        self.profile_picker_button.clicked.connect(self.launch_profile_picker)
         self.save_button.clicked.connect(self.save_yaml)
         self.refresh_button.clicked.connect(self.refresh)
-        tools_groupbox_layout.addWidget(self.file_button)
+        tools_groupbox_layout.addWidget(self.current_profile_line_edit)
+        tools_groupbox_layout.addWidget(self.profile_picker_button)
         tools_groupbox_layout.addWidget(self.save_button)
         tools_groupbox_layout.addWidget(self.refresh_button)
         tools_groupbox.setLayout(tools_groupbox_layout)
@@ -83,12 +157,13 @@ class ProfileTab(QWidget):
 
         instructions_text = QTextBrowser()
         instructions_text.append(
-            "You load a profile by clicking the 'Open' button. Click 'Save' to save your changes. Click 'Undo Changes' to revert your changes."
+            "Select a profile with the '...' button. Click 'Save' to save your changes. Click 'Undo Changes' to revert your changes."
         )
 
         instructions_text.setFixedHeight(50)
         self.main_layout.addWidget(instructions_text)
         self.setLayout(self.main_layout)
+        self.populate_profile_dropdown()
 
     def confirm_discard_changes(self):
         reply = QMessageBox.warning(
@@ -111,46 +186,73 @@ class ProfileTab(QWidget):
             self.first_show = False
             return
 
-    def load_file(self):
-        if self.open_file():
+    def launch_profile_picker(self):
+        profile_picker = ProfilePickerDialog(
+            self, self.active_profiles, self.inactive_profiles, self.current_profile_line_edit.text()
+        )
+        if profile_picker.exec():
+            selected_profile = profile_picker.get_selected_profile()
+            if selected_profile:
+                self.load_selected_profile(selected_profile)
+
+    def load_selected_profile(self, profile_name):
+        self.file_path = self.profile_paths[profile_name]
+        if self.load_yaml():
             if self.model_editor:
                 self.scrollable_layout.removeWidget(self.model_editor)
             self.model_editor = ProfileEditor(self.root)
             self.scrollable_layout.addWidget(self.model_editor)
+            self.current_profile_line_edit.setText(profile_name)
             LOGGER.info(f"Profile {self.root.name} loaded into profile editor.")
 
-    def open_file(self):
+    def populate_profile_dropdown(self):
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Open YAML File", str(custom_profile_path), "YAML Files (*.yaml *.yml)"
+        custom_profile_path.mkdir(parents=True, exist_ok=True)
+        self.profile_paths = {
+            profile_file.stem: profile_file
+            for profile_file in custom_profile_path.iterdir()
+            if profile_file.is_file() and profile_file.suffix.lower() in {".yaml", ".yml"}
+        }
+
+        self.active_profiles = []
+        for profile_name in IniConfigLoader().general.profiles:
+            if profile_name in self.profile_paths and profile_name not in self.active_profiles:
+                self.active_profiles.append(profile_name)
+        self.inactive_profiles = sorted(
+            (profile_name for profile_name in self.profile_paths if profile_name not in self.active_profiles),
+            key=str.lower,
         )
-        if file_path:
-            self.file_path = file_path
-            return self.load_yaml()
-        return False
+
+        if not self.active_profiles and not self.inactive_profiles:
+            self.current_profile_line_edit.setText("No profiles found")
+            self.profile_picker_button.setEnabled(False)
+            self.save_button.setEnabled(False)
+            self.refresh_button.setEnabled(False)
+            return
+
+        self.profile_picker_button.setEnabled(True)
+        self.save_button.setEnabled(True)
+        self.refresh_button.setEnabled(True)
+        self.select_initial_profile()
 
     def load(self):
-        profiles: list[str] = IniConfigLoader().general.profiles
-        custom_profile_path = IniConfigLoader().user_dir / "profiles"
-
-        # Try to load last opened profile first
-        last_opened = self.settings.value("last_opened_profile", None, type=str)
-        if last_opened and not self.file_path:
-            custom_file_path = custom_profile_path / f"{last_opened}.yaml"
-            if custom_file_path.is_file():
-                self.file_path = custom_file_path
-                return self.load_yaml()
-
-        if not self.file_path and profiles:  # at start, set default file to build in params.ini
-            custom_file_path = custom_profile_path / f"{profiles[0]}.yaml"
-            if not custom_file_path.is_file():
-                LOGGER.error(f"Could not load profile {profiles[0]}. Checked: {custom_file_path}")
-                return False
-            self.file_path = custom_file_path
+        profile_name = self.current_profile_line_edit.text()
+        if not self.file_path and profile_name in self.profile_paths:
+            self.file_path = self.profile_paths[profile_name]
             return self.load_yaml()
-        if not self.file_path and not profiles:
-            return self.open_file()
         return False
+
+    def select_initial_profile(self):
+        last_opened = self.settings.value("last_opened_profile", None, type=str)
+        if last_opened in self.profile_paths:
+            self.load_selected_profile(last_opened)
+            return
+
+        if self.active_profiles:
+            self.load_selected_profile(self.active_profiles[0])
+            return
+
+        self.load_selected_profile(self.inactive_profiles[0])
 
     def create_profile_editor(self):
         if not self.profile_editor_created and self.root:
