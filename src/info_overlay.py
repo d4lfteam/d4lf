@@ -22,8 +22,15 @@ LOGGER = logging.getLogger(__name__)
 
 _OVERLAY_INSTANCE: BossTimerOverlay | None = None
 _OVERLAY_LOCK = threading.Lock()
+_OVERLAY_THREAD: threading.Thread | None = None
+_LAST_TOGGLE_TIME = 0
 
 _BUSY_CHECKER: Callable[[], bool] = lambda: False
+
+def set_busy_checker(checker: Callable[[], bool]):
+    """Hook for the script handler to provide a busy state check."""
+    global _BUSY_CHECKER
+    _BUSY_CHECKER = checker
 
 # =============================================================================
 # SETTINGS PERSISTENCE (PARAGON STYLE)
@@ -246,6 +253,11 @@ class BossTimerOverlay(tk.Toplevel):
         self._session_stats = SessionStats()
         self._session_stats.subscribe()
         self._auto_sync()
+
+    def destroy(self):
+        """Perform cleanup and unsubscribe from stats on destruction."""
+        self._session_stats.unsubscribe()
+        super().destroy()
 
     def _apply_loaded_settings(self):
         self.x, self.y = self.settings["x"], self.settings["y"]
@@ -876,3 +888,26 @@ def _hover_experience_balance(info_config: dict[str, Any] | None = None):
         exp_pos = (int(win_roi["width"] * 0.5), int(win_roi["height"] * 0.965))
         mouse.move(*Cam().window_to_monitor(exp_pos))
     time.sleep(0.5)
+
+def toggle_info_overlay():
+    """Toggle the Info Panel overlay (thread-safe with debouncing)."""
+    global _LAST_TOGGLE_TIME, _OVERLAY_THREAD
+    with _OVERLAY_LOCK:
+        now = time.time()
+        # Debounce to prevent rapid key-repeat triggers
+        if now - _LAST_TOGGLE_TIME < 1.5:
+            return
+        _LAST_TOGGLE_TIME = now
+
+        if _OVERLAY_INSTANCE and _OVERLAY_INSTANCE.winfo_exists():
+            LOGGER.info("Closing Info Panel overlay")
+            request_close()
+            if _OVERLAY_THREAD and _OVERLAY_THREAD.is_alive():
+                _OVERLAY_THREAD.join(timeout=2.0)
+            _OVERLAY_THREAD = None
+        else:
+            LOGGER.info("Opening Info Panel overlay")
+            _OVERLAY_THREAD = threading.Thread(target=run_boss_timer_overlay, daemon=True)
+            _OVERLAY_THREAD.start()
+            # Ensure the thread starts and registers the instance before releasing lock
+            time.sleep(0.1)

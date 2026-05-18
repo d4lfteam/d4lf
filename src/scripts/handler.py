@@ -25,6 +25,8 @@ from src.info_overlay import (
     _hover_experience_balance,
     request_close as request_info_close,
     run_boss_timer_overlay,
+    set_busy_checker as set_info_busy_checker,
+    toggle_info_overlay,
 )
 import src.info_overlay
 from src.cam import Cam
@@ -90,26 +92,22 @@ MANUAL_RESTART_SETTING_KEYS = _collect_reload_group_keys("general", GeneralModel
 VISION_MODE_TYPE_SETTING_KEY = _setting_key("general", "vision_mode_type")
 
 
-@singleton
 class ScriptHandler:
     def __init__(self):
         self.loot_interaction_thread = None
         self.paragon_overlay_thread: threading.Thread | None = None
-        self.info_overlay_thread: threading.Thread | None = None
         self.did_stop_scripts = False
         self._vision_mode_was_running_before_overlay = False
         self._hotkey_handles: list[Any] = []
         self._runtime_config_lock = threading.RLock()
         self._manual_restart_warning = False
         self._config = IniConfigLoader()
-        self._last_info_overlay_toggle = 0
         self._language = self._config.general.language
         self._log_level = self._config.advanced_options.log_lvl.value.upper()
         self.vision_mode = self._create_vision_mode(self._config.general.vision_mode_type)
 
         # Initialize Info Overlay hooks and subscriptions
-        src.info_overlay._BUSY_CHECKER = lambda: self.loot_interaction_thread is not None
-        src.tts.Publisher().subscribe_info(SessionStats().on_info_stat)
+        set_info_busy_checker(lambda: self.loot_interaction_thread is not None)
 
         self.setup_key_binds()
         self._config.register_change_listener(self._on_config_changed)
@@ -214,6 +212,11 @@ class ScriptHandler:
                     overlay_dir,
                 )
 
+            # Disable vision mode while the overlay is active; restore it when the overlay closes.
+            self._vision_mode_was_running_before_overlay = self.vision_mode.running()
+            if self._vision_mode_was_running_before_overlay:
+                self.vision_mode.stop()
+
             LOGGER.info("Opening Paragon overlay (source: %s)", overlay_dir)
             self.paragon_overlay_thread = threading.Thread(
                 target=self._run_paragon_overlay, args=(str(overlay_dir),), daemon=True
@@ -229,34 +232,14 @@ class ScriptHandler:
         except Exception:
             LOGGER.exception("Paragon overlay crashed")
         finally:
-            self.paragon_overlay_thread = None
-
-    def toggle_info_overlay(self):
-        """Toggle the Info Panel overlay."""
-        if LOCK.acquire(blocking=False):
             try:
-                now = time.time()
-                # Debounce to prevent rapid key-repeat triggers
-                if now - self._last_info_overlay_toggle < 1.5:
-                    return
-                self._last_info_overlay_toggle = now
-
-                if self.info_overlay_thread is not None and self.info_overlay_thread.is_alive():
-                    LOGGER.info("Closing Info Panel overlay")
-                    request_info_close()
-                    self.info_overlay_thread.join(timeout=2.0)
-                    if not self.info_overlay_thread.is_alive():
-                        self.info_overlay_thread = None
-                else:
-                    LOGGER.info("Opening Info Panel overlay")
-                    self.info_overlay_thread = threading.Thread(target=run_boss_timer_overlay, daemon=True)
-                    self.info_overlay_thread.start()
-                    # Ensure the thread is registered as alive before the lock is released
-                    time.sleep(0.1)
+                if self._vision_mode_was_running_before_overlay and not self.vision_mode.running():
+                    self.vision_mode.start()
             except Exception:
-                LOGGER.exception("Failed to toggle Info Panel overlay")
+                LOGGER.exception("Failed to restore vision mode after Paragon overlay")
             finally:
-                LOCK.release()
+                self.paragon_overlay_thread = None
+            self.paragon_overlay_thread = None
 
     def _clear_key_binds(self) -> None:
         if sys.platform == "darwin":
@@ -280,7 +263,7 @@ class ScriptHandler:
         self._register_hotkey(advanced_options.run_vision_mode, lambda: self.run_vision_mode())
         self._register_hotkey(advanced_options.exit_key, lambda: self._graceful_exit())
         self._register_hotkey(advanced_options.toggle_paragon_overlay, lambda: self.toggle_paragon_overlay())
-        self._register_hotkey(advanced_options.info_overlay, lambda: self.toggle_info_overlay())
+        self._register_hotkey(advanced_options.info_overlay, toggle_info_overlay)
         self._register_hotkey(config.char.inventory, lambda: InventoryExpTracker().on_inventory_open())
         if not advanced_options.vision_mode_only:
             self._register_hotkey(advanced_options.run_filter, lambda: self.filter_items())
@@ -360,26 +343,6 @@ class ScriptHandler:
                 LOCK.release()
         else:
             return
-
-def _hover_experience_balance(info_config: dict[str, Any] | None = None):
-    # Experience bar is approximately centered at the very bottom of the window
-    if info_config is None:
-        from src.info_overlay import load_info_settings
-        info_config = load_info_settings()
-
-    if info_config["exp_bar_pos"]:
-        if len(info_config["exp_bar_pos"]) == 4:
-            x1, y1, x2, y2 = info_config["exp_bar_pos"]
-            mouse.move(*Cam().window_to_monitor((x1, y1)))
-            time.sleep(0.1)
-            mouse.move(*Cam().window_to_monitor((x2, y2)))
-        else:
-            mouse.move(*Cam().window_to_monitor(info_config["exp_bar_pos"]))
-    else:
-        win_roi = Cam().window_roi
-        exp_pos = (int(win_roi["width"] * 0.5), int(win_roi["height"] * 0.965))
-        mouse.move(*Cam().window_to_monitor(exp_pos))
-    time.sleep(0.5)
 
 
 def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh, no_match_action: str = "junk"):
