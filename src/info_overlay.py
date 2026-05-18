@@ -8,14 +8,18 @@ import re
 import threading
 import time
 from contextlib import suppress
-from typing import Any
+from typing import Any, Callable
 from src.config.loader import IniConfigLoader
+from src.config.helper import singleton
+from src.utils.custom_mouse import mouse
 from src.cam import Cam
 
 LOGGER = logging.getLogger(__name__)
 
 _OVERLAY_INSTANCE: BossTimerOverlay | None = None
 _OVERLAY_LOCK = threading.Lock()
+
+_BUSY_CHECKER: Callable[[], bool] = lambda: False
 
 # =============================================================================
 # SETTINGS PERSISTENCE (PARAGON STYLE)
@@ -99,6 +103,115 @@ def save_info_settings(values: dict[str, Any]) -> None:
 def get_info_setting(key: str, default: Any = None) -> Any:
     """Quick access to a specific info overlay setting."""
     return load_info_settings().get(key, default)
+
+@singleton
+class SessionStats:
+    def __init__(self):
+        self.start_time = None
+        self.total_gold = 0
+        self.total_exp = 0
+        self.pending_gold = None
+        self.gold_verify_count = 0
+        self.last_gold = None
+        self.last_exp = None
+        self.max_exp = None
+
+    def reset_gold(self):
+        self.total_gold = 0
+        self.pending_gold = None
+        self.gold_verify_count = 0
+        if hasattr(self, "last_gold"): self.last_gold = None
+        LOGGER.info("Gold session stats reset")
+
+    def reset_exp(self):
+        self.total_exp = 0
+        self.last_exp = None
+        LOGGER.info("Experience session stats reset")
+
+    def on_tts_data(self, tts_item: list[str]):
+        """Callback for TTS data to track gold and experience gains."""
+        from src.item.descr.read_descr_tts import _create_base_item_from_tts
+        if not tts_item or len(tts_item) < 1: return
+        raw_line, item_name, val, mx_val = tts_item[0], "", 0, None
+
+        if "gold" in raw_line.lower() and not any(x in raw_line.lower() for x in ["sell value", "repair", "cost", "price", "buy", "fee", "spent", "purchase"]):
+            if (match := re.search(r"([0-9,.]+)\s+Gold", raw_line, re.IGNORECASE)):
+                item_name, raw_val = "gold_balance", re.sub(r"\D", "", match.group(1))
+                if raw_val: val = int(raw_val)
+        elif "experience" in raw_line.lower() and (match := re.search(r"Experience:\s+([0-9,.]+)\s+/\s+([0-9,.]+)", raw_line, re.IGNORECASE)):
+            item_name, raw_val, raw_mx = "experience_gain", re.sub(r"\D", "", match.group(1)), re.sub(r"\D", "", match.group(2))
+            if raw_val and raw_mx: val, mx_val = int(raw_val), int(raw_mx)
+
+        if not item_name:
+            if len(tts_item) < 2: return
+            item = _create_base_item_from_tts(tts_item)
+            if not item: return
+            item_name, val, mx_val = item.name, item.power, getattr(item, "max_exp", None)
+
+        if item_name: LOGGER.debug(f"TTS Stat detected: {item_name}={val}")
+
+        if item_name == "gold_balance":
+            if self.last_gold is None:
+                self.last_gold, self.start_time = val, self.start_time or time.time()
+                update_info_stats(gph=0, total_gained=0)
+                return
+            if val == self.last_gold:
+                self.pending_gold, self.gold_verify_count = None, 0
+                return
+            if self.pending_gold is not None and val >= self.pending_gold:
+                self.gold_verify_count += 1
+                self.pending_gold = val
+            else:
+                self.pending_gold, self.gold_verify_count = val, 1
+
+            if self.gold_verify_count >= 3:
+                if self.last_gold > 0 and val > self.last_gold * 10 and val > 10_000_000: self.last_gold = val
+                elif val < self.last_gold * 0.01 and self.last_gold > 10_000_000: self.last_gold = val
+                else:
+                    delta = val - self.last_gold
+                    if delta > 0: self.total_gold += delta
+                    elapsed = (time.time() - self.start_time) / 3600.0
+                    gph = int(self.total_gold / elapsed) if elapsed > (1/60.0) else 0
+                    update_info_stats(gph=gph, total_gained=self.total_gold)
+                    self.last_gold = val
+                self.pending_gold, self.gold_verify_count = None, 0
+        elif item_name == "experience_gain":
+            if self.last_exp is None:
+                self.last_exp, self.max_exp, self.start_time = val, mx_val, self.start_time or time.time()
+                update_info_stats(eph=0, total_exp=0, t2l="-")
+                return
+            delta = val - self.last_exp
+            if delta > 0: self.total_exp += delta
+            self.last_exp, self.max_exp = val, mx_val or self.max_exp
+            elapsed = (time.time() - self.start_time) / 3600.0
+            eph = int(self.total_exp / elapsed) if elapsed > (1/60.0) else 0
+            t2l = "-"
+            if eph > 0 and self.max_exp:
+                hours = (self.max_exp - val) / eph
+                t2l = f"{int(hours * 60)}m" if hours < 1 else f"{int(hours)}h {int((hours % 1) * 60)}m"
+            update_info_stats(eph=eph, total_exp=self.total_exp, t2l=t2l)
+
+@singleton
+class InventoryExpTracker:
+    def __init__(self):
+        self.last_hover_time = 0
+        self.hover_active = False
+
+    def on_inventory_open(self):
+        if self.hover_active or _BUSY_CHECKER(): return
+        info_config = load_info_settings()
+        if not info_config.get("check_exp_on_inventory_open", True): return
+        if IniConfigLoader().advanced_options.vision_mode_only: return
+        
+        now = time.time()
+        is_init = SessionStats().last_exp is not None
+        if (now - self.last_hover_time) < (info_config.get("exp_age_before_refresh", 5) * 60 if is_init else 2.0): return
+
+        def _task():
+            try: self.hover_active = True; time.sleep(0.5); _hover_experience_balance(info_config); mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+            finally: self.hover_active = False
+        self.last_hover_time = now
+        threading.Thread(target=_task, daemon=True).start()
 
 TRANSPARENT_KEY = "#ff00ff"
 CARD_BG = "#151515"
@@ -351,9 +464,6 @@ class BossTimerOverlay(tk.Toplevel):
             activeforeground=CARD_BG,
             selectcolor=ACTIVE_GREEN,
         )
-
-        # Visibility Toggles
-        # We store references to BooleanVars in self._menu_vars to prevent garbage collection errors
         self._menu_vars = []
 
         def add_config_check(m, label, field):
@@ -677,16 +787,13 @@ class BossTimerOverlay(tk.Toplevel):
 
         # --- Next Scan Cooldown ---
         with suppress(Exception):
-            from src.scripts.handler import InventoryExpTracker, ScriptHandler
-            handler = ScriptHandler()
-            tracker = InventoryExpTracker()
             info_conf = load_info_settings()
             if not info_conf["check_exp_on_inventory_open"]:
                 self.next_scan_value_label.config(text="Off")
-            elif not hasattr(handler, "_last_exp_balance"):
+            elif SessionStats().last_exp is None:
                 self.next_scan_value_label.config(text="Ready")
             else:
-                remaining = (info_conf["exp_age_before_refresh"] * 60) - (time.time() - tracker._last_exp_hover_time)
+                remaining = (info_conf["exp_age_before_refresh"] * 60) - (time.time() - InventoryExpTracker().last_hover_time)
                 if remaining <= 0:
                     self.next_scan_value_label.config(text="Ready")
                 else:
@@ -753,3 +860,19 @@ def update_info_stats(gph: int | None = None, total_gained: int | None = None, e
     with _OVERLAY_LOCK:
         if _OVERLAY_INSTANCE and _OVERLAY_INSTANCE.winfo_exists():
             _OVERLAY_INSTANCE.after(0, lambda: _OVERLAY_INSTANCE.update_stats(gph, total_gained, eph, total_exp, t2l))
+
+def _hover_experience_balance(info_config: dict[str, Any] | None = None):
+    if info_config is None: info_config = load_info_settings()
+    if info_config["exp_bar_pos"]:
+        if len(info_config["exp_bar_pos"]) == 4:
+            x1, y1, x2, y2 = info_config["exp_bar_pos"]
+            mouse.move(*Cam().window_to_monitor((x1, y1)))
+            time.sleep(0.1)
+            mouse.move(*Cam().window_to_monitor((x2, y2)))
+        else:
+            mouse.move(*Cam().window_to_monitor(info_config["exp_bar_pos"]))
+    else:
+        win_roi = Cam().window_roi
+        exp_pos = (int(win_roi["width"] * 0.5), int(win_roi["height"] * 0.965))
+        mouse.move(*Cam().window_to_monitor(exp_pos))
+    time.sleep(0.5)
