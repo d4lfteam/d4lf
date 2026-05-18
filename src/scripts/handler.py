@@ -235,7 +235,6 @@ class ScriptHandler:
                 LOGGER.exception("Failed to restore vision mode after Paragon overlay")
             finally:
                 self.paragon_overlay_thread = None
-            self.paragon_overlay_thread = None
 
     def _clear_key_binds(self) -> None:
         if sys.platform == "darwin":
