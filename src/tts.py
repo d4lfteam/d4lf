@@ -43,7 +43,8 @@ class Publisher:
 
             # Debug logging for potential stat readouts
             if any(word in data.lower() for word in ["gold", "experience", "currency"]):
-                if IniConfigLoader().general.debug_tts:
+                from src.info_overlay import get_info_setting
+                if get_info_setting("debug_tts", False):
                     LOGGER.info(f"TTS Raw Stat String: '{data}'")
 
             if filter_data(data):

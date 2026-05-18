@@ -8,6 +8,7 @@ import re
 import threading
 import time
 from contextlib import suppress
+from typing import Any
 from src.config.loader import IniConfigLoader
 from src.cam import Cam
 
@@ -15,6 +16,89 @@ LOGGER = logging.getLogger(__name__)
 
 _OVERLAY_INSTANCE: BossTimerOverlay | None = None
 _OVERLAY_LOCK = threading.Lock()
+
+# =============================================================================
+# SETTINGS PERSISTENCE (PARAGON STYLE)
+# =============================================================================
+
+def _params_ini_path() -> Path:
+    p = Path.home() / ".d4lf"
+    p.mkdir(parents=True, exist_ok=True)
+    return p / "params.ini"
+
+def load_info_settings() -> dict[str, Any]:
+    """Load info overlay and experience tracking settings from params.ini."""
+    ini = _params_ini_path()
+    p = configparser.ConfigParser()
+    if ini.exists():
+        p.read(ini, encoding="utf-8")
+    sec = p["info_overlay"] if p.has_section("info_overlay") else {}
+
+    def parse_bool(k: str, default: bool) -> bool:
+        v = sec.get(k, str(default)).lower()
+        return v in ("true", "1", "yes", "on")
+
+    def parse_int(k: str, default: int) -> int:
+        try:
+            return int(sec.get(k, str(default)))
+        except ValueError:
+            return default
+
+    def parse_tuple(k: str) -> tuple[int, ...] | None:
+        v = sec.get(k)
+        if not v or v.lower() == "none":
+            return None
+        try:
+            return tuple(int(x.strip()) for x in v.strip("()").replace(",", " ").split())
+        except Exception:
+            return None
+
+    # Boss Timer UI Settings
+    settings = {
+        "x": parse_int("x", 100),
+        "y": parse_int("y", 100),
+        "font_size": parse_int("font_size", 14),
+        "wb_reference": sec.get("wb_reference", "2024-01-01 00:00:00"),
+        "next_boss_name": sec.get("next_boss_name", "Unknown"),
+        "orientation": sec.get("orientation", "horizontal"),
+        "show_wb": parse_bool("show_wb", True),
+        "show_legion": parse_bool("show_legion", True),
+        "show_ht": parse_bool("show_ht", True),
+        "show_gold": parse_bool("show_gold", True),
+        "show_gph": parse_bool("show_gph", True),
+        "show_total_gold": parse_bool("show_total_gold", True),
+        "show_exp": parse_bool("show_exp", True),
+        "show_eph": parse_bool("show_eph", True),
+        "show_total_exp": parse_bool("show_total_exp", True),
+        "show_t2l": parse_bool("show_t2l", True),
+        "show_next_scan": parse_bool("show_next_scan", True),
+        "locked": parse_bool("locked", False),
+        # Experience/Tracking Settings (Moved from GeneralModel)
+        "check_exp_on_inventory_open": parse_bool("check_exp_on_inventory_open", True),
+        "debug_tts": parse_bool("debug_tts", False),
+        "exp_age_before_refresh": parse_int("exp_age_before_refresh", 5),
+        "exp_bar_pos": parse_tuple("exp_bar_pos"),
+    }
+    return settings
+
+def save_info_settings(values: dict[str, Any]) -> None:
+    """Persist settings to the [info_overlay] section of params.ini."""
+    ini = _params_ini_path()
+    p = configparser.ConfigParser()
+    if ini.exists():
+        p.read(ini, encoding="utf-8")
+    if not p.has_section("info_overlay"):
+        p.add_section("info_overlay")
+    
+    for k, v in values.items():
+        p["info_overlay"][k] = str(v)
+        
+    with ini.open("w", encoding="utf-8") as f:
+        p.write(f)
+
+def get_info_setting(key: str, default: Any = None) -> Any:
+    """Quick access to a specific info overlay setting."""
+    return load_info_settings().get(key, default)
 
 TRANSPARENT_KEY = "#ff00ff"
 CARD_BG = "#151515"
@@ -38,7 +122,8 @@ class BossTimerOverlay(tk.Toplevel):
         self._gold_initialized = False
         self._exp_initialized = False
 
-        self._load_settings()
+        self.settings = load_info_settings()
+        self._apply_loaded_settings()
         self._flash_toggle = False
         self._setup_ui()
         self._bind_events()
@@ -46,57 +131,23 @@ class BossTimerOverlay(tk.Toplevel):
         # Auto-sync on startup
         self._auto_sync()
 
-    def _load_settings(self):
-        self.ini_path = Path.home() / ".d4lf" / "boss_timer.ini"
-        self.config = configparser.ConfigParser()
-        if self.ini_path.exists():
-            self.config.read(self.ini_path)
+    def _apply_loaded_settings(self):
+        self.x, self.y = self.settings["x"], self.settings["y"]
+        self.font_size = self.settings["font_size"]
+        self.next_boss_name = self.settings["next_boss_name"]
+        self.orientation = self.settings["orientation"]
+        self.locked = self.settings["locked"]
+        
+        # Assign all show_ attributes
+        for k in self.settings:
+            if k.startswith("show_"):
+                setattr(self, k, self.settings[k])
 
-        if "settings" not in self.config:
-            self.config["settings"] = {
-                "x": "100",
-                "y": "100",
-                "font_size": "14",
-                "wb_reference": "2024-01-01 00:00:00",
-                "next_boss_name": "Unknown",
-                "orientation": "horizontal",
-                "show_wb": "True",
-                "show_legion": "True",
-                "show_ht": "True",
-                "show_gold": "True",
-                "show_gph": "True",
-                "show_total_gold": "True",
-                "show_exp": "True",
-                "show_eph": "True",
-                "show_total_exp": "True",
-                "show_t2l": "True",
-                "show_next_scan": "True",
-                "locked": "False"
-            }
-
-        self.x = self.config.getint("settings", "x", fallback=100)
-        self.y = self.config.getint("settings", "y", fallback=100)
-        self.font_size = self.config.getint("settings", "font_size", fallback=14)
-        wb_ref_str = self.config.get("settings", "wb_reference", fallback="2024-01-01 00:00:00")
+        wb_ref_str = self.settings["wb_reference"]
         try:
             self.wb_reference = datetime.datetime.strptime(wb_ref_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=datetime.timezone.utc)
         except ValueError:
             self.wb_reference = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
-        self.next_boss_name = self.config.get("settings", "next_boss_name", fallback="Unknown")
-
-        self.orientation = self.config.get("settings", "orientation", fallback="horizontal")
-        self.show_wb = self.config.getboolean("settings", "show_wb", fallback=True)
-        self.show_legion = self.config.getboolean("settings", "show_legion", fallback=True)
-        self.show_ht = self.config.getboolean("settings", "show_ht", fallback=True)
-        self.show_gold = self.config.getboolean("settings", "show_gold", fallback=True)
-        self.show_gph = self.config.getboolean("settings", "show_gph", fallback=True)
-        self.show_total_gold = self.config.getboolean("settings", "show_total_gold", fallback=True)
-        self.show_exp = self.config.getboolean("settings", "show_exp", fallback=True)
-        self.show_eph = self.config.getboolean("settings", "show_eph", fallback=True)
-        self.show_total_exp = self.config.getboolean("settings", "show_total_exp", fallback=True)
-        self.show_t2l = self.config.getboolean("settings", "show_t2l", fallback=True)
-        self.show_next_scan = self.config.getboolean("settings", "show_next_scan", fallback=True)
-        self.locked = self.config.getboolean("settings", "locked", fallback=False)
 
         # In-memory synced data
         self.synced_wb = None
@@ -104,28 +155,22 @@ class BossTimerOverlay(tk.Toplevel):
         self.synced_helltide = None
 
     def _save_settings(self):
-        self.config["settings"]["x"] = str(self.winfo_x())
-        self.config["settings"]["y"] = str(self.winfo_y())
-        self.config["settings"]["font_size"] = str(self.font_size)
-        self.config["settings"]["wb_reference"] = self.wb_reference.strftime("%Y-%m-%d %H:%M:%S")
-        self.config["settings"]["next_boss_name"] = self.next_boss_name
-        self.config["settings"]["orientation"] = self.orientation
-        self.config["settings"]["show_wb"] = str(self.show_wb)
-        self.config["settings"]["show_legion"] = str(self.show_legion)
-        self.config["settings"]["show_ht"] = str(self.show_ht)
-        self.config["settings"]["show_gold"] = str(self.show_gold)
-        self.config["settings"]["show_gph"] = str(self.show_gph)
-        self.config["settings"]["show_total_gold"] = str(self.show_total_gold)
-        self.config["settings"]["show_exp"] = str(self.show_exp)
-        self.config["settings"]["show_eph"] = str(self.show_eph)
-        self.config["settings"]["show_total_exp"] = str(self.show_total_exp)
-        self.config["settings"]["show_t2l"] = str(self.show_t2l)
-        self.config["settings"]["show_next_scan"] = str(self.show_next_scan)
-        self.config["settings"]["locked"] = str(self.locked)
-
-        self.ini_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.ini_path, "w") as f:
-            self.config.write(f)
+        updates = {
+            "x": self.winfo_x(),
+            "y": self.winfo_y(),
+            "font_size": self.font_size,
+            "wb_reference": self.wb_reference.strftime("%Y-%m-%d %H:%M:%S"),
+            "next_boss_name": self.next_boss_name,
+            "orientation": self.orientation,
+            "locked": self.locked,
+        }
+        # Sync show_ attributes
+        for k in self.settings:
+            if k.startswith("show_"):
+                updates[k] = getattr(self, k)
+        
+        save_info_settings(updates)
+        self.settings = load_info_settings()
 
     def _setup_ui(self):
         self.labels_to_resize = []
@@ -311,14 +356,13 @@ class BossTimerOverlay(tk.Toplevel):
         # We store references to BooleanVars in self._menu_vars to prevent garbage collection errors
         self._menu_vars = []
 
-        conf = IniConfigLoader()
-
         def add_config_check(m, label, field):
-            var = tk.BooleanVar(master=self, value=getattr(conf.general, field))
+            var = tk.BooleanVar(master=self, value=self.settings[field])
             self._menu_vars.append(var)
             def _toggle():
-                val = not getattr(conf.general, field)
-                conf.save_value("general", field, val)
+                val = not self.settings[field]
+                save_info_settings({field: val})
+                self.settings[field] = val
             m.add_checkbutton(label=label, variable=var, command=_toggle)
 
         def add_check(m, label, attr, cmd):
@@ -363,17 +407,17 @@ class BossTimerOverlay(tk.Toplevel):
             activeforeground=CARD_BG,
             selectcolor=ACTIVE_GREEN,
         )
-        age_var = tk.IntVar(master=self, value=conf.general.exp_age_before_refresh)
+        age_var = tk.IntVar(master=self, value=self.settings["exp_age_before_refresh"])
         self._menu_vars.append(age_var)
 
         for m in [0, 3, 5, 10, 30, 60]:
             age_menu.add_radiobutton(
-                label=f"{m}m", variable=age_var, value=m, command=lambda v=m: conf.save_value("general", "exp_age_before_refresh", v)
+                label=f"{m}m", variable=age_var, value=m, command=lambda v=m: save_info_settings({"exp_age_before_refresh": v})
             )
         exp_menu.add_cascade(label="EXP Age Before Refresh", menu=age_menu)
 
         exp_menu.add_command(label="Pick EXP Bar Position", command=self._pick_exp_bar_pos)
-        if conf.general.exp_bar_pos is not None:
+        if self.settings["exp_bar_pos"] is not None:
             exp_menu.add_command(label="Reset EXP Bar Position", command=self._reset_exp_bar_pos)
 
         exp_menu.add_separator()
@@ -441,7 +485,8 @@ class BossTimerOverlay(tk.Toplevel):
             win_start = Cam().monitor_to_window(state["start"])
             win_end = Cam().monitor_to_window((event.x_root, event.y_root))
             val = f"({int(win_start[0])}, {int(win_start[1])}, {int(win_end[0])}, {int(win_end[1])})"
-            IniConfigLoader().save_value("general", "exp_bar_pos", val)
+            save_info_settings({"exp_bar_pos": val})
+            self.settings["exp_bar_pos"] = val
             picker.destroy()
             LOGGER.info(f"Custom EXP bar selection set to {val}")
 
@@ -452,7 +497,8 @@ class BossTimerOverlay(tk.Toplevel):
 
     def _reset_exp_bar_pos(self):
         """Reset the custom experience bar position to default."""
-        IniConfigLoader().save_value("general", "exp_bar_pos", "None")
+        save_info_settings({"exp_bar_pos": "None"})
+        self.settings["exp_bar_pos"] = None
         LOGGER.info("Experience bar position reset to default calculation")
 
     def _bind_events(self):
@@ -631,15 +677,16 @@ class BossTimerOverlay(tk.Toplevel):
 
         # --- Next Scan Cooldown ---
         with suppress(Exception):
-            from src.scripts.handler import ScriptHandler
+            from src.scripts.handler import InventoryExpTracker, ScriptHandler
             handler = ScriptHandler()
-            conf = IniConfigLoader()
-            if not conf.general.check_exp_on_inventory_open:
+            tracker = InventoryExpTracker()
+            info_conf = load_info_settings()
+            if not info_conf["check_exp_on_inventory_open"]:
                 self.next_scan_value_label.config(text="Off")
             elif not hasattr(handler, "_last_exp_balance"):
                 self.next_scan_value_label.config(text="Ready")
             else:
-                remaining = (conf.general.exp_age_before_refresh * 60) - (time.time() - handler._last_exp_hover_time)
+                remaining = (info_conf["exp_age_before_refresh"] * 60) - (time.time() - tracker._last_exp_hover_time)
                 if remaining <= 0:
                     self.next_scan_value_label.config(text="Ready")
                 else:

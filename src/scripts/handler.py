@@ -83,6 +83,44 @@ VISION_MODE_TYPE_SETTING_KEY = _setting_key("general", "vision_mode_type")
 
 
 @singleton
+class InventoryExpTracker:
+    def __init__(self):
+        self._last_exp_hover_time = 0
+        self._exp_hover_active = False
+
+    def on_inventory_open(self):
+        """Callback for inventory key to optionally update experience stats."""
+        config = IniConfigLoader()
+        from src.info_overlay import load_info_settings
+        info_config = load_info_settings()
+        handler = ScriptHandler()
+        if (
+            info_config["check_exp_on_inventory_open"]
+            and not config.advanced_options.vision_mode_only
+            and handler.loot_interaction_thread is None
+            and not self._exp_hover_active
+        ):
+            now = time.time()
+            cooldown_s = info_config["exp_age_before_refresh"] * 60
+            # Bypass cooldown if experience tracking hasn't been initialized yet
+            is_initialized = hasattr(handler, "_last_exp_balance")
+            if is_initialized and (now - self._last_exp_hover_time) < cooldown_s:
+                return
+
+            def _task():
+                try:
+                    time.sleep(0.5)
+                    _hover_experience_balance()
+                    mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+                finally:
+                    self._exp_hover_active = False
+
+            self._exp_hover_active = True
+            self._last_exp_hover_time = time.time()
+            threading.Thread(target=_task, daemon=True).start()
+
+
+@singleton
 class ScriptHandler:
     def __init__(self):
         self.loot_interaction_thread = None
@@ -95,8 +133,6 @@ class ScriptHandler:
         self._manual_restart_warning = False
         self._config = IniConfigLoader()
         self._last_info_overlay_toggle = 0
-        self._last_exp_hover_time = 0
-        self._exp_hover_active = False
         self._language = self._config.general.language
         self._log_level = self._config.advanced_options.log_lvl.value.upper()
         self.vision_mode = self._create_vision_mode(self._config.general.vision_mode_type)
@@ -431,7 +467,7 @@ class ScriptHandler:
         self._register_hotkey(advanced_options.exit_key, lambda: self._graceful_exit())
         self._register_hotkey(advanced_options.toggle_paragon_overlay, lambda: self.toggle_paragon_overlay())
         self._register_hotkey(advanced_options.info_overlay, lambda: self.toggle_info_overlay())
-        self._register_hotkey(config.char.inventory, lambda: self._on_inventory_open())
+        self._register_hotkey(config.char.inventory, lambda: InventoryExpTracker().on_inventory_open())
         if not advanced_options.vision_mode_only:
             self._register_hotkey(advanced_options.run_filter, lambda: self.filter_items())
             self._register_hotkey(advanced_options.run_filter_drop, lambda: self.filter_items(no_match_action="drop"))
@@ -445,33 +481,6 @@ class ScriptHandler:
             self._register_hotkey(advanced_options.move_to_chest, lambda: self.move_items_to_stash())
 
         self._current_hotkey_signature = self._hotkey_signature(config)
-
-    def _on_inventory_open(self):
-        """Callback for inventory key to optionally update experience stats."""
-        if (
-            self._config.general.check_exp_on_inventory_open 
-            and not self._config.advanced_options.vision_mode_only
-            and self.loot_interaction_thread is None
-            and not self._exp_hover_active
-        ):
-            now = time.time()
-            cooldown_s = self._config.general.exp_age_before_refresh * 60
-            # Bypass cooldown if experience tracking hasn't been initialized yet
-            is_initialized = hasattr(self, "_last_exp_balance")
-            if is_initialized and (now - self._last_exp_hover_time) < cooldown_s:
-                return
-
-            def _task():
-                try:
-                    time.sleep(0.5)
-                    _hover_experience_balance()
-                    mouse.move(*Cam().abs_window_to_monitor((0, 0)))
-                finally:
-                    self._exp_hover_active = False
-
-            self._exp_hover_active = True
-            self._last_exp_hover_time = time.time()
-            threading.Thread(target=_task, daemon=True).start()
 
     def filter_items(self, force_refresh=ItemRefreshType.no_refresh, no_match_action: str = "junk"):
         if src.tts.CONNECTED:
@@ -540,15 +549,16 @@ class ScriptHandler:
 
 def _hover_experience_balance():
     # Experience bar is approximately centered at the very bottom of the window
-    config = IniConfigLoader().general
-    if config.exp_bar_pos:
-        if len(config.exp_bar_pos) == 4:
-            x1, y1, x2, y2 = config.exp_bar_pos
+    from src.info_overlay import load_info_settings
+    info_config = load_info_settings()
+    if info_config["exp_bar_pos"]:
+        if len(info_config["exp_bar_pos"]) == 4:
+            x1, y1, x2, y2 = info_config["exp_bar_pos"]
             mouse.move(*Cam().window_to_monitor((x1, y1)))
             time.sleep(0.1)
             mouse.move(*Cam().window_to_monitor((x2, y2)))
         else:
-            mouse.move(*Cam().window_to_monitor(config.exp_bar_pos))
+            mouse.move(*Cam().window_to_monitor(info_config["exp_bar_pos"]))
     else:
         win_roi = Cam().window_roi
         exp_pos = (int(win_roi["width"] * 0.5), int(win_roi["height"] * 0.965))

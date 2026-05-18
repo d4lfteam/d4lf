@@ -289,22 +289,6 @@ class GeneralModel(_IniBaseModel):
         description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
         json_schema_extra={LIVE_RELOAD_GROUP_KEY: "restart_app"},
     )
-    check_exp_on_inventory_open: bool = Field(
-        default=True,
-        description="Whether to automatically check experience balance when opening the inventory",
-    )
-    debug_tts: bool = Field(
-        default=False,
-        description="If enabled, raw TTS strings containing gold or experience will be logged to the console/file",
-    )
-    exp_age_before_refresh: int = Field(
-        default=5,
-        description="The age in minutes before the experience balance is refreshed",
-    )
-    exp_bar_pos: tuple[int, ...] | None = Field(
-        default=None,
-        description="The screen coordinates of the experience bar. If None, default positions are used.",
-    )
 
     @field_validator("check_chest_tabs", mode="before")
     @classmethod
@@ -323,23 +307,6 @@ class GeneralModel(_IniBaseModel):
             msg = "must be 6 or 7"
             raise ValueError(msg)
         return v
-
-    @field_validator("exp_bar_pos", mode="before")
-    @classmethod
-    def convert_exp_bar_pos(cls, v: Any) -> tuple[int, ...] | None:
-        if not v or (isinstance(v, str) and v.lower() == "none"):
-            return None
-        if isinstance(v, str):
-            v = v.strip("()")
-            parts = [int(part.strip()) for part in v.replace(",", " ").split()]
-            if len(parts) not in [2, 4]:
-                msg = "Expected two or four integers for coordinates."
-                raise ValueError(msg)
-            return tuple(parts)
-        if isinstance(v, (list, tuple)) and len(v) in [2, 4]:
-            return tuple(int(x) for x in v)
-        msg = "exp_bar_pos must be a tuple of integers or blank"
-        raise ValueError(msg)
 
     @field_validator("profiles", mode="before")
     @classmethod
