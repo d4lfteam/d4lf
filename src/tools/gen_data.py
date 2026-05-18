@@ -104,11 +104,13 @@ class D4DataSource:
     def _list_dir(self, dir_path: str):
         dir_path = self._normalize_path(dir_path)
         if dir_path not in self._dir_cache:
-            quoted_path = "/".join(quote(part) for part in dir_path.split("/"))
-            url = f"https://api.github.com/repos/{D4DATA_REPO}/contents/{quoted_path}?ref={D4DATA_REF}"
+            quoted_path = quote(dir_path, safe="/")
+            url = f"https://api.github.com/repos/{D4DATA_REPO}/git/trees/{D4DATA_REF}:{quoted_path}"
             data = json.loads(self._read_url(url))
             self._dir_cache[dir_path] = {
-                item["path"] for item in data if item["type"] == "file" and isinstance(item["path"], str)
+                f"{dir_path}/{item['path']}"
+                for item in data["tree"]
+                if item["type"] == "blob" and isinstance(item["path"], str)
             }
         return self._dir_cache[dir_path]
 
@@ -219,7 +221,7 @@ def get_sigil_rarity(text: str) -> str | None:
     return None
 
 
-def main(d4data_source: D4DataSource):
+def main(d4data_source: D4DataSource, companion_app_dir: Path | None = None):
     lang_arr = [
         "enUS"
     ]  # "deDE", "frFR", "esES", "esMX", "itIT", "jaJP", "koKR", "plPL", "ptBR", "ruRU", "trTR", "zhCN", "zhTW"]
@@ -294,14 +296,55 @@ def main(d4data_source: D4DataSource):
             json_file.write("\n")
 
         # Create Affixes
-        generate_affixes(language, existing_affixes.get(language, {}))
+        generate_affixes(language, existing_affixes.get(language, {}), companion_app_dir)
 
         print("=============================")
 
 
-def generate_affixes(language, existing_affixes):
+def get_companion_affixes_path(companion_app_dir: Path, language: str) -> Path:
+    candidates = [
+        companion_app_dir / f"D4Companion/Data/Affixes.{language}.json",
+        companion_app_dir / f"Data/Affixes.{language}.json",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    msg = f"Could not find Affixes.{language}.json under {companion_app_dir}"
+    raise FileNotFoundError(msg)
+
+
+def add_custom_affixes(affix_dict, language):
+    with Path(D4LF_BASE_DIR / f"src/tools/data/custom_affixes_{language}.json").open(encoding="utf-8") as file:
+        data = json.load(file)
+        for key, value in data.items():
+            if key in affix_dict:
+                if affix_dict[key] == value:
+                    print(f"Affix {key} already exists in affixes.json. Can be deleted from custom json")
+                else:
+                    print(f"Affix {key} already exists in affixes.json but with different value")
+                    affix_dict[key] = value
+            else:
+                affix_dict[key] = value
+
+
+def generate_affixes(language, existing_affixes, companion_app_dir):
     print(f"Gen Affixes for {language}")
-    affix_dict = existing_affixes
+    affix_dict = existing_affixes.copy()
+    if companion_app_dir is not None:
+        affix_dict = {}
+        with get_companion_affixes_path(companion_app_dir, language).open(encoding="utf-8") as file:
+            data = json.load(file)
+            for affix in data:
+                desc: str = affix["Description"]
+                desc = desc.lower().strip().replace("'", "").replace("\u2019", "").replace(".", "")
+                desc = remove_content_in_braces(desc)
+                desc = desc.removeprefix("x ")
+                name = desc.replace(",", "").replace(" ", "_")
+                if len(desc) > 2:
+                    affix_dict[name] = desc
+        add_custom_affixes(affix_dict, language)
+    elif not affix_dict:
+        print(f"WARNING: No companion app path provided and no existing affixes.json found for {language}.")
 
     with Path(D4LF_BASE_DIR / f"assets/lang/{language}/affixes.json").open("w", encoding="utf-8") as json_file:
         json.dump(affix_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
@@ -314,16 +357,30 @@ def add_custom_sigils(sigil_dict, language):
         for key, values in data.items():
             if key in sigil_dict:
                 for key2, value2 in values.items():
+                    custom_value = get_custom_sigil_value(key, value2)
                     if key2 in sigil_dict[key]:
-                        if sigil_dict[key][key2] == value2:
+                        if sigil_dict[key][key2] == custom_value:
                             print(f"Sigil {key2} already exists in sigils.json. Can be deleted from custom json")
                         else:
                             print(f"Sigil {key2} already exists in sigils.json but with different value")
-                            sigil_dict[key][key2] = value2
+                            sigil_dict[key][key2] = custom_value
                     else:
-                        sigil_dict[key][key2] = value2
+                        sigil_dict[key][key2] = custom_value
             else:
                 sigil_dict[key] = values
+
+
+def get_sigil_affix_value(text: str, rarity: str | None = None):
+    value = {"text": text}
+    if rarity:
+        value["rarity"] = rarity
+    return value
+
+
+def get_custom_sigil_value(sigil_type: str, value):
+    if sigil_type in SIGIL_AFFIX_TYPES and isinstance(value, str):
+        return get_sigil_affix_value(value)
+    return value
 
 
 def add_sigil_dungeons(d4data_source, language, sigil_dict):
@@ -373,14 +430,12 @@ def add_sigil_affixes(d4data_source, language, sigil_dict):
         if not name:
             continue
         sigil_key = name.replace(" ", "_")
-        sigil_dict[affix_type][sigil_key] = f"{name} {desc}".strip()
-        if rarity:
-            sigil_dict["rarities"][sigil_key] = rarity
+        sigil_dict[affix_type][sigil_key] = get_sigil_affix_value(f"{name} {desc}".strip(), rarity)
 
 
 def generate_sigils(d4data_source, language):
     print(f"Gen Sigils for {language}")
-    sigil_dict = {"dungeons": {}, "minor": {}, "major": {}, "positive": {}, "rarities": {}}
+    sigil_dict = {"dungeons": {}, "minor": {}, "major": {}, "positive": {}}
 
     add_sigil_dungeons(d4data_source, language, sigil_dict)
     add_sigil_affixes(d4data_source, language, sigil_dict)
@@ -501,13 +556,22 @@ if __name__ == "__main__":
     parser.add_argument(
         "d4data_dir", nargs="?", type=str, help="Optional path to d4data repo. Omit to read d4data online from GitHub."
     )  # https://github.com/DiabloTools/d4data.git
+    parser.add_argument(
+        "companion_app_dir",
+        nargs="?",
+        type=str,
+        help="Optional path to Diablo4Companion. Required to regenerate affixes.json.",
+    )
     args = parser.parse_args()
 
     input_path = Path(args.d4data_dir) if args.d4data_dir else None
+    companion_path = Path(args.companion_app_dir) if args.companion_app_dir else None
 
-    if input_path is None:
-        main(D4DataSource())
+    if companion_path is not None and not companion_path.is_dir():
+        print(f"The provided companion app path '{companion_path}' does not exist or is not a directory.")
+    elif input_path is None:
+        main(D4DataSource(), companion_path)
     elif input_path.exists() and input_path.is_dir():
-        main(D4DataSource(input_path))
+        main(D4DataSource(input_path), companion_path)
     else:
         print(f"The provided path '{input_path}' does not exist or is not a directory.")

@@ -16,6 +16,7 @@ class Dataloader:
     affix_dict = {}
     affix_sigil_dict = {}
     affix_sigil_dict_all = {}
+    affix_sigil_metadata = {}
     aspect_list = []
     aspect_unique_dict = {}
     bad_tts_uniques = {}
@@ -73,7 +74,13 @@ class Dataloader:
         with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/sigils.json").open(
             encoding="utf-8"
         ) as f:
-            self.affix_sigil_dict_all = json.load(f)
+            self.affix_sigil_metadata = json.load(f)
+            self.affix_sigil_dict_all = {
+                "dungeons": self.affix_sigil_metadata["dungeons"],
+                "minor": self._sigil_text_map(self.affix_sigil_metadata["minor"]),
+                "major": self._sigil_text_map(self.affix_sigil_metadata["major"]),
+                "positive": self._sigil_text_map(self.affix_sigil_metadata["positive"]),
+            }
             self.affix_sigil_dict = {
                 **self.affix_sigil_dict_all["dungeons"],
                 **self.affix_sigil_dict_all["minor"],
@@ -95,3 +102,13 @@ class Dataloader:
             encoding="utf-8"
         ) as f:
             self.aspect_unique_dict = json.load(f)
+
+    @classmethod
+    def _sigil_text_map(cls, data: dict) -> dict:
+        return {key: cls._sigil_text(value) for key, value in data.items()}
+
+    @staticmethod
+    def _sigil_text(value) -> str:
+        if isinstance(value, dict):
+            return value.get("text", "")
+        return value
