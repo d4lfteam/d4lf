@@ -4,7 +4,7 @@ default_language_version:
 minimum_prek_version: '0.3.0'
 repos:
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.10.9
+    rev: 0.11.14
     hooks:
       - id: uv-lock
         priority: &group1 4294967294
@@ -21,11 +21,12 @@ repos:
       - id: pretty-format-toml
         priority: *group1
         args: [--autofix, --indent, "4"]
+        exclude: ^uv\.lock
       - id: pretty-format-yaml
         priority: *group1
         args: [--autofix, --preserve-quotes, --offset, "2"]
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v22.1.1
+    rev: v22.1.5
     hooks:
       - id: clang-format
         priority: *group1
@@ -58,7 +59,7 @@ repos:
         priority: *group1
       - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.6
+    rev: v0.15.13
     hooks:
       - id: ruff-format
         priority: *group1
