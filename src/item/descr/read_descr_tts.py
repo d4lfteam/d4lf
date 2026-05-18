@@ -132,7 +132,7 @@ def _add_affixes_from_tts_mixed(
 
     # With advanced item compare on we'll actually find more bullets than we need, so we don't rely on them for
     # number of affixes
-    if len(affixes) - 1 > len(affix_bullets):
+    if len(affixes) > len(affix_bullets):
         _raise_index_error(affixes, affix_bullets, item, img_item_descr)
 
     for i, affix_text in enumerate(affixes):
