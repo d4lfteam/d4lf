@@ -122,10 +122,6 @@ class VisionModeFast:
             if item_descr is None:
                 return None
 
-            if item_descr.name in ["gold_balance", "experience_gain"]:
-                self.request_clear()
-                return None
-
             ignored_item = is_ignored_item(item_descr)
             if ignored_item:
                 self.request_clear()

@@ -266,7 +266,7 @@ class VisionModeWithHighlighting:
             screenshot("tts_error", img=img)
             LOGGER.exception(f"Error in TTS read_descr. {src.tts.LAST_ITEM=}")
 
-        if item_descr is None or item_descr.name in ["gold_balance", "experience_gain"]:
+        if item_descr is None:
             self.request_clear()
             return
 

@@ -49,12 +49,6 @@ class Publisher:
             data = fix_data(_DATA_QUEUE.get())
             local_cache.append(data)
 
-            # Debug logging for potential stat readouts
-            if any(word in data.lower() for word in ["gold", "experience", "currency"]):
-                from src.info_overlay import get_info_setting
-                if get_info_setting("debug_tts", False):
-                    LOGGER.info(f"TTS Raw Stat String: '{data}'")
-
             if filter_data(data):
                 continue
 

@@ -82,7 +82,6 @@ def load_info_settings() -> dict[str, Any]:
         "locked": parse_bool("locked", False),
         # Experience/Tracking Settings (Moved from GeneralModel)
         "check_exp_on_inventory_open": parse_bool("check_exp_on_inventory_open", True),
-        "debug_tts": parse_bool("debug_tts", False),
         "exp_age_before_refresh": parse_int("exp_age_before_refresh", 5),
         "exp_bar_pos": parse_tuple("exp_bar_pos"),
     }
@@ -528,7 +527,6 @@ class BossTimerOverlay(tk.Toplevel):
 
         menu.add_separator()
         menu.add_command(label="Auto Sync (Helltides.com)", command=self._auto_sync)
-        add_config_check(menu, "Debug TTS (Raw Output)", "debug_tts")
 
         menu.add_separator()
         add_check(menu, "Lock Position", "locked", self._toggle_lock)
