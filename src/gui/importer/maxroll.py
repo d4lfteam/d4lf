@@ -326,14 +326,11 @@ def _find_skill_rank_label_from_affix_key(affix_key: str) -> str:
     if "SkillRankBonus_AllSkills" in affix_key:
         return "all"
     if match := SKILL_RANK_AFFIX_KEY_REGEX.search(affix_key):
-        return _normalize_affix_key_label(match.group("label"))
+        label = match.group("label")
+        label = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", label)
+        label = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", label)
+        return " ".join(label.split())
     return ""
-
-
-def _normalize_affix_key_label(label: str) -> str:
-    label = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", label)
-    label = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", label)
-    return " ".join(label.split())
 
 
 def _find_legendary_aspect(mapping_data: dict, legendary_aspect: dict) -> str | None:
@@ -495,7 +492,7 @@ def _extract_active_guide_embed_tab_index(embed: lxml.html.HtmlElement) -> int |
 
 if __name__ == "__main__":
     src.logger.setup()
-    URLS = ["https://maxroll.gg/d4/planner/w62gqj0v#4"]
+    URLS = ["https://maxroll.gg/d4/planner/n51lwl0u#1"]
     for X in URLS:
         config = ImportConfig(
             url=X,
