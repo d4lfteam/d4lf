@@ -690,6 +690,7 @@ The Info Panel provides real-time tracking for World Events and session-based st
 1. **Lock**: Once positioned, select **Lock Position** from the right-click menu to prevent accidental movement.
 
 ![sample](assets/infopanel_menu.png)
+
 **Features and Settings (Right-Click Menu)**
 
 
