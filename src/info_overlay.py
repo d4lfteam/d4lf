@@ -12,6 +12,7 @@ from contextlib import suppress
 from typing import Any, Callable, TYPE_CHECKING
 from src.config.loader import IniConfigLoader
 from src.config.helper import singleton
+from src.tts import Publisher
 from src.utils.custom_mouse import mouse
 from src.cam import Cam
 if TYPE_CHECKING:
@@ -117,6 +118,20 @@ class SessionStats:
         self.last_gold = None
         self.last_exp = None
         self.max_exp = None
+
+        self._is_subscribed = False
+
+    def subscribe(self):
+        if not self._is_subscribed:
+            Publisher().subscribe_info(self.on_info_stat)
+            self._is_subscribed = True
+            LOGGER.debug("SessionStats subscribed to TTS info.")
+
+    def unsubscribe(self):
+        if self._is_subscribed:
+            Publisher().unsubscribe_info(self.on_info_stat)
+            self._is_subscribed = False
+            LOGGER.debug("SessionStats unsubscribed from TTS info.")
 
     def reset_gold(self):
         self.total_gold = 0
@@ -228,6 +243,8 @@ class BossTimerOverlay(tk.Toplevel):
         self._bind_events()
         self._update_timers()
         # Auto-sync on startup
+        self._session_stats = SessionStats()
+        self._session_stats.subscribe()
         self._auto_sync()
 
     def _apply_loaded_settings(self):
