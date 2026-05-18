@@ -155,190 +155,604 @@
         "zenith": "zenith"
     },
     "major": {
-        "anguished_souls_elites": "anguished souls elites elite monsters have the \"anguished souls\" affix and deal more damage.",
-        "astaroths_armageddon": "astaroths armageddon meteors will constantly rain from the sky.",
-        "astaroths_loyal_steed": "astaroths loyal steed astaroth is immune to damage upon reaching each health threshold until the amalgam of rage is killed.",
-        "avengers": "avengers killing a monster enrages monsters near it after a short delay, making them deal more damage.",
-        "berserker_elites": "berserker elites elite monsters have the \"berserker\" affix and deal more damage.",
-        "blood_blisters": "blood blisters killing a monster has a chance to spawn a blood blister. after a short delay, it explodes, dealing heavy area damage.",
-        "cannibal_horde": "cannibal horde foul cannibals have defiled this place and additionally gain extra life.",
-        "cultist_horde": "cultist horde corrupted fanatics worship within this place and additionally gain extra life.",
-        "dark_omen": "dark omen this place is not right. someone, or something, stalks you here...",
-        "deathly_shadows": "deathly shadows killing a monster has a chance to unleash a volatile pulse after a short delay, dealing heavy area damage.",
-        "demon_horde": "demon horde vile hellspawn have conquered this place and additionally gain extra life.",
-        "drifting_shades": "drifting shades drifting shades chase players. on contact, they explode for heavy damage and create a nightmare field that dazes victims.",
-        "elemental_totems": "elemental totems while in combat, random elemental totems appear that buff nearby enemies until destroyed.",
-        "empowered_elites_cold_enchanted": "empowered elites cold enchanted elites always have the \"cold enchanted\" affix.",
-        "empowered_elites_shadow_enchanted": "empowered elites shadow enchanted elites always have the \"shadow enchanted\" affix.",
-        "empowered_elites_teleporter": "empowered elites teleporter elites always have the \"teleporter\" affix.",
-        "executioner_elites": "executioner elites elite monsters have the \"executioner\" affix and deal more damage.",
-        "explosive_elites": "explosive elites elite monsters have the \"explosive\" affix and deal more damage.",
-        "frenzied_elites": "frenzied elites elite monsters have the \"frenzied\" affix and deal more damage.",
-        "hellfire": "hellfire monsters are afflicted with hellfire, which transfers to players when killed. hellfire increases damage, but deals damage overtime for each stack. using a potion helps alleviate hellfire with a fiery explosion.",
-        "illusory_elites": "illusory elites elite monsters have the \"illusory\" affix and deal more damage.",
-        "infested_elites": "infested elites elite monsters have the \"infested\" affix and deal more damage.",
-        "insect_horde": "insect horde pestilent bugs have infested this place and additionally gain extra life.",
-        "khazra_horde": "khazra horde braying goatmen have inhabited this place and additionally gain extra life.",
-        "lambs_to_slaughter": "lambs to slaughter lure captured enemies to the shrine to sacrifice them for additional rewards.",
-        "leaping_amalgam": "leaping amalgam the amalgam of rage will now continue its pounce attacks after astaroth dismounts.",
-        "lightning_storm": "lightning storm lightning gathers above the player. get into the protection dome to avoid severe outcomes.",
-        "meteor_storm": "meteor storm astaroth now has more meteor attacks.",
-        "nightmare_portal": "nightmare portal while in combat, nightmare portals open randomly near players, pouring out dangerous monsters.",
-        "poison_enchanted_elites": "poison enchanted elites elite monsters have the \"poison enchanted\" affix and deal more damage.",
-        "profane_aegis": "profane aegis monsters gain of their maximum life as a barrier.",
-        "rage_of_the_pack": "rage of the pack the amalgam of rage now summons elite werewolves.",
-        "raging": "raging monsters here are reckless, receiving and dealing more damage.",
-        "saw_blades_elites": "saw blades elites elite monsters have the \"saw blades\" affix and deal more damage.",
-        "shadow_enchanted_elites": "shadow enchanted elites elite monsters have the \"shadow enchanted\" affix and deal more damage.",
-        "shock_lance_elites": "shock lance elites elite monsters have the \"shock lance\" affix and deal more damage.",
-        "sinful_torment_elites": "sinful torment elites elite monsters have the \"sinful torment\" affix and deal more damage.",
-        "splitter_elites": "splitter elites elite monsters have the \"splitter\" affix and deal more damage.",
-        "stormbanes_wrath": "stormbanes wrath a dark monolith chases players, pulsing for heavy damage when nearby.",
-        "suppressor_elites": "suppressor elites elite monsters have the \"suppressor\" affix and deal more damage.",
-        "teleport_residue": "teleport residue astaroth now leaves behind a pool of persistent damage when teleporting.",
-        "the_beast_in_ice": "the beast in ice face a more challenging beast in ice at the end of this frozen cave.",
-        "undead_horde": "undead horde desecrated undead have risen within this place and additionally gain extra life.",
-        "vampiric_elites": "vampiric elites elite monsters have the \"vampiric\" affix and deal more damage.",
-        "veiled_elites": "veiled elites elite monsters have the \"veiled\" affix and deal more damage.",
-        "volcanic": "volcanic while in combat, gouts of flame periodically erupt near players.",
-        "waller_elites": "waller elites elite monsters have the \"waller\" affix and deal more damage."
+        "anguished_souls_elites": {
+            "text": "anguished souls elites elite monsters have the \"anguished souls\" affix and deal more damage."
+        },
+        "astaroths_armageddon": {
+            "text": "astaroths armageddon meteors will constantly rain from the sky."
+        },
+        "astaroths_loyal_steed": {
+            "text": "astaroths loyal steed astaroth is immune to damage upon reaching each health threshold until the amalgam of rage is killed."
+        },
+        "avengers": {
+            "text": "avengers killing a monster enrages monsters near it after a short delay, making them deal more damage."
+        },
+        "berserker_elites": {
+            "text": "berserker elites elite monsters have the \"berserker\" affix and deal more damage."
+        },
+        "blood_blisters": {
+            "text": "blood blisters killing a monster has a chance to spawn a blood blister. after a short delay, it explodes, dealing heavy area damage."
+        },
+        "cannibal_horde": {
+            "text": "cannibal horde foul cannibals have defiled this place and additionally gain extra life."
+        },
+        "cultist_horde": {
+            "text": "cultist horde corrupted fanatics worship within this place and additionally gain extra life."
+        },
+        "dark_omen": {
+            "text": "dark omen this place is not right. someone, or something, stalks you here..."
+        },
+        "deathly_shadows": {
+            "text": "deathly shadows killing a monster has a chance to unleash a volatile pulse after a short delay, dealing heavy area damage."
+        },
+        "demon_horde": {
+            "text": "demon horde vile hellspawn have conquered this place and additionally gain extra life."
+        },
+        "drifting_shades": {
+            "text": "drifting shades drifting shades chase players. on contact, they explode for heavy damage and create a nightmare field that dazes victims."
+        },
+        "elemental_totems": {
+            "text": "elemental totems while in combat, random elemental totems appear that buff nearby enemies until destroyed."
+        },
+        "empowered_elites_cold_enchanted": {
+            "text": "empowered elites cold enchanted elites always have the \"cold enchanted\" affix."
+        },
+        "empowered_elites_shadow_enchanted": {
+            "text": "empowered elites shadow enchanted elites always have the \"shadow enchanted\" affix."
+        },
+        "empowered_elites_teleporter": {
+            "text": "empowered elites teleporter elites always have the \"teleporter\" affix."
+        },
+        "executioner_elites": {
+            "text": "executioner elites elite monsters have the \"executioner\" affix and deal more damage."
+        },
+        "explosive_elites": {
+            "text": "explosive elites elite monsters have the \"explosive\" affix and deal more damage."
+        },
+        "frenzied_elites": {
+            "text": "frenzied elites elite monsters have the \"frenzied\" affix and deal more damage."
+        },
+        "hellfire": {
+            "text": "hellfire monsters are afflicted with hellfire, which transfers to players when killed. hellfire increases damage, but deals damage overtime for each stack. using a potion helps alleviate hellfire with a fiery explosion."
+        },
+        "illusory_elites": {
+            "text": "illusory elites elite monsters have the \"illusory\" affix and deal more damage."
+        },
+        "infested_elites": {
+            "text": "infested elites elite monsters have the \"infested\" affix and deal more damage."
+        },
+        "insect_horde": {
+            "text": "insect horde pestilent bugs have infested this place and additionally gain extra life."
+        },
+        "khazra_horde": {
+            "text": "khazra horde braying goatmen have inhabited this place and additionally gain extra life."
+        },
+        "lambs_to_slaughter": {
+            "text": "lambs to slaughter lure captured enemies to the shrine to sacrifice them for additional rewards."
+        },
+        "leaping_amalgam": {
+            "text": "leaping amalgam the amalgam of rage will now continue its pounce attacks after astaroth dismounts."
+        },
+        "lightning_storm": {
+            "text": "lightning storm lightning gathers above the player. get into the protection dome to avoid severe outcomes."
+        },
+        "meteor_storm": {
+            "text": "meteor storm astaroth now has more meteor attacks."
+        },
+        "nightmare_portal": {
+            "text": "nightmare portal while in combat, nightmare portals open randomly near players, pouring out dangerous monsters."
+        },
+        "poison_enchanted_elites": {
+            "text": "poison enchanted elites elite monsters have the \"poison enchanted\" affix and deal more damage."
+        },
+        "profane_aegis": {
+            "text": "profane aegis monsters gain of their maximum life as a barrier."
+        },
+        "rage_of_the_pack": {
+            "text": "rage of the pack the amalgam of rage now summons elite werewolves."
+        },
+        "raging": {
+            "text": "raging monsters here are reckless, receiving and dealing more damage."
+        },
+        "saw_blades_elites": {
+            "text": "saw blades elites elite monsters have the \"saw blades\" affix and deal more damage."
+        },
+        "shadow_enchanted_elites": {
+            "text": "shadow enchanted elites elite monsters have the \"shadow enchanted\" affix and deal more damage."
+        },
+        "shock_lance_elites": {
+            "text": "shock lance elites elite monsters have the \"shock lance\" affix and deal more damage."
+        },
+        "sinful_torment_elites": {
+            "text": "sinful torment elites elite monsters have the \"sinful torment\" affix and deal more damage."
+        },
+        "splitter_elites": {
+            "text": "splitter elites elite monsters have the \"splitter\" affix and deal more damage."
+        },
+        "stormbanes_wrath": {
+            "text": "stormbanes wrath a dark monolith chases players, pulsing for heavy damage when nearby."
+        },
+        "suppressor_elites": {
+            "text": "suppressor elites elite monsters have the \"suppressor\" affix and deal more damage."
+        },
+        "teleport_residue": {
+            "text": "teleport residue astaroth now leaves behind a pool of persistent damage when teleporting."
+        },
+        "the_beast_in_ice": {
+            "text": "the beast in ice face a more challenging beast in ice at the end of this frozen cave."
+        },
+        "undead_horde": {
+            "text": "undead horde desecrated undead have risen within this place and additionally gain extra life."
+        },
+        "vampiric_elites": {
+            "text": "vampiric elites elite monsters have the \"vampiric\" affix and deal more damage."
+        },
+        "veiled_elites": {
+            "text": "veiled elites elite monsters have the \"veiled\" affix and deal more damage."
+        },
+        "volcanic": {
+            "text": "volcanic while in combat, gouts of flame periodically erupt near players."
+        },
+        "waller_elites": {
+            "text": "waller elites elite monsters have the \"waller\" affix and deal more damage."
+        }
     },
     "minor": {
-        "armor_breakers": "armor breakers monster attacks from a distance reduce your armor by for seconds, stacking up to .",
-        "astaroth_blood_blisters": "astaroth blood blisters astaroth summons blood blisters that explode if not destroyed.",
-        "astaroth_deadly_pulse": "astaroth deadly pulse astaroth occasionally releases a deadly shadow pulse.",
-        "astaroth_life_steal": "astaroth life steal astaroth gains life steal.",
-        "backstabbers": "backstabbers close monster attacks from behind cause you to become vulnerable.",
-        "barrier_breakers": "barrier breakers monsters deal more damage to barriers.",
-        "bleeding_strikes": "bleeding strikes monsters deal an additional of their physical damage dealt as bleeding damage over seconds.",
-        "burning_strikes": "burning strikes monsters deal an additional of their physical damage dealt as burning damage over seconds.",
-        "chilling_wind_elites": "chilling wind elites elite monsters have the \"chilling wind\" affix and deal more damage.",
-        "cold_strikes": "cold strikes monsters deal an additional of their physical damage dealt as cold damage.",
-        "corrupting_strikes": "corrupting strikes monsters deal an additional of their physical damage dealt as corrupting damage over seconds.",
-        "dodge_breakers": "dodge breakers monster attacks from a distance reduce dodge chance by for seconds, stacking up to .",
-        "fire_strikes": "fire strikes monsters deal an additional of their physical damage dealt as fire damage.",
-        "fire_traps": "fire traps additional fire traps appear in this dungeon.",
-        "frostbiting_strikes": "frostbiting strikes monsters deal an additional of their physical damage dealt as frostbiting damage over seconds.",
-        "hellbound_elites": "hellbound elites elite monsters have the \"hellbound\" affix and deal more damage.",
-        "hunters": "hunters monsters have unnatural speed here, moving and attacking faster.",
-        "lesser_aegis": "lesser aegis some monsters here gain of their maximum life as a barrier.",
-        "lightning_strikes": "lightning strikes monsters deal an additional of their physical damage dealt as lightning damage.",
-        "melee_defenders": "melee defenders monsters take less damage from close targets",
-        "monster_barrier": "monster barrier monsters gain of their maximum life as a barrier.",
-        "monster_bleed_resist": "monster bleed resist monsters take less bleeding damage.",
-        "monster_burning_resist": "monster burning resist monsters take less burning damage.",
-        "monster_cold_resist": "monster cold resist monsters take less cold damage.",
-        "monster_critical_resist": "monster critical resist monster attacks reduce the damage of your critical strikes for seconds by , stacking up to .",
-        "monster_crowd_control_resist": "monster crowd control resist crowd control duration vs monsters is reduced by .",
-        "monster_fire_resist": "monster fire resist monsters take less fire damage.",
-        "monster_life": "monster life monsters gain extra life.",
-        "monster_life_steal": "monster life steal nonboss monsters gain life steal.",
-        "monster_overpower_resist": "monster overpower resist monster attacks reduce the damage of your next overpower attack by . stacking up to .",
-        "monster_physical_resist": "monster physical resist monsters take less physical damage.",
-        "monster_poison_resist": "monster poison resist monsters take less poison damage.",
-        "monster_regen": "monster regen nonboss monsters regen maximum life per second.",
-        "monster_shadow_damage_over_time_resist": "monster shadow damage over time resist monsters take reduced damage from your shadow damage over time effects.",
-        "monster_shadow_resist": "monster shadow resist monsters take less shadow damage.",
-        "monster_thorns": "monster thorns monsters reflect of damage.",
-        "monster_vulnerable_resist": "monster vulnerable resist duration of vulnerable effects vs monsters is reduced by .",
-        "monsters_lightning_resist": "monsters lightning resist monsters take less lightning damage.",
-        "poison_strikes": "poison strikes monsters deal an additional of their physical damage dealt as poison damage.",
-        "poisoning_strikes": "poisoning strikes monsters deal an additional of their physical damage dealt as poisoning damage over seconds.",
-        "potion_breakers": "potion breakers monster attacks from a distance increase the cooldown of your next potion by seconds, up to seconds.",
-        "ranged_defenders": "ranged defenders monsters take less damage from distant targets.",
-        "resistance_breakers": "resistance breakers monster attacks from a distance reduce resistance to all elements by for seconds, stacking up to .",
-        "resource_burn": "resource burn after you spend resource, you burn an additional of the resource spent for every time you were hit by a distant enemy.",
-        "shadow_strikes": "shadow strikes monsters deal an additional of their physical damage dealt as shadow damage.",
-        "slowing_projectiles": "slowing projectiles monster attacks from a distance have a chance to slow targets.",
-        "sparking_strikes": "sparking strikes monsters deal an additional of their physical damage dealt as sparking damage over seconds.",
-        "summoner_elites": "summoner elites elite monsters have the \"summoner\" affix and deal more damage.",
-        "suppressor_elites": "suppressor elites elite monsters have the \"suppressor\" affix and deal more damage.",
-        "unstable_experiments": "unstable experiments monsters may explode on death, dealing heavy area damage around themselves after a delay.",
-        "unstoppable_monsters": "unstoppable monsters monsters become unstoppable when life drops below ."
+        "armor_breakers": {
+            "text": "armor breakers monster attacks from a distance reduce your armor by for seconds, stacking up to ."
+        },
+        "astaroth_blood_blisters": {
+            "text": "astaroth blood blisters astaroth summons blood blisters that explode if not destroyed."
+        },
+        "astaroth_deadly_pulse": {
+            "text": "astaroth deadly pulse astaroth occasionally releases a deadly shadow pulse."
+        },
+        "astaroth_life_steal": {
+            "text": "astaroth life steal astaroth gains life steal."
+        },
+        "backstabbers": {
+            "text": "backstabbers close monster attacks from behind cause you to become vulnerable."
+        },
+        "barrier_breakers": {
+            "text": "barrier breakers monsters deal more damage to barriers."
+        },
+        "bleeding_strikes": {
+            "text": "bleeding strikes monsters deal an additional of their physical damage dealt as bleeding damage over seconds."
+        },
+        "burning_strikes": {
+            "text": "burning strikes monsters deal an additional of their physical damage dealt as burning damage over seconds."
+        },
+        "chilling_wind_elites": {
+            "text": "chilling wind elites elite monsters have the \"chilling wind\" affix and deal more damage."
+        },
+        "cold_strikes": {
+            "text": "cold strikes monsters deal an additional of their physical damage dealt as cold damage."
+        },
+        "corrupting_strikes": {
+            "text": "corrupting strikes monsters deal an additional of their physical damage dealt as corrupting damage over seconds."
+        },
+        "dodge_breakers": {
+            "text": "dodge breakers monster attacks from a distance reduce dodge chance by for seconds, stacking up to ."
+        },
+        "fire_strikes": {
+            "text": "fire strikes monsters deal an additional of their physical damage dealt as fire damage."
+        },
+        "fire_traps": {
+            "text": "fire traps additional fire traps appear in this dungeon."
+        },
+        "frostbiting_strikes": {
+            "text": "frostbiting strikes monsters deal an additional of their physical damage dealt as frostbiting damage over seconds."
+        },
+        "hellbound_elites": {
+            "text": "hellbound elites elite monsters have the \"hellbound\" affix and deal more damage."
+        },
+        "hunters": {
+            "text": "hunters monsters have unnatural speed here, moving and attacking faster."
+        },
+        "lesser_aegis": {
+            "text": "lesser aegis some monsters here gain of their maximum life as a barrier."
+        },
+        "lightning_strikes": {
+            "text": "lightning strikes monsters deal an additional of their physical damage dealt as lightning damage."
+        },
+        "melee_defenders": {
+            "text": "melee defenders monsters take less damage from close targets"
+        },
+        "monster_barrier": {
+            "text": "monster barrier monsters gain of their maximum life as a barrier."
+        },
+        "monster_bleed_resist": {
+            "text": "monster bleed resist monsters take less bleeding damage."
+        },
+        "monster_burning_resist": {
+            "text": "monster burning resist monsters take less burning damage."
+        },
+        "monster_cold_resist": {
+            "text": "monster cold resist monsters take less cold damage."
+        },
+        "monster_critical_resist": {
+            "text": "monster critical resist monster attacks reduce the damage of your critical strikes for seconds by , stacking up to ."
+        },
+        "monster_crowd_control_resist": {
+            "text": "monster crowd control resist crowd control duration vs monsters is reduced by ."
+        },
+        "monster_fire_resist": {
+            "text": "monster fire resist monsters take less fire damage."
+        },
+        "monster_life": {
+            "text": "monster life monsters gain extra life."
+        },
+        "monster_life_steal": {
+            "text": "monster life steal nonboss monsters gain life steal."
+        },
+        "monster_overpower_resist": {
+            "text": "monster overpower resist monster attacks reduce the damage of your next overpower attack by . stacking up to ."
+        },
+        "monster_physical_resist": {
+            "text": "monster physical resist monsters take less physical damage."
+        },
+        "monster_poison_resist": {
+            "text": "monster poison resist monsters take less poison damage."
+        },
+        "monster_regen": {
+            "text": "monster regen nonboss monsters regen maximum life per second."
+        },
+        "monster_shadow_damage_over_time_resist": {
+            "text": "monster shadow damage over time resist monsters take reduced damage from your shadow damage over time effects."
+        },
+        "monster_shadow_resist": {
+            "text": "monster shadow resist monsters take less shadow damage."
+        },
+        "monster_thorns": {
+            "text": "monster thorns monsters reflect of damage."
+        },
+        "monster_vulnerable_resist": {
+            "text": "monster vulnerable resist duration of vulnerable effects vs monsters is reduced by ."
+        },
+        "monsters_lightning_resist": {
+            "text": "monsters lightning resist monsters take less lightning damage."
+        },
+        "poison_strikes": {
+            "text": "poison strikes monsters deal an additional of their physical damage dealt as poison damage."
+        },
+        "poisoning_strikes": {
+            "text": "poisoning strikes monsters deal an additional of their physical damage dealt as poisoning damage over seconds."
+        },
+        "potion_breakers": {
+            "text": "potion breakers monster attacks from a distance increase the cooldown of your next potion by seconds, up to seconds."
+        },
+        "ranged_defenders": {
+            "text": "ranged defenders monsters take less damage from distant targets."
+        },
+        "resistance_breakers": {
+            "text": "resistance breakers monster attacks from a distance reduce resistance to all elements by for seconds, stacking up to ."
+        },
+        "resource_burn": {
+            "text": "resource burn after you spend resource, you burn an additional of the resource spent for every time you were hit by a distant enemy."
+        },
+        "shadow_strikes": {
+            "text": "shadow strikes monsters deal an additional of their physical damage dealt as shadow damage."
+        },
+        "slowing_projectiles": {
+            "text": "slowing projectiles monster attacks from a distance have a chance to slow targets."
+        },
+        "sparking_strikes": {
+            "text": "sparking strikes monsters deal an additional of their physical damage dealt as sparking damage over seconds."
+        },
+        "summoner_elites": {
+            "text": "summoner elites elite monsters have the \"summoner\" affix and deal more damage."
+        },
+        "suppressor_elites": {
+            "text": "suppressor elites elite monsters have the \"suppressor\" affix and deal more damage."
+        },
+        "unstable_experiments": {
+            "text": "unstable experiments monsters may explode on death, dealing heavy area damage around themselves after a delay."
+        },
+        "unstoppable_monsters": {
+            "text": "unstoppable monsters monsters become unstoppable when life drops below ."
+        }
     },
     "positive": {
-        "amethyst_reserve": "amethyst reserve many amethyst chests have been stashed here.",
-        "ancestors_favor": "ancestors favor extra lunar shrines and more glyph experience earned at the end of this dungeon.",
-        "ancestral_awakening": "ancestral awakening you earn more glyph experience at the end of this dungeon.",
-        "andariels_offering": "andariels offering astaroths rewards include pincushioned dolls, required to open andariels hoard.",
-        "artillery_shrines": "artillery shrines artillery shrines will appear throughout this place.",
-        "astral_prophecy": "astral prophecy astaroths rewards include a valuable horadric jewel.",
-        "battle_hardened": "battle hardened gain damage reduction for every health you are missing.",
-        "belials_apparitions": "belials apparitions elite apparitions have invaded this dungeon.",
-        "belials_offering": "belials offering astaroths rewards include betrayers husks, required to open belials hoard.",
-        "blast_wave_shrines": "blast wave shrines blast wave shrines will appear throughout this place.",
-        "bonus_chests_armor": "bonus chests armor armor chests spawn at an extremely high rate.",
-        "bonus_chests_boss_materials": "bonus chests boss materials summoning material chests spawn at an extremely high rate.",
-        "bonus_chests_elixirs": "bonus chests elixirs elixir chests spawn at an extremely high rate.",
-        "bonus_chests_herbs": "bonus chests herbs herb chests spawn at an extremely high rate.",
-        "bonus_chests_jewelry": "bonus chests jewelry jewelry chests spawn at an extremely high rate.",
-        "bonus_chests_runes": "bonus chests runes rune chests spawn at an extremely high rate.",
-        "bonus_chests_sigil_powder": "bonus chests sigil powder sigil powder chests spawn at an extremely high rate.",
-        "bonus_chests_weapons": "bonus chests weapons weapon chests spawn at an extremely high rate.",
-        "channeling_shrines": "channeling shrines channeling shrines will appear throughout this place.",
-        "chaos_rifts": "chaos rifts have opened in this place.",
-        "conduit_shrines": "conduit shrines conduit shrines will appear throughout this place.",
-        "control_impaired_explosions": "control impaired explosions being hit by control impairing effects creates an explosion around you.",
-        "diamond_reserve": "diamond reserve many diamond chests have been stashed here.",
-        "dungeon_delve": "dungeon delve completing the dungeon grants extra experience and rewards.",
-        "duriels_offering": "duriels offering astaroths rewards include shards of agony, required to open duriels hoard.",
-        "emerald_reserve": "emerald reserve many emerald chests have been stashed here.",
-        "equipment_delve": "equipment delve find horadric artifacts to earn an increasingly higher quality cache of gear.",
-        "extra_resplendent_chests": "extra resplendent chests extra resplendent chests will appear in the dungeon.",
-        "extra_shrines": "extra shrines extra shrines will appear in the dungeon.",
-        "fire_damage": "fire damage you deal more fire damage.",
-        "forgotten_altar": "forgotten altar this world will always spawn a forgotten altar.",
-        "forgotten_wisdom": "forgotten wisdom enemies hoard knowledge here, granting extra experience.",
-        "frost_damage": "frost damage you deal more frost damage.",
-        "gem_reserve": "gem reserve many gem fragment chests have been stashed here.",
-        "gold_find": "gold find you find more gold.",
-        "gold_reserve": "gold reserve many gold chests have been stashed here.",
-        "greater_lair_keys": "greater lair keys astaroths rewards include greater lair keys.",
-        "grigoires_offering": "grigoires offering astaroths rewards include living steel, required to open grigoires hoard.",
-        "grim_secrets": "grim secrets killing astaroth grants a large amount of horadric knowledge.",
-        "guaranteed_treasure_goblins": "guaranteed treasure goblins treasure goblins will appear in the dungeon.",
-        "harbinger_of_hatreds_offering": "harbinger of hatreds offering astaroths rewards include abhorrent hearts, required to open the harbinger of hatreds hoard.",
-        "hell_touched": "hell touched extra infernal shrines and more glyph experience earned at the end of this dungeon.",
-        "hidden_armory": "hidden armory exceptional items are kept here, granting elite monsters a powerful loot affix.",
-        "hidden_legendary_vendor": "hidden legendary vendor a secret vendor appears somewhere in the dungeon...",
-        "horadric_phials": "horadric phials monsters in this dungeon drop more horadric phials.",
-        "horadric_strongroom": "horadric strongroom this place will always contain a horadric strongroom.",
-        "increased_critical_strike": "increased critical strike your critical strike chance is increased by .",
-        "increased_healing": "increased healing your healing received is increased by .",
-        "infernal_warp_reserve": "infernal warp reserve many infernal warp chests have been stashed here.",
-        "lair_keys": "lair keys astaroths rewards include lair keys.",
-        "legendary_spoils": "legendary spoils astaroths rewards include a guaranteed ancestral item.",
-        "lethal_shrines": "lethal shrines lethal shrines will appear throughout this place.",
-        "lightning_caller": "lightning caller you occasionally call down lightning strikes that damage nearby enemies.",
-        "lightning_damage": "lightning damage you deal more lightning damage.",
-        "lord_zirs_offering": "lord zirs offering astaroths rewards include exquisite blood, required to open lord zirs hoard.",
-        "magic_find": "magic find you find more items from enemies.",
-        "materials_reserve": "materials reserve many materials chests have been stashed here.",
-        "mythic_prankster": "mythic prankster the resplendent treasures in this place have attracted a fancy, yet familiar nemesis...",
-        "nudging_evade": "nudging evade using evade pushes enemies back.",
-        "obducite_mine": "obducite mine monsters drop additional obducite in this place.",
-        "obols_reserve": "obols reserve many obols chests have been stashed here.",
-        "physical_damage": "physical damage you deal more physical damage.",
-        "poison_damage": "poison damage you deal more poison damage",
-        "poisonous_evade": "poisonous evade using evade leaves a damaging pool of poison under the first enemy you evade through or at your destination.",
-        "protection_shrines": "protection shrines protection shrines will appear throughout this place.",
-        "quick_killer": "quick killer killing a monster grants attack and move speed. stacking up to .",
-        "reduce_cooldowns_on_kill": "reduce cooldowns on kill killing a monster reduces your cooldowns by . seconds.",
-        "revered_site": "revered site monsters grant additional divine favor in this place.",
-        "riches_of_gold": "riches of gold astaroths rewards include a large amount of gold.",
-        "riches_of_keys": "riches of keys astaroths rewards include valuable dungeon keys.",
-        "riches_of_materials": "riches of materials astaroths rewards include a large amount of crafting materials.",
-        "riches_of_phials": "riches of phials astaroths rewards include a large amount of horadric phials.",
-        "ruby_reserve": "ruby reserve many ruby chests have been stashed here.",
-        "sapphire_reserve": "sapphire reserve many sapphire chests have been stashed here.",
-        "shadow_damage": "shadow damage you deal more shadow damage.",
-        "skull_reserve": "skull reserve many skull chests have been stashed here.",
-        "thorns": "thorns after attacking an enemy, your thorns are increased by for seconds, up to at max stacks.",
-        "topaz_reserve": "topaz reserve many topaz chests have been stashed here.",
-        "treasure_breach": "treasure breach a puzzling number of treasure goblins have overrun this place.",
-        "unique_spoils": "unique spoils astaroths rewards include more unique items.",
-        "urivars_offering": "urivars offering astaroths rewards include judicators masks, required to open urivars hoard.",
-        "varshans_offering": "varshans offering astaroths rewards include malignant hearts, required to open varshans hoard.",
-        "vile_splendor": "vile splendor opulent excess is enjoyed here, granting elite monsters the \"gilded\" affix."
+        "amethyst_reserve": {
+            "rarity": "Rare",
+            "text": "amethyst reserve many amethyst chests have been stashed here."
+        },
+        "ancestors_favor": {
+            "text": "ancestors favor extra lunar shrines and more glyph experience earned at the end of this dungeon."
+        },
+        "ancestral_awakening": {
+            "text": "ancestral awakening you earn more glyph experience at the end of this dungeon."
+        },
+        "andariels_offering": {
+            "rarity": "Rare",
+            "text": "andariels offering astaroths rewards include pincushioned dolls, required to open andariels hoard."
+        },
+        "artillery_shrines": {
+            "rarity": "Magic",
+            "text": "artillery shrines artillery shrines will appear throughout this place."
+        },
+        "astral_prophecy": {
+            "rarity": "Legendary",
+            "text": "astral prophecy astaroths rewards include a valuable horadric jewel."
+        },
+        "battle_hardened": {
+            "text": "battle hardened gain damage reduction for every health you are missing."
+        },
+        "belials_apparitions": {
+            "text": "belials apparitions elite apparitions have invaded this dungeon."
+        },
+        "belials_offering": {
+            "rarity": "Legendary",
+            "text": "belials offering astaroths rewards include betrayers husks, required to open belials hoard."
+        },
+        "blast_wave_shrines": {
+            "rarity": "Magic",
+            "text": "blast wave shrines blast wave shrines will appear throughout this place."
+        },
+        "bonus_chests_armor": {
+            "rarity": "Rare",
+            "text": "bonus chests armor armor chests spawn at an extremely high rate."
+        },
+        "bonus_chests_boss_materials": {
+            "rarity": "Legendary",
+            "text": "bonus chests boss materials summoning material chests spawn at an extremely high rate."
+        },
+        "bonus_chests_elixirs": {
+            "rarity": "Magic",
+            "text": "bonus chests elixirs elixir chests spawn at an extremely high rate."
+        },
+        "bonus_chests_herbs": {
+            "rarity": "Magic",
+            "text": "bonus chests herbs herb chests spawn at an extremely high rate."
+        },
+        "bonus_chests_jewelry": {
+            "rarity": "Rare",
+            "text": "bonus chests jewelry jewelry chests spawn at an extremely high rate."
+        },
+        "bonus_chests_runes": {
+            "rarity": "Legendary",
+            "text": "bonus chests runes rune chests spawn at an extremely high rate."
+        },
+        "bonus_chests_sigil_powder": {
+            "rarity": "Magic",
+            "text": "bonus chests sigil powder sigil powder chests spawn at an extremely high rate."
+        },
+        "bonus_chests_weapons": {
+            "rarity": "Rare",
+            "text": "bonus chests weapons weapon chests spawn at an extremely high rate."
+        },
+        "channeling_shrines": {
+            "rarity": "Magic",
+            "text": "channeling shrines channeling shrines will appear throughout this place."
+        },
+        "chaos_rifts": {
+            "text": "chaos rifts have opened in this place."
+        },
+        "conduit_shrines": {
+            "rarity": "Magic",
+            "text": "conduit shrines conduit shrines will appear throughout this place."
+        },
+        "control_impaired_explosions": {
+            "text": "control impaired explosions being hit by control impairing effects creates an explosion around you."
+        },
+        "diamond_reserve": {
+            "rarity": "Rare",
+            "text": "diamond reserve many diamond chests have been stashed here."
+        },
+        "dungeon_delve": {
+            "rarity": "Common",
+            "text": "dungeon delve completing the dungeon grants extra experience and rewards."
+        },
+        "duriels_offering": {
+            "rarity": "Rare",
+            "text": "duriels offering astaroths rewards include shards of agony, required to open duriels hoard."
+        },
+        "emerald_reserve": {
+            "rarity": "Rare",
+            "text": "emerald reserve many emerald chests have been stashed here."
+        },
+        "equipment_delve": {
+            "rarity": "Rare",
+            "text": "equipment delve find horadric artifacts to earn an increasingly higher quality cache of gear."
+        },
+        "extra_resplendent_chests": {
+            "text": "extra resplendent chests extra resplendent chests will appear in the dungeon."
+        },
+        "extra_shrines": {
+            "text": "extra shrines extra shrines will appear in the dungeon."
+        },
+        "fire_damage": {
+            "text": "fire damage you deal more fire damage."
+        },
+        "forgotten_altar": {
+            "text": "forgotten altar this world will always spawn a forgotten altar."
+        },
+        "forgotten_wisdom": {
+            "rarity": "Magic",
+            "text": "forgotten wisdom enemies hoard knowledge here, granting extra experience."
+        },
+        "frost_damage": {
+            "text": "frost damage you deal more frost damage."
+        },
+        "gem_reserve": {
+            "rarity": "Magic",
+            "text": "gem reserve many gem fragment chests have been stashed here."
+        },
+        "gold_find": {
+            "text": "gold find you find more gold."
+        },
+        "gold_reserve": {
+            "rarity": "Magic",
+            "text": "gold reserve many gold chests have been stashed here."
+        },
+        "greater_lair_keys": {
+            "text": "greater lair keys astaroths rewards include greater lair keys."
+        },
+        "grigoires_offering": {
+            "rarity": "Rare",
+            "text": "grigoires offering astaroths rewards include living steel, required to open grigoires hoard."
+        },
+        "grim_secrets": {
+            "rarity": "Magic",
+            "text": "grim secrets killing astaroth grants a large amount of horadric knowledge."
+        },
+        "guaranteed_treasure_goblins": {
+            "text": "guaranteed treasure goblins treasure goblins will appear in the dungeon."
+        },
+        "harbinger_of_hatreds_offering": {
+            "rarity": "Rare",
+            "text": "harbinger of hatreds offering astaroths rewards include abhorrent hearts, required to open the harbinger of hatreds hoard."
+        },
+        "hell_touched": {
+            "text": "hell touched extra infernal shrines and more glyph experience earned at the end of this dungeon."
+        },
+        "hidden_armory": {
+            "rarity": "Legendary",
+            "text": "hidden armory exceptional items are kept here, granting elite monsters a powerful loot affix."
+        },
+        "hidden_legendary_vendor": {
+            "text": "hidden legendary vendor a secret vendor appears somewhere in the dungeon..."
+        },
+        "horadric_phials": {
+            "text": "horadric phials monsters in this dungeon drop more horadric phials."
+        },
+        "horadric_strongroom": {
+            "rarity": "Rare",
+            "text": "horadric strongroom this place will always contain a horadric strongroom."
+        },
+        "increased_critical_strike": {
+            "text": "increased critical strike your critical strike chance is increased by ."
+        },
+        "increased_healing": {
+            "text": "increased healing your healing received is increased by ."
+        },
+        "infernal_warp_reserve": {
+            "rarity": "Rare",
+            "text": "infernal warp reserve many infernal warp chests have been stashed here."
+        },
+        "lair_keys": {
+            "rarity": "Rare",
+            "text": "lair keys astaroths rewards include lair keys."
+        },
+        "legendary_spoils": {
+            "rarity": "Magic",
+            "text": "legendary spoils astaroths rewards include a guaranteed ancestral item."
+        },
+        "lethal_shrines": {
+            "rarity": "Magic",
+            "text": "lethal shrines lethal shrines will appear throughout this place."
+        },
+        "lightning_caller": {
+            "text": "lightning caller you occasionally call down lightning strikes that damage nearby enemies."
+        },
+        "lightning_damage": {
+            "text": "lightning damage you deal more lightning damage."
+        },
+        "lord_zirs_offering": {
+            "rarity": "Rare",
+            "text": "lord zirs offering astaroths rewards include exquisite blood, required to open lord zirs hoard."
+        },
+        "magic_find": {
+            "text": "magic find you find more items from enemies."
+        },
+        "materials_reserve": {
+            "rarity": "Magic",
+            "text": "materials reserve many materials chests have been stashed here."
+        },
+        "mythic_prankster": {
+            "rarity": "Mythic",
+            "text": "mythic prankster the resplendent treasures in this place have attracted a fancy, yet familiar nemesis..."
+        },
+        "nudging_evade": {
+            "text": "nudging evade using evade pushes enemies back."
+        },
+        "obducite_mine": {
+            "rarity": "Magic",
+            "text": "obducite mine monsters drop additional obducite in this place."
+        },
+        "obols_reserve": {
+            "rarity": "Rare",
+            "text": "obols reserve many obols chests have been stashed here."
+        },
+        "physical_damage": {
+            "text": "physical damage you deal more physical damage."
+        },
+        "poison_damage": {
+            "text": "poison damage you deal more poison damage"
+        },
+        "poisonous_evade": {
+            "text": "poisonous evade using evade leaves a damaging pool of poison under the first enemy you evade through or at your destination."
+        },
+        "protection_shrines": {
+            "rarity": "Magic",
+            "text": "protection shrines protection shrines will appear throughout this place."
+        },
+        "quick_killer": {
+            "text": "quick killer killing a monster grants attack and move speed. stacking up to ."
+        },
+        "reduce_cooldowns_on_kill": {
+            "text": "reduce cooldowns on kill killing a monster reduces your cooldowns by . seconds."
+        },
+        "revered_site": {
+            "rarity": "Magic",
+            "text": "revered site monsters grant additional divine favor in this place."
+        },
+        "riches_of_gold": {
+            "rarity": "Rare",
+            "text": "riches of gold astaroths rewards include a large amount of gold."
+        },
+        "riches_of_keys": {
+            "rarity": "Magic",
+            "text": "riches of keys astaroths rewards include valuable dungeon keys."
+        },
+        "riches_of_materials": {
+            "rarity": "Magic",
+            "text": "riches of materials astaroths rewards include a large amount of crafting materials."
+        },
+        "riches_of_phials": {
+            "rarity": "Magic",
+            "text": "riches of phials astaroths rewards include a large amount of horadric phials."
+        },
+        "ruby_reserve": {
+            "rarity": "Rare",
+            "text": "ruby reserve many ruby chests have been stashed here."
+        },
+        "sapphire_reserve": {
+            "rarity": "Rare",
+            "text": "sapphire reserve many sapphire chests have been stashed here."
+        },
+        "shadow_damage": {
+            "text": "shadow damage you deal more shadow damage."
+        },
+        "skull_reserve": {
+            "rarity": "Magic",
+            "text": "skull reserve many skull chests have been stashed here."
+        },
+        "thorns": {
+            "text": "thorns after attacking an enemy, your thorns are increased by for seconds, up to at max stacks."
+        },
+        "topaz_reserve": {
+            "rarity": "Rare",
+            "text": "topaz reserve many topaz chests have been stashed here."
+        },
+        "treasure_breach": {
+            "text": "treasure breach a puzzling number of treasure goblins have overrun this place."
+        },
+        "unique_spoils": {
+            "rarity": "Magic",
+            "text": "unique spoils astaroths rewards include more unique items."
+        },
+        "urivars_offering": {
+            "rarity": "Rare",
+            "text": "urivars offering astaroths rewards include judicators masks, required to open urivars hoard."
+        },
+        "varshans_offering": {
+            "rarity": "Rare",
+            "text": "varshans offering astaroths rewards include malignant hearts, required to open varshans hoard."
+        },
+        "vile_splendor": {
+            "rarity": "Rare",
+            "text": "vile splendor opulent excess is enjoyed here, granting elite monsters the \"gilded\" affix."
+        }
     }
 }
