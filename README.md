@@ -17,6 +17,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Filter tributes by name or rarity
 - Quickly move items from your stash or inventory
 - Supported resolutions are all aspect ratios between 16:10 and 21:9
+- Info Panel Overlay for tracking world events and session statistics
 - Paragon Overlay with import from supported build planners (Mobalytics, Maxroll, D4Builds)
 
 ## How to Setup
@@ -673,6 +674,50 @@ D4LF can import Paragon boards from supported build planners and show them in-ga
 
 - Overlays may not work in exclusive fullscreen; use **borderless windowed** if the overlay does not appear.
 - Planner websites can change over time. If an import/export stops working, please report a bug.
+
+## Info Panel Overlay
+
+The Info Panel provides real-time tracking for World Events and session-based statistics for Gold and Experience.
+
+**How to use**
+
+1. Toggle the overlay using the hotkey (default **F6**, configurable in *Advanced options*).
+1. **Move**: Click and drag the overlay to your preferred location.
+1. **Settings**: Right-click anywhere on the overlay to open the context menu.
+1. **Lock**: Once positioned, select **Lock Position** from the right-click menu to prevent accidental movement.
+
+**Features and Settings (Right-Click Menu)**
+
+- **Timers**: Toggle visibility for **World Boss**, **Legion**, and **Helltide** timers.
+  - Timers automatically sync with [Helltides.com](https://helltides.com).
+  - Timers will flash orange when an event is starting soon (< 5 minutes).
+- **Gold Stats Submenu**:
+  - **Show Gold Stats**: Master toggle for gold tracking.
+  - **GPH**: Shows your calculated Gold Per Hour for the current session.
+  - **Gained**: Shows total gold accumulated since the last reset.
+  - **Reset Gold Stats**: Clears session data and sets a new baseline.
+- **Exp Stats Submenu**:
+  - **Show Exp Stats**: Master toggle for experience tracking.
+  - **EPH**: Shows your calculated Experience Per Hour.
+  - **Exp**: Total experience gained during the session.
+  - **T2L (Time to Level)**: Estimated time remaining until your next level based on current EPH.
+  - **Next Scan**: Shows the remaining cooldown until the next automatic experience check.
+  - **Check EXP on Open**: If enabled, the tool will automatically hover your experience bar to scan values whenever you open your inventory.
+  - **EXP Age Before Refresh**: Set the cooldown interval (e.g., 5m, 10m) for automatic scans.
+  - **Pick EXP Bar Position**: Calibrate the tool by dragging a box over your experience bar on screen.
+  - **Reset Exp Stats**: Clears session experience data.
+- **UI Adjustments**:
+  - **Orientation**: Switch between **Horizontal** and **Vertical** layouts.
+  - **Increase/Decrease Size**: Adjust the font size and overall scale of the overlay.
+- **System**:
+  - **Auto Sync**: Manually force a refresh of event data from the web.
+  - **Lock Position**: Disables dragging to keep the overlay static.
+
+**Tracking Logic**
+
+- The overlay captures data via the game's Text-to-Speech (TTS) system.
+- To initialize tracking, simply hover over your gold balance or experience bar in-game.
+- Gold tracking includes verification logic to ignore transient "Sell Value" tooltips from items.
 
 ## Future Plans
 
