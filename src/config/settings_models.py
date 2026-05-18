@@ -96,6 +96,11 @@ class AdvancedOptionsModel(_IniBaseModel):
         description="Hotkey to refresh the junk/favorite status of all items in your inventory/stash. A filter is not run after.",
         json_schema_extra={IS_HOTKEY_KEY: "True"},
     )
+    info_overlay: str = Field(
+        default="f6",
+        description="Hotkey to open/close the info panel overlay",
+        json_schema_extra={IS_HOTKEY_KEY: "True"},
+    )
     log_lvl: LogLevels = Field(
         default=LogLevels.info,
         description="The level at which logs are written",
@@ -154,6 +159,7 @@ class AdvancedOptionsModel(_IniBaseModel):
             self.run_filter_drop,
             self.run_filter_force_refresh,
             self.run_vision_mode,
+            self.info_overlay,
         ]
         if len(set(keys)) != len(keys):
             msg = "hotkeys must be unique"
@@ -170,6 +176,7 @@ class AdvancedOptionsModel(_IniBaseModel):
         "run_filter_drop",
         "run_filter_force_refresh",
         "run_vision_mode",
+        "info_overlay",
     )
     @classmethod
     def key_must_exist(cls, k: str) -> str:

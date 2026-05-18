@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import sys
 import threading
 import time
@@ -18,7 +19,14 @@ import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
 import src.tts
+from src.info_overlay import (
+    InventoryExpTracker,
+    _hover_experience_balance,
+    set_busy_checker as set_info_busy_checker,
+    toggle_info_overlay,
+)
 from src.cam import Cam
+from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
 from src.config.settings_models import (
     IS_HOTKEY_KEY,
@@ -94,6 +102,9 @@ class ScriptHandler:
         self._log_level = self._config.advanced_options.log_lvl.value.upper()
         self.vision_mode = self._create_vision_mode(self._config.general.vision_mode_type)
 
+        # Initialize Info Overlay hooks and subscriptions
+        set_info_busy_checker(lambda: self.loot_interaction_thread is not None)
+
         self.setup_key_binds()
         self._config.register_change_listener(self._on_config_changed)
         if self._config.general.run_vision_mode_on_startup:
@@ -126,6 +137,7 @@ class ScriptHandler:
         return (
             advanced_options.run_vision_mode,
             advanced_options.exit_key,
+            advanced_options.info_overlay,
             advanced_options.toggle_paragon_overlay,
             advanced_options.vision_mode_only,
             advanced_options.run_filter,
@@ -246,6 +258,8 @@ class ScriptHandler:
         self._register_hotkey(advanced_options.run_vision_mode, lambda: self.run_vision_mode())
         self._register_hotkey(advanced_options.exit_key, lambda: self._graceful_exit())
         self._register_hotkey(advanced_options.toggle_paragon_overlay, lambda: self.toggle_paragon_overlay())
+        self._register_hotkey(advanced_options.info_overlay, toggle_info_overlay)
+        self._register_hotkey(config.char.inventory, lambda: InventoryExpTracker().on_inventory_open())
         if not advanced_options.vision_mode_only:
             self._register_hotkey(advanced_options.run_filter, lambda: self.filter_items())
             self._register_hotkey(advanced_options.run_filter_drop, lambda: self.filter_items(no_match_action="drop"))
