@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import enum
 import logging
 import queue
@@ -10,7 +9,6 @@ import pywintypes
 import win32file
 import win32pipe
 
-from src.config.loader import IniConfigLoader
 from src.config.helper import singleton
 
 CONNECTED = False
@@ -19,12 +17,6 @@ TO_FILTER = ["Champions who earn the favor of"]
 _DATA_QUEUE = queue.Queue(maxsize=100)
 
 LOGGER = logging.getLogger(__name__)
-
-@dataclass(frozen=True)
-class InfoStat:
-    name: str
-    value: int
-    max_value: int | None = None
 
 
 class ItemIdentifiers(enum.Enum):
@@ -43,29 +35,23 @@ class Publisher:
         self._subscriber_lock = threading.Lock()
 
     def find_item(self) -> None:
-        global LAST_ITEM
         local_cache = []
         while True:
             data = fix_data(_DATA_QUEUE.get())
+            # Pass numerical stat lines directly to info subscribers (Gold/Exp)
+            if "gold" in data.lower() or "experience" in data.lower():
+                self.publish_info(data)
+
             local_cache.append(data)
-
-            if filter_data(data):
-                continue
-
-            is_stat = any(word in data.lower() for word in ["gold", "experience"])
-            is_item_end = any(word in data.lower() for word in ["mouse button", "action button"])
-
-            if is_stat:
-                stat = _parse_stat(data)
-                if stat:
-                    self.publish_info(stat)
-            elif is_item_end:
-                start = find_item_start(local_cache)
-                if start is not None:
-                    LAST_ITEM = local_cache[start:]
-                    LOGGER.debug(f"TTS Found: {LAST_ITEM}")
-                    local_cache = []
-                    self.publish_item(LAST_ITEM)
+            if not filter_data(data) and (
+                any(word in data.lower() for word in ["mouse button", "action button"])
+                and (start := find_item_start(local_cache)) is not None
+            ):
+                global LAST_ITEM
+                LAST_ITEM = local_cache[start:]
+                LOGGER.debug(f"TTS Found: {LAST_ITEM}")
+                local_cache = []
+                self.publish_item(LAST_ITEM)
 
     def publish_item(self, data):
         with self._subscriber_lock:
@@ -78,9 +64,9 @@ class Publisher:
 
     def unsubscribe_item(self, subscriber):
         with self._subscriber_lock:
-            self._item_subscribers.remove(subscriber)
+            self._item_subscribers.discard(subscriber)
 
-    def publish_info(self, data: InfoStat):
+    def publish_info(self, data):
         with self._subscriber_lock:
             for subscriber in self._info_subscribers:
                 subscriber(data)
@@ -91,26 +77,7 @@ class Publisher:
 
     def unsubscribe_info(self, subscriber):
         with self._subscriber_lock:
-            self._info_subscribers.remove(subscriber)
-
-
-def _parse_stat(raw_line: str) -> InfoStat | None:
-    # Handle Gold statistics from raw TTS string (e.g., '2,225,130,802 Gold')
-    if (
-        "gold" in raw_line.lower()
-        and not any(x in raw_line.lower() for x in ["sell value", "repair", "cost", "price", "buy", "fee", "spent", "purchase"])
-        and (match := re.search(r"([0-9,.]+)\s+Gold", raw_line, re.IGNORECASE))
-    ):
-        raw_val = re.sub(r"\D", "", match.group(1))
-        if raw_val:
-            return InfoStat(name="gold_balance", value=int(raw_val))
-    # Handle Experience statistics (e.g., 'Level 209 Experience: 55,843,725 / 74,304,757')
-    elif "experience" in raw_line.lower() and (match := re.search(r"Experience:\s+([0-9,.]+)\s+/\s+([0-9,.]+)", raw_line, re.IGNORECASE)):
-        raw_val = re.sub(r"\D", "", match.group(1))
-        raw_mx = re.sub(r"\D", "", match.group(2))
-        if raw_val and raw_mx:
-            return InfoStat(name="experience_gain", value=int(raw_val), max_value=int(raw_mx))
-    return None
+            self._info_subscribers.discard(subscriber)
 
 
 def create_pipe():

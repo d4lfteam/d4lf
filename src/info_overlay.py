@@ -1,5 +1,6 @@
 from __future__ import annotations
 import datetime
+from dataclasses import dataclass
 import logging
 import tkinter as tk
 from pathlib import Path
@@ -16,7 +17,13 @@ from src.tts import Publisher
 from src.utils.custom_mouse import mouse
 from src.cam import Cam
 if TYPE_CHECKING:
-    from src.tts import InfoStat
+    pass
+
+@dataclass(frozen=True)
+class InfoStat:
+    name: str
+    value: int
+    max_value: int | None = None
 
 LOGGER = logging.getLogger(__name__)
 
@@ -128,6 +135,24 @@ class SessionStats:
 
         self._is_subscribed = False
 
+    def _parse_stat(self, raw_line: str) -> InfoStat | None:
+        # Handle Gold statistics from raw TTS string (e.g., '2,225,130,802 Gold')
+        if (
+            "gold" in raw_line.lower()
+            and not any(x in raw_line.lower() for x in ["sell value", "repair", "cost", "price", "buy", "fee", "spent", "purchase"])
+            and (match := re.search(r"([0-9,.]+)\s+Gold", raw_line, re.IGNORECASE))
+        ):
+            raw_val = re.sub(r"\D", "", match.group(1))
+            if raw_val:
+                return InfoStat(name="gold_balance", value=int(raw_val))
+        # Handle Experience statistics (e.g., 'Level 209 Experience: 55,843,725 / 74,304,757')
+        elif "experience" in raw_line.lower() and (match := re.search(r"Experience:\s+([0-9,.]+)\s+/\s+([0-9,.]+)", raw_line, re.IGNORECASE)):
+            raw_val = re.sub(r"\D", "", match.group(1))
+            raw_mx = re.sub(r"\D", "", match.group(2))
+            if raw_val and raw_mx:
+                return InfoStat(name="experience_gain", value=int(raw_val), max_value=int(raw_mx))
+        return None
+
     def subscribe(self):
         if not self._is_subscribed:
             Publisher().subscribe_info(self.on_info_stat)
@@ -152,8 +177,12 @@ class SessionStats:
         self.last_exp = None
         LOGGER.info("Experience session stats reset")
 
-    def on_info_stat(self, stat: InfoStat):
+    def on_info_stat(self, raw_line: str):
         """Callback for parsed info statistics."""
+        stat = self._parse_stat(raw_line)
+        if stat is None:
+            return
+
         item_name, val, mx_val = stat.name, stat.value, stat.max_value
         if item_name:
             LOGGER.debug(f"TTS Stat detected: {item_name}={val}")
