@@ -17,7 +17,7 @@ jobs:
       - name: Setup env
         uses: ./.github/actions/setup_env
       - name: Run prek
-        uses: j178/prek-action@v1
+        uses: j178/prek-action@v2
       - name: Pytest
         shell: powershell
         run: pytest . -m "not selenium" -v -n logical
