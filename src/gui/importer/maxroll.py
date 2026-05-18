@@ -42,6 +42,9 @@ PLANNER_BASE_URL = "https://maxroll.gg/d4/planner/"
 SCRIPT_XPATH = "//div[@id='root']/script"
 BUILD_SCRIPT_PREFIX = "window.__remixContext = "
 PLANNER_API_REGEX = re.compile(r'(https://maxroll\.gg/d4/planner/[^"|\\]*)')
+SKILL_RANK_BONUS_FORMULAS = {"GearAffix_SkillRankBonus", "GearAffix_SkillRankBonus_1to2"}
+SKILL_RANK_AFFIX_KEY_REGEX = re.compile(r"(?:_Category_|_Special_)(?P<label>[A-Za-z0-9]+)")
+SKILL_RANK_DESC_LABEL_REGEX = re.compile(r"\{c_important\}([^{}]+)\{/c\}\s+Skills")
 
 
 class MaxrollException(Exception):
@@ -56,9 +59,9 @@ def import_maxroll(config: ImportConfig):
         return
     LOGGER.info(f"Loading {url}")
     if BUILD_GUIDE_BASE_URL in url:
-        api_url, build_id = _extract_planner_url_and_id_from_guide(url)
+        api_url, build_id, build_id_is_visible_position = _extract_planner_url_and_id_from_guide(url)
     else:
-        api_url, build_id = _extract_planner_url_and_id_from_planner(url)
+        api_url, build_id, build_id_is_visible_position = _extract_planner_url_and_id_from_planner(url)
     try:
         r = get_with_retry(url=api_url)
     except ConnectionError:
@@ -67,6 +70,8 @@ def import_maxroll(config: ImportConfig):
     all_data = r.json()
     guide_season = all_data.get("season", "")
     build_data = json.loads(all_data["data"])
+    if build_id_is_visible_position:
+        build_id = _resolve_visible_profile_index(build_data["profiles"], build_id)
     items = build_data["items"]
     try:
         mapping_data = get_with_retry(url=PLANNER_API_DATA_URL).json()
@@ -218,7 +223,7 @@ def _find_item_affixes(
 ) -> list[Affix]:
     res = []
     for affix_id in item_affixes:
-        for affix in mapping_data["affixes"].values():
+        for affix_key, affix in mapping_data["affixes"].items():
             if affix["id"] != affix_id["nid"]:
                 continue
             if affix["magicType"] in [2, 4]:
@@ -265,22 +270,9 @@ def _find_item_affixes(
                             attr_desc = f"to {skill_data['name']}"
                             break
                     else:
-                        param_id = affix["attributes"][0]["param"]
-                        attribute_id = affix["attributes"][0]["id"]
-                        if param_id == -1460542966 and attribute_id in [1033, 1155]:
-                            attr_desc = "to core skills"
-                        elif param_id == -755407686 and attribute_id in [1034, 1091]:
-                            attr_desc = "to defensive skills"
-                        elif param_id == 746476422 and attribute_id == 1034:
-                            attr_desc = "to mastery skills"
-                        elif param_id == -954965341 and attribute_id == 1091:
-                            attr_desc = "to basic skills"
-                        elif param_id == -1460608310 and attribute_id in [1138, 1155]:
-                            attr_desc = "to aura skills"
-                        elif param_id == 850110203 and attribute_id == 1155:
-                            attr_desc = "to demonology skills"
-                        elif param_id == -2005545408 and attribute_id == 1155:
-                            attr_desc = "to ancient skills"
+                        attr_desc = _find_skill_rank_affix_description(
+                            mapping_data=mapping_data, affix_key=affix_key, attribute=affix["attributes"][0]
+                        )
             clean_desc = re.sub(r"\[.*?\]|[^a-zA-Z ]", "", attr_desc)
             clean_desc = clean_desc.replace("SecondSeconds", "seconds")
             if not clean_desc:
@@ -302,6 +294,46 @@ def _find_item_affixes(
                 LOGGER.error(f"Couldn't match {affix_id=}")
             break
     return res
+
+
+def _find_skill_rank_affix_description(mapping_data: dict, affix_key: str, attribute: dict) -> str:
+    if attribute.get("formula") not in SKILL_RANK_BONUS_FORMULAS:
+        return ""
+
+    if (label := _find_skill_rank_label_from_descriptions(mapping_data, attribute.get("param"))) or (
+        label := _find_skill_rank_label_from_affix_key(affix_key)
+    ):
+        return f"to {label} skills"
+    return ""
+
+
+def _find_skill_rank_label_from_descriptions(mapping_data: dict, param: int | None) -> str:
+    if param is None:
+        return ""
+
+    for affix in mapping_data["affixes"].values():
+        if not any(
+            attr.get("formula") in SKILL_RANK_BONUS_FORMULAS and attr.get("param") == param
+            for attr in affix.get("attributes", [])
+        ):
+            continue
+        if match := SKILL_RANK_DESC_LABEL_REGEX.search(affix.get("desc", "")):
+            return match.group(1)
+    return ""
+
+
+def _find_skill_rank_label_from_affix_key(affix_key: str) -> str:
+    if "SkillRankBonus_AllSkills" in affix_key:
+        return "all"
+    if match := SKILL_RANK_AFFIX_KEY_REGEX.search(affix_key):
+        return _normalize_affix_key_label(match.group("label"))
+    return ""
+
+
+def _normalize_affix_key_label(label: str) -> str:
+    label = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", label)
+    label = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", label)
+    return " ".join(label.split())
 
 
 def _find_legendary_aspect(mapping_data: dict, legendary_aspect: dict) -> str | None:
@@ -386,7 +418,7 @@ def _normalize_item_type_str_for_import_helpers(item_type_str: str) -> str:
     return re.sub(r"\b([a-z]+)\s+(1h|2h)\b", r"\2 \1", normalized_item_type)
 
 
-def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int]:
+def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int, bool]:
     planner_suffix = url.split(PLANNER_BASE_URL)
     if len(planner_suffix) != 2:
         LOGGER.error(msg := "Invalid planner url")
@@ -394,6 +426,7 @@ def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int]:
     if "#" in planner_suffix[1]:
         planner_id, data_id = planner_suffix[1].split("#")
         data_id = int(data_id) - 1
+        build_id_is_visible_position = True
     else:
         planner_id = planner_suffix[1]
 
@@ -403,11 +436,12 @@ def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int]:
             LOGGER.exception(msg := "Couldn't get planner")
             raise MaxrollException(msg) from exc
         data_id = json.loads(r.json()["data"])["activeProfile"]
-    return PLANNER_API_BASE_URL + planner_id, data_id
+        build_id_is_visible_position = False
+    return PLANNER_API_BASE_URL + planner_id, data_id, build_id_is_visible_position
 
 
-def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int]:
-    """Resolve a build guide to the underlying planner API url, active profile id, and guide season."""
+def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, bool]:
+    """Resolve a build guide to the underlying planner API url and profile selection."""
     try:
         r = get_with_retry(url=url)
     except ConnectionError as exc:
@@ -420,12 +454,23 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int]:
         if script_element.text and script_element.text.strip().startswith(BUILD_SCRIPT_PREFIX):
             planner_link = PLANNER_API_REGEX.search(script_element.text).group()
             if planner_link:
-                api_url, build_id = _extract_planner_url_and_id_from_planner(planner_link)
-                return api_url, build_id
+                api_url, build_id, build_id_is_visible_position = _extract_planner_url_and_id_from_planner(planner_link)
+                return api_url, build_id, build_id_is_visible_position
 
     msg = "Couldn't resolve a planner profile from this Maxroll build guide. Use the planner link directly and please report a bug."
     LOGGER.error(msg)
     raise MaxrollException(msg)
+
+
+def _resolve_visible_profile_index(profiles: list[dict], visible_profile_index: int) -> int:
+    visible_index = 0
+    for profile_index, profile in enumerate(profiles):
+        if profile.get("hidden"):
+            continue
+        if visible_index == visible_profile_index:
+            return profile_index
+        visible_index += 1
+    return visible_profile_index
 
 
 def _extract_guide_profile_id(embed: lxml.html.HtmlElement) -> int | None:
