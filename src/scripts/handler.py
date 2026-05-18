@@ -347,23 +347,20 @@ def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh,
 
     inv = CharInventory()
     stash = Stash()
-    config = IniConfigLoader()
 
     if stash.is_open():
-        for i in config.general.check_chest_tabs:
+        for i in IniConfigLoader().general.check_chest_tabs:
             stash.switch_to_tab(i)
             time.sleep(0.3)
             check_items(stash, force_refresh, stash_is_open=True, no_match_action="junk")
         mouse.move(*Cam().abs_window_to_monitor((0, 0)))
         time.sleep(0.3)
         check_items(inv, force_refresh, stash_is_open=True, no_match_action="junk")
-        _hover_experience_balance()
     else:
         if not inv.open():
             screenshot("inventory_not_open", img=Cam().grab())
             LOGGER.error("Inventory did not open up")
             return
         check_items(inv, force_refresh, no_match_action=no_match_action)
-        _hover_experience_balance()
     mouse.move(*Cam().abs_window_to_monitor((0, 0)))
     LOGGER.info("Loot filter done")

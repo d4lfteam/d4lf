@@ -884,6 +884,8 @@ def run_boss_timer_overlay():
     with _OVERLAY_LOCK:
         _OVERLAY_INSTANCE = overlay
     root.mainloop()
+    # Stop the mainloop first via quit(), then destroy root on the UI thread.
+    root.destroy()
     with _OVERLAY_LOCK:
         _OVERLAY_INSTANCE = None
 
@@ -891,8 +893,8 @@ def request_close():
     """Thread-safe request to close the overlay."""
     with _OVERLAY_LOCK:
         if _OVERLAY_INSTANCE and _OVERLAY_INSTANCE.winfo_exists():
-            # Schedule destruction of the root window on the UI thread
-            _OVERLAY_INSTANCE.after(0, _OVERLAY_INSTANCE.master.destroy)
+            # Schedule the mainloop to exit on the UI thread
+            _OVERLAY_INSTANCE.after(0, _OVERLAY_INSTANCE.master.quit)
 
 def update_info_stats(gph: int | None = None, total_gained: int | None = None, eph: int | None = None, total_exp: int | None = None, t2l: str | None = None):
     """Thread-safe update for statistics."""
