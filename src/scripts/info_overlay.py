@@ -4,13 +4,13 @@ from dataclasses import dataclass
 import logging
 import tkinter as tk
 from pathlib import Path
-import configparser
 import httpx
 import re
 import threading
 import time
 from contextlib import suppress
 from typing import Any, Callable, TYPE_CHECKING
+from PyQt6.QtCore import QSettings
 from src.config.loader import IniConfigLoader
 from src.config.helper import singleton
 from src.tts import Publisher
@@ -39,35 +39,21 @@ def set_busy_checker(checker: Callable[[], bool]):
     global _BUSY_CHECKER
     _BUSY_CHECKER = checker
 
-# =============================================================================
-# SETTINGS PERSISTENCE (PARAGON STYLE)
-# =============================================================================
-
-def _params_ini_path() -> Path:
-    p = Path.home() / ".d4lf"
-    p.mkdir(parents=True, exist_ok=True)
-    return p / "params.ini"
-
 def load_info_settings() -> dict[str, Any]:
-    """Load info overlay and experience tracking settings from params.ini."""
-    ini = _params_ini_path()
-    p = configparser.ConfigParser()
-    if ini.exists():
-        p.read(ini, encoding="utf-8")
-    sec = p["info_overlay"] if p.has_section("info_overlay") else {}
+    """Load info overlay and experience tracking settings from QSettings."""
+    settings_q = QSettings("d4lf", "InfoOverlay")
 
-    def parse_bool(k: str, default: bool) -> bool:
-        v = sec.get(k, str(default)).lower()
-        return v in ("true", "1", "yes", "on")
+    def get_value(key: str, default: Any, type_hint: type) -> Any:
+        return settings_q.value(key, default, type=type_hint)
 
-    def parse_int(k: str, default: int) -> int:
+    def parse_int_from_qsettings(k: str, default: int) -> int:
         try:
-            return int(sec.get(k, str(default)))
+            return int(settings_q.value(k, str(default), type=str))
         except ValueError:
             return default
 
-    def parse_tuple(k: str) -> tuple[int, ...] | None:
-        v = sec.get(k)
+    def parse_tuple_from_qsettings(k: str) -> tuple[int, ...] | None:
+        v = settings_q.value(k, None, type=str)
         if not v or v.lower() == "none":
             return None
         try:
@@ -76,46 +62,56 @@ def load_info_settings() -> dict[str, Any]:
             return None
 
     # Boss Timer UI Settings
-    settings = {
-        "x": parse_int("x", 100),
-        "y": parse_int("y", 100),
-        "font_size": parse_int("font_size", 14),
-        "wb_reference": sec.get("wb_reference", "2024-01-01 00:00:00"),
-        "next_boss_name": sec.get("next_boss_name", "Unknown"),
-        "orientation": sec.get("orientation", "horizontal"),
-        "show_wb": parse_bool("show_wb", True),
-        "show_legion": parse_bool("show_legion", True),
-        "show_ht": parse_bool("show_ht", True),
-        "show_gold": parse_bool("show_gold", True),
-        "show_gph": parse_bool("show_gph", True),
-        "show_total_gold": parse_bool("show_total_gold", True),
-        "show_exp": parse_bool("show_exp", True),
-        "show_eph": parse_bool("show_eph", True),
-        "show_total_exp": parse_bool("show_total_exp", True),
-        "show_t2l": parse_bool("show_t2l", True),
-        "show_next_scan": parse_bool("show_next_scan", True),
-        "locked": parse_bool("locked", False),
+    loaded_settings = {
+        "x": get_value("x", 100, int),
+        "y": get_value("y", 100, int),
+        "font_size": get_value("font_size", 14, int),
+        "wb_reference": get_value("wb_reference", "2024-01-01 00:00:00", str),
+        "next_boss_name": get_value("next_boss_name", "Unknown", str),
+        "orientation": get_value("orientation", "horizontal", str),
+        "show_wb": get_value("show_wb", True, bool),
+        "show_legion": get_value("show_legion", True, bool),
+        "show_ht": get_value("show_ht", True, bool),
+        "show_gold": get_value("show_gold", True, bool),
+        "show_gph": get_value("show_gph", True, bool),
+        "show_total_gold": get_value("show_total_gold", True, bool),
+        "show_exp": get_value("show_exp", True, bool),
+        "show_eph": get_value("show_eph", True, bool),
+        "show_total_exp": get_value("show_total_exp", True, bool),
+        "show_t2l": get_value("show_t2l", True, bool),
+        "show_next_scan": get_value("show_next_scan", True, bool),
+        "locked": get_value("locked", False, bool),
         # Experience/Tracking Settings (Moved from GeneralModel)
-        "check_exp_on_inventory_open": parse_bool("check_exp_on_inventory_open", True),
-        "exp_age_before_refresh": parse_int("exp_age_before_refresh", 5),
-        "exp_bar_pos": parse_tuple("exp_bar_pos"),
+        "check_exp_on_inventory_open": get_value("check_exp_on_inventory_open", True, bool),
+        "exp_age_before_refresh": get_value("exp_age_before_refresh", 5, int),
+        "exp_bar_pos": parse_tuple_from_qsettings("exp_bar_pos"),
     }
-    return settings
+    # Convert wb_reference string to datetime object
+    wb_ref = loaded_settings["wb_reference"]
+    if isinstance(wb_ref, str):
+        try:
+            loaded_settings["wb_reference"] = datetime.datetime.strptime(wb_ref, "%Y-%m-%d %H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+        except (ValueError, TypeError):
+            loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+    elif not isinstance(wb_ref, datetime.datetime):
+        loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+
+    return loaded_settings
 
 def save_info_settings(values: dict[str, Any]) -> None:
-    """Persist settings to the [info_overlay] section of params.ini."""
-    ini = _params_ini_path()
-    p = configparser.ConfigParser()
-    if ini.exists():
-        p.read(ini, encoding="utf-8")
-    if not p.has_section("info_overlay"):
-        p.add_section("info_overlay")
-    
+    """Persist settings to the QSettings for InfoOverlay."""
+    settings_q = QSettings("d4lf", "InfoOverlay")
+
     for k, v in values.items():
-        p["info_overlay"][k] = str(v)
-        
-    with ini.open("w", encoding="utf-8") as f:
-        p.write(f)
+        if k == "wb_reference":
+            if isinstance(v, datetime.datetime):
+                settings_q.setValue(k, v.strftime("%Y-%m-%d %H:%M:%S"))
+            else:
+                settings_q.setValue(k, v)
+        elif k == "exp_bar_pos":
+            settings_q.setValue(k, str(v) if v is not None else "None")
+        else:
+            settings_q.setValue(k, v)
 
 def get_info_setting(key: str, default: Any = None) -> Any:
     """Quick access to a specific info overlay setting."""
@@ -300,11 +296,7 @@ class BossTimerOverlay(tk.Toplevel):
             if k.startswith("show_"):
                 setattr(self, k, self.settings[k])
 
-        wb_ref_str = self.settings["wb_reference"]
-        try:
-            self.wb_reference = datetime.datetime.strptime(wb_ref_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-        except ValueError:
-            self.wb_reference = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+        self.wb_reference = self.settings["wb_reference"]
 
         # In-memory synced data
         self.synced_wb = None
@@ -316,7 +308,7 @@ class BossTimerOverlay(tk.Toplevel):
             "x": self.winfo_x(),
             "y": self.winfo_y(),
             "font_size": self.font_size,
-            "wb_reference": self.wb_reference.strftime("%Y-%m-%d %H:%M:%S"),
+            "wb_reference": self.wb_reference,
             "next_boss_name": self.next_boss_name,
             "orientation": self.orientation,
             "locked": self.locked,
