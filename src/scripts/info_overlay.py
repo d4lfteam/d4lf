@@ -97,7 +97,7 @@ def load_info_settings() -> dict[str, Any]:
             loaded_settings["wb_reference"] = datetime.datetime.strptime(wb_ref, "%Y-%m-%d %H:%M:%S").replace(
                 tzinfo=datetime.UTC
             )
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
     elif not isinstance(wb_ref, datetime.datetime):
         loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
@@ -406,7 +406,11 @@ class BossTimerOverlay(tk.Toplevel):
 
         self.legion_group = tk.Frame(self.frame, bg=CARD_BG)
         self.lbl_legion = tk.Label(
-            self.legion_group, text="Legion:", bg=CARD_BG, fg=LEGION_BLUE, font=(self.font_family, self.font_size, "bold")
+            self.legion_group,
+            text="Legion:",
+            bg=CARD_BG,
+            fg=LEGION_BLUE,
+            font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_legion.pack(side="left")
         self.labels_to_resize.append(self.lbl_legion)
@@ -418,7 +422,11 @@ class BossTimerOverlay(tk.Toplevel):
 
         self.ht_group = tk.Frame(self.frame, bg=CARD_BG)
         self.lbl_ht = tk.Label(
-            self.ht_group, text="Helltide:", bg=CARD_BG, fg=HELLTIDE_RED, font=(self.font_family, self.font_size, "bold")
+            self.ht_group,
+            text="Helltide:",
+            bg=CARD_BG,
+            fg=HELLTIDE_RED,
+            font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_ht.pack(side="left")
         self.labels_to_resize.append(self.lbl_ht)
@@ -751,7 +759,10 @@ class BossTimerOverlay(tk.Toplevel):
         self._menu_vars.append(font_var)
         for font_name in self.FONT_CHOICES:
             font_menu.add_radiobutton(
-                label=font_name, variable=font_var, value=font_name, command=lambda f=font_name: self._change_font_family(f)
+                label=font_name,
+                variable=font_var,
+                value=font_name,
+                command=lambda f=font_name: self._change_font_family(f),
             )
         menu.add_cascade(label="Font", menu=font_menu)
 
