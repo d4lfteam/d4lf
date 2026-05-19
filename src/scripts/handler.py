@@ -258,7 +258,7 @@ class ScriptHandler:
         self._register_hotkey(advanced_options.run_vision_mode, lambda: self.run_vision_mode())
         self._register_hotkey(advanced_options.exit_key, lambda: self._graceful_exit())
         self._register_hotkey(advanced_options.toggle_paragon_overlay, lambda: self.toggle_paragon_overlay())
-        self._register_hotkey(advanced_options.info_overlay, toggle_info_overlay)
+        self._register_hotkey(advanced_options.info_overlay, lambda: toggle_info_overlay())
         self._register_hotkey(config.char.inventory, lambda: InventoryExpTracker().on_inventory_open())
         if not advanced_options.vision_mode_only:
             self._register_hotkey(advanced_options.run_filter, lambda: self.filter_items())
