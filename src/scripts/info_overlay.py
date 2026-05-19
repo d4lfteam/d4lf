@@ -18,13 +18,13 @@ from PyQt6.QtCore import QSettings
 from src.cam import Cam
 from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
-from src.config.settings_models import _OVERLAY_LOCK
 from src.tts import Publisher
 from src.utils.custom_mouse import mouse
 
 LOGGER = logging.getLogger(__name__)
 
 _OVERLAY_INSTANCE: BossTimerOverlay | None = None
+_OVERLAY_LOCK = threading.RLock()
 
 
 def _default_busy_checker() -> bool:

@@ -16,8 +16,6 @@ MODULE_LOGGER = logging.getLogger(__name__)
 HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
 
-_OVERLAY_LOCK = threading.RLock()
-_LAST_TOGGLE_TIME = 0
 LIVE_RELOAD_GROUP_KEY = "live_reload_group"
 
 
