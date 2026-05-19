@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 if sys.platform != "darwin":
     import keyboard
 
-import src.config.settings_models as sm
 import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
@@ -34,12 +33,7 @@ from src.loot_mover import move_items_to_inventory, move_items_to_stash
 from src.paragon_overlay import request_close as request_close_paragon
 from src.paragon_overlay import run_paragon_overlay
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
-from src.scripts.info_overlay import (
-    _OVERLAY_LOCK,
-    InventoryExpTracker,
-    request_close,
-    run_boss_timer_overlay,
-)
+from src.scripts.info_overlay import _OVERLAY_LOCK, InventoryExpTracker, request_close, run_boss_timer_overlay
 from src.scripts.info_overlay import set_busy_checker as set_info_busy_checker
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash

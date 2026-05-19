@@ -1,6 +1,5 @@
 import enum
 import logging
-import threading
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
