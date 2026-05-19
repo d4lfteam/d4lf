@@ -19,7 +19,7 @@ import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
 import src.tts
-from src.info_overlay import (
+from src.scripts.info_overlay import (
     InventoryExpTracker,
     _hover_experience_balance,
     set_busy_checker as set_info_busy_checker,
