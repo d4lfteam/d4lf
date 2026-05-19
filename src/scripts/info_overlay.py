@@ -16,26 +16,16 @@ if TYPE_CHECKING:
 import httpx
 from PyQt6.QtCore import QSettings
 
+from src.config.settings_models import _OVERLAY_LOCK
 from src.cam import Cam
 from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
 from src.tts import Publisher
 from src.utils.custom_mouse import mouse
 
-
-@dataclass(frozen=True)
-class InfoStat:
-    name: str
-    value: int
-    max_value: int | None = None
-
-
 LOGGER = logging.getLogger(__name__)
 
 _OVERLAY_INSTANCE: BossTimerOverlay | None = None
-_OVERLAY_LOCK = threading.RLock()
-_OVERLAY_THREAD: threading.Thread | None = None
-_LAST_TOGGLE_TIME = 0
 
 
 def _default_busy_checker() -> bool:
@@ -105,7 +95,7 @@ def load_info_settings() -> dict[str, Any]:
             loaded_settings["wb_reference"] = datetime.datetime.strptime(wb_ref, "%Y-%m-%d %H:%M:%S").replace(
                 tzinfo=datetime.UTC
             )
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
     elif not isinstance(wb_ref, datetime.datetime):
         loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
@@ -148,29 +138,6 @@ class SessionStats:
 
         self._is_subscribed = False
 
-    def _parse_stat(self, raw_line: str) -> InfoStat | None:
-        # Handle Gold statistics from raw TTS string (e.g., '2,225,130,802 Gold')
-        if (
-            "gold" in raw_line.lower()
-            and not any(
-                x in raw_line.lower()
-                for x in ["sell value", "repair", "cost", "price", "buy", "fee", "spent", "purchase"]
-            )
-            and (match := re.search(r"([0-9,.]+)\s+Gold", raw_line, re.IGNORECASE))
-        ):
-            raw_val = re.sub(r"\D", "", match.group(1))
-            if raw_val:
-                return InfoStat(name="gold_balance", value=int(raw_val))
-        # Handle Experience statistics (e.g., 'Level 209 Experience: 55,843,725 / 74,304,757')
-        elif "experience" in raw_line.lower() and (
-            match := re.search(r"Experience:\s+([0-9,.]+)\s+/\s+([0-9,.]+)", raw_line, re.IGNORECASE)
-        ):
-            raw_val = re.sub(r"\D", "", match.group(1))
-            raw_mx = re.sub(r"\D", "", match.group(2))
-            if raw_val and raw_mx:
-                return InfoStat(name="experience_gain", value=int(raw_val), max_value=int(raw_mx))
-        return None
-
     def subscribe(self):
         if not self._is_subscribed:
             Publisher().subscribe_info(self.on_info_stat)
@@ -198,15 +165,21 @@ class SessionStats:
 
     def on_info_stat(self, raw_line: str):
         """Callback for parsed info statistics."""
-        stat = self._parse_stat(raw_line)
-        if stat is None:
-            return
+        # Handle Gold statistics from raw TTS string (e.g., '2,225,130,802 Gold')
+        if (
+            "gold" in raw_line.lower()
+            and not any(
+                x in raw_line.lower()
+                for x in ["sell value", "repair", "cost", "price", "buy", "fee", "spent", "purchase"]
+            )
+            and (match := re.search(r"([0-9,.]+)\s+Gold", raw_line, re.IGNORECASE))
+        ):
+            raw_val = re.sub(r"\D", "", match.group(1))
+            if not raw_val:
+                return
+            val = int(raw_val)
+            LOGGER.debug(f"TTS Stat detected: gold_balance={val}")
 
-        item_name, val, mx_val = stat.name, stat.value, stat.max_value
-        if item_name:
-            LOGGER.debug(f"TTS Stat detected: {item_name}={val}")
-
-        if item_name == "gold_balance":
             if self.last_gold is None:
                 self.last_gold, self.start_time = val, self.start_time or time.time()
                 update_info_stats(gph=0, total_gained=0)
@@ -234,7 +207,18 @@ class SessionStats:
                     update_info_stats(gph=gph, total_gained=self.total_gold)
                     self.last_gold = val
                 self.pending_gold, self.gold_verify_count = None, 0
-        elif item_name == "experience_gain":
+
+        # Handle Experience statistics (e.g., 'Level 209 Experience: 55,843,725 / 74,304,757')
+        elif "experience" in raw_line.lower() and (
+            match := re.search(r"Experience:\s+([0-9,.]+)\s+/\s+([0-9,.]+)", raw_line, re.IGNORECASE)
+        ):
+            raw_val = re.sub(r"\D", "", match.group(1))
+            raw_mx = re.sub(r"\D", "", match.group(2))
+            if not (raw_val and raw_mx):
+                return
+            val, mx_val = int(raw_val), int(raw_mx)
+            LOGGER.debug(f"TTS Stat detected: experience_gain={val}")
+
             if self.last_exp is None:
                 self.last_exp, self.max_exp, self.start_time = val, mx_val, self.start_time or time.time()
                 update_info_stats(eph=0, total_exp=0, t2l="-")
@@ -1034,31 +1018,3 @@ def _hover_experience_balance(info_config: dict[str, Any] | None = None):
         exp_pos = (int(win_roi["width"] * 0.5), int(win_roi["height"] * 0.965))
         mouse.move(*Cam().window_to_monitor(exp_pos))
     time.sleep(0.5)
-
-
-def toggle_info_overlay():
-    """Toggle the Info Panel overlay (thread-safe with debouncing)."""
-    global _LAST_TOGGLE_TIME, _OVERLAY_THREAD
-    to_stop = False
-    with _OVERLAY_LOCK:
-        now = time.time()
-        # Debounce to prevent rapid key-repeat triggers
-        if now - _LAST_TOGGLE_TIME < 1.5:
-            return
-        _LAST_TOGGLE_TIME = now
-
-        if _OVERLAY_INSTANCE and _OVERLAY_INSTANCE.winfo_exists():
-            to_stop = True
-            request_close()
-        else:
-            LOGGER.info("Opening Info Panel overlay")
-            _OVERLAY_THREAD = threading.Thread(target=run_boss_timer_overlay, daemon=True)
-            _OVERLAY_THREAD.start()
-            # Ensure the thread starts and registers the instance before releasing lock
-            time.sleep(0.1)
-
-    if to_stop:
-        LOGGER.info("Closing Info Panel overlay")
-        if _OVERLAY_THREAD and _OVERLAY_THREAD.is_alive():
-            _OVERLAY_THREAD.join(timeout=2.0)
-        _OVERLAY_THREAD = None

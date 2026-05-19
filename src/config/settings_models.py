@@ -1,5 +1,6 @@
 import enum
 import logging
+import threading
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -14,6 +15,9 @@ if TYPE_CHECKING:
 MODULE_LOGGER = logging.getLogger(__name__)
 HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
+
+_OVERLAY_LOCK = threading.RLock()
+_LAST_TOGGLE_TIME = 0
 LIVE_RELOAD_GROUP_KEY = "live_reload_group"
 
 

@@ -3,7 +3,6 @@ import time
 from typing import TYPE_CHECKING
 
 import src.item.descr.read_descr_tts
-import src.scripts.info_overlay
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.settings_models import ItemRefreshType, UnfilteredUniquesType

@@ -18,6 +18,7 @@ import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
 import src.tts
+import src.config.settings_models as sm
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.settings_models import (
@@ -30,10 +31,15 @@ from src.config.settings_models import (
 )
 from src.dataloader import Dataloader
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
-from src.paragon_overlay import request_close, run_paragon_overlay
+from src.paragon_overlay import request_close as request_close_paragon
+from src.paragon_overlay import run_paragon_overlay
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
-from src.scripts.info_overlay import InventoryExpTracker, toggle_info_overlay
-from src.scripts.info_overlay import set_busy_checker as set_info_busy_checker
+from src.scripts.info_overlay import (
+    InventoryExpTracker,
+    request_close,
+    run_boss_timer_overlay,
+    set_busy_checker as set_info_busy_checker,
+)
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
 from src.utils.custom_mouse import mouse
@@ -86,6 +92,8 @@ class ScriptHandler:
     def __init__(self):
         self.loot_interaction_thread = None
         self.paragon_overlay_thread: threading.Thread | None = None
+        self.info_overlay_thread: threading.Thread | None = None
+        self._info_overlay_last_toggle_time = 0
         self.did_stop_scripts = False
         self._vision_mode_was_running_before_overlay = False
         self._hotkey_handles: list[Any] = []
@@ -185,8 +193,8 @@ class ScriptHandler:
         try:
             if self.paragon_overlay_thread is not None and self.paragon_overlay_thread.is_alive():
                 LOGGER.info("Closing Paragon overlay")
-                with suppress(Exception):
-                    request_close()
+                with suppress(Exception):  # type: ignore[attr-defined]
+                    request_close_paragon()
                 self.paragon_overlay_thread.join(timeout=2)
                 # Vision mode is restored by the overlay thread cleanup.
                 return
@@ -230,6 +238,49 @@ class ScriptHandler:
             finally:
                 self.paragon_overlay_thread = None
 
+    def toggle_info_overlay(self):
+        """Toggle the Info Panel overlay (thread-safe with debouncing)."""
+        with sm._OVERLAY_LOCK:
+            now = time.time()
+            # Debounce to prevent rapid key-repeat triggers
+            if now - sm._LAST_TOGGLE_TIME < 1.5:
+                return
+            sm._LAST_TOGGLE_TIME = now
+
+            if self.info_overlay_thread is not None and self.info_overlay_thread.is_alive():
+                LOGGER.info("Closing Info Panel overlay")
+                with suppress(Exception):
+                    request_close()
+                self.info_overlay_thread.join(timeout=2.0)
+                self.info_overlay_thread = None
+                # Vision mode is restored by the overlay thread cleanup.
+                return
+            else:
+                # Disable vision mode while the overlay is active; restore it when the overlay closes.
+                self._vision_mode_was_running_before_overlay = self.vision_mode.running()
+                if self._vision_mode_was_running_before_overlay:
+                    self.vision_mode.stop()
+
+                LOGGER.info("Opening Info Panel overlay")
+                self.info_overlay_thread = threading.Thread(target=self._run_info_overlay, daemon=True)
+                self.info_overlay_thread.start()
+                # Ensure the thread starts and registers the instance before releasing lock
+                time.sleep(0.1)
+
+    def _run_info_overlay(self) -> None:
+        try:
+            run_boss_timer_overlay()
+        except Exception:
+            LOGGER.exception("Info Panel overlay crashed")
+        finally:
+            try:
+                if self._vision_mode_was_running_before_overlay and not self.vision_mode.running():
+                    self.vision_mode.start()
+            except Exception:
+                LOGGER.exception("Failed to restore vision mode after Info Panel overlay")
+            finally:
+                self.info_overlay_thread = None
+
     def _clear_key_binds(self) -> None:
         if sys.platform == "darwin":
             return
@@ -252,7 +303,7 @@ class ScriptHandler:
         self._register_hotkey(advanced_options.run_vision_mode, lambda: self.run_vision_mode())
         self._register_hotkey(advanced_options.exit_key, lambda: self._graceful_exit())
         self._register_hotkey(advanced_options.toggle_paragon_overlay, lambda: self.toggle_paragon_overlay())
-        self._register_hotkey(advanced_options.info_overlay, lambda: toggle_info_overlay())
+        self._register_hotkey(advanced_options.info_overlay, lambda: self.toggle_info_overlay())
         self._register_hotkey(config.char.inventory, lambda: InventoryExpTracker().on_inventory_open())
         if not advanced_options.vision_mode_only:
             self._register_hotkey(advanced_options.run_filter, lambda: self.filter_items())
