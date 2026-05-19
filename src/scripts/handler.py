@@ -249,13 +249,7 @@ class ScriptHandler:
                     request_close()
                 self.info_overlay_thread.join(timeout=2.0)
                 self.info_overlay_thread = None
-                # Vision mode is restored by the overlay thread cleanup.
                 return
-            # Disable vision mode while the overlay is active; restore it when the overlay closes.
-            self._vision_mode_was_running_before_overlay = self.vision_mode.running()
-            if self._vision_mode_was_running_before_overlay:
-                self.vision_mode.stop()
-
             LOGGER.info("Opening Info Panel overlay")
             self.info_overlay_thread = threading.Thread(target=self._run_info_overlay, daemon=True)
             self.info_overlay_thread.start()
@@ -268,13 +262,7 @@ class ScriptHandler:
         except Exception:
             LOGGER.exception("Info Panel overlay crashed")
         finally:
-            try:
-                if self._vision_mode_was_running_before_overlay and not self.vision_mode.running():
-                    self.vision_mode.start()
-            except Exception:
-                LOGGER.exception("Failed to restore vision mode after Info Panel overlay")
-            finally:
-                self.info_overlay_thread = None
+            self.info_overlay_thread = None
 
     def _clear_key_binds(self) -> None:
         if sys.platform == "darwin":
