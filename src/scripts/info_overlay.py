@@ -1017,4 +1017,3 @@ def _hover_experience_balance(info_config: dict[str, Any] | None = None):
         exp_pos = (int(win_roi["width"] * 0.5), int(win_roi["height"] * 0.965))
         mouse.move(*Cam().window_to_monitor(exp_pos))
     time.sleep(0.5)
-  
