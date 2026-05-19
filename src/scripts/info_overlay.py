@@ -81,6 +81,7 @@ def load_info_settings() -> dict[str, Any]:
         "show_total_exp": get_value("show_total_exp", True, bool),
         "show_t2l": get_value("show_t2l", True, bool),
         "show_next_scan": get_value("show_next_scan", True, bool),
+        "font_family": get_value("font_family", "Consolas", str),
         "capture_gold_stats": get_value("capture_gold_stats", False, bool),
         "capture_exp_stats": get_value("capture_exp_stats", False, bool),
         "locked": get_value("locked", False, bool),
@@ -96,7 +97,7 @@ def load_info_settings() -> dict[str, Any]:
             loaded_settings["wb_reference"] = datetime.datetime.strptime(wb_ref, "%Y-%m-%d %H:%M:%S").replace(
                 tzinfo=datetime.UTC
             )
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
     elif not isinstance(wb_ref, datetime.datetime):
         loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
@@ -294,6 +295,23 @@ ACTIVE_GREEN = "#34C410"
 
 
 class BossTimerOverlay(tk.Toplevel):
+    FONT_CHOICES = [
+        "Arial",
+        "Consolas",
+        "Constantia",
+        "Copperplate Gothic Bold",
+        "Courier New",
+        "Garamond",
+        "Georgia",
+        "Impact",
+        "Palatino Linotype",
+        "Segoe UI",
+        "Tahoma",
+        "Times New Roman",
+        "Trebuchet MS",
+        "Verdana",
+    ]
+
     def __init__(self, parent):
         super().__init__(parent)
         self.title("D4LF Boss Timer")
@@ -304,6 +322,7 @@ class BossTimerOverlay(tk.Toplevel):
 
         self._gold_initialized = False
         self._exp_initialized = False
+        self._menu_vars = []  # Initialize here to store tk.Variable instances
 
         self.settings = load_info_settings()
         self._apply_loaded_settings()
@@ -327,6 +346,7 @@ class BossTimerOverlay(tk.Toplevel):
         self.next_boss_name = self.settings["next_boss_name"]
         self.orientation = self.settings["orientation"]
         self.locked = self.settings["locked"]
+        self.font_family = self.settings["font_family"]
         self.capture_gold_stats = self.settings["capture_gold_stats"]
         self.capture_exp_stats = self.settings["capture_exp_stats"]
 
@@ -354,6 +374,7 @@ class BossTimerOverlay(tk.Toplevel):
             "wb_reference": self.wb_reference,
             "next_boss_name": self.next_boss_name,
             "orientation": self.orientation,
+            "font_family": self.font_family,
             "locked": self.locked,
             "capture_gold_stats": self.capture_gold_stats,
             "capture_exp_stats": self.capture_exp_stats,
@@ -373,71 +394,71 @@ class BossTimerOverlay(tk.Toplevel):
 
         self.wb_group = tk.Frame(self.frame, bg=CARD_BG)
         lbl_wb = tk.Label(
-            self.wb_group, text="World Boss:", bg=CARD_BG, fg=WB_ORANGE, font=("Consolas", self.font_size, "bold")
+            self.wb_group, text="World Boss:", bg=CARD_BG, fg=WB_ORANGE, font=(self.font_family, self.font_size, "bold")
         )
         lbl_wb.pack(side="left")
         self.labels_to_resize.append(lbl_wb)
         self.wb_timer = tk.Label(
-            self.wb_group, text="--:--:--", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+            self.wb_group, text="--:--:--", bg=CARD_BG, fg=TEXT, font=(self.font_family, self.font_size, "bold")
         )
         self.wb_timer.pack(side="left")
         self.labels_to_resize.append(self.wb_timer)
 
         self.legion_group = tk.Frame(self.frame, bg=CARD_BG)
         self.lbl_legion = tk.Label(
-            self.legion_group, text="Legion:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold")
+            self.legion_group, text="Legion:", bg=CARD_BG, fg=LEGION_BLUE, font=(self.font_family, self.font_size, "bold")
         )
         self.lbl_legion.pack(side="left")
         self.labels_to_resize.append(self.lbl_legion)
         self.legion_timer = tk.Label(
-            self.legion_group, text="--:--:--", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+            self.legion_group, text="--:--:--", bg=CARD_BG, fg=TEXT, font=(self.font_family, self.font_size, "bold")
         )
         self.legion_timer.pack(side="left")
         self.labels_to_resize.append(self.legion_timer)
 
         self.ht_group = tk.Frame(self.frame, bg=CARD_BG)
         self.lbl_ht = tk.Label(
-            self.ht_group, text="Helltide:", bg=CARD_BG, fg=HELLTIDE_RED, font=("Consolas", self.font_size, "bold")
+            self.ht_group, text="Helltide:", bg=CARD_BG, fg=HELLTIDE_RED, font=(self.font_family, self.font_size, "bold")
         )
         self.lbl_ht.pack(side="left")
         self.labels_to_resize.append(self.lbl_ht)
         self.ht_timer = tk.Label(
-            self.ht_group, text="--:--:--", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+            self.ht_group, text="--:--:--", bg=CARD_BG, fg=TEXT, font=(self.font_family, self.font_size, "bold")
         )
         self.ht_timer.pack(side="left")
         self.labels_to_resize.append(self.ht_timer)
 
         self.stats_group = tk.Frame(self.frame, bg=CARD_BG)
         self.lbl_gph_title = tk.Label(
-            self.stats_group, text="GPH:", bg=CARD_BG, fg=ACCENT, font=("Consolas", self.font_size, "bold")
+            self.stats_group, text="GPH:", bg=CARD_BG, fg=ACCENT, font=(self.font_family, self.font_size, "bold")
         )
         self.lbl_gph_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_gph_title)
         self.gph_value_label = tk.Label(
-            self.stats_group, text="0", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+            self.stats_group, text="0", bg=CARD_BG, fg=TEXT, font=(self.font_family, self.font_size, "bold")
         )
         self.gph_value_label.pack(side="left")
         self.labels_to_resize.append(self.gph_value_label)
 
         self.lbl_total_gained_title = tk.Label(
-            self.stats_group, text="|Gained:", bg=CARD_BG, fg=ACCENT, font=("Consolas", self.font_size, "bold")
+            self.stats_group, text="|Gained:", bg=CARD_BG, fg=ACCENT, font=(self.font_family, self.font_size, "bold")
         )
         self.lbl_total_gained_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_total_gained_title)
         self.total_gained_value_label = tk.Label(
-            self.stats_group, text="0", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+            self.stats_group, text="0", bg=CARD_BG, fg=TEXT, font=(self.font_family, self.font_size, "bold")
         )
         self.total_gained_value_label.pack(side="left")
         self.labels_to_resize.append(self.total_gained_value_label)
 
         self.exp_group = tk.Frame(self.frame, bg=CARD_BG)
         self.lbl_eph_title = tk.Label(
-            self.exp_group, text="EPH:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold")
+            self.exp_group, text="EPH:", bg=CARD_BG, fg=LEGION_BLUE, font=(self.font_family, self.font_size, "bold")
         )
         self.lbl_eph_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_eph_title)
         self.eph_value_label = tk.Label(
-            self.exp_group, text="0", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+            self.exp_group, text="0", bg=CARD_BG, fg=TEXT, font=(self.font_family, self.font_size, "bold")
         )
         self.eph_value_label.pack(side="left")
         self.labels_to_resize.append(self.eph_value_label)
@@ -448,19 +469,19 @@ class BossTimerOverlay(tk.Toplevel):
         self.lbl_total_exp_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_total_exp_title)
         self.total_exp_value_label = tk.Label(
-            self.exp_group, text="0", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+            self.exp_group, text="0", bg=CARD_BG, fg=TEXT, font=(self.font_family, self.font_size, "bold")
         )
         self.total_exp_value_label.pack(side="left")
         self.labels_to_resize.append(self.total_exp_value_label)
 
         self.t2l_group = tk.Frame(self.frame, bg=CARD_BG)
         self.lbl_t2l_title = tk.Label(
-            self.t2l_group, text="T2L:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold")
+            self.t2l_group, text="T2L:", bg=CARD_BG, fg=LEGION_BLUE, font=(self.font_family, self.font_size, "bold")
         )
         self.lbl_t2l_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_t2l_title)
         self.t2l_value_label = tk.Label(
-            self.t2l_group, text="-", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+            self.t2l_group, text="-", bg=CARD_BG, fg=TEXT, font=(self.font_family, self.font_size, "bold")
         )
         self.t2l_value_label.pack(side="left")
         self.labels_to_resize.append(self.t2l_value_label)
@@ -471,7 +492,7 @@ class BossTimerOverlay(tk.Toplevel):
         self.lbl_next_scan_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_next_scan_title)
         self.next_scan_value_label = tk.Label(
-            self.t2l_group, text="Ready", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+            self.t2l_group, text="Ready", bg=CARD_BG, fg=TEXT, font=(self.font_family, self.font_size, "bold")
         )
         self.next_scan_value_label.pack(side="left")
         self.labels_to_resize.append(self.next_scan_value_label)
@@ -716,6 +737,24 @@ class BossTimerOverlay(tk.Toplevel):
         menu.add_command(label="Increase Size (+)", command=lambda: self._change_size(2))
         menu.add_command(label="Decrease Size (-)", command=lambda: self._change_size(-2))
 
+        # Font Submenu
+        font_menu = tk.Menu(
+            menu,
+            tearoff=0,
+            bg=CARD_BG,
+            fg=TEXT,
+            activebackground=ACCENT,
+            activeforeground=CARD_BG,
+            selectcolor=ACTIVE_GREEN,
+        )
+        font_var = tk.StringVar(master=self, value=self.font_family)
+        self._menu_vars.append(font_var)
+        for font_name in self.FONT_CHOICES:
+            font_menu.add_radiobutton(
+                label=font_name, variable=font_var, value=font_name, command=lambda f=font_name: self._change_font_family(f)
+            )
+        menu.add_cascade(label="Font", menu=font_menu)
+
         menu.add_separator()
         menu.add_command(label="Auto Sync (Helltides.com)", command=self._auto_sync)
 
@@ -730,6 +769,12 @@ class BossTimerOverlay(tk.Toplevel):
         self._gold_initialized = False
         self.update_stats(gph=0, total_gained=0)
         self._repack()
+
+    def _change_font_family(self, new_font_family):
+        self.font_family = new_font_family
+        for lbl in self.labels_to_resize:
+            lbl.config(font=(self.font_family, self.font_size, "bold"))
+        self._save_settings()
 
     def _reset_exp_stats(self):
         SessionStats().reset_exp()
@@ -753,7 +798,7 @@ class BossTimerOverlay(tk.Toplevel):
             picker.winfo_screenwidth() // 2,
             picker.winfo_screenheight() // 2,
             text=msg,
-            font=("Consolas", 20, "bold"),
+            font=(self.font_family, 20, "bold"),
             fill=ACTIVE_GREEN,
         )
 
@@ -797,7 +842,7 @@ class BossTimerOverlay(tk.Toplevel):
     def _change_size(self, delta):
         self.font_size = max(8, min(48, self.font_size + delta))
         for lbl in self.labels_to_resize:
-            lbl.config(font=("Consolas", self.font_size, "bold"))
+            lbl.config(font=(self.font_family, self.font_size, "bold"))
         self._save_settings()
 
     def _toggle_lock(self, event=None):
