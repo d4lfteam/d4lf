@@ -7,7 +7,6 @@ import threading
 import time
 import tkinter as tk
 from contextlib import suppress
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -16,10 +15,10 @@ if TYPE_CHECKING:
 import httpx
 from PyQt6.QtCore import QSettings
 
-from src.config.settings_models import _OVERLAY_LOCK
 from src.cam import Cam
 from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
+from src.config.settings_models import _OVERLAY_LOCK
 from src.tts import Publisher
 from src.utils.custom_mouse import mouse
 
@@ -95,7 +94,7 @@ def load_info_settings() -> dict[str, Any]:
             loaded_settings["wb_reference"] = datetime.datetime.strptime(wb_ref, "%Y-%m-%d %H:%M:%S").replace(
                 tzinfo=datetime.UTC
             )
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
     elif not isinstance(wb_ref, datetime.datetime):
         loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
@@ -1018,3 +1017,4 @@ def _hover_experience_balance(info_config: dict[str, Any] | None = None):
         exp_pos = (int(win_roi["width"] * 0.5), int(win_roi["height"] * 0.965))
         mouse.move(*Cam().window_to_monitor(exp_pos))
     time.sleep(0.5)
+  
