@@ -844,11 +844,16 @@ class BossTimerOverlay(tk.Toplevel):
         LOGGER.info("Experience bar position reset to default calculation")
 
     def _bind_events(self):
-        self.frame.bind("<Button-1>", self._start_drag)
-        self.frame.bind("<B1-Motion>", self._do_drag)
-        self.frame.bind("<ButtonRelease-1>", self._stop_drag)
-        self.frame.bind("<Button-3>", self._show_context_menu)
-        self.bind("<Button-3>", self._show_context_menu)
+        self._recursive_bind_drag(self)
+
+    def _recursive_bind_drag(self, widget):
+        """Bind drag events to a widget and all its children recursively."""
+        widget.bind("<Button-1>", self._start_drag, add="+")
+        widget.bind("<B1-Motion>", self._do_drag, add="+")
+        widget.bind("<ButtonRelease-1>", self._stop_drag, add="+")
+        widget.bind("<Button-3>", self._show_context_menu, add="+")
+        for child in widget.winfo_children():
+            self._recursive_bind_drag(child)
 
     def _change_size(self, delta):
         self.font_size = max(8, min(48, self.font_size + delta))
@@ -858,21 +863,28 @@ class BossTimerOverlay(tk.Toplevel):
 
     def _toggle_lock(self, event=None):
         self.locked = not self.locked
+        if self.locked:
+            self.config(cursor="")
         self._save_settings()
 
     def _start_drag(self, event):
         if self.locked:
             return
-        self._drag_data = {"x": event.x, "y": event.y}
+        self.config(cursor="fleur")
+        # Calculate and store the fixed offset from the window's top-left to the mouse click
+        self._drag_offset_x = event.x_root - self.winfo_x()
+        self._drag_offset_y = event.y_root - self.winfo_y()
 
     def _do_drag(self, event):
-        dx = event.x - self._drag_data["x"]
-        dy = event.y - self._drag_data["y"]
-        x = self.winfo_x() + dx
-        y = self.winfo_y() + dy
+        if self.locked or not hasattr(self, "_drag_offset_x"):
+            return
+        # Set the geometry based on current mouse position minus the original offset
+        x = int(event.x_root - self._drag_offset_x)
+        y = int(event.y_root - self._drag_offset_y)
         self.geometry(f"+{x}+{y}")
 
     def _stop_drag(self, event):
+        self.config(cursor="")
         self._save_settings()
 
     def _auto_sync(self):
