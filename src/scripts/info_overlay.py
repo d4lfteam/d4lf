@@ -81,6 +81,8 @@ def load_info_settings() -> dict[str, Any]:
         "show_total_exp": get_value("show_total_exp", True, bool),
         "show_t2l": get_value("show_t2l", True, bool),
         "show_next_scan": get_value("show_next_scan", True, bool),
+        "capture_gold_stats": get_value("capture_gold_stats", False, bool),
+        "capture_exp_stats": get_value("capture_exp_stats", False, bool),
         "locked": get_value("locked", False, bool),
         # Experience/Tracking Settings (Moved from GeneralModel)
         "check_exp_on_inventory_open": get_value("check_exp_on_inventory_open", True, bool),
@@ -94,7 +96,7 @@ def load_info_settings() -> dict[str, Any]:
             loaded_settings["wb_reference"] = datetime.datetime.strptime(wb_ref, "%Y-%m-%d %H:%M:%S").replace(
                 tzinfo=datetime.UTC
             )
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
     elif not isinstance(wb_ref, datetime.datetime):
         loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
@@ -165,6 +167,9 @@ class SessionStats:
     def on_info_stat(self, raw_line: str):
         """Callback for parsed info statistics."""
         # Handle Gold statistics from raw TTS string (e.g., '2,225,130,802 Gold')
+        info_config = load_info_settings()
+        if not info_config["capture_gold_stats"] and not info_config["capture_exp_stats"]:
+            return
         if (
             "gold" in raw_line.lower()
             and not any(
@@ -173,6 +178,8 @@ class SessionStats:
             )
             and (match := re.search(r"([0-9,.]+)\s+Gold", raw_line, re.IGNORECASE))
         ):
+            if not info_config["capture_gold_stats"]:
+                return
             raw_val = re.sub(r"\D", "", match.group(1))
             if not raw_val:
                 return
@@ -211,6 +218,8 @@ class SessionStats:
         elif "experience" in raw_line.lower() and (
             match := re.search(r"Experience:\s+([0-9,.]+)\s+/\s+([0-9,.]+)", raw_line, re.IGNORECASE)
         ):
+            if not info_config["capture_exp_stats"]:
+                return
             raw_val = re.sub(r"\D", "", match.group(1))
             raw_mx = re.sub(r"\D", "", match.group(2))
             if not (raw_val and raw_mx):
@@ -245,6 +254,11 @@ class InventoryExpTracker:
         if self.hover_active or _BUSY_CHECKER():
             return
         info_config = load_info_settings()
+        if not info_config.get("capture_exp_stats", False):
+            return
+        exp_age = info_config.get("exp_age_before_refresh", 5)
+        if exp_age == -1:
+            return
         if not info_config.get("check_exp_on_inventory_open", True):
             return
         if IniConfigLoader().advanced_options.vision_mode_only:
@@ -252,7 +266,7 @@ class InventoryExpTracker:
 
         now = time.time()
         is_init = SessionStats().last_exp is not None
-        if (now - self.last_hover_time) < (info_config.get("exp_age_before_refresh", 5) * 60 if is_init else 2.0):
+        if (now - self.last_hover_time) < (exp_age * 60 if is_init else 2.0):
             return
 
         def _task():
@@ -296,8 +310,8 @@ class BossTimerOverlay(tk.Toplevel):
         self._flash_toggle = False
         self._setup_ui()
         self._bind_events()
-        self._update_timers()
-        # Auto-sync on startup
+        self._update_timers() # Initial update for timers
+        
         self._session_stats = SessionStats()
         self._session_stats.subscribe()
         self._auto_sync()
@@ -313,6 +327,8 @@ class BossTimerOverlay(tk.Toplevel):
         self.next_boss_name = self.settings["next_boss_name"]
         self.orientation = self.settings["orientation"]
         self.locked = self.settings["locked"]
+        self.capture_gold_stats = self.settings["capture_gold_stats"]
+        self.capture_exp_stats = self.settings["capture_exp_stats"]
 
         # Assign all show_ attributes
         for k in self.settings:
@@ -326,6 +342,9 @@ class BossTimerOverlay(tk.Toplevel):
         self.synced_legion = None
         self.synced_helltide = None
 
+        self._gold_initialized = self.capture_gold_stats
+        self._exp_initialized = self.capture_exp_stats
+
     def _save_settings(self):
         updates = {
             "x": self.winfo_x(),
@@ -335,6 +354,8 @@ class BossTimerOverlay(tk.Toplevel):
             "next_boss_name": self.next_boss_name,
             "orientation": self.orientation,
             "locked": self.locked,
+            "capture_gold_stats": self.capture_gold_stats,
+            "capture_exp_stats": self.capture_exp_stats,
         }
         # Sync show_ attributes
         for k in self.settings:
@@ -479,10 +500,10 @@ class BossTimerOverlay(tk.Toplevel):
             self.legion_group.pack(side=side, anchor=anchor, padx=2)
         if self.show_ht:
             self.ht_group.pack(side=side, anchor=anchor, padx=2)
-        if self.show_gold and self._gold_initialized and (self.show_gph or self.show_total_gold):
+        if self.show_gold and self.capture_gold_stats and self._gold_initialized and (self.show_gph or self.show_total_gold):
             self._repack_gold_group()
             self.stats_group.pack(side=side, anchor=anchor, padx=2)
-        if self.show_exp and self._exp_initialized:
+        if self.show_exp and self.capture_exp_stats and self._exp_initialized:
             if self.show_eph or self.show_total_exp:
                 self._repack_exp_group()
                 self.exp_group.pack(side=side, anchor=anchor, padx=2)
@@ -550,6 +571,32 @@ class BossTimerOverlay(tk.Toplevel):
         self._repack()
         self._save_settings()
 
+    def _add_check_menu_item(self, m, label, attr, cmd):
+        """Helper to add a checkbutton for simple boolean attributes."""
+        var = tk.BooleanVar(master=self, value=getattr(self, attr))
+        self._menu_vars.append(var)
+        m.add_checkbutton(label=label, variable=var, command=cmd)
+
+    def _add_config_check_menu_item(self, m, label, field):
+        """Helper to add a checkbutton for settings stored in QSettings."""
+        var = tk.BooleanVar(master=self, value=self.settings.get(field, False))
+        self._menu_vars.append(var)
+
+        def _toggle():
+            val = not self.settings.get(field, False)
+            save_info_settings({field: val})
+            self.settings[field] = val
+            self._repack()
+
+        m.add_checkbutton(label=label, variable=var, command=_toggle)
+
+    def _add_capture_check_menu_item(self, m, label, attr):
+        """Helper to add a checkbutton for capture stats attributes."""
+        var = tk.BooleanVar(master=self, value=getattr(self, attr))
+        self._menu_vars.append(var)
+        # Command toggles the attribute, repacks UI, and saves settings
+        m.add_checkbutton(label=label, variable=var, command=lambda: (setattr(self, attr, not getattr(self, attr)), self._repack(), self._save_settings()))
+
     def _show_context_menu(self, event):
         """Create and display a right-click context menu."""
         menu = tk.Menu(
@@ -563,25 +610,9 @@ class BossTimerOverlay(tk.Toplevel):
         )
         self._menu_vars = []
 
-        def add_config_check(m, label, field):
-            var = tk.BooleanVar(master=self, value=self.settings[field])
-            self._menu_vars.append(var)
-
-            def _toggle():
-                val = not self.settings[field]
-                save_info_settings({field: val})
-                self.settings[field] = val
-
-            m.add_checkbutton(label=label, variable=var, command=_toggle)
-
-        def add_check(m, label, attr, cmd):
-            var = tk.BooleanVar(master=self, value=getattr(self, attr))
-            self._menu_vars.append(var)
-            m.add_checkbutton(label=label, variable=var, command=cmd)
-
-        add_check(menu, "Show World Boss", "show_wb", lambda: self._toggle_visibility("show_wb"))
-        add_check(menu, "Show Legion", "show_legion", lambda: self._toggle_visibility("show_legion"))
-        add_check(menu, "Show Helltide", "show_ht", lambda: self._toggle_visibility("show_ht"))
+        self._add_check_menu_item(menu, "Show World Boss", "show_wb", lambda: self._toggle_visibility("show_wb"))
+        self._add_check_menu_item(menu, "Show Legion", "show_legion", lambda: self._toggle_visibility("show_legion"))
+        self._add_check_menu_item(menu, "Show Helltide", "show_ht", lambda: self._toggle_visibility("show_ht"))
 
         # Gold Submenu
         gold_menu = tk.Menu(
@@ -593,10 +624,12 @@ class BossTimerOverlay(tk.Toplevel):
             activeforeground=CARD_BG,
             selectcolor=ACTIVE_GREEN,
         )
-        add_check(gold_menu, "Show Gold Stats", "show_gold", lambda: self._toggle_visibility("show_gold"))
+        self._add_check_menu_item(gold_menu, "Show Gold Stats", "show_gold", lambda: self._toggle_visibility("show_gold"))
         gold_menu.add_separator()
-        add_check(gold_menu, "Show Gold Per Hour", "show_gph", lambda: self._toggle_visibility("show_gph"))
-        add_check(gold_menu, "Show Total Gold", "show_total_gold", lambda: self._toggle_visibility("show_total_gold"))
+        self._add_check_menu_item(gold_menu, "Show Gold Per Hour", "show_gph", lambda: self._toggle_visibility("show_gph"))
+        self._add_check_menu_item(gold_menu, "Show Total Gold", "show_total_gold", lambda: self._toggle_visibility("show_total_gold"))
+        gold_menu.add_separator()
+        self._add_capture_check_menu_item(gold_menu, "Capture Gold Stats", "capture_gold_stats")
         gold_menu.add_separator()
         gold_menu.add_command(label="Reset Gold Stats", command=self._reset_gold_stats)
         menu.add_cascade(label="Show Gold Stats", menu=gold_menu)
@@ -611,14 +644,16 @@ class BossTimerOverlay(tk.Toplevel):
             activeforeground=CARD_BG,
             selectcolor=ACTIVE_GREEN,
         )
-        add_check(exp_menu, "Show Exp Stats", "show_exp", lambda: self._toggle_visibility("show_exp"))
+        self._add_check_menu_item(exp_menu, "Show Exp Stats", "show_exp", lambda: self._toggle_visibility("show_exp"))
         exp_menu.add_separator()
-        add_check(exp_menu, "Show EXP Per Hour", "show_eph", lambda: self._toggle_visibility("show_eph"))
-        add_check(exp_menu, "Show Total EXP", "show_total_exp", lambda: self._toggle_visibility("show_total_exp"))
-        add_check(exp_menu, "Show Time to Level", "show_t2l", lambda: self._toggle_visibility("show_t2l"))
-        add_check(exp_menu, "Show Next Scan", "show_next_scan", lambda: self._toggle_visibility("show_next_scan"))
+        self._add_check_menu_item(exp_menu, "Show EXP Per Hour", "show_eph", lambda: self._toggle_visibility("show_eph"))
+        self._add_check_menu_item(exp_menu, "Show Total EXP", "show_total_exp", lambda: self._toggle_visibility("show_total_exp"))
+        self._add_check_menu_item(exp_menu, "Show Time to Level", "show_t2l", lambda: self._toggle_visibility("show_t2l"))
+        self._add_check_menu_item(exp_menu, "Show Next Scan", "show_next_scan", lambda: self._toggle_visibility("show_next_scan"))
+        exp_menu.add_separator()
+        self._add_capture_check_menu_item(exp_menu, "Capture EXP Stats", "capture_exp_stats")
         exp_menu.add_separator()  # Separator before config options
-        add_config_check(exp_menu, "Check EXP on Open", "check_exp_on_inventory_open")  # Moved here
+        self._add_config_check_menu_item(exp_menu, "Check EXP on Open", "check_exp_on_inventory_open")  # Moved here
 
         exp_menu.add_separator()
 
@@ -635,12 +670,12 @@ class BossTimerOverlay(tk.Toplevel):
         age_var = tk.IntVar(master=self, value=self.settings["exp_age_before_refresh"])
         self._menu_vars.append(age_var)
 
-        for m in [0, 3, 5, 10, 30, 60]:
+        for label, val in [("Never", -1), ("0m", 0), ("3m", 3), ("5m", 5), ("10m", 10), ("30m", 30), ("60m", 60)]:
             age_menu.add_radiobutton(
-                label=f"{m}m",
+                label=label,
                 variable=age_var,
-                value=m,
-                command=lambda v=m: save_info_settings({"exp_age_before_refresh": v}),
+                value=val,
+                command=lambda v=val: save_info_settings({"exp_age_before_refresh": v}),
             )
         exp_menu.add_cascade(label="EXP Age Before Refresh", menu=age_menu)
 
@@ -661,7 +696,7 @@ class BossTimerOverlay(tk.Toplevel):
         menu.add_command(label="Auto Sync (Helltides.com)", command=self._auto_sync)
 
         menu.add_separator()
-        add_check(menu, "Lock Position", "locked", self._toggle_lock)
+        self._add_check_menu_item(menu, "Lock Position", "locked", self._toggle_lock)
         menu.add_command(label="Close Overlay", command=request_close)
 
         menu.post(event.x_root, event.y_root)
@@ -909,6 +944,8 @@ class BossTimerOverlay(tk.Toplevel):
             info_conf = load_info_settings()
             if not info_conf["check_exp_on_inventory_open"]:
                 self.next_scan_value_label.config(text="Off")
+            elif info_conf["exp_age_before_refresh"] == -1:
+                self.next_scan_value_label.config(text="Never")
             elif SessionStats().last_exp is None:
                 self.next_scan_value_label.config(text="Ready")
             else:
@@ -933,27 +970,27 @@ class BossTimerOverlay(tk.Toplevel):
     ):
         """Update the gold and experience statistics display."""
         repack_needed = False
-        if gph is not None:
+        if gph is not None and self.capture_gold_stats:
             self.gph_value_label.config(text=f"{gph:,}")
             if not self._gold_initialized:
                 self._gold_initialized = True
                 repack_needed = True
-        if total_gained is not None:
+        if total_gained is not None and self.capture_gold_stats:
             self.total_gained_value_label.config(text=f"{total_gained:,}")
             if not self._gold_initialized:
                 self._gold_initialized = True
                 repack_needed = True
-        if eph is not None:
+        if eph is not None and self.capture_exp_stats:
             self.eph_value_label.config(text=f"{eph:,}")
             if not self._exp_initialized:
                 self._exp_initialized = True
                 repack_needed = True
-        if total_exp is not None:
+        if total_exp is not None and self.capture_exp_stats:
             self.total_exp_value_label.config(text=f"{total_exp:,}")
             if not self._exp_initialized:
                 self._exp_initialized = True
                 repack_needed = True
-        if t2l is not None:
+        if t2l is not None and self.capture_exp_stats:
             self.t2l_value_label.config(text=t2l)
 
         if repack_needed:
