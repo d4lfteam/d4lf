@@ -693,8 +693,6 @@ The Info Panel provides real-time tracking for World Events and session-based st
 
 **Features and Settings (Right-Click Menu)**
 
-
-
 - **Timers**: Toggle visibility for **World Boss**, **Legion**, and **Helltide** timers.
   - Timers automatically sync with [Helltides.com](https://helltides.com).
   - Timers will flash orange when an event is starting soon (< 5 minutes).

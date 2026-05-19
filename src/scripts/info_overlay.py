@@ -1,29 +1,34 @@
 from __future__ import annotations
+
 import datetime
-from dataclasses import dataclass
 import logging
-import tkinter as tk
-from pathlib import Path
-import httpx
 import re
 import threading
 import time
+import tkinter as tk
 from contextlib import suppress
-from typing import Any, Callable, TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+import httpx
 from PyQt6.QtCore import QSettings
-from src.config.loader import IniConfigLoader
+
+from src.cam import Cam
 from src.config.helper import singleton
+from src.config.loader import IniConfigLoader
 from src.tts import Publisher
 from src.utils.custom_mouse import mouse
-from src.cam import Cam
-if TYPE_CHECKING:
-    pass
+
 
 @dataclass(frozen=True)
 class InfoStat:
     name: str
     value: int
     max_value: int | None = None
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,12 +37,19 @@ _OVERLAY_LOCK = threading.RLock()
 _OVERLAY_THREAD: threading.Thread | None = None
 _LAST_TOGGLE_TIME = 0
 
-_BUSY_CHECKER: Callable[[], bool] = lambda: False
+
+def _default_busy_checker() -> bool:
+    return False
+
+
+_BUSY_CHECKER: Callable[[], bool] = _default_busy_checker
+
 
 def set_busy_checker(checker: Callable[[], bool]):
     """Hook for the script handler to provide a busy state check."""
     global _BUSY_CHECKER
     _BUSY_CHECKER = checker
+
 
 def load_info_settings() -> dict[str, Any]:
     """Load info overlay and experience tracking settings from QSettings."""
@@ -90,13 +102,16 @@ def load_info_settings() -> dict[str, Any]:
     wb_ref = loaded_settings["wb_reference"]
     if isinstance(wb_ref, str):
         try:
-            loaded_settings["wb_reference"] = datetime.datetime.strptime(wb_ref, "%Y-%m-%d %H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-        except (ValueError, TypeError):
-            loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+            loaded_settings["wb_reference"] = datetime.datetime.strptime(wb_ref, "%Y-%m-%d %H:%M:%S").replace(
+                tzinfo=datetime.UTC
+            )
+        except ValueError, TypeError:
+            loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
     elif not isinstance(wb_ref, datetime.datetime):
-        loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+        loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
 
     return loaded_settings
+
 
 def save_info_settings(values: dict[str, Any]) -> None:
     """Persist settings to the QSettings for InfoOverlay."""
@@ -113,9 +128,11 @@ def save_info_settings(values: dict[str, Any]) -> None:
         else:
             settings_q.setValue(k, v)
 
+
 def get_info_setting(key: str, default: Any = None) -> Any:
     """Quick access to a specific info overlay setting."""
     return load_info_settings().get(key, default)
+
 
 @singleton
 class SessionStats:
@@ -135,14 +152,19 @@ class SessionStats:
         # Handle Gold statistics from raw TTS string (e.g., '2,225,130,802 Gold')
         if (
             "gold" in raw_line.lower()
-            and not any(x in raw_line.lower() for x in ["sell value", "repair", "cost", "price", "buy", "fee", "spent", "purchase"])
+            and not any(
+                x in raw_line.lower()
+                for x in ["sell value", "repair", "cost", "price", "buy", "fee", "spent", "purchase"]
+            )
             and (match := re.search(r"([0-9,.]+)\s+Gold", raw_line, re.IGNORECASE))
         ):
             raw_val = re.sub(r"\D", "", match.group(1))
             if raw_val:
                 return InfoStat(name="gold_balance", value=int(raw_val))
         # Handle Experience statistics (e.g., 'Level 209 Experience: 55,843,725 / 74,304,757')
-        elif "experience" in raw_line.lower() and (match := re.search(r"Experience:\s+([0-9,.]+)\s+/\s+([0-9,.]+)", raw_line, re.IGNORECASE)):
+        elif "experience" in raw_line.lower() and (
+            match := re.search(r"Experience:\s+([0-9,.]+)\s+/\s+([0-9,.]+)", raw_line, re.IGNORECASE)
+        ):
             raw_val = re.sub(r"\D", "", match.group(1))
             raw_mx = re.sub(r"\D", "", match.group(2))
             if raw_val and raw_mx:
@@ -165,7 +187,8 @@ class SessionStats:
         self.total_gold = 0
         self.pending_gold = None
         self.gold_verify_count = 0
-        if hasattr(self, "last_gold"): self.last_gold = None
+        if hasattr(self, "last_gold"):
+            self.last_gold = None
         LOGGER.info("Gold session stats reset")
 
     def reset_exp(self):
@@ -198,13 +221,16 @@ class SessionStats:
                 self.pending_gold, self.gold_verify_count = val, 1
 
             if self.gold_verify_count >= 3:
-                if self.last_gold > 0 and val > self.last_gold * 10 and val > 10_000_000: self.last_gold = val
-                elif val < self.last_gold * 0.01 and self.last_gold > 10_000_000: self.last_gold = val
+                if (self.last_gold > 0 and val > self.last_gold * 10 and val > 10_000_000) or (
+                    val < self.last_gold * 0.01 and self.last_gold > 10_000_000
+                ):
+                    self.last_gold = val
                 else:
                     delta = val - self.last_gold
-                    if delta > 0: self.total_gold += delta
+                    if delta > 0:
+                        self.total_gold += delta
                     elapsed = (time.time() - self.start_time) / 3600.0
-                    gph = int(self.total_gold / elapsed) if elapsed > (1/60.0) else 0
+                    gph = int(self.total_gold / elapsed) if elapsed > (1 / 60.0) else 0
                     update_info_stats(gph=gph, total_gained=self.total_gold)
                     self.last_gold = val
                 self.pending_gold, self.gold_verify_count = None, 0
@@ -214,15 +240,17 @@ class SessionStats:
                 update_info_stats(eph=0, total_exp=0, t2l="-")
                 return
             delta = val - self.last_exp
-            if delta > 0: self.total_exp += delta
+            if delta > 0:
+                self.total_exp += delta
             self.last_exp, self.max_exp = val, mx_val or self.max_exp
             elapsed = (time.time() - self.start_time) / 3600.0
-            eph = int(self.total_exp / elapsed) if elapsed > (1/60.0) else 0
+            eph = int(self.total_exp / elapsed) if elapsed > (1 / 60.0) else 0
             t2l = "-"
             if eph > 0 and self.max_exp:
                 hours = (self.max_exp - val) / eph
                 t2l = f"{int(hours * 60)}m" if hours < 1 else f"{int(hours)}h {int((hours % 1) * 60)}m"
             update_info_stats(eph=eph, total_exp=self.total_exp, t2l=t2l)
+
 
 @singleton
 class InventoryExpTracker:
@@ -231,20 +259,31 @@ class InventoryExpTracker:
         self.hover_active = False
 
     def on_inventory_open(self):
-        if self.hover_active or _BUSY_CHECKER(): return
+        if self.hover_active or _BUSY_CHECKER():
+            return
         info_config = load_info_settings()
-        if not info_config.get("check_exp_on_inventory_open", True): return
-        if IniConfigLoader().advanced_options.vision_mode_only: return
-        
+        if not info_config.get("check_exp_on_inventory_open", True):
+            return
+        if IniConfigLoader().advanced_options.vision_mode_only:
+            return
+
         now = time.time()
         is_init = SessionStats().last_exp is not None
-        if (now - self.last_hover_time) < (info_config.get("exp_age_before_refresh", 5) * 60 if is_init else 2.0): return
+        if (now - self.last_hover_time) < (info_config.get("exp_age_before_refresh", 5) * 60 if is_init else 2.0):
+            return
 
         def _task():
-            try: self.hover_active = True; time.sleep(0.5); _hover_experience_balance(info_config); mouse.move(*Cam().abs_window_to_monitor((0, 0)))
-            finally: self.hover_active = False
+            try:
+                self.hover_active = True
+                time.sleep(0.5)
+                _hover_experience_balance(info_config)
+                mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+            finally:
+                self.hover_active = False
+
         self.last_hover_time = now
         threading.Thread(target=_task, daemon=True).start()
+
 
 TRANSPARENT_KEY = "#ff00ff"
 CARD_BG = "#151515"
@@ -255,6 +294,7 @@ HELLTIDE_RED = "#ff4d4d"
 WB_ORANGE = "#e67e22"
 WARNING_ORANGE = "#ff9900"
 ACTIVE_GREEN = "#34C410"
+
 
 class BossTimerOverlay(tk.Toplevel):
     def __init__(self, parent):
@@ -290,7 +330,7 @@ class BossTimerOverlay(tk.Toplevel):
         self.next_boss_name = self.settings["next_boss_name"]
         self.orientation = self.settings["orientation"]
         self.locked = self.settings["locked"]
-        
+
         # Assign all show_ attributes
         for k in self.settings:
             if k.startswith("show_"):
@@ -317,7 +357,7 @@ class BossTimerOverlay(tk.Toplevel):
         for k in self.settings:
             if k.startswith("show_"):
                 updates[k] = getattr(self, k)
-        
+
         save_info_settings(updates)
         self.settings = load_info_settings()
 
@@ -327,71 +367,107 @@ class BossTimerOverlay(tk.Toplevel):
         self.frame.pack(padx=5, pady=5)
 
         self.wb_group = tk.Frame(self.frame, bg=CARD_BG)
-        lbl_wb = tk.Label(self.wb_group, text="World Boss:", bg=CARD_BG, fg=WB_ORANGE, font=("Consolas", self.font_size, "bold"))
+        lbl_wb = tk.Label(
+            self.wb_group, text="World Boss:", bg=CARD_BG, fg=WB_ORANGE, font=("Consolas", self.font_size, "bold")
+        )
         lbl_wb.pack(side="left")
         self.labels_to_resize.append(lbl_wb)
-        self.wb_timer = tk.Label(self.wb_group, text="--:--:--", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold"))
+        self.wb_timer = tk.Label(
+            self.wb_group, text="--:--:--", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+        )
         self.wb_timer.pack(side="left")
         self.labels_to_resize.append(self.wb_timer)
 
         self.legion_group = tk.Frame(self.frame, bg=CARD_BG)
-        self.lbl_legion = tk.Label(self.legion_group, text="Legion:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold"))
+        self.lbl_legion = tk.Label(
+            self.legion_group, text="Legion:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold")
+        )
         self.lbl_legion.pack(side="left")
         self.labels_to_resize.append(self.lbl_legion)
-        self.legion_timer = tk.Label(self.legion_group, text="--:--:--", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold"))
+        self.legion_timer = tk.Label(
+            self.legion_group, text="--:--:--", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+        )
         self.legion_timer.pack(side="left")
         self.labels_to_resize.append(self.legion_timer)
 
         self.ht_group = tk.Frame(self.frame, bg=CARD_BG)
-        self.lbl_ht = tk.Label(self.ht_group, text="Helltide:", bg=CARD_BG, fg=HELLTIDE_RED, font=("Consolas", self.font_size, "bold"))
+        self.lbl_ht = tk.Label(
+            self.ht_group, text="Helltide:", bg=CARD_BG, fg=HELLTIDE_RED, font=("Consolas", self.font_size, "bold")
+        )
         self.lbl_ht.pack(side="left")
         self.labels_to_resize.append(self.lbl_ht)
-        self.ht_timer = tk.Label(self.ht_group, text="--:--:--", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold"))
+        self.ht_timer = tk.Label(
+            self.ht_group, text="--:--:--", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+        )
         self.ht_timer.pack(side="left")
         self.labels_to_resize.append(self.ht_timer)
 
         self.stats_group = tk.Frame(self.frame, bg=CARD_BG)
-        self.lbl_gph_title = tk.Label(self.stats_group, text="GPH:", bg=CARD_BG, fg=ACCENT, font=("Consolas", self.font_size, "bold"))
+        self.lbl_gph_title = tk.Label(
+            self.stats_group, text="GPH:", bg=CARD_BG, fg=ACCENT, font=("Consolas", self.font_size, "bold")
+        )
         self.lbl_gph_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_gph_title)
-        self.gph_value_label = tk.Label(self.stats_group, text="0", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold"))
+        self.gph_value_label = tk.Label(
+            self.stats_group, text="0", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+        )
         self.gph_value_label.pack(side="left")
         self.labels_to_resize.append(self.gph_value_label)
 
-        self.lbl_total_gained_title = tk.Label(self.stats_group, text="|Gained:", bg=CARD_BG, fg=ACCENT, font=("Consolas", self.font_size, "bold"))
+        self.lbl_total_gained_title = tk.Label(
+            self.stats_group, text="|Gained:", bg=CARD_BG, fg=ACCENT, font=("Consolas", self.font_size, "bold")
+        )
         self.lbl_total_gained_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_total_gained_title)
-        self.total_gained_value_label = tk.Label(self.stats_group, text="0", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold"))
+        self.total_gained_value_label = tk.Label(
+            self.stats_group, text="0", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+        )
         self.total_gained_value_label.pack(side="left")
         self.labels_to_resize.append(self.total_gained_value_label)
 
         self.exp_group = tk.Frame(self.frame, bg=CARD_BG)
-        self.lbl_eph_title = tk.Label(self.exp_group, text="EPH:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold"))
+        self.lbl_eph_title = tk.Label(
+            self.exp_group, text="EPH:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold")
+        )
         self.lbl_eph_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_eph_title)
-        self.eph_value_label = tk.Label(self.exp_group, text="0", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold"))
+        self.eph_value_label = tk.Label(
+            self.exp_group, text="0", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+        )
         self.eph_value_label.pack(side="left")
         self.labels_to_resize.append(self.eph_value_label)
 
-        self.lbl_total_exp_title = tk.Label(self.exp_group, text="|Exp:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold"))
+        self.lbl_total_exp_title = tk.Label(
+            self.exp_group, text="|Exp:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold")
+        )
         self.lbl_total_exp_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_total_exp_title)
-        self.total_exp_value_label = tk.Label(self.exp_group, text="0", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold"))
+        self.total_exp_value_label = tk.Label(
+            self.exp_group, text="0", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+        )
         self.total_exp_value_label.pack(side="left")
         self.labels_to_resize.append(self.total_exp_value_label)
 
         self.t2l_group = tk.Frame(self.frame, bg=CARD_BG)
-        self.lbl_t2l_title = tk.Label(self.t2l_group, text="T2L:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold"))
+        self.lbl_t2l_title = tk.Label(
+            self.t2l_group, text="T2L:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold")
+        )
         self.lbl_t2l_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_t2l_title)
-        self.t2l_value_label = tk.Label(self.t2l_group, text="-", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold"))
+        self.t2l_value_label = tk.Label(
+            self.t2l_group, text="-", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+        )
         self.t2l_value_label.pack(side="left")
         self.labels_to_resize.append(self.t2l_value_label)
 
-        self.lbl_next_scan_title = tk.Label(self.t2l_group, text="|Next Scan:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold"))
+        self.lbl_next_scan_title = tk.Label(
+            self.t2l_group, text="|Next Scan:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold")
+        )
         self.lbl_next_scan_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_next_scan_title)
-        self.next_scan_value_label = tk.Label(self.t2l_group, text="Ready", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold"))
+        self.next_scan_value_label = tk.Label(
+            self.t2l_group, text="Ready", bg=CARD_BG, fg=TEXT, font=("Consolas", self.font_size, "bold")
+        )
         self.next_scan_value_label.pack(side="left")
         self.labels_to_resize.append(self.next_scan_value_label)
 
@@ -400,7 +476,9 @@ class BossTimerOverlay(tk.Toplevel):
 
     def _repack(self):
         """Recalculate component packing based on current settings."""
-        LOGGER.debug(f"Repacking overlay. show_gold={self.show_gold}, _gold_initialized={self._gold_initialized}, show_gph={self.show_gph}, show_total_gold={self.show_total_gold}, show_exp={self.show_exp}, _exp_initialized={self._exp_initialized}, show_eph={self.show_eph}, show_total_exp={self.show_total_exp}, show_t2l={self.show_t2l}, show_next_scan={self.show_next_scan}")
+        LOGGER.debug(
+            f"Repacking overlay. show_gold={self.show_gold}, _gold_initialized={self._gold_initialized}, show_gph={self.show_gph}, show_total_gold={self.show_total_gold}, show_exp={self.show_exp}, _exp_initialized={self._exp_initialized}, show_eph={self.show_eph}, show_total_exp={self.show_total_exp}, show_t2l={self.show_t2l}, show_next_scan={self.show_next_scan}"
+        )
         # Hide everything first
         self.wb_group.pack_forget()
         self.legion_group.pack_forget()
@@ -505,10 +583,12 @@ class BossTimerOverlay(tk.Toplevel):
         def add_config_check(m, label, field):
             var = tk.BooleanVar(master=self, value=self.settings[field])
             self._menu_vars.append(var)
+
             def _toggle():
                 val = not self.settings[field]
                 save_info_settings({field: val})
                 self.settings[field] = val
+
             m.add_checkbutton(label=label, variable=var, command=_toggle)
 
         def add_check(m, label, attr, cmd):
@@ -521,7 +601,15 @@ class BossTimerOverlay(tk.Toplevel):
         add_check(menu, "Show Helltide", "show_ht", lambda: self._toggle_visibility("show_ht"))
 
         # Gold Submenu
-        gold_menu = tk.Menu(menu, tearoff=0, bg=CARD_BG, fg=TEXT, activebackground=ACCENT, activeforeground=CARD_BG, selectcolor=ACTIVE_GREEN)
+        gold_menu = tk.Menu(
+            menu,
+            tearoff=0,
+            bg=CARD_BG,
+            fg=TEXT,
+            activebackground=ACCENT,
+            activeforeground=CARD_BG,
+            selectcolor=ACTIVE_GREEN,
+        )
         add_check(gold_menu, "Show Gold Stats", "show_gold", lambda: self._toggle_visibility("show_gold"))
         gold_menu.add_separator()
         add_check(gold_menu, "Show Gold Per Hour", "show_gph", lambda: self._toggle_visibility("show_gph"))
@@ -531,16 +619,24 @@ class BossTimerOverlay(tk.Toplevel):
         menu.add_cascade(label="Show Gold Stats", menu=gold_menu)
 
         # Exp Submenu
-        exp_menu = tk.Menu(menu, tearoff=0, bg=CARD_BG, fg=TEXT, activebackground=ACCENT, activeforeground=CARD_BG, selectcolor=ACTIVE_GREEN)
+        exp_menu = tk.Menu(
+            menu,
+            tearoff=0,
+            bg=CARD_BG,
+            fg=TEXT,
+            activebackground=ACCENT,
+            activeforeground=CARD_BG,
+            selectcolor=ACTIVE_GREEN,
+        )
         add_check(exp_menu, "Show Exp Stats", "show_exp", lambda: self._toggle_visibility("show_exp"))
         exp_menu.add_separator()
         add_check(exp_menu, "Show EXP Per Hour", "show_eph", lambda: self._toggle_visibility("show_eph"))
         add_check(exp_menu, "Show Total EXP", "show_total_exp", lambda: self._toggle_visibility("show_total_exp"))
         add_check(exp_menu, "Show Time to Level", "show_t2l", lambda: self._toggle_visibility("show_t2l"))
         add_check(exp_menu, "Show Next Scan", "show_next_scan", lambda: self._toggle_visibility("show_next_scan"))
-        exp_menu.add_separator() # Separator before config options
-        add_config_check(exp_menu, "Check EXP on Open", "check_exp_on_inventory_open") # Moved here
-        
+        exp_menu.add_separator()  # Separator before config options
+        add_config_check(exp_menu, "Check EXP on Open", "check_exp_on_inventory_open")  # Moved here
+
         exp_menu.add_separator()
 
         # Submenu for EXP Age selection
@@ -558,7 +654,10 @@ class BossTimerOverlay(tk.Toplevel):
 
         for m in [0, 3, 5, 10, 30, 60]:
             age_menu.add_radiobutton(
-                label=f"{m}m", variable=age_var, value=m, command=lambda v=m: save_info_settings({"exp_age_before_refresh": v})
+                label=f"{m}m",
+                variable=age_var,
+                value=m,
+                command=lambda v=m: save_info_settings({"exp_age_before_refresh": v}),
             )
         exp_menu.add_cascade(label="EXP Age Before Refresh", menu=age_menu)
 
@@ -581,7 +680,7 @@ class BossTimerOverlay(tk.Toplevel):
         menu.add_separator()
         add_check(menu, "Lock Position", "locked", self._toggle_lock)
         menu.add_command(label="Close Overlay", command=request_close)
-        
+
         menu.post(event.x_root, event.y_root)
 
     def _reset_gold_stats(self):
@@ -603,7 +702,7 @@ class BossTimerOverlay(tk.Toplevel):
         picker.attributes("-alpha", 0.5)
         picker.attributes("-topmost", True)
         picker.config(bg="black", cursor="cross")
-        
+
         canvas = tk.Canvas(picker, bg="black", highlightthickness=0)
         canvas.pack(fill="both", expand=True)
 
@@ -611,7 +710,9 @@ class BossTimerOverlay(tk.Toplevel):
         canvas.create_text(
             picker.winfo_screenwidth() // 2,
             picker.winfo_screenheight() // 2,
-            text=msg, font=("Consolas", 20, "bold"), fill=ACTIVE_GREEN
+            text=msg,
+            font=("Consolas", 20, "bold"),
+            fill=ACTIVE_GREEN,
         )
 
         state = {"start": None, "line": None}
@@ -662,7 +763,8 @@ class BossTimerOverlay(tk.Toplevel):
         self._save_settings()
 
     def _start_drag(self, event):
-        if self.locked: return
+        if self.locked:
+            return
         self._drag_data = {"x": event.x, "y": event.y}
 
     def _do_drag(self, event):
@@ -686,27 +788,27 @@ class BossTimerOverlay(tk.Toplevel):
                 response = client.get(url)
                 if response.status_code == 200:
                     text = response.text
-                    now = datetime.datetime.now(datetime.timezone.utc)
-                    
+                    now = datetime.datetime.now(datetime.UTC)
+
                     # Regex for World Bosses: "BossName","world_boss","YYYY-MM-DDTHH:MM:SS.000Z"
-                    wb_pattern = r'\"(Ashava|Avarice|Wandering Death)\",\"world_boss\",\"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\"'
+                    wb_pattern = r"\"(Ashava|Avarice|Wandering Death)\",\"world_boss\",\"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\""
                     wb_matches = re.findall(wb_pattern, text)
-                    
+
                     # Regex for Legions: "legion","YYYY-MM-DDTHH:MM:SS.000Z"
-                    legion_pattern = r'\"legion\",\"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\"'
+                    legion_pattern = r"\"legion\",\"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\""
                     legion_matches = re.findall(legion_pattern, text)
-                    
+
                     # Regex for Helltides: "YYYY-MM-DDTHH:MM:SS.000Z","helltide"
-                    ht_pattern = r'\"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\",\"helltide\"'
+                    ht_pattern = r"\"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\",\"helltide\""
                     ht_matches = re.findall(ht_pattern, text)
 
                     # Process World Bosses
                     best_wb = None
                     for name, dt_str in wb_matches:
-                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=datetime.timezone.utc)
+                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=datetime.UTC)
                         if dt > now and (best_wb is None or dt < best_wb[0]):
                             best_wb = (dt, name)
-                    
+
                     if best_wb:
                         self.synced_wb = best_wb
                         self.wb_reference = best_wb[0]
@@ -717,7 +819,7 @@ class BossTimerOverlay(tk.Toplevel):
                     # Process Legions
                     best_legion = None
                     for dt_str in legion_matches:
-                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=datetime.timezone.utc)
+                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=datetime.UTC)
                         if dt > now and (best_legion is None or dt < best_legion):
                             best_legion = dt
                     if best_legion:
@@ -729,13 +831,12 @@ class BossTimerOverlay(tk.Toplevel):
                     # Current seasons have helltides starting every hour.
                     latest_start = None
                     for dt_str in ht_matches:
-                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=datetime.timezone.utc)
+                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=datetime.UTC)
                         if dt <= now:
                             if latest_start is None or dt > latest_start:
                                 latest_start = dt
-                        elif dt > now:
-                            if latest_start is None:
-                                latest_start = dt
+                        elif dt > now and latest_start is None:
+                            latest_start = dt
                     if latest_start:
                         self.synced_helltide = latest_start
                         LOGGER.info(f"Auto-synced Helltide: {latest_start}")
@@ -748,7 +849,7 @@ class BossTimerOverlay(tk.Toplevel):
     def _update_timers(self):
         if not self.winfo_exists():
             return
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.UTC)
         self._flash_toggle = not self._flash_toggle
 
         def get_flash_color(seconds, base_color):
@@ -763,7 +864,6 @@ class BossTimerOverlay(tk.Toplevel):
         # World Boss
         if self.synced_wb and self.synced_wb[0] > now:
             next_wb = self.synced_wb[0]
-            boss_name = self.synced_wb[1]
         else:
             # Fallback to 3.5h interval from reference
             wb_interval = datetime.timedelta(hours=3.5)
@@ -772,14 +872,15 @@ class BossTimerOverlay(tk.Toplevel):
             next_wb = self.wb_reference + (intervals_passed + 1) * wb_interval
             if next_wb < now:
                 next_wb += wb_interval
-            boss_name = self.next_boss_name
 
         wb_remaining = next_wb - now
         if wb_remaining.total_seconds() < 0:
             self.wb_timer.config(text="ACTIVE")
-            self.wb_timer.config(fg=ACTIVE_GREEN) # Active WB is green
+            self.wb_timer.config(fg=ACTIVE_GREEN)  # Active WB is green
         else:
-            self.wb_timer.config(text=str(wb_remaining).split('.')[0], fg=get_flash_color(wb_remaining.total_seconds(), ACTIVE_GREEN))
+            self.wb_timer.config(
+                text=str(wb_remaining).split(".")[0], fg=get_flash_color(wb_remaining.total_seconds(), ACTIVE_GREEN)
+            )
         # --- Legion ---
         # Legion
         if self.synced_legion and self.synced_legion > now:
@@ -787,12 +888,14 @@ class BossTimerOverlay(tk.Toplevel):
         else:
             # Fallback to 25m interval
             legion_interval = datetime.timedelta(minutes=25)
-            legion_ref = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+            legion_ref = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
             time_since_legion = now - legion_ref
             legion_passed = time_since_legion // legion_interval
             next_legion = legion_ref + (legion_passed + 1) * legion_interval
             legion_remaining = next_legion - now
-        self.legion_timer.config(text=str(legion_remaining).split('.')[0], fg=get_flash_color(legion_remaining.total_seconds(), ACTIVE_GREEN))
+        self.legion_timer.config(
+            text=str(legion_remaining).split(".")[0], fg=get_flash_color(legion_remaining.total_seconds(), ACTIVE_GREEN)
+        )
 
         # --- Helltide ---
         # Helltide
@@ -803,18 +906,20 @@ class BossTimerOverlay(tk.Toplevel):
         if diff < 0:
             # Synced reference is in the future
             ht_rem = ht_ref - now
-            self.ht_timer.config(text=str(ht_rem).split('.')[0], fg=get_flash_color(ht_rem.total_seconds(), TEXT))
+            self.ht_timer.config(text=str(ht_rem).split(".")[0], fg=get_flash_color(ht_rem.total_seconds(), TEXT))
         else:
             # Normalized position in the infinite 1-hour cycle
             cycle_pos = diff % 3600
             if cycle_pos < 3300:
                 # Active (0-55 mins)
                 rem = datetime.timedelta(seconds=int(3300 - cycle_pos))
-                self.ht_timer.config(text=str(rem).split('.')[0], fg=ACTIVE_GREEN)
+                self.ht_timer.config(text=str(rem).split(".")[0], fg=ACTIVE_GREEN)
             else:
                 # Break / Warning (55-60 mins)
                 rem = datetime.timedelta(seconds=int(3600 - cycle_pos))
-                self.ht_timer.config(text=str(rem).split('.')[0], fg=get_flash_color(rem.total_seconds(), WARNING_ORANGE))
+                self.ht_timer.config(
+                    text=str(rem).split(".")[0], fg=get_flash_color(rem.total_seconds(), WARNING_ORANGE)
+                )
 
         # --- Next Scan Cooldown ---
         with suppress(Exception):
@@ -824,7 +929,9 @@ class BossTimerOverlay(tk.Toplevel):
             elif SessionStats().last_exp is None:
                 self.next_scan_value_label.config(text="Ready")
             else:
-                remaining = (info_conf["exp_age_before_refresh"] * 60) - (time.time() - InventoryExpTracker().last_hover_time)
+                remaining = (info_conf["exp_age_before_refresh"] * 60) - (
+                    time.time() - InventoryExpTracker().last_hover_time
+                )
                 if remaining <= 0:
                     self.next_scan_value_label.config(text="Ready")
                 else:
@@ -833,7 +940,14 @@ class BossTimerOverlay(tk.Toplevel):
 
         self.after(1000, self._update_timers)
 
-    def update_stats(self, gph: int | None = None, total_gained: int | None = None, eph: int | None = None, total_exp: int | None = None, t2l: str | None = None):
+    def update_stats(
+        self,
+        gph: int | None = None,
+        total_gained: int | None = None,
+        eph: int | None = None,
+        total_exp: int | None = None,
+        t2l: str | None = None,
+    ):
         """Update the gold and experience statistics display."""
         repack_needed = False
         if gph is not None:
@@ -863,6 +977,7 @@ class BossTimerOverlay(tk.Toplevel):
             self._repack()
             self.update_idletasks()
 
+
 def run_boss_timer_overlay():
     global _OVERLAY_INSTANCE
     with _OVERLAY_LOCK:
@@ -881,6 +996,7 @@ def run_boss_timer_overlay():
     with _OVERLAY_LOCK:
         _OVERLAY_INSTANCE = None
 
+
 def request_close():
     """Thread-safe request to close the overlay."""
     with _OVERLAY_LOCK:
@@ -888,14 +1004,23 @@ def request_close():
             # Schedule the mainloop to exit on the UI thread
             _OVERLAY_INSTANCE.after(0, _OVERLAY_INSTANCE.master.quit)
 
-def update_info_stats(gph: int | None = None, total_gained: int | None = None, eph: int | None = None, total_exp: int | None = None, t2l: str | None = None):
+
+def update_info_stats(
+    gph: int | None = None,
+    total_gained: int | None = None,
+    eph: int | None = None,
+    total_exp: int | None = None,
+    t2l: str | None = None,
+):
     """Thread-safe update for statistics."""
     with _OVERLAY_LOCK:
         if _OVERLAY_INSTANCE and _OVERLAY_INSTANCE.winfo_exists():
             _OVERLAY_INSTANCE.after(0, lambda: _OVERLAY_INSTANCE.update_stats(gph, total_gained, eph, total_exp, t2l))
 
+
 def _hover_experience_balance(info_config: dict[str, Any] | None = None):
-    if info_config is None: info_config = load_info_settings()
+    if info_config is None:
+        info_config = load_info_settings()
     if info_config["exp_bar_pos"]:
         if len(info_config["exp_bar_pos"]) == 4:
             x1, y1, x2, y2 = info_config["exp_bar_pos"]
@@ -909,6 +1034,7 @@ def _hover_experience_balance(info_config: dict[str, Any] | None = None):
         exp_pos = (int(win_roi["width"] * 0.5), int(win_roi["height"] * 0.965))
         mouse.move(*Cam().window_to_monitor(exp_pos))
     time.sleep(0.5)
+
 
 def toggle_info_overlay():
     """Toggle the Info Panel overlay (thread-safe with debouncing)."""

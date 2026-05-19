@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import re
 import sys
 import threading
 import time
@@ -19,14 +18,7 @@ import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
 import src.tts
-from src.scripts.info_overlay import (
-    InventoryExpTracker,
-    _hover_experience_balance,
-    set_busy_checker as set_info_busy_checker,
-    toggle_info_overlay,
-)
 from src.cam import Cam
-from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
 from src.config.settings_models import (
     IS_HOTKEY_KEY,
@@ -40,6 +32,8 @@ from src.dataloader import Dataloader
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
 from src.paragon_overlay import request_close, run_paragon_overlay
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
+from src.scripts.info_overlay import InventoryExpTracker, toggle_info_overlay
+from src.scripts.info_overlay import set_busy_checker as set_info_busy_checker
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
 from src.utils.custom_mouse import mouse
