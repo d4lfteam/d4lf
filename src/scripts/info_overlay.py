@@ -310,8 +310,8 @@ class BossTimerOverlay(tk.Toplevel):
         self._flash_toggle = False
         self._setup_ui()
         self._bind_events()
-        self._update_timers() # Initial update for timers
-        
+        self._update_timers()  # Initial update for timers
+
         self._session_stats = SessionStats()
         self._session_stats.subscribe()
         self._auto_sync()
@@ -342,8 +342,9 @@ class BossTimerOverlay(tk.Toplevel):
         self.synced_legion = None
         self.synced_helltide = None
 
-        self._gold_initialized = self.capture_gold_stats
-        self._exp_initialized = self.capture_exp_stats
+        stats = SessionStats()
+        self._gold_initialized = self.capture_gold_stats and stats.last_gold is not None
+        self._exp_initialized = self.capture_exp_stats and stats.last_exp is not None
 
     def _save_settings(self):
         updates = {
@@ -500,7 +501,12 @@ class BossTimerOverlay(tk.Toplevel):
             self.legion_group.pack(side=side, anchor=anchor, padx=2)
         if self.show_ht:
             self.ht_group.pack(side=side, anchor=anchor, padx=2)
-        if self.show_gold and self.capture_gold_stats and self._gold_initialized and (self.show_gph or self.show_total_gold):
+        if (
+            self.show_gold
+            and self.capture_gold_stats
+            and self._gold_initialized
+            and (self.show_gph or self.show_total_gold)
+        ):
             self._repack_gold_group()
             self.stats_group.pack(side=side, anchor=anchor, padx=2)
         if self.show_exp and self.capture_exp_stats and self._exp_initialized:
@@ -595,7 +601,11 @@ class BossTimerOverlay(tk.Toplevel):
         var = tk.BooleanVar(master=self, value=getattr(self, attr))
         self._menu_vars.append(var)
         # Command toggles the attribute, repacks UI, and saves settings
-        m.add_checkbutton(label=label, variable=var, command=lambda: (setattr(self, attr, not getattr(self, attr)), self._repack(), self._save_settings()))
+        m.add_checkbutton(
+            label=label,
+            variable=var,
+            command=lambda: (setattr(self, attr, not getattr(self, attr)), self._repack(), self._save_settings()),
+        )
 
     def _show_context_menu(self, event):
         """Create and display a right-click context menu."""
@@ -624,10 +634,16 @@ class BossTimerOverlay(tk.Toplevel):
             activeforeground=CARD_BG,
             selectcolor=ACTIVE_GREEN,
         )
-        self._add_check_menu_item(gold_menu, "Show Gold Stats", "show_gold", lambda: self._toggle_visibility("show_gold"))
+        self._add_check_menu_item(
+            gold_menu, "Show Gold Stats", "show_gold", lambda: self._toggle_visibility("show_gold")
+        )
         gold_menu.add_separator()
-        self._add_check_menu_item(gold_menu, "Show Gold Per Hour", "show_gph", lambda: self._toggle_visibility("show_gph"))
-        self._add_check_menu_item(gold_menu, "Show Total Gold", "show_total_gold", lambda: self._toggle_visibility("show_total_gold"))
+        self._add_check_menu_item(
+            gold_menu, "Show Gold Per Hour", "show_gph", lambda: self._toggle_visibility("show_gph")
+        )
+        self._add_check_menu_item(
+            gold_menu, "Show Total Gold", "show_total_gold", lambda: self._toggle_visibility("show_total_gold")
+        )
         gold_menu.add_separator()
         self._add_capture_check_menu_item(gold_menu, "Capture Gold Stats", "capture_gold_stats")
         gold_menu.add_separator()
@@ -646,10 +662,18 @@ class BossTimerOverlay(tk.Toplevel):
         )
         self._add_check_menu_item(exp_menu, "Show Exp Stats", "show_exp", lambda: self._toggle_visibility("show_exp"))
         exp_menu.add_separator()
-        self._add_check_menu_item(exp_menu, "Show EXP Per Hour", "show_eph", lambda: self._toggle_visibility("show_eph"))
-        self._add_check_menu_item(exp_menu, "Show Total EXP", "show_total_exp", lambda: self._toggle_visibility("show_total_exp"))
-        self._add_check_menu_item(exp_menu, "Show Time to Level", "show_t2l", lambda: self._toggle_visibility("show_t2l"))
-        self._add_check_menu_item(exp_menu, "Show Next Scan", "show_next_scan", lambda: self._toggle_visibility("show_next_scan"))
+        self._add_check_menu_item(
+            exp_menu, "Show EXP Per Hour", "show_eph", lambda: self._toggle_visibility("show_eph")
+        )
+        self._add_check_menu_item(
+            exp_menu, "Show Total EXP", "show_total_exp", lambda: self._toggle_visibility("show_total_exp")
+        )
+        self._add_check_menu_item(
+            exp_menu, "Show Time to Level", "show_t2l", lambda: self._toggle_visibility("show_t2l")
+        )
+        self._add_check_menu_item(
+            exp_menu, "Show Next Scan", "show_next_scan", lambda: self._toggle_visibility("show_next_scan")
+        )
         exp_menu.add_separator()
         self._add_capture_check_menu_item(exp_menu, "Capture EXP Stats", "capture_exp_stats")
         exp_menu.add_separator()  # Separator before config options
@@ -1048,9 +1072,13 @@ def _hover_experience_balance(info_config: dict[str, Any] | None = None):
             time.sleep(0.1)
             mouse.move(*Cam().window_to_monitor((x2, y2)))
         else:
-            mouse.move(*Cam().window_to_monitor(info_config["exp_bar_pos"]))
+            LOGGER.warning(f"Invalid exp_bar_pos length: {info_config['exp_bar_pos']}")
     else:
-        win_roi = Cam().window_roi
-        exp_pos = (int(win_roi["width"] * 0.5), int(win_roi["height"] * 0.965))
-        mouse.move(*Cam().window_to_monitor(exp_pos))
-    time.sleep(0.5)
+        # Default: Hover across the middle-bottom portion of the screen where the EXP bar is located
+        roi = Cam().window_roi
+        x_start = int(roi["width"] * 0.45)
+        x_end = int(roi["width"] * 0.55)
+        y = int(roi["height"] - 8)
+        mouse.move(*Cam().window_to_monitor((x_start, y)))
+        time.sleep(0.1)
+        mouse.move(*Cam().window_to_monitor((x_end, y)))
