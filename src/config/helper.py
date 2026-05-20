@@ -5,6 +5,20 @@ if sys.platform != "darwin":
     import keyboard
 
 
+def _drop_negative_scan_codes(scan_codes: tuple[int, ...]) -> tuple[int, ...]:
+    positive_scan_codes = tuple(scan_code for scan_code in scan_codes if scan_code > 0)
+    return positive_scan_codes or scan_codes
+
+
+def to_keyboard_hotkey(hotkey: str) -> tuple[tuple[tuple[int, ...], ...], ...] | str:
+    if not hotkey:
+        return hotkey
+
+    return tuple(
+        tuple(_drop_negative_scan_codes(scan_codes) for scan_codes in step) for step in keyboard.parse_hotkey(hotkey)
+    )
+
+
 def check_greater_than_zero(v: int) -> int:
     if v < 0:
         msg = "must be greater than zero"
@@ -20,8 +34,13 @@ def validate_percent(v: int) -> int:
     return v
 
 
-def validate_hotkey(k: str) -> str:
-    keyboard.parse_hotkey(k)
+def validate_hotkey(k: str, *, allow_empty: bool = False) -> str:
+    if not k:
+        if allow_empty:
+            return k
+        keyboard.parse_hotkey(k)
+        return k
+    keyboard.parse_hotkey(to_keyboard_hotkey(k))
     return k
 
 
