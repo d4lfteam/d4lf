@@ -478,11 +478,7 @@ class BossTimerOverlay(tk.Toplevel):
         self.labels_to_resize.append(self.eph_value_label)
 
         self.lbl_total_exp_title = tk.Label(
-            self.exp_group,
-            text="|Exp:",
-            bg=CARD_BG,
-            fg=LEGION_BLUE,
-            font=(self.font_family, self.font_size, "bold"),
+            self.exp_group, text="|Exp:", bg=CARD_BG, fg=LEGION_BLUE, font=(self.font_family, self.font_size, "bold")
         )
         self.lbl_total_exp_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_total_exp_title)
