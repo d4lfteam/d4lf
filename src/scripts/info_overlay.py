@@ -18,6 +18,7 @@ from PyQt6.QtCore import QSettings
 from src.cam import Cam
 from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
+from src.scripts.common import get_filter_colors
 from src.tts import Publisher
 from src.utils.custom_mouse import mouse
 
@@ -454,12 +455,13 @@ class BossTimerOverlay(tk.Toplevel):
 
     def _setup_ui(self):
         self.labels_to_resize = []
-        self.frame = tk.Frame(self, bg=CARD_BG, highlightthickness=1, highlightbackground=ACCENT)
+        colors = get_filter_colors()
+        self.frame = tk.Frame(self, bg=CARD_BG, highlightthickness=1, highlightbackground=colors.matched)
         self.frame.pack(padx=5, pady=5)
 
         self.wb_group = tk.Frame(self.frame, bg=CARD_BG)
         lbl_wb = tk.Label(
-            self.wb_group, text="World Boss:", bg=CARD_BG, fg=WB_ORANGE, font=(self.font_family, self.font_size, "bold")
+            self.wb_group, text="World Boss:", bg=CARD_BG, fg=colors.codex_upgrade, font=(self.font_family, self.font_size, "bold")
         )
         lbl_wb.pack(side="left")
         self.labels_to_resize.append(lbl_wb)
@@ -474,7 +476,7 @@ class BossTimerOverlay(tk.Toplevel):
             self.legion_group,
             text="Legion:",
             bg=CARD_BG,
-            fg=LEGION_BLUE,
+            fg=colors.matched,
             font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_legion.pack(side="left")
@@ -490,7 +492,7 @@ class BossTimerOverlay(tk.Toplevel):
             self.ht_group,
             text="Helltide:",
             bg=CARD_BG,
-            fg=HELLTIDE_RED,
+            fg=colors.no_match,
             font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_ht.pack(side="left")
@@ -503,7 +505,7 @@ class BossTimerOverlay(tk.Toplevel):
 
         self.stats_group = tk.Frame(self.frame, bg=CARD_BG)
         self.lbl_gph_title = tk.Label(
-            self.stats_group, text="GPH:", bg=CARD_BG, fg=ACCENT, font=(self.font_family, self.font_size, "bold")
+            self.stats_group, text="GPH:", bg=CARD_BG, fg=colors.matched, font=(self.font_family, self.font_size, "bold")
         )
         self.lbl_gph_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_gph_title)
@@ -514,7 +516,7 @@ class BossTimerOverlay(tk.Toplevel):
         self.labels_to_resize.append(self.gph_value_label)
 
         self.lbl_total_gained_title = tk.Label(
-            self.stats_group, text="|Gained:", bg=CARD_BG, fg=ACCENT, font=(self.font_family, self.font_size, "bold")
+            self.stats_group, text="|Gained:", bg=CARD_BG, fg=colors.matched, font=(self.font_family, self.font_size, "bold")
         )
         self.lbl_total_gained_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_total_gained_title)
@@ -526,7 +528,7 @@ class BossTimerOverlay(tk.Toplevel):
 
         self.exp_group = tk.Frame(self.frame, bg=CARD_BG)
         self.lbl_eph_title = tk.Label(
-            self.exp_group, text="EPH:", bg=CARD_BG, fg=LEGION_BLUE, font=(self.font_family, self.font_size, "bold")
+            self.exp_group, text="EPH:", bg=CARD_BG, fg=colors.matched, font=(self.font_family, self.font_size, "bold")
         )
         self.lbl_eph_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_eph_title)
@@ -537,7 +539,7 @@ class BossTimerOverlay(tk.Toplevel):
         self.labels_to_resize.append(self.eph_value_label)
 
         self.lbl_total_exp_title = tk.Label(
-            self.exp_group, text="|Exp:", bg=CARD_BG, fg=LEGION_BLUE, font=(self.font_family, self.font_size, "bold")
+            self.exp_group, text="|Exp:", bg=CARD_BG, fg=colors.matched, font=(self.font_family, self.font_size, "bold")
         )
         self.lbl_total_exp_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_total_exp_title)
@@ -549,7 +551,7 @@ class BossTimerOverlay(tk.Toplevel):
 
         self.t2l_group = tk.Frame(self.frame, bg=CARD_BG)
         self.lbl_t2l_title = tk.Label(
-            self.t2l_group, text="T2L:", bg=CARD_BG, fg=LEGION_BLUE, font=(self.font_family, self.font_size, "bold")
+            self.t2l_group, text="T2L:", bg=CARD_BG, fg=colors.matched, font=(self.font_family, self.font_size, "bold")
         )
         self.lbl_t2l_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_t2l_title)
@@ -563,7 +565,7 @@ class BossTimerOverlay(tk.Toplevel):
             self.t2l_group,
             text="|Next Scan:",
             bg=CARD_BG,
-            fg=LEGION_BLUE,
+            fg=colors.matched,
             font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_next_scan_title.pack(side="left")
@@ -661,20 +663,22 @@ class BossTimerOverlay(tk.Toplevel):
 
     def _toggle_orientation(self):
         self.orientation = "vertical" if self.orientation == "horizontal" else "horizontal"
+        self.frame.config(highlightbackground=get_filter_colors().matched)
         self._repack()
         self._save_settings()
 
     def _create_toggle_btn(self, parent, label_text, attr_name, callback=None):
         """Creates a toggle button that updates state and color immediately."""
         is_active = getattr(self, attr_name)
+        colors = get_filter_colors()
 
         btn = tk.Button(
             parent,
             text=label_text,
             bg=CARD_BG,
-            fg=ACTIVE_GREEN if is_active else MUTED,
+            fg=colors.matched if is_active else MUTED,
             font=(self.font_family, self.font_size, "bold"),
-            activebackground=ACCENT,
+            activebackground=colors.matched,
             activeforeground=CARD_BG,
             bd=0,
             padx=10,
@@ -685,7 +689,7 @@ class BossTimerOverlay(tk.Toplevel):
         def _on_click():
             new_val = not getattr(self, attr_name)
             setattr(self, attr_name, new_val)
-            btn.config(fg=ACTIVE_GREEN if new_val else MUTED)
+            btn.config(fg=colors.matched if new_val else MUTED)
             if callback:
                 callback()
             self._repack()
