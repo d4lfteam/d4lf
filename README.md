@@ -693,36 +693,50 @@ The Info Panel provides real-time tracking for World Events and session-based st
 
 **Features and Settings (Right-Click Menu)**
 
-- **Timers**: Toggle visibility for **World Boss**, **Legion**, and **Helltide** timers.
+- **Visibility Toggles**: Directly enable/disable the display of **World Boss**, **Legion**, and **Helltide** timers.
+- **Timers**:
   - Timers automatically sync with [Helltides.com](https://helltides.com).
-  - Timers will flash orange when an event is starting soon (< 5 minutes).
-- **Gold Stats Submenu**:
-  - **Show Gold Stats**: Master toggle for gold tracking.
-  - **GPH**: Shows your calculated Gold Per Hour for the current session.
-  - **Gained**: Shows total gold accumulated since the last reset.
-  - **Reset Gold Stats**: Clears session data and sets a new baseline.
-- **Exp Stats Submenu**:
-  - **Show Exp Stats**: Master toggle for experience tracking.
-  - **EPH**: Shows your calculated Experience Per Hour.
-  - **Exp**: Total experience gained during the session.
-  - **T2L (Time to Level)**: Estimated time remaining until your next level based on current EPH.
-  - **Next Scan**: Shows the remaining cooldown until the next automatic experience check.
-  - **Check EXP on Open**: If enabled, the tool will automatically hover your experience bar to scan values whenever you open your inventory.
-  - **EXP Age Before Refresh**: Set the cooldown interval (e.g., 5m, 10m) for automatic scans.
-  - **Pick EXP Bar Position**: Calibrate the tool by dragging a box over your experience bar on screen.
-  - **Reset Exp Stats**: Clears session experience data.
+  - **World Boss & Legion**: Countdowns are green, flashing orange in the last 5 minutes.
+  - **Helltide**:
+    - When active, the timer is yellow, flashing orange in the last 5 minutes.
+    - The break period before the next Helltide is green, flashing orange in the last 1 minute.
+- **Gold Config (Submenu)**:
+  - **Track Gold**: Master toggle to enable/disable gold tracking. When disabled, other gold-related options are grayed out.
+  - **Show Gold Per Hour**: Displays your calculated Gold Per Hour for the current session.
+  - **Show Gold Gained**: Shows total gold accumulated since the last reset.
+- **Exp Config (Submenu)**:
+  - **Track Exp**: Master toggle to enable/disable experience tracking. When disabled, other exp-related options are grayed out.
+  - **Show EXP Per Hour**: Displays your calculated Experience Per Hour.
+  - **Show EXP Gained**: Shows total experience accumulated since the last reset.
+  - **Show Time to Level**: Estimated time remaining until your next level based on current EPH.
+  - **Show Next Scan**: Shows the remaining cooldown until the next automatic experience check.
+  - **Inv Open (Capture EXP)**: If enabled, the tool will automatically hover your experience bar to scan values whenever you open your inventory.
+  - **EXP Capture Time (Submenu)**: Set the cooldown interval (e.g., Never, 0m, 3m) for automatic scans.
+  - **Configure EXP Bar Position**: Calibrate the tool by dragging a box over your experience bar on screen.
+  - **Reset EXP Bar Position**: Resets the custom EXP bar position to default.
+- **Reset Stats (Submenu)**:
+  - **Reset Gold**: Clears current session gold data and sets a new baseline.
+  - **Reset Exp**: Clears current session experience data.
 - **UI Adjustments**:
   - **Orientation**: Switch between **Horizontal** and **Vertical** layouts.
   - **Increase/Decrease Size**: Adjust the font size and overall scale of the overlay.
+- **Font (Submenu)**:
+  - Select your preferred font family for the overlay text.
 - **System**:
   - **Auto Sync**: Manually force a refresh of event data from the web.
   - **Lock Position**: Disables dragging to keep the overlay static.
+  - **Close Overlay**: Closes the Info Panel Overlay.
 
 **Tracking Logic**
 
 - The overlay captures data via the game's Text-to-Speech (TTS) system.
-- To initialize tracking, simply hover over your gold balance or experience bar in-game.
-- Gold tracking includes verification logic to ignore transient "Sell Value" tooltips from items.
+- **Gold Tracking**:
+  - To initialize, turn on track gold and open inventory.
+  - Includes verification logic to ignore transient "Sell Value" tooltips from items.
+- **Experience Tracking**:
+  - To initialize, simply hover over your experience bar in-game.
+  - **Automatic Scanning**: If "Inv Open (Capture EXP)" is enabled in settings, the overlay will automatically move your mouse over the experience bar to scan for updates whenever you open your inventory.
+  - **Cooldown**: The "EXP Capture Time" setting controls how frequently these automatic scans occur, preventing excessive mouse movements.
 
 ## Future Plans
 

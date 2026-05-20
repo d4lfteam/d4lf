@@ -564,14 +564,13 @@ class BossTimerOverlay(tk.Toplevel):
         if self.show_ht:
             self.ht_group.pack(side=side, anchor=anchor, padx=2)
         if (
-            self.show_gold
-            and self.capture_gold_stats
+            self.capture_gold_stats
             and self._gold_initialized
             and (self.show_gph or self.show_total_gold)
         ):
             self._repack_gold_group()
             self.stats_group.pack(side=side, anchor=anchor, padx=2)
-        if self.show_exp and self.capture_exp_stats and self._exp_initialized:
+        if self.capture_exp_stats and self._exp_initialized:
             if self.show_eph or self.show_total_exp:
                 self._repack_exp_group()
                 self.exp_group.pack(side=side, anchor=anchor, padx=2)
@@ -663,7 +662,7 @@ class BossTimerOverlay(tk.Toplevel):
         btn.pack(fill="x")
         return btn
 
-    def _create_config_toggle_btn(self, parent, label_text, config_key):
+    def _create_config_toggle_btn(self, parent, label_text, config_key, callback=None):
         """Creates a toggle button for settings stored in QSettings."""
         is_active = self.settings.get(config_key, False)
         
@@ -685,7 +684,10 @@ class BossTimerOverlay(tk.Toplevel):
             new_val = not self.settings.get(config_key, False)
             save_info_settings({config_key: new_val})
             self.settings[config_key] = new_val
-            btn.config(fg=ACTIVE_GREEN if new_val else MUTED)
+            if callback:
+                callback()
+            else:
+                btn.config(fg=ACTIVE_GREEN if new_val else MUTED)
             self._repack()
             self._save_settings()
 
@@ -847,52 +849,98 @@ class BossTimerOverlay(tk.Toplevel):
         
         # Gold Stats Submenu (Cascading)
         def build_gold_submenu_content(submenu_frame):
-            self._create_toggle_btn(submenu_frame, "Show Gold Stats", "show_gold").pack(fill="x")
-            self._create_toggle_btn(submenu_frame, "Show Gold Per Hour", "show_gph").pack(fill="x") # Corrected .pack() call
-            self._create_toggle_btn(submenu_frame, "Show Total Gold", "show_total_gold").pack(fill="x")
-            self._create_toggle_btn(submenu_frame, "Capture Gold Stats", "capture_gold_stats").pack(fill="x")
-            tk.Button(
-                submenu_frame, text="Reset Gold Stats", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
-                font=(self.font_family, self.font_size), activebackground=ACCENT, activeforeground=CARD_BG,
-                command=lambda: (self._reset_gold_stats(), submenu_frame.destroy(), self._settings_popup.destroy(), self._show_context_menu(event=None))
-            ).pack(fill="x")
-        self._create_submenu_button(popup, "Gold Stats", "gold_stats_submenu", build_gold_submenu_content).pack(fill="x")
+            def update_dependent_widgets():
+                is_tracking = self.capture_gold_stats
+                state = tk.NORMAL if is_tracking else tk.DISABLED
+                btn_gph.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.show_gph) else MUTED)
+                btn_gained.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.show_total_gold) else MUTED)
 
-        # Exp Stats Submenu (Cascading)
+            self._create_toggle_btn(submenu_frame, "Track Gold", "capture_gold_stats", callback=update_dependent_widgets)
+            
+            tk.Frame(submenu_frame, height=1, bg=ACCENT).pack(fill="x", pady=2)
+            
+            btn_gph = self._create_toggle_btn(submenu_frame, "Show Gold Per Hour", "show_gph")
+            btn_gained = self._create_toggle_btn(submenu_frame, "Show Gold Gained", "show_total_gold")
+            
+            update_dependent_widgets()
+
+        self._create_submenu_button(popup, "Gold Config", "gold_stats_submenu", build_gold_submenu_content).pack(fill="x")
+
+        # Exp Config Submenu (Cascading)
         def build_exp_submenu_content(submenu_frame):
-            self._create_toggle_btn(submenu_frame, "Show Exp Stats", "show_exp").pack(fill="x")
-            self._create_toggle_btn(submenu_frame, "Show EXP Per Hour", "show_eph").pack(fill="x") # Corrected .pack() call
-            self._create_toggle_btn(submenu_frame, "Show Total EXP", "show_total_exp").pack(fill="x")
-            self._create_toggle_btn(submenu_frame, "Show Time to Level", "show_t2l").pack(fill="x")
-            self._create_toggle_btn(submenu_frame, "Show Next Scan", "show_next_scan").pack(fill="x")
-            self._create_toggle_btn(submenu_frame, "Capture EXP Stats", "capture_exp_stats").pack(fill="x")
-            self._create_config_toggle_btn(submenu_frame, "Check EXP on Open", "check_exp_on_inventory_open").pack(fill="x")
+            def update_dependent_widgets():
+                is_tracking = self.capture_exp_stats
+                state = tk.NORMAL if is_tracking else tk.DISABLED
+                
+                btn_eph.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.show_eph) else MUTED)
+                btn_gained.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.show_total_exp) else MUTED)
+                btn_t2l.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.show_t2l) else MUTED)
+                btn_next.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.show_next_scan) else MUTED)
+                btn_inv.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.settings.get("check_exp_on_inventory_open")) else MUTED)
+                
+                btn_age.config(state=state, fg=TEXT if is_tracking else MUTED)
+                btn_pick.config(state=state, fg=TEXT if is_tracking else MUTED)
+                btn_reset_pos.config(state=state, fg=TEXT if is_tracking else MUTED)
+                
+                if self.settings.get("exp_bar_pos") is None:
+                    btn_reset_pos.pack_forget()
+                else:
+                    btn_reset_pos.pack(fill="x")
 
-            # EXP Age Before Refresh Sub-Submenu (Cascading)
+            self._create_toggle_btn(submenu_frame, "Track Exp", "capture_exp_stats", callback=update_dependent_widgets)
+            
+            tk.Frame(submenu_frame, height=1, bg=ACCENT).pack(fill="x", pady=2)
+            
+            btn_eph = self._create_toggle_btn(submenu_frame, "Show EXP Per Hour", "show_eph")
+            btn_gained = self._create_toggle_btn(submenu_frame, "Show EXP Gained", "show_total_exp")
+            btn_t2l = self._create_toggle_btn(submenu_frame, "Show Time to Level", "show_t2l")
+            btn_next = self._create_toggle_btn(submenu_frame, "Show Next Scan", "show_next_scan")
+            
+            tk.Frame(submenu_frame, height=1, bg=ACCENT).pack(fill="x", pady=2)
+
+            btn_inv = self._create_config_toggle_btn(submenu_frame, "Inv Open (Capture EXP)", "check_exp_on_inventory_open")
+
             def build_exp_age_sub_submenu_content(sub_submenu_frame):
                 for label, val in [("Never", -1), ("0m", 0), ("3m", 3), ("5m", 5), ("10m", 10), ("30m", 30), ("60m", 60)]:
                     self._create_radio_button(
                         sub_submenu_frame, label, self.settings["exp_age_before_refresh"], val, lambda v: None, config_key="exp_age_before_refresh"
                     ).pack(fill="x")
-            self._create_submenu_button(submenu_frame, "EXP Age Before Refresh", "exp_age_sub_submenu", build_exp_age_sub_submenu_content).pack(fill="x")
+            btn_age = self._create_submenu_button(submenu_frame, "EXP Capture Time", "exp_age_sub_submenu", build_exp_age_sub_submenu_content)
 
+            tk.Frame(submenu_frame, height=1, bg=ACCENT).pack(fill="x", pady=2)
+
+            btn_pick = tk.Button(
+                submenu_frame, text="Configure EXP Bar Position", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
+                font=(self.font_family, self.font_size, "bold"), activebackground=ACCENT, activeforeground=CARD_BG,
+                command=lambda: (self._pick_exp_bar_pos(), self._settings_popup.destroy() if self._settings_popup else None, self._close_all_submenus())
+            )
+            btn_pick.pack(fill="x")
+
+            btn_reset_pos = tk.Button(
+                submenu_frame, text="Reset EXP Bar Position", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
+                font=(self.font_family, self.font_size, "bold"), activebackground=ACCENT, activeforeground=CARD_BG,
+                command=lambda: (self._reset_exp_bar_pos(), self._settings_popup.destroy() if self._settings_popup else None, self._close_all_submenus())
+            )
+            btn_reset_pos.pack(fill="x")
+
+            update_dependent_widgets()
+
+        self._create_submenu_button(popup, "Exp Config", "exp_stats_submenu", build_exp_submenu_content).pack(fill="x")
+
+        # Reset Stats Submenu (Cascading)
+        def build_reset_submenu_content(submenu_frame):
             tk.Button(
-                submenu_frame, text="Pick EXP Bar Position", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
-                font=(self.font_family, self.font_size), activebackground=ACCENT, activeforeground=CARD_BG,
-                command=lambda: (self._pick_exp_bar_pos(), submenu_frame.destroy(), self._settings_popup.destroy(), self._show_context_menu(event=None))
+                submenu_frame, text="Reset Gold", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
+                font=(self.font_family, self.font_size, "bold"), activebackground=ACCENT, activeforeground=CARD_BG,
+                command=self._reset_gold_stats
             ).pack(fill="x")
-            if self.settings["exp_bar_pos"] is not None:
-                tk.Button(
-                    submenu_frame, text="Reset EXP Bar Position", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
-                    font=(self.font_family, self.font_size), activebackground=ACCENT, activeforeground=CARD_BG,
-                    command=lambda: (self._reset_exp_bar_pos(), submenu_frame.destroy(), self._settings_popup.destroy(), self._show_context_menu(event=None))
-                ).pack(fill="x")
             tk.Button(
-                submenu_frame, text="Reset Exp Stats", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
-                font=(self.font_family, self.font_size), activebackground=ACCENT, activeforeground=CARD_BG,
-                command=lambda: (self._reset_exp_stats(), submenu_frame.destroy(), self._settings_popup.destroy(), self._show_context_menu(event=None))
+                submenu_frame, text="Reset Exp", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
+                font=(self.font_family, self.font_size, "bold"), activebackground=ACCENT, activeforeground=CARD_BG,
+                command=self._reset_exp_stats
             ).pack(fill="x")
-        self._create_submenu_button(popup, "Exp Stats", "exp_stats_submenu", build_exp_submenu_content).pack(fill="x")
+        
+        self._create_submenu_button(popup, "Reset Stats", "reset_stats_submenu", build_reset_submenu_content).pack(fill="x")
 
         tk.Frame(popup, height=1, bg=ACCENT).pack(fill="x", pady=2)
 
