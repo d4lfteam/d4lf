@@ -982,7 +982,7 @@ class BossTimerOverlay(tk.Toplevel):
             tk.Frame(submenu_frame, height=1, bg=ACCENT).pack(fill="x", pady=2)
 
             btn_inv = self._create_config_toggle_btn(
-                submenu_frame, "Inv Open (Capture EXP)", "check_exp_on_inventory_open"
+                submenu_frame, "Auto-Capture Exp When Inventory Opened", "check_exp_on_inventory_open"
             )
 
             def build_exp_age_sub_submenu_content(sub_submenu_frame):
