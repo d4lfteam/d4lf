@@ -522,7 +522,11 @@ class BossTimerOverlay(tk.Toplevel):
         self.lbl_gph_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_gph_title)
         self.gph_value_label = tk.Label(
-            self.stats_group, text="Pending" if self.capture_gold_stats else "0", bg=CARD_BG, fg=TEXT, font=(self.font_family, self.font_size, "bold")
+            self.stats_group,
+            text="Pending" if self.capture_gold_stats else "0",
+            bg=CARD_BG,
+            fg=TEXT,
+            font=(self.font_family, self.font_size, "bold"),
         )
         self.gph_value_label.pack(side="left")
         self.labels_to_resize.append(self.gph_value_label)
@@ -537,7 +541,11 @@ class BossTimerOverlay(tk.Toplevel):
         self.lbl_total_gained_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_total_gained_title)
         self.total_gained_value_label = tk.Label(
-            self.stats_group, text="Pending" if self.capture_gold_stats else "0", bg=CARD_BG, fg=TEXT, font=(self.font_family, self.font_size, "bold")
+            self.stats_group,
+            text="Pending" if self.capture_gold_stats else "0",
+            bg=CARD_BG,
+            fg=TEXT,
+            font=(self.font_family, self.font_size, "bold"),
         )
         self.total_gained_value_label.pack(side="left")
         self.labels_to_resize.append(self.total_gained_value_label)
@@ -553,7 +561,11 @@ class BossTimerOverlay(tk.Toplevel):
         self.lbl_eph_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_eph_title)
         self.eph_value_label = tk.Label(
-            self.exp_group, text="Pending" if self.capture_exp_stats else "0", bg=CARD_BG, fg=TEXT, font=(self.font_family, self.font_size, "bold")
+            self.exp_group,
+            text="Pending" if self.capture_exp_stats else "0",
+            bg=CARD_BG,
+            fg=TEXT,
+            font=(self.font_family, self.font_size, "bold"),
         )
         self.eph_value_label.pack(side="left")
         self.labels_to_resize.append(self.eph_value_label)
@@ -568,7 +580,11 @@ class BossTimerOverlay(tk.Toplevel):
         self.lbl_total_exp_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_total_exp_title)
         self.total_exp_value_label = tk.Label(
-            self.exp_group, text="Pending" if self.capture_exp_stats else "0", bg=CARD_BG, fg=TEXT, font=(self.font_family, self.font_size, "bold")
+            self.exp_group,
+            text="Pending" if self.capture_exp_stats else "0",
+            bg=CARD_BG,
+            fg=TEXT,
+            font=(self.font_family, self.font_size, "bold"),
         )
         self.total_exp_value_label.pack(side="left")
         self.labels_to_resize.append(self.total_exp_value_label)
@@ -649,13 +665,17 @@ class BossTimerOverlay(tk.Toplevel):
         if self.show_gph:
             self.lbl_gph_title.config(text="GPH:")
             self.lbl_gph_title.pack(side="left")
-            self.gph_value_label.config(text="Pending" if not self._gold_initialized else self.gph_value_label.cget("text"))
+            self.gph_value_label.config(
+                text="Pending" if not self._gold_initialized else self.gph_value_label.cget("text")
+            )
             self.gph_value_label.pack(side="left")
             count += 1
         if self.show_total_gold:
             self.lbl_total_gained_title.config(text="|Gained:" if count > 0 else "Gained:")
             self.lbl_total_gained_title.pack(side="left")
-            self.total_gained_value_label.config(text="Pending" if not self._gold_initialized else self.total_gained_value_label.cget("text"))
+            self.total_gained_value_label.config(
+                text="Pending" if not self._gold_initialized else self.total_gained_value_label.cget("text")
+            )
             self.total_gained_value_label.pack(side="left")
 
     def _repack_exp_group(self):
@@ -667,13 +687,17 @@ class BossTimerOverlay(tk.Toplevel):
         if self.show_eph:
             self.lbl_eph_title.config(text="EPH:")
             self.lbl_eph_title.pack(side="left")
-            self.eph_value_label.config(text="Pending" if not self._exp_initialized else self.eph_value_label.cget("text"))
+            self.eph_value_label.config(
+                text="Pending" if not self._exp_initialized else self.eph_value_label.cget("text")
+            )
             self.eph_value_label.pack(side="left")
             count += 1
         if self.show_total_exp:
             self.lbl_total_exp_title.config(text="|Exp:" if count > 0 else "Exp:")
             self.lbl_total_exp_title.pack(side="left")
-            self.total_exp_value_label.config(text="Pending" if not self._exp_initialized else self.total_exp_value_label.cget("text"))
+            self.total_exp_value_label.config(
+                text="Pending" if not self._exp_initialized else self.total_exp_value_label.cget("text")
+            )
             self.total_exp_value_label.pack(side="left")
             count += 1
 
@@ -1440,7 +1464,8 @@ class BossTimerOverlay(tk.Toplevel):
             next_legion = legion_ref + (legion_passed + 1) * legion_interval
             legion_remaining = next_legion - now
         self.legion_timer.config(
-            text=str(legion_remaining).split(".")[0], fg=get_flash_color(legion_remaining.total_seconds(), colors.matched)
+            text=str(legion_remaining).split(".")[0],
+            fg=get_flash_color(legion_remaining.total_seconds(), colors.matched),
         )
 
         # --- Helltide ---
