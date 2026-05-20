@@ -456,6 +456,10 @@ class BossTimerOverlay(tk.Toplevel):
     def _setup_ui(self):
         self.labels_to_resize = []
         colors = get_filter_colors()
+        is_colorblind = False
+        with suppress(Exception):
+            is_colorblind = IniConfigLoader().general.colorblind_mode
+
         self.frame = tk.Frame(self, bg=CARD_BG, highlightthickness=1, highlightbackground=colors.matched)
         self.frame.pack(padx=5, pady=5)
 
@@ -464,7 +468,7 @@ class BossTimerOverlay(tk.Toplevel):
             self.wb_group,
             text="World Boss:",
             bg=CARD_BG,
-            fg=colors.codex_upgrade,
+            fg=colors.codex_upgrade if is_colorblind else WB_ORANGE,
             font=(self.font_family, self.font_size, "bold"),
         )
         lbl_wb.pack(side="left")
@@ -480,7 +484,7 @@ class BossTimerOverlay(tk.Toplevel):
             self.legion_group,
             text="Legion:",
             bg=CARD_BG,
-            fg=colors.matched,
+            fg=colors.matched if is_colorblind else LEGION_BLUE,
             font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_legion.pack(side="left")
@@ -496,7 +500,7 @@ class BossTimerOverlay(tk.Toplevel):
             self.ht_group,
             text="Helltide:",
             bg=CARD_BG,
-            fg=colors.no_match,
+            fg=colors.no_match if is_colorblind else HELLTIDE_RED,
             font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_ht.pack(side="left")
@@ -512,7 +516,7 @@ class BossTimerOverlay(tk.Toplevel):
             self.stats_group,
             text="GPH:",
             bg=CARD_BG,
-            fg=colors.matched,
+            fg=colors.matched if is_colorblind else ACCENT,
             font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_gph_title.pack(side="left")
@@ -527,7 +531,7 @@ class BossTimerOverlay(tk.Toplevel):
             self.stats_group,
             text="|Gained:",
             bg=CARD_BG,
-            fg=colors.matched,
+            fg=colors.matched if is_colorblind else ACCENT,
             font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_total_gained_title.pack(side="left")
@@ -540,7 +544,11 @@ class BossTimerOverlay(tk.Toplevel):
 
         self.exp_group = tk.Frame(self.frame, bg=CARD_BG)
         self.lbl_eph_title = tk.Label(
-            self.exp_group, text="EPH:", bg=CARD_BG, fg=colors.matched, font=(self.font_family, self.font_size, "bold")
+            self.exp_group,
+            text="EPH:",
+            bg=CARD_BG,
+            fg=colors.matched if is_colorblind else LEGION_BLUE,
+            font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_eph_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_eph_title)
@@ -551,7 +559,11 @@ class BossTimerOverlay(tk.Toplevel):
         self.labels_to_resize.append(self.eph_value_label)
 
         self.lbl_total_exp_title = tk.Label(
-            self.exp_group, text="|Exp:", bg=CARD_BG, fg=colors.matched, font=(self.font_family, self.font_size, "bold")
+            self.exp_group,
+            text="|Exp:",
+            bg=CARD_BG,
+            fg=colors.matched if is_colorblind else LEGION_BLUE,
+            font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_total_exp_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_total_exp_title)
@@ -563,7 +575,11 @@ class BossTimerOverlay(tk.Toplevel):
 
         self.t2l_group = tk.Frame(self.frame, bg=CARD_BG)
         self.lbl_t2l_title = tk.Label(
-            self.t2l_group, text="T2L:", bg=CARD_BG, fg=colors.matched, font=(self.font_family, self.font_size, "bold")
+            self.t2l_group,
+            text="T2L:",
+            bg=CARD_BG,
+            fg=colors.matched if is_colorblind else LEGION_BLUE,
+            font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_t2l_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_t2l_title)
@@ -577,7 +593,7 @@ class BossTimerOverlay(tk.Toplevel):
             self.t2l_group,
             text="|Next Scan:",
             bg=CARD_BG,
-            fg=colors.matched,
+            fg=colors.matched if is_colorblind else LEGION_BLUE,
             font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_next_scan_title.pack(side="left")
@@ -714,12 +730,13 @@ class BossTimerOverlay(tk.Toplevel):
     def _create_config_toggle_btn(self, parent, label_text, config_key, callback=None):
         """Creates a toggle button for settings stored in QSettings."""
         is_active = self.settings.get(config_key, False)
+        colors = get_filter_colors()
 
         btn = tk.Button(
             parent,
             text=label_text,
             bg=CARD_BG,
-            fg=ACTIVE_GREEN if is_active else MUTED,
+            fg=colors.matched if is_active else MUTED,
             font=(self.font_family, self.font_size, "bold"),
             activebackground=ACCENT,
             activeforeground=CARD_BG,
@@ -736,7 +753,7 @@ class BossTimerOverlay(tk.Toplevel):
             if callback:
                 callback()
             else:
-                btn.config(fg=ACTIVE_GREEN if new_val else MUTED)
+                btn.config(fg=colors.matched if new_val else MUTED)
             self._repack()
             self._save_settings()
 
@@ -749,7 +766,8 @@ class BossTimerOverlay(tk.Toplevel):
     ):
         """Creates a radio-style button that visually indicates selection."""
         is_selected = current_value == target_value
-        fg_color = ACTIVE_GREEN if is_selected else MUTED
+        colors = get_filter_colors()
+        fg_color = colors.matched if is_selected else MUTED
 
         btn = tk.Button(
             parent,
@@ -1374,6 +1392,7 @@ class BossTimerOverlay(tk.Toplevel):
             return
         now = datetime.datetime.now(datetime.UTC)
         self._flash_toggle = not self._flash_toggle
+        colors = get_filter_colors()
 
         def get_flash_color(seconds, base_color, threshold=300):
             if 0 < seconds < threshold and not self._flash_toggle:
@@ -1399,10 +1418,10 @@ class BossTimerOverlay(tk.Toplevel):
         wb_remaining = next_wb - now
         if wb_remaining.total_seconds() < 0:
             self.wb_timer.config(text="ACTIVE")
-            self.wb_timer.config(fg=ACTIVE_GREEN)  # Active WB is green
+            self.wb_timer.config(fg=colors.matched)
         else:
             self.wb_timer.config(
-                text=str(wb_remaining).split(".")[0], fg=get_flash_color(wb_remaining.total_seconds(), ACTIVE_GREEN)
+                text=str(wb_remaining).split(".")[0], fg=get_flash_color(wb_remaining.total_seconds(), colors.matched)
             )
         # --- Legion ---
         # Legion
@@ -1417,7 +1436,7 @@ class BossTimerOverlay(tk.Toplevel):
             next_legion = legion_ref + (legion_passed + 1) * legion_interval
             legion_remaining = next_legion - now
         self.legion_timer.config(
-            text=str(legion_remaining).split(".")[0], fg=get_flash_color(legion_remaining.total_seconds(), ACTIVE_GREEN)
+            text=str(legion_remaining).split(".")[0], fg=get_flash_color(legion_remaining.total_seconds(), colors.matched)
         )
 
         # --- Helltide ---
@@ -1430,7 +1449,7 @@ class BossTimerOverlay(tk.Toplevel):
             # Synced reference is in the future
             ht_rem = ht_ref - now
             self.ht_timer.config(
-                text=str(ht_rem).split(".")[0], fg=get_flash_color(ht_rem.total_seconds(), ACTIVE_GREEN, 60)
+                text=str(ht_rem).split(".")[0], fg=get_flash_color(ht_rem.total_seconds(), colors.matched, 60)
             )
         else:
             # Normalized position in the infinite 1-hour cycle
@@ -1445,7 +1464,7 @@ class BossTimerOverlay(tk.Toplevel):
                 # Break / Warning (55-60 mins)
                 rem = datetime.timedelta(seconds=int(3600 - cycle_pos))
                 self.ht_timer.config(
-                    text=str(rem).split(".")[0], fg=get_flash_color(rem.total_seconds(), ACTIVE_GREEN, 60)
+                    text=str(rem).split(".")[0], fg=get_flash_color(rem.total_seconds(), colors.matched, 60)
                 )
 
         # --- Next Scan Cooldown ---
