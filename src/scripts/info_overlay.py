@@ -297,6 +297,7 @@ HELLTIDE_RED = "#ff4d4d"
 WB_ORANGE = "#e67e22"
 WARNING_ORANGE = "#ff9900"
 ACTIVE_GREEN = "#34C410"
+PROGRESS_YELLOW = "#ffff00"
 
 
 class BossTimerOverlay(tk.Toplevel):
@@ -972,10 +973,10 @@ class BossTimerOverlay(tk.Toplevel):
         now = datetime.datetime.now(datetime.UTC)
         self._flash_toggle = not self._flash_toggle
 
-        def get_flash_color(seconds, base_color):
-            if 0 < seconds < 300 and not self._flash_toggle:
+        def get_flash_color(seconds, base_color, threshold=300):
+            if 0 < seconds < threshold and not self._flash_toggle:
                 return TEXT
-            if 0 < seconds < 300:
+            if 0 < seconds < threshold:
                 return WARNING_ORANGE
             return base_color
 
@@ -1026,19 +1027,23 @@ class BossTimerOverlay(tk.Toplevel):
         if diff < 0:
             # Synced reference is in the future
             ht_rem = ht_ref - now
-            self.ht_timer.config(text=str(ht_rem).split(".")[0], fg=get_flash_color(ht_rem.total_seconds(), TEXT))
+            self.ht_timer.config(
+                text=str(ht_rem).split(".")[0], fg=get_flash_color(ht_rem.total_seconds(), ACTIVE_GREEN, 60)
+            )
         else:
             # Normalized position in the infinite 1-hour cycle
             cycle_pos = diff % 3600
             if cycle_pos < 3300:
                 # Active (0-55 mins)
                 rem = datetime.timedelta(seconds=int(3300 - cycle_pos))
-                self.ht_timer.config(text=str(rem).split(".")[0], fg=ACTIVE_GREEN)
+                self.ht_timer.config(
+                    text=str(rem).split(".")[0], fg=get_flash_color(rem.total_seconds(), PROGRESS_YELLOW, 300)
+                )
             else:
                 # Break / Warning (55-60 mins)
                 rem = datetime.timedelta(seconds=int(3600 - cycle_pos))
                 self.ht_timer.config(
-                    text=str(rem).split(".")[0], fg=get_flash_color(rem.total_seconds(), WARNING_ORANGE)
+                    text=str(rem).split(".")[0], fg=get_flash_color(rem.total_seconds(), ACTIVE_GREEN, 60)
                 )
 
         # --- Next Scan Cooldown ---
