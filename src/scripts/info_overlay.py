@@ -254,6 +254,11 @@ class InventoryExpTracker:
     def on_inventory_open(self):
         if self.hover_active or _BUSY_CHECKER():
             return
+
+        with _OVERLAY_LOCK:
+            if _OVERLAY_INSTANCE is None:
+                return
+
         info_config = load_info_settings()
         if not info_config.get("capture_exp_stats", False):
             return
