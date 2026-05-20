@@ -126,6 +126,36 @@ def get_info_setting(key: str, default: Any = None) -> Any:
     return load_info_settings().get(key, default)
 
 
+def update_info_stats(**kwargs):
+    with _OVERLAY_LOCK:
+        if _OVERLAY_INSTANCE is not None:
+            _OVERLAY_INSTANCE.update_stats(**kwargs)
+
+
+def _hover_experience_balance(info_config: dict[str, Any]):
+    pos = info_config.get("exp_bar_pos")
+    if pos:
+        if isinstance(pos, str):
+            with suppress(Exception):
+                pos = tuple(int(x.strip()) for x in pos.strip("()").replace(",", " ").split())
+        if pos and len(pos) == 4:
+            target = ((pos[0] + pos[2]) // 2, (pos[1] + pos[3]) // 2)
+            mouse.move(*Cam().abs_window_to_monitor(target))
+            return
+
+    # Default fallback: bottom center
+    res = Cam().window_roi
+    if res:
+        target = (res[2] // 2, res[3] - 10)
+        mouse.move(*Cam().abs_window_to_monitor(target))
+
+
+def request_close():
+    with _OVERLAY_LOCK:
+        if _OVERLAY_INSTANCE is not None:
+            _OVERLAY_INSTANCE.after(0, _OVERLAY_INSTANCE.destroy)
+
+
 @singleton
 class SessionStats:
     def __init__(self):
@@ -350,6 +380,10 @@ class BossTimerOverlay(tk.Toplevel):
         self._session_stats.unsubscribe()
         self._menu_vars.clear()
         super().destroy()
+        with _OVERLAY_LOCK:
+            global _OVERLAY_INSTANCE
+            if _OVERLAY_INSTANCE is self:
+                _OVERLAY_INSTANCE = None
 
     def _apply_loaded_settings(self):
         self.x, self.y = self.settings["x"], self.settings["y"]
@@ -817,7 +851,7 @@ class BossTimerOverlay(tk.Toplevel):
         submenu_popup.bind("<FocusOut>", self._on_popup_focus_out)
         submenu_popup.bind(
             "<Escape>",
-            lambda e: (self._settings_popup.destroy() if self._settings_popup else None, self._close_all_submenus()),
+            lambda _: (self._settings_popup.destroy() if self._settings_popup else None, self._close_all_submenus()),
         )
 
         self._open_submenus[submenu_id] = submenu_popup
@@ -929,7 +963,7 @@ class BossTimerOverlay(tk.Toplevel):
                         label,
                         self.settings["exp_age_before_refresh"],
                         val,
-                        lambda v: None,
+                        lambda _: None,
                         config_key="exp_age_before_refresh",
                     ).pack(fill="x")
 
@@ -1101,10 +1135,10 @@ class BossTimerOverlay(tk.Toplevel):
                 font=(self.font_family, self.font_size),
                 activebackground=ACCENT,
                 activeforeground=CARD_BG,
-                command=lambda c=cmd: (
+                command=lambda c=cmd, lbl=label: (
                     c(),
                     self._settings_popup.destroy(),
-                    self._show_context_menu(event=None) if label != "Close Overlay" else None,
+                    self._show_context_menu(event=None) if lbl != "Close Overlay" else None,
                 ),
             )
             btn.pack(fill="x")
@@ -1114,7 +1148,7 @@ class BossTimerOverlay(tk.Toplevel):
 
         # Auto-close logic
         popup.bind("<FocusOut>", self._on_popup_focus_out)  # Use the family focus out handler
-        popup.bind("<Escape>", lambda e: (popup.destroy(), self._close_all_submenus()))  # Escape still closes all
+        popup.bind("<Escape>", lambda _: (popup.destroy(), self._close_all_submenus()))  # Escape still closes all
         popup.focus_set()
 
     def _close_all_submenus(self):
@@ -1456,4 +1490,4 @@ def run_boss_timer_overlay():
     root.withdraw()
     overlay = BossTimerOverlay(root)
     with _OVERLAY_LOCK:
-        _OVERLAY_INSTANCE = o
+        _OVERLAY_INSTANCE = overlay
