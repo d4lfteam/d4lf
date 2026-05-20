@@ -139,21 +139,24 @@ def _hover_experience_balance(info_config: dict[str, Any]):
             with suppress(Exception):
                 pos = tuple(int(x.strip()) for x in pos.strip("()").replace(",", " ").split())
         if pos and len(pos) == 4:
-            target = ((pos[0] + pos[2]) // 2, (pos[1] + pos[3]) // 2)
-            mouse.move(*Cam().abs_window_to_monitor(target))
+            p1 = (pos[0], pos[1])
+            p2 = (pos[2], pos[3])
+            mouse.move(*Cam().window_to_monitor(p1))
+            time.sleep(0.1)
+            mouse.move(*Cam().window_to_monitor(p2))
             return
 
     # Default fallback: bottom center
     res = Cam().window_roi
     if res:
-        target = (res[2] // 2, res[3] - 10)
-        mouse.move(*Cam().abs_window_to_monitor(target))
+        target = (res["width"] // 2, res["height"] - 10)
+        mouse.move(*Cam().window_to_monitor(target))
 
 
 def request_close():
     with _OVERLAY_LOCK:
         if _OVERLAY_INSTANCE is not None:
-            _OVERLAY_INSTANCE.after(0, _OVERLAY_INSTANCE.destroy)
+            _OVERLAY_INSTANCE.after(0, lambda: _OVERLAY_INSTANCE.master.destroy())
 
 
 @singleton
@@ -1336,8 +1339,12 @@ class BossTimerOverlay(tk.Toplevel):
                         self.synced_helltide = latest_start
                         LOGGER.info(f"Auto-synced Helltide: {latest_start}")
 
-                    if self.winfo_exists():
-                        self.after(0, self._update_timers)
+                    # Schedule the update on the UI thread to avoid cross-thread GUI errors
+                    def _safe_update():
+                        if self.winfo_exists():
+                            self._update_timers()
+
+                    self.after(0, _safe_update)
         except Exception as e:
             LOGGER.error(f"Failed to auto-sync from helltides.com: {e}")
 
@@ -1491,3 +1498,4 @@ def run_boss_timer_overlay():
     overlay = BossTimerOverlay(root)
     with _OVERLAY_LOCK:
         _OVERLAY_INSTANCE = overlay
+    root.mainloop()
