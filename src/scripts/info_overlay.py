@@ -1137,16 +1137,21 @@ class BossTimerOverlay(tk.Toplevel):
         tk.Frame(popup, height=1, bg=ACCENT).pack(fill="x", pady=2)
 
         # System Actions
+        colors = get_filter_colors()
         for label, cmd in [
             ("Auto Sync Timers", self._auto_sync),
             ("Lock Position", self._toggle_lock),
             ("Close Overlay", request_close),
         ]:
+            fg_color = TEXT
+            if label == "Lock Position" and self.locked:
+                fg_color = colors.matched
+
             btn = tk.Button(
                 popup,
                 text=label,
                 bg=CARD_BG,
-                fg=TEXT,
+                fg=fg_color,
                 bd=0,
                 anchor="w",
                 padx=10,
