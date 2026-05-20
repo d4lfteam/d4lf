@@ -238,7 +238,7 @@ class ScriptHandler:
         with _OVERLAY_LOCK:
             now = time.time()
             # Debounce to prevent rapid key-repeat triggers
-            if now - self._info_overlay_last_toggle_time < 1.5:
+            if now - self._info_overlay_last_toggle_time < 0.5:
                 return
             self._info_overlay_last_toggle_time = now
 
@@ -252,8 +252,8 @@ class ScriptHandler:
             LOGGER.info("Opening Info Panel overlay")
             self.info_overlay_thread = threading.Thread(target=self._run_info_overlay, daemon=True)
             self.info_overlay_thread.start()
-            # Ensure the thread starts and registers the instance before releasing lock
-            time.sleep(0.1)
+            # Brief pause to ensure the thread starts and registers the instance
+            time.sleep(0.05)
 
     def _run_info_overlay(self) -> None:
         try:
