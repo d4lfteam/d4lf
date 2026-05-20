@@ -268,7 +268,7 @@ def generate_aspects(d4data_dir, language):
 def generate_sigils(d4data_dir, language):
     print(f"Gen Sigils for {language}")
     sigil_dict = {"dungeons": {}, "minor": {}, "major": {}, "positive": {}}
-    sigil_rarity_dict = {"minor": {}, "major": {}, "positive": {}}
+    sigil_rarity_dict = {}
     string_list_dir = d4data_dir / f"json/{language}_Text/meta/StringList"
 
     pattern = "json/base/meta/World/DGN_*.wrl.json"
@@ -308,7 +308,7 @@ def generate_sigils(d4data_dir, language):
             sigil_name_key = name.replace(" ", "_")
             sigil_dict[affix_type][sigil_name_key] = f"{name} {desc}"
             if rarity:
-                sigil_rarity_dict[affix_type][sigil_name_key] = rarity
+                sigil_rarity_dict[sigil_name_key] = rarity
 
     # Add any sigils we might be missing. Right now, that's none, but we leave the option for the future
     with Path(D4LF_BASE_DIR / f"src/tools/data/custom_sigils_{language}.json").open(encoding="utf-8") as file:
