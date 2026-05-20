@@ -97,7 +97,7 @@ def load_info_settings() -> dict[str, Any]:
             loaded_settings["wb_reference"] = datetime.datetime.strptime(wb_ref, "%Y-%m-%d %H:%M:%S").replace(
                 tzinfo=datetime.UTC
             )
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
     elif not isinstance(wb_ref, datetime.datetime):
         loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
@@ -343,6 +343,7 @@ class BossTimerOverlay(tk.Toplevel):
     def destroy(self):
         """Perform cleanup and unsubscribe from stats on destruction."""
         self._session_stats.unsubscribe()
+        self._menu_vars.clear()
         super().destroy()
 
     def _apply_loaded_settings(self):
@@ -477,7 +478,11 @@ class BossTimerOverlay(tk.Toplevel):
         self.labels_to_resize.append(self.eph_value_label)
 
         self.lbl_total_exp_title = tk.Label(
-            self.exp_group, text="|Exp:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold")
+            self.exp_group,
+            text="|Exp:",
+            bg=CARD_BG,
+            fg=LEGION_BLUE,
+            font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_total_exp_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_total_exp_title)
@@ -500,7 +505,11 @@ class BossTimerOverlay(tk.Toplevel):
         self.labels_to_resize.append(self.t2l_value_label)
 
         self.lbl_next_scan_title = tk.Label(
-            self.t2l_group, text="|Next Scan:", bg=CARD_BG, fg=LEGION_BLUE, font=("Consolas", self.font_size, "bold")
+            self.t2l_group,
+            text="|Next Scan:",
+            bg=CARD_BG,
+            fg=LEGION_BLUE,
+            font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_next_scan_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_next_scan_title)
@@ -652,7 +661,7 @@ class BossTimerOverlay(tk.Toplevel):
             activeforeground=CARD_BG,
             selectcolor=ACTIVE_GREEN,
         )
-        self._menu_vars = []
+        self._menu_vars.clear()
 
         self._add_check_menu_item(menu, "Show World Boss", "show_wb", lambda: self._toggle_visibility("show_wb"))
         self._add_check_menu_item(menu, "Show Legion", "show_legion", lambda: self._toggle_visibility("show_legion"))
