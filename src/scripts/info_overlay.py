@@ -97,7 +97,7 @@ def load_info_settings() -> dict[str, Any]:
             loaded_settings["wb_reference"] = datetime.datetime.strptime(wb_ref, "%Y-%m-%d %H:%M:%S").replace(
                 tzinfo=datetime.UTC
             )
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
     elif not isinstance(wb_ref, datetime.datetime):
         loaded_settings["wb_reference"] = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
