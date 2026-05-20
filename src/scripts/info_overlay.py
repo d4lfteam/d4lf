@@ -19,6 +19,7 @@ from src.cam import Cam
 from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
 from src.tts import Publisher
+from src.scripts.common import reset_canvas
 from src.utils.custom_mouse import mouse
 
 LOGGER = logging.getLogger(__name__)
@@ -291,6 +292,7 @@ class InventoryExpTracker:
 TRANSPARENT_KEY = "#ff00ff"
 CARD_BG = "#151515"
 TEXT = "#ffffff"
+MUTED = "#cfcfcf"
 ACCENT = "#cfa15b"
 LEGION_BLUE = "#56B4E9"
 HELLTIDE_RED = "#ff4d4d"
@@ -329,12 +331,15 @@ class BossTimerOverlay(tk.Toplevel):
         self._gold_initialized = False
         self._exp_initialized = False
         self._menu_vars = []  # Initialize here to store tk.Variable instances
+        self._settings_popup = None
+        self._last_menu_pos = (100, 100)
 
         self.settings = load_info_settings()
         self._apply_loaded_settings()
         self._flash_toggle = False
         self._setup_ui()
         self._bind_events()
+        self._open_submenus: dict[str, tk.Toplevel] = {} # To keep track of open submenus
         self._update_timers()  # Initial update for timers
 
         self._session_stats = SessionStats()
@@ -374,7 +379,7 @@ class BossTimerOverlay(tk.Toplevel):
         self._exp_initialized = self.capture_exp_stats and stats.last_exp is not None
 
     def _save_settings(self):
-        updates = {
+        updates: dict[str, Any] = {
             "x": self.winfo_x(),
             "y": self.winfo_y(),
             "font_size": self.font_size,
@@ -391,8 +396,25 @@ class BossTimerOverlay(tk.Toplevel):
             if k.startswith("show_"):
                 updates[k] = getattr(self, k)
 
-        save_info_settings(updates)
-        self.settings = load_info_settings()
+        if updates:  # Only save if there are actual updates
+            save_info_settings(updates)
+
+        # Update local cache instead of reloading to avoid race conditions with OS disk/registry writes
+        self.settings.update(updates)
+
+    def _is_descendant(self, child: tk.Misc, parent: tk.Misc) -> bool:
+        """Return True if child is parent or a descendant of parent."""
+        w: tk.Misc | None = child
+        while w:
+            if w is parent:
+                return True
+            try:
+                w = getattr(w, "master", None)
+                if not isinstance(w, tk.Misc):
+                    break
+            except Exception:
+                break
+        return False
 
     def _setup_ui(self):
         self.labels_to_resize = []
@@ -610,181 +632,332 @@ class BossTimerOverlay(tk.Toplevel):
         self.orientation = "vertical" if self.orientation == "horizontal" else "horizontal"
         self._repack()
         self._save_settings()
-
-    def _toggle_visibility(self, key):
-        current = getattr(self, key)
-        setattr(self, key, not current)
-        self._repack()
-        self._save_settings()
-
-    def _add_check_menu_item(self, m, label, attr, cmd):
-        """Helper to add a checkbutton for simple boolean attributes."""
-        var = tk.BooleanVar(master=self, value=getattr(self, attr))
-        self._menu_vars.append(var)
-        m.add_checkbutton(label=label, variable=var, command=cmd)
-
-    def _add_config_check_menu_item(self, m, label, field):
-        """Helper to add a checkbutton for settings stored in QSettings."""
-        var = tk.BooleanVar(master=self, value=self.settings.get(field, False))
-        self._menu_vars.append(var)
-
-        def _toggle():
-            val = not self.settings.get(field, False)
-            save_info_settings({field: val})
-            self.settings[field] = val
-            self._repack()
-
-        m.add_checkbutton(label=label, variable=var, command=_toggle)
-
-    def _add_capture_check_menu_item(self, m, label, attr):
-        """Helper to add a checkbutton for capture stats attributes."""
-        var = tk.BooleanVar(master=self, value=getattr(self, attr))
-        self._menu_vars.append(var)
-        # Command toggles the attribute, repacks UI, and saves settings
-        m.add_checkbutton(
-            label=label,
-            variable=var,
-            command=lambda: (setattr(self, attr, not getattr(self, attr)), self._repack(), self._save_settings()),
+    
+    def _create_toggle_btn(self, parent, label_text, attr_name, callback=None):
+        """Creates a toggle button that updates state and color immediately."""
+        is_active = getattr(self, attr_name)
+        
+        btn = tk.Button(
+            parent,
+            text=label_text,
+            bg=CARD_BG,
+            fg=ACTIVE_GREEN if is_active else MUTED,
+            font=(self.font_family, self.font_size, "bold"),
+            activebackground=ACCENT,
+            activeforeground=CARD_BG,
+            bd=0,
+            padx=10,
+            pady=5,
+            anchor="w",
         )
+
+        def _on_click():
+            new_val = not getattr(self, attr_name)
+            setattr(self, attr_name, new_val)
+            btn.config(fg=ACTIVE_GREEN if new_val else MUTED)
+            if callback: callback()
+            self._repack()
+            self._save_settings()
+
+        btn.config(command=_on_click)
+        btn.pack(fill="x")
+        return btn
+
+    def _create_config_toggle_btn(self, parent, label_text, config_key):
+        """Creates a toggle button for settings stored in QSettings."""
+        is_active = self.settings.get(config_key, False)
+        
+        btn = tk.Button(
+            parent,
+            text=label_text,
+            bg=CARD_BG,
+            fg=ACTIVE_GREEN if is_active else MUTED,
+            font=(self.font_family, self.font_size, "bold"),
+            activebackground=ACCENT,
+            activeforeground=CARD_BG,
+            bd=0,
+            padx=10,
+            pady=5,
+            anchor="w",
+        )
+
+        def _on_click():
+            new_val = not self.settings.get(config_key, False)
+            save_info_settings({config_key: new_val})
+            self.settings[config_key] = new_val
+            btn.config(fg=ACTIVE_GREEN if new_val else MUTED)
+            self._repack()
+            self._save_settings()
+
+        btn.config(command=_on_click)
+        btn.pack(fill="x")
+        return btn
+
+    def _create_radio_button(self, parent, label_text, current_value, target_value, on_select_callback, config_key=None):
+        """Creates a radio-style button that visually indicates selection."""
+        is_selected = (current_value == target_value)
+        fg_color = ACTIVE_GREEN if is_selected else MUTED
+
+        btn = tk.Button(
+            parent,
+            text=f"● {label_text}" if is_selected else f"  {label_text}",
+            bg=CARD_BG,
+            fg=fg_color,
+            font=(self.font_family, self.font_size, "bold"),
+            activebackground=ACCENT,
+            activeforeground=CARD_BG,
+            bd=0,
+            padx=20, # Indent further for radio items
+            pady=5,
+            anchor="w",
+        )
+
+        def _on_click():
+            on_select_callback(target_value)
+            if config_key:
+                save_info_settings({config_key: target_value})
+                self.settings[config_key] = target_value
+            self._repack()
+            self._save_settings()
+            # Rebuild the entire popup to update all radio buttons in the group
+            if self._settings_popup and self._settings_popup.winfo_exists():
+                self._settings_popup.destroy()
+            self._show_context_menu(event=None) # Re-open at last position
+
+        btn.config(command=_on_click)
+        btn.pack(fill="x")
+        return btn
+
+    def _create_submenu_button(self, parent: tk.Misc, label_text: str, submenu_id: str, content_builder: Callable[[tk.Toplevel], None]):
+        """Creates a button that opens a cascading Toplevel submenu to its side."""
+        btn = tk.Button(
+            parent,
+            text=f"{label_text} ▶", # Default to collapsed
+            bg=CARD_BG,
+            fg=TEXT,
+            font=(self.font_family, self.font_size, "bold"),
+            activebackground=ACCENT,
+            activeforeground=CARD_BG,
+            bd=0,
+            padx=10,
+            pady=5,
+            anchor="w",
+            command=lambda: self._open_submenu(btn, submenu_id, content_builder)
+        )
+        btn.pack(fill="x")
+        return btn
+
+    def _on_popup_focus_out(self, event):
+        """Delayed check to see if focus left the entire settings UI family."""
+        # Tiny delay to allow the new focus widget to be determined by the system
+        self.after(100, self._check_popup_focus)
+
+    def _check_popup_focus(self):
+        """Destroy popups only if focus has moved entirely out of the settings window family."""
+        if not self._settings_popup or not self._settings_popup.winfo_exists():
+            return
+
+        focus = self.focus_get()
+        if focus:
+            # Check if focus is in main popup
+            if self._is_descendant(focus, self._settings_popup):
+                return
+            # Check if focus is in any open submenu
+            for sub in self._open_submenus.values():
+                if sub.winfo_exists() and self._is_descendant(focus, sub):
+                    return
+
+        # Focus is truly gone, cleanup everything
+        self._close_all_submenus()
+        if self._settings_popup and self._settings_popup.winfo_exists():
+            self._settings_popup.destroy()
+
+    def _open_submenu(self, parent_btn: tk.Button, submenu_id: str, content_builder: Callable[[tk.Toplevel], None]):
+        """Opens a cascading Toplevel submenu to the side of the parent button."""
+        # Close any other open submenus at this level
+        for key, existing_popup in list(self._open_submenus.items()):
+            if key != submenu_id and existing_popup.winfo_exists() and existing_popup.master is parent_btn.master:
+                existing_popup.destroy()
+                del self._open_submenus[key]
+
+        if submenu_id in self._open_submenus and self._open_submenus[submenu_id].winfo_exists():
+            # Submenu is already open, close it
+            self._open_submenus[submenu_id].destroy()
+            del self._open_submenus[submenu_id]
+            return
+
+        # Create the submenu
+        submenu_popup = tk.Toplevel(parent_btn.master)
+        submenu_popup.overrideredirect(True)
+        submenu_popup.attributes("-topmost", True)
+        submenu_popup.configure(bg=CARD_BG, highlightthickness=1, highlightbackground=ACCENT)
+        
+        # Build content inside the submenu_popup
+        content_builder(submenu_popup)
+
+        # Ensure parent button's geometry is updated before querying its position
+        parent_btn.update_idletasks()
+        submenu_popup.update_idletasks()
+
+        # Position to the right of the parent button
+        x = parent_btn.winfo_rootx() + parent_btn.winfo_width() + 5 # 5 pixels offset to the right
+        y = parent_btn.winfo_rooty()
+        
+        # Simple boundary check: if it goes off screen to the right, pop to the left
+        screen_w = self.winfo_screenwidth()
+        if x + submenu_popup.winfo_reqwidth() > screen_w:
+            x = parent_btn.winfo_rootx() - submenu_popup.winfo_reqwidth() - 5
+            
+        submenu_popup.geometry(f"+{x}+{y}")
+        submenu_popup.lift()
+
+        # Bind events
+        submenu_popup.bind("<FocusOut>", self._on_popup_focus_out)
+        submenu_popup.bind("<Escape>", lambda e: (self._settings_popup.destroy() if self._settings_popup else None, self._close_all_submenus()))
+
+        self._open_submenus[submenu_id] = submenu_popup
+        
+        # Give focus to the new submenu
+        submenu_popup.focus_set()
 
     def _show_context_menu(self, event):
-        """Create and display a right-click context menu."""
-        menu = tk.Menu(
-            self,
-            tearoff=0,
-            bg=CARD_BG,
-            fg=TEXT,
-            activebackground=ACCENT,
-            activeforeground=CARD_BG,
-            selectcolor=ACTIVE_GREEN,
-        )
-        self._menu_vars.clear()
+        """Create and display a persistent settings popup."""
+        if self._settings_popup and self._settings_popup.winfo_exists():
+            self._settings_popup.destroy()
+        
+        if event:
+            self._last_menu_pos = (event.x_root, event.y_root)
 
-        self._add_check_menu_item(menu, "Show World Boss", "show_wb", lambda: self._toggle_visibility("show_wb"))
-        self._add_check_menu_item(menu, "Show Legion", "show_legion", lambda: self._toggle_visibility("show_legion"))
-        self._add_check_menu_item(menu, "Show Helltide", "show_ht", lambda: self._toggle_visibility("show_ht"))
+        popup = tk.Toplevel(self)
+        popup.overrideredirect(True)
+        popup.attributes("-topmost", True)
+        popup.configure(bg=CARD_BG, highlightthickness=1, highlightbackground=ACCENT)
+        self._settings_popup = popup
 
-        # Gold Submenu
-        gold_menu = tk.Menu(
-            menu,
-            tearoff=0,
-            bg=CARD_BG,
-            fg=TEXT,
-            activebackground=ACCENT,
-            activeforeground=CARD_BG,
-            selectcolor=ACTIVE_GREEN,
-        )
-        self._add_check_menu_item(
-            gold_menu, "Show Gold Stats", "show_gold", lambda: self._toggle_visibility("show_gold")
-        )
-        gold_menu.add_separator()
-        self._add_check_menu_item(
-            gold_menu, "Show Gold Per Hour", "show_gph", lambda: self._toggle_visibility("show_gph")
-        )
-        self._add_check_menu_item(
-            gold_menu, "Show Total Gold", "show_total_gold", lambda: self._toggle_visibility("show_total_gold")
-        )
-        gold_menu.add_separator()
-        self._add_capture_check_menu_item(gold_menu, "Capture Gold Stats", "capture_gold_stats")
-        gold_menu.add_separator()
-        gold_menu.add_command(label="Reset Gold Stats", command=self._reset_gold_stats)
-        menu.add_cascade(label="Show Gold Stats", menu=gold_menu)
+        # Header
+        header = tk.Label(popup, text="SETTINGS", bg=ACCENT, fg=CARD_BG, font=(self.font_family, self.font_size, "bold"))
+        header.pack(fill="x")
 
-        # Exp Submenu
-        exp_menu = tk.Menu(
-            menu,
-            tearoff=0,
-            bg=CARD_BG,
-            fg=TEXT,
-            activebackground=ACCENT,
-            activeforeground=CARD_BG,
-            selectcolor=ACTIVE_GREEN,
-        )
-        self._add_check_menu_item(exp_menu, "Show Exp Stats", "show_exp", lambda: self._toggle_visibility("show_exp"))
-        exp_menu.add_separator()
-        self._add_check_menu_item(
-            exp_menu, "Show EXP Per Hour", "show_eph", lambda: self._toggle_visibility("show_eph")
-        )
-        self._add_check_menu_item(
-            exp_menu, "Show Total EXP", "show_total_exp", lambda: self._toggle_visibility("show_total_exp")
-        )
-        self._add_check_menu_item(
-            exp_menu, "Show Time to Level", "show_t2l", lambda: self._toggle_visibility("show_t2l")
-        )
-        self._add_check_menu_item(
-            exp_menu, "Show Next Scan", "show_next_scan", lambda: self._toggle_visibility("show_next_scan")
-        )
-        exp_menu.add_separator()
-        self._add_capture_check_menu_item(exp_menu, "Capture EXP Stats", "capture_exp_stats")
-        exp_menu.add_separator()  # Separator before config options
-        self._add_config_check_menu_item(exp_menu, "Check EXP on Open", "check_exp_on_inventory_open")  # Moved here
+        # Visibility Section
+        self._create_toggle_btn(popup, "World Boss", "show_wb")
+        self._create_toggle_btn(popup, "Legion", "show_legion")
+        self._create_toggle_btn(popup, "Helltide", "show_ht")
+        
+        tk.Frame(popup, height=1, bg=ACCENT).pack(fill="x", pady=2)
+        
+        # Gold Stats Submenu (Cascading)
+        def build_gold_submenu_content(submenu_frame):
+            self._create_toggle_btn(submenu_frame, "Show Gold Stats", "show_gold").pack(fill="x")
+            self._create_toggle_btn(submenu_frame, "Show Gold Per Hour", "show_gph").pack(fill="x") # Corrected .pack() call
+            self._create_toggle_btn(submenu_frame, "Show Total Gold", "show_total_gold").pack(fill="x")
+            self._create_toggle_btn(submenu_frame, "Capture Gold Stats", "capture_gold_stats").pack(fill="x")
+            tk.Button(
+                submenu_frame, text="Reset Gold Stats", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
+                font=(self.font_family, self.font_size), activebackground=ACCENT, activeforeground=CARD_BG,
+                command=lambda: (self._reset_gold_stats(), submenu_frame.destroy(), self._settings_popup.destroy(), self._show_context_menu(event=None))
+            ).pack(fill="x")
+        self._create_submenu_button(popup, "Gold Stats", "gold_stats_submenu", build_gold_submenu_content).pack(fill="x")
 
-        exp_menu.add_separator()
+        # Exp Stats Submenu (Cascading)
+        def build_exp_submenu_content(submenu_frame):
+            self._create_toggle_btn(submenu_frame, "Show Exp Stats", "show_exp").pack(fill="x")
+            self._create_toggle_btn(submenu_frame, "Show EXP Per Hour", "show_eph").pack(fill="x") # Corrected .pack() call
+            self._create_toggle_btn(submenu_frame, "Show Total EXP", "show_total_exp").pack(fill="x")
+            self._create_toggle_btn(submenu_frame, "Show Time to Level", "show_t2l").pack(fill="x")
+            self._create_toggle_btn(submenu_frame, "Show Next Scan", "show_next_scan").pack(fill="x")
+            self._create_toggle_btn(submenu_frame, "Capture EXP Stats", "capture_exp_stats").pack(fill="x")
+            self._create_config_toggle_btn(submenu_frame, "Check EXP on Open", "check_exp_on_inventory_open").pack(fill="x")
 
-        # Submenu for EXP Age selection
-        age_menu = tk.Menu(
-            exp_menu,
-            tearoff=0,
-            bg=CARD_BG,
-            fg=TEXT,
-            activebackground=ACCENT,
-            activeforeground=CARD_BG,
-            selectcolor=ACTIVE_GREEN,
-        )
-        age_var = tk.IntVar(master=self, value=self.settings["exp_age_before_refresh"])
-        self._menu_vars.append(age_var)
+            # EXP Age Before Refresh Sub-Submenu (Cascading)
+            def build_exp_age_sub_submenu_content(sub_submenu_frame):
+                for label, val in [("Never", -1), ("0m", 0), ("3m", 3), ("5m", 5), ("10m", 10), ("30m", 30), ("60m", 60)]:
+                    self._create_radio_button(
+                        sub_submenu_frame, label, self.settings["exp_age_before_refresh"], val, lambda v: None, config_key="exp_age_before_refresh"
+                    ).pack(fill="x")
+            self._create_submenu_button(submenu_frame, "EXP Age Before Refresh", "exp_age_sub_submenu", build_exp_age_sub_submenu_content).pack(fill="x")
 
-        for label, val in [("Never", -1), ("0m", 0), ("3m", 3), ("5m", 5), ("10m", 10), ("30m", 30), ("60m", 60)]:
-            age_menu.add_radiobutton(
-                label=label,
-                variable=age_var,
-                value=val,
-                command=lambda v=val: save_info_settings({"exp_age_before_refresh": v}),
-            )
-        exp_menu.add_cascade(label="EXP Age Before Refresh", menu=age_menu)
+            tk.Button(
+                submenu_frame, text="Pick EXP Bar Position", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
+                font=(self.font_family, self.font_size), activebackground=ACCENT, activeforeground=CARD_BG,
+                command=lambda: (self._pick_exp_bar_pos(), submenu_frame.destroy(), self._settings_popup.destroy(), self._show_context_menu(event=None))
+            ).pack(fill="x")
+            if self.settings["exp_bar_pos"] is not None:
+                tk.Button(
+                    submenu_frame, text="Reset EXP Bar Position", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
+                    font=(self.font_family, self.font_size), activebackground=ACCENT, activeforeground=CARD_BG,
+                    command=lambda: (self._reset_exp_bar_pos(), submenu_frame.destroy(), self._settings_popup.destroy(), self._show_context_menu(event=None))
+                ).pack(fill="x")
+            tk.Button(
+                submenu_frame, text="Reset Exp Stats", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
+                font=(self.font_family, self.font_size), activebackground=ACCENT, activeforeground=CARD_BG,
+                command=lambda: (self._reset_exp_stats(), submenu_frame.destroy(), self._settings_popup.destroy(), self._show_context_menu(event=None))
+            ).pack(fill="x")
+        self._create_submenu_button(popup, "Exp Stats", "exp_stats_submenu", build_exp_submenu_content).pack(fill="x")
 
-        exp_menu.add_command(label="Pick EXP Bar Position", command=self._pick_exp_bar_pos)
-        if self.settings["exp_bar_pos"] is not None:
-            exp_menu.add_command(label="Reset EXP Bar Position", command=self._reset_exp_bar_pos)
+        tk.Frame(popup, height=1, bg=ACCENT).pack(fill="x", pady=2)
 
-        exp_menu.add_separator()
-        exp_menu.add_command(label="Reset Exp Stats", command=self._reset_exp_stats)
-        menu.add_cascade(label="Show Exp Stats", menu=exp_menu)
-
-        menu.add_separator()
-        menu.add_command(label=f"Orientation: {self.orientation.title()}", command=self._toggle_orientation)
-        menu.add_command(label="Increase Size (+)", command=lambda: self._change_size(2))
-        menu.add_command(label="Decrease Size (-)", command=lambda: self._change_size(-2))
+        # UI Adjustments
+        tk.Button(
+            popup, text=f"Orientation: {self.orientation.title()}", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
+            font=(self.font_family, self.font_size), activebackground=ACCENT, activeforeground=CARD_BG,
+            command=lambda: (self._toggle_orientation(), self._settings_popup.destroy(), self._show_context_menu(event=None))
+        ).pack(fill="x")
+        tk.Button(
+            popup, text="Increase Size (+)", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
+            font=(self.font_family, self.font_size), activebackground=ACCENT, activeforeground=CARD_BG,
+            command=lambda: (self._change_size(2), self._settings_popup.destroy(), self._show_context_menu(event=None))
+        ).pack(fill="x")
+        tk.Button(
+            popup, text="Decrease Size (-)", bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
+            font=(self.font_family, self.font_size), activebackground=ACCENT, activeforeground=CARD_BG,
+            command=lambda: (self._change_size(-2), self._settings_popup.destroy(), self._show_context_menu(event=None))
+        ).pack(fill="x")
 
         # Font Submenu
-        font_menu = tk.Menu(
-            menu,
-            tearoff=0,
-            bg=CARD_BG,
-            fg=TEXT,
-            activebackground=ACCENT,
-            activeforeground=CARD_BG,
-            selectcolor=ACTIVE_GREEN,
-        )
-        font_var = tk.StringVar(master=self, value=self.font_family)
-        self._menu_vars.append(font_var)
-        for font_name in self.FONT_CHOICES:
-            font_menu.add_radiobutton(
-                label=font_name,
-                variable=font_var,
-                value=font_name,
-                command=lambda f=font_name: self._change_font_family(f),
+        def build_font_submenu_content(submenu_frame):
+            for font_name in self.FONT_CHOICES:
+                self._create_radio_button(
+                    submenu_frame, font_name, self.font_family, font_name, self._change_font_family
+                ).pack(fill="x")
+        self._create_submenu_button(popup, "Font", "font_submenu", build_font_submenu_content).pack(fill="x")
+
+        tk.Frame(popup, height=1, bg=ACCENT).pack(fill="x", pady=2)
+
+        # System Actions
+        for label, cmd in [
+            ("Auto Sync Timers", self._auto_sync),
+            ("Lock Position", self._toggle_lock),
+            ("Close Overlay", request_close)
+        ]:
+            btn = tk.Button(
+                popup, text=label, bg=CARD_BG, fg=TEXT, bd=0, anchor="w", padx=10, pady=5,
+                font=(self.font_family, self.font_size), activebackground=ACCENT, activeforeground=CARD_BG,
+                command=lambda c=cmd: (c(), self._settings_popup.destroy(), self._show_context_menu(event=None) if label != "Close Overlay" else None)
             )
-        menu.add_cascade(label="Font", menu=font_menu)
+            btn.pack(fill="x")
 
-        menu.add_separator()
-        menu.add_command(label="Auto Sync (Helltides.com)", command=self._auto_sync)
+        # Position the popup at the mouse click
+        popup.geometry(f"+{self._last_menu_pos[0]}+{self._last_menu_pos[1]}")
+        
+        # Auto-close logic
+        popup.bind("<FocusOut>", self._on_popup_focus_out) # Use the family focus out handler
+        popup.bind("<Escape>", lambda e: (popup.destroy(), self._close_all_submenus())) # Escape still closes all
+        popup.focus_set()
 
-        menu.add_separator()
-        self._add_check_menu_item(menu, "Lock Position", "locked", self._toggle_lock)
-        menu.add_command(label="Close Overlay", command=request_close)
+    def _close_all_submenus(self):
+        for key, existing_popup in list(self._open_submenus.items()):
+            if existing_popup.winfo_exists():
+                existing_popup.destroy()
+            del self._open_submenus[key]
 
-        menu.post(event.x_root, event.y_root)
+    def _toggle_lock(self):
+        self.locked = not self.locked
+        self._on_lock_changed()
+        self._save_settings()
+
+    def _on_lock_changed(self):
+        if self.locked:
+            self.config(cursor="")
 
     def _reset_gold_stats(self):
         SessionStats().reset_gold()
@@ -870,12 +1043,6 @@ class BossTimerOverlay(tk.Toplevel):
         self.font_size = max(8, min(48, self.font_size + delta))
         for lbl in self.labels_to_resize:
             lbl.config(font=(self.font_family, self.font_size, "bold"))
-        self._save_settings()
-
-    def _toggle_lock(self, event=None):
-        self.locked = not self.locked
-        if self.locked:
-            self.config(cursor="")
         self._save_settings()
 
     def _start_drag(self, event):
