@@ -35,6 +35,10 @@ GEAR_TYPES = [
     "Wand",
 ]
 
+DAMAGE_TYPES = ["Cold", "Fire", "Holy", "Lightning", "NonPhysical", "Physical", "Poison", "Shadow"]
+RESOURCE_TYPES = ["Energy", "Essence", "Faith", "Fury", "Mana", "Spirit", "Vigor", "Wrath"]
+RESISTANCE_TYPES = ["Cold", "Fire", "Lightning", "Physical", "Poison", "Shadow"]
+
 
 def remove_content_in_braces(input_string) -> str:
     pattern = r"\{.*?\}"
@@ -105,7 +109,7 @@ def check_ms(input_string) -> str:
     return input_string.replace("{d}", "")
 
 
-def main(d4data_dir: Path, companion_app_dir: Path):
+def main(d4data_dir: Path, companion_app_dir: Path | None = None):
     lang_arr = [
         "enUS"
     ]  # "deDE", "frFR", "esES", "esMX", "itIT", "jaJP", "koKR", "plPL", "ptBR", "ruRU", "trTR", "zhCN", "zhTW"]
@@ -242,35 +246,237 @@ def main(d4data_dir: Path, companion_app_dir: Path):
             json_file.write("\n")
 
         # Create Affixes
-        print(f"Gen Affixes for {language}")
-        affix_dict = {}
-        with Path(companion_app_dir / f"D4Companion/Data/Affixes.{language}.json").open(encoding="utf-8") as file:
-            data = json.load(file)
-            for affix in data:
-                desc: str = affix["Description"]
-                desc = desc.lower().strip().replace("'", "").replace("’", "").replace(".", "")
-                desc = remove_content_in_braces(desc)
-                desc = desc.removeprefix("x ")
-                name = desc.replace(",", "").replace(" ", "_")
-                if len(desc) > 2:
-                    affix_dict[name] = desc
-        # Some of the unique specific affixes are missing. Add them manually
-        with Path(D4LF_BASE_DIR / f"src/tools/data/custom_affixes_{language}.json").open(encoding="utf-8") as file:
-            data = json.load(file)
-            for key, value in data.items():
-                if key in affix_dict:
-                    if affix_dict[key] == value:
-                        print(f"Affix {key} already exists in affixes.json. Can be deleted from custom json")
-                    else:
-                        print(f"Affix {key} already exists in affixes.json but with different value")
-                        affix_dict[key] = value
-                else:
-                    affix_dict[key] = value
-        with Path(D4LF_BASE_DIR / f"assets/lang/{language}/affixes.json").open("w", encoding="utf-8") as json_file:
-            json.dump(affix_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
-            json_file.write("\n")
-
+        if companion_app_dir is None:
+            generate_affixes(d4data_dir, language)
+        else:
+            generate_affixes_from_companion(companion_app_dir, language)
         print("=============================")
+
+
+def generate_affixes_from_companion(companion_app_dir: Path, language: str):
+    print(f"Gen Affixes for {language}")
+    affix_dict = {}
+    with Path(companion_app_dir / f"D4Companion/Data/Affixes.{language}.json").open(encoding="utf-8") as file:
+        data = json.load(file)
+        for affix in data:
+            desc: str = affix["Description"]
+            desc = desc.lower().strip().replace("'", "").replace("’", "").replace(".", "")
+            desc = remove_content_in_braces(desc)
+            desc = desc.removeprefix("x ")
+            name = desc.replace(",", "").replace(" ", "_")
+            if len(desc) > 2:
+                affix_dict[name] = desc
+    _add_custom_affixes(affix_dict, language)
+    _write_affixes(affix_dict, language)
+
+
+def generate_affixes(d4data_dir: Path, language: str):
+    print(f"Gen Affixes for {language}")
+    affix_files = _load_affix_files(d4data_dir)
+    attribute_descriptions = _load_attribute_descriptions(d4data_dir, language)
+    skill_tag_names = _load_skill_tag_names(d4data_dir)
+    affix_dict = {}
+
+    for affix_name, affix_data in affix_files:
+        description = _build_affix_description(
+            affix_name=affix_name,
+            affix_data=affix_data,
+            attribute_descriptions=attribute_descriptions,
+            power_names={},
+            skill_tag_names=skill_tag_names,
+        )
+        if description is None:
+            continue
+        name = description.replace(",", "").replace(" ", "_")
+        if len(description) > 2:
+            affix_dict[name] = description
+
+    _add_custom_affixes(affix_dict, language)
+    _write_affixes(affix_dict, language)
+
+
+def _add_custom_affixes(affix_dict: dict[str, str], language: str):
+    with Path(D4LF_BASE_DIR / f"src/tools/data/custom_affixes_{language}.json").open(encoding="utf-8") as file:
+        data = json.load(file)
+    for key, value in data.items():
+        if key in affix_dict:
+            if affix_dict[key] == value:
+                print(f"Affix {key} already exists in affixes.json. Can be deleted from custom json")
+            else:
+                print(f"Affix {key} already exists in affixes.json but with different value")
+                affix_dict[key] = value
+        else:
+            affix_dict[key] = value
+
+
+def _write_affixes(affix_dict: dict[str, str], language: str):
+    with Path(D4LF_BASE_DIR / f"assets/lang/{language}/affixes.json").open("w", encoding="utf-8") as json_file:
+        json.dump(affix_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
+        json_file.write("\n")
+
+
+def _load_affix_files(d4data_dir: Path) -> list[tuple[str, dict]]:
+    affix_pattern = "json/base/meta/Affix/*.aff.json"
+    affix_files = sorted(d4data_dir.glob(affix_pattern, case_sensitive=False))
+    result = []
+    for affix_file in affix_files:
+        with Path(affix_file).open(encoding="utf-8") as file:
+            affix_data = json.load(file)
+        result.append((affix_file.name.removesuffix(".aff.json"), affix_data))
+    return result
+
+
+def _load_attribute_descriptions(d4data_dir: Path, language: str) -> dict[str, str]:
+    with Path(d4data_dir / f"json/{language}_Text/meta/StringList/AttributeDescriptions.stl.json").open(
+        encoding="utf-8"
+    ) as file:
+        data = json.load(file)
+    return {entry["szLabel"]: entry["szText"] for entry in data["arStrings"]}
+
+
+def _load_skill_tag_names(d4data_dir: Path) -> dict[int, str]:
+    skill_tag_file = d4data_dir / "json/base/meta/GameBalance/SkillTags.gam.json"
+    with Path(skill_tag_file).open(encoding="utf-8") as file:
+        data = json.load(file)
+
+    skill_tag_names = {}
+    for table in data["ptData"]:
+        for entry in table["tEntries"]:
+            header = entry["tHeader"]
+            skill_tag_hash = header["szNameGBIDHash"]
+            skill_tag_names[skill_tag_hash] = header["szName"]
+            signed_hash = skill_tag_hash - 2**32 if skill_tag_hash >= 2**31 else skill_tag_hash
+            skill_tag_names[signed_hash] = header["szName"]
+    return skill_tag_names
+
+
+def _build_affix_description(
+    affix_name: str,
+    affix_data: dict,
+    attribute_descriptions: dict[str, str],
+    power_names: dict[int, str],
+    skill_tag_names: dict[int, str],
+) -> str | None:
+    description_parts = []
+    for affix_attribute in affix_data.get("ptItemAffixAttributes", []):
+        attribute = affix_attribute.get("tAttribute", {})
+        attribute_name = attribute.get("__eAttribute_name__", "")
+        description = _find_attribute_description(attribute_name, attribute_descriptions)
+        if description is None:
+            continue
+        description_parts.append(
+            _replace_affix_description_parameters(
+                description=description,
+                affix_name=affix_name,
+                attribute=attribute,
+                power_names=power_names,
+                skill_tag_names=skill_tag_names,
+            )
+        )
+
+    if not description_parts:
+        return None
+
+    description = " ".join(description_parts).lower().strip().replace("'", "").replace("’", "").replace(".", "")
+    description = remove_content_in_braces(description)
+    return description.removeprefix("x ")
+
+
+def _find_attribute_description(attribute_name: str, attribute_descriptions: dict[str, str]) -> str | None:
+    description = attribute_descriptions.get(attribute_name)
+    if description is not None:
+        return description
+    if "#" in attribute_name:
+        return attribute_descriptions.get(attribute_name.split("#", maxsplit=1)[0])
+    return None
+
+
+def _replace_affix_description_parameters(
+    description: str, affix_name: str, attribute: dict, power_names: dict[int, str], skill_tag_names: dict[int, str]
+) -> str:
+    if "{VALUE1}" not in description:
+        return description
+
+    parameter = _find_affix_parameter(
+        affix_name=affix_name, attribute=attribute, power_names=power_names, skill_tag_names=skill_tag_names
+    )
+    return description.replace("{VALUE1}", parameter)
+
+
+def _find_affix_parameter(
+    affix_name: str, attribute: dict, power_names: dict[int, str], skill_tag_names: dict[int, str]
+) -> str:
+    attribute_name = attribute.get("__eAttribute_name__", "")
+    param = attribute.get("nParam")
+    if isinstance(param, int):
+        if attribute_name == "Skill_Rank_Bonus" and param in power_names:
+            return power_names[param]
+        if param in skill_tag_names:
+            return _format_skill_tag_name(skill_tag_names[param])
+
+    formula = attribute.get("gbidFormula") or {}
+    formula_name = formula.get("name", "")
+    if "DamageType" in formula_name or "Damage_Type" in attribute_name:
+        return _find_named_token(affix_name, DAMAGE_TYPES)
+    if attribute_name == "Resistance":
+        return _find_named_token(affix_name, RESISTANCE_TYPES)
+    if "Resource" in attribute_name:
+        return _find_named_token(affix_name, RESOURCE_TYPES)
+    return _format_affix_name_token(affix_name)
+
+
+def _find_named_token(affix_name: str, tokens: list[str]) -> str:
+    for token in tokens:
+        if token.lower() in affix_name.lower():
+            return _humanize_token(token)
+    return _format_affix_name_token(affix_name)
+
+
+def _format_skill_tag_name(skill_tag_name: str) -> str:
+    name = skill_tag_name
+    for prefix in ["Skill_Primary_", "Skill_", "Affix_", "Damage_", "Tag_"]:
+        name = name.removeprefix(prefix)
+    name = name.replace("Category_", "")
+    return _humanize_token(name)
+
+
+def _format_affix_name_token(affix_name: str) -> str:
+    name = affix_name.removeprefix("S04_")
+    for prefix in [
+        "SkillRankBonus_",
+        "AttackSpeed_",
+        "Damage_",
+        "Resource_Max",
+        "Resource_On_Kill_",
+        "Resource_Per_Second_",
+        "S04_Resource_Max_AllClasses_",
+    ]:
+        if name.startswith(prefix):
+            name = name.removeprefix(prefix)
+            break
+
+    parts = [part for part in name.split("_") if part not in {"Barb", "Druid", "Generic", "Necro", "Rogue", "Sorc"}]
+    if len(parts) > 1 and parts[0] in {"Basic", "Category", "Core", "Primary", "Special", "Special2", "Talent"}:
+        parts = parts[1:]
+    elif len(parts) > 2 and parts[1] in {"Basic", "Category", "Core", "Primary", "Special", "Special2", "Talent"}:
+        parts = parts[2:]
+    return _humanize_token("_".join(parts))
+
+
+def _humanize_token(value: str) -> str:
+    replacements = {
+        "Basics": "Basic",
+        "ColdImbue": "Cold Imbuement",
+        "Earthspike": "Earth Spike",
+        "HammeroftheAncients": "Hammer of the Ancients",
+        "NonPhysical": "Nonphysical",
+        "PoisonImbue": "Poison Imbuement",
+        "ShadowImbue": "Shadow Imbuement",
+    }
+    value = replacements.get(value, value)
+    value = value.replace("_", " ")
+    value = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", value)
+    return " ".join(value.split())
 
 
 def generate_aspects(d4data_dir, language):
@@ -386,17 +592,21 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Path Argument Parser")
     parser.add_argument(
-        "d4data_dir", type=str, help="Provide a path to d4data repo"
+        "d4data_dir",
+        nargs="?",
+        default=str(D4LF_BASE_DIR / "d4data"),
+        type=str,
+        help="Provide a path to d4data repo. Defaults to the local d4data directory.",
     )  # https://github.com/DiabloTools/d4data.git
     parser.add_argument(
-        "companion_app_dir", type=str, help="Provide a path to companion_app_dir repo"
-    )  # https://github.com/josdemmers/Diablo4Companion
+        "companion_app_dir", nargs="?", type=str, help="Deprecated. Affixes are generated from d4data now."
+    )
     args = parser.parse_args()
 
     input_path = Path(args.d4data_dir)
-    input_path2 = Path(args.companion_app_dir)
+    input_path2 = Path(args.companion_app_dir) if args.companion_app_dir else None
 
-    if input_path.exists() and input_path.is_dir() and input_path2.exists() and input_path2.is_dir():
+    if input_path.exists() and input_path.is_dir() and (input_path2 is None or input_path2.is_dir()):
         main(input_path, input_path2)
     else:
         print(f"The provided path '{input_path}' or '{input_path2}' does not exist or is not a directory.")
