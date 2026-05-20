@@ -57,6 +57,7 @@ class ActivityLogWidget(QWidget):
             hotkeys_html += f"<u><b>{config.advanced_options.run_vision_mode.upper()}</b></u>: Run/Stop Vision Mode<br>"
             hotkeys_html += "<span style='font-style: italic;'>Vision Mode Only - clicking functionality disabled</span>&nbsp;&nbsp;&nbsp;"
 
+        hotkeys_html += f"<u><b>{config.advanced_options.info_overlay.upper()}</b></u>: Info Panel Overlay&nbsp;&nbsp;&nbsp;"
         hotkeys_html += f"<u><b>{config.advanced_options.toggle_paragon_overlay.upper()}</b></u>: Toggle Paragon Overlay&nbsp;&nbsp;&nbsp;"
         hotkeys_html += f"<u><b>{config.advanced_options.exit_key.upper()}</b></u>: Exit D4LF"
         hotkeys_html += "</div>"
