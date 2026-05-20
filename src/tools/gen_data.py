@@ -269,23 +269,13 @@ def generate_sigils(d4data_dir, language):
     print(f"Gen Sigils for {language}")
     sigil_dict = {"dungeons": {}, "minor": {}, "major": {}, "positive": {}}
     sigil_rarity_dict = {"minor": {}, "major": {}, "positive": {}}
-    core_toc_names = load_core_toc_names(d4data_dir)
+    string_list_dir = d4data_dir / f"json/{language}_Text/meta/StringList"
 
     pattern = "json/base/meta/World/DGN_*.wrl.json"
     json_files = sorted(d4data_dir.glob(pattern, case_sensitive=False))
     for json_file in json_files:
-        with Path(json_file).open(encoding="utf-8") as file:
-            world_data = json.load(file)
-
-        string_list_file = find_string_list_file(
-            d4data_dir=d4data_dir,
-            language=language,
-            prefix="World_",
-            stem=json_file.stem,
-            source_data=world_data,
-            core_toc_names=core_toc_names,
-        )
-        if string_list_file is None:
+        string_list_file = string_list_dir / f"World_{json_file.stem}.stl.json"
+        if not string_list_file.exists():
             print(f"WARNING: Could not find string list for dungeon world {json_file}.")
             continue
 
@@ -301,18 +291,8 @@ def generate_sigils(d4data_dir, language):
         if affix_type not in sigil_dict or affix_type == "dungeons":
             continue
 
-        with Path(json_file).open(encoding="utf-8") as file:
-            affix_data = json.load(file)
-
-        string_list_file = find_string_list_file(
-            d4data_dir=d4data_dir,
-            language=language,
-            prefix="DungeonAffix_",
-            stem=json_file.stem,
-            source_data=affix_data,
-            core_toc_names=core_toc_names,
-        )
-        if string_list_file is None:
+        string_list_file = string_list_dir / f"DungeonAffix_{json_file.stem}.stl.json"
+        if not string_list_file.exists():
             print(f"WARNING: Could not find string list for dungeon affix {json_file}.")
             continue
 
@@ -352,32 +332,6 @@ def generate_sigils(d4data_dir, language):
     with Path(D4LF_BASE_DIR / f"assets/lang/{language}/sigils.json").open("w", encoding="utf-8") as json_file:
         json.dump(sigil_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
         json_file.write("\n")
-
-
-def load_core_toc_names(d4data_dir):
-    with Path(d4data_dir / "json/base/CoreTOC.dat.json").open(encoding="utf-8") as file:
-        data = json.load(file)
-
-    names = {}
-    for group_data in data.values():
-        names.update({int(sno_id): name for sno_id, name in group_data.items()})
-    return names
-
-
-def find_string_list_file(d4data_dir, language, prefix, stem, source_data, core_toc_names):
-    string_list_dir = d4data_dir / f"json/{language}_Text/meta/StringList"
-    candidate_names = [f"{prefix}{stem}"]
-
-    toc_name = core_toc_names.get(source_data["__snoID__"])
-    if toc_name:
-        candidate_names.extend([toc_name, f"{prefix}{toc_name}"])
-
-    for candidate_name in dict.fromkeys(candidate_names):
-        candidate_file = string_list_dir / f"{candidate_name}.stl.json"
-        if candidate_file.exists():
-            return candidate_file
-
-    return None
 
 
 def string_list_value(data, label):
