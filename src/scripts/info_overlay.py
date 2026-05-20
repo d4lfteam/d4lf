@@ -1157,7 +1157,7 @@ class BossTimerOverlay(tk.Toplevel):
         # System Actions
         colors = get_filter_colors()
         for label, cmd in [
-            ("Auto Sync Timers", self._auto_sync),
+            ("Refresh Timers Now", self._auto_sync),
             ("Lock Position", self._toggle_lock),
             ("Close Overlay", request_close),
         ]:
