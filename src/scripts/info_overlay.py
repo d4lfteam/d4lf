@@ -461,7 +461,11 @@ class BossTimerOverlay(tk.Toplevel):
 
         self.wb_group = tk.Frame(self.frame, bg=CARD_BG)
         lbl_wb = tk.Label(
-            self.wb_group, text="World Boss:", bg=CARD_BG, fg=colors.codex_upgrade, font=(self.font_family, self.font_size, "bold")
+            self.wb_group,
+            text="World Boss:",
+            bg=CARD_BG,
+            fg=colors.codex_upgrade,
+            font=(self.font_family, self.font_size, "bold"),
         )
         lbl_wb.pack(side="left")
         self.labels_to_resize.append(lbl_wb)
@@ -505,7 +509,11 @@ class BossTimerOverlay(tk.Toplevel):
 
         self.stats_group = tk.Frame(self.frame, bg=CARD_BG)
         self.lbl_gph_title = tk.Label(
-            self.stats_group, text="GPH:", bg=CARD_BG, fg=colors.matched, font=(self.font_family, self.font_size, "bold")
+            self.stats_group,
+            text="GPH:",
+            bg=CARD_BG,
+            fg=colors.matched,
+            font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_gph_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_gph_title)
@@ -516,7 +524,11 @@ class BossTimerOverlay(tk.Toplevel):
         self.labels_to_resize.append(self.gph_value_label)
 
         self.lbl_total_gained_title = tk.Label(
-            self.stats_group, text="|Gained:", bg=CARD_BG, fg=colors.matched, font=(self.font_family, self.font_size, "bold")
+            self.stats_group,
+            text="|Gained:",
+            bg=CARD_BG,
+            fg=colors.matched,
+            font=(self.font_family, self.font_size, "bold"),
         )
         self.lbl_total_gained_title.pack(side="left")
         self.labels_to_resize.append(self.lbl_total_gained_title)
