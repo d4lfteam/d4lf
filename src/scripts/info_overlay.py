@@ -1112,11 +1112,15 @@ def run_boss_timer_overlay():
     overlay = BossTimerOverlay(root)
     with _OVERLAY_LOCK:
         _OVERLAY_INSTANCE = overlay
-    root.mainloop()
-    # Stop the mainloop first via quit(), then destroy root on the UI thread.
-    root.destroy()
-    with _OVERLAY_LOCK:
-        _OVERLAY_INSTANCE = None
+    try:
+        root.mainloop()
+    finally:
+        with _OVERLAY_LOCK:
+            # Reset global instance immediately so it can be reopened without delay
+            _OVERLAY_INSTANCE = None
+        # Stop the mainloop first via quit(), then destroy root on the UI thread.
+        with suppress(Exception):
+            root.destroy()
 
 
 def request_close():

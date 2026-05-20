@@ -235,25 +235,30 @@ class ScriptHandler:
 
     def toggle_info_overlay(self):
         """Toggle the Info Panel overlay (thread-safe with debouncing)."""
-        with _OVERLAY_LOCK:
-            now = time.time()
-            # Debounce to prevent rapid key-repeat triggers
-            if now - self._info_overlay_last_toggle_time < 0.5:
-                return
-            self._info_overlay_last_toggle_time = now
+        now = time.time()
+        # Debounce to prevent rapid key-repeat triggers
+        if now - self._info_overlay_last_toggle_time < 0.3:
+            return
+        self._info_overlay_last_toggle_time = now
 
+        thread_to_join = None
+        with _OVERLAY_LOCK:
             if self.info_overlay_thread is not None and self.info_overlay_thread.is_alive():
                 LOGGER.info("Closing Info Panel overlay")
                 with suppress(Exception):
                     request_close()
-                self.info_overlay_thread.join(timeout=2.0)
+                thread_to_join = self.info_overlay_thread
                 self.info_overlay_thread = None
-                return
+
+        if thread_to_join:
+            # Join without holding the lock to avoid deadlock with the exiting thread
+            thread_to_join.join(timeout=0.5)
+            return
+
+        with _OVERLAY_LOCK:
             LOGGER.info("Opening Info Panel overlay")
             self.info_overlay_thread = threading.Thread(target=self._run_info_overlay, daemon=True)
             self.info_overlay_thread.start()
-            # Brief pause to ensure the thread starts and registers the instance
-            time.sleep(0.05)
 
     def _run_info_overlay(self) -> None:
         try:
