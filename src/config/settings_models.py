@@ -286,7 +286,6 @@ class GeneralModel(_IniBaseModel):
     colorblind_mode: bool = Field(
         default=False, description="Enable a colorblind friendly palette for loot filter and paragon overlays"
     )
-    font_family: str = Field(default="Consolas", description="Font family for the info overlay.")
     vision_mode_type: VisionModeType = Field(
         default=VisionModeType.highlight_matches,
         description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
