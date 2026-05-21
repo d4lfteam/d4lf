@@ -710,7 +710,7 @@ The Info Panel provides real-time tracking for World Events and session-based st
   - **Show EXP Gained**: Shows total experience accumulated since the last reset.
   - **Show Time to Level**: Estimated time remaining until your next level based on current EPH.
   - **Show Next Scan**: Shows the remaining cooldown until the next automatic experience check.
-  - **Inv Open (Capture EXP)**: If enabled, the tool will automatically hover your experience bar to scan values whenever you open your inventory.
+  - **Auto Capture EXP When Inventory Opened**: If enabled, the tool will automatically hover your experience bar to scan values whenever you open your inventory.
   - **EXP Capture Time (Submenu)**: Set the cooldown interval (e.g., Never, 0m, 3m) for automatic scans.
   - **Configure EXP Bar Position**: Calibrate the tool by dragging a box over your experience bar on screen.
   - **Reset EXP Bar Position**: Resets the custom EXP bar position to default.
@@ -723,9 +723,13 @@ The Info Panel provides real-time tracking for World Events and session-based st
 - **Font (Submenu)**:
   - Select your preferred font family for the overlay text.
 - **System**:
-  - **Auto Sync**: Manually force a refresh of event data from the web.
+  - **Refresh Timers Now**: Manually force a refresh of event data from the web.
   - **Lock Position**: Disables dragging to keep the overlay static.
   - **Close Overlay**: Closes the Info Panel Overlay.
+
+**Exp Bar Position Suggestion**
+  Convigure exp bar position as show here. This position seems to work the best for easy data captures.
+  ![sample](assets/readme/infopanel_expbar.png)
 
 **Tracking Logic**
 
