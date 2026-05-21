@@ -18,15 +18,7 @@ from PyQt6.QtCore import QSettings
 from src.cam import Cam
 from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
-from src.gui.importer.gui_common import (
-    ACCENT_BLUE,
-    ACCENT_GOLD,
-    ACCENT_GREEN,
-    CARD_BG,
-    MUTED,
-    TEXT,
-    TRANSPARENT_KEY,
-)
+from src.gui.importer.gui_common import ACCENT_BLUE, ACCENT_GOLD, ACCENT_GREEN, CARD_BG, MUTED, TEXT, TRANSPARENT_KEY
 from src.scripts.common import get_filter_colors
 from src.tts import Publisher
 from src.utils.custom_mouse import mouse
