@@ -19,7 +19,6 @@ import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
 import src.tts
 from src.cam import Cam
-from src.config.helper import to_keyboard_hotkey
 from src.config.loader import IniConfigLoader
 from src.config.settings_models import (
     IS_HOTKEY_KEY,
@@ -279,9 +278,7 @@ class ScriptHandler:
                 keyboard.remove_hotkey(handle)
 
     def _register_hotkey(self, hotkey: str, callback: Callable[[], None]) -> None:
-        if not hotkey:
-            return
-        self._hotkey_handles.append(keyboard.add_hotkey(to_keyboard_hotkey(hotkey), callback))
+        self._hotkey_handles.append(keyboard.add_hotkey(hotkey, callback))
 
     def setup_key_binds(self):
         if sys.platform == "darwin":
