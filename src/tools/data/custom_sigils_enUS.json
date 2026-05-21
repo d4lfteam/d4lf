@@ -1,7 +1,5 @@
 {
     "dungeons": {},
     "major": {},
-    "positive": {
-        "chaos_rifts": "chaos rifts have opened in this place."
-    }
+    "positive": {}
 }

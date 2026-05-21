@@ -162,7 +162,6 @@ class AdvancedOptionsModel(_IniBaseModel):
             self.run_vision_mode,
             self.info_overlay,
         ]
-        keys = [key for key in keys if key]
         if len(set(keys)) != len(keys):
             msg = "hotkeys must be unique"
             raise ValueError(msg)
@@ -182,7 +181,7 @@ class AdvancedOptionsModel(_IniBaseModel):
     )
     @classmethod
     def key_must_exist(cls, k: str) -> str:
-        return validate_hotkey(k, allow_empty=True)
+        return validate_hotkey(k)
 
     @field_validator("fast_vision_mode_coordinates", mode="before")
     @classmethod
