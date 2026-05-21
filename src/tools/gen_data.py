@@ -274,7 +274,8 @@ def generate_sigils(d4data_dir, language):
     pattern = "json/base/meta/World/DGN_*.wrl.json"
     json_files = sorted(d4data_dir.glob(pattern, case_sensitive=False))
     for json_file in json_files:
-        string_list_file = string_list_dir / f"World_{json_file.stem}.stl.json"
+        world_file_id = json_file.name.removesuffix(".wrl.json")
+        string_list_file = string_list_dir / f"World_{world_file_id}.stl.json"
         if not string_list_file.exists():
             print(f"WARNING: Could not find string list for dungeon world {json_file}.")
             continue
@@ -287,11 +288,12 @@ def generate_sigils(d4data_dir, language):
     pattern = "json/base/meta/DungeonAffix/*.dax.json"
     json_files = sorted(d4data_dir.glob(pattern, case_sensitive=False))
     for json_file in json_files:
-        affix_type = json_file.stem.split("_", maxsplit=1)[0].lower().strip()
+        dungeon_affix_file_id = json_file.name.removesuffix(".dax.json")
+        affix_type = dungeon_affix_file_id.split("_", maxsplit=1)[0].lower().strip()
         if affix_type not in sigil_dict or affix_type == "dungeons":
             continue
 
-        string_list_file = string_list_dir / f"DungeonAffix_{json_file.stem}.stl.json"
+        string_list_file = string_list_dir / f"DungeonAffix_{dungeon_affix_file_id}.stl.json"
         if not string_list_file.exists():
             print(f"WARNING: Could not find string list for dungeon affix {json_file}.")
             continue
@@ -425,15 +427,19 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Path Argument Parser")
     parser.add_argument(
-        "d4data_dir", type=str, help="Provide a path to d4data repo"
+        "d4data_dir", nargs="?", type=Path, default=D4LF_BASE_DIR / "d4data", help="Provide a path to d4data repo"
     )  # https://github.com/DiabloTools/d4data.git
     parser.add_argument(
-        "companion_app_dir", type=str, help="Provide a path to companion_app_dir repo"
+        "companion_app_dir",
+        nargs="?",
+        type=Path,
+        default=D4LF_BASE_DIR / "D4Companion",
+        help="Provide a path to companion_app_dir repo",
     )  # https://github.com/josdemmers/Diablo4Companion
     args = parser.parse_args()
 
-    input_path = Path(args.d4data_dir)
-    input_path2 = Path(args.companion_app_dir)
+    input_path = args.d4data_dir
+    input_path2 = args.companion_app_dir
 
     if input_path.exists() and input_path.is_dir() and input_path2.exists() and input_path2.is_dir():
         main(input_path, input_path2)
