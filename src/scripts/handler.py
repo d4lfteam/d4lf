@@ -19,6 +19,7 @@ import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
 import src.tts
 from src.cam import Cam
+from src.config.helper import to_keyboard_hotkey
 from src.config.loader import IniConfigLoader
 from src.config.settings_models import (
     IS_HOTKEY_KEY,
@@ -30,8 +31,11 @@ from src.config.settings_models import (
 )
 from src.dataloader import Dataloader
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
-from src.paragon_overlay import request_close, run_paragon_overlay
+from src.paragon_overlay import request_close as request_close_paragon
+from src.paragon_overlay import run_paragon_overlay
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
+from src.scripts.info_overlay import _OVERLAY_LOCK, InventoryExpTracker, request_close, run_boss_timer_overlay
+from src.scripts.info_overlay import set_busy_checker as set_info_busy_checker
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
 from src.utils.custom_mouse import mouse
@@ -84,6 +88,8 @@ class ScriptHandler:
     def __init__(self):
         self.loot_interaction_thread = None
         self.paragon_overlay_thread: threading.Thread | None = None
+        self.info_overlay_thread: threading.Thread | None = None
+        self._info_overlay_last_toggle_time = 0
         self.did_stop_scripts = False
         self._vision_mode_was_running_before_overlay = False
         self._hotkey_handles: list[Any] = []
@@ -93,6 +99,9 @@ class ScriptHandler:
         self._language = self._config.general.language
         self._log_level = self._config.advanced_options.log_lvl.value.upper()
         self.vision_mode = self._create_vision_mode(self._config.general.vision_mode_type)
+
+        # Initialize Info Overlay hooks and subscriptions
+        set_info_busy_checker(lambda: self.loot_interaction_thread is not None)
 
         self.setup_key_binds()
         self._config.register_change_listener(self._on_config_changed)
@@ -126,6 +135,7 @@ class ScriptHandler:
         return (
             advanced_options.run_vision_mode,
             advanced_options.exit_key,
+            advanced_options.info_overlay,
             advanced_options.toggle_paragon_overlay,
             advanced_options.vision_mode_only,
             advanced_options.run_filter,
@@ -179,8 +189,8 @@ class ScriptHandler:
         try:
             if self.paragon_overlay_thread is not None and self.paragon_overlay_thread.is_alive():
                 LOGGER.info("Closing Paragon overlay")
-                with suppress(Exception):
-                    request_close()
+                with suppress(Exception):  # type: ignore[attr-defined]
+                    request_close_paragon()
                 self.paragon_overlay_thread.join(timeout=2)
                 # Vision mode is restored by the overlay thread cleanup.
                 return
@@ -224,6 +234,41 @@ class ScriptHandler:
             finally:
                 self.paragon_overlay_thread = None
 
+    def toggle_info_overlay(self):
+        """Toggle the Info Panel overlay (thread-safe with debouncing)."""
+        now = time.time()
+        # Debounce to prevent rapid key-repeat triggers
+        if now - self._info_overlay_last_toggle_time < 0.3:
+            return
+        self._info_overlay_last_toggle_time = now
+
+        thread_to_join = None
+        with _OVERLAY_LOCK:
+            if self.info_overlay_thread is not None and self.info_overlay_thread.is_alive():
+                LOGGER.info("Closing Info Panel overlay")
+                with suppress(Exception):
+                    request_close()
+                thread_to_join = self.info_overlay_thread
+                self.info_overlay_thread = None
+
+        if thread_to_join:
+            # Join without holding the lock to avoid deadlock with the exiting thread
+            thread_to_join.join(timeout=0.5)
+            return
+
+        with _OVERLAY_LOCK:
+            LOGGER.info("Opening Info Panel overlay")
+            self.info_overlay_thread = threading.Thread(target=self._run_info_overlay, daemon=True)
+            self.info_overlay_thread.start()
+
+    def _run_info_overlay(self) -> None:
+        try:
+            run_boss_timer_overlay()
+        except Exception:
+            LOGGER.exception("Info Panel overlay crashed")
+        finally:
+            self.info_overlay_thread = None
+
     def _clear_key_binds(self) -> None:
         if sys.platform == "darwin":
             return
@@ -234,7 +279,9 @@ class ScriptHandler:
                 keyboard.remove_hotkey(handle)
 
     def _register_hotkey(self, hotkey: str, callback: Callable[[], None]) -> None:
-        self._hotkey_handles.append(keyboard.add_hotkey(hotkey, callback))
+        if not hotkey:
+            return
+        self._hotkey_handles.append(keyboard.add_hotkey(to_keyboard_hotkey(hotkey), callback))
 
     def setup_key_binds(self):
         if sys.platform == "darwin":
@@ -246,6 +293,8 @@ class ScriptHandler:
         self._register_hotkey(advanced_options.run_vision_mode, lambda: self.run_vision_mode())
         self._register_hotkey(advanced_options.exit_key, lambda: self._graceful_exit())
         self._register_hotkey(advanced_options.toggle_paragon_overlay, lambda: self.toggle_paragon_overlay())
+        self._register_hotkey(advanced_options.info_overlay, lambda: self.toggle_info_overlay())
+        self._register_hotkey(config.char.inventory, lambda: InventoryExpTracker().on_inventory_open())
         if not advanced_options.vision_mode_only:
             self._register_hotkey(advanced_options.run_filter, lambda: self.filter_items())
             self._register_hotkey(advanced_options.run_filter_drop, lambda: self.filter_items(no_match_action="drop"))
