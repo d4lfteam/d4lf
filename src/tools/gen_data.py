@@ -3,7 +3,7 @@ import json
 import re
 from pathlib import Path
 
-D4LF_BASE_DIR = Path(__file__).parent.parent.parent
+D4LF_BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 GEAR_TYPES = [
     "Amulet",
@@ -128,19 +128,19 @@ def main(d4data_dir: Path, companion_app_dir: Path):
 
     for lang in lang_arr:
         file_names = [
-            f"assets/lang/{lang}/affixes.json",
-            f"assets/lang/{lang}/aspects.json",
-            f"assets/lang/{lang}/sets.json",
-            f"assets/lang/{lang}/uniques.json",
-            f"assets/lang/{lang}/sigils.json",
-            f"assets/lang/{lang}/tributes.json",
-            f"assets/lang/{lang}/item_types.json",
-            f"assets/lang/{lang}/tooltips.json",
+            D4LF_BASE_DIR / f"assets/lang/{lang}/affixes.json",
+            D4LF_BASE_DIR / f"assets/lang/{lang}/aspects.json",
+            D4LF_BASE_DIR / f"assets/lang/{lang}/sets.json",
+            D4LF_BASE_DIR / f"assets/lang/{lang}/uniques.json",
+            D4LF_BASE_DIR / f"assets/lang/{lang}/sigils.json",
+            D4LF_BASE_DIR / f"assets/lang/{lang}/tributes.json",
+            D4LF_BASE_DIR / f"assets/lang/{lang}/item_types.json",
+            D4LF_BASE_DIR / f"assets/lang/{lang}/tooltips.json",
         ]
         for f in file_names:
-            if Path(f).exists():
-                Path(f).unlink()
-        Path(f"assets/lang/{lang}").mkdir(exist_ok=True, parents=True)
+            if f.exists():
+                f.unlink()
+        (D4LF_BASE_DIR / f"assets/lang/{lang}").mkdir(exist_ok=True, parents=True)
 
     for language in lang_arr:
         # Create Aspects
@@ -409,7 +409,7 @@ def generate_sets(d4data_dir, language):
         sets_list.append(set_name_clean)
 
     sets_list = sorted(set(sets_list))
-    with Path(D4LF_BASE_DIR / "assets/sets.json").open("w", encoding="utf-8") as json_file:
+    with Path(D4LF_BASE_DIR / f"assets/lang/{language}/sets.json").open("w", encoding="utf-8") as json_file:
         json.dump(sets_list, json_file, indent=4, ensure_ascii=False, sort_keys=True)
         json_file.write("\n")
 
