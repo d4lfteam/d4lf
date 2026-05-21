@@ -18,6 +18,15 @@ from PyQt6.QtCore import QSettings
 from src.cam import Cam
 from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
+from src.gui.importer.gui_common import (
+    ACCENT_BLUE,
+    ACCENT_GOLD,
+    ACCENT_GREEN,
+    CARD_BG,
+    MUTED,
+    TEXT,
+    TRANSPARENT_KEY,
+)
 from src.scripts.common import get_filter_colors
 from src.tts import Publisher
 from src.utils.custom_mouse import mouse
@@ -322,16 +331,12 @@ class InventoryExpTracker:
         threading.Thread(target=_task, daemon=True).start()
 
 
-TRANSPARENT_KEY = "#ff00ff"
-CARD_BG = "#151515"
-TEXT = "#ffffff"
-MUTED = "#cfcfcf"
-ACCENT = "#cfa15b"
-LEGION_BLUE = "#56B4E9"
+ACCENT = ACCENT_GOLD
+LEGION_BLUE = ACCENT_BLUE
 HELLTIDE_RED = "#ff4d4d"
 WB_ORANGE = "#e67e22"
 WARNING_ORANGE = "#ff9900"
-ACTIVE_GREEN = "#34C410"
+ACTIVE_GREEN = ACCENT_GREEN
 PROGRESS_YELLOW = "#ffff00"
 
 

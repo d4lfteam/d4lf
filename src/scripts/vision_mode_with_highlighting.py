@@ -16,6 +16,7 @@ from src.cam import Cam
 from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
+from src.gui.importer.gui_common import DARK_GRAY_BG
 from src.item.data.item_type import is_sigil
 from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.item.filter import Filter, FilterResult
@@ -132,13 +133,12 @@ class VisionModeWithHighlighting:
         number_of_lines = math.ceil(len(text) / max_text_length_per_line)
         text_height = int(height_of_character * number_of_lines)
 
-        dark_gray_color = "#111111"
         canvas.create_rectangle(
             canvas_center_x - text_width // 2,  # x1
             previous_text_y - offset - text_height,  # y1
             canvas_center_x + text_width // 2,  # x2
             previous_text_y - offset,  # y2
-            fill=dark_gray_color,
+            fill=DARK_GRAY_BG,
             outline="",
         )
         canvas.create_text(
