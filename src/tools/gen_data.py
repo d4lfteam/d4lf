@@ -130,7 +130,7 @@ def main(d4data_dir: Path, companion_app_dir: Path):
         file_names = [
             f"assets/lang/{lang}/affixes.json",
             f"assets/lang/{lang}/aspects.json",
-            "assets/sets.json",
+            f"assets/lang/{lang}/sets.json",
             f"assets/lang/{lang}/uniques.json",
             f"assets/lang/{lang}/sigils.json",
             f"assets/lang/{lang}/tributes.json",
@@ -313,15 +313,10 @@ def generate_aspects(d4data_dir, language):
         if not core_affix_file.exists():
             print(f"WARNING: Could not find file named {core_affix_file} in d4data.")
 
-        with Path(core_affix_file).open(encoding="utf-8") as file:
-            data = json.load(file)
-            name_idx = 0 if data["arStrings"][0]["szLabel"] == "Name" else 1
-            aspect_name = data["arStrings"][name_idx]["szText"]
-            aspect_name_clean = aspect_name.strip().replace(" ", "_").lower().replace("’", "").replace("'", "")
-            aspect_name_clean = check_ms(aspect_name_clean)
-            if is_placeholder_or_test_name(aspect_name_clean):
-                continue
-            aspects_list.append(aspect_name_clean)
+        aspect_name_clean = get_string_list_name(core_affix_file)
+        if aspect_name_clean is None or is_placeholder_or_test_name(aspect_name_clean):
+            continue
+        aspects_list.append(aspect_name_clean)
 
     with Path(D4LF_BASE_DIR / f"assets/lang/{language}/aspects.json").open("w", encoding="utf-8") as json_file:
         aspects_list.sort()
@@ -374,27 +369,11 @@ def generate_uniques(d4data_dir, language):
             print(f"WARNING: Could not find file named {string_item_file} in d4data.")
             continue
 
-        with Path(string_item_file).open(encoding="utf-8") as file:
-            data = json.load(file)
-            name_item = [item for item in data["arStrings"] if item["szLabel"] == "Name"]
-            if not name_item:
-                continue
-            name = name_item[0]["szText"]
-            name_clean = (
-                name
-                .strip()
-                .replace(" ", "_")
-                .replace("\xa0", "_")
-                .lower()
-                .replace("’", "")
-                .replace("'", "")
-                .replace(",", "")
-            )
-            name_clean = check_ms(name_clean)
-            if name_clean in items_to_ignore or is_placeholder_or_test_name(name_clean):
-                continue
+        name_clean = get_string_list_name(string_item_file)
+        if name_clean is None or name_clean in items_to_ignore or is_placeholder_or_test_name(name_clean):
+            continue
 
-            unique_dict[name_clean] = {"num_inherents": num_inherents}
+        unique_dict[name_clean] = {"num_inherents": num_inherents}
 
     with Path(D4LF_BASE_DIR / f"assets/lang/{language}/uniques.json").open("w", encoding="utf-8") as json_file:
         json.dump(unique_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
