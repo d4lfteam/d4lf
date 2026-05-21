@@ -728,8 +728,8 @@ The Info Panel provides real-time tracking for World Events and session-based st
   - **Close Overlay**: Closes the Info Panel Overlay.
 
 **Exp Bar Position Suggestion**
-  Convigure exp bar position as show here. This position seems to work the best for easy data captures.
-  ![sample](assets/readme/infopanel_expbar.png)
+Convigure exp bar position as show here. This position seems to work the best for easy data captures.
+![sample](assets/readme/infopanel_expbar.png)
 
 **Tracking Logic**
 
