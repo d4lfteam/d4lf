@@ -35,6 +35,14 @@ GEAR_TYPES = [
     "Wand",
 ]
 
+SIGIL_RARITY_COLOR_TAGS = {
+    "c_white": "Common",
+    "c_magic": "Magic",
+    "c_rare": "Rare",
+    "c_legendary": "Legendary",
+    "c_mythic": "Mythic",
+}
+
 
 def remove_content_in_braces(input_string) -> str:
     pattern = r"\{.*?\}"
@@ -107,7 +115,15 @@ def check_ms(input_string) -> str:
 
 def clean_item_name(name: str) -> str:
     clean_name = (
-        name.strip().replace(" ", "_").replace("\xa0", "_").lower().replace("â€™", "").replace("'", "").replace(",", "")
+        name
+        .strip()
+        .replace(" ", "_")
+        .replace("\xa0", "_")
+        .lower()
+        .replace("’", "")
+        .replace("â€™", "")
+        .replace("'", "")
+        .replace(",", "")
     )
     return check_ms(clean_name)
 
@@ -152,60 +168,8 @@ def main(d4data_dir: Path, companion_app_dir: Path):
         # Create Sets
         generate_sets(d4data_dir, language)
 
-        print(f"Gen Sigils for {language}")
-        sigil_dict = {"dungeons": {}, "minor": {}, "major": {}, "positive": {}}
-
-        # Add others automatically
-        pattern = f"json/{language}_Text/meta/StringList/World_DGN_*.stl.json"
-        json_files = sorted(d4data_dir.glob(pattern, case_sensitive=False))
-        for json_file in json_files:
-            with Path(json_file).open(encoding="utf-8") as file:
-                data = json.load(file)
-                name_idx, _ = (0, 1) if data["arStrings"][0]["szLabel"] == "Name" else (1, 0)
-                dungeon_name: str = (
-                    data["arStrings"][name_idx]["szText"].lower().strip().replace("’", "").replace("'", "")
-                )
-                sigil_dict["dungeons"][dungeon_name.replace(" ", "_")] = dungeon_name
-
-        pattern = f"json/{language}_Text/meta/StringList/DungeonAffix_*.stl.json"
-        json_files = sorted(d4data_dir.glob(pattern, case_sensitive=False))
-        for json_file in json_files:
-            affix_type = json_file.stem.split("_")[1].lower().strip()
-            if affix_type in sigil_dict:
-                with Path(json_file).open(encoding="utf-8") as file:
-                    data = json.load(file)
-                    name = ""
-                    desc = ""
-                    for sigil_affix in data["arStrings"]:
-                        if sigil_affix["szLabel"] == "AffixName":
-                            name = sigil_affix["szText"].lower().strip().replace("’", "").replace("'", "")
-                            name = name.replace("(", "").replace(")", "")
-                            name = remove_content_in_braces(name)
-                        else:
-                            desc = sigil_affix["szText"].lower().strip().replace("’", "").replace("'", "")
-                            desc = remove_content_in_braces(desc)
-                    sigil_dict[affix_type][name.replace(" ", "_")] = f"{name} {desc}"
-
-        # Add any sigils we might be missing. Right now, that's none, but we leave the option for the future
-        with Path(D4LF_BASE_DIR / f"src/tools/data/custom_sigils_{language}.json").open(encoding="utf-8") as file:
-            data = json.load(file)
-            for key, values in data.items():
-                if key in sigil_dict:
-                    for key2, value2 in values.items():
-                        if key2 in sigil_dict[key]:
-                            if sigil_dict[key][key2] == value2:
-                                print(f"Sigil {key2} already exists in sigils.json. Can be deleted from custom json")
-                            else:
-                                print(f"Sigil {key2} already exists in sigils.json but with different value")
-                                sigil_dict[key][key2] = value2
-                        else:
-                            sigil_dict[key][key2] = value2
-                else:
-                    sigil_dict[key] = values
-
-        with Path(D4LF_BASE_DIR / f"assets/lang/{language}/sigils.json").open("w", encoding="utf-8") as json_file:
-            json.dump(sigil_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
-            json_file.write("\n")
+        # Create Sigils
+        generate_sigils(d4data_dir, language)
 
         print(f"Gen Tributes for {language}")
         tribute_dict = {}
@@ -324,6 +288,89 @@ def generate_aspects(d4data_dir, language):
         json_file.write("\n")
 
 
+def generate_sigils(d4data_dir, language):
+    print(f"Gen Sigils for {language}")
+    sigil_dict = {"dungeons": {}, "minor": {}, "major": {}, "positive": {}}
+    sigil_rarity_dict = {}
+    string_list_dir = d4data_dir / f"json/{language}_Text/meta/StringList"
+
+    pattern = "json/base/meta/World/DGN_*.wrl.json"
+    json_files = sorted(d4data_dir.glob(pattern, case_sensitive=False))
+    for json_file in json_files:
+        world_file_id = json_file.name.removesuffix(".wrl.json")
+        string_list_file = string_list_dir / f"World_{world_file_id}.stl.json"
+        if not string_list_file.exists():
+            print(f"WARNING: Could not find string list for dungeon world {json_file}.")
+            continue
+
+        dungeon_name_key = get_string_list_name(string_list_file)
+        if dungeon_name_key is None:
+            continue
+        sigil_dict["dungeons"][dungeon_name_key] = dungeon_name_key.replace("_", " ")
+
+    pattern = "json/base/meta/DungeonAffix/*.dax.json"
+    json_files = sorted(d4data_dir.glob(pattern, case_sensitive=False))
+    for json_file in json_files:
+        dungeon_affix_file_id = json_file.name.removesuffix(".dax.json")
+        affix_type = dungeon_affix_file_id.split("_", maxsplit=1)[0].lower().strip()
+        if affix_type not in sigil_dict or affix_type == "dungeons":
+            continue
+
+        string_list_file = string_list_dir / f"DungeonAffix_{dungeon_affix_file_id}.stl.json"
+        if not string_list_file.exists():
+            print(f"WARNING: Could not find string list for dungeon affix {json_file}.")
+            continue
+
+        with Path(string_list_file).open(encoding="utf-8") as file:
+            data = json.load(file)
+            raw_name = string_list_value(data, "AffixName")
+            rarity = extract_sigil_rarity(raw_name)
+            name = remove_content_in_braces(raw_name).replace("(", "").replace(")", "")
+            desc = string_list_value(data, "AffixDesc").lower().strip().replace("’", "").replace("'", "")
+            desc = remove_content_in_braces(desc)
+            sigil_name_key = clean_item_name(name)
+            sigil_dict[affix_type][sigil_name_key] = f"{sigil_name_key.replace('_', ' ')} {desc}"
+            if rarity:
+                sigil_rarity_dict[sigil_name_key] = rarity
+
+    # Add any sigils we might be missing. Right now, that's none, but we leave the option for the future
+    with Path(D4LF_BASE_DIR / f"src/tools/data/custom_sigils_{language}.json").open(encoding="utf-8") as file:
+        data = json.load(file)
+        for key, values in data.items():
+            if key in sigil_dict:
+                for key2, value2 in values.items():
+                    if key2 in sigil_dict[key]:
+                        if sigil_dict[key][key2] == value2:
+                            print(f"Sigil {key2} already exists in sigils.json. Can be deleted from custom json")
+                        else:
+                            print(f"Sigil {key2} already exists in sigils.json but with different value")
+                            sigil_dict[key][key2] = value2
+                    else:
+                        sigil_dict[key][key2] = value2
+            else:
+                sigil_dict[key] = values
+
+    sigil_dict["rarities"] = sigil_rarity_dict
+
+    with Path(D4LF_BASE_DIR / f"assets/lang/{language}/sigils.json").open("w", encoding="utf-8") as json_file:
+        json.dump(sigil_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
+        json_file.write("\n")
+
+
+def string_list_value(data, label):
+    for entry in data["arStrings"]:
+        if entry["szLabel"] == label:
+            return entry["szText"]
+    return ""
+
+
+def extract_sigil_rarity(name):
+    for color_tag, rarity in SIGIL_RARITY_COLOR_TAGS.items():
+        if f"{{{color_tag}}}" in name:
+            return rarity
+    return None
+
+
 def generate_uniques(d4data_dir, language):
     items_to_ignore = ["halo", "pact_amulet", "wilted_potential"]
 
@@ -419,15 +466,19 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Path Argument Parser")
     parser.add_argument(
-        "d4data_dir", type=str, help="Provide a path to d4data repo"
+        "d4data_dir", nargs="?", type=Path, default=D4LF_BASE_DIR / "d4data", help="Provide a path to d4data repo"
     )  # https://github.com/DiabloTools/d4data.git
     parser.add_argument(
-        "companion_app_dir", type=str, help="Provide a path to companion_app_dir repo"
+        "companion_app_dir",
+        nargs="?",
+        type=Path,
+        default=D4LF_BASE_DIR / "D4Companion",
+        help="Provide a path to companion_app_dir repo",
     )  # https://github.com/josdemmers/Diablo4Companion
     args = parser.parse_args()
 
-    input_path = Path(args.d4data_dir)
-    input_path2 = Path(args.companion_app_dir)
+    input_path = args.d4data_dir
+    input_path2 = args.companion_app_dir
 
     if input_path.exists() and input_path.is_dir() and input_path2.exists() and input_path2.is_dir():
         main(input_path, input_path2)
