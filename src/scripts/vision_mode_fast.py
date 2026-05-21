@@ -151,13 +151,13 @@ class VisionModeFast:
 
     def start(self):
         LOGGER.info("Starting Vision Mode")
-        Publisher().subscribe(self.on_tts)
+        Publisher().subscribe_item(self.on_tts)
         self.is_running = True
 
     def stop(self):
         LOGGER.info("Stopping Vision Mode")
         self.request_clear()
-        Publisher().unsubscribe(self.on_tts)
+        Publisher().unsubscribe_item(self.on_tts)
         self.is_running = False
 
     def running(self):
