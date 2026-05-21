@@ -16,6 +16,7 @@ if sys.platform != "darwin":
 
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
+from src.gui.importer.gui_common import ACCENT_BLUE, DARK_GRAY_BG
 from src.item.data.item_type import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
 from src.utils.custom_mouse import mouse
 
@@ -55,7 +56,7 @@ FILTER_COLORS_DEFAULT = FilterColors(
 
 # Colorblind-friendly palette (Okabe-Ito inspired).
 FILTER_COLORS_COLORBLIND = FilterColors(
-    matched="#56B4E9",  # COLOR_BLUE-Matched a profile
+    matched=ACCENT_BLUE,  # COLOR_BLUE-Matched a profile
     no_match="#D55E00",  # COLOR_VERMILLION-Matched no profiles at all
     codex_upgrade="#E69F00",  # COLOR_ORANGE-Matched a codex upgrade
     processing="#888888",  # COLOR_GREY-Still processing or can't find the info we expect
@@ -178,7 +179,7 @@ def draw_text_with_background(
     offset: int,
     canvas_center_x: int,
     *,
-    background_color: str = "#111111",
+    background_color: str = DARK_GRAY_BG,
     font_name: str = "Courier New",
     window_height: int | None = None,
 ) -> int | None:

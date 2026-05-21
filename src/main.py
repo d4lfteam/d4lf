@@ -56,6 +56,7 @@ def main():
     table = BeautifulTable()
     table.set_style(BeautifulTable.STYLE_BOX_ROUNDED)
     table.rows.append([IniConfigLoader().advanced_options.run_vision_mode, "Run/Stop Vision Mode"])
+    table.rows.append([IniConfigLoader().advanced_options.info_overlay, "Info Panel Overlay"])
     table.rows.append([IniConfigLoader().advanced_options.toggle_paragon_overlay, "Toggle Paragon Overlay"])
 
     if not IniConfigLoader().advanced_options.vision_mode_only:

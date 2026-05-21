@@ -22,7 +22,19 @@ from PIL import Image, ImageDraw, ImageFont
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
-from src.gui.importer.gui_common import BUILD_SOURCES, PLAYER_CLASSES
+from src.gui.importer.gui_common import (
+    ACCENT_BLUE,
+    ACCENT_GOLD,
+    ACCENT_GREEN,
+    BUILD_SOURCES,
+    CARD_BG,
+    FS_GRID_COLOR,
+    MUTED,
+    PLAYER_CLASSES,
+    SELECT_BG,
+    TEXT,
+    TRANSPARENT_KEY,
+)
 from src.item.filter import Filter
 
 if TYPE_CHECKING:
@@ -119,19 +131,10 @@ def _is_alive(w: tk.Misc | None, mapped: bool = False) -> bool:
 # THEME & CONSTANTS
 # =============================================================================
 
-TRANSPARENT_KEY = "#ff00ff"
-CARD_BG = "#151515"
-TEXT = "#ffffff"
-MUTED = "#cfcfcf"
-FS_ACCENT_GREEN = "#34C410"
-FS_ACCENT_BLUE = "#56B4E9"
-FS_ACCENT_GOLD = "#cfa15b"
-FS_GRID_COLOR = "#3f3f3f"
+GOLD = ACCENT_GOLD
+NODE_GREEN = ACCENT_GREEN
+NODE_BLUE = ACCENT_BLUE
 
-GOLD = FS_ACCENT_GOLD
-SELECT_BG = "#1f1f1f"
-NODE_GREEN = FS_ACCENT_GREEN
-NODE_BLUE = FS_ACCENT_BLUE
 PANEL_W = 370
 GRID = 21
 NODES_LEN = GRID * GRID

@@ -30,13 +30,18 @@ class ItemIdentifiers(enum.Enum):
 @singleton
 class Publisher:
     def __init__(self):
-        self._subscribers = set()
+        self._item_subscribers = set()
+        self._info_subscribers = set()
         self._subscriber_lock = threading.Lock()
 
     def find_item(self) -> None:
         local_cache = []
         while True:
             data = fix_data(_DATA_QUEUE.get())
+            # Pass numerical stat lines directly to info subscribers (Gold/Exp)
+            if "gold" in data.lower() or "experience" in data.lower():
+                self.publish_info(data)
+
             local_cache.append(data)
             if not filter_data(data) and (
                 any(word in data.lower() for word in ["mouse button", "action button"])
@@ -46,20 +51,33 @@ class Publisher:
                 LAST_ITEM = local_cache[start:]
                 LOGGER.debug(f"TTS Found: {LAST_ITEM}")
                 local_cache = []
-                self.publish(LAST_ITEM)
+                self.publish_item(LAST_ITEM)
 
-    def publish(self, data):
+    def publish_item(self, data):
         with self._subscriber_lock:
-            for subscriber in self._subscribers:
+            for subscriber in self._item_subscribers:
                 subscriber(data)
 
-    def subscribe(self, subscriber):
+    def subscribe_item(self, subscriber):
         with self._subscriber_lock:
-            self._subscribers.add(subscriber)
+            self._item_subscribers.add(subscriber)
 
-    def unsubscribe(self, subscriber):
+    def unsubscribe_item(self, subscriber):
         with self._subscriber_lock:
-            self._subscribers.remove(subscriber)
+            self._item_subscribers.discard(subscriber)
+
+    def publish_info(self, data):
+        with self._subscriber_lock:
+            for subscriber in self._info_subscribers:
+                subscriber(data)
+
+    def subscribe_info(self, subscriber):
+        with self._subscriber_lock:
+            self._info_subscribers.add(subscriber)
+
+    def unsubscribe_info(self, subscriber):
+        with self._subscriber_lock:
+            self._info_subscribers.discard(subscriber)
 
 
 def create_pipe():
