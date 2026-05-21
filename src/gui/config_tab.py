@@ -6,7 +6,7 @@ import typing
 from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
-from PyQt6.QtCore import QCoreApplication, QEvent, Qt, QTimer
+from PyQt6.QtCore import QCoreApplication, Qt, QTimer
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -35,26 +35,6 @@ from src.config.settings_models import HIDE_FROM_GUI_KEY, IS_HOTKEY_KEY, MoveIte
 from src.gui.open_user_config_button import OpenUserConfigButton
 
 CONFIG_TABNAME = "config"
-DISABLED_HOTKEY_TEXT = "Disabled"
-SPECIAL_HOTKEY_NAMES = {
-    Qt.Key.Key_Left: "left",
-    Qt.Key.Key_Right: "right",
-    Qt.Key.Key_Up: "up",
-    Qt.Key.Key_Down: "down",
-    Qt.Key.Key_Home: "home",
-    Qt.Key.Key_End: "end",
-    Qt.Key.Key_PageUp: "page up",
-    Qt.Key.Key_PageDown: "page down",
-    Qt.Key.Key_Insert: "insert",
-    Qt.Key.Key_Delete: "delete",
-    Qt.Key.Key_Backspace: "backspace",
-    Qt.Key.Key_Tab: "tab",
-    Qt.Key.Key_Space: "space",
-    Qt.Key.Key_Return: "enter",
-    Qt.Key.Key_Enter: "enter",
-    Qt.Key.Key_Escape: "esc",
-}
-FOCUS_NAVIGATION_HOTKEY_KEYS = {Qt.Key.Key_Left, Qt.Key.Key_Right, Qt.Key.Key_Up, Qt.Key.Key_Down}
 
 
 def _validate_and_save_changes(
@@ -594,14 +574,14 @@ class QHotkeyWidget(QWidget):
         self.setLayout(layout)
 
     def reset_values(self, current_value):
-        self.open_picker_button.setText(current_value or DISABLED_HOTKEY_TEXT)
+        self.open_picker_button.setText(current_value)
 
     def _launch_hotkey_dialog(self, model, section_header, config_key):
-        hotkey_dialog = HotkeyListenerDialog(self, getattr(model, config_key))
+        hotkey_dialog = HotkeyListenerDialog(self)
         if hotkey_dialog.exec():
             new_hotkey = hotkey_dialog.get_hotkey()
-            if _validate_and_save_changes(model, section_header, config_key, new_hotkey):
-                self.reset_values(new_hotkey)
+            if new_hotkey and _validate_and_save_changes(model, section_header, config_key, new_hotkey):
+                self.open_picker_button.setText(new_hotkey)
 
 
 class HotkeyListenerDialog(QDialog):
@@ -615,7 +595,7 @@ class HotkeyListenerDialog(QDialog):
         self.label = QLabel("Press the key or combination of keys you\nwant to use as a hotkey, then click save.", self)
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.hotkey_label = QLabel(self.hotkey or DISABLED_HOTKEY_TEXT, self)
+        self.hotkey_label = QLabel(self.hotkey, self)
         self.hotkey_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.layout.addWidget(self.label)
@@ -623,34 +603,15 @@ class HotkeyListenerDialog(QDialog):
 
         self.button_layout = QHBoxLayout()
         self.save_button = QPushButton("Save", self)
-        self.clear_button = QPushButton("Clear", self)
         self.cancel_button = QPushButton("Cancel", self)
 
         self.save_button.clicked.connect(self.accept)
-        self.clear_button.clicked.connect(self._clear_hotkey)
         self.cancel_button.clicked.connect(self.reject)
-        for button in (self.save_button, self.clear_button, self.cancel_button):
-            button.installEventFilter(self)
 
         self.button_layout.addWidget(self.save_button)
-        self.button_layout.addWidget(self.clear_button)
         self.button_layout.addWidget(self.cancel_button)
 
         self.layout.addLayout(self.button_layout)
-
-    def _clear_hotkey(self):
-        self.hotkey = ""
-        self.hotkey_label.setText(DISABLED_HOTKEY_TEXT)
-
-    def eventFilter(self, watched, event):
-        if (
-            watched in {self.save_button, self.clear_button, self.cancel_button}
-            and event.type() == QEvent.Type.KeyPress
-            and event.key() in FOCUS_NAVIGATION_HOTKEY_KEYS
-        ):
-            self.keyPressEvent(event)
-            return True
-        return super().eventFilter(watched, event)
 
     def keyPressEvent(self, event):
         modifiers = []
@@ -667,8 +628,6 @@ class HotkeyListenerDialog(QDialog):
         # Handle function keys
         if Qt.Key.Key_F1 <= key <= Qt.Key.Key_F35:
             non_mod_key = f"f{key - Qt.Key.Key_F1 + 1}"
-        elif key in SPECIAL_HOTKEY_NAMES:
-            non_mod_key = SPECIAL_HOTKEY_NAMES[key]
 
         # Handle regular keys
         else:
@@ -680,7 +639,7 @@ class HotkeyListenerDialog(QDialog):
         hotkey_str = "+".join(parts)
 
         self.hotkey = hotkey_str
-        self.hotkey_label.setText(hotkey_str or DISABLED_HOTKEY_TEXT)
+        self.hotkey_label.setText(hotkey_str)
 
     def get_hotkey(self):
         return self.hotkey
