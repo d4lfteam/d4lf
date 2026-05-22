@@ -132,7 +132,12 @@ uniques_with_affixes = [
             aspect=Aspect(name="blood_wake"),
         ),
     ),
-    ("aspect only", ["test.UniqueAspectOnly"], TestUnique(aspect=Aspect(name="battle_trance"))),
+    ("multiple aspect 1", ["test.MultipleAspectsInOneFilter"], TestUnique(aspect=Aspect(name="battle_trance"))),
+    (
+        "multiple aspect 2, kicked out for min percent",
+        [],
+        TestUnique(aspect=Aspect(name="ancients_oath", min_value=1, max_value=10, value=2)),
+    ),
     (
         "smaller aspect value",
         ["test.SmallerUniqueAspectValue"],

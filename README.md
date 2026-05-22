@@ -276,9 +276,9 @@ Affixes:
             - { name: lightning_resistance }
           minCount: 2
 
-    # Search for boots that have at least 2 of the specified affixes AND are a Penitent Greaves
-    # The Greaves must have at least 19% damage multiplier to chilled enemies (Greaves's range is 15-25)
-    # Note this would not match non-unique boots that have movement speed and cold resistance, it will only match a Penitent Greaves
+  # Search for boots that have at least 2 of the specified affixes AND are a Penitent Greaves
+  # The Greaves must have at least 19% damage multiplier to chilled enemies (Greaves's range is 15-25)
+  # Note this would not match non-unique boots that have movement speed and cold resistance, it will only match a Penitent Greaves
   - GreatUniqueBoots:
       itemType: boots
       minPower: 800
@@ -291,6 +291,14 @@ Affixes:
       uniqueAspect:
         - name: penitent_greaves
           minPercentOfAspect: 50
+
+  # You can also search for multiple unique aspects at once. This is mostly used by the importers for mythics
+  # Keep all penitent greaves or gohrs_devastating_grips with 900 power
+  - HighPowerUniques:
+      minPower: 900
+      uniqueAspect:
+        - name: penitent_greaves
+        - name: gohrs_devastating_grips
 
   # Search for boots with movement speed and 1 resistances from a pool of all resistances.
   # No need to add maxCount to the resistance group since it isn't possible for an item to have more than one resistance affix
@@ -319,7 +327,6 @@ Affixes:
 
   # Keep all ancestral items, even if they don't match a different filter
   - AncestralMatch:
-      itemType: [amulet, axe, two-handed axe, boots, bow, chest armor, crossbow, dagger, flail, focus, glaive, gloves, helm, pants, mace, two-handed mace, totem, polearm, quarterstaff, ring, scythe, two-handed scythe, shield, staff, sword, two-handed sword, tome, wand]
       minPower: 900
 ```
 
