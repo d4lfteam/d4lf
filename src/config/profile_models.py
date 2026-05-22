@@ -165,7 +165,7 @@ class ItemFilterModel(BaseModel):
     itemType: list[ItemType] = []
     minGreaterAffixCount: int = 0
     minPower: int = 0
-    uniqueAspect: AspectUniqueFilterModel = None
+    uniqueAspect: list[AspectUniqueFilterModel] = []
 
     @field_validator("minPower")
     @classmethod
@@ -184,6 +184,22 @@ class ItemFilterModel(BaseModel):
     @classmethod
     def parse_item_type(cls, data: str | list[str]) -> list[str]:
         return _parse_item_type_or_rarities(data)
+
+    @field_validator("uniqueAspect", mode="before")
+    @classmethod
+    def parse_unique_aspect(cls, data: dict | list[dict] | None) -> list[dict]:
+        if not data:
+            return []
+        if isinstance(data, dict):
+            return [data]
+        return data
+
+    @model_validator(mode="after")
+    def unique_aspect_names_must_be_unique(self) -> ItemFilterModel:
+        if len({aspect.name for aspect in self.uniqueAspect}) != len(self.uniqueAspect):
+            msg = "uniqueAspect names must be unique"
+            raise ValueError(msg)
+        return self
 
 
 DynamicItemFilterModel = RootModel[dict[str, ItemFilterModel]]

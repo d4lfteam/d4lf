@@ -103,14 +103,20 @@ class Filter:
                     expected_min_count=filter_spec.minGreaterAffixCount, item_affixes=non_tempered_affixes
                 ):
                     continue
-                # check the unique aspect
-                if not self._match_item_aspect_or_affix(
-                    expected_aspect=filter_spec.uniqueAspect, item_aspect=item.aspect
-                ):
+                # check the unique aspect. The model enforces name uniqueness so we can safely grab the first one that matches
+                matched_unique_aspect = None
+                for unique_aspect in filter_spec.uniqueAspect:
+                    if self._match_item_aspect_or_affix(expected_aspect=unique_aspect, item_aspect=item.aspect):
+                        matched_unique_aspect = unique_aspect
+                        break
+                if filter_spec.uniqueAspect and not matched_unique_aspect:
                     continue
-                # check the aspect matches the min percent
-                if filter_spec.uniqueAspect and not self._match_item_roll_is_in_percent_range(
-                    expected_percent=filter_spec.uniqueAspect.minPercentOfAspect, item_aspect_or_affix=item.aspect
+                # If the item is unique but doesn't match a unique aspect we continue. We don't check affixes
+                if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and not matched_unique_aspect:
+                    continue
+                # check the aspect matches the min percent. We only check the one that passed the previous check
+                if matched_unique_aspect and not self._match_item_roll_is_in_percent_range(
+                    expected_percent=matched_unique_aspect.minPercentOfAspect, item_aspect_or_affix=item.aspect
                 ):
                     continue
                 # check affixes
