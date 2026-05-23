@@ -1,10 +1,14 @@
 import json
 import logging
 import re
+from typing import TYPE_CHECKING
 from urllib.parse import unquote
 
 import jsonpath
 import lxml.html
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
 from src.config.profile_models import (
@@ -16,11 +20,11 @@ from src.config.profile_models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
+    add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
     fix_offhand_type,
     fix_weapon_type,
-    get_with_retry,
     match_to_enum,
     retry_importer,
     save_as_profile,
@@ -41,13 +45,16 @@ PROFILE_GUIDE_BASE_URL = f"{BUILD_GUIDE_BASE_URL}profile"
 SCRIPT_XPATH = "//script"
 BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
 
+if TYPE_CHECKING:
+    from selenium.webdriver.chromium.webdriver import ChromiumDriver
+
 
 class MobalyticsException(Exception):
     pass
 
 
-@retry_importer
-def import_mobalytics(config: ImportConfig):
+@retry_importer(inject_webdriver=True)
+def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     url = config.url.strip().replace("\n", "")
     if BUILD_GUIDE_BASE_URL not in url:
         LOGGER.error("Invalid url, please use a mobalytics build guide")
@@ -57,13 +64,11 @@ def import_mobalytics(config: ImportConfig):
         return
     url = _fix_input_url(url=url)
     LOGGER.info(f"Loading {url}")
-    try:
-        r = get_with_retry(url=url, custom_headers={})
-    except ConnectionError as exc:
-        LOGGER.exception(msg := "Couldn't get build")
-        raise MobalyticsException(msg) from exc
+    driver.get(url)
+    wait = WebDriverWait(driver, 10)
+    wait.until(EC.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
     variant_id = url.split(",")[1].split("#")[0] if "activeVariantId" in url else None
-    raw_html_data = lxml.html.fromstring(r.text)
+    raw_html_data = lxml.html.fromstring(driver.page_source)
     # The build is shoved in a massive JSON in one of the script tags. We find that json now.
     scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
     full_script_data_json = None
@@ -108,6 +113,7 @@ def import_mobalytics(config: ImportConfig):
         LOGGER.error(msg := "No items found")
         raise MobalyticsException(msg)
     finished_filters = []
+    mythic_names = []
     aspect_upgrade_filters = []
     for item in items:
         item_filter = ItemFilterModel()
@@ -131,7 +137,11 @@ def import_mobalytics(config: ImportConfig):
         is_unique = entity_type == "uniqueItems"
         if is_unique:
             try:
-                item_filter.uniqueAspect = AspectUniqueFilterModel(name=item_name)
+                # We handle mythics at the end
+                if is_mythic:
+                    mythic_names.append(item_name)
+                    continue
+                item_filter.uniqueAspect = [AspectUniqueFilterModel(name=item_name)]
             except Exception:
                 LOGGER.exception(f"Unexpected error adding unique aspect for {item_name}, please report a bug.")
 
@@ -203,6 +213,9 @@ def import_mobalytics(config: ImportConfig):
             filter_name = f"{filter_name_template}{i}"
             i += 1
         finished_filters.append({filter_name: item_filter})
+
+    # Place all mythics in a single filter
+    add_mythics_to_filters(mythic_names, finished_filters)
     profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
@@ -285,6 +298,14 @@ def _convert_raw_to_affixes(raw_stats: list[dict], import_greater_affixes=False)
 
 if __name__ == "__main__":
     src.logger.setup()
+
+    from selenium import webdriver
+
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless=new")
+    options.add_argument("log-level=3")
+    driver = webdriver.Chrome(options=options)
+
     URLS = [
         # # No frills and no uniques
         # "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb",
@@ -299,7 +320,7 @@ if __name__ == "__main__":
         # # This has two rogue offhand weapons
         # "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
         # Season 13 testing
-        "https://mobalytics.gg/diablo-4/builds/warlock-profane-sentinel-endgame"
+        "https://mobalytics.gg/diablo-4/builds/barbarian-ancients-leap-endgame"
     ]
     for X in URLS:
         config = ImportConfig(
@@ -311,4 +332,4 @@ if __name__ == "__main__":
             export_paragon=True,
             custom_file_name=None,
         )
-        import_mobalytics(config)
+        import_mobalytics(config, driver)

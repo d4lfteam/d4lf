@@ -11,6 +11,7 @@ from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter
 from src.scripts.common import (
+    ASPECT_UPGRADES_LABEL,
     drop_item_from_inventory,
     is_ignored_item,
     mark_as_favorite,
@@ -89,7 +90,9 @@ def check_items(
         # Check if we want to keep the item
         res = Filter().should_keep(item_descr)
         matched_any_affixes = len(res.matched) > 0 and len(res.matched[0].matched_affixes) > 0
-        matched_aspect = any(match.aspect_match for match in res.matched)
+        matched_profile_legendary_aspect = any(
+            match.profile.endswith(f".{ASPECT_UPGRADES_LABEL}") for match in res.matched
+        )
 
         # Uniques have special handling. They might be a keep but should actually be ignored
         if item_descr.rarity == ItemRarity.Unique and item_descr.item_type != ItemType.Tribute:
@@ -114,7 +117,7 @@ def check_items(
             res.keep
             and (
                 matched_any_affixes
-                or matched_aspect
+                or matched_profile_legendary_aspect
                 or item_descr.rarity == ItemRarity.Mythic
                 or is_sigil(item_descr.item_type)
                 or item_descr.item_type == ItemType.Tribute

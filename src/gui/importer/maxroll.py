@@ -5,6 +5,7 @@ import re
 import lxml.html
 
 import src.logger
+from gui.importer.gui_common import add_mythics_to_filters
 from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
@@ -90,6 +91,7 @@ def import_maxroll(config: ImportConfig):
         build_name += f"_{variant_name}"
     finished_filters = []
     aspect_upgrade_filters = []
+    mythic_names = []
     for item_id in active_profile["items"].values():
         resolved_item = items[str(item_id)]
         resolved_item_id = resolved_item["id"]
@@ -133,7 +135,11 @@ def import_maxroll(config: ImportConfig):
             unique_name = mapping_data["items"][resolved_item_id]["name"]
             try:
                 unique_name = _unique_name_special_handling(unique_name)
-                item_filter.uniqueAspect = AspectUniqueFilterModel(name=unique_name)
+                # We handle mythics at the end
+                if rarity == ItemRarity.Mythic:
+                    mythic_names.append(unique_name)
+                    continue
+                item_filter.uniqueAspect = [AspectUniqueFilterModel(name=unique_name)]
             except Exception:
                 LOGGER.exception(f"Unexpected error adding unique aspect for {unique_name}, please report a bug.")
 
@@ -163,6 +169,9 @@ def import_maxroll(config: ImportConfig):
             i += 1
 
         finished_filters.append({filter_name: item_filter})
+
+    # Place all mythics in a single filter
+    add_mythics_to_filters(mythic_names, finished_filters)
     profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters

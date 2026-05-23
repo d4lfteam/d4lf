@@ -1,6 +1,7 @@
 from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
+    AspectUniqueFilterModel,
     GlobalUniqueModel,
     ItemFilterModel,
     ProfileModel,
@@ -297,7 +298,14 @@ unique_affixes = ProfileModel(
                 minGreaterAffixCount=2,
             )
         },
-        {"UniqueAspectOnly": ItemFilterModel(uniqueAspect={"name": "battle_trance"})},
+        {
+            "MultipleAspectsInOneFilter": ItemFilterModel(
+                uniqueAspect=[
+                    AspectUniqueFilterModel(name="battle_trance"),
+                    AspectUniqueFilterModel(name="ancients_oath", minPercentOfAspect=90),
+                ]
+            )
+        },
         {
             "SmallerUniqueAspectValue": ItemFilterModel(
                 itemType=[ItemType.Shield], uniqueAspect={"name": "crown_of_lucion", "value": 12}

@@ -112,7 +112,7 @@ The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | profiles                                          | A set of profiles separated by comma. d4lf will look for these yaml files in config/profiles and in C:/Users/WINDOWS_USER/.d4lf/profiles                                                                                                                                                                                                                                                                                                 |
 | auto_use_temper_manuals                           | When using the loot filter, should found temper manuals be automatically used? Note: Will not work with stash open.                                                                                                                                                                                                                                                                                                                      |
-| browser                                           | Which browser to use to get builds, please make sure you pick an installed browser: chrome, edge or firefox are currently supported.                                                                                                                                                                                                                                                                                                     |
+| browser                                           | Which browser to use to get builds from d4builds or mobalytics, please make sure you pick an installed browser: chrome, edge or firefox are currently supported.                                                                                                                                                                                                                                                                         |
 | check_chest_tabs                                  | Which chest tabs will be checked and filtered for items in case chest is open when starting the filter. You need to buy all slots. Counting is done left to right. E.g. 1,2,4 will check tab 1, tab 2, tab 4                                                                                                                                                                                                                             |
 | do_not_junk_ancestral_legendaries                 | Do not mark ancestral legendaries as junk.                                                                                                                                                                                                                                                                                                                                                                                               |
 | full_dump                                         | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not                                                                                                                                                                                                                                                                                                                                |
@@ -276,9 +276,9 @@ Affixes:
             - { name: lightning_resistance }
           minCount: 2
 
-    # Search for boots that have at least 2 of the specified affixes AND are a Penitent Greaves
-    # The Greaves must have at least 19% damage multiplier to chilled enemies (Greaves's range is 15-25)
-    # Note this would not match non-unique boots that have movement speed and cold resistance, it will only match a Penitent Greaves
+  # Search for boots that have at least 2 of the specified affixes AND are a Penitent Greaves
+  # The Greaves must have at least 19% damage multiplier to chilled enemies (Greaves's range is 15-25)
+  # Note this would not match non-unique boots that have movement speed and cold resistance, it will only match a Penitent Greaves
   - GreatUniqueBoots:
       itemType: boots
       minPower: 800
@@ -291,6 +291,14 @@ Affixes:
       uniqueAspect:
         - name: penitent_greaves
           minPercentOfAspect: 50
+
+  # You can also search for multiple unique aspects at once. This is mostly used by the importers for mythics
+  # Keep all penitent greaves or gohrs_devastating_grips with 900 power
+  - HighPowerUniques:
+      minPower: 900
+      uniqueAspect:
+        - name: penitent_greaves
+        - name: gohrs_devastating_grips
 
   # Search for boots with movement speed and 1 resistances from a pool of all resistances.
   # No need to add maxCount to the resistance group since it isn't possible for an item to have more than one resistance affix
@@ -319,7 +327,6 @@ Affixes:
 
   # Keep all ancestral items, even if they don't match a different filter
   - AncestralMatch:
-      itemType: [amulet, axe, two-handed axe, boots, bow, chest armor, crossbow, dagger, flail, focus, glaive, gloves, helm, pants, mace, two-handed mace, totem, polearm, quarterstaff, ring, scythe, two-handed scythe, shield, staff, sword, two-handed sword, tome, wand]
       minPower: 900
 ```
 
