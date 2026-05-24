@@ -7,10 +7,12 @@ import configparser
 import ctypes
 import io
 import logging
+import os
 import queue
 import re
 import sys
 import threading
+import time
 import tkinter as tk
 from contextlib import suppress
 from dataclasses import dataclass
@@ -397,7 +399,7 @@ class OverlayConfig:
 
     ui_scale: float = 1.0
     panel_w: int = PANEL_W
-    poll_ms: int = 500
+    poll_ms: int = 250
     window_alpha: float = 0.86
 
     is_collapsed: bool = False
@@ -471,6 +473,7 @@ class ParagonOverlay(tk.Toplevel):
         self.grid_x_collapsed = gxc_val if isinstance(gxc_val, int) else self._cfg.grid_x_collapsed_default
         self.grid_y_collapsed = gyc_val if isinstance(gyc_val, int) else self._cfg.grid_y_collapsed_default
 
+        self._last_focus_time = time.time()
         (self._last_roi, self._last_res, self._border_rect, self._dragging_grid, self._border_grab) = (
             None,
             None,
@@ -649,11 +652,39 @@ class ParagonOverlay(tk.Toplevel):
     def _poll_window_state(self) -> None:
         """Re-apply geometry when the tracked game window changes size or ROI."""
         try:
-            is_fgrnd = is_window_foreground(self._win_spec)
-            if is_fgrnd and not self.winfo_viewable():
+
+            def is_self_foreground():
+                if sys.platform != "win32":
+                    return False
+                try:
+                    fg_win = ctypes.windll.user32.GetForegroundWindow()
+                    if not fg_win:
+                        return False
+                    lpdw_pid = ctypes.c_ulong()
+                    ctypes.windll.user32.GetWindowThreadProcessId(fg_win, ctypes.byref(lpdw_pid))
+                    return lpdw_pid.value == os.getpid()
+                except Exception:
+                    return False
+
+            # If we are dragging the grid or interacting with popups, consider it foreground.
+            is_interacting = (
+                self._dragging_grid
+                or is_self_foreground()
+                or _is_alive(getattr(self, "_settings_popup", None), mapped=True)
+                or _is_alive(getattr(self, "_build_popup", None), mapped=True)
+            )
+
+            is_fgrnd = is_window_foreground(self._win_spec) or is_interacting
+            now = time.time()
+            if is_fgrnd:
+                self._last_focus_time = now
+
+            should_be_visible = is_fgrnd or (now - self._last_focus_time < 0.75)
+
+            if should_be_visible and not self.winfo_viewable():
                 self.deiconify()
                 self.lift()
-            elif not is_fgrnd and self.winfo_viewable():
+            elif not should_be_visible and self.winfo_viewable():
                 self.withdraw()
 
             if not is_fgrnd:
