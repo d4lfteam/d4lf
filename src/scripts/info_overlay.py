@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import ctypes
 import datetime
 import logging
-import os
 import re
-import sys
 import threading
 import time
 import tkinter as tk
@@ -25,7 +22,7 @@ from src.gui.importer.gui_common import ACCENT_BLUE, ACCENT_GOLD, ACCENT_GREEN, 
 from src.scripts.common import get_filter_colors
 from src.tts import Publisher
 from src.utils.custom_mouse import mouse
-from src.utils.window import WindowSpec, is_window_foreground
+from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1452,19 +1449,6 @@ class BossTimerOverlay(tk.Toplevel):
             return
 
         # Toggle visibility based on window focus
-        def is_self_foreground():
-            if sys.platform != "win32":
-                return False
-            try:
-                fg_win = ctypes.windll.user32.GetForegroundWindow()
-                if not fg_win:
-                    return False
-                lpdw_pid = ctypes.c_ulong()
-                ctypes.windll.user32.GetWindowThreadProcessId(fg_win, ctypes.byref(lpdw_pid))
-                return lpdw_pid.value == os.getpid()
-            except Exception:
-                return False
-
         is_interacting = self._is_dragging or is_self_foreground()
         if not is_interacting:
             if self._settings_popup and self._settings_popup.winfo_exists() and self._settings_popup.winfo_viewable():

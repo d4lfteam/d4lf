@@ -7,7 +7,6 @@ import configparser
 import ctypes
 import io
 import logging
-import os
 import queue
 import re
 import sys
@@ -38,7 +37,7 @@ from src.gui.importer.gui_common import (
     TRANSPARENT_KEY,
 )
 from src.item.filter import Filter
-from src.utils.window import WindowSpec, is_window_foreground
+from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -652,20 +651,6 @@ class ParagonOverlay(tk.Toplevel):
     def _poll_window_state(self) -> None:
         """Re-apply geometry when the tracked game window changes size or ROI."""
         try:
-
-            def is_self_foreground():
-                if sys.platform != "win32":
-                    return False
-                try:
-                    fg_win = ctypes.windll.user32.GetForegroundWindow()
-                    if not fg_win:
-                        return False
-                    lpdw_pid = ctypes.c_ulong()
-                    ctypes.windll.user32.GetWindowThreadProcessId(fg_win, ctypes.byref(lpdw_pid))
-                    return lpdw_pid.value == os.getpid()
-                except Exception:
-                    return False
-
             # If we are dragging the grid or interacting with popups, consider it foreground.
             is_interacting = (
                 self._dragging_grid

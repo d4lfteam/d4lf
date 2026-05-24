@@ -1,6 +1,8 @@
 import ctypes
 import logging
+import os
 import pathlib
+import sys
 import threading
 import time
 from dataclasses import dataclass
@@ -109,6 +111,21 @@ def is_window_foreground(window_spec: WindowSpec) -> bool:
         active_window_handle = ctypes.windll.user32.GetForegroundWindow()
         return active_window_handle == hwnd
     return False
+
+
+def is_self_foreground() -> bool:
+    """Check if the current process's window is in the foreground."""
+    if sys.platform != "win32":
+        return False
+    try:
+        fg_win = ctypes.windll.user32.GetForegroundWindow()
+        if not fg_win:
+            return False
+        lpdw_pid = ctypes.c_ulong()
+        ctypes.windll.user32.GetWindowThreadProcessId(fg_win, ctypes.byref(lpdw_pid))
+        return lpdw_pid.value == os.getpid()
+    except Exception:
+        return False
 
 
 def screenshot(
