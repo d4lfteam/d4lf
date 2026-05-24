@@ -36,6 +36,7 @@ from src.gui.importer.gui_common import (
     TRANSPARENT_KEY,
 )
 from src.item.filter import Filter
+from src.utils.window import WindowSpec, is_window_foreground
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -447,6 +448,7 @@ class ParagonOverlay(tk.Toplevel):
         self._config_loader.register_change_listener(self._config_listener)
         self._cam = Cam()
         self._res = ResManager()
+        self._win_spec = WindowSpec(self._config_loader.advanced_options.process_name)
         self.builds = list(builds)
 
         # Restore the previously selected build by its persisted identity first.
@@ -647,6 +649,16 @@ class ParagonOverlay(tk.Toplevel):
     def _poll_window_state(self) -> None:
         """Re-apply geometry when the tracked game window changes size or ROI."""
         try:
+            is_fgrnd = is_window_foreground(self._win_spec)
+            if is_fgrnd and not self.winfo_viewable():
+                self.deiconify()
+                self.lift()
+            elif not is_fgrnd and self.winfo_viewable():
+                self.withdraw()
+
+            if not is_fgrnd:
+                return
+
             roi, res = self._get_cam_roi(), self._get_resolution()
             if roi != self._last_roi or res != self._last_res:
                 self._last_roi, self._last_res = roi, res
