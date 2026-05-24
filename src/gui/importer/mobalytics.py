@@ -20,6 +20,7 @@ from src.config.profile_models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
+    add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
     fix_offhand_type,
@@ -66,9 +67,6 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     driver.get(url)
     wait = WebDriverWait(driver, 10)
     wait.until(EC.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
-    # time.sleep(
-    #     5
-    # )  # super hacky but I didn't find anything else. The page is not fully loaded when the above wait is done
     variant_id = url.split(",")[1].split("#")[0] if "activeVariantId" in url else None
     raw_html_data = lxml.html.fromstring(driver.page_source)
     # The build is shoved in a massive JSON in one of the script tags. We find that json now.
@@ -115,6 +113,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         LOGGER.error(msg := "No items found")
         raise MobalyticsException(msg)
     finished_filters = []
+    mythic_names = []
     aspect_upgrade_filters = []
     for item in items:
         item_filter = ItemFilterModel()
@@ -138,7 +137,11 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         is_unique = entity_type == "uniqueItems"
         if is_unique:
             try:
-                item_filter.uniqueAspect = AspectUniqueFilterModel(name=item_name)
+                # We handle mythics at the end
+                if is_mythic:
+                    mythic_names.append(item_name)
+                    continue
+                item_filter.uniqueAspect = [AspectUniqueFilterModel(name=item_name)]
             except Exception:
                 LOGGER.exception(f"Unexpected error adding unique aspect for {item_name}, please report a bug.")
 
@@ -210,6 +213,9 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
             filter_name = f"{filter_name_template}{i}"
             i += 1
         finished_filters.append({filter_name: item_filter})
+
+    # Place all mythics in a single filter
+    add_mythics_to_filters(mythic_names, finished_filters)
     profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.AspectUpgrades = aspect_upgrade_filters
