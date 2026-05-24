@@ -216,10 +216,9 @@ def _load_overlay_settings() -> dict[str, Any]:
 
     # Migration trigger: Run if we haven't migrated yet.
     migration_done = str(qs.value("migration_done", "false")).lower() == "true"
-    if not migration_done:
-        if _import_settings_from_ini(qs):
-            qs.setValue("migration_done", "true")
-            qs.sync()  # Force write to registry
+    if not migration_done and _import_settings_from_ini(qs):
+        qs.setValue("migration_done", "true")
+        qs.sync()  # Force write to registry
 
     def parse(k: str, t: type) -> Any:
         """Parse one QSettings value into the requested type or return None."""
@@ -238,7 +237,7 @@ def _load_overlay_settings() -> dict[str, Any]:
             return None
         try:
             return t(v)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
     return {
@@ -294,10 +293,11 @@ def _import_settings_from_ini(qs: QSettings) -> bool:
             p.write(f)
 
         LOGGER.info("Successfully migrated and cleaned up Paragon Overlay settings from %s", ini)
-        return True
     except Exception:
         LOGGER.debug("Failed to migrate legacy Paragon Overlay settings", exc_info=True)
         return False
+    else:
+        return True
 
 
 def _clamp_int(v: int | None, lo: int, hi: int, default: int) -> int:
