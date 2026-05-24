@@ -22,6 +22,7 @@ from src.gui.importer.gui_common import ACCENT_BLUE, ACCENT_GOLD, ACCENT_GREEN, 
 from src.scripts.common import get_filter_colors
 from src.tts import Publisher
 from src.utils.custom_mouse import mouse
+from src.utils.window import WindowSpec, is_window_foreground
 
 LOGGER = logging.getLogger(__name__)
 
@@ -157,8 +158,13 @@ def _hover_experience_balance(info_config: dict[str, Any]):
 
 def request_close():
     with _OVERLAY_LOCK:
-        if _OVERLAY_INSTANCE is not None:
-            _OVERLAY_INSTANCE.after(0, lambda: _OVERLAY_INSTANCE.master.destroy())
+        if _OVERLAY_INSTANCE is not None and _OVERLAY_INSTANCE.winfo_exists():
+            try:
+                # Ensure destruction happens on the Tk thread
+                _OVERLAY_INSTANCE.after(0, _OVERLAY_INSTANCE.destroy)
+            except Exception:
+                with suppress(Exception):
+                    _OVERLAY_INSTANCE.master.destroy()
 
 
 @singleton
@@ -358,6 +364,9 @@ class BossTimerOverlay(tk.Toplevel):
         self.wm_attributes("-transparentcolor", TRANSPARENT_KEY)
         self.configure(bg=TRANSPARENT_KEY)
 
+        self._win_spec = WindowSpec(IniConfigLoader().advanced_options.process_name)
+        self._after_ids: list[str] = []
+        self._closing = False
         self._gold_initialized = False
         self._exp_initialized = False
         self._menu_vars = []  # Initialize here to store tk.Variable instances
@@ -378,9 +387,28 @@ class BossTimerOverlay(tk.Toplevel):
 
     def destroy(self):
         """Perform cleanup and unsubscribe from stats on destruction."""
+        if self._closing:
+            return
+        self._closing = True
+
+        # Cancel all pending after calls to avoid Tcl_AsyncDelete errors
+        for after_id in self._after_ids:
+            with suppress(Exception):
+                self.after_cancel(after_id)
+        self._after_ids.clear()
+
+        if self._settings_popup and self._settings_popup.winfo_exists():
+            self._settings_popup.destroy()
+        self._close_all_submenus()
+
         self._session_stats.unsubscribe()
         self._menu_vars.clear()
-        super().destroy()
+
+        # Stop the mainloop and destroy the root (master)
+        with suppress(tk.TclError, Exception):
+            self.master.quit()
+            self.master.destroy()
+
         with _OVERLAY_LOCK:
             global _OVERLAY_INSTANCE
             if _OVERLAY_INSTANCE is self:
@@ -1413,8 +1441,21 @@ class BossTimerOverlay(tk.Toplevel):
             LOGGER.error(f"Failed to auto-sync from helltides.com: {e}")
 
     def _update_timers(self):
-        if not self.winfo_exists():
+        if self._closing or not self.winfo_exists():
             return
+
+        # Toggle visibility based on window focus
+        focused = is_window_foreground(self._win_spec)
+        if focused and self.state() == "withdrawn":
+            self.deiconify()
+        elif not focused and self.state() != "withdrawn":
+            self.withdraw()
+
+        if not focused:
+            aid = self.after(1000, self._update_timers)
+            self._after_ids.append(aid)
+            return
+
         now = datetime.datetime.now(datetime.UTC)
         self._flash_toggle = not self._flash_toggle
         colors = get_filter_colors()
@@ -1512,7 +1553,8 @@ class BossTimerOverlay(tk.Toplevel):
                     m, s = divmod(int(remaining), 60)
                     self.next_scan_value_label.config(text=f"{m}m {s}s" if m > 0 else f"{s}s")
 
-        self.after(1000, self._update_timers)
+        aid = self.after(1000, self._update_timers)
+        self._after_ids.append(aid)
 
     def update_stats(
         self,
@@ -1523,33 +1565,41 @@ class BossTimerOverlay(tk.Toplevel):
         t2l: str | None = None,
     ):
         """Update the gold and experience statistics display."""
-        repack_needed = False
-        if gph is not None and self.capture_gold_stats:
-            self.gph_value_label.config(text=f"{gph:,}")
-            if not self._gold_initialized:
-                self._gold_initialized = True
-                repack_needed = True
-        if total_gained is not None and self.capture_gold_stats:
-            self.total_gained_value_label.config(text=f"{total_gained:,}")
-            if not self._gold_initialized:
-                self._gold_initialized = True
-                repack_needed = True
-        if eph is not None and self.capture_exp_stats:
-            self.eph_value_label.config(text=f"{eph:,}")
-            if not self._exp_initialized:
-                self._exp_initialized = True
-                repack_needed = True
-        if total_exp is not None and self.capture_exp_stats:
-            self.total_exp_value_label.config(text=f"{total_exp:,}")
-            if not self._exp_initialized:
-                self._exp_initialized = True
-                repack_needed = True
-        if t2l is not None and self.capture_exp_stats:
-            self.t2l_value_label.config(text=t2l)
 
-        if repack_needed:
-            self._repack()
-            self.update_idletasks()
+        def _do_update():
+            if self._closing or not self.winfo_exists():
+                return
+            repack_needed = False
+            if gph is not None and self.capture_gold_stats:
+                self.gph_value_label.config(text=f"{gph:,}")
+                if not self._gold_initialized:
+                    self._gold_initialized = True
+                    repack_needed = True
+            if total_gained is not None and self.capture_gold_stats:
+                self.total_gained_value_label.config(text=f"{total_gained:,}")
+                if not self._gold_initialized:
+                    self._gold_initialized = True
+                    repack_needed = True
+            if eph is not None and self.capture_exp_stats:
+                self.eph_value_label.config(text=f"{eph:,}")
+                if not self._exp_initialized:
+                    self._exp_initialized = True
+                    repack_needed = True
+            if total_exp is not None and self.capture_exp_stats:
+                self.total_exp_value_label.config(text=f"{total_exp:,}")
+                if not self._exp_initialized:
+                    self._exp_initialized = True
+                    repack_needed = True
+            if t2l is not None and self.capture_exp_stats:
+                self.t2l_value_label.config(text=t2l)
+
+            if repack_needed:
+                self._repack()
+                self.update_idletasks()
+
+        if not self._closing:
+            aid = self.after(0, _do_update)
+            self._after_ids.append(aid)
 
 
 def run_boss_timer_overlay():
