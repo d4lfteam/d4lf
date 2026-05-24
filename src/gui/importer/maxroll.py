@@ -5,7 +5,6 @@ import re
 import lxml.html
 
 import src.logger
-from gui.importer.gui_common import add_mythics_to_filters
 from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
@@ -15,6 +14,7 @@ from src.config.profile_models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
+    add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
     fix_offhand_type,
