@@ -1556,9 +1556,10 @@ class ParagonOverlay(tk.Toplevel):
     def _get_cam_roi(self) -> tuple[int, int, int, int] | None:
         """Return the tracked game window ROI when the camera module exposes one."""
         try:
-            return (
-                (int(r[0]), int(r[1]), int(r[2]), int(r[3])) if (r := getattr(self._cam, "window_roi", None)) else None
-            )
+            r = getattr(self._cam, "window_roi", None)
+            if not r or r.get("width", 0) <= 0:
+                return None
+            return (int(r["left"]), int(r["top"]), int(r["width"]), int(r["height"]))
         except Exception:
             return None
 

@@ -374,9 +374,11 @@ class BossTimerOverlay(tk.Toplevel):
         self._settings_popup = None
         self._last_focus_time = time.time()
         self._last_menu_pos = (100, 100)
+        self._cam = Cam()
 
         self.settings = load_info_settings()
         self._apply_loaded_settings()
+
         self._flash_toggle = False
         self._setup_ui()
         self._bind_events()
@@ -417,7 +419,11 @@ class BossTimerOverlay(tk.Toplevel):
                 _OVERLAY_INSTANCE = None
 
     def _apply_loaded_settings(self):
-        self.x, self.y = self.settings["x"], self.settings["y"]
+        # Transition to relative coordinates: Add the current game window offset to the saved position.
+        roi = self._cam.window_roi
+        offset_x = roi.get("left", 0) if roi else 0
+        offset_y = roi.get("top", 0) if roi else 0
+        self.x, self.y = self.settings["x"] + offset_x, self.settings["y"] + offset_y
         self.font_size = self.settings["font_size"]
         self.next_boss_name = self.settings["next_boss_name"]
         self.orientation = self.settings["orientation"]
@@ -443,9 +449,12 @@ class BossTimerOverlay(tk.Toplevel):
         self._exp_initialized = self.capture_exp_stats and stats.last_exp is not None
 
     def _save_settings(self):
+        roi = self._cam.window_roi
+        offset_x = roi.get("left", 0) if roi else 0
+        offset_y = roi.get("top", 0) if roi else 0
         updates: dict[str, Any] = {
-            "x": self.winfo_x(),
-            "y": self.winfo_y(),
+            "x": self.winfo_x() - offset_x,
+            "y": self.winfo_y() - offset_y,
             "font_size": self.font_size,
             "wb_reference": self.wb_reference,
             "next_boss_name": self.next_boss_name,
