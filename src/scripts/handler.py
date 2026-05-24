@@ -39,7 +39,7 @@ from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
 from src.utils.custom_mouse import mouse
 from src.utils.process_handler import kill_thread, safe_exit
-from src.utils.window import screenshot
+from src.utils.window import WindowSpec, is_window_foreground, screenshot
 
 LOGGER = logging.getLogger(__name__)
 
@@ -95,6 +95,7 @@ class ScriptHandler:
         self._runtime_config_lock = threading.RLock()
         self._manual_restart_warning = False
         self._config = IniConfigLoader()
+        self._win_spec = WindowSpec(self._config.advanced_options.process_name)
         self._language = self._config.general.language
         self._log_level = self._config.advanced_options.log_lvl.value.upper()
         self.vision_mode = self._create_vision_mode(self._config.general.vision_mode_type)
@@ -277,8 +278,12 @@ class ScriptHandler:
             with suppress(KeyError, ValueError):
                 keyboard.remove_hotkey(handle)
 
-    def _register_hotkey(self, hotkey: str, callback: Callable[[], None]) -> None:
-        self._hotkey_handles.append(keyboard.add_hotkey(hotkey, callback))
+    def _register_hotkey(self, hotkey: str, callback: Callable[[], None], check_focus: bool = True) -> None:
+        def wrapped_callback():
+            if not check_focus or is_window_foreground(self._win_spec):
+                callback()
+
+        self._hotkey_handles.append(keyboard.add_hotkey(hotkey, wrapped_callback))
 
     def setup_key_binds(self):
         if sys.platform == "darwin":
@@ -288,7 +293,7 @@ class ScriptHandler:
         config = self._config
         advanced_options = config.advanced_options
         self._register_hotkey(advanced_options.run_vision_mode, lambda: self.run_vision_mode())
-        self._register_hotkey(advanced_options.exit_key, lambda: self._graceful_exit())
+        self._register_hotkey(advanced_options.exit_key, lambda: self._graceful_exit(), check_focus=False)
         self._register_hotkey(advanced_options.toggle_paragon_overlay, lambda: self.toggle_paragon_overlay())
         self._register_hotkey(advanced_options.info_overlay, lambda: self.toggle_info_overlay())
         self._register_hotkey(config.char.inventory, lambda: InventoryExpTracker().on_inventory_open())
