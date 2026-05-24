@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from PIL import Image, ImageDraw, ImageFont
+from PyQt6.QtCore import QSettings
 
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
@@ -195,39 +196,49 @@ def _dpi_scale_for_widget(w: tk.Misc) -> float:
 
 def _params_ini_path() -> Path:
     """Return the user-specific params.ini path and ensure the folder exists."""
+    # Check standard D4LF location first (~/.d4lf/params.ini)
     p = Path.home() / ".d4lf"
-    p.mkdir(parents=True, exist_ok=True)
-    return p / "params.ini"
+    std_ini = p / "params.ini"
+    if std_ini.exists():
+        return std_ini
+
+    # Fallback to the loader's user_dir (which might be the project root)
+    try:
+        return IniConfigLoader().user_dir / "params.ini"
+    except Exception:
+        p.mkdir(parents=True, exist_ok=True)
+        return p / "params.ini"
 
 
 def _load_overlay_settings() -> dict[str, Any]:
-    """Load persisted overlay state from params.ini.
+    """Load persisted overlay state from QSettings."""
+    qs = QSettings("d4lf", "ParagonOverlay")
 
-    Invalid or missing values are ignored so the overlay can continue with
-    sensible runtime defaults.
-    """
-    ini = _params_ini_path()
-    if not ini.exists():
-        ini.write_text("", encoding="utf-8")
-    p = configparser.ConfigParser()
-    p.read(ini, encoding="utf-8")
-    sec = p["paragon_overlay"] if p.has_section("paragon_overlay") else {}
+    # Migration trigger: Run if we haven't migrated yet.
+    migration_done = str(qs.value("migration_done", "false")).lower() == "true"
+    if not migration_done:
+        if _import_settings_from_ini(qs):
+            qs.setValue("migration_done", "true")
+            qs.sync()  # Force write to registry
 
     def parse(k: str, t: type) -> Any:
-        """Parse one INI value into the requested type or return None."""
-        v = sec.get(k)
-        if not v:
+        """Parse one QSettings value into the requested type or return None."""
+        v = qs.value(k)
+        if v is None:
             return None
-        v = str(v).strip()
         if t is bool:
-            if v.lower() in ("true", "1", "yes", "on"):
+            if isinstance(v, bool):
+                return v
+            # Handle potential string representations from legacy INI migration
+            v_str = str(v).lower()
+            if v_str in ("true", "1", "yes", "on"):
                 return True
-            if v.lower() in ("false", "0", "no", "off"):
+            if v_str in ("false", "0", "no", "off"):
                 return False
             return None
         try:
             return t(v)
-        except Exception:
+        except (ValueError, TypeError):
             return None
 
     return {
@@ -248,18 +259,45 @@ def _load_overlay_settings() -> dict[str, Any]:
 
 
 def _save_overlay_settings(values: dict[str, Any]) -> None:
-    """Persist the current overlay state without touching unrelated INI sections."""
-    ini, p = _params_ini_path(), configparser.ConfigParser()
-    if not ini.exists():
-        ini.write_text("", encoding="utf-8")
-    p.read(ini, encoding="utf-8")
-    if not p.has_section("paragon_overlay"):
-        p.add_section("paragon_overlay")
+    """Persist the current overlay state to QSettings."""
+    qs = QSettings("d4lf", "ParagonOverlay")
     for k, v in values.items():
         if v is not None:
-            p["paragon_overlay"][str(k)] = str(v)
-    with ini.open("w", encoding="utf-8") as f:
-        p.write(f)
+            qs.setValue(k, v)
+    qs.sync()
+
+
+def _import_settings_from_ini(qs: QSettings) -> bool:
+    """Read legacy settings from params.ini and migrate them to QSettings."""
+    ini = _params_ini_path()
+    if not ini.exists():
+        LOGGER.debug("Legacy paragon migration: params.ini not found at %s", ini)
+        return False
+
+    try:
+        p = configparser.ConfigParser()
+        read_files = p.read(ini, encoding="utf-8")
+        if not read_files:
+            return False
+
+        if not p.has_section("paragon_overlay"):
+            LOGGER.debug("Legacy paragon migration: No [paragon_overlay] section in %s", ini)
+            return True
+
+        sec = p["paragon_overlay"]
+        for k in sec:
+            qs.setValue(k, sec[k])
+
+        # Clean up the INI file by removing the migrated section
+        p.remove_section("paragon_overlay")
+        with ini.open("w", encoding="utf-8") as f:
+            p.write(f)
+
+        LOGGER.info("Successfully migrated and cleaned up Paragon Overlay settings from %s", ini)
+        return True
+    except Exception:
+        LOGGER.debug("Failed to migrate legacy Paragon Overlay settings", exc_info=True)
+        return False
 
 
 def _clamp_int(v: int | None, lo: int, hi: int, default: int) -> int:
