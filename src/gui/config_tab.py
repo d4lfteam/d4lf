@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 from pydantic import BaseModel, ValidationError
 from pydantic_core import PydanticUndefined
 from PyQt6.QtCore import QCoreApplication, QMimeData, Qt, QTimer
-from PyQt6.QtGui import QDrag, QKeySequence
+from PyQt6.QtGui import QColor, QDrag, QKeySequence, QPainter, QPen
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -36,6 +36,8 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QSpinBox,
     QStackedWidget,
+    QStyle,
+    QStyleOptionButton,
     QVBoxLayout,
     QWidget,
 )
@@ -89,6 +91,42 @@ def _validate_and_save_changes(
     if post_save_callback and str(current_value) != str(value):
         post_save_callback()
     return True
+
+
+class CheckmarkCheckBox(QCheckBox):
+    """A custom QCheckBox that renders a checkmark inside its indicator.
+
+    The checkmark is rendered when the box is checked, using the theme's accent color.
+    """
+
+    def paintEvent(self, event):
+        super().paintEvent(event)  # Draw the default checkbox background/border
+
+        if not self.isChecked():
+            return
+
+        painter = QPainter(self)
+        try:
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+            option = QStyleOptionButton()
+            self.initStyleOption(option)
+            indicator_rect = self.style().subElementRect(QStyle.SubElement.SE_CheckBoxIndicator, option, self)
+
+            # Draw a simple checkmark inside the indicator
+            pen = QPen(QColor("#23fc5d"))  # Green color from theme
+            pen.setWidth(2)  # Adjust thickness as needed
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            painter.setPen(pen)
+
+            x0, y0, w, h = indicator_rect.x(), indicator_rect.y(), indicator_rect.width(), indicator_rect.height()
+
+            # Checkmark coordinates (relative to indicator_rect) - Cast to int for PyQt6 compatibility
+            painter.drawLine(int(x0 + w * 0.2), int(y0 + h * 0.5), int(x0 + w * 0.45), int(y0 + h * 0.75))
+            painter.drawLine(int(x0 + w * 0.45), int(y0 + h * 0.75), int(x0 + w * 0.8), int(y0 + h * 0.25))
+        finally:
+            painter.end()
 
 
 class ConfigTab(QWidget):
@@ -377,7 +415,7 @@ class ConfigTab(QWidget):
 
             parameter_value_widget = MultiSegmentedControl(items_map, config_value, on_move_changed)
         elif is_hotkey:
-            parameter_value_widget = QHotkeyWidget(model, section_config_header, config_key, config_value)
+            parameter_value_widget = QHotkeyWidget(model, section_config_header, config_key, str(config_value))
         elif isinstance(config_value, enum.StrEnum):
             enum_type = type(config_value)
             options = list(enum_type)
@@ -408,7 +446,7 @@ class ConfigTab(QWidget):
                 parameter_value_widget.currentTextChanged.connect(on_changed)
 
         elif isinstance(config_value, bool):
-            parameter_value_widget = QCheckBox()
+            parameter_value_widget = CheckmarkCheckBox()
             parameter_value_widget.setObjectName("switch")
             parameter_value_widget.setChecked(config_value)
             parameter_value_widget.stateChanged.connect(
@@ -522,7 +560,7 @@ class ConfigTab(QWidget):
                 | MultiSegmentedControl
                 | IgnoreScrollWheelComboBox,
             ):
-                parameter_value_widget.reset_values(config_value)
+                parameter_value_widget.reset_values(config_value)  # type: ignore[attr-defined]
             elif isinstance(parameter_value_widget, QCheckBox):
                 parameter_value_widget.setChecked(config_value)
             else:
@@ -639,14 +677,14 @@ class IgnoreScrollWheelComboBox(QComboBox):
 class QChestTabWidget(QWidget):
     def __init__(self, model, section_header, config_key, chest_tab_config: list[int], max_chest_tabs):
         super().__init__()
-        self.all_checkboxes: list[QCheckBox] = []
+        self.all_checkboxes: list[CheckmarkCheckBox] = []
         stash_checkbox_layout = QHBoxLayout()
         stash_checkbox_layout.setContentsMargins(0, 0, 0, 0)
-        for x in range(max_chest_tabs):
-            stash_checkbox = QCheckBox(self)
+        for x in range(1, max_chest_tabs + 1):
+            stash_checkbox = CheckmarkCheckBox(self)
             stash_checkbox.setText(str(x + 1))
             self.all_checkboxes.append(stash_checkbox)
-            if x in chest_tab_config:
+            if x in chest_tab_config:  # type: ignore[operator]
                 stash_checkbox.setChecked(True)
             stash_checkbox.stateChanged.connect(
                 lambda: self._save_changes_on_box_change(model, section_header, config_key)
@@ -656,7 +694,7 @@ class QChestTabWidget(QWidget):
         self.setLayout(stash_checkbox_layout)
 
     def reset_values(self, chest_tab_config: list[int]):
-        for check_box in self.all_checkboxes:
+        for check_box in self.all_checkboxes:  # type: ignore[attr-defined]
             check_box.setChecked(int(check_box.text()) - 1 in chest_tab_config)
 
     def _save_changes_on_box_change(self, model, section_header, config_key):
@@ -707,7 +745,7 @@ class QProfileListSelector(QWidget):
         self.list_layout.setSpacing(2)
         self._layout.addWidget(self.list_container)
 
-        self._checkboxes: dict[str, QCheckBox] = {}
+        self._checkboxes: dict[str, CheckmarkCheckBox] = {}
         self._rows: dict[str, QWidget] = {}
         self.refresh(current_active)
 
@@ -752,7 +790,7 @@ class QProfileListSelector(QWidget):
             drag_handle = self._create_row_btn("⠿")
             drag_handle.setCursor(Qt.CursorShape.SizeAllCursor)
 
-            cb = QCheckBox(name)
+            cb = CheckmarkCheckBox(name)
             cb.blockSignals(True)
             cb.setChecked(name in current_active)
             cb.blockSignals(False)
@@ -794,7 +832,7 @@ class QProfileListSelector(QWidget):
         self._on_toggle()
 
     def _on_toggle(self):
-        active = []
+        active: list[str] = []
         for i in range(self.list_layout.count()):
             widget = self.list_layout.itemAt(i).widget()
             if widget:
@@ -1001,7 +1039,7 @@ class QHotkeyWidget(QWidget):
             self.open_picker_button.setText(new_hotkey)
 
 
-class HotkeyListenerDialog(QDialog):
+class HotkeyListenerDialog(QDialog):  # type: ignore[misc]
     def __init__(self, parent=None, hotkey=""):
         super().__init__(parent)
         self.setWindowTitle("Hotkey Recorder")
