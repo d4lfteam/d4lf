@@ -47,9 +47,12 @@ class ConfigWindow(QMainWindow):
         self._rebuild_tab()
 
     def _rebuild_tab(self):
+        current_idx = self.config_tab.nav_list.currentRow()
         old_tab = self.config_tab
         self.config_tab = ConfigTab(theme_changed_callback=self._on_theme_changed)
         self.setCentralWidget(self.config_tab)
+        if current_idx >= 0:
+            self.config_tab.nav_list.setCurrentRow(current_idx)
         old_tab.deleteLater()
 
     def closeEvent(self, event):
