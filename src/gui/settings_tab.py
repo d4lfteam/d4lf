@@ -948,7 +948,7 @@ class QProfileListSelector(QWidget):
                 summary.append("📜 Sigils: Included")
             if data.get("Tributes"):
                 summary.append("🏆 Tributes: Included")
-            if paragon := data.get("Paragon"):
+            if data.get("Paragon"):
                 summary.append("🔱 Paragon Overlay: Data Found")
 
             return "\n".join(summary)
