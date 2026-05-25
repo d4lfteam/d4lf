@@ -326,8 +326,8 @@ class ConfigTab(QWidget):
 
             # Hide groupboxes that have no matching children
             for gb in self._group_boxes.values():
-                # We check isHidden() instead of isVisible() because isVisible() returns effective 
-                # visibility (including parents). If the groupbox was hidden previously, isVisible() 
+                # We check isHidden() instead of isVisible() because isVisible() returns effective
+                # visibility (including parents). If the groupbox was hidden previously, isVisible()
                 # will always be False for children regardless of their individual visibility state.
                 has_visible = any(not r[2].isHidden() for r in self._all_rows if r[4] == gb)
                 gb.setVisible(has_visible)
