@@ -296,7 +296,7 @@ class GeneralModel(_IniBaseModel):
     )
     handle_uniques: UnfilteredUniquesType = Field(
         default=UnfilteredUniquesType.favorite,
-        description="What should be done with uniques that do not match any profile.",
+        description="What should be done with uniques that do not match any profile. Mythics are always favorited. If mark_as_favorite is unchecked then uniques that match a profile will not be favorited.",
         title="Unfiltered Unique Behavior",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
