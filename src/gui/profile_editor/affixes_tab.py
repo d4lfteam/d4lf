@@ -212,7 +212,7 @@ class AffixGroupEditor(QWidget):
         general_form.addRow("Min Greater Affixes:", min_greater_layout)
 
         self.content_layout.addLayout(general_form)
-        self.create_unique_aspect_groupbox()
+        self.create_unique_aspect_container()
 
         pool_btn_layout = QHBoxLayout()
         add_affix_pool_btn = QPushButton("Add Affix Pool")
@@ -247,134 +247,97 @@ class AffixGroupEditor(QWidget):
         main_layout.addWidget(scroll_area)
         self.setLayout(main_layout)
 
+        QTimer.singleShot(100, self.unique_aspect_container.expand)
         QTimer.singleShot(100, self.affix_pool_container.expand)
         QTimer.singleShot(100, self.inherent_pool_container.expand)
 
-    def create_unique_aspect_groupbox(self):
-        self.unique_aspect_groupbox = QGroupBox("Unique Aspect")
-        self.unique_aspect_form = QFormLayout()
+    def create_unique_aspect_container(self):
+        self.unique_aspect_container = Container("Unique Aspects")
+        self.unique_aspect_layout = QVBoxLayout(self.unique_aspect_container.contentWidget)
+        self.unique_aspect_container.firstExpansion.connect(self.init_unique_aspects)
 
-        self.unique_aspect_name_combo = IgnoreScrollWheelComboBox()
-        self.unique_aspect_name_combo.setEditable(True)
-        self.unique_aspect_name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.unique_aspect_name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.unique_aspect_name_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
-        self.unique_aspect_name_combo.addItems(sorted(Dataloader().aspect_unique_dict.keys()))
-        if self.config.uniqueAspect is not None:
-            self.unique_aspect_name_combo.setCurrentText(self.config.uniqueAspect.name)
-        else:
-            self.unique_aspect_name_combo.setCurrentText("")
-        self.unique_aspect_name_combo.setSizeAdjustPolicy(
-            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
-        )
-        self.unique_aspect_name_combo.setMinimumContentsLength(24)
-        self.unique_aspect_name_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.unique_aspect_name_combo.setMaximumWidth(600)
-        self.unique_aspect_name_combo.currentTextChanged.connect(self.update_unique_aspect_name)
-        self.unique_aspect_form.addRow("Name:", self.unique_aspect_name_combo)
+        layout = QVBoxLayout()
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        self.unique_aspect_mode_combo = IgnoreScrollWheelComboBox()
-        self.unique_aspect_mode_combo.setFixedSize(100, self.unique_aspect_mode_combo.sizeHint().height())
-        self.unique_aspect_mode_combo.addItems([AFFIX_VALUE_MODE, AFFIX_PERCENT_MODE])
-        if self.config.uniqueAspect is not None and self.config.uniqueAspect.minPercentOfAspect:
-            self.unique_aspect_mode_combo.setCurrentText(AFFIX_PERCENT_MODE)
-        else:
-            self.unique_aspect_mode_combo.setCurrentText(AFFIX_VALUE_MODE)
-        self.unique_aspect_mode_combo.currentTextChanged.connect(self.update_unique_aspect_mode)
-        self.unique_aspect_form.addRow("Mode:", self.unique_aspect_mode_combo)
+        title_layout = QHBoxLayout()
+        title_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        self.unique_aspect_value_edit = QLineEdit()
-        self.unique_aspect_value_edit.setFixedSize(100, self.unique_aspect_value_edit.sizeHint().height())
-        self.unique_aspect_value_edit.textChanged.connect(self.update_unique_aspect_value)
-        self.unique_aspect_form.addRow("Threshold:", self.unique_aspect_value_edit)
+        aspect_label = QLabel("Aspect")
+        aspect_label.setProperty("affixHeaderLabel", True)
+        self._refresh_widget_style(aspect_label)
 
-        self.unique_aspect_groupbox.setLayout(self.unique_aspect_form)
-        self.content_layout.addWidget(self.unique_aspect_groupbox)
-        self.refresh_unique_aspect_value_input()
-        self.set_unique_aspect_controls_enabled()
+        mode_label = QLabel("Mode")
+        mode_label.setProperty("affixHeaderLabel", True)
+        self._refresh_widget_style(mode_label)
+
+        value_label = QLabel("Threshold")
+        value_label.setProperty("affixHeaderLabel", True)
+        self._refresh_widget_style(value_label)
+
+        title_layout.addSpacing(25)
+        title_layout.addWidget(aspect_label)
+        title_layout.addSpacing(440)
+        title_layout.addWidget(mode_label)
+        title_layout.addSpacing(85)
+        title_layout.addWidget(value_label)
+
+        self.unique_aspect_list = QListWidget()
+        self.unique_aspect_list.setFixedHeight(180)
+        self.unique_aspect_list.setAlternatingRowColors(True)
+        self.unique_aspect_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.unique_aspect_list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+
+        unique_aspect_btn_layout = QHBoxLayout()
+        add_unique_aspect_btn = QPushButton("Add Unique Aspect")
+        add_unique_aspect_btn.clicked.connect(self.add_unique_aspect)
+        unique_aspect_btn_layout.addWidget(add_unique_aspect_btn)
+
+        remove_unique_aspect_btn = QPushButton("Remove Unique Aspect")
+        remove_unique_aspect_btn.clicked.connect(self.remove_selected_unique_aspects)
+        unique_aspect_btn_layout.addWidget(remove_unique_aspect_btn)
+
+        layout.addLayout(unique_aspect_btn_layout)
+        layout.addLayout(title_layout)
+        layout.addWidget(self.unique_aspect_list)
+
+        self.unique_aspect_layout.addLayout(layout)
+        self.content_layout.addWidget(self.unique_aspect_container)
+
+    def init_unique_aspects(self):
+        for unique_aspect in self.config.uniqueAspect:
+            self.add_unique_aspect_item(unique_aspect)
 
     def _refresh_widget_style(self, widget):
         widget.style().unpolish(widget)
         widget.style().polish(widget)
 
-    def set_unique_aspect_controls_enabled(self):
-        enabled = self.config.uniqueAspect is not None
-        self.unique_aspect_name_combo.setEnabled(True)
-        self.unique_aspect_mode_combo.setEnabled(enabled)
-        self.unique_aspect_value_edit.setEnabled(enabled)
+    def add_unique_aspect_item(self, unique_aspect: AspectUniqueFilterModel):
+        item = QListWidgetItem()
+        widget = UniqueAspectWidget(unique_aspect)
+        item_size = widget.sizeHint()
+        item_size.setWidth(850)
+        item.setSizeHint(item_size)
+        self.unique_aspect_list.addItem(item)
+        self.unique_aspect_list.setItemWidget(item, widget)
 
-    def update_unique_aspect_name(self, current_text=None):
-        aspect_name = self.unique_aspect_name_combo.currentText() if current_text is None else current_text
-        aspect_name = aspect_name.strip()
-        if not aspect_name:
-            self.config.uniqueAspect = None
-            self.refresh_unique_aspect_value_input()
-            self.set_unique_aspect_controls_enabled()
+    def add_unique_aspect(self):
+        existing_names = {unique_aspect.name for unique_aspect in self.config.uniqueAspect}
+        for aspect_name in Dataloader().aspect_unique_dict:
+            if aspect_name in existing_names:
+                continue
+            new_unique_aspect = AspectUniqueFilterModel(name=aspect_name, value=None)
+            self.config.uniqueAspect.append(new_unique_aspect)
+            self.add_unique_aspect_item(new_unique_aspect)
             return
-        if aspect_name not in Dataloader().aspect_unique_dict:
-            return
-        if self.config.uniqueAspect is None:
-            self.config.uniqueAspect = AspectUniqueFilterModel(name=aspect_name)
-        else:
-            self.config.uniqueAspect.name = aspect_name
-        self.refresh_unique_aspect_value_input()
-        self.set_unique_aspect_controls_enabled()
+        QMessageBox.information(self, "Info", "All unique aspects have already been added.")
 
-    def refresh_unique_aspect_value_input(self):
-        self.unique_aspect_value_edit.blockSignals(True)
-        if self.config.uniqueAspect is None:
-            self.unique_aspect_value_edit.setText("")
-            self.unique_aspect_value_edit.setPlaceholderText("Value (optional)")
-            self.unique_aspect_value_edit.setValidator(QDoubleValidator(self.unique_aspect_value_edit))
-        elif self.unique_aspect_mode_combo.currentText() == AFFIX_PERCENT_MODE:
-            self.unique_aspect_value_edit.setPlaceholderText("Percent (0-100)")
-            self.unique_aspect_value_edit.setValidator(QIntValidator(0, 100, self.unique_aspect_value_edit))
-            display_value = (
-                ""
-                if self.config.uniqueAspect.minPercentOfAspect == 0
-                else str(self.config.uniqueAspect.minPercentOfAspect)
-            )
-            self.unique_aspect_value_edit.setText(display_value)
-        else:
-            self.unique_aspect_value_edit.setPlaceholderText("Value (optional)")
-            self.unique_aspect_value_edit.setValidator(QDoubleValidator(self.unique_aspect_value_edit))
-            display_value = "" if self.config.uniqueAspect.value is None else str(self.config.uniqueAspect.value)
-            self.unique_aspect_value_edit.setText(display_value)
-        self.unique_aspect_value_edit.blockSignals(False)
-
-    def update_unique_aspect_mode(self, current_text=None):
-        if self.config.uniqueAspect is None:
-            self.set_unique_aspect_controls_enabled()
-            return
-        mode = current_text or self.unique_aspect_mode_combo.currentText()
-        if mode == AFFIX_PERCENT_MODE:
-            self.config.uniqueAspect.value = None
-        else:
-            self.config.uniqueAspect.minPercentOfAspect = 0
-        self.refresh_unique_aspect_value_input()
-        self.set_unique_aspect_controls_enabled()
-
-    def update_unique_aspect_value(self, value):
-        if self.config.uniqueAspect is None:
-            return
-        if self.unique_aspect_mode_combo.currentText() == AFFIX_PERCENT_MODE:
-            try:
-                percent = int(value) if value else 0
-            except ValueError:
-                return
-            if not 0 <= percent <= 100:
-                QMessageBox.warning(self, "Warning", "Min % must be between 0 and 100.")
-                self.refresh_unique_aspect_value_input()
-                return
-            self.config.uniqueAspect.minPercentOfAspect = percent
-            self.config.uniqueAspect.value = None
-            return
-
-        try:
-            self.config.uniqueAspect.value = float(value) if value else None
-        except ValueError:
-            return
-        self.config.uniqueAspect.minPercentOfAspect = 0
+    def remove_selected_unique_aspects(self):
+        selected_rows = sorted(
+            (self.unique_aspect_list.row(item) for item in self.unique_aspect_list.selectedItems()), reverse=True
+        )
+        for row in selected_rows:
+            self.unique_aspect_list.takeItem(row)
+            del self.config.uniqueAspect[row]
 
     def init_affix_pool(self):
         """Initialize affix pool content on first expansion."""
@@ -551,6 +514,108 @@ class AffixGroupEditor(QWidget):
     def convert_all_to_min_percent_of_affix(self, percent: int):
         for affix_widget in self.iter_affix_widgets():
             affix_widget.set_min_percent(percent, convert_mode=True)
+
+
+class UniqueAspectWidget(QWidget):
+    def __init__(self, unique_aspect: AspectUniqueFilterModel, parent=None):
+        super().__init__(parent)
+        self.unique_aspect = unique_aspect
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QHBoxLayout()
+        layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        layout.setSpacing(50)
+
+        self.create_aspect_name_combobox()
+        self.create_mode_combobox()
+        self.create_value_input()
+        self.mode_combo.currentTextChanged.connect(self.update_mode)
+        self.update_mode(self.mode_combo.currentText())
+
+        layout.addWidget(self.name_combo)
+        layout.addWidget(self.mode_combo)
+        layout.addWidget(self.value_edit)
+
+        self.setMinimumWidth(850)
+        self.setLayout(layout)
+
+    def create_aspect_name_combobox(self):
+        self.name_combo = IgnoreScrollWheelComboBox()
+        self.name_combo.setEditable(True)
+        self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.name_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+        self.name_combo.addItems(sorted(Dataloader().aspect_unique_dict.keys()))
+        self.name_combo.setMaximumWidth(600)
+        if self.unique_aspect.name in Dataloader().aspect_unique_dict:
+            self.name_combo.setCurrentText(self.unique_aspect.name)
+        self.name_combo.currentTextChanged.connect(self.update_name)
+
+    def create_mode_combobox(self):
+        self.mode_combo = IgnoreScrollWheelComboBox()
+        self.mode_combo.setFixedSize(100, self.mode_combo.sizeHint().height())
+        self.mode_combo.addItems([AFFIX_VALUE_MODE, AFFIX_PERCENT_MODE])
+        if self.unique_aspect.minPercentOfAspect:
+            self.mode_combo.setCurrentText(AFFIX_PERCENT_MODE)
+        else:
+            self.mode_combo.setCurrentText(AFFIX_VALUE_MODE)
+
+    def create_value_input(self):
+        self.value_edit = QLineEdit()
+        self.value_edit.setFixedSize(100, self.value_edit.sizeHint().height())
+        self.value_edit.textChanged.connect(self.update_value)
+
+    def update_name(self, current_text=None):
+        aspect_name = current_text or self.name_combo.currentText()
+        aspect_name = aspect_name.strip()
+        if aspect_name not in Dataloader().aspect_unique_dict:
+            return
+        self.unique_aspect.name = aspect_name
+
+    def refresh_value_input(self):
+        if self.mode_combo.currentText() == AFFIX_PERCENT_MODE:
+            self.value_edit.setPlaceholderText("Percent (0-100)")
+            self.value_edit.setValidator(QIntValidator(0, 100, self.value_edit))
+            display_value = (
+                "" if self.unique_aspect.minPercentOfAspect == 0 else str(self.unique_aspect.minPercentOfAspect)
+            )
+        else:
+            self.value_edit.setPlaceholderText("Value (optional)")
+            self.value_edit.setValidator(QDoubleValidator(self.value_edit))
+            display_value = "" if self.unique_aspect.value is None else str(self.unique_aspect.value)
+
+        self.value_edit.blockSignals(True)
+        self.value_edit.setText(display_value)
+        self.value_edit.blockSignals(False)
+
+    def update_mode(self, current_text=None):
+        mode = current_text or self.mode_combo.currentText()
+        if mode == AFFIX_PERCENT_MODE:
+            self.unique_aspect.value = None
+        else:
+            self.unique_aspect.minPercentOfAspect = 0
+        self.refresh_value_input()
+
+    def update_value(self, value):
+        if self.mode_combo.currentText() == AFFIX_PERCENT_MODE:
+            try:
+                percent = int(value) if value else 0
+            except ValueError:
+                return
+            if not 0 <= percent <= 100:
+                QMessageBox.warning(self, "Warning", "Min % must be between 0 and 100.")
+                self.refresh_value_input()
+                return
+            self.unique_aspect.minPercentOfAspect = percent
+            self.unique_aspect.value = None
+            return
+
+        try:
+            self.unique_aspect.value = float(value) if value else None
+        except ValueError:
+            return
+        self.unique_aspect.minPercentOfAspect = 0
 
 
 class AffixPoolWidget(QWidget):
