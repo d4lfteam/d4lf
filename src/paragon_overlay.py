@@ -15,7 +15,6 @@ import time
 import tkinter as tk
 from contextlib import suppress
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from PIL import Image, ImageDraw, ImageFont
@@ -42,6 +41,7 @@ from src.utils.window import WindowSpec, is_self_foreground, is_window_foregroun
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -195,19 +195,8 @@ def _dpi_scale_for_widget(w: tk.Misc) -> float:
 
 
 def _params_ini_path() -> Path:
-    """Return the user-specific params.ini path and ensure the folder exists."""
-    # Check standard D4LF location first (~/.d4lf/params.ini)
-    p = Path.home() / ".d4lf"
-    std_ini = p / "params.ini"
-    if std_ini.exists():
-        return std_ini
-
-    # Fallback to the loader's user_dir (which might be the project root)
-    try:
-        return IniConfigLoader().user_dir / "params.ini"
-    except Exception:
-        p.mkdir(parents=True, exist_ok=True)
-        return p / "params.ini"
+    """Return the user-specific params.ini path."""
+    return IniConfigLoader().user_dir / "params.ini"
 
 
 def _load_overlay_settings() -> dict[str, Any]:
