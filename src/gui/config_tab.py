@@ -201,7 +201,7 @@ class ConfigTab(QWidget):
             elif cat_name == SettingsCategory.ADVANCED:
                 gb_title = "Technical Settings"
             else:
-                gb_title = str(cat_name)
+                gb_title = str(cat_name).replace("&", "&&")
 
             gb = QGroupBox(gb_title)
             grid = QGridLayout(gb)
@@ -333,7 +333,7 @@ class ConfigTab(QWidget):
             app.quit()
 
     def _generate_params_section(self, model: BaseModel, section_readable_header: str, section_config_header: str):
-        group_box = QGroupBox(section_readable_header)
+        group_box = QGroupBox(section_readable_header.replace("&", "&&"))
         grid = QGridLayout(group_box)
         grid.setSpacing(10)
         grid.setColumnStretch(0, 1)
