@@ -15,8 +15,8 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config.profile_models import GlobalUniqueModel
-from src.gui.dialog import DeleteItem, IgnoreScrollWheelSpinBox
 from src.gui.importer.gui_common import MAX_POWER
+from src.gui.models.dialog import DeleteItem, IgnoreScrollWheelSpinBox
 
 UNIQUES_TABNAME = "GlobalUniques"
 

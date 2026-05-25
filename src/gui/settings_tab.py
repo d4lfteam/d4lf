@@ -50,7 +50,7 @@ from src.config.settings_models import (
     SettingsCategory,
 )
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
-from src.gui.open_user_config_button import OpenUserConfigButton
+from src.gui.models.open_user_config_button import OpenUserConfigButton
 
 CONFIG_TABNAME = "config"
 

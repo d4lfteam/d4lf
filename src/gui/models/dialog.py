@@ -27,8 +27,8 @@ from src.config.profile_models import (
     TributeFilterModel,
 )
 from src.dataloader import Dataloader
-from src.gui.config_tab import IgnoreScrollWheelComboBox
 from src.gui.importer.gui_common import MAX_POWER
+from src.gui.settings_tab import IgnoreScrollWheelComboBox
 from src.item.data.item_type import ItemType
 
 

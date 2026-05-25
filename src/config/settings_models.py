@@ -81,12 +81,6 @@ class MoveItemsType(enum.StrEnum):
     unmarked = enum.auto()
 
 
-class JunkRaresType(enum.StrEnum):
-    disabled = "disabled"
-    three_affixes = "3 affixes"
-    all = "all"
-
-
 class ThemeType(enum.StrEnum):
     dark = enum.auto()
     light = enum.auto()
@@ -222,6 +216,8 @@ class AdvancedOptionsModel(_IniBaseModel):
         if not v:
             return None
         if isinstance(v, str):
+            if v == "None":
+                return None
             v = v.strip("()")
             parts = [int(part.strip()) for part in v.replace(",", " ").split()]
             if len(parts) != 2:

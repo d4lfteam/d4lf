@@ -22,10 +22,10 @@ from src import __version__, tts
 from src.autoupdater import notify_if_update
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
-from src.gui.activity_log_widget import ActivityLogWidget
-from src.gui.config_window import ConfigWindow
 from src.gui.importer_window import ImporterWindow
+from src.gui.models.activity_log_widget import ActivityLogWidget
 from src.gui.profile_editor_window import ProfileEditorWindow
+from src.gui.settings_window import ConfigWindow
 from src.gui.themes import DARK_THEME, LIGHT_THEME
 from src.item.filter import Filter
 from src.logger import ThreadNameFilter, create_formatter
