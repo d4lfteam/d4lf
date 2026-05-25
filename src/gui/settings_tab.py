@@ -972,8 +972,9 @@ class QHotkeyWidget(QWidget):
         self.open_picker_button = QPushButton()
         self.reset_values(current_value)
         self.open_picker_button.clicked.connect(
-            lambda: self._launch_picker(model, section_header, config_key, self.open_picker_button.text())
+            lambda: self._launch_hotkey_dialog(model, section_header, config_key, self.open_picker_button.text())
         )
+        self.open_picker_button.setProperty("hotkeyButton", True)
         layout.addWidget(self.open_picker_button)
 
         self.setLayout(layout)
@@ -981,37 +982,44 @@ class QHotkeyWidget(QWidget):
     def reset_values(self, current_value):
         self.open_picker_button.setText(str(current_value))
 
-    def _launch_picker(self, model, section_header, config_key, current_value):
+    def _launch_hotkey_dialog(self, model, section_header, config_key, current_value):
         hotkey_dialog = HotkeyListenerDialog(self, current_value)
         if hotkey_dialog.exec():
             new_hotkey = hotkey_dialog.get_hotkey()
-            _validate_and_save_changes(model, section_header, config_key, new_hotkey)
-            self.open_picker_button.setText(new_hotkey)
+            if new_hotkey and _validate_and_save_changes(model, section_header, config_key, new_hotkey):
+                self.open_picker_button.setText(new_hotkey)
 
 
 class HotkeyListenerDialog(QDialog):  # type: ignore[misc]
     def __init__(self, parent=None, hotkey=""):
         super().__init__(parent)
-        self.setWindowTitle("Hotkey Recorder")
+        self.setWindowTitle("Set Hotkey")
         self.setModal(True)
-        self.setFixedSize(320, 150)
+        self.setFixedSize(320, 180)
         main_layout = QVBoxLayout(self)
-        self.label = QLabel(f"Current: {hotkey}\n\nPress a new hotkey combination...")
+
+        self.label = QLabel("Press the key or combination of keys you\nwant to use as a hotkey, then click save.", self)
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(self.label)
 
+        self.hotkey_label = QLabel(hotkey, self)
+        self.hotkey_label.setObjectName("key-badge")
+        self.hotkey_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(self.hotkey_label)
+
         self.button_layout = QHBoxLayout()
-        self.save_btn = QPushButton("Save")
-        self.save_btn.setEnabled(False)
-        self.save_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.save_btn.clicked.connect(self.accept)
-        self.cancel_btn = QPushButton("Cancel")
-        self.cancel_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cancel_btn.clicked.connect(self.reject)
+        self.save_button = QPushButton("Save", self)
+        self.save_button.setEnabled(False)
+        self.save_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.save_button.clicked.connect(self.accept)
+
+        self.cancel_button = QPushButton("Cancel", self)
+        self.cancel_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cancel_button.clicked.connect(self.reject)
 
         self.button_layout.addStretch()
-        self.button_layout.addWidget(self.save_btn)
-        self.button_layout.addWidget(self.cancel_btn)
+        self.button_layout.addWidget(self.save_button)
+        self.button_layout.addWidget(self.cancel_button)
         main_layout.addLayout(self.button_layout)
 
         self.hotkey = hotkey
@@ -1021,24 +1029,28 @@ class HotkeyListenerDialog(QDialog):  # type: ignore[misc]
         if key == Qt.Key.Key_Escape:
             self.reject()
             return
-        if key in (Qt.Key.Key_Control, Qt.Key.Key_Shift, Qt.Key.Key_Alt, Qt.Key.Key_Meta):
-            return
 
-        modifiers = event.modifiers()
-        parts = []
-        if modifiers & Qt.KeyboardModifier.ControlModifier:
-            parts.append("ctrl")
-        if modifiers & Qt.KeyboardModifier.ShiftModifier:
-            parts.append("shift")
-        if modifiers & Qt.KeyboardModifier.AltModifier:
-            parts.append("alt")
+        modifiers = []
+        if event.modifiers() & Qt.KeyboardModifier.ControlModifier or key == Qt.Key.Key_Control:
+            modifiers.append("ctrl")
+        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier or key == Qt.Key.Key_Shift:
+            modifiers.append("shift")
+        if event.modifiers() & Qt.KeyboardModifier.AltModifier or key == Qt.Key.Key_Alt:
+            modifiers.append("alt")
 
-        key_text = QKeySequence(key).toString().lower()
-        if key_text:
-            parts.append(key_text)
-            self.hotkey = "+".join(parts)
-            self.label.setText(f"Recorded: {self.hotkey}\n\nPress another key to change or click 'Save'.")
-            self.save_btn.setEnabled(True)
+        non_mod_key = ""
+        if key not in (Qt.Key.Key_Control, Qt.Key.Key_Shift, Qt.Key.Key_Alt, Qt.Key.Key_Meta):
+            if Qt.Key.Key_F1 <= key <= Qt.Key.Key_F35:
+                non_mod_key = f"f{key - Qt.Key.Key_F1 + 1}"
+            else:
+                key_text = QKeySequence(key).toString().lower()
+                if key_text:
+                    non_mod_key = key_text
+
+        parts = modifiers + ([non_mod_key] if non_mod_key else [])
+        self.hotkey = "+".join(list(dict.fromkeys(parts)))
+        self.hotkey_label.setText(self.hotkey)
+        self.save_button.setEnabled(True)
 
     def get_hotkey(self):
         return self.hotkey
