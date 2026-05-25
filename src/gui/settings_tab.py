@@ -921,16 +921,15 @@ class QProfileListSelector(QWidget):
         try:
             stat = path.stat()
             mtime = datetime.datetime.fromtimestamp(stat.st_mtime, tz=datetime.UTC).strftime("%Y-%m-%d %H:%M")
-            size_kb = stat.st_size / 1024
 
             with path.open(encoding="utf-8") as f:
                 # We use safe_load for a quick scan of the keys
                 data = yaml.safe_load(f)
 
             if not data or not isinstance(data, dict):
-                return f"Last Modified: {mtime}\nSize: {size_kb:.1f} KB\n(Empty or invalid profile)"
+                return f"Last Modified: {mtime}\n(Empty or invalid profile)"
 
-            summary = [f"Last Modified: {mtime}", f"Size: {size_kb:.1f} KB"]
+            summary = [f"Last Modified: {mtime}"]
             if affixes := data.get("Affixes"):
                 types = set()
                 for item in affixes:
