@@ -235,7 +235,7 @@ def generate_affixes(d4data_dir: Path, language: str):
         )
         if description is None:
             continue
-        name = description.replace(",", "").replace(" ", "_")
+        name = clean_item_name(description)
         if len(description) > 2:
             affix_dict[name] = description
 
