@@ -5,7 +5,7 @@ import threading
 
 from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
-from src.item.data.item_type import ItemType
+from src.item.data.item_type import ITEM_TYPE_ALIASES, ItemType
 
 LOGGER = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class Dataloader:
                 if item in ItemType.__members__:
                     enum_member = ItemType[item]
                     enum_member._value_ = value
-                else:
+                elif item not in ITEM_TYPE_ALIASES:
                     LOGGER.warning(f"{item} type not in item_type.py")
 
         with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/sigils.json").open(

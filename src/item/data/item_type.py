@@ -9,6 +9,7 @@ class ItemType(Enum):
     Boots = "boots"
     Bow = "bow"
     ChestArmor = "chest armor"
+    Crossbow = "hand crossbow"
     Crossbow2H = "crossbow"
     Dagger = "dagger"
     Elixir = "elixir"
@@ -52,6 +53,16 @@ class ItemType(Enum):
     WhisperingWood = "whispering wood"
 
 
+ITEM_TYPE_ALIASES = {
+    "DaggerOffHand": ItemType.Dagger,
+    "FocusBookOffHand": ItemType.Focus,
+    "Mace2HDruid": ItemType.Mace2H,
+    "ShieldHTH": ItemType.Shield,
+    "StaffDruid": ItemType.Staff,
+    "StaffSorcerer": ItemType.Staff,
+}
+
+
 def is_armor(item_type: ItemType) -> bool:
     return item_type in [
         ItemType.Boots,
@@ -91,6 +102,7 @@ WEAPON_TYPES = [
     ItemType.Axe,
     ItemType.Axe2H,
     ItemType.Bow,
+    ItemType.Crossbow,
     ItemType.Crossbow2H,
     ItemType.Dagger,
     ItemType.Flail,
