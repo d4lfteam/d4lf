@@ -1001,11 +1001,26 @@ class HotkeyListenerDialog(QDialog):  # type: ignore[misc]
         super().__init__(parent)
         self.setWindowTitle("Hotkey Recorder")
         self.setModal(True)
-        self.setFixedSize(300, 120)
+        self.setFixedSize(320, 150)
         main_layout = QVBoxLayout(self)
         self.label = QLabel(f"Current: {hotkey}\n\nPress a new hotkey combination...")
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(self.label)
+
+        self.button_layout = QHBoxLayout()
+        self.save_btn = QPushButton("Save")
+        self.save_btn.setEnabled(False)
+        self.save_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.save_btn.clicked.connect(self.accept)
+        self.cancel_btn = QPushButton("Cancel")
+        self.cancel_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cancel_btn.clicked.connect(self.reject)
+
+        self.button_layout.addStretch()
+        self.button_layout.addWidget(self.save_btn)
+        self.button_layout.addWidget(self.cancel_btn)
+        main_layout.addLayout(self.button_layout)
+
         self.hotkey = hotkey
 
     def keyPressEvent(self, event):
@@ -1029,7 +1044,8 @@ class HotkeyListenerDialog(QDialog):  # type: ignore[misc]
         if key_text:
             parts.append(key_text)
             self.hotkey = "+".join(parts)
-            self.accept()
+            self.label.setText(f"Recorded: {self.hotkey}\n\nPress another key to change or click 'Save'.")
+            self.save_btn.setEnabled(True)
 
     def get_hotkey(self):
         return self.hotkey
