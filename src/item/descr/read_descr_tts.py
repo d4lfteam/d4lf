@@ -54,6 +54,7 @@ _FOR_SECONDS_RE = re.compile(r"for (?P<forsecondsvalue>\d+(?:\.\d+)?) Seconds")
 _REPLACE_COMPARE_RE = re.compile(r"\(.*\)")
 
 _AFFIX_REPLACEMENTS = ["%", "+", ",", "[+]", "[x]", "per 5 Seconds"]
+_TEXT_ONLY_UNIQUE_ASPECT_RANGES = {"blood_artisans_cuirass"}
 LOGGER = logging.getLogger(__name__)
 
 
@@ -392,6 +393,9 @@ def _has_numbers(affix_text):
 # For unique aspects
 def _get_aspect_from_text(text: str, name: str) -> Aspect:
     result = Aspect(text=text, name=name)
+    if name in _TEXT_ONLY_UNIQUE_ASPECT_RANGES:
+        result.value = find_number(text)
+        return result
     for x in _AFFIX_REPLACEMENTS:
         text = text.replace(x, "")
     text = _REPLACE_COMPARE_RE.sub("", text).strip()
