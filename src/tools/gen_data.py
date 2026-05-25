@@ -109,6 +109,15 @@ def get_string_list_name(string_list_file: Path) -> str | None:
         return clean_item_name(name_item[0]["szText"])
 
 
+def _get_string_list_text(string_list_file: Path, label: str) -> str | None:
+    with string_list_file.open(encoding="utf-8") as file:
+        data = json.load(file)
+    for item in data["arStrings"]:
+        if item["szLabel"] == label:
+            return item["szText"]
+    return None
+
+
 def _load_gear_types(d4data_dir: Path) -> set[str]:
     item_type_pattern = "json/base/meta/ItemType/*.itt.json"
     item_type_files = sorted(d4data_dir.glob(item_type_pattern, case_sensitive=False))
@@ -220,6 +229,8 @@ def generate_affixes(d4data_dir: Path, language: str):
     print(f"Gen Affixes for {language}")
     affix_files = _load_affix_files(d4data_dir)
     attribute_descriptions = _load_attribute_descriptions(d4data_dir, language)
+    affix_params = _collect_affix_params([affix_data for _, affix_data in affix_files])
+    power_names = _load_power_names(d4data_dir, language, affix_params)
     skill_tag_names = _load_skill_tag_names(d4data_dir)
     affix_tokens = _load_affix_tokens([name for name, _ in affix_files], skill_tag_names)
     affix_dict = {}
@@ -229,7 +240,7 @@ def generate_affixes(d4data_dir: Path, language: str):
             affix_name=affix_name,
             affix_data=affix_data,
             attribute_descriptions=attribute_descriptions,
-            power_names={},
+            power_names=power_names,
             skill_tag_names=skill_tag_names,
             affix_tokens=affix_tokens,
         )
@@ -280,6 +291,41 @@ def _load_attribute_descriptions(d4data_dir: Path, language: str) -> dict[str, s
     ) as file:
         data = json.load(file)
     return {entry["szLabel"]: entry["szText"] for entry in data["arStrings"]}
+
+
+def _collect_affix_params(affix_data_list: list[dict]) -> set[int]:
+    params = set()
+    for affix_data in affix_data_list:
+        for affix_attribute in affix_data.get("ptItemAffixAttributes", []):
+            attribute = affix_attribute.get("tAttribute", {})
+            param = attribute.get("nParam")
+            if isinstance(param, int) and _is_power_parameter_attribute(attribute.get("__eAttribute_name__", "")):
+                params.add(param)
+    return params
+
+
+def _load_power_names(d4data_dir: Path, language: str, power_ids: set[int]) -> dict[int, str]:
+    power_pattern = "json/base/meta/Power/*.pow.json"
+    power_files = sorted(d4data_dir.glob(power_pattern, case_sensitive=False))
+    power_names = {}
+    for power_file in power_files:
+        with Path(power_file).open(encoding="utf-8") as file:
+            power_data = json.load(file)
+        power_id = power_data["__snoID__"]
+        if power_id not in power_ids:
+            continue
+
+        string_list_file = (
+            d4data_dir
+            / f"json/{language}_Text/meta/StringList/Power_{power_file.name.removesuffix('.pow.json')}.stl.json"
+        )
+        if not string_list_file.exists():
+            continue
+
+        power_name = _get_string_list_text(string_list_file, "name")
+        if power_name is not None:
+            power_names[power_id] = power_name
+    return power_names
 
 
 def _load_skill_tag_names(d4data_dir: Path) -> dict[int, str]:
@@ -417,10 +463,14 @@ def _find_affix_parameter(
     attribute_name = attribute.get("__eAttribute_name__", "")
     param = attribute.get("nParam")
     if isinstance(param, int):
-        if attribute_name == "Skill_Rank_Bonus" and param in power_names:
+        if _is_power_parameter_attribute(attribute_name) and param in power_names:
             return power_names[param]
         if param in skill_tag_names:
             return _format_skill_tag_name(skill_tag_names[param])
+        if attribute_name in {"Damage_Percent_Bonus_Against_Dot_Type", "Damage_Percent_Bonus_Vs_CC_Target"}:
+            status_token = _find_damage_to_status_token(affix_name)
+            if status_token is not None:
+                return status_token
 
     formula = attribute.get("gbidFormula") or {}
     formula_name = formula.get("name", "")
@@ -431,6 +481,17 @@ def _find_affix_parameter(
     if "Resource" in attribute_name:
         return _find_named_token(affix_name, affix_tokens["resource"])
     return _format_affix_name_token(affix_name)
+
+
+def _is_power_parameter_attribute(attribute_name: str) -> bool:
+    return attribute_name == "Skill_Rank_Bonus" or "Power" in attribute_name
+
+
+def _find_damage_to_status_token(affix_name: str) -> str | None:
+    match = re.search(r"(?:^|_)Damage_to_(?P<token>[A-Z][A-Za-z]*)(?:_|$)", affix_name)
+    if match is None:
+        return None
+    return _humanize_token(match.group("token"))
 
 
 def _find_named_token(affix_name: str, tokens: list[str]) -> str:
