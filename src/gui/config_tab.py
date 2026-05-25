@@ -847,7 +847,7 @@ class QProfileListSelector(QWidget):
             return
 
         # Calculate hotspot relative to the row widget to prevent the ghost image from jumping.
-        click_pos = row_widget.mapFrom(handle, event.position().toPoint())
+        click_pos = handle.mapTo(row_widget, event.position().toPoint())
 
         drag = QDrag(row_widget)
         mime = QMimeData()
