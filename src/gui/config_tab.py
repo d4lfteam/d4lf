@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QFormLayout,
+    QFrame,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -24,7 +24,8 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QTextBrowser,
+    QSpinBox,
+    QStackedWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -74,6 +75,36 @@ def _validate_and_save_changes(
     return True
 
 
+LABEL_MAP = {
+    "profiles": "Active Filtering Profiles",
+    "auto_use_temper_manuals": "Auto-use Temper Manuals",
+    "check_chest_tabs": "Stash Tabs to Filter",
+    "do_not_junk_ancestral_legendaries": "Protective Ancestral Filter",
+    "handle_uniques": "Unfiltered Unique Behavior",
+    "keep_aspects": "Aspect Preservation Logic",
+    "mark_as_favorite": "Mark Matched Items as Favorite",
+    "colorblind_mode": "Colorblind Accessible Palette",
+    "run_vision_mode_on_startup": "Auto-Start Vision Mode",
+    "minimum_overlay_font_size": "Overlay Text Size",
+    "log_lvl": "Logging Detail Level",
+}
+
+SUBGROUPS = {
+    "Loot Behavior": [
+        "profiles",
+        "handle_uniques",
+        "keep_aspects",
+        "mark_as_favorite",
+        "do_not_junk_ancestral_legendaries",
+        "handle_cosmetics",
+    ],
+    "Automation": ["auto_use_temper_manuals", "run_vision_mode_on_startup", "ignore_escalation_sigils"],
+    "UI & Theme": ["theme", "colorblind_mode", "minimum_overlay_font_size", "vision_mode_type"],
+    "Stash & Transfer": ["check_chest_tabs", "max_stash_tabs", "move_to_inv_item_type", "move_to_stash_item_type"],
+    "System & Paths": ["browser", "language"],
+}
+
+
 class ConfigTab(QWidget):
     def __init__(self, theme_changed_callback=None):
         self._initializing = True
@@ -81,44 +112,204 @@ class ConfigTab(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.theme_changed_callback = theme_changed_callback
         self.model_to_parameter_value_map = {}
+        self._all_rows = []
+        self._group_boxes = {}  # Store group boxes to move them during search
+
         layout = QVBoxLayout(self)
-        scrollable_layout = QVBoxLayout()
-        scroll_widget = QWidget()
-        scroll_area = QScrollArea(self)
-        scroll_area.setWidgetResizable(True)
+        layout.setContentsMargins(0, 10, 0, 0)
 
-        button_hbox = QHBoxLayout()
-        button_hbox.addWidget(self._setup_reset_button())
-        button_hbox.addWidget(OpenUserConfigButton())
+        # Search Bar
+        search_container = QWidget()
+        search_hbox = QHBoxLayout(search_container)
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("🔍 Search settings...")
+        self.search_input.textChanged.connect(self._filter_settings)
+        search_hbox.addWidget(self.search_input)
+        layout.addWidget(search_container)
 
-        scrollable_layout.addLayout(button_hbox)
-        scrollable_layout.addWidget(self._generate_params_section(IniConfigLoader().general, "General", "general"))
-        scrollable_layout.addWidget(self._generate_params_section(IniConfigLoader().char, "Character", "char"))
-        scrollable_layout.addWidget(
-            self._generate_params_section(IniConfigLoader().advanced_options, "Advanced", "advanced_options")
-        )
-        scroll_widget.setLayout(scrollable_layout)
-        scroll_area.setWidget(scroll_widget)
-        layout.addWidget(scroll_area)
+        # Main Content: Navigation List (Left) and Stacked Widget (Right)
+        main_content = QWidget()
+        content_hbox = QHBoxLayout(main_content)
+        content_hbox.setContentsMargins(0, 0, 0, 0)
+        content_hbox.setSpacing(0)
 
-        instructions_label = QLabel("Instructions")
-        layout.addWidget(instructions_label)
+        self.nav_list = QListWidget()
+        self.nav_list.setFixedWidth(160)
+        self.nav_list.setStyleSheet("""
+            QListWidget {
+                border: none;
+                background-color: transparent;
+                border-right: 1px solid #3c3c3c;
+                outline: none;
+            }
+            QListWidget::item {
+                padding: 12px;
+                border-bottom: 1px solid #252525;
+            }
+            QListWidget::item:selected {
+                background-color: #3c3c3c;
+                color: #23fc5d;
+                font-weight: bold;
+            }
+        """)
 
-        instructions_text = QTextBrowser()
-        instructions_text.setOpenExternalLinks(True)
-        instructions_text.append(
-            "All values are saved automatically immediately upon changing. Hover over any label/field to see a brief "
-            "description of what it is for. To read more about each parameter, please view "
-            "<a href='https://github.com/d4lfteam/d4lf?tab=readme-ov-file#configs' style='color: #1E90FF;'>the config portion of the readme</a>"
-        )
-        instructions_text.setFixedHeight(80)
-        layout.addWidget(instructions_text)
+        self.stacked_widget = QStackedWidget()
+        self.nav_list.currentRowChanged.connect(self.stacked_widget.setCurrentIndex)
+
+        content_hbox.addWidget(self.nav_list)
+        content_hbox.addWidget(self.stacked_widget, stretch=1)
+        layout.addWidget(main_content)
+
+        # Special Search Results Page
+        self.search_results_page = QScrollArea()
+        self.search_results_page.setWidgetResizable(True)
+        self.search_results_container = QWidget()
+        self.search_results_layout = QVBoxLayout(self.search_results_container)
+        self.search_results_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.search_results_page.setWidget(self.search_results_container)
+
+        # Build Subsections
+        self._build_sections()
+
+        # Bottom Action Buttons
+        action_bar = QWidget()
+        action_bar.setStyleSheet("background-color: #121212; border-top: 1px solid #3c3c3c;")
+        action_hbox = QHBoxLayout(action_bar)
+        action_hbox.addWidget(self._setup_reset_button())
+        action_hbox.addStretch()
+        action_hbox.addWidget(OpenUserConfigButton())
+        layout.addWidget(action_bar)
 
         self.setLayout(layout)
         QTimer.singleShot(0, self._finish_init)
 
     def _finish_init(self):
         self._initializing = False
+
+    def _build_sections(self):
+        loader = IniConfigLoader()
+        all_props = {}
+        all_props.update({f"general.{k}": (loader.general, k, v) for k, v in loader.general})
+        all_props.update({f"char.{k}": (loader.char, k, v) for k, v in loader.char})
+
+        # Standard Subgroups
+        for group_name, keys in SUBGROUPS.items():
+            page = self._create_page(group_name)
+            layout = page.findChild(QVBoxLayout)
+
+            gb = QGroupBox(group_name)
+            grid = QGridLayout(gb)
+            grid.setColumnStretch(2, 1)
+
+            for key in keys:
+                lookup = f"general.{key}" if f"general.{key}" in all_props else f"char.{key}"
+                if lookup not in all_props:
+                    continue
+                model, config_key, config_value = all_props[lookup]
+                self._add_setting_row(
+                    grid, grid.rowCount(), model, lookup.split(".", maxsplit=1)[0], config_key, config_value
+                )
+
+            layout.addWidget(gb)
+            self._group_boxes[group_name] = gb
+
+        # Hotkeys & Advanced Split
+        self._build_advanced_and_hotkeys(loader.advanced_options)
+
+    def _build_advanced_and_hotkeys(self, model):
+        hotkey_page = self._create_page("Hotkeys")
+        hk_gb = QGroupBox("Key Bindings")
+        hk_grid = QGridLayout(hk_gb)
+        hk_grid.setColumnStretch(2, 1)
+        hotkey_page.findChild(QVBoxLayout).addWidget(hk_gb)
+        self._group_boxes["Hotkeys"] = hk_gb
+
+        adv_page = self._create_page("Advanced")
+        adv_gb = QGroupBox("Technical Settings")
+        adv_grid = QGridLayout(adv_gb)
+        adv_grid.setColumnStretch(2, 1)
+        adv_page.findChild(QVBoxLayout).addWidget(adv_gb)
+        self._group_boxes["Advanced"] = adv_gb
+
+        all_parameter_metadata = model.model_json_schema()["properties"]
+        for config_key, config_value in model:
+            is_hotkey = all_parameter_metadata[config_key].get(IS_HOTKEY_KEY) == "True"
+            target_grid = hk_grid if is_hotkey else adv_grid
+            self._add_setting_row(target_grid, target_grid.rowCount(), model, "advanced_options", config_key, config_value)
+
+    def _create_page(self, name: str) -> QWidget:
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(10, 20, 10, 10)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        scroll.setWidget(container)
+
+        self.nav_list.addItem(name)
+        self.stacked_widget.addWidget(scroll)
+        return container
+
+    def _add_setting_row(self, grid, row, model, section, key, val):
+        meta = model.model_json_schema()["properties"].get(key, {})
+        if meta.get(HIDE_FROM_GUI_KEY):
+            return
+
+        human_label = LABEL_MAP.get(key, key.replace("_", " ").title())
+        label_widget = QLabel(human_label)
+        label_widget.setWordWrap(True)
+
+        help_icon = QLabel("ⓘ")
+        help_icon.setObjectName("help-icon")
+        help_icon.setToolTip(f"<span>{meta.get('description', 'No description available.')}</span>")
+
+        control = self._generate_parameter_value_widget(model, section, key, val, meta.get(IS_HOTKEY_KEY))
+        self.model_to_parameter_value_map[f"{section}.{key}"] = control
+
+        grid.addWidget(label_widget, row, 0)
+        grid.addWidget(help_icon, row, 1)
+        grid.addWidget(control, row, 2)
+        self._all_rows.append((human_label, label_widget, help_icon, control, grid.parentWidget()))
+
+
+    def _filter_settings(self, text):
+        query = text.lower()
+        if query:
+            # Condensed View: Move all groupboxes into the search layout
+            if self.stacked_widget.currentWidget() != self.search_results_page:
+                self.nav_list.hide()
+                self.stacked_widget.addWidget(self.search_results_page)
+                self.stacked_widget.setCurrentWidget(self.search_results_page)
+                for gb in self._group_boxes.values():
+                    self.search_results_layout.addWidget(gb)
+
+            for human_label, lbl, icon, ctrl, _ in self._all_rows:
+                match = query in human_label.lower()
+                lbl.setVisible(match)
+                icon.setVisible(match)
+                ctrl.setVisible(match)
+
+            # Hide groupboxes that have no matching children
+            for gb in self._group_boxes.values():
+                has_visible = any(r[1].isVisible() for r in self._all_rows if r[4] == gb)
+                gb.setVisible(has_visible)
+        else:
+            # Tabbed View: Move groupboxes back to their original pages
+            self.nav_list.show()
+            self.stacked_widget.setCurrentIndex(self.nav_list.currentRow())
+            for name, gb in self._group_boxes.items():
+                gb.setVisible(True)
+                # Find the original page by name
+                for i in range(self.stacked_widget.count()):
+                    page_scroll = self.stacked_widget.widget(i)
+                    if isinstance(page_scroll, QScrollArea) and self.nav_list.item(i).text() == name:
+                        page_scroll.widget().layout().addWidget(gb)
+
+            for r in self._all_rows:
+                r[1].setVisible(True)
+                r[2].setVisible(True)
+                r[3].setVisible(True)
 
     def _prompt_restart_for_vision_mode_change(self) -> None:
         msg = QMessageBox(self)
@@ -155,31 +346,13 @@ class ConfigTab(QWidget):
 
     def _generate_params_section(self, model: BaseModel, section_readable_header: str, section_config_header: str):
         group_box = QGroupBox(section_readable_header)
-        form_layout = QFormLayout()
+        grid = QGridLayout(group_box)
+        grid.setSpacing(10)
+        grid.setColumnStretch(2, 1)
 
-        all_parameter_metadata = model.model_json_schema()["properties"]
+        for i, (config_key, config_value) in enumerate(model):
+            self._add_setting_row(grid, i, model, section_config_header, config_key, config_value)
 
-        for parameter in model:
-            config_key, config_value = parameter
-            parameter_metadata = all_parameter_metadata[config_key]
-
-            hide_from_gui = parameter_metadata.get(HIDE_FROM_GUI_KEY)
-            if hide_from_gui:
-                continue
-            description_text = parameter_metadata.get("description")
-            is_hotkey = parameter_metadata.get(IS_HOTKEY_KEY)
-            parameter_value_widget = self._generate_parameter_value_widget(
-                model, section_config_header, config_key, config_value, is_hotkey
-            )
-            self.model_to_parameter_value_map[section_config_header + "." + config_key] = parameter_value_widget
-            config_with_desc = QLabel(config_key)
-            if description_text:
-                # The span is a hack to make the tooltip wordwrap
-                config_with_desc.setToolTip("<span>" + description_text + "</span>")
-                parameter_value_widget.setToolTip("<span>" + description_text + "</span>")
-            form_layout.addRow(config_with_desc, parameter_value_widget)
-
-        group_box.setLayout(form_layout)
         return group_box
 
     def _generate_parameter_value_widget(
@@ -237,10 +410,20 @@ class ConfigTab(QWidget):
 
         elif isinstance(config_value, bool):
             parameter_value_widget = QCheckBox()
+            parameter_value_widget.setObjectName("switch")
             parameter_value_widget.setChecked(config_value)
             parameter_value_widget.stateChanged.connect(
                 lambda: _validate_and_save_changes(
                     model, section_config_header, config_key, str(parameter_value_widget.isChecked())
+                )
+            )
+        elif isinstance(config_value, int):
+            parameter_value_widget = QSpinBox()
+            parameter_value_widget.setRange(0, 10000)
+            parameter_value_widget.setValue(config_value)
+            parameter_value_widget.valueChanged.connect(
+                lambda: _validate_and_save_changes(
+                    model, section_config_header, config_key, parameter_value_widget.value()
                 )
             )
         else:
