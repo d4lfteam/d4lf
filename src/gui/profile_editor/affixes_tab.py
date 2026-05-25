@@ -53,6 +53,7 @@ LOGGER = logging.getLogger(__name__)
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
 AFFIX_PERCENT_MODE = "Min %"
+UNIQUE_ASPECTS_TITLE = "Unique Aspects"
 
 
 def _item_type_summary(item_types: list[ItemType]) -> str:
@@ -247,12 +248,11 @@ class AffixGroupEditor(QWidget):
         main_layout.addWidget(scroll_area)
         self.setLayout(main_layout)
 
-        QTimer.singleShot(100, self.unique_aspect_container.expand)
         QTimer.singleShot(100, self.affix_pool_container.expand)
         QTimer.singleShot(100, self.inherent_pool_container.expand)
 
     def create_unique_aspect_container(self):
-        self.unique_aspect_container = Container("Unique Aspects")
+        self.unique_aspect_container = Container(self._unique_aspects_title())
         self.unique_aspect_layout = QVBoxLayout(self.unique_aspect_container.contentWidget)
         self.unique_aspect_container.firstExpansion.connect(self.init_unique_aspects)
 
@@ -303,6 +303,13 @@ class AffixGroupEditor(QWidget):
         self.unique_aspect_layout.addLayout(layout)
         self.content_layout.addWidget(self.unique_aspect_container)
 
+    def _unique_aspects_title(self):
+        aspect_names = ", ".join(unique_aspect.name for unique_aspect in self.config.uniqueAspect) or "None"
+        return f"{UNIQUE_ASPECTS_TITLE} - {aspect_names}"
+
+    def refresh_unique_aspects_title(self):
+        self.unique_aspect_container.header.set_name(self._unique_aspects_title())
+
     def init_unique_aspects(self):
         for unique_aspect in self.config.uniqueAspect:
             self.add_unique_aspect_item(unique_aspect)
@@ -328,6 +335,7 @@ class AffixGroupEditor(QWidget):
             new_unique_aspect = AspectUniqueFilterModel(name=aspect_name, value=None)
             self.config.uniqueAspect.append(new_unique_aspect)
             self.add_unique_aspect_item(new_unique_aspect)
+            self.refresh_unique_aspects_title()
             return
         QMessageBox.information(self, "Info", "All unique aspects have already been added.")
 
@@ -338,6 +346,7 @@ class AffixGroupEditor(QWidget):
         for row in selected_rows:
             self.unique_aspect_list.takeItem(row)
             del self.config.uniqueAspect[row]
+        self.refresh_unique_aspects_title()
 
     def init_affix_pool(self):
         """Initialize affix pool content on first expansion."""
@@ -572,6 +581,15 @@ class UniqueAspectWidget(QWidget):
         if aspect_name not in Dataloader().aspect_unique_dict:
             return
         self.unique_aspect.name = aspect_name
+        self.update_parent_unique_aspects_title()
+
+    def update_parent_unique_aspects_title(self):
+        parent = self.parent()
+        while parent:
+            if isinstance(parent, AffixGroupEditor):
+                parent.refresh_unique_aspects_title()
+                break
+            parent = parent.parent()
 
     def refresh_value_input(self):
         if self.mode_combo.currentText() == AFFIX_PERCENT_MODE:
