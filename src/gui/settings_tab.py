@@ -541,31 +541,26 @@ class MultiSegmentedControl(QWidget):
         layout.setSpacing(2)
 
         self.buttons = {}
-        is_everything = any(v == MoveItemsType.everything for v in current_values)
         for label, val in items_map.items():
             btn = QPushButton(label)
             btn.setObjectName("segment-btn")
             btn.setCheckable(True)
             btn.setFlat(True)
             btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-            btn.setChecked(is_everything or val in current_values)
+            btn.setChecked(val in current_values)
             btn.clicked.connect(self._on_btn_clicked)
             layout.addWidget(btn)
             self.buttons[label] = btn
 
     def _on_btn_clicked(self):
         selected = [self.items_map[label] for label, btn in self.buttons.items() if btn.isChecked()]
-        if not selected or len(selected) == len(self.items_map):
-            val_str = "everything"
-        else:
-            val_str = ",".join([v.name for v in selected])
+        val_str = ",".join([v.name for v in selected])
         self.callback(val_str)
 
     def reset_values(self, values: list):
-        is_everything = any(v == MoveItemsType.everything for v in values)
         for label, val in self.items_map.items():
             if label in self.buttons:
-                self.buttons[label].setChecked(is_everything or val in values)
+                self.buttons[label].setChecked(val in values)
 
     def setEnabled(self, enabled):
         super().setEnabled(enabled)

@@ -75,7 +75,6 @@ class LogLevels(enum.StrEnum):
 
 
 class MoveItemsType(enum.StrEnum):
-    everything = enum.auto()
     favorites = enum.auto()
     junk = enum.auto()
     unmarked = enum.auto()
@@ -255,6 +254,29 @@ class ColorsModel(_IniBaseModel):
 
 
 class GeneralModel(_IniBaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def check_move_items_deprecation(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+
+        migrated_data = dict(data)
+        for key in ["move_to_inv_item_type", "move_to_stash_item_type"]:
+            val = migrated_data.get(key)
+            if val is None:
+                continue
+
+            items = []
+            if isinstance(val, str):
+                items = [i.strip().lower() for i in val.split(",") if i.strip()]
+            elif isinstance(val, list):
+                items = [str(i).lower() for i in val]
+
+            if "everything" in items:
+                MODULE_LOGGER.warning("Deprecated 'everything' value found in %s. Converting it to explicit list.", key)
+                migrated_data[key] = [MoveItemsType.favorites, MoveItemsType.junk, MoveItemsType.unmarked]
+        return migrated_data
+
     auto_use_temper_manuals: bool = Field(
         default=True,
         description="When using the loot filter, should found temper manuals be automatically used? Note: Will not work with stash open.",
@@ -337,13 +359,13 @@ class GeneralModel(_IniBaseModel):
         json_schema_extra={CATEGORY_KEY: SettingsCategory.UI},
     )
     move_to_inv_item_type: list[MoveItemsType] = Field(
-        default=[MoveItemsType.everything],
+        default=[MoveItemsType.favorites, MoveItemsType.junk, MoveItemsType.unmarked],
         description="When doing stash/inventory transfer, what types of items should be moved",
         title="Move to Inventory Types",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
     )
     move_to_stash_item_type: list[MoveItemsType] = Field(
-        default=[MoveItemsType.everything],
+        default=[MoveItemsType.favorites, MoveItemsType.junk, MoveItemsType.unmarked],
         description="When doing stash/inventory transfer, what types of items should be moved",
         title="Move to Stash Types",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
@@ -425,13 +447,26 @@ class GeneralModel(_IniBaseModel):
 
     @field_validator("move_to_inv_item_type", "move_to_stash_item_type", mode="before")
     @classmethod
-    def convert_move_item_type(cls, v: str) -> list[type[MoveItemsType[Any]]]:
+    def convert_move_item_type(cls, v: Any) -> list[MoveItemsType]:
         if isinstance(v, str):
             v = v.split(",")
-        elif not isinstance(v, list):
+        if not isinstance(v, list):
             msg = "must be a list or a string"
             raise ValueError(msg)
-        return [MoveItemsType[v.strip()] for v in v]
+
+        out = []
+        for x in v:
+            if isinstance(x, MoveItemsType):
+                out.append(x)
+            elif isinstance(x, str) and (s := x.strip()):
+                if s.lower() == "everything":
+                    out.extend([MoveItemsType.favorites, MoveItemsType.junk, MoveItemsType.unmarked])
+                else:
+                    try:
+                        out.append(MoveItemsType(s.lower()))
+                    except ValueError:
+                        MODULE_LOGGER.error("Invalid move item type: %s", s)
+        return list(dict.fromkeys(out))
 
 
 class HSVRangeModel(_IniBaseModel):
