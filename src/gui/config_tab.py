@@ -482,7 +482,7 @@ class ConfigTab(QWidget):
             return
 
         loader = IniConfigLoader()
-        for _, _, control, gb in self._all_rows:
+        for _, _, _, control, gb in self._all_rows:
             if gb != target_gb:
                 continue
 
@@ -519,6 +519,8 @@ class ConfigTab(QWidget):
                 parameter_value_widget.reset_values(config_value)  # type: ignore[attr-defined]
             elif isinstance(parameter_value_widget, QCheckBox):
                 parameter_value_widget.setChecked(config_value)
+            elif isinstance(parameter_value_widget, QSpinBox):
+                parameter_value_widget.setValue(config_value)
             else:
                 parameter_value_widget.setText(str(config_value))
 
