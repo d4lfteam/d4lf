@@ -185,18 +185,21 @@ QListWidget::item:selected {
 }
 QListWidget#nav-list {
     border: none;
-    background-color: transparent;
+    padding: 0px;
+    background-color: #1a1a1a;
     border-right: 1px solid #3c3c3c;
     outline: none;
 }
 QListWidget#nav-list::item {
-    padding: 12px;
+    height: 48px;
+    padding-left: 15px;
+    border-left: 4px solid transparent;
     border-bottom: 1px solid #252525;
 }
 QListWidget#nav-list::item:selected {
     background-color: #3c3c3c;
     color: #23fc5d;
-    font-weight: bold;
+    border-left: 4px solid #23fc5d;
 }
 QToolTip {
     background-color: #1f1f1f;
@@ -433,18 +436,21 @@ QListWidget::item:selected {
 }
 QListWidget#nav-list {
     border: none;
-    background-color: transparent;
+    padding: 0px;
+    background-color: #ededed;
     border-right: 1px solid #c3c3c3;
     outline: none;
 }
 QListWidget#nav-list::item {
-    padding: 12px;
+    height: 48px;
+    padding-left: 15px;
+    border-left: 4px solid transparent;
     border-bottom: 1px solid #dcdcdc;
 }
 QListWidget#nav-list::item:selected {
     background-color: #c3c3c3;
     color: #000000;
-    font-weight: bold;
+    border-left: 4px solid #23fc5d;
 }
 QToolTip {
     background-color: #e0e0e0;

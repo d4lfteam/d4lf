@@ -108,6 +108,7 @@ class ConfigTab(QWidget):
         # Search Bar
         search_container = QWidget()
         search_hbox = QHBoxLayout(search_container)
+        search_hbox.setContentsMargins(10, 0, 10, 0)
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("🔍 Search settings...")
         self.search_input.textChanged.connect(self._filter_settings)
@@ -118,10 +119,12 @@ class ConfigTab(QWidget):
         main_content = QWidget()
         content_hbox = QHBoxLayout(main_content)
         content_hbox.setContentsMargins(0, 0, 0, 0)
-        content_hbox.setSpacing(0)
+        content_hbox.setSpacing(2)
 
         self.nav_list = QListWidget()
         self.nav_list.setObjectName("nav-list")
+        self.nav_list.setSpacing(0)
+        self.nav_list.setUniformItemSizes(True)
         self.nav_list.setFixedWidth(160)
 
         self.stacked_widget = QStackedWidget()
@@ -129,7 +132,7 @@ class ConfigTab(QWidget):
 
         content_hbox.addWidget(self.nav_list)
         content_hbox.addWidget(self.stacked_widget, stretch=1)
-        layout.addWidget(main_content)
+        layout.addWidget(main_content, stretch=1)
 
         # Special Search Results Page
         self.search_results_page = QScrollArea()
@@ -146,6 +149,7 @@ class ConfigTab(QWidget):
         action_bar = QWidget()
         action_bar.setObjectName("action-bar")
         action_hbox = QHBoxLayout(action_bar)
+        action_hbox.setContentsMargins(10, 10, 10, 10)
         action_hbox.addWidget(self._setup_reset_button())
         action_hbox.addStretch()
         action_hbox.addWidget(OpenUserConfigButton())
