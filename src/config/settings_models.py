@@ -261,7 +261,7 @@ class ColorsModel(_IniBaseModel):
 class GeneralModel(_IniBaseModel):
     auto_use_temper_manuals: bool = Field(
         default=True,
-        description="When using the loot filter, should found temper manuals be automatically used?",
+        description="When using the loot filter, should found temper manuals be automatically used? Note: Will not work with stash open.",
         title="Auto-use Temper Manuals",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.AUTOMATION},
     )
@@ -273,7 +273,7 @@ class GeneralModel(_IniBaseModel):
     )
     check_chest_tabs: list[int] = Field(
         default=[0, 1],
-        description="Which stash tabs to check.",
+        description="Which stash tabs to check. Note: All tabs available (6 or 7) must be unlocked!",
         title="Stash Tabs to Filter",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
     )
@@ -286,7 +286,7 @@ class GeneralModel(_IniBaseModel):
     full_dump: bool = Field(
         default=False,
         description="When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not",
-        json_schema_extra={HIDE_FROM_GUI_KEY: "True"},
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     handle_cosmetics: CosmeticFilterType = Field(
         default=CosmeticFilterType.ignore,
@@ -304,7 +304,7 @@ class GeneralModel(_IniBaseModel):
         default=True,
         description="When filtering Sigils, should escalation sigils be ignored?",
         title="Ignore Escalation Sigils",
-        json_schema_extra={CATEGORY_KEY: SettingsCategory.AUTOMATION},
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     keep_aspects: AspectFilterType = Field(
         default=AspectFilterType.upgrade,
@@ -342,13 +342,12 @@ class GeneralModel(_IniBaseModel):
     )
     move_to_inv_item_type: list[MoveItemsType] = Field(
         default=[MoveItemsType.everything],
-        description="Item types to move to inventory",
+        description="When doing stash/inventory transfer, what types of items should be moved",
         title="Move to Inventory Types",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
     )
     move_to_stash_item_type: list[MoveItemsType] = Field(
         default=[MoveItemsType.everything],
-        description="Item types to move to stash",
         title="Move to Stash Types",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
     )
@@ -378,7 +377,7 @@ class GeneralModel(_IniBaseModel):
     )
     vision_mode_type: VisionModeType = Field(
         default=VisionModeType.highlight_matches,
-        description="Vision mode version",
+        description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
         title="Vision Mode Type",
         json_schema_extra={LIVE_RELOAD_GROUP_KEY: "restart_app", CATEGORY_KEY: SettingsCategory.UI},
     )
