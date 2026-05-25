@@ -149,8 +149,8 @@ class AdvancedOptionsModel(_IniBaseModel):
     )
     process_name: str = Field(
         default="Diablo IV.exe",
-        description="The process that is running Diablo 4. Could help usage when playing through a streaming service like GeForce Now",
-        title="Process Name",
+        description="The process that is running Diablo 4. You should never need to change this.",
+        title="Diablo IV Process Name",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     run_filter: str = Field(
@@ -336,7 +336,7 @@ class GeneralModel(_IniBaseModel):
     )
     minimum_overlay_font_size: int = Field(
         default=12,
-        description="The minimum font size for the vision overlay.",
+        description="The minimum font size for the vision overlays.",
         title="Overlay Text Size",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.UI},
     )
