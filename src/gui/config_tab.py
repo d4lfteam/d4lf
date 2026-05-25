@@ -49,7 +49,7 @@ from src.config.settings_models import (
     MoveItemsType,
     SettingsCategory,
 )
-from src.gui.models.CheckmarkCheckBox import CheckmarkCheckBox
+from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
 from src.gui.open_user_config_button import OpenUserConfigButton
 
 CONFIG_TABNAME = "config"
