@@ -121,24 +121,8 @@ class ConfigTab(QWidget):
         content_hbox.setSpacing(0)
 
         self.nav_list = QListWidget()
+        self.nav_list.setObjectName("nav-list")
         self.nav_list.setFixedWidth(160)
-        self.nav_list.setStyleSheet("""
-            QListWidget {
-                border: none;
-                background-color: transparent;
-                border-right: 1px solid #3c3c3c;
-                outline: none;
-            }
-            QListWidget::item {
-                padding: 12px;
-                border-bottom: 1px solid #252525;
-            }
-            QListWidget::item:selected {
-                background-color: #3c3c3c;
-                color: #23fc5d;
-                font-weight: bold;
-            }
-        """)
 
         self.stacked_widget = QStackedWidget()
         self.nav_list.currentRowChanged.connect(self.stacked_widget.setCurrentIndex)
