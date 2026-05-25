@@ -16,6 +16,30 @@ HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
 CATEGORY_KEY = "category"
 
+
+class SettingsCategory(enum.StrEnum):
+    LOOT = "📦 Loot Behavior"
+    PROFILES = "📄 Profiles"
+    AUTOMATION = "🤖 Automation"
+    STASH = "🎒 Stash & Transfer"
+    UI = "🎨 UI & Theme"
+    SYSTEM = "⚙️ System & Paths"
+    HOTKEYS = "⌨️ Hotkeys"
+    ADVANCED = "🛠️ Advanced"
+
+
+CATEGORY_ORDER = [
+    SettingsCategory.PROFILES,
+    SettingsCategory.LOOT,
+    SettingsCategory.AUTOMATION,
+    SettingsCategory.STASH,
+    SettingsCategory.UI,
+    SettingsCategory.SYSTEM,
+    SettingsCategory.HOTKEYS,
+    SettingsCategory.ADVANCED,
+]
+
+
 LIVE_RELOAD_GROUP_KEY = "live_reload_group"
 
 
@@ -88,14 +112,14 @@ class AdvancedOptionsModel(_IniBaseModel):
         default=False,
         description="If TTS is working for you but you are still receiving the warning, check this box to disable it.",
         title="Disable TTS Warning",
-        json_schema_extra={CATEGORY_KEY: "Advanced"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     exit_key: str = Field(default="f12", description="Hotkey to exit d4lf", json_schema_extra={IS_HOTKEY_KEY: "True"})
     fast_vision_mode_coordinates: tuple[int, int] | None = Field(
         default=None,
         description="The top left coordinates of the desired location of the fast vision mode overlay in pixels. For example: (300, 500). Set to blank for default behavior.",
         title="Fast Vision Mode Coordinates",
-        json_schema_extra={CATEGORY_KEY: "Advanced"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     force_refresh_only: str = Field(
         default="ctrl+shift+f11",
@@ -111,7 +135,7 @@ class AdvancedOptionsModel(_IniBaseModel):
         default=LogLevels.info,
         description="The level at which logs are written",
         title="Logging Detail Level",
-        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level", CATEGORY_KEY: "Advanced"},
+        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level", CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     move_to_chest: str = Field(
         default="f8",
@@ -127,7 +151,7 @@ class AdvancedOptionsModel(_IniBaseModel):
         default="Diablo IV.exe",
         description="The process that is running Diablo 4. Could help usage when playing through a streaming service like GeForce Now",
         title="Process Name",
-        json_schema_extra={CATEGORY_KEY: "Advanced"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     run_filter: str = Field(
         default="f11",
@@ -154,7 +178,7 @@ class AdvancedOptionsModel(_IniBaseModel):
         default=False,
         description="Only allow vision mode to run. All hotkeys and actions that click will be disabled.",
         title="Vision Mode Only",
-        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "hotkeys", CATEGORY_KEY: "Automation"},
+        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "hotkeys", CATEGORY_KEY: SettingsCategory.AUTOMATION},
     )
 
     @model_validator(mode="after")
@@ -216,9 +240,10 @@ class AdvancedOptionsModel(_IniBaseModel):
 
 class CharModel(_IniBaseModel):
     inventory: str = Field(
-        default="i", description="Hotkey in Diablo IV to open inventory", 
+        default="i",
+        description="Hotkey in Diablo IV to open inventory",
         title="Inventory Hotkey",
-        json_schema_extra={IS_HOTKEY_KEY: "True", CATEGORY_KEY: "Hotkeys"}
+        json_schema_extra={IS_HOTKEY_KEY: "True", CATEGORY_KEY: SettingsCategory.HOTKEYS},
     )
 
     @field_validator("inventory")
@@ -238,25 +263,25 @@ class GeneralModel(_IniBaseModel):
         default=True,
         description="When using the loot filter, should found temper manuals be automatically used?",
         title="Auto-use Temper Manuals",
-        json_schema_extra={CATEGORY_KEY: "Automation"},
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.AUTOMATION},
     )
     browser: BrowserType = Field(
-        default=BrowserType.chrome, 
+        default=BrowserType.chrome,
         description="Which browser to use to get builds",
         title="Browser",
-        json_schema_extra={CATEGORY_KEY: "System & Paths"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.SYSTEM},
     )
     check_chest_tabs: list[int] = Field(
-        default=[0, 1], 
+        default=[0, 1],
         description="Which stash tabs to check.",
         title="Stash Tabs to Filter",
-        json_schema_extra={CATEGORY_KEY: "Stash & Transfer"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
     )
     do_not_junk_ancestral_legendaries: bool = Field(
-        default=False, 
+        default=False,
         description="Do not mark ancestral legendaries as junk",
         title="Protective Ancestral Filter",
-        json_schema_extra={CATEGORY_KEY: "Loot Behavior"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     full_dump: bool = Field(
         default=False,
@@ -267,91 +292,95 @@ class GeneralModel(_IniBaseModel):
         default=CosmeticFilterType.ignore,
         description="What should be done with cosmetic upgrades that do not match any filter",
         title="Handle Cosmetics",
-        json_schema_extra={CATEGORY_KEY: "Loot Behavior"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     handle_uniques: UnfilteredUniquesType = Field(
         default=UnfilteredUniquesType.favorite,
         description="What should be done with uniques that do not match any profile.",
         title="Unfiltered Unique Behavior",
-        json_schema_extra={CATEGORY_KEY: "Loot Behavior"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     ignore_escalation_sigils: bool = Field(
-        default=True, 
+        default=True,
         description="When filtering Sigils, should escalation sigils be ignored?",
         title="Ignore Escalation Sigils",
-        json_schema_extra={CATEGORY_KEY: "Automation"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.AUTOMATION},
     )
     keep_aspects: AspectFilterType = Field(
-        default=AspectFilterType.upgrade, 
+        default=AspectFilterType.upgrade,
         description="Whether to keep aspects that didn't match a filter",
         title="Aspect Preservation Logic",
-        json_schema_extra={CATEGORY_KEY: "Loot Behavior"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     language: str = Field(
         default="enUS",
         description="Do not change. Only English is supported at this time",
         title="Language",
-        json_schema_extra={HIDE_FROM_GUI_KEY: "True", LIVE_RELOAD_GROUP_KEY: "language", CATEGORY_KEY: "System & Paths"},
+        json_schema_extra={
+            HIDE_FROM_GUI_KEY: "True",
+            LIVE_RELOAD_GROUP_KEY: "language",
+            CATEGORY_KEY: SettingsCategory.SYSTEM,
+        },
     )
     mark_as_favorite: bool = Field(
-        default=True, 
+        default=True,
         description="Whether to favorite matched items or not",
         title="Mark Matched Items as Favorite",
-        json_schema_extra={CATEGORY_KEY: "Loot Behavior"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     max_stash_tabs: int = Field(
         default=6,
         description="The maximum number of stash tabs available.",
         title="Max Stash Tabs",
-        json_schema_extra={CATEGORY_KEY: "Stash & Transfer"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
     )
     minimum_overlay_font_size: int = Field(
         default=12,
         description="The minimum font size for the vision overlay.",
         title="Overlay Text Size",
-        json_schema_extra={CATEGORY_KEY: "UI & Theme"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.UI},
     )
     move_to_inv_item_type: list[MoveItemsType] = Field(
         default=[MoveItemsType.everything],
         description="Item types to move to inventory",
         title="Move to Inventory Types",
-        json_schema_extra={CATEGORY_KEY: "Stash & Transfer"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
     )
     move_to_stash_item_type: list[MoveItemsType] = Field(
         default=[MoveItemsType.everything],
         description="Item types to move to stash",
         title="Move to Stash Types",
-        json_schema_extra={CATEGORY_KEY: "Stash & Transfer"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
     )
     profiles: list[str] = Field(
         default=[],
         description="Which filter profiles should be run.",
         title="Active Filtering Profiles",
-        json_schema_extra={CATEGORY_KEY: "Loot Behavior"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.PROFILES},
     )
     run_vision_mode_on_startup: bool = Field(
-        default=True, 
+        default=True,
         description="Whether to run vision mode on startup or not",
         title="Auto-Start Vision Mode",
-        json_schema_extra={CATEGORY_KEY: "Automation"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.AUTOMATION},
     )
     theme: ThemeType = Field(
-        default=ThemeType.dark, 
+        default=ThemeType.dark,
         description="GUI Theme",
         title="Theme",
-        json_schema_extra={CATEGORY_KEY: "UI & Theme"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.UI},
     )
     colorblind_mode: bool = Field(
-        default=False, 
+        default=False,
         description="Enable colorblind palette",
         title="Colorblind Accessible Palette",
-        json_schema_extra={CATEGORY_KEY: "UI & Theme"}
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.UI},
     )
     vision_mode_type: VisionModeType = Field(
         default=VisionModeType.highlight_matches,
         description="Vision mode version",
         title="Vision Mode Type",
-        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "restart_app", CATEGORY_KEY: "UI & Theme"},
+        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "restart_app", CATEGORY_KEY: SettingsCategory.UI},
     )
 
     @field_validator("check_chest_tabs", mode="before")
