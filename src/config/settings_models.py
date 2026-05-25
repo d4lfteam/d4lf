@@ -336,7 +336,7 @@ class GeneralModel(_IniBaseModel):
     )
     minimum_overlay_font_size: int = Field(
         default=12,
-        description="The minimum font size for the vision overlay.",
+        description="The minimum font size for the vision overlays.",
         title="Overlay Text Size",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.UI},
     )
