@@ -348,6 +348,7 @@ class GeneralModel(_IniBaseModel):
     )
     move_to_stash_item_type: list[MoveItemsType] = Field(
         default=[MoveItemsType.everything],
+        description="When doing stash/inventory transfer, what types of items should be moved",
         title="Move to Stash Types",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
     )
