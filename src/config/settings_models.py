@@ -149,7 +149,7 @@ class AdvancedOptionsModel(_IniBaseModel):
     )
     process_name: str = Field(
         default="Diablo IV.exe",
-        description="The process that is running Diablo 4. Could help usage when playing through a streaming service like GeForce Now",
+        description="The process that is running Diablo 4. You should never need to change this.",
         title="Process Name",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
