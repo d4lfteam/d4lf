@@ -123,7 +123,7 @@ def _load_gear_types(d4data_dir: Path) -> set[str]:
     return gear_types
 
 
-def main(d4data_dir: Path, companion_app_dir: Path | None = None):
+def main(d4data_dir: Path):
     lang_arr = [
         "enUS"
     ]  # "deDE", "frFR", "esES", "esMX", "itIT", "jaJP", "koKR", "plPL", "ptBR", "ruRU", "trTR", "zhCN", "zhTW"]
@@ -212,28 +212,8 @@ def main(d4data_dir: Path, companion_app_dir: Path | None = None):
             json_file.write("\n")
 
         # Create Affixes
-        if companion_app_dir is None:
-            generate_affixes(d4data_dir, language)
-        else:
-            generate_affixes_from_companion(companion_app_dir, language)
+        generate_affixes(d4data_dir, language)
         print("=============================")
-
-
-def generate_affixes_from_companion(companion_app_dir: Path, language: str):
-    print(f"Gen Affixes for {language}")
-    affix_dict = {}
-    with Path(companion_app_dir / f"D4Companion/Data/Affixes.{language}.json").open(encoding="utf-8") as file:
-        data = json.load(file)
-        for affix in data:
-            desc: str = affix["Description"]
-            desc = desc.lower().strip().replace("'", "").replace("’", "").replace(".", "")
-            desc = remove_content_in_braces(desc)
-            desc = desc.removeprefix("x ")
-            name = desc.replace(",", "").replace(" ", "_")
-            if len(desc) > 2:
-                affix_dict[name] = desc
-    _add_custom_affixes(affix_dict, language)
-    _write_affixes(affix_dict, language)
 
 
 def generate_affixes(d4data_dir: Path, language: str):
@@ -718,19 +698,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "d4data_dir", nargs="?", type=Path, default=D4LF_BASE_DIR / "d4data", help="Provide a path to d4data repo"
     )  # https://github.com/DiabloTools/d4data.git
-    parser.add_argument(
-        "companion_app_dir",
-        nargs="?",
-        type=Path,
-        default=D4LF_BASE_DIR / "D4Companion",
-        help="Provide a path to companion_app_dir repo",
-    )  # https://github.com/josdemmers/Diablo4Companion
     args = parser.parse_args()
 
     input_path = args.d4data_dir
-    input_path2 = args.companion_app_dir
 
-    if input_path.exists() and input_path.is_dir() and (input_path2 is None or input_path2.is_dir()):
-        main(input_path, input_path2)
+    if input_path.exists() and input_path.is_dir():
+        main(input_path)
     else:
-        print(f"The provided path '{input_path}' or '{input_path2}' does not exist or is not a directory.")
+        print(f"The provided path '{input_path}' does not exist or is not a directory.")
