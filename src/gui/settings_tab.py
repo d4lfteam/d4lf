@@ -950,8 +950,6 @@ class QProfileListSelector(QWidget):
                 summary.append("🏆 Tributes: Included")
             if paragon := data.get("Paragon"):
                 summary.append("🔱 Paragon Overlay: Data Found")
-                if isinstance(paragon, dict) and (url := paragon.get("source_url")):
-                    summary.append(f"🔗 Source: {url}")
 
             return "\n".join(summary)
         except Exception:
