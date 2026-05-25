@@ -309,7 +309,7 @@ class GeneralModel(_IniBaseModel):
     keep_aspects: AspectFilterType = Field(
         default=AspectFilterType.upgrade,
         description="Whether to keep aspects that didn't match a filter",
-        title="Aspect Preservation Logic",
+        title="Aspect Upgrade Handling",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     language: str = Field(
