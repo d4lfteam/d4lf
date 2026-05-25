@@ -16,8 +16,8 @@ def test_affix_parameter_prefers_power_name_over_file_name():
 def test_build_affix_description_uses_power_name_for_value_parameter():
     affix_data = {
         "ptItemAffixAttributes": [
-            {"tAttribute": {"__eAttribute_name__": "Power_Damage_Percent_Bonus", "nParam": 469641}},
-        ],
+            {"tAttribute": {"__eAttribute_name__": "Power_Damage_Percent_Bonus", "nParam": 469641}}
+        ]
     }
 
     description = _build_affix_description(
@@ -35,8 +35,8 @@ def test_build_affix_description_uses_power_name_for_value_parameter():
 def test_build_affix_description_uses_damage_to_status_token():
     affix_data = {
         "ptItemAffixAttributes": [
-            {"tAttribute": {"__eAttribute_name__": "Damage_Percent_Bonus_Vs_CC_Target", "nParam": 1}},
-        ],
+            {"tAttribute": {"__eAttribute_name__": "Damage_Percent_Bonus_Vs_CC_Target", "nParam": 1}}
+        ]
     }
 
     description = _build_affix_description(
