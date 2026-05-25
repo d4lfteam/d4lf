@@ -5,39 +5,8 @@ from pathlib import Path
 
 D4LF_BASE_DIR = Path(__file__).parent.parent.parent
 
-GEAR_TYPES = [
-    "Amulet",
-    "Axe",
-    "Axe2H",
-    "Boots",
-    "Bow",
-    "ChestArmor",
-    "Crossbow2H",
-    "Dagger",
-    "Flail",
-    "Focus",
-    "Glaive",
-    "Gloves",
-    "Helm",
-    "Legs",
-    "Mace",
-    "Mace2H",
-    "OffHandTotem",
-    "Polearm",
-    "Quarterstaff",
-    "Ring",
-    "Scythe",
-    "Scythe2H",
-    "Shield",
-    "Staff",
-    "Sword",
-    "Sword2H",
-    "Wand",
-]
-
-DAMAGE_TYPES = ["Cold", "Fire", "Holy", "Lightning", "NonPhysical", "Physical", "Poison", "Shadow"]
-RESOURCE_TYPES = ["Energy", "Essence", "Faith", "Fury", "Mana", "Spirit", "Vigor", "Wrath"]
-RESISTANCE_TYPES = ["Cold", "Fire", "Lightning", "Physical", "Poison", "Shadow"]
+GEAR_ITEM_LABEL = 54
+EXTRA_ITEM_TYPES = ("Elixir", "TemperManual", "Tome")
 SIGIL_RARITY_COLOR_TAGS = {
     "c_white": "Common",
     "c_magic": "Magic",
@@ -140,10 +109,26 @@ def get_string_list_name(string_list_file: Path) -> str | None:
         return clean_item_name(name_item[0]["szText"])
 
 
+def _load_gear_types(d4data_dir: Path) -> set[str]:
+    item_type_pattern = "json/base/meta/ItemType/*.itt.json"
+    item_type_files = sorted(d4data_dir.glob(item_type_pattern, case_sensitive=False))
+    gear_types = set()
+
+    for item_type_file in item_type_files:
+        with Path(item_type_file).open(encoding="utf-8") as file:
+            data = json.load(file)
+        if GEAR_ITEM_LABEL in data.get("arItemLabels", []):
+            gear_types.add(item_type_file.name.removesuffix(".itt.json"))
+
+    return gear_types
+
+
 def main(d4data_dir: Path, companion_app_dir: Path | None = None):
     lang_arr = [
         "enUS"
     ]  # "deDE", "frFR", "esES", "esMX", "itIT", "jaJP", "koKR", "plPL", "ptBR", "ruRU", "trTR", "zhCN", "zhTW"]
+    gear_types = _load_gear_types(d4data_dir)
+    item_type_whitelist = gear_types | set(EXTRA_ITEM_TYPES)
 
     for lang in lang_arr:
         file_names = [
@@ -166,7 +151,7 @@ def main(d4data_dir: Path, companion_app_dir: Path | None = None):
         generate_aspects(d4data_dir, language)
 
         # Create Uniques
-        generate_uniques(d4data_dir, language)
+        generate_uniques(d4data_dir, language, gear_types)
 
         # Create Sets
         generate_sets(d4data_dir, language)
@@ -194,8 +179,6 @@ def main(d4data_dir: Path, companion_app_dir: Path | None = None):
             json_file.write("\n")
 
         print(f"Gen ItemTypes for {language}")
-        whitelist_types = GEAR_TYPES.copy()
-        whitelist_types.extend(["Elixir", "TemperManual", "Tome"])
         item_typ_dict = {
             "Material": "custom type material",
             "Sigil": "custom type sigil",
@@ -209,7 +192,7 @@ def main(d4data_dir: Path, companion_app_dir: Path | None = None):
                 data = json.load(file)
                 name_idx = 0 if data["arStrings"][0]["szLabel"] == "Name" else 1
                 name_str: str = check_ms(data["arStrings"][name_idx]["szText"]).lower().strip()
-                if item_type in whitelist_types:
+                if item_type in item_type_whitelist:
                     item_typ_dict[item_type] = name_str
         with Path(D4LF_BASE_DIR / f"assets/lang/{language}/item_types.json").open("w", encoding="utf-8") as json_file:
             json.dump(item_typ_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
@@ -258,6 +241,7 @@ def generate_affixes(d4data_dir: Path, language: str):
     affix_files = _load_affix_files(d4data_dir)
     attribute_descriptions = _load_attribute_descriptions(d4data_dir, language)
     skill_tag_names = _load_skill_tag_names(d4data_dir)
+    affix_tokens = _load_affix_tokens([name for name, _ in affix_files], skill_tag_names)
     affix_dict = {}
 
     for affix_name, affix_data in affix_files:
@@ -267,6 +251,7 @@ def generate_affixes(d4data_dir: Path, language: str):
             attribute_descriptions=attribute_descriptions,
             power_names={},
             skill_tag_names=skill_tag_names,
+            affix_tokens=affix_tokens,
         )
         if description is None:
             continue
@@ -333,12 +318,58 @@ def _load_skill_tag_names(d4data_dir: Path) -> dict[int, str]:
     return skill_tag_names
 
 
+def _load_affix_tokens(affix_names: list[str], skill_tag_names: dict[int, str]) -> dict[str, list[str]]:
+    skill_tags = set(skill_tag_names.values())
+    return {
+        "damage": sorted(_extract_damage_tokens(affix_names, skill_tags), key=_token_sort_key),
+        "resource": sorted(_extract_resource_tokens(affix_names), key=_token_sort_key),
+        "resistance": sorted(_extract_resistance_tokens(skill_tags), key=_token_sort_key),
+    }
+
+
+def _extract_damage_tokens(affix_names: list[str], skill_tags: set[str]) -> set[str]:
+    tokens = {tag.removeprefix("Damage_Override_") for tag in skill_tags if tag.startswith("Damage_Override_")}
+    for affix_name in affix_names:
+        for pattern in [
+            r"^Damage_Type_Bonus_(?P<token>[A-Z][A-Za-z]*)(?:_|$)",
+            r"^X2_DamageType_(?P<token>[A-Z][A-Za-z]*)(?:_|$)",
+            r"^Tempered_Damage_Generic_Type_(?P<token>[A-Z][A-Za-z]*)(?:_|$)",
+        ]:
+            match = re.search(pattern, affix_name)
+            if match is not None:
+                tokens.add(match.group("token"))
+    return tokens
+
+
+def _extract_resource_tokens(affix_names: list[str]) -> set[str]:
+    tokens = set()
+    for affix_name in affix_names:
+        for pattern in [
+            r"(?:^|_)Resource_Max_?(?P<token>[A-Z][A-Za-z]*)(?:_|$)",
+            r"(?:^|_)Resource_On_Kill_(?P<token>[A-Z][A-Za-z]*)(?:_|$)",
+            r"(?:^|_)Resource_Per_Second_(?P<token>[A-Z][A-Za-z]*)(?:_|$)",
+        ]:
+            match = re.search(pattern, affix_name)
+            if match is not None and match.group("token") != "AllClasses":
+                tokens.add(match.group("token"))
+    return tokens
+
+
+def _extract_resistance_tokens(skill_tags: set[str]) -> set[str]:
+    return {tag.removeprefix("Affix_Resistance_") for tag in skill_tags if tag.startswith("Affix_Resistance_")}
+
+
+def _token_sort_key(token: str) -> tuple[str, str]:
+    return (token.removeprefix("Non").lower(), token.lower())
+
+
 def _build_affix_description(
     affix_name: str,
     affix_data: dict,
     attribute_descriptions: dict[str, str],
     power_names: dict[int, str],
     skill_tag_names: dict[int, str],
+    affix_tokens: dict[str, list[str]],
 ) -> str | None:
     description_parts = []
     for affix_attribute in affix_data.get("ptItemAffixAttributes", []):
@@ -354,6 +385,7 @@ def _build_affix_description(
                 attribute=attribute,
                 power_names=power_names,
                 skill_tag_names=skill_tag_names,
+                affix_tokens=affix_tokens,
             )
         )
 
@@ -375,19 +407,32 @@ def _find_attribute_description(attribute_name: str, attribute_descriptions: dic
 
 
 def _replace_affix_description_parameters(
-    description: str, affix_name: str, attribute: dict, power_names: dict[int, str], skill_tag_names: dict[int, str]
+    description: str,
+    affix_name: str,
+    attribute: dict,
+    power_names: dict[int, str],
+    skill_tag_names: dict[int, str],
+    affix_tokens: dict[str, list[str]],
 ) -> str:
     if "{VALUE1}" not in description:
         return description
 
     parameter = _find_affix_parameter(
-        affix_name=affix_name, attribute=attribute, power_names=power_names, skill_tag_names=skill_tag_names
+        affix_name=affix_name,
+        attribute=attribute,
+        power_names=power_names,
+        skill_tag_names=skill_tag_names,
+        affix_tokens=affix_tokens,
     )
     return description.replace("{VALUE1}", parameter)
 
 
 def _find_affix_parameter(
-    affix_name: str, attribute: dict, power_names: dict[int, str], skill_tag_names: dict[int, str]
+    affix_name: str,
+    attribute: dict,
+    power_names: dict[int, str],
+    skill_tag_names: dict[int, str],
+    affix_tokens: dict[str, list[str]],
 ) -> str:
     attribute_name = attribute.get("__eAttribute_name__", "")
     param = attribute.get("nParam")
@@ -400,11 +445,11 @@ def _find_affix_parameter(
     formula = attribute.get("gbidFormula") or {}
     formula_name = formula.get("name", "")
     if "DamageType" in formula_name or "Damage_Type" in attribute_name:
-        return _find_named_token(affix_name, DAMAGE_TYPES)
+        return _find_named_token(affix_name, affix_tokens["damage"])
     if attribute_name == "Resistance":
-        return _find_named_token(affix_name, RESISTANCE_TYPES)
+        return _find_named_token(affix_name, affix_tokens["resistance"])
     if "Resource" in attribute_name:
-        return _find_named_token(affix_name, RESOURCE_TYPES)
+        return _find_named_token(affix_name, affix_tokens["resource"])
     return _format_affix_name_token(affix_name)
 
 
@@ -576,7 +621,7 @@ def extract_sigil_rarity(name):
     return None
 
 
-def generate_uniques(d4data_dir, language):
+def generate_uniques(d4data_dir, language, gear_types: set[str]):
     items_to_ignore = ["halo", "pact_amulet", "wilted_potential"]
 
     print(f"Gen Uniques for {language}")
@@ -597,7 +642,7 @@ def generate_uniques(d4data_dir, language):
             item_type = unique_item_data["snoItemType"]["name"]
             inherent_affixes = unique_item_data["arInherentAffixes"]
 
-        if item_type not in GEAR_TYPES and item_type != "FocusBookOffHand":
+        if item_type not in gear_types:
             continue
 
         # Some items, like Mortacrux, will list one inherent and then break it into two in the affix file.
