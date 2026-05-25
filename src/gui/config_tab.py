@@ -305,10 +305,10 @@ class ConfigTab(QWidget):
 
         grid.addWidget(label_container, row, 0, Qt.AlignmentFlag.AlignTop)
         grid.addWidget(control, row, 2, Qt.AlignmentFlag.AlignTop)
-        self._all_rows.append((human_label, label_container, control, grid.parentWidget()))
+        self._all_rows.append((human_label, meta.get("description", ""), label_container, control, grid.parentWidget()))
 
     def _filter_settings(self, text):
-        query = text.lower()
+        query = text.lower().strip()
         if query:
             # Condensed View: Move all groupboxes into the search layout
             if self.stacked_widget.currentWidget() != self.search_results_page:
@@ -318,14 +318,18 @@ class ConfigTab(QWidget):
                 for gb in self._group_boxes.values():
                     self.search_results_layout.addWidget(gb)
 
-            for human_label, label_container, ctrl, _ in self._all_rows:
-                match = query in human_label.lower()
+            for human_label, description_text, label_container, ctrl, _ in self._all_rows:
+                # Check both setting title and description for matches
+                match = query in (human_label or "").lower() or query in (description_text or "").lower()
                 label_container.setVisible(match)
                 ctrl.setVisible(match)
 
             # Hide groupboxes that have no matching children
             for gb in self._group_boxes.values():
-                has_visible = any(r[1].isVisible() for r in self._all_rows if r[3] == gb)
+                # We check isHidden() instead of isVisible() because isVisible() returns effective 
+                # visibility (including parents). If the groupbox was hidden previously, isVisible() 
+                # will always be False for children regardless of their individual visibility state.
+                has_visible = any(not r[2].isHidden() for r in self._all_rows if r[4] == gb)
                 gb.setVisible(has_visible)
         else:
             # Tabbed View: Move groupboxes back to their original pages
@@ -334,14 +338,15 @@ class ConfigTab(QWidget):
             for name, gb in self._group_boxes.items():
                 gb.setVisible(True)
                 # Find the original page by name
-                for i in range(self.stacked_widget.count()):
+                for i in range(self.nav_list.count()):
                     page_scroll = self.stacked_widget.widget(i)
                     if isinstance(page_scroll, QScrollArea) and self.nav_list.item(i).text() == name:
                         page_scroll.widget().layout().addWidget(gb)
+                        break
 
             for r in self._all_rows:
-                r[1].setVisible(True)
                 r[2].setVisible(True)
+                r[3].setVisible(True)
 
     def _prompt_restart_for_vision_mode_change(self) -> None:
         msg = QMessageBox(self)
