@@ -22,6 +22,7 @@ from src.gui.importer.gui_common import ACCENT_BLUE, ACCENT_GOLD, ACCENT_GREEN, 
 from src.scripts.common import get_filter_colors
 from src.tts import Publisher
 from src.utils.custom_mouse import mouse
+from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground
 
 LOGGER = logging.getLogger(__name__)
 
@@ -157,8 +158,13 @@ def _hover_experience_balance(info_config: dict[str, Any]):
 
 def request_close():
     with _OVERLAY_LOCK:
-        if _OVERLAY_INSTANCE is not None:
-            _OVERLAY_INSTANCE.after(0, lambda: _OVERLAY_INSTANCE.master.destroy())
+        if _OVERLAY_INSTANCE is not None and _OVERLAY_INSTANCE.winfo_exists():
+            try:
+                # Ensure destruction happens on the Tk thread
+                _OVERLAY_INSTANCE.after(0, _OVERLAY_INSTANCE.destroy)
+            except Exception:
+                with suppress(Exception):
+                    _OVERLAY_INSTANCE.master.destroy()
 
 
 @singleton
@@ -358,14 +364,21 @@ class BossTimerOverlay(tk.Toplevel):
         self.wm_attributes("-transparentcolor", TRANSPARENT_KEY)
         self.configure(bg=TRANSPARENT_KEY)
 
+        self._win_spec = WindowSpec(IniConfigLoader().advanced_options.process_name)
+        self._after_ids: list[str] = []
+        self._closing = False
         self._gold_initialized = False
         self._exp_initialized = False
+        self._is_dragging = False
         self._menu_vars = []  # Initialize here to store tk.Variable instances
         self._settings_popup = None
+        self._last_focus_time = time.time()
         self._last_menu_pos = (100, 100)
+        self._cam = Cam()
 
         self.settings = load_info_settings()
         self._apply_loaded_settings()
+
         self._flash_toggle = False
         self._setup_ui()
         self._bind_events()
@@ -378,16 +391,39 @@ class BossTimerOverlay(tk.Toplevel):
 
     def destroy(self):
         """Perform cleanup and unsubscribe from stats on destruction."""
+        if self._closing:
+            return
+        self._closing = True
+
+        # Cancel all pending after calls to avoid Tcl_AsyncDelete errors
+        for after_id in self._after_ids:
+            with suppress(Exception):
+                self.after_cancel(after_id)
+        self._after_ids.clear()
+
+        if self._settings_popup and self._settings_popup.winfo_exists():
+            self._settings_popup.destroy()
+        self._close_all_submenus()
+
         self._session_stats.unsubscribe()
         self._menu_vars.clear()
-        super().destroy()
+
+        # Stop the mainloop and destroy the root (master)
+        with suppress(tk.TclError, Exception):
+            self.master.quit()
+            self.master.destroy()
+
         with _OVERLAY_LOCK:
             global _OVERLAY_INSTANCE
             if _OVERLAY_INSTANCE is self:
                 _OVERLAY_INSTANCE = None
 
     def _apply_loaded_settings(self):
-        self.x, self.y = self.settings["x"], self.settings["y"]
+        # Transition to relative coordinates: Add the current game window offset to the saved position.
+        roi = self._cam.window_roi
+        offset_x = roi.get("left", 0) if roi else 0
+        offset_y = roi.get("top", 0) if roi else 0
+        self.x, self.y = self.settings["x"] + offset_x, self.settings["y"] + offset_y
         self.font_size = self.settings["font_size"]
         self.next_boss_name = self.settings["next_boss_name"]
         self.orientation = self.settings["orientation"]
@@ -413,9 +449,12 @@ class BossTimerOverlay(tk.Toplevel):
         self._exp_initialized = self.capture_exp_stats and stats.last_exp is not None
 
     def _save_settings(self):
+        roi = self._cam.window_roi
+        offset_x = roi.get("left", 0) if roi else 0
+        offset_y = roi.get("top", 0) if roi else 0
         updates: dict[str, Any] = {
-            "x": self.winfo_x(),
-            "y": self.winfo_y(),
+            "x": self.winfo_x() - offset_x,
+            "y": self.winfo_y() - offset_y,
             "font_size": self.font_size,
             "wb_reference": self.wb_reference,
             "next_boss_name": self.next_boss_name,
@@ -1322,6 +1361,7 @@ class BossTimerOverlay(tk.Toplevel):
     def _start_drag(self, event):
         if self.locked:
             return
+        self._is_dragging = True
         self.config(cursor="fleur")
         # Calculate and store the fixed offset from the window's top-left to the mouse click
         self._drag_offset_x = event.x_root - self.winfo_x()
@@ -1336,6 +1376,7 @@ class BossTimerOverlay(tk.Toplevel):
         self.geometry(f"+{x}+{y}")
 
     def _stop_drag(self, event):
+        self._is_dragging = False
         self.config(cursor="")
         self._save_settings()
 
@@ -1413,8 +1454,38 @@ class BossTimerOverlay(tk.Toplevel):
             LOGGER.error(f"Failed to auto-sync from helltides.com: {e}")
 
     def _update_timers(self):
-        if not self.winfo_exists():
+        if self._closing or not self.winfo_exists():
             return
+
+        # Toggle visibility based on window focus
+        is_interacting = self._is_dragging or is_self_foreground()
+        if not is_interacting:
+            if self._settings_popup and self._settings_popup.winfo_exists() and self._settings_popup.winfo_viewable():
+                is_interacting = True
+            else:
+                for sub in self._open_submenus.values():
+                    if sub.winfo_exists() and sub.winfo_viewable():
+                        is_interacting = True
+                        break
+
+        is_fgrnd = is_window_foreground(self._win_spec) or is_interacting
+        now = time.time()
+        if is_fgrnd:
+            self._last_focus_time = now
+
+        # Hysteresis: Stay visible for 750ms after focus is lost to prevent flashing on release
+        should_be_visible = is_fgrnd or (now - self._last_focus_time < 0.75)
+
+        if should_be_visible and self.state() == "withdrawn":
+            self.deiconify()
+        elif not should_be_visible and self.state() != "withdrawn":
+            self.withdraw()
+
+        if not should_be_visible:
+            aid = self.after(500, self._update_timers)
+            self._after_ids.append(aid)
+            return
+
         now = datetime.datetime.now(datetime.UTC)
         self._flash_toggle = not self._flash_toggle
         colors = get_filter_colors()
@@ -1512,7 +1583,8 @@ class BossTimerOverlay(tk.Toplevel):
                     m, s = divmod(int(remaining), 60)
                     self.next_scan_value_label.config(text=f"{m}m {s}s" if m > 0 else f"{s}s")
 
-        self.after(1000, self._update_timers)
+        aid = self.after(250, self._update_timers)
+        self._after_ids.append(aid)
 
     def update_stats(
         self,
@@ -1523,33 +1595,41 @@ class BossTimerOverlay(tk.Toplevel):
         t2l: str | None = None,
     ):
         """Update the gold and experience statistics display."""
-        repack_needed = False
-        if gph is not None and self.capture_gold_stats:
-            self.gph_value_label.config(text=f"{gph:,}")
-            if not self._gold_initialized:
-                self._gold_initialized = True
-                repack_needed = True
-        if total_gained is not None and self.capture_gold_stats:
-            self.total_gained_value_label.config(text=f"{total_gained:,}")
-            if not self._gold_initialized:
-                self._gold_initialized = True
-                repack_needed = True
-        if eph is not None and self.capture_exp_stats:
-            self.eph_value_label.config(text=f"{eph:,}")
-            if not self._exp_initialized:
-                self._exp_initialized = True
-                repack_needed = True
-        if total_exp is not None and self.capture_exp_stats:
-            self.total_exp_value_label.config(text=f"{total_exp:,}")
-            if not self._exp_initialized:
-                self._exp_initialized = True
-                repack_needed = True
-        if t2l is not None and self.capture_exp_stats:
-            self.t2l_value_label.config(text=t2l)
 
-        if repack_needed:
-            self._repack()
-            self.update_idletasks()
+        def _do_update():
+            if self._closing or not self.winfo_exists():
+                return
+            repack_needed = False
+            if gph is not None and self.capture_gold_stats:
+                self.gph_value_label.config(text=f"{gph:,}")
+                if not self._gold_initialized:
+                    self._gold_initialized = True
+                    repack_needed = True
+            if total_gained is not None and self.capture_gold_stats:
+                self.total_gained_value_label.config(text=f"{total_gained:,}")
+                if not self._gold_initialized:
+                    self._gold_initialized = True
+                    repack_needed = True
+            if eph is not None and self.capture_exp_stats:
+                self.eph_value_label.config(text=f"{eph:,}")
+                if not self._exp_initialized:
+                    self._exp_initialized = True
+                    repack_needed = True
+            if total_exp is not None and self.capture_exp_stats:
+                self.total_exp_value_label.config(text=f"{total_exp:,}")
+                if not self._exp_initialized:
+                    self._exp_initialized = True
+                    repack_needed = True
+            if t2l is not None and self.capture_exp_stats:
+                self.t2l_value_label.config(text=t2l)
+
+            if repack_needed:
+                self._repack()
+                self.update_idletasks()
+
+        if not self._closing:
+            aid = self.after(0, _do_update)
+            self._after_ids.append(aid)
 
 
 def run_boss_timer_overlay():

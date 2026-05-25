@@ -11,6 +11,7 @@ import queue
 import re
 import sys
 import threading
+import time
 import tkinter as tk
 from contextlib import suppress
 from dataclasses import dataclass
@@ -36,6 +37,7 @@ from src.gui.importer.gui_common import (
     TRANSPARENT_KEY,
 )
 from src.item.filter import Filter
+from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -396,7 +398,7 @@ class OverlayConfig:
 
     ui_scale: float = 1.0
     panel_w: int = PANEL_W
-    poll_ms: int = 500
+    poll_ms: int = 250
     window_alpha: float = 0.86
 
     is_collapsed: bool = False
@@ -447,6 +449,7 @@ class ParagonOverlay(tk.Toplevel):
         self._config_loader.register_change_listener(self._config_listener)
         self._cam = Cam()
         self._res = ResManager()
+        self._win_spec = WindowSpec(self._config_loader.advanced_options.process_name)
         self.builds = list(builds)
 
         # Restore the previously selected build by its persisted identity first.
@@ -469,6 +472,7 @@ class ParagonOverlay(tk.Toplevel):
         self.grid_x_collapsed = gxc_val if isinstance(gxc_val, int) else self._cfg.grid_x_collapsed_default
         self.grid_y_collapsed = gyc_val if isinstance(gyc_val, int) else self._cfg.grid_y_collapsed_default
 
+        self._last_focus_time = time.time()
         (self._last_roi, self._last_res, self._border_rect, self._dragging_grid, self._border_grab) = (
             None,
             None,
@@ -647,6 +651,30 @@ class ParagonOverlay(tk.Toplevel):
     def _poll_window_state(self) -> None:
         """Re-apply geometry when the tracked game window changes size or ROI."""
         try:
+            # If we are dragging the grid or interacting with popups, consider it foreground.
+            is_interacting = (
+                self._dragging_grid
+                or is_self_foreground()
+                or _is_alive(getattr(self, "_settings_popup", None), mapped=True)
+                or _is_alive(getattr(self, "_build_popup", None), mapped=True)
+            )
+
+            is_fgrnd = is_window_foreground(self._win_spec) or is_interacting
+            now = time.time()
+            if is_fgrnd:
+                self._last_focus_time = now
+
+            should_be_visible = is_fgrnd or (now - self._last_focus_time < 0.75)
+
+            if should_be_visible and not self.winfo_viewable():
+                self.deiconify()
+                self.lift()
+            elif not should_be_visible and self.winfo_viewable():
+                self.withdraw()
+
+            if not is_fgrnd:
+                return
+
             roi, res = self._get_cam_roi(), self._get_resolution()
             if roi != self._last_roi or res != self._last_res:
                 self._last_roi, self._last_res = roi, res
@@ -1528,9 +1556,10 @@ class ParagonOverlay(tk.Toplevel):
     def _get_cam_roi(self) -> tuple[int, int, int, int] | None:
         """Return the tracked game window ROI when the camera module exposes one."""
         try:
-            return (
-                (int(r[0]), int(r[1]), int(r[2]), int(r[3])) if (r := getattr(self._cam, "window_roi", None)) else None
-            )
+            r = getattr(self._cam, "window_roi", None)
+            if not r or r.get("width", 0) <= 0:
+                return None
+            return (int(r["left"]), int(r["top"]), int(r["width"]), int(r["height"]))
         except Exception:
             return None
 
