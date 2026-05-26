@@ -115,6 +115,39 @@ class IniConfigLoader:
         if LOGGER.isEnabledFor(logging.WARNING):
             LOGGER.handle(record)
 
+    def _remove_defunct_values(self) -> bool:
+        if self._parser is None:
+            return False
+
+        removed = False
+        # Move items "everything" migration: if found, remove the key so it defaults to the full list
+        if "general" in self._parser:
+            for key in ["move_to_inv_item_type", "move_to_stash_item_type"]:
+                if self._parser.has_option("general", key):
+                    val = self._parser.get("general", key)
+                    if "everything" in val.lower():
+                        new_val = "favorites,junk,unmarked"
+                        self._log_defunct_value("general", key, val, new_val)
+                        self._parser.set("general", key, new_val)
+                        removed = True
+        return removed
+
+    def _log_defunct_value(self, section: str, key: str, old_value: str, new_value: str) -> None:
+        path_name, line_number, _, _ = LOGGER.findCaller(stacklevel=2)
+        record = LOGGER.makeRecord(
+            LOGGER.name,
+            logging.WARNING,
+            path_name,
+            line_number,
+            "Deprecated value=%s found in [%s] %s. Migrating it to %s in %s.",
+            (old_value, section, key, new_value, PARAMS_INI),
+            None,
+        )
+        if self._defer_cleanup_log_records:
+            self._deferred_cleanup_log_records.append(record)
+        if LOGGER.isEnabledFor(logging.WARNING):
+            LOGGER.handle(record)
+
     def consume_deferred_cleanup_log_records(self) -> list[logging.LogRecord]:
         with self._lock:
             records = self._deferred_cleanup_log_records.copy()
@@ -179,7 +212,8 @@ class IniConfigLoader:
             self._parser.read(config_path, encoding="utf-8")
 
             defunct_keys_removed = self._remove_defunct_model_keys()
-            if defunct_keys_removed:
+            defunct_values_removed = self._remove_defunct_values()
+            if defunct_keys_removed or defunct_values_removed:
                 self._write_parser()
 
             if "advanced_options" in self._parser:

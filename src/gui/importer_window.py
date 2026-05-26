@@ -22,7 +22,7 @@ from src.gui.importer.d4builds import import_d4builds
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.maxroll import import_maxroll
 from src.gui.importer.mobalytics import import_mobalytics
-from src.gui.open_user_config_button import OpenUserConfigButton
+from src.gui.models.open_user_config_button import OpenUserConfigButton
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 

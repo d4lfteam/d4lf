@@ -34,8 +34,9 @@ from src.config.profile_models import (
     DynamicItemFilterModel,
 )
 from src.dataloader import Dataloader
-from src.gui.collapsible_widget import Container
-from src.gui.dialog import (
+from src.gui.importer.gui_common import MAX_POWER
+from src.gui.models.collapsible_widget import Container
+from src.gui.models.dialog import (
     CreateItem,
     DeleteAffixPool,
     DeleteItem,
@@ -45,7 +46,6 @@ from src.gui.dialog import (
     MinPercentDialog,
     MinPowerDialog,
 )
-from src.gui.importer.gui_common import MAX_POWER
 from src.item.data.item_type import ItemType, is_armor, is_jewelry, is_weapon
 
 LOGGER = logging.getLogger(__name__)

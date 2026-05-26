@@ -14,6 +14,31 @@ if TYPE_CHECKING:
 MODULE_LOGGER = logging.getLogger(__name__)
 HIDE_FROM_GUI_KEY = "hide_from_gui"
 IS_HOTKEY_KEY = "is_hotkey"
+CATEGORY_KEY = "category"
+
+
+class SettingsCategory(enum.StrEnum):
+    LOOT = "📦 Loot Behavior"
+    PROFILES = "📄 Profiles"
+    AUTOMATION = "🤖 Automation"
+    STASH = "🎒 Stash & Transfer"
+    UI = "🎨 UI & Theme"
+    SYSTEM = "⚙️ System & Paths"
+    HOTKEYS = "⌨️ Hotkeys"
+    ADVANCED = "🛠️ Advanced"
+
+
+CATEGORY_ORDER = [
+    SettingsCategory.PROFILES,
+    SettingsCategory.LOOT,
+    SettingsCategory.AUTOMATION,
+    SettingsCategory.STASH,
+    SettingsCategory.UI,
+    SettingsCategory.SYSTEM,
+    SettingsCategory.HOTKEYS,
+    SettingsCategory.ADVANCED,
+]
+
 
 LIVE_RELOAD_GROUP_KEY = "live_reload_group"
 
@@ -50,16 +75,9 @@ class LogLevels(enum.StrEnum):
 
 
 class MoveItemsType(enum.StrEnum):
-    everything = enum.auto()
     favorites = enum.auto()
     junk = enum.auto()
     unmarked = enum.auto()
-
-
-class JunkRaresType(enum.StrEnum):
-    disabled = "disabled"
-    three_affixes = "3 affixes"
-    all = "all"
 
 
 class ThemeType(enum.StrEnum):
@@ -86,11 +104,15 @@ class AdvancedOptionsModel(_IniBaseModel):
     disable_tts_warning: bool = Field(
         default=False,
         description="If TTS is working for you but you are still receiving the warning, check this box to disable it.",
+        title="Disable TTS Warning",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     exit_key: str = Field(default="f12", description="Hotkey to exit d4lf", json_schema_extra={IS_HOTKEY_KEY: "True"})
     fast_vision_mode_coordinates: tuple[int, int] | None = Field(
         default=None,
         description="The top left coordinates of the desired location of the fast vision mode overlay in pixels. For example: (300, 500). Set to blank for default behavior.",
+        title="Fast Vision Mode Coordinates",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     force_refresh_only: str = Field(
         default="ctrl+shift+f11",
@@ -105,7 +127,8 @@ class AdvancedOptionsModel(_IniBaseModel):
     log_lvl: LogLevels = Field(
         default=LogLevels.info,
         description="The level at which logs are written",
-        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level"},
+        title="Logging Detail Level",
+        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level", CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     move_to_chest: str = Field(
         default="f8",
@@ -119,7 +142,9 @@ class AdvancedOptionsModel(_IniBaseModel):
     )
     process_name: str = Field(
         default="Diablo IV.exe",
-        description="The process that is running Diablo 4. Could help usage when playing through a streaming service like GeForce Now",
+        description="The process that is running Diablo 4. You should never need to change this.",
+        title="Diablo IV Process Name",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     run_filter: str = Field(
         default="f11",
@@ -145,7 +170,8 @@ class AdvancedOptionsModel(_IniBaseModel):
     vision_mode_only: bool = Field(
         default=False,
         description="Only allow vision mode to run. All hotkeys and actions that click will be disabled.",
-        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "hotkeys"},
+        title="Vision Mode Only",
+        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "hotkeys", CATEGORY_KEY: SettingsCategory.AUTOMATION},
     )
 
     @model_validator(mode="after")
@@ -189,6 +215,8 @@ class AdvancedOptionsModel(_IniBaseModel):
         if not v:
             return None
         if isinstance(v, str):
+            if v == "None":
+                return None
             v = v.strip("()")
             parts = [int(part.strip()) for part in v.replace(",", " ").split()]
             if len(parts) != 2:
@@ -207,7 +235,10 @@ class AdvancedOptionsModel(_IniBaseModel):
 
 class CharModel(_IniBaseModel):
     inventory: str = Field(
-        default="i", description="Hotkey in Diablo IV to open inventory", json_schema_extra={IS_HOTKEY_KEY: "True"}
+        default="i",
+        description="Hotkey in Diablo IV to open inventory",
+        title="Inventory Hotkey",
+        json_schema_extra={IS_HOTKEY_KEY: "True", CATEGORY_KEY: SettingsCategory.HOTKEYS},
     )
 
     @field_validator("inventory")
@@ -223,72 +254,151 @@ class ColorsModel(_IniBaseModel):
 
 
 class GeneralModel(_IniBaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def check_move_items_deprecation(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+
+        migrated_data = dict(data)
+        for key in ["move_to_inv_item_type", "move_to_stash_item_type"]:
+            val = migrated_data.get(key)
+            if val is None:
+                continue
+
+            items = []
+            if isinstance(val, str):
+                items = [i.strip().lower() for i in val.split(",") if i.strip()]
+            elif isinstance(val, list):
+                items = [str(i).lower() for i in val]
+
+            if "everything" in items:
+                MODULE_LOGGER.warning("Deprecated 'everything' value found in %s. Converting it to explicit list.", key)
+                migrated_data[key] = [MoveItemsType.favorites, MoveItemsType.junk, MoveItemsType.unmarked]
+        return migrated_data
+
     auto_use_temper_manuals: bool = Field(
         default=True,
         description="When using the loot filter, should found temper manuals be automatically used? Note: Will not work with stash open.",
+        title="Auto-use Temper Manuals",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.AUTOMATION},
     )
-    browser: BrowserType = Field(default=BrowserType.chrome, description="Which browser to use to get builds")
+    browser: BrowserType = Field(
+        default=BrowserType.chrome,
+        description="Which browser to use to get builds",
+        title="Browser",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.SYSTEM},
+    )
     check_chest_tabs: list[int] = Field(
-        default=[0, 1], description="Which stash tabs to check. Note: All tabs available (6 or 7) must be unlocked!"
+        default=[0, 1],
+        description="Which stash tabs to check. Note: All tabs available (6 or 7) must be unlocked!",
+        title="Stash Tabs to Filter",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
     )
     do_not_junk_ancestral_legendaries: bool = Field(
-        default=False, description="Do not mark ancestral legendaries as junk for seasonal challenge"
+        default=False,
+        description="Do not mark ancestral legendaries as junk",
+        title="Protective Ancestral Filter",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     full_dump: bool = Field(
         default=False,
         description="When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     handle_cosmetics: CosmeticFilterType = Field(
         default=CosmeticFilterType.ignore,
         description="What should be done with cosmetic upgrades that do not match any filter",
+        title="Handle Cosmetics",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     handle_uniques: UnfilteredUniquesType = Field(
         default=UnfilteredUniquesType.favorite,
         description="What should be done with uniques that do not match any profile. Mythics are always favorited. If mark_as_favorite is unchecked then uniques that match a profile will not be favorited.",
+        title="Unfiltered Unique Behavior",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     ignore_escalation_sigils: bool = Field(
-        default=True, description="When filtering Sigils, should escalation sigils be ignored?"
+        default=True,
+        description="When filtering Sigils, should escalation sigils be ignored?",
+        title="Ignore Escalation Sigils",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     keep_aspects: AspectFilterType = Field(
-        default=AspectFilterType.upgrade, description="Whether to keep aspects that didn't match a filter"
+        default=AspectFilterType.upgrade,
+        description="Whether to keep aspects that didn't match a filter",
+        title="Aspect Upgrade Handling",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     language: str = Field(
         default="enUS",
         description="Do not change. Only English is supported at this time",
-        json_schema_extra={HIDE_FROM_GUI_KEY: "True", LIVE_RELOAD_GROUP_KEY: "language"},
+        title="Language",
+        json_schema_extra={
+            HIDE_FROM_GUI_KEY: "True",
+            LIVE_RELOAD_GROUP_KEY: "language",
+            CATEGORY_KEY: SettingsCategory.SYSTEM,
+        },
     )
-    mark_as_favorite: bool = Field(default=True, description="Whether to favorite matched items or not")
+    mark_as_favorite: bool = Field(
+        default=True,
+        description="Whether to favorite matched items or not",
+        title="Mark Matched Items as Favorite",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
+    )
     max_stash_tabs: int = Field(
-        default=6,
-        description="The maximum number of stash tabs you have available to you if you bought them all. If you own the Lord of Hatred expansion you should choose 7. You will need to restart the gui after changing this.",
+        default=7,
+        description="The maximum number of stash tabs available.",
+        title="Max Stash Tabs",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
     )
     minimum_overlay_font_size: int = Field(
         default=12,
-        description="The minimum font size for the vision overlay, specifically the green text that shows which filter(s) are matching.",
+        description="The minimum font size for the vision overlays.",
+        title="Overlay Text Size",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.UI},
     )
     move_to_inv_item_type: list[MoveItemsType] = Field(
-        default=[MoveItemsType.everything],
+        default=[MoveItemsType.favorites, MoveItemsType.junk, MoveItemsType.unmarked],
         description="When doing stash/inventory transfer, what types of items should be moved",
+        title="Move to Inventory Types",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
     )
     move_to_stash_item_type: list[MoveItemsType] = Field(
-        default=[MoveItemsType.everything],
+        default=[MoveItemsType.favorites, MoveItemsType.junk, MoveItemsType.unmarked],
         description="When doing stash/inventory transfer, what types of items should be moved",
+        title="Move to Stash Types",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
     )
     profiles: list[str] = Field(
         default=[],
-        description='Which filter profiles should be run. All .yaml files with "AspectUpgrades", '
-        '"Affixes", "Uniques", "Sigils", etc sections will be used from '
-        "C:/Users/USERNAME/.d4lf/profiles/*.yaml",
+        description="Which filter profiles should be run.",
+        title="Active Filtering Profiles",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.PROFILES},
     )
-    run_vision_mode_on_startup: bool = Field(default=True, description="Whether to run vision mode on startup or not")
-    theme: ThemeType = Field(default=ThemeType.dark, description="Choose between light and dark theme for the GUI")
+    run_vision_mode_on_startup: bool = Field(
+        default=True,
+        description="Whether to run vision mode on startup or not",
+        title="Auto-Start Vision Mode",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.AUTOMATION},
+    )
+    theme: ThemeType = Field(
+        default=ThemeType.dark,
+        description="GUI Theme",
+        title="Theme",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.UI},
+    )
     colorblind_mode: bool = Field(
-        default=False, description="Enable a colorblind friendly palette for loot filter and paragon overlays"
+        default=False,
+        description="Enable colorblind palette",
+        title="Colorblind Accessible Palette",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.UI},
     )
     vision_mode_type: VisionModeType = Field(
         default=VisionModeType.highlight_matches,
         description="Should the vision mode use the slightly slower version that highlights matching affixes, or the immediate version that just shows text of the matches? Note: highlight_matches does not work with controllers.",
-        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "restart_app"},
+        title="Vision Mode Type",
+        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "restart_app", CATEGORY_KEY: SettingsCategory.UI},
     )
 
     @field_validator("check_chest_tabs", mode="before")
@@ -337,13 +447,26 @@ class GeneralModel(_IniBaseModel):
 
     @field_validator("move_to_inv_item_type", "move_to_stash_item_type", mode="before")
     @classmethod
-    def convert_move_item_type(cls, v: str) -> list[type[MoveItemsType[Any]]]:
+    def convert_move_item_type(cls, v: Any) -> list[MoveItemsType]:
         if isinstance(v, str):
             v = v.split(",")
-        elif not isinstance(v, list):
+        if not isinstance(v, list):
             msg = "must be a list or a string"
             raise ValueError(msg)
-        return [MoveItemsType[v.strip()] for v in v]
+
+        out = []
+        for x in v:
+            if isinstance(x, MoveItemsType):
+                out.append(x)
+            elif isinstance(x, str) and (s := x.strip()):
+                if s.lower() == "everything":
+                    out.extend([MoveItemsType.favorites, MoveItemsType.junk, MoveItemsType.unmarked])
+                else:
+                    try:
+                        out.append(MoveItemsType(s.lower()))
+                    except ValueError:
+                        MODULE_LOGGER.error("Invalid move item type: %s", s)
+        return list(dict.fromkeys(out))
 
 
 class HSVRangeModel(_IniBaseModel):

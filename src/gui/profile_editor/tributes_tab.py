@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
 
 from src.config.profile_models import ItemRarity, TributeFilterModel
 from src.dataloader import Dataloader
-from src.gui.dialog import AddTributeRarity, CreateTribute
+from src.gui.models.dialog import AddTributeRarity, CreateTribute
 
 TRIBUTES_TABNAME = "Tributes"
 
