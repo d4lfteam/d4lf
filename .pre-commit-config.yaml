@@ -31,7 +31,8 @@ repos:
       - id: clang-format
         priority: *group1
         files: \.(cpp|h)$
-  - repo: builtin
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
     hooks:
       - id: check-added-large-files
         priority: &read-only 4294967295
@@ -44,6 +45,8 @@ repos:
       - id: check-toml
         priority: *read-only
       - id: check-yaml
+        priority: *read-only
+      - id: check-ast
         priority: *read-only
       - id: end-of-file-fixer
       - id: fix-byte-order-marker

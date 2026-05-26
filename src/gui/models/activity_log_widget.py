@@ -49,9 +49,23 @@ class ActivityLogWidget(QWidget):
         # -- LEFT: PROFILE LIST --
         profile_section = QVBoxLayout()
         profile_section.setSpacing(10)
+
+        profile_hdr_layout = QHBoxLayout()
+        profile_hdr_layout.setSpacing(5)
         profile_hdr = QLabel("ACTIVE PROFILES")
         profile_hdr.setStyleSheet("font-weight: bold; color: #888; letter-spacing: 1px;")
-        profile_section.addWidget(profile_hdr)
+
+        info_icon = QLabel("ⓘ")
+        info_icon.setStyleSheet("color: #888; font-weight: bold; font-size: 14px;")
+        info_icon.setToolTip(
+            "Below are the profiles for the overlay. Enable/Disable with the checkboxes. They can be dragged up/down. "
+            "The top profile is the active one for the green dots on an item."
+        )
+
+        profile_hdr_layout.addWidget(profile_hdr)
+        profile_hdr_layout.addWidget(info_icon)
+        profile_hdr_layout.addStretch()
+        profile_section.addLayout(profile_hdr_layout)
 
         # Visual drop indicator for drag-and-drop
         self.drop_indicator = QFrame()
