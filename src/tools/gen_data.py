@@ -365,10 +365,6 @@ def load_json_file(json_file: Path):
         return json.load(file)
 
 
-def unsigned_int(value: int) -> int:
-    return value % (2**32)
-
-
 def string_list_map(string_list_file: Path) -> dict[str, str]:
     data = load_json_file(string_list_file)
     return {entry["szLabel"]: entry["szText"] for entry in data["arStrings"]}
@@ -531,7 +527,7 @@ def companion_style_affix_description(
         localisation_id = attribute.get("__eAttribute_name__") or ""
         if not localisation_id:
             continue
-        parameter = unsigned_int(attribute.get("nParam", 0))
+        parameter = attribute.get("nParam", 0) % (2**32)
         formula = (attribute.get("szAttributeFormula") or {}).get("value", "")
         localisation_id = update_affix_localisation_id(
             localisation_id,
@@ -597,11 +593,11 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
                 for power_file in sorted((d4data_dir / "json/base/meta/Power").glob("*.json"))
             )
         },
-        "skill_tags_by_sno": {unsigned_int(int(key)): value for key, value in core_toc.get("56", {}).items()},
-        "weapon_types_by_sno": {unsigned_int(int(key)): value for key, value in core_toc.get("116", {}).items()},
+        "skill_tags_by_sno": {int(key) % (2**32): value for key, value in core_toc.get("56", {}).items()},
+        "weapon_types_by_sno": {int(key) % (2**32): value for key, value in core_toc.get("116", {}).items()},
     }
     if not context["skill_tags_by_sno"]:
-        context["skill_tags_by_sno"] = {unsigned_int(int(key)): value for key, value in gbid.get("56", {}).items()}
+        context["skill_tags_by_sno"] = {int(key) % (2**32): value for key, value in gbid.get("56", {}).items()}
 
     affix_dict = {}
     affix_pattern = "json/base/meta/Affix/*.json"
