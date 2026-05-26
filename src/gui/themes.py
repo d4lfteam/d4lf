@@ -243,6 +243,12 @@ QLabel#key-badge {
     font-family: 'Consolas', 'Monospace';
 }
 
+QPlainTextEdit#log-viewer {
+    background-color: #121212;
+    color: #e0e0e0;
+    border: 1px solid #333;
+}
+
 /* Segmented Control Styling */
 QWidget#segmented-container {
     background-color: #121212;
@@ -262,6 +268,29 @@ QPushButton#segment-btn:checked {
     border: 1px solid #23fc5d;
     color: #23fc5d;
     font-weight: bold;
+}
+
+QPushButton#row-action-btn, QPushButton#delete-profile-btn {
+    background-color: transparent;
+    border: none;
+    font-weight: normal;
+    padding: 3px 8px;
+    font-size: 13px;
+}
+QPushButton#row-action-btn:hover, QPushButton#delete-profile-btn:hover {
+    background-color: #2c2c2c;
+    border-radius: 4px;
+}
+QPushButton#delete-profile-btn {
+    color: #ff4d4d;
+}
+
+QWidget#profile-row {
+    background-color: #1c1c1c;
+    border-bottom: 1px solid #252525;
+}
+QWidget#profile-row[alt="true"] {
+    background-color: #242424;
 }
 
 QLabel#description-label {
@@ -290,6 +319,12 @@ QPushButton {
 QPushButton:hover {
     background-color: #d3d3d3;
     border: 1px solid #a3a3a3;
+}
+QPushButton#primary {
+    background-color: #721c24;
+    border: 1px solid #f5c6cb;
+    color: #f8d7da;
+    font-weight: bold;
 }
 QPushButton:pressed {
     background-color: #c3c3c3;
@@ -481,6 +516,21 @@ QCheckBox[greaterCheckbox="true"] {
 
 /* Hotkey button styling */
 /* Segmented Control Styling */
+QLabel#key-badge {
+    background-color: #e0e0e0;
+    color: #1f1f1f;
+    border: 1px solid #a3a3a3;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: 'Consolas', 'Monospace';
+}
+
+QPlainTextEdit#log-viewer {
+    background-color: #ffffff;
+    color: #1f1f1f;
+    border: 1px solid #c3c3c3;
+}
+
 QWidget#segmented-container {
     background-color: #dcdcdc;
     border: 1px solid #c3c3c3;
@@ -504,6 +554,29 @@ QPushButton#segment-btn:checked {
 QPushButton[hotkeyButton="true"] {
     text-align: left;
     padding-left: 5px;
+}
+
+QPushButton#row-action-btn, QPushButton#delete-profile-btn {
+    background-color: transparent;
+    border: none;
+    font-weight: normal;
+    padding: 3px 8px;
+    font-size: 13px;
+}
+QPushButton#row-action-btn:hover, QPushButton#delete-profile-btn:hover {
+    background-color: #d3d3d3;
+    border-radius: 4px;
+}
+QPushButton#delete-profile-btn {
+    color: #cc0000;
+}
+
+QWidget#profile-row {
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #dcdcdc;
+}
+QWidget#profile-row[alt="true"] {
+    background-color: #e5e5e5;
 }
 
 QLabel#description-label {
