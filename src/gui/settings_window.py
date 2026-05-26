@@ -6,7 +6,7 @@ from PyQt6.QtCore import QPoint, QSettings, QSize, Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QMainWindow
 
-from src.gui.config_tab import ConfigTab
+from src.gui.settings_tab import ConfigTab
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 
@@ -47,9 +47,12 @@ class ConfigWindow(QMainWindow):
         self._rebuild_tab()
 
     def _rebuild_tab(self):
+        current_idx = self.config_tab.nav_list.currentRow()
         old_tab = self.config_tab
         self.config_tab = ConfigTab(theme_changed_callback=self._on_theme_changed)
         self.setCentralWidget(self.config_tab)
+        if current_idx >= 0:
+            self.config_tab.nav_list.setCurrentRow(current_idx)
         old_tab.deleteLater()
 
     def closeEvent(self, event):

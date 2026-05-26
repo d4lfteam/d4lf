@@ -16,8 +16,8 @@ from PyQt6.QtWidgets import (
 
 from src.config.profile_models import SigilConditionModel, SigilFilterModel, SigilPriority
 from src.dataloader import Dataloader
-from src.gui.collapsible_widget import Container
-from src.gui.dialog import CreateSigil, IgnoreScrollWheelComboBox, RemoveSigil
+from src.gui.models.collapsible_widget import Container
+from src.gui.models.dialog import CreateSigil, IgnoreScrollWheelComboBox, RemoveSigil
 
 SIGILS_TABNAME = "Sigils"
 
