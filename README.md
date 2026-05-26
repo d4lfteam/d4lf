@@ -29,7 +29,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
   - In Battle.net, click the gear icon next to the Play button and select "Open in Explorer"
   - In Steam, right click the game, select Manage > Browse local files
 - D4LF gets item information by reading the screen and using TTS information sent for accessibility. TTS setup takes additional steps, detailed below. For more information on the install_dll.cmd script, see [the TTS section](https://github.com/d4lfteam/d4lf/blob/main/README.md#tts)
-  - Navigate to your d4lf directory
+  - Navigate to your downloaded d4lf directory
   - Double-click `install_dll.cmd`
     - If asked for administrator permissions, provide them.
     - When asked for your Diablo 4 path, provide it
@@ -37,11 +37,10 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
     - If everything is successful, proceed with the guide. Otherwise join the [discord](https://discord.gg/YyzaPhAN6T) or post an issue in github.
 - Generate a profile of what Diablo 4 items you want to filter for. To do so you have a few options:
   - Run d4lf.exe and import a profile using the import window by pasting a build page from popular planner websites
-  - Create one yourself by looking at the [examples](#how-to-filter--profiles) below
-- If created manually, place the profile in the `C:/Users/<WINDOWS_USER>/.d4lf/profiles` folder. The D4LF
-  importer window has a button to open this folder directly. If imported they are placed there automatically.
-- Run d4lf.exe and use the config button to configure the profiles in the general section. Select the '...' next to profiles to activate which
-  profiles you want to use.
+  - Create one yourself by looking at the [examples](#how-to-filter--profiles) below and using the profile editor to recreate
+- If created manually (not recommended), place the profile in the `C:/Users/<WINDOWS_USER>/.d4lf/profiles` folder. The D4LF
+  Settings window has a button to open this folder directly. If imported they are placed there automatically.
+- Run d4lf.exe and use the Settings button to configure the profiles in the Profile section. Check the box next to the profiles you would like to use.
 - Ensure all [game settings](#game-settings) are configured properly.
 - If you made changes, restart d4lf.exe and launch Diablo 4.
 - Use the hotkeys listed in d4lf.exe to run filtering. By default, F11 will run the loot filter and filter your items.
@@ -69,16 +68,11 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
     - Run Diablo 4 again through Steam/Battle.net and see if that resolved the issue.
     - If it did not, set Steam/Battle.net to run as administrator as well and make sure you are running Diablo through Steam. This should resolve the issue.
 - The GUI crashes immediately upon opening, with no error message given
-  - This almost always means there is an issue in your params.ini. Delete the file in `C:/Users/<WINDOWS_USER>/.d4lf/` and then open the GUI and configure
+  - This almost always means there is an issue in your params.ini, the backing file for our Settings. Delete the file in `C:/Users/<WINDOWS_USER>/.d4lf/` and then open the GUI and configure
     your params.ini through the Settings window in D4LF. Using the GUI for configuration will ensure the file is always accurate.
 - Mouse control isn't possible
   - Due to your local windows settings, the tool might not be able to control the mouse. Just run the tool as admin
-    and it should work. If you don't want to run it as admin, you can disable the mouse control in the params.ini
-    by setting `vision_mode_only` to `true`.
-- Paragon overlay does not appear / does nothing
-  - Ensure Diablo IV is running in **borderless windowed** (exclusive fullscreen may block overlays).
-  - Ensure your profiles folder contains `*.yaml`/`*.yml` profile files with a top-level `Paragon:` section (default: `C:/Users/<WINDOWS_USER>/.d4lf/profiles`).
-  - Check/adjust `advanced/settings/toggle_paragon_overlay` (default `f10`) and ensure it is not conflicting with other hotkeys.
+    and it should work. If you don't want to run it as admin, you can disable the mouse control entirely by enabling Settings > Automation > Vision Mode Only
 
 ### TTS
 
@@ -86,7 +80,7 @@ D4 uses a third-party TTS engine called Tolk. Tolk has a feature that allows cus
 D4 automatically loads the DLL, which actually just sends the text to another application rather than reading it aloud.
 This is similar to having a Braille TTS application for D4.
 
-The TTS dll (saapi64.dll) must be signed for Diablo 4 to pick it up. The install_dll.cmd script handles all of this for you. It will:
+The TTS dll (`saapi64.dll`) must be signed for Diablo 4 to pick it up. The `install_dll.cmd` script handles all of this for you. It will:
 
 - Copy the dll file to the Diablo 4 directory
 - Download the signtool needed to add a local signature to the dll
@@ -96,76 +90,82 @@ If you prefer running it from a terminal, you can run `.\install_dll.cmd`.
 
 For very advanced users that don't want to automatically download signtool.exe, you can run `.\install_dll.cmd -signtool_path "<full path to signtool.exe>"`
 
-### Configs
-
-The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
-
-- **profiles/\*.yaml**: These files determine what should be filtered. Profiles created by the GUI will be placed here
-  automatically.
-- **params.ini**: Different hotkey settings and number of chest stashes that should be looked at. Management of this
-  file should be done through the GUI in the config window.
-- **profiles/\*.yaml**: Profiles including embedded Paragon data for the integrated overlay (top-level `Paragon:`). Generated/updated by the importer when "Import Paragon" is enabled. Default location: `C:/Users/<WINDOWS_USER>/.d4lf/profiles`
-
-### params.ini (Settings window in GUI)
-
-| [general]                                         | Description                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| profiles                                          | A set of profiles separated by comma. d4lf will look for these yaml files in config/profiles and in C:/Users/WINDOWS_USER/.d4lf/profiles                                                                                                                                                                                                                                                                                                 |
-| auto_use_temper_manuals                           | When using the loot filter, should found temper manuals be automatically used? Note: Will not work with stash open.                                                                                                                                                                                                                                                                                                                      |
-| browser                                           | Which browser to use to get builds from d4builds or mobalytics, please make sure you pick an installed browser: chrome, edge or firefox are currently supported.                                                                                                                                                                                                                                                                         |
-| check_chest_tabs                                  | Which chest tabs will be checked and filtered for items in case chest is open when starting the filter. You need to buy all slots. Counting is done left to right. E.g. 1,2,4 will check tab 1, tab 2, tab 4                                                                                                                                                                                                                             |
-| do_not_junk_ancestral_legendaries                 | Do not mark ancestral legendaries as junk.                                                                                                                                                                                                                                                                                                                                                                                               |
-| full_dump                                         | When using the import build feature, whether to use the full dump (e.g. contains all filter items) or not                                                                                                                                                                                                                                                                                                                                |
-| handle_cosmetics                                  | How to handle new cosmetics that do not match any filter and are not aspect upgrades. `ignore` will ignore them, `junk` will mark them as junk                                                                                                                                                                                                                                                                                           |
-| handle_uniques                                    | How to handle uniques that do not match any filter. This property does not apply to filtered uniques. All mythics are favorited regardless of filter. <br/>- `favorite`: Mark the unique as favorite and vision mode will show it as green (default)<br/>- `ignore`: Do nothing with the unique and vision mode will show it as green<br/>- `junk`: Mark any uniques that don't match any filters as junk and show as red in vision mode |
-| ignore_escalation_sigils                          | When filtering Sigils, should escalation sigils be ignored?                                                                                                                                                                                                                                                                                                                                                                              |
-| keep_aspects                                      | - `all`: Keep all legendary items <br>- `upgrade`: Keep all legendary items that upgrade your codex of power. If the item matches no profile, it will be highlighted in orange <br>- `none`: Keep no legendary items based on aspect (they are still filtered!) <br>-                                                                                                                                                                    |
-| mark_as_favorite                                  | Whether to favorite matched items or not. Defaults to true                                                                                                                                                                                                                                                                                                                                                                               |
-| max_stash_tabs                                    | The maximum number of stash tabs you have available to you if you bought them all. If you own the Lord of Hatred expansion you should choose 7.                                                                                                                                                                                                                                                                                          |
-| minimum_overlay_font_size                         | The minimum font size for the vision overlay, specifically the green text that shows which filter(s) are matching. Note: For small profile names, the font may actually be larger than this size but will never go below this size.                                                                                                                                                                                                      |
-| move_to_inv_item_type<br/>move_to_stash_item_type | Which types of items to move when using fast move functionality. Will only affect tabs defined in check_chest_tabs. You can select more than one option. <br>- `favorites`: Move favorites only <br>- `junk`: Move junk only <br>- `unmarked`: Only items not marked as favorite or junk <br>- `everything`: Move everything                                                                                                             |
-| run_vision_mode_on_startup                        | If the vision mode should automatically start when starting d4lf. Otherwise has to be started manually with the vision button or the hotkey                                                                                                                                                                                                                                                                                              |
-| colorblind_mode                                   | Enable a colorblind friendly palette for loot filter and paragon overlays                                                                                                                                                                                                                                                                                                                                                                |
-| vision_mode_type                                  | Which vision mode you would like to use?. `highlight_matches` does the classic green highlighting of affixes on screen, but is slightly slower. `fast` just puts green text on screen but is very fast and works with controllers.                                                                                                                                                                                                       |
-
-| [char]    | Description                       |
-| --------- | --------------------------------- |
-| inventory | Your hotkey for opening inventory |
-
-| [advanced_options]           | Description                                                                                                                                       |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| move_to_inv                  | Hotkey for moving items from stash to inventory                                                                                                   |
-| move_to_chest                | Hotkey for moving items from inventory to stash                                                                                                   |
-| run_filter                   | Hotkey to start/stop filtering items                                                                                                              |
-| run_filter_drop              | Hotkey to start/stop filtering items. Unmatched items are dropped instead of marked as junk                                                       |
-| run_filter_force_refresh     | Hotkey to start/stop filtering items with a force refresh. All item statuses will be reset                                                        |
-| run_vision_mode              | Hotkey to start/stop vision mode                                                                                                                  |
-| force_refresh_only           | Hotkey to reset all item statuses without running a filter after                                                                                  |
-| exit_key                     | Hotkey to exit d4lf.exe                                                                                                                           |
-| toggle_paragon_overlay       | Hotkey to open/close the Paragon overlay                                                                                                          |
-| log_lvl                      | Logging level. Can be any of [debug, info, warning, error, critical]                                                                              |
-| process_name                 | Process name of the D4 app. Defaults to "Diablo IV.exe". In case of using some remote play this might need to be adapted                          |
-| vision_mode_only             | If set to true, only the vision mode will be available. All functionality that clicks the screen is disabled.                                     |
-| fast_vision_mode_coordinates | If you are using fast vision mode, provide the location on screen where you want the overlay to appear. For example, you could provide (500, 800) |
-
-### GUI
+## GUI Overview
 
 d4lf.exe is the one-stop shop for all operations, including running the D4LF process and any configuration changes.
 
 If you prefer a standalone console-only experience, you can run d4lf-consoleonly.bat instead which will not open a GUI
 as well. It is still recommended you open the GUI for any configurations management.
 
-Except for changing the vision mode, all changes are automatically applied when made. If you make changes to a profile, those will be
-automatically picked up and no restart is necessary.
-
 Current functionality:
 
 - Import builds from maxroll/d4builds/mobalytics
-- Toggle the integrated Paragon overlay (default hotkey: F10)
-- Complete management of your settings through the config tab
+- Complete management of your settings through the Settings window
 - A beta version of a manual profile editor/creator
 
-Each window gives further instructions on how to use it and what kind of input it expects.
+### Main Screen
+
+(Documentation in progress)
+
+The main screen contains the log of what D4LF is doing when it is filtering items. Any errors are posted here.
+
+It contains navigation buttons to get to the Profile Importer, Settings, and Profile Editor.
+
+### Profile Importer
+
+(Documentation in progress)
+
+Import profiles from the following popular build sites: Maxroll, Mobalytics, D4Builds.
+
+The importer should be fairly self-documented. Hover over any option for more information on that option.
+
+### Settings Window
+
+The Settings Window is where you configure anything and everything for D4LF.
+
+![Settings Window](assets/readme/settings.png)
+
+Each setting is documented within the window so click through to see what you might be interested in changing.
+
+Some commonly modified setting sections:
+
+#### Profiles
+
+This is where you activate/deactivate your profiles. You can change the order of the profiles as well by dragging on the
+6 dot icon. The top listed profile is what Vision Mode With Highlighting will show squares for when hovering over an
+item so the order can matter. However, if an item matches any profile at all it will be kept.
+
+#### Loot Behavior
+
+Here you can change how we handle items that don't match a filter at all, for example uniques or codex upgrades.
+
+#### Stash & Transfer
+
+It's important to set how many stash tabs you have access to. If you do not own any of the expansions, change the Max Stash Tabs value to 6.
+
+Note that D4LF will not work with stash tabs until you've unlocked all of them.
+
+#### UI & Theme
+
+You can enable dark/light mode here if interested.
+
+This section also contains the two vision modes, which you can swap between.
+
+If you enable "highlight_matches" then matched affixes will have a green box drawn over the affix bullets on the screen. This is the classic vision mode, but is a little slower and mildly error prone as we are relying on reading the screen to determine affix locations.
+
+![Settings - Highlight Matches](assets/readme/settings-highlight_matches.jpg)
+
+If you instead enable "fast" vision mode, we do not read the screen at all but instead place relevant information on the screen immediately. Fast vision mode works with controllers. Both vision modes show the same information, just in different ways.
+
+![Settings - Fast](assets/readme/settings-fast.jpg)
+
+If you would like for the fast vision mode box to appear somewhere else, you can modify its location in Settings > Advanced > Fast Vision Mode Coordinates.
+
+### Profile Editor
+
+(Documentation still in progress)
+
+The Profile Editor allows you to edit your profiles. It is still in beta, but all functionality except Sigils should work at this time.
 
 ## How to filter / Profiles
 
@@ -177,7 +177,7 @@ incorrect. The error message will provide hints about the specific problem.
 The following sections will explain each type of filter that you can specify in your profiles. How you define them in
 your YAML files is up to you; you can put all of these into just one file or have a dedicated file for each type of
 filter, or even split the same type of filter over multiple files. Ultimately, all profiles specified in
-your `params.ini` will be used to determine if an item should be kept. If one of the profiles wants to keep the item, it
+the Profiles section of Settings will be used to determine if an item should be kept. If one of the profiles wants to keep the item, it
 will be kept regardless of the other profiles. Similarly, if a filter is missing in all profiles (e.g., there is
 no `Sigils` section in any profile), all corresponding items (in this case, sigils) will be kept.
 
@@ -752,9 +752,23 @@ Configure exp bar position as shown here. This position seems to work the best f
 ## Future Plans
 
 - A video explaining the initial setup
-- Evaluate using joystick emulation to further increase speed for users willing to do additional setup
 - Finish GUI documentation
 - Want something done that's not mentioned here? Leave a suggestion in the [discord](https://discord.gg/YyzaPhAN6T) or use github issues. Or, make the changes yourself and open up a PR!
+
+## Advanced User Information
+
+This information is not really relevant to anyone, but preserved here for people who want to get into the weeds of how D4LF operates.
+
+### Configs
+
+The config folder in `C:/Users/<WINDOWS_USER>/.d4lf` contains:
+
+- **profiles/\*.yaml**: These files determine what should be filtered. Profiles created by the GUI will be placed here
+  automatically.
+- **params.ini**: Different hotkey settings and number of chest stashes that should be looked at. Management of this
+  file should be done through the GUI in the config window.
+
+It is not expected you will modify these files manually, but the location could be useful to know in case of strange errors.
 
 ## Develop
 
@@ -772,6 +786,8 @@ uv run python -m src.main
 ```
 
 If you receive an error about missing Visual Studio code, follow the link it provides. Install Visual Studio Build Tools 2022 with the defaults selected and also select "MSVC VS 2022 C++ ..." and "Windows 11 SDK ...". Restart your terminal and try again.
+
+This StackOverflow provides a good outline on the proper process for keeping your main branch up to date and submitting PRs: https://stackoverflow.com/questions/20956154/whats-the-workflow-to-contribute-to-an-open-source-project-using-git-pull-reque
 
 ### Formatting & Linting
 
@@ -793,6 +809,17 @@ Otherwise just run:
 prek run -a
 ```
 
+Pre-commit is configured for D4LF and can automatically run prek before you push any changes. You can see extended setup instructions here: https://pre-commit.com/
+
+As a quick install guide, just run the following:
+
+```bash
+uv run pip install pre-commit
+uv run pre-commit install
+```
+
+Now every commit will automatically run our pre-commit checks.
+
 ### A note on use of AI for PRs
 
 AI usage is not banned for D4LF, but some things need to be kept in mind:
@@ -806,7 +833,7 @@ AI usage is not banned for D4LF, but some things need to be kept in mind:
 - There should be 1 PR per feature. Try to keep PRs small. The release notes are generated from the PR titles so if you put a lot of items into one PR we can't properly describe it in the release notes.
 - Be prepared for a lot of comments on your PR. Everything that's being done needs to be understandable by the maintainer because he has to fix it 3 months later if something goes wrong.
 
-Ultimately, please understand there is only 1 full-time maintainer of D4LF and that maintainer does not use AI. The code needs to remain human readable, and humans are who initially wrote it. If an AI and a human disagree, the human always wins. AIs can be very stupid.
+Ultimately, please understand there is only 1 full-time maintainer of D4LF and that maintainer does not use AI. The code needs to remain human readable, and humans are who initially wrote it. If an AI and a human disagree, the human always wins. AIs can be helpful but also very stupid.
 
 ## Credits
 
