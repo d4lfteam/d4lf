@@ -578,7 +578,7 @@ def normalise_affix_description(description: str) -> tuple[str, str] | None:
 
 
 def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None = None):
-    print(f"Gen Affixes for {language}")
+    print(f"Gen Affixes for {language} (This one takes a while)")
     core_toc = load_json_file(d4data_dir / "json/base/CoreTOC.dat.json")
     gbid = load_json_file(d4data_dir / "json/GBID.json")
     string_list_dir = d4data_dir / f"json/{language}_Text/meta/StringList"
