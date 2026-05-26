@@ -347,7 +347,7 @@ class GeneralModel(_IniBaseModel):
         json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     max_stash_tabs: int = Field(
-        default=6,
+        default=7,
         description="The maximum number of stash tabs available.",
         title="Max Stash Tabs",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
