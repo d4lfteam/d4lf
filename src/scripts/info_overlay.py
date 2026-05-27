@@ -1386,31 +1386,22 @@ class BossTimerOverlay(tk.Toplevel):
 
     def _fetch_schedule(self):
         try:
-            url = "https://helltides.com/schedule"
+            url = "https://helltides.com/api/schedule"
             with httpx.Client(timeout=10) as client:
                 response = client.get(url)
                 if response.status_code == 200:
-                    text = response.text
+                    data = response.json()
                     now = datetime.datetime.now(datetime.UTC)
-
-                    # Regex for World Bosses: "BossName","world_boss","YYYY-MM-DDTHH:MM:SS.000Z"
-                    wb_pattern = r"\"(Ashava|Avarice|Wandering Death)\",\"world_boss\",\"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\""
-                    wb_matches = re.findall(wb_pattern, text)
-
-                    # Regex for Legions: "legion","YYYY-MM-DDTHH:MM:SS.000Z"
-                    legion_pattern = r"\"legion\",\"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\""
-                    legion_matches = re.findall(legion_pattern, text)
-
-                    # Regex for Helltides: "YYYY-MM-DDTHH:MM:SS.000Z","helltide"
-                    ht_pattern = r"\"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\",\"helltide\""
-                    ht_matches = re.findall(ht_pattern, text)
 
                     # Process World Bosses
                     best_wb = None
-                    for name, dt_str in wb_matches:
-                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=datetime.UTC)
-                        if dt > now and (best_wb is None or dt < best_wb[0]):
-                            best_wb = (dt, name)
+                    for wb in data.get("world_boss", []):
+                        dt_str = wb.get("startTime")
+                        name = wb.get("boss")
+                        if dt_str and name:
+                            dt = datetime.datetime.fromisoformat(dt_str)
+                            if dt > now and (best_wb is None or dt < best_wb[0]):
+                                best_wb = (dt, name)
 
                     if best_wb:
                         self.synced_wb = best_wb
@@ -1421,10 +1412,12 @@ class BossTimerOverlay(tk.Toplevel):
 
                     # Process Legions
                     best_legion = None
-                    for dt_str in legion_matches:
-                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=datetime.UTC)
-                        if dt > now and (best_legion is None or dt < best_legion):
-                            best_legion = dt
+                    for legion in data.get("legion", []):
+                        dt_str = legion.get("startTime")
+                        if dt_str:
+                            dt = datetime.datetime.fromisoformat(dt_str)
+                            if dt > now and (best_legion is None or dt < best_legion):
+                                best_legion = dt
                     if best_legion:
                         self.synced_legion = best_legion
                         LOGGER.info(f"Auto-synced Legion: {best_legion}")
@@ -1433,13 +1426,15 @@ class BossTimerOverlay(tk.Toplevel):
                     # Find the helltide start time for the current or next cycle.
                     # Current seasons have helltides starting every hour.
                     latest_start = None
-                    for dt_str in ht_matches:
-                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=datetime.UTC)
-                        if dt <= now:
-                            if latest_start is None or dt > latest_start:
+                    for ht in data.get("helltide", []):
+                        dt_str = ht.get("startTime")
+                        if dt_str:
+                            dt = datetime.datetime.fromisoformat(dt_str)
+                            if dt <= now:
+                                if latest_start is None or dt > latest_start:
+                                    latest_start = dt
+                            elif dt > now and latest_start is None:
                                 latest_start = dt
-                        elif dt > now and latest_start is None:
-                            latest_start = dt
                     if latest_start:
                         self.synced_helltide = latest_start
                         LOGGER.info(f"Auto-synced Helltide: {latest_start}")
