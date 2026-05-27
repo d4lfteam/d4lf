@@ -139,10 +139,6 @@ def string_list_map(string_list_file: Path) -> dict[str, str]:
     return {entry["szLabel"]: entry["szText"] for entry in data["arStrings"]}
 
 
-def localise(label_map: dict[str, str], label: str) -> str:
-    return label_map.get(label, "")
-
-
 def get_power_id(power_by_sno: dict[int, str], sno: int) -> str:
     power_file_name = power_by_sno.get(sno, "")
     return Path(power_file_name).stem
@@ -151,10 +147,6 @@ def get_power_id(power_by_sno: dict[int, str], sno: int) -> str:
 def get_first_gbid_name(gbid_by_sno: dict[int, list[str]], sno: int) -> str:
     names = gbid_by_sno.get(sno, [])
     return names[0] if names else ""
-
-
-def dot_damage_type_id(sno: int) -> str:
-    return {0: "Physical", 1: "Fire", 4: "Poison", 5: "Shadow"}.get(sno, "")
 
 
 def update_affix_localisation_id(
@@ -183,7 +175,7 @@ def update_affix_localisation_id(
         "Damage_Percent_Reduction_From_Dotted_Enemy",
         "DOT_DPS_Bonus_Percent_Per_Damage_Type",
     }:
-        sub_id = dot_damage_type_id(parameter)
+        sub_id = {0: "Physical", 1: "Fire", 4: "Poison", 5: "Shadow"}.get(parameter, "")
     else:
         print(f"WARNING: Sub localisation data available but rules not set for {localisation_id}.")
 
@@ -219,7 +211,7 @@ def replace_numeric_value_placeholders(description: str) -> str:
 
 
 def replace_from_label_map(description: str, label_map: dict[str, str], label: str) -> str:
-    value = localise(label_map, label)
+    value = label_map.get(label, "")
     return description.replace("{VALUE1}", value) if value else description
 
 
@@ -238,7 +230,7 @@ def replace_power_placeholder(
         print(f"WARNING: Could not find file named {power_string_file} in d4data.")
         return description
 
-    skill_name = localise(string_list_map(power_string_file), "name")
+    skill_name = string_list_map(power_string_file).get("name", "")
     if not skill_name:
         return description
     return description.replace("{VALUE1}", skill_name).replace("{vALUE1}", skill_name)
@@ -285,12 +277,6 @@ def replace_parameter_placeholder(
     return description
 
 
-def replace_formula_values(description: str, attributes: list[dict]) -> str:
-    for index, attribute in enumerate(attributes, start=1):
-        description = description.replace(f"{{VALUE{index}}}", attribute["formula"])
-    return description
-
-
 def companion_style_affix_description(
     affix_data: dict, context: AffixGenerationContext, d4data_dir: Path, language: str
 ) -> str:
@@ -316,7 +302,7 @@ def companion_style_affix_description(
 
     description = ""
     for attribute in attributes:
-        localisation = localise(context["attribute_descriptions"], attribute["id"])
+        localisation = context["attribute_descriptions"].get(attribute["id"], "")
         if not localisation:
             if (affix_name, attribute["id"]) not in EXPECTED_MISSING_AFFIX_LOCALISATIONS:
                 print(f"WARNING: ({affix_name}) Localisation id {attribute['id']} not found.")
@@ -329,7 +315,8 @@ def companion_style_affix_description(
         if index > 0 and attribute["id"] == attributes[index - 1]["id"]:
             break
         if attribute["id"] == "Weapon_On_Hit_Percent_Bleed_Proc_Chance_Combined":
-            description = replace_formula_values(description, attributes)
+            for value_index, value_attribute in enumerate(attributes, start=1):
+                description = description.replace(f"{{VALUE{value_index}}}", value_attribute["formula"])
         else:
             description = replace_parameter_placeholder(
                 description, attribute["id"], attribute["parameter"], context, d4data_dir, language
@@ -589,7 +576,11 @@ def generate_sigils(d4data_dir, language):
         with Path(string_list_file).open(encoding="utf-8") as file:
             data = json.load(file)
             raw_name = string_list_value(data, "AffixName")
-            rarity = extract_sigil_rarity(raw_name)
+            rarity = None
+            for color_tag, sigil_rarity in SIGIL_RARITY_COLOR_TAGS.items():
+                if f"{{{color_tag}}}" in raw_name:
+                    rarity = sigil_rarity
+                    break
             name = remove_content_in_braces(raw_name).replace("(", "").replace(")", "")
             desc = string_list_value(data, "AffixDesc").lower().strip().replace("’", "").replace("'", "")
             desc = remove_content_in_braces(desc)
@@ -627,13 +618,6 @@ def string_list_value(data, label):
         if entry["szLabel"] == label:
             return entry["szText"]
     return ""
-
-
-def extract_sigil_rarity(name):
-    for color_tag, rarity in SIGIL_RARITY_COLOR_TAGS.items():
-        if f"{{{color_tag}}}" in name:
-            return rarity
-    return None
 
 
 def generate_uniques(d4data_dir, language):
