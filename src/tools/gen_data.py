@@ -14,6 +14,7 @@ from src.tools.gen_data_helpers import (
     DOT_LOCALISATION_IDS,
     DOT_TYPES,
     EXPECTED_MISSING_AFFIX_LOCALISATIONS,
+    GEAR_TYPES,
     LOCALISATION_ID_RENAMES,
     NECRO_PET_LOCALISATION_IDS,
     NECRO_PET_NAMES,
@@ -42,37 +43,6 @@ class AffixGenerationContext(TypedDict):
     skill_tags_by_sno: dict[int, list[str]]
     ui_tooltips: dict[str, str]
     weapon_types_by_sno: dict[int, str]
-
-
-GEAR_TYPES = [
-    "Amulet",
-    "Axe",
-    "Axe2H",
-    "Boots",
-    "Bow",
-    "ChestArmor",
-    "Crossbow2H",
-    "Dagger",
-    "Flail",
-    "Focus",
-    "Glaive",
-    "Gloves",
-    "Helm",
-    "Legs",
-    "Mace",
-    "Mace2H",
-    "OffHandTotem",
-    "Polearm",
-    "Quarterstaff",
-    "Ring",
-    "Scythe",
-    "Scythe2H",
-    "Shield",
-    "Staff",
-    "Sword",
-    "Sword2H",
-    "Wand",
-]
 
 
 def remove_content_in_braces(input_string) -> str:
