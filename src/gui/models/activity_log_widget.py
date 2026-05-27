@@ -58,8 +58,9 @@ class ActivityLogWidget(QWidget):
         info_icon = QLabel("ⓘ")
         info_icon.setStyleSheet("color: #888; font-weight: bold; font-size: 14px;")
         info_icon.setToolTip(
-            "Below are the profiles for the overlay. Enable/Disable with the checkboxes. They can be dragged up/down. "
-            "The top profile is the active one for the green dots on an item."
+            "Set which profiles you want to use for loot filtering. You can enable/disable with the checkboxes. "
+            "You can change the order by dragging up and down. If you're using vision mode with highlighting (default), "
+            "then the profile on top is the one that will have specific affixes highlighted."
         )
 
         profile_hdr_layout.addWidget(profile_hdr)
