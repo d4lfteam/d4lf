@@ -7,7 +7,7 @@ from urllib.parse import unquote
 import jsonpath
 import lxml.html
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
@@ -49,7 +49,7 @@ if TYPE_CHECKING:
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
 
 
-class MobalyticsException(Exception):
+class MobalyticsError(Exception):
     pass
 
 
@@ -66,7 +66,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     LOGGER.info(f"Loading {url}")
     driver.get(url)
     wait = WebDriverWait(driver, 10)
-    wait.until(EC.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
+    wait.until(ec.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
     variant_id = url.split(",")[1].split("#")[0] if "activeVariantId" in url else None
     raw_html_data = lxml.html.fromstring(driver.page_source)
     # The build is shoved in a massive JSON in one of the script tags. We find that json now.
@@ -82,7 +82,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
             msg
             := "No script containing build data was found. This means Mobalytics has changed how they present data, please submit a bung."
         )
-        raise MobalyticsException(msg)
+        raise MobalyticsError(msg)
 
     # Get the JSON block that contains the build and its variants
     build_data = dict(jsonpath.findall("$..userGeneratedDocumentBySlug.data.data", full_script_data_json)[0])
@@ -90,13 +90,13 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     build_header = build_data["name"]
     if not build_header:
         LOGGER.error(msg := "No build name found")
-        raise MobalyticsException(msg)
+        raise MobalyticsError(msg)
     class_name = jsonpath.findall(
         "$..userGeneratedDocumentBySlug.data.tags.data[?@.groupSlug=='class'].name", full_script_data_json
     )[0].lower()
     if not class_name:
         LOGGER.error(msg := "No class name found")
-        raise MobalyticsException(msg)
+        raise MobalyticsError(msg)
     if variant_id:
         items = jsonpath.findall(f"$..buildVariants.values[?@.id=='{variant_id}'].genericBuilder.slots", build_data)[0]
     else:
@@ -111,7 +111,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
 
     if not items:
         LOGGER.error(msg := "No items found")
-        raise MobalyticsException(msg)
+        raise MobalyticsError(msg)
     finished_filters = []
     mythic_names = []
     aspect_upgrade_filters = []
@@ -124,10 +124,10 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
             continue
         if not (item_name := str(jsonpath.findall(".gameEntity.entity.title", item)[0])):
             LOGGER.error(msg := "No item name found")
-            raise MobalyticsException(msg)
+            raise MobalyticsError(msg)
         if not (slot_type := str(jsonpath.findall(".gameSlotSlug", item)[0])):
             LOGGER.error(msg := "No slot type found")
-            raise MobalyticsException(msg)
+            raise MobalyticsError(msg)
 
         raw_affixes = jsonpath.findall(".gameEntity.modifiers.gearStats[*]", item)
         raw_inherents = jsonpath.findall(".gameEntity.modifiers.implicitStats[*]", item)
@@ -141,7 +141,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
                 if is_mythic:
                     mythic_names.append(item_name)
                     continue
-                item_filter.uniqueAspect = [AspectUniqueFilterModel(name=item_name)]
+                item_filter.unique_aspect = [AspectUniqueFilterModel(name=item_name)]
             except Exception:
                 LOGGER.exception(f"Unexpected error adding unique aspect for {item_name}, please report a bug.")
 
@@ -185,28 +185,30 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
                 LOGGER.warning(
                     f"Couldn't find an item_type for weapon slot {slot_type}, defaulting to all weapon types instead."
                 )
-                item_filter.itemType = WEAPON_TYPES
+                item_filter.item_type = WEAPON_TYPES
             else:
-                item_filter.itemType = []
+                item_filter.item_type = []
                 LOGGER.warning(f"Couldn't match item_type: {slot_type}. Please edit manually")
         else:
-            item_filter.itemType = [item_type]
+            item_filter.item_type = [item_type]
 
         affixes = _convert_raw_to_affixes(raw_affixes, config.import_greater_affixes)
         inherents = _convert_raw_to_affixes(raw_inherents)
 
         if not is_mythic:
-            item_filter.affixPool = [
+            item_filter.affix_pool = [
                 AffixFilterCountModel(
                     count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
-                    minCount=1 if is_unique else 3,
+                    min_count=1 if is_unique else 3,
                 )
             ]
             update_mingreateraffixcount(item_filter, config.require_greater_affixes)
-        item_filter.minPower = 100
+        item_filter.min_power = 100
         if inherents and not is_mythic:
-            item_filter.inherentPool = [AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])]
-        filter_name_template = item_filter.itemType[0].name if item_type else slot_type.replace(" ", "")
+            item_filter.inherent_pool = [
+                AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
+            ]
+        filter_name_template = item_filter.item_type[0].name if item_type else slot_type.replace(" ", "")
         filter_name = filter_name_template
         i = 2
         while any(filter_name == next(iter(x)) for x in finished_filters):
@@ -231,7 +233,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     if config.export_paragon:
         steps = extract_mobalytics_paragon_steps(paragon_data if isinstance(paragon_data, dict) else {})
         if steps:
-            profile.Paragon = build_paragon_profile_payload(
+            profile.paragon = build_paragon_profile_payload(
                 build_name=build_name, source_url=url, paragon_boards_list=steps
             )
         else:

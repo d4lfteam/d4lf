@@ -10,8 +10,8 @@ LOCK = threading.Lock()
 class Overlay:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.overrideredirect(True)
-        self.root.attributes("-topmost", True)
+        self.root.overrideredirect(boolean=True)
+        self.root.attributes("-topmost", 1)
         self.root.attributes("-transparentcolor", "white")
         self.root.attributes("-alpha", 1.0)
         self.canvas = tk.Canvas(self.root, bg="white", highlightthickness=0)

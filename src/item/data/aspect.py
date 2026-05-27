@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 @dataclass
 class Aspect:
+    __hash__ = None
+
     name: str
     loc: tuple[int, int] = None
     min_value: float = None

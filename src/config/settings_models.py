@@ -1,6 +1,6 @@
 import enum
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_numpy import np_array_pydantic_annotated_typing  # noqa: TC002
@@ -256,7 +256,7 @@ class ColorsModel(_IniBaseModel):
 class GeneralModel(_IniBaseModel):
     @model_validator(mode="before")
     @classmethod
-    def check_move_items_deprecation(cls, data: Any) -> Any:
+    def check_move_items_deprecation(cls, data: object) -> object:
         if not isinstance(data, dict):
             return data
 
@@ -432,7 +432,7 @@ class GeneralModel(_IniBaseModel):
     @field_validator("language")
     @classmethod
     def language_must_exist(cls, v: str) -> str:
-        if v not in ["enUS"]:
+        if v != "enUS":
             msg = "language not supported"
             raise ValueError(msg)
         return v
@@ -447,7 +447,7 @@ class GeneralModel(_IniBaseModel):
 
     @field_validator("move_to_inv_item_type", "move_to_stash_item_type", mode="before")
     @classmethod
-    def convert_move_item_type(cls, v: Any) -> list[MoveItemsType]:
+    def convert_move_item_type(cls, v: str | list[object]) -> list[MoveItemsType]:
         if isinstance(v, str):
             v = v.split(",")
         if not isinstance(v, list):

@@ -26,7 +26,7 @@ from src.tts import Publisher
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
 from src.ui.vendor import Vendor
-from src.utils.custom_mouse import mouse
+from src.utils.custom_mouse import Mouse
 from src.utils.image_operations import compare_histograms
 from src.utils.window import screenshot
 
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-class CancellationRequested(Exception):
+class CancellationRequestedError(Exception):
     """Exception raised when a cancellation is requested."""
 
 
@@ -45,8 +45,8 @@ class VisionModeWithHighlighting:
     def __init__(self):
         super().__init__()
         self.root = tk.Tk()
-        self.root.overrideredirect(True)
-        self.root.attributes("-topmost", True)
+        self.root.overrideredirect(boolean=True)
+        self.root.attributes("-topmost", 1)
         self.root.attributes("-alpha", 1.0)
         self.root.attributes("-transparentcolor", "white")
         self.canvas = tk.Canvas(self.root, bg="white", highlightthickness=0)
@@ -302,7 +302,7 @@ class VisionModeWithHighlighting:
             while retry_count < 5 and not is_confirmed:
                 self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
                 retry_count += 1
-                mouse_pos = Cam().monitor_to_window(mouse.get_position())
+                mouse_pos = Cam().monitor_to_window(Mouse.get_position())
                 # get closest pos to a item center
                 centers_to_use = self.possible_vendor_centers if item_descr.is_in_shop else self.possible_centers
                 delta = centers_to_use - mouse_pos
@@ -392,7 +392,7 @@ class VisionModeWithHighlighting:
                     last_top_left_corner = None
                     is_confirmed = False
                     time.sleep(0.15)
-        except CancellationRequested:
+        except CancellationRequestedError:
             pass
         except Exception:
             LOGGER.exception("Error in vision mode. Please create a bug report")
@@ -402,7 +402,7 @@ class VisionModeWithHighlighting:
     @staticmethod
     def check_for_thread_cancellation(cancel_event: Event):
         if cancel_event.is_set():
-            raise CancellationRequested
+            raise CancellationRequestedError
 
     @staticmethod
     def stop_thread_and_wait(thread: Thread, cancel_event: Event):
@@ -419,7 +419,7 @@ class VisionModeWithHighlighting:
                     self.clear_when_item_not_selected_thread = None
                     break
                 time.sleep(0.15)
-        except CancellationRequested:
+        except CancellationRequestedError:
             self.clear_when_item_not_selected_thread = None
 
     def get_coords_from_roi(self, item_roi):

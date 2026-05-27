@@ -55,7 +55,7 @@ class ConfigWindow(QMainWindow):
             self.config_tab.nav_list.setCurrentRow(current_idx)
         old_tab.deleteLater()
 
-    def closeEvent(self, event):
+    def closeEvent(self, event):  # noqa: N802
         """Save window size/position."""
         if not self.isMaximized():
             self.settings.setValue("size", self.size())

@@ -66,7 +66,7 @@ class _ResTransformer:
         values = self._transform_array(value=np.array(value, dtype=int))
         return int(values[0]), int(values[1])
 
-    def fromUHD(self) -> tuple[UiOffsetsModel, UiPosModel, UiRoiModel, dict[str, Template]]:
+    def from_uhd(self) -> tuple[UiOffsetsModel, UiPosModel, UiRoiModel, dict[str, Template]]:
         offsets = UiOffsetsModel(
             find_bullet_points_width=self._transform(value=POSITIONS[1].find_bullet_points_width),
             find_seperator_short_offset_top=self._transform(value=POSITIONS[1].find_seperator_short_offset_top),
@@ -130,4 +130,4 @@ class ResManager:
             return
         self._current_resolution = res
         LOGGER.info(f"Setting ui resolution to {res}")
-        self._offsets, self._pos, self._roi, self._templates = _ResTransformer(resolution=res).fromUHD()
+        self._offsets, self._pos, self._roi, self._templates = _ResTransformer(resolution=res).from_uhd()

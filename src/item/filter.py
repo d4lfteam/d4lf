@@ -84,58 +84,58 @@ class Filter:
         return cls._instance
 
     def _check_affixes(self, item: Item) -> FilterResult:
-        res = FilterResult(False, [])
+        res = FilterResult(keep=False, matched=[])
         if not self.affix_filters:
-            return FilterResult(False, [])
+            return FilterResult(keep=False, matched=[])
         non_tempered_affixes = [affix for affix in item.affixes if affix.type != AffixType.tempered]
         for profile_name, profile_filter in self.affix_filters.items():
             for filter_item in profile_filter:
                 filter_name = next(iter(filter_item.root.keys()))
                 filter_spec = filter_item.root[filter_name]
                 # check item type
-                if not self._match_item_type(expected_item_types=filter_spec.itemType, item_type=item.item_type):
+                if not self._match_item_type(expected_item_types=filter_spec.item_type, item_type=item.item_type):
                     continue
                 # check item power
-                if not self._match_item_power(min_power=filter_spec.minPower, item_power=item.power):
+                if not self._match_item_power(min_power=filter_spec.min_power, item_power=item.power):
                     continue
                 # check greater affixes
                 if not self._match_greater_affix_count(
-                    expected_min_count=filter_spec.minGreaterAffixCount, item_affixes=non_tempered_affixes
+                    expected_min_count=filter_spec.min_greater_affix_count, item_affixes=non_tempered_affixes
                 ):
                     continue
                 # check the unique aspect. The model enforces name uniqueness so we can safely grab the first one that matches
                 matched_unique_aspect = None
-                for unique_aspect in filter_spec.uniqueAspect:
+                for unique_aspect in filter_spec.unique_aspect:
                     if self._match_item_aspect_or_affix(expected_aspect=unique_aspect, item_aspect=item.aspect):
                         matched_unique_aspect = unique_aspect
                         break
-                if filter_spec.uniqueAspect and not matched_unique_aspect:
+                if filter_spec.unique_aspect and not matched_unique_aspect:
                     continue
                 # If the item is unique but doesn't match a unique aspect we continue. We don't check affixes
                 if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and not matched_unique_aspect:
                     continue
                 # check the aspect matches the min percent. We only check the one that passed the previous check
                 if matched_unique_aspect and not self._match_item_roll_is_in_percent_range(
-                    expected_percent=matched_unique_aspect.minPercentOfAspect, item_aspect_or_affix=item.aspect
+                    expected_percent=matched_unique_aspect.min_percent_of_aspect, item_aspect_or_affix=item.aspect
                 ):
                     continue
                 # check affixes
                 matched_affixes = []
-                if filter_spec.affixPool:
+                if filter_spec.affix_pool:
                     matched_affixes = self._match_affixes_count(
-                        expected_affixes=filter_spec.affixPool,
+                        expected_affixes=filter_spec.affix_pool,
                         item_affixes=non_tempered_affixes,
-                        min_greater_affix_count=filter_spec.minGreaterAffixCount,
+                        min_greater_affix_count=filter_spec.min_greater_affix_count,
                     )
                     if not matched_affixes:
                         continue
                 # check inherent
                 matched_inherents = []
-                if filter_spec.inherentPool:
+                if filter_spec.inherent_pool:
                     matched_inherents = self._match_affixes_count(
-                        expected_affixes=filter_spec.inherentPool,
+                        expected_affixes=filter_spec.inherent_pool,
                         item_affixes=item.inherent,
-                        min_greater_affix_count=filter_spec.minGreaterAffixCount,
+                        min_greater_affix_count=filter_spec.min_greater_affix_count,
                     )
                     if not matched_inherents:
                         continue
@@ -148,16 +148,16 @@ class Filter:
                     else:
                         match_details.append(affix.name)
                 LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Affixes.{filter_name}: {match_details}")
-                if filter_spec.uniqueAspect:
+                if filter_spec.unique_aspect:
                     LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Affixes.{filter_name}: Unique aspect")
                 res.keep = True
                 res.matched.append(
-                    MatchedFilter(f"{profile_name}.{filter_name}", all_matches, bool(filter_spec.uniqueAspect))
+                    MatchedFilter(f"{profile_name}.{filter_name}", all_matches, bool(filter_spec.unique_aspect))
                 )
         return res
 
     def _check_legendary_aspect(self, item: Item) -> FilterResult:
-        res = FilterResult(False, [])
+        res = FilterResult(keep=False, matched=[])
 
         if item.codex_upgrade and self.aspect_upgrade_filters:
             # See if the item matches any legendary aspects that were in the profile
@@ -183,7 +183,7 @@ class Filter:
 
     @staticmethod
     def _check_cosmetic(item: Item) -> FilterResult:
-        res = FilterResult(False, [])
+        res = FilterResult(keep=False, matched=[])
         if IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.junk or (
             IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.ignore and not item.cosmetic_upgrade
         ):
@@ -196,7 +196,7 @@ class Filter:
         return res
 
     def _check_sigil(self, item: Item) -> FilterResult:
-        res = FilterResult(False, [])
+        res = FilterResult(keep=False, matched=[])
         if not self.sigil_filters.items():
             LOGGER.info(f"{item.original_name} -- Matched Sigils")
             res.keep = True
@@ -237,7 +237,7 @@ class Filter:
         return res
 
     def _check_tribute(self, item: Item) -> FilterResult:
-        res = FilterResult(False, [])
+        res = FilterResult(keep=False, matched=[])
         if not self.tribute_filters.items():
             LOGGER.info(f"{item.original_name} -- Matched Tributes")
             res.keep = True
@@ -262,7 +262,7 @@ class Filter:
         return res
 
     def _check_global_unique_filter(self, item: Item) -> FilterResult:
-        res = FilterResult(False, [])
+        res = FilterResult(keep=False, matched=[])
 
         if not self.global_unique_filters:
             keep = IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
@@ -270,23 +270,23 @@ class Filter:
         for profile_name, profile_filter in self.global_unique_filters.items():
             for filter_item in profile_filter:
                 # check item power
-                if not self._match_item_power(min_power=filter_item.minPower, item_power=item.power):
+                if not self._match_item_power(min_power=filter_item.min_power, item_power=item.power):
                     continue
                 # check greater affixes - Checks total item-level GAs
                 if not self._match_greater_affix_count(
-                    expected_min_count=filter_item.minGreaterAffixCount, item_affixes=item.affixes
+                    expected_min_count=filter_item.min_greater_affix_count, item_affixes=item.affixes
                 ):
                     continue
                 # check aspect is in percent range
                 if not self._match_item_roll_is_in_percent_range(
-                    expected_percent=filter_item.minPercentOfAspect, item_aspect_or_affix=item.aspect
+                    expected_percent=filter_item.min_percent_of_aspect, item_aspect_or_affix=item.aspect
                 ):
                     continue
                 LOGGER.info(f"{item.original_name} -- Matched {profile_name}.GlobalUniques: {item.aspect.name}")
                 res.keep = True
                 matched_full_name = f"{profile_name}.{item.aspect.name}"
-                if filter_item.profileAlias:
-                    matched_full_name = f"{filter_item.profileAlias}.{item.aspect.name}"
+                if filter_item.profile_alias:
+                    matched_full_name = f"{filter_item.profile_alias}.{item.aspect.name}"
                 res.matched.append(MatchedFilter(matched_full_name, aspect_match=True))
 
         return res
@@ -321,7 +321,7 @@ class Filter:
                     group_res.append(matched_item_affix)
 
             # Check minCount and maxCount
-            if not (count_group.minCount <= len(group_res) <= count_group.maxCount):
+            if not (count_group.min_count <= len(group_res) <= count_group.max_count):
                 return []  # if one group fails, everything fails
 
             # Check want_greater requirements (2-mode system)
@@ -454,7 +454,7 @@ class Filter:
                 return bool(is_fixed_aspect_value)
             if not self._match_item_value_threshold(expected_aspect.value, item_aspect):
                 return False
-        expected_affix_percent = getattr(expected_aspect, "minPercentOfAffix", 0)
+        expected_affix_percent = getattr(expected_aspect, "min_percent_of_affix", 0)
         if expected_affix_percent:
             if isinstance(item_aspect, Affix) and item_aspect.type == AffixType.greater:
                 return True
@@ -510,7 +510,7 @@ class Filter:
             with pathlib.Path(profile_path).open(encoding="utf-8") as f:
                 try:
                     config = yaml.load(stream=f, Loader=_UniqueKeyLoader)
-                except Exception as e:
+                except yaml.YAMLError as e:
                     LOGGER.error(f"Error in the YAML file {profile_path}: {e}")
                     continue
                 if config is None:
@@ -533,23 +533,23 @@ class Filter:
                     continue
 
                 sections: list[str] = []
-                if data.Affixes:
-                    self.affix_filters[data.name] = data.Affixes
+                if data.affixes:
+                    self.affix_filters[data.name] = data.affixes
                     sections.append("Affixes")
-                if data.AspectUpgrades:
-                    self.aspect_upgrade_filters[data.name] = data.AspectUpgrades
+                if data.aspect_upgrades:
+                    self.aspect_upgrade_filters[data.name] = data.aspect_upgrades
                     sections.append(ASPECT_UPGRADES_LABEL)
-                if data.Sigils and (data.Sigils.blacklist or data.Sigils.whitelist):
-                    self.sigil_filters[data.name] = data.Sigils
+                if data.sigils and (data.sigils.blacklist or data.sigils.whitelist):
+                    self.sigil_filters[data.name] = data.sigils
                     sections.append("Sigils")
-                if data.Tributes:
-                    self.tribute_filters[data.name] = data.Tributes
+                if data.tributes:
+                    self.tribute_filters[data.name] = data.tributes
                     sections.append("Tributes")
-                if data.GlobalUniques:
-                    self.global_unique_filters[data.name] = data.GlobalUniques
+                if data.global_uniques:
+                    self.global_unique_filters[data.name] = data.global_uniques
                     sections.append("GlobalUniques")
-                if data.Paragon:
-                    self.paragon_filters[data.name] = data.Paragon
+                if data.paragon:
+                    self.paragon_filters[data.name] = data.paragon
                     sections.append("Paragon")
 
                 info_str += " ".join(sections)
@@ -567,7 +567,7 @@ class Filter:
         if not self.files_loaded or self._did_files_change():
             self.load_files()
 
-        res = FilterResult(False, [])
+        res = FilterResult(keep=False, matched=[])
 
         if is_sigil(item.item_type):
             return self._check_sigil(item)

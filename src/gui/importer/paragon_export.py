@@ -462,6 +462,7 @@ def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[l
     try:
         board_elements = driver.find_elements(By.CLASS_NAME, "paragon__board")
     except Exception:
+        LOGGER.debug("Failed to read D4Builds paragon board elements.", exc_info=True)
         board_elements = []
 
     for board_elem in board_elements:
@@ -474,6 +475,7 @@ def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[l
             # Prefer first line that contains letters (D4Builds sometimes shows just a numeric index on line 1)
             name_display = next((ln for ln in lines if any(ch.isalpha() for ch in ln)), (lines[0] if lines else ""))
         except Exception:
+            LOGGER.debug("Failed to read D4Builds board name.", exc_info=True)
             name_display = ""
 
         # Try to detect a stable board id/slug from element attributes (best effort)
@@ -523,7 +525,7 @@ def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[l
             if mm:
                 try:
                     rotate_int = int(mm.group(1)) % 360
-                except Exception:
+                except ValueError:
                     rotate_int = 0
 
         nodes = [False] * (21 * 21)
@@ -531,6 +533,7 @@ def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[l
         try:
             tile_elems = board_elem.find_elements(By.CLASS_NAME, "paragon__board__tile")
         except Exception:
+            LOGGER.debug("Failed to read D4Builds board tiles.", exc_info=True)
             tile_elems = []
 
         # D4Builds encodes the active grid coordinates in CSS class tokens like "r2 c10".

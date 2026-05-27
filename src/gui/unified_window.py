@@ -326,21 +326,21 @@ class UnifiedMainWindow(QMainWindow):
         try:
             self._show_singleton_modal("_importer_window", ImporterWindow)
         except Exception as e:
-            LOGGER.error(f"Failed to open importer: {e}")
+            LOGGER.exception("Failed to open importer")
             QMessageBox.critical(self, "Import Error", str(e))
 
     def open_settings_dialog(self):
         try:
             self._show_singleton_modal("_config_window", ConfigWindow, theme_changed_callback=self.apply_theme)
         except Exception as e:
-            LOGGER.error(f"Failed to open settings: {e}")
+            LOGGER.exception("Failed to open settings")
             QMessageBox.critical(self, "Settings Error", str(e))
 
     def open_profile_editor(self):
         try:
             self._show_singleton_modal("_profile_editor_window", ProfileEditorWindow)
-        except Exception as e:
-            LOGGER.error(f"Failed to open profile editor: {e}")
+        except Exception:
+            LOGGER.exception("Failed to open profile editor")
 
     def restore_geometry(self):
 
@@ -370,7 +370,7 @@ class UnifiedMainWindow(QMainWindow):
         settings.setValue("maximized", self.isMaximized())
         settings.setValue("selected_view", self.log_tabbar.currentIndex())
 
-    def closeEvent(self, event):
+    def closeEvent(self, event):  # noqa: N802
         # Close all child windows
         for window_attr in ("_config_window", "_importer_window", "_profile_editor_window"):
             win = getattr(self, window_attr)

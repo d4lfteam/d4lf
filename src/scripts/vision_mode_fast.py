@@ -14,7 +14,7 @@ from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter, MatchedFilter
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item
 from src.tts import Publisher
-from src.utils.custom_mouse import mouse
+from src.utils.custom_mouse import Mouse
 from src.utils.window import screenshot
 
 LOGGER = logging.getLogger(__name__)
@@ -24,8 +24,8 @@ LOGGER = logging.getLogger(__name__)
 class VisionModeFast:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.overrideredirect(True)
-        self.root.attributes("-topmost", True)
+        self.root.overrideredirect(boolean=True)
+        self.root.attributes("-topmost", 1)
         self.root.attributes("-transparentcolor", "white")
         self.root.attributes("-alpha", 1.0)
         self.canvas = tk.Canvas(self.root, bg="white", highlightthickness=0)
@@ -51,7 +51,7 @@ class VisionModeFast:
         width = max_line_length * text_font.measure("0")
         height = (line_count + 1) * line_height
 
-        mouse_pos = Cam().monitor_to_window(mouse.get_position())
+        mouse_pos = Cam().monitor_to_window(Mouse.get_position())
         self.textbox.config(x=mouse_pos[0], y=mouse_pos[1], width=width // 9, height=(height // line_height) - 2)
 
         self.textbox.config(state=tk.DISABLED)

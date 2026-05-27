@@ -10,4 +10,4 @@ def get_base_dir(bundled: bool = False) -> Path:
 
 AFFIX_COMPARISON_CHARS = 60
 
-BASE_DIR = get_base_dir(False)
+BASE_DIR = get_base_dir(bundled=False)

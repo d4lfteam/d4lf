@@ -8,13 +8,13 @@ import numpy as np
 import pytweening
 
 
-def isNumeric(val):
+def is_numeric(val):
     return isinstance(val, float | int | np.int32 | np.int64 | np.float32 | np.float64)
 
 
 def is_list_of_points(value):
     def is_point(p):
-        return len(p) == 2 and isNumeric(p[0]) and isNumeric(p[1])
+        return len(p) == 2 and is_numeric(p[0]) and is_numeric(p[1])
 
     if not isinstance(value, list):
         return False
@@ -31,19 +31,19 @@ class BezierCurve:
         return math.factorial(n) / float(math.factorial(k) * math.factorial(n - k))
 
     @staticmethod
-    def bernsteinPolynomialPoint(x, i, n):
+    def bernstein_polynomial_point(x, i, n):
         """Calculate the i-th component of a bernstein polynomial of degree n."""
         return BezierCurve.binomial(n, i) * (x**i) * ((1 - x) ** (n - i))
 
     @staticmethod
-    def bernsteinPolynomial(points):
+    def bernstein_polynomial(points):
         """Given list of control points, returns a function, which given a point [0,1] returns a point in the bezier curve described by these points."""
 
         def bern(t):
             n = len(points) - 1
             x = y = 0
             for i, point in enumerate(points):
-                bern = BezierCurve.bernsteinPolynomialPoint(t, i, n)
+                bern = BezierCurve.bernstein_polynomial_point(t, i, n)
                 x += point[0] * bern
                 y += point[1] * bern
             return x, y
@@ -51,49 +51,63 @@ class BezierCurve:
         return bern
 
     @staticmethod
-    def curvePoints(n, points):
+    def curve_points(n, points):
         """Given list of control points, returns n points in the bezier curve, described by these points."""
-        curvePoints = []
-        bernstein_polynomial = BezierCurve.bernsteinPolynomial(points)
+        curve_points = []
+        bernstein_polynomial = BezierCurve.bernstein_polynomial(points)
         for i in range(n):
             t = i / (n - 1)
-            curvePoints += (bernstein_polynomial(t),)
-        return curvePoints
+            curve_points += (bernstein_polynomial(t),)
+        return curve_points
 
 
 class HumanCurve:
     """Generates a human-like mouse curve starting at given source point, and finishing in a given destination point."""
 
-    def __init__(self, fromPoint, toPoint, **kwargs):
-        self.fromPoint = fromPoint
-        self.toPoint = toPoint
-        self.points = self.generateCurve(**kwargs)
+    def __init__(self, from_point, to_point, **kwargs):
+        self.from_point = from_point
+        self.to_point = to_point
+        self.points = self.generate_curve(**kwargs)
 
-    def generateCurve(self, **kwargs):
+    def generate_curve(self, **kwargs):
         """Generates a curve according to the parameters specified below.
 
         You can override any of the below parameters. If no parameter is
         passed, the default value is used.
         """
-        offsetBoundaryX = kwargs.get("offsetBoundaryX", 100)
-        offsetBoundaryY = kwargs.get("offsetBoundaryY", 100)
-        leftBoundary = kwargs.get("leftBoundary", min(self.fromPoint[0], self.toPoint[0])) - offsetBoundaryX
-        rightBoundary = kwargs.get("rightBoundary", max(self.fromPoint[0], self.toPoint[0])) + offsetBoundaryX
-        downBoundary = kwargs.get("downBoundary", min(self.fromPoint[1], self.toPoint[1])) - offsetBoundaryY
-        upBoundary = kwargs.get("upBoundary", max(self.fromPoint[1], self.toPoint[1])) + offsetBoundaryY
-        knotsCount = kwargs.get("knotsCount", 2)
-        distortionMean = kwargs.get("distortionMean", 1)
-        distortionStdev = kwargs.get("distortionStdev", 1)
-        distortionFrequency = kwargs.get("distortionFrequency", 0.4)
+        offset_boundary_x = kwargs.get("offset_boundary_x", kwargs.get("offsetBoundaryX", 100))
+        offset_boundary_y = kwargs.get("offset_boundary_y", kwargs.get("offsetBoundaryY", 100))
+        left_boundary = (
+            kwargs.get("left_boundary", kwargs.get("leftBoundary", min(self.from_point[0], self.to_point[0])))
+            - offset_boundary_x
+        )
+        right_boundary = (
+            kwargs.get("right_boundary", kwargs.get("rightBoundary", max(self.from_point[0], self.to_point[0])))
+            + offset_boundary_x
+        )
+        down_boundary = (
+            kwargs.get("down_boundary", kwargs.get("downBoundary", min(self.from_point[1], self.to_point[1])))
+            - offset_boundary_y
+        )
+        up_boundary = (
+            kwargs.get("up_boundary", kwargs.get("upBoundary", max(self.from_point[1], self.to_point[1])))
+            + offset_boundary_y
+        )
+        knots_count = kwargs.get("knots_count", kwargs.get("knotsCount", 2))
+        distortion_mean = kwargs.get("distortion_mean", kwargs.get("distortionMean", 1))
+        distortion_stdev = kwargs.get("distortion_stdev", kwargs.get("distortionStdev", 1))
+        distortion_frequency = kwargs.get("distortion_frequency", kwargs.get("distortionFrequency", 0.4))
         tween = kwargs.get("tweening", pytweening.easeOutQuad)
-        targetPoints = kwargs.get("targetPoints", 10)
+        target_points = kwargs.get("target_points", kwargs.get("targetPoints", 10))
 
-        internalKnots = self.generateInternalKnots(leftBoundary, rightBoundary, downBoundary, upBoundary, knotsCount)
-        points = self.generatePoints(internalKnots)
-        points = self.distortPoints(points, distortionMean, distortionStdev, distortionFrequency)
-        return self.tweenPoints(points, tween, targetPoints)
+        internal_knots = self.generate_internal_knots(
+            left_boundary, right_boundary, down_boundary, up_boundary, knots_count
+        )
+        points = self.generate_points(internal_knots)
+        points = self.distort_points(points, distortion_mean, distortion_stdev, distortion_frequency)
+        return self.tween_points(points, tween, target_points)
 
-    def generateInternalKnots(self, leftBoundary, rightBoundary, downBoundary, upBoundary, knotsCount):
+    def generate_internal_knots(self, left_boundary, right_boundary, down_boundary, up_boundary, knots_count):
         """Generates the internal knots used during generation of bezier curvePoints.
 
         or any interpolation function. The points are taken at random from
@@ -101,58 +115,61 @@ class HumanCurve:
         Exactly knotsCount internal knots are randomly generated.
         """
         if not (
-            isNumeric(leftBoundary) and isNumeric(rightBoundary) and isNumeric(downBoundary) and isNumeric(upBoundary)
+            is_numeric(left_boundary)
+            and is_numeric(right_boundary)
+            and is_numeric(down_boundary)
+            and is_numeric(up_boundary)
         ):
             msg = "Boundaries must be numeric"
             raise ValueError(msg)
-        if not isinstance(knotsCount, int) or knotsCount < 0:
+        if not isinstance(knots_count, int) or knots_count < 0:
             msg = "knotsCount must be non-negative integer"
             raise ValueError(msg)
-        if leftBoundary > rightBoundary:
+        if left_boundary > right_boundary:
             msg = "leftBoundary must be less than or equal to rightBoundary"
             raise ValueError(msg)
-        if downBoundary > upBoundary:
+        if down_boundary > up_boundary:
             msg = "downBoundary must be less than or equal to upBoundary"
             raise ValueError(msg)
 
-        knotsX = np.random.choice(range(leftBoundary, rightBoundary), size=knotsCount)
-        knotsY = np.random.choice(range(downBoundary, upBoundary), size=knotsCount)
-        return list(zip(knotsX, knotsY, strict=False))
+        knots_x = np.random.choice(range(left_boundary, right_boundary), size=knots_count)
+        knots_y = np.random.choice(range(down_boundary, up_boundary), size=knots_count)
+        return list(zip(knots_x, knots_y, strict=False))
 
-    def generatePoints(self, knots):
+    def generate_points(self, knots):
         """Generates bezier curve points on a curve, according to the internal knots passed as parameter."""
         if not is_list_of_points(knots):
             msg = "knots must be valid list of points"
             raise ValueError(msg)
 
-        midPtsCnt = max(abs(self.fromPoint[0] - self.toPoint[0]), abs(self.fromPoint[1] - self.toPoint[1]), 2)
-        knots = [self.fromPoint, *knots, self.toPoint]
-        return BezierCurve.curvePoints(midPtsCnt, knots)
+        mid_pts_cnt = max(abs(self.from_point[0] - self.to_point[0]), abs(self.from_point[1] - self.to_point[1]), 2)
+        knots = [self.from_point, *knots, self.to_point]
+        return BezierCurve.curve_points(mid_pts_cnt, knots)
 
-    def distortPoints(self, points, distortionMean, distortionStdev, distortionFrequency):
+    def distort_points(self, points, distortion_mean, distortion_stdev, distortion_frequency):
         """Distorts the curve described by (x,y) points, so that the curve is not ideally smooth.
 
         Distortion happens by randomly, according to normal distribution,
         adding an offset to some of the points.
         """
-        if not (isNumeric(distortionMean) and isNumeric(distortionStdev) and isNumeric(distortionFrequency)):
+        if not (is_numeric(distortion_mean) and is_numeric(distortion_stdev) and is_numeric(distortion_frequency)):
             msg = "Distortions must be numeric"
             raise ValueError(msg)
         if not is_list_of_points(points):
             msg = "points must be valid list of points"
             raise ValueError(msg)
-        if not (0 <= distortionFrequency <= 1):
+        if not (0 <= distortion_frequency <= 1):
             msg = "distortionFrequency must be in range [0,1]"
             raise ValueError(msg)
 
         distorted = []
         for i in range(1, len(points) - 1):
             x, y = points[i]
-            delta = np.random.normal(distortionMean, distortionStdev) if random.random() < distortionFrequency else 0
+            delta = np.random.normal(distortion_mean, distortion_stdev) if random.random() < distortion_frequency else 0
             distorted += ((x, y + delta),)
         return [points[0], *distorted, points[-1]]
 
-    def tweenPoints(self, points, tween, targetPoints):
+    def tween_points(self, points, tween, target_points):
         """Chooses a number of points(targetPoints) from the list(points) according to tweening function(tween).
 
         This function in fact controls the velocity of mouse movement
@@ -160,19 +177,20 @@ class HumanCurve:
         if not is_list_of_points(points):
             msg = "points must be valid list of points"
             raise ValueError(msg)
-        if not isinstance(targetPoints, int) or targetPoints < 2:
+        if not isinstance(target_points, int) or target_points < 2:
             msg = "targetPoints must be an integer greater or equal to 2"
             raise ValueError(msg)
 
         # tween is a function that takes a float 0..1 and returns a float 0..1
         res = []
-        for i in range(targetPoints):
-            index = int(tween(float(i) / (targetPoints - 1)) * (len(points) - 1))
+        for i in range(target_points):
+            index = int(tween(float(i) / (target_points - 1)) * (len(points) - 1))
             res += (points[index],)
         return res
 
 
-class mouse:
+class Mouse:
+    @staticmethod
     def move(
         x: int,
         y: int,
@@ -182,9 +200,9 @@ class mouse:
     ):
         from_point = _mouse.get_position()
         dist = math.dist((x, y), from_point)
-        offsetBoundaryX = max(10, int(0.08 * dist))
-        offsetBoundaryY = max(10, int(0.08 * dist))
-        targetPoints = min(6, max(3, int(0.004 * dist)))
+        offset_boundary_x = max(10, int(0.08 * dist))
+        offset_boundary_y = max(10, int(0.08 * dist))
+        target_points = min(6, max(3, int(0.004 * dist)))
         if not absolute:
             x = from_point[0] + x
             y = from_point[1] + y
@@ -203,9 +221,9 @@ class mouse:
         human_curve = HumanCurve(
             from_point,
             (x, y),
-            offsetBoundaryX=offsetBoundaryX,
-            offsetBoundaryY=offsetBoundaryY,
-            targetPoints=targetPoints,
+            offset_boundary_x=offset_boundary_x,
+            offset_boundary_y=offset_boundary_y,
+            target_points=target_points,
         )
 
         duration = min(0.3, max(0.05, dist * 0.0004) * random.uniform(delay_factor[0], delay_factor[1]))
@@ -221,7 +239,7 @@ class mouse:
 
     @staticmethod
     def click(button):
-        if button != "left" or mouse._is_clicking_safe():
+        if button != "left" or Mouse._is_clicking_safe():
             _mouse.click(button)
 
     @staticmethod

@@ -18,11 +18,11 @@ from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.gui.importer.gui_common import ACCENT_BLUE, DARK_GRAY_BG
 from src.item.data.item_type import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
-from src.utils.custom_mouse import mouse
+from src.utils.custom_mouse import Mouse
 
 try:
     from src.config.ui import ResManager
-except Exception:  # pragma: no cover
+except ImportError:  # pragma: no cover
     ResManager = None  # type: ignore[assignment]
 
 
@@ -112,7 +112,7 @@ def reset_item_status(occupied, inv):
         time.sleep(0.15)
 
     if occupied:
-        mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+        Mouse.move(*Cam().abs_window_to_monitor((0, 0)))
 
 
 def drop_item_from_inventory() -> None:
@@ -121,7 +121,7 @@ def drop_item_from_inventory() -> None:
         return
     keyboard.press("ctrl")
     time.sleep(0.03)
-    mouse.click("left")
+    Mouse.click("left")
     time.sleep(0.03)
     keyboard.release("ctrl")
     time.sleep(0.10)
@@ -201,6 +201,7 @@ def draw_text_with_background(
             if ResManager is not None:
                 window_height = ResManager().pos.window_dimensions[1]
         except Exception:
+            LOGGER.debug("Failed to read overlay window height from ResManager.", exc_info=True)
             window_height = None
 
     max_width = int(canvas_center_x * 2)

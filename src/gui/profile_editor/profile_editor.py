@@ -23,11 +23,11 @@ class ProfileEditor(QTabWidget):
 
         self.profile_model = profile_model
         # Create main tabs
-        self.affixes_tab = AffixesTab(self.profile_model.Affixes)
-        self.aspect_upgrades_tab = AspectUpgradesTab(self.profile_model.AspectUpgrades)
-        self.sigils_tab = SigilsTab(self.profile_model.Sigils)
-        self.tributes_tab = TributesTab(self.profile_model.Tributes)
-        self.uniques_tab = UniquesTab(self.profile_model.GlobalUniques)
+        self.affixes_tab = AffixesTab(self.profile_model.affixes)
+        self.aspect_upgrades_tab = AspectUpgradesTab(self.profile_model.aspect_upgrades)
+        self.sigils_tab = SigilsTab(self.profile_model.sigils)
+        self.tributes_tab = TributesTab(self.profile_model.tributes)
+        self.uniques_tab = UniquesTab(self.profile_model.global_uniques)
 
         self.currentChanged.connect(self.tab_changed)
         # Add tabs with icons
@@ -96,5 +96,5 @@ class ProfileEditor(QTabWidget):
                     self, "Info", f"Profile saved successfully to {self.profile_model.name + '.yaml'}"
                 )
         except Exception as e:
-            LOGGER.error(f"Validation error: {e}")
+            LOGGER.exception("Failed to save profile")
             QMessageBox.critical(self, "Error", f"Failed to save profile: {e}")

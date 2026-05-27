@@ -15,6 +15,8 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class Item:
+    __hash__ = None
+
     affixes: list[Affix] = field(default_factory=list)
     aspect: Aspect | None = None
     codex_upgrade: bool = False

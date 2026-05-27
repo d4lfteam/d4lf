@@ -15,12 +15,12 @@ from src.item.data.rarity import ItemRarity
 # noinspection PyTypeChecker
 affix = ProfileModel(
     name="test",
-    Affixes=[
+    affixes=[
         {
             "Helm": ItemFilterModel(
-                itemType=[ItemType.Helm],
-                minPower=725,
-                affixPool=[
+                item_type=[ItemType.Helm],
+                min_power=725,
+                affix_pool=[
                     AffixFilterCountModel(
                         count=[
                             AffixFilterModel(name="intelligence", value=5),
@@ -34,9 +34,9 @@ affix = ProfileModel(
         },
         {
             "ResBoots": ItemFilterModel(
-                itemType=[ItemType.Boots],
-                minPower=725,
-                affixPool=[
+                item_type=[ItemType.Boots],
+                min_power=725,
+                affix_pool=[
                     AffixFilterCountModel(count=[AffixFilterModel(name="movement_speed")]),
                     AffixFilterCountModel(
                         count=[
@@ -46,16 +46,16 @@ affix = ProfileModel(
                             AffixFilterModel(name="poison_resistance"),
                             AffixFilterModel(name="fire_resistance"),
                         ],
-                        minCount=2,
+                        min_count=2,
                     ),
                 ],
             )
         },
         {
             "ResBootsExact": ItemFilterModel(
-                itemType=[ItemType.Boots],
-                minPower=725,
-                affixPool=[
+                item_type=[ItemType.Boots],
+                min_power=725,
+                affix_pool=[
                     AffixFilterCountModel(count=[AffixFilterModel(name="movement_speed")]),
                     AffixFilterCountModel(
                         count=[
@@ -65,16 +65,16 @@ affix = ProfileModel(
                             AffixFilterModel(name="poison_resistance", value=4),
                             AffixFilterModel(name="fire_resistance", value=4),
                         ],
-                        minCount=2,
+                        min_count=2,
                     ),
                 ],
             )
         },
         {
             "GreatBoots": ItemFilterModel(
-                itemType=[ItemType.Boots],
-                minPower=725,
-                affixPool=[
+                item_type=[ItemType.Boots],
+                min_power=725,
+                affix_pool=[
                     AffixFilterCountModel(
                         count=[
                             AffixFilterModel(name="movement_speed"),
@@ -83,22 +83,22 @@ affix = ProfileModel(
                         ]
                     )
                 ],
-                inherentPool=[
+                inherent_pool=[
                     AffixFilterCountModel(
                         count=[
                             AffixFilterModel(name="maximum_evade_charges"),
                             AffixFilterModel(name="attacks_reduce_evades_cooldown_by_seconds"),
                         ],
-                        minCount=1,
+                        min_count=1,
                     )
                 ],
             )
         },
         {
             "Armor": ItemFilterModel(
-                itemType=[ItemType.ChestArmor, ItemType.Legs],
-                minPower=725,
-                affixPool=[
+                item_type=[ItemType.ChestArmor, ItemType.Legs],
+                min_power=725,
+                affix_pool=[
                     AffixFilterCountModel(
                         count=[
                             AffixFilterModel(name="maximum_life", value=700),
@@ -112,9 +112,9 @@ affix = ProfileModel(
         },
         {
             "Boots": ItemFilterModel(
-                itemType=[ItemType.Boots],
-                minPower=725,
-                affixPool=[
+                item_type=[ItemType.Boots],
+                min_power=725,
+                affix_pool=[
                     AffixFilterCountModel(
                         count=[
                             AffixFilterModel(name="movement_speed", value=10),
@@ -124,30 +124,30 @@ affix = ProfileModel(
                             AffixFilterModel(name="poison_resistance", value=5),
                             AffixFilterModel(name="shadow_resistance", value=5),
                         ],
-                        minCount=4,
+                        min_count=4,
                     )
                 ],
             )
         },
         {
             "PercentBoots": ItemFilterModel(
-                itemType=[ItemType.Boots],
-                minPower=725,
-                affixPool=[
+                item_type=[ItemType.Boots],
+                min_power=725,
+                affix_pool=[
                     AffixFilterCountModel(
                         count=[
-                            AffixFilterModel(name="movement_speed", minPercentOfAffix=80),
+                            AffixFilterModel(name="movement_speed", min_percent_of_affix=80),
                             AffixFilterModel(name="dodge_chance"),
                         ]
                     )
                 ],
             )
         },
-        {"GreaterAffixes": ItemFilterModel(minGreaterAffixCount=1)},
+        {"GreaterAffixes": ItemFilterModel(min_greater_affix_count=1)},
         {
             "CountBoots": ItemFilterModel(
-                itemType=[ItemType.Boots],
-                affixPool=[
+                item_type=[ItemType.Boots],
+                affix_pool=[
                     AffixFilterCountModel(
                         count=[
                             AffixFilterModel(name="intelligence", want_greater=True),
@@ -157,16 +157,16 @@ affix = ProfileModel(
                             AffixFilterModel(name="poison_resistance"),
                             AffixFilterModel(name="shadow_resistance"),
                         ],
-                        minCount=3,
+                        min_count=3,
                     )
                 ],
-                minGreaterAffixCount=2,
+                min_greater_affix_count=2,
             )
         },
         {
             "CountBootsMatch": ItemFilterModel(
-                itemType=[ItemType.Boots],
-                affixPool=[
+                item_type=[ItemType.Boots],
+                affix_pool=[
                     AffixFilterCountModel(
                         count=[
                             AffixFilterModel(name="intelligence", want_greater=True),
@@ -174,16 +174,16 @@ affix = ProfileModel(
                             AffixFilterModel(name="lightning_resistance"),
                             AffixFilterModel(name="maximum_life"),
                         ],
-                        minCount=3,
+                        min_count=3,
                     )
                 ],
-                minGreaterAffixCount=1,  # Should match - only needs 1 greater, has 2
+                min_greater_affix_count=1,  # Should match - only needs 1 greater, has 2
             )
         },
         {
             "CountBootsNoMatch": ItemFilterModel(
-                itemType=[ItemType.Boots],
-                affixPool=[
+                item_type=[ItemType.Boots],
+                affix_pool=[
                     AffixFilterCountModel(
                         count=[
                             AffixFilterModel(name="intelligence", want_greater=True),
@@ -191,31 +191,31 @@ affix = ProfileModel(
                             AffixFilterModel(name="lightning_resistance"),
                             AffixFilterModel(name="maximum_life"),
                         ],
-                        minCount=3,
+                        min_count=3,
                     )
                 ],
-                minGreaterAffixCount=3,  # Should NOT match - needs 3 greater, only has 2
+                min_greater_affix_count=3,  # Should NOT match - needs 3 greater, only has 2
             )
         },
     ],
 )
 
-always_keep_mythics = ProfileModel(name="keep_mythics", GlobalUniques=[GlobalUniqueModel(minPower=900)])
+always_keep_mythics = ProfileModel(name="keep_mythics", global_uniques=[GlobalUniqueModel(min_power=900)])
 
-aspects_filters = ProfileModel(name="aspect_profile", AspectUpgrades=["accelerating", "aggressive"])
+aspects_filters = ProfileModel(name="aspect_profile", aspect_upgrades=["accelerating", "aggressive"])
 
 global_unique = ProfileModel(
     name="test",
-    GlobalUniques=[
-        GlobalUniqueModel(minPower=900),
-        GlobalUniqueModel(minGreaterAffixCount=2),
-        GlobalUniqueModel(minPercentOfAspect=80, profileAlias="good_stuff"),
+    global_uniques=[
+        GlobalUniqueModel(min_power=900),
+        GlobalUniqueModel(min_greater_affix_count=2),
+        GlobalUniqueModel(min_percent_of_aspect=80, profile_alias="good_stuff"),
     ],
 )
 
 sigil = ProfileModel(
     name="test",
-    Sigils=SigilFilterModel(
+    sigils=SigilFilterModel(
         blacklist=[SigilConditionModel(name="reduce_cooldowns_on_kill"), SigilConditionModel(name="underroot")],
         whitelist=[
             SigilConditionModel(name="jalals_vigil"),
@@ -225,16 +225,16 @@ sigil = ProfileModel(
 )
 
 sigil_blacklist_only = ProfileModel(
-    name="blacklist_only", Sigils=SigilFilterModel(blacklist=[SigilConditionModel(name="iron_hold")])
+    name="blacklist_only", sigils=SigilFilterModel(blacklist=[SigilConditionModel(name="iron_hold")])
 )
 
 sigil_whitelist_only = ProfileModel(
-    name="whitelist_only", Sigils=SigilFilterModel(whitelist=[SigilConditionModel(name="iron_hold")])
+    name="whitelist_only", sigils=SigilFilterModel(whitelist=[SigilConditionModel(name="iron_hold")])
 )
 
 sigil_priority = ProfileModel(
     name="priority",
-    Sigils=SigilFilterModel(
+    sigils=SigilFilterModel(
         blacklist=[SigilConditionModel(name="reduce_cooldowns_on_kill")],
         whitelist=[SigilConditionModel(name="iron_hold", condition=["shadow_damage"])],
     ),
@@ -243,12 +243,12 @@ sigil_priority = ProfileModel(
 # noinspection PyTypeChecker
 unique_affixes = ProfileModel(
     name="test",
-    Affixes=[
+    affixes=[
         {
             "Helm": ItemFilterModel(
-                itemType=[ItemType.Helm],
-                minPower=725,
-                affixPool=[
+                item_type=[ItemType.Helm],
+                min_power=725,
+                affix_pool=[
                     AffixFilterCountModel(
                         count=[
                             AffixFilterModel(name="intelligence", value=5),
@@ -256,32 +256,32 @@ unique_affixes = ProfileModel(
                             AffixFilterModel(name="maximum_life", value=640),
                             AffixFilterModel(name="total_armor", value=9),
                         ],
-                        minCount=1,
+                        min_count=1,
                     )
                 ],
                 # Due to quirks of pydantic this has to be passed in as a map and not the object
-                uniqueAspect={"name": "crown_of_lucion", "value": 12},
+                unique_aspect={"name": "crown_of_lucion", "value": 12},
             )
         },
         {
             "PercentBoots": ItemFilterModel(
-                itemType=[ItemType.Boots],
-                minPower=725,
-                affixPool=[
+                item_type=[ItemType.Boots],
+                min_power=725,
+                affix_pool=[
                     AffixFilterCountModel(
                         count=[
-                            AffixFilterModel(name="movement_speed", minPercentOfAffix=80),
+                            AffixFilterModel(name="movement_speed", min_percent_of_affix=80),
                             AffixFilterModel(name="dodge_chance"),
                         ]
                     )
                 ],
-                uniqueAspect={"name": "penitent_greaves", "minPercentOfAspect": 50},
+                unique_aspect={"name": "penitent_greaves", "minPercentOfAspect": 50},
             )
         },
         {
             "CountBoots": ItemFilterModel(
-                itemType=[ItemType.Boots],
-                affixPool=[
+                item_type=[ItemType.Boots],
+                affix_pool=[
                     AffixFilterCountModel(
                         count=[
                             AffixFilterModel(name="intelligence", want_greater=True),
@@ -291,33 +291,33 @@ unique_affixes = ProfileModel(
                             AffixFilterModel(name="poison_resistance"),
                             AffixFilterModel(name="shadow_resistance"),
                         ],
-                        minCount=3,
+                        min_count=3,
                     )
                 ],
-                uniqueAspect={"name": "flickerstep"},
-                minGreaterAffixCount=2,
+                unique_aspect={"name": "flickerstep"},
+                min_greater_affix_count=2,
             )
         },
         {
             "MultipleAspectsInOneFilter": ItemFilterModel(
-                uniqueAspect=[
+                unique_aspect=[
                     AspectUniqueFilterModel(name="battle_trance"),
-                    AspectUniqueFilterModel(name="ancients_oath", minPercentOfAspect=90),
+                    AspectUniqueFilterModel(name="ancients_oath", min_percent_of_aspect=90),
                 ]
             )
         },
         {
             "SmallerUniqueAspectValue": ItemFilterModel(
-                itemType=[ItemType.Shield], uniqueAspect={"name": "crown_of_lucion", "value": 12}
+                item_type=[ItemType.Shield], unique_aspect={"name": "crown_of_lucion", "value": 12}
             )
         },
-        {"UniqueAspectWithGA": ItemFilterModel(uniqueAspect={"name": "flickerstep"}, minGreaterAffixCount=2)},
+        {"UniqueAspectWithGA": ItemFilterModel(unique_aspect={"name": "flickerstep"}, min_greater_affix_count=2)},
     ],
 )
 
 tributes = ProfileModel(
     name="tributes",
-    Tributes=[
+    tributes=[
         TributeFilterModel(name="tribute_of_andariel"),
         TributeFilterModel(name="harmony"),
         TributeFilterModel(rarities=[ItemRarity.Legendary, ItemRarity.Unique]),

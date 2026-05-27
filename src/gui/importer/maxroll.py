@@ -48,7 +48,7 @@ SKILL_RANK_AFFIX_KEY_REGEX = re.compile(r"(?:_Category_|_Special_)(?P<label>[A-Z
 SKILL_RANK_DESC_LABEL_REGEX = re.compile(r"\{c_important\}([^{}]+)\{/c\}\s+Skills")
 
 
-class MaxrollException(Exception):
+class MaxrollError(Exception):
     pass
 
 
@@ -114,7 +114,7 @@ def import_maxroll(config: ImportConfig):
             )
             continue
 
-        item_filter.itemType = [item_type]
+        item_filter.item_type = [item_type]
 
         # Legendary aspect upgrade handling
         if rarity == ItemRarity.Legendary and config.import_aspect_upgrades:
@@ -139,13 +139,13 @@ def import_maxroll(config: ImportConfig):
                 if rarity == ItemRarity.Mythic:
                     mythic_names.append(unique_name)
                     continue
-                item_filter.uniqueAspect = [AspectUniqueFilterModel(name=unique_name)]
+                item_filter.unique_aspect = [AspectUniqueFilterModel(name=unique_name)]
             except Exception:
                 LOGGER.exception(f"Unexpected error adding unique aspect for {unique_name}, please report a bug.")
 
         # Standard item handling. For mythics we don't import affixes
         if rarity != ItemRarity.Mythic:
-            item_filter.affixPool = [
+            item_filter.affix_pool = [
                 AffixFilterCountModel(
                     count=[
                         AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater)
@@ -156,16 +156,16 @@ def import_maxroll(config: ImportConfig):
                             import_greater_affixes=config.import_greater_affixes,
                         )
                     ],
-                    minCount=1 if rarity == ItemRarity.Unique else 3,
+                    min_count=1 if rarity == ItemRarity.Unique else 3,
                 )
             ]
             update_mingreateraffixcount(item_filter, config.require_greater_affixes)
 
-        item_filter.minPower = 100
-        filter_name = item_filter.itemType[0].name
+        item_filter.min_power = 100
+        filter_name = item_filter.item_type[0].name
         i = 2
         while any(filter_name == next(iter(x)) for x in finished_filters):
-            filter_name = f"{item_filter.itemType[0].name}{i}"
+            filter_name = f"{item_filter.item_type[0].name}{i}"
             i += 1
 
         finished_filters.append({filter_name: item_filter})
@@ -174,7 +174,7 @@ def import_maxroll(config: ImportConfig):
     add_mythics_to_filters(mythic_names, finished_filters)
     profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
     if config.import_aspect_upgrades and aspect_upgrade_filters:
-        profile.AspectUpgrades = aspect_upgrade_filters
+        profile.aspect_upgrades = aspect_upgrade_filters
 
     file_name = config.custom_file_name
     if not file_name:
@@ -251,7 +251,7 @@ def _find_item_affixes(
                             mapping_data["uiStrings"]["damageType"][str(affix["attributes"][0]["param"])]
                             + " Damage Multiplier"
                         )
-                    elif affix["attributes"][0]["formula"] in ["GearAffix_Resource_Per_Second"]:
+                    elif affix["attributes"][0]["formula"] == "GearAffix_Resource_Per_Second":
                         param = str(affix["attributes"][0]["param"])
                         attr_desc = mapping_data["uiStrings"]["resourceType"][param] + " Regeneration"
                     elif affix["attributes"][0]["formula"] in [
@@ -295,9 +295,10 @@ def _find_item_affixes(
                 affix_obj.type = AffixType.greater
             if affix_obj.name is not None:
                 res.append(affix_obj)
-            elif "formula" in affix["attributes"][0] and affix["attributes"][0]["formula"] in [
-                "InherentAffixAnyResist_Ring"
-            ]:
+            elif (
+                "formula" in affix["attributes"][0]
+                and affix["attributes"][0]["formula"] == "InherentAffixAnyResist_Ring"
+            ):
                 LOGGER.info("Skipping InherentAffixAnyResist_Ring")
             else:
                 LOGGER.error(f"Couldn't match {affix_id=}")
@@ -428,7 +429,7 @@ def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int, bool]:
     planner_suffix = url.split(PLANNER_BASE_URL)
     if len(planner_suffix) != 2:
         LOGGER.error(msg := "Invalid planner url")
-        raise MaxrollException(msg)
+        raise MaxrollError(msg)
     if "#" in planner_suffix[1]:
         planner_id, data_id = planner_suffix[1].split("#")
         data_id = int(data_id) - 1
@@ -440,7 +441,7 @@ def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int, bool]:
             r = get_with_retry(url=PLANNER_API_BASE_URL + planner_id)
         except ConnectionError as exc:
             LOGGER.exception(msg := "Couldn't get planner")
-            raise MaxrollException(msg) from exc
+            raise MaxrollError(msg) from exc
         data_id = json.loads(r.json()["data"])["activeProfile"]
         build_id_is_visible_position = False
     return PLANNER_API_BASE_URL + planner_id, data_id, build_id_is_visible_position
@@ -452,7 +453,7 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, bool]:
         r = get_with_retry(url=url)
     except ConnectionError as exc:
         LOGGER.exception(msg := "Couldn't get build guide")
-        raise MaxrollException(msg) from exc
+        raise MaxrollError(msg) from exc
     data = lxml.html.fromstring(r.text)
     # As of season 13, the link to the planner is stuck in a script so we get it from there
     script_elements = data.xpath(SCRIPT_XPATH)
@@ -465,7 +466,7 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, bool]:
 
     msg = "Couldn't resolve a planner profile from this Maxroll build guide. Use the planner link directly and please report a bug."
     LOGGER.error(msg)
-    raise MaxrollException(msg)
+    raise MaxrollError(msg)
 
 
 def _resolve_visible_profile_index(profiles: list[dict], visible_profile_index: int) -> int:
