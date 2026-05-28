@@ -216,7 +216,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     if config.export_paragon:
         steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
         if steps:
-            profile.Paragon = build_paragon_profile_payload(
+            profile.paragon = build_paragon_profile_payload(
                 build_name=build_name, source_url=url, paragon_boards_list=steps
             )
         else:

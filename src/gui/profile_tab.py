@@ -4,7 +4,7 @@ import pathlib
 
 import yaml
 from pydantic import ValidationError
-from PyQt6.QtCore import QSettings, Qt
+from PyQt6.QtCore import QSettings, QSignalBlocker, Qt
 from PyQt6.QtWidgets import (
     QComboBox,
     QGroupBox,
@@ -140,12 +140,9 @@ class ProfileTab(QWidget):
             self.profile_combo.addItem(profile_name, profile_name)
 
     def set_current_profile_combo(self, profile_name):
-        self.profile_combo.blockSignals(b=True)
-        try:
+        with QSignalBlocker(self.profile_combo):
             index = self.profile_combo.findData(profile_name, Qt.ItemDataRole.UserRole)
             self.profile_combo.setCurrentIndex(index)
-        finally:
-            self.profile_combo.blockSignals(b=False)
 
     def populate_profile_dropdown(self):
         custom_profile_path = IniConfigLoader().user_dir / "profiles"
@@ -165,13 +162,10 @@ class ProfileTab(QWidget):
             key=str.lower,
         )
 
-        self.profile_combo.blockSignals(b=True)
-        try:
+        with QSignalBlocker(self.profile_combo):
             self.profile_combo.clear()
             self.add_profile_combo_section("--------- Active Profiles ---------", self.active_profiles)
             self.add_profile_combo_section("--------- Inactive Profiles ---------", self.inactive_profiles)
-        finally:
-            self.profile_combo.blockSignals(b=False)
 
         if not self.active_profiles and not self.inactive_profiles:
             self.current_profile_name = ""

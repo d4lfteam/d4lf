@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 from pydantic import BaseModel, ValidationError
 from pydantic_core import PydanticUndefined
-from PyQt6.QtCore import QCoreApplication, QMimeData, Qt, QTimer
+from PyQt6.QtCore import QCoreApplication, QMimeData, QSignalBlocker, Qt, QTimer
 from PyQt6.QtGui import QDrag, QKeySequence
 from PyQt6.QtWidgets import (
     QButtonGroup,
@@ -395,10 +395,9 @@ class ConfigTab(QWidget):
                 parameter_value_widget = SegmentedControl(options, config_value, on_changed)
             else:
                 parameter_value_widget = IgnoreScrollWheelComboBox()
-                parameter_value_widget.blockSignals(b=True)
-                parameter_value_widget.addItems(options)
-                parameter_value_widget.setCurrentText(config_value)
-                parameter_value_widget.blockSignals(b=False)
+                with QSignalBlocker(parameter_value_widget):
+                    parameter_value_widget.addItems(options)
+                    parameter_value_widget.setCurrentText(config_value)
                 parameter_value_widget.currentTextChanged.connect(on_changed)
 
         elif isinstance(config_value, bool):
@@ -622,9 +621,8 @@ class IgnoreScrollWheelComboBox(QComboBox):
         return event.ignore()
 
     def reset_values(self, value):
-        self.blockSignals(b=True)
-        self.setCurrentText(str(value))
-        self.blockSignals(b=False)
+        with QSignalBlocker(self):
+            self.setCurrentText(str(value))
 
 
 class QChestTabWidget(QWidget):
@@ -665,7 +663,7 @@ class QProfileListSelector(QWidget):
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(5)
 
-        self.setAcceptDrops(on=True)
+        self.setAcceptDrops(True)
 
         # Visual drop indicator for drag-and-drop
         self.drop_indicator = QFrame()
@@ -744,9 +742,8 @@ class QProfileListSelector(QWidget):
             drag_handle.setCursor(Qt.CursorShape.SizeAllCursor)
 
             cb = CheckmarkCheckBox(name)
-            cb.blockSignals(b=True)
-            cb.setChecked(name in current_active)
-            cb.blockSignals(b=False)
+            with QSignalBlocker(cb):
+                cb.setChecked(name in current_active)
             cb.stateChanged.connect(self._on_toggle)
 
             header_hbox.addWidget(toggle_btn)
@@ -974,7 +971,7 @@ class QHotkeyWidget(QWidget):
         self.open_picker_button.clicked.connect(
             lambda: self._launch_hotkey_dialog(model, section_header, config_key, self.open_picker_button.text())
         )
-        self.open_picker_button.setProperty("hotkeyButton", value=True)
+        self.open_picker_button.setProperty("hotkeyButton", True)  # noqa: FBT003
         layout.addWidget(self.open_picker_button)
 
         self.setLayout(layout)

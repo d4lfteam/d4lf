@@ -4,7 +4,6 @@ requires = ["hatchling"]
 
 [dependency-groups]
 dev = [
-    "prek",
     "pyinstaller",
     "pytest",
     "pytest-cov",

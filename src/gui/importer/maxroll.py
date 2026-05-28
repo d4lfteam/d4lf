@@ -190,7 +190,7 @@ def import_maxroll(config: ImportConfig):
     if config.export_paragon:
         steps = extract_maxroll_paragon_steps(active_profile)
         if steps:
-            profile.Paragon = build_paragon_profile_payload(
+            profile.paragon = build_paragon_profile_payload(
                 build_name=build_name, source_url=url, paragon_boards_list=steps
             )
         else:

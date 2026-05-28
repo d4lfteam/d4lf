@@ -1,6 +1,6 @@
 import logging
 
-from PyQt6.QtCore import QSettings, Qt, QTimer
+from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, QTimer
 from PyQt6.QtGui import QDoubleValidator, QIntValidator
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -197,7 +197,7 @@ class AffixGroupEditor(QWidget):
         self.auto_sync_checkbox.stateChanged.connect(self.toggle_auto_sync)
 
         self.greater_count_label = QLabel()
-        self.greater_count_label.setProperty("greaterCountLabel", value=True)
+        self.greater_count_label.setProperty("greaterCountLabel", True)  # noqa: FBT003
         self._refresh_widget_style(self.greater_count_label)
         self.update_greater_count_label()
 
@@ -209,7 +209,7 @@ class AffixGroupEditor(QWidget):
         self.min_greater.setEnabled(not self.auto_sync_checkbox.isChecked())
 
         if self.auto_sync_checkbox.isChecked():
-            self.min_greater.setProperty("autoSyncSpin", value=True)
+            self.min_greater.setProperty("autoSyncSpin", True)  # noqa: FBT003
             self._refresh_widget_style(self.min_greater)
 
         general_form.addRow("Min Greater Affixes:", min_greater_layout)
@@ -265,15 +265,15 @@ class AffixGroupEditor(QWidget):
         title_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         aspect_label = QLabel("Aspect")
-        aspect_label.setProperty("affixHeaderLabel", value=True)
+        aspect_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(aspect_label)
 
         mode_label = QLabel("Mode")
-        mode_label.setProperty("affixHeaderLabel", value=True)
+        mode_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(mode_label)
 
         value_label = QLabel("Threshold")
-        value_label.setProperty("affixHeaderLabel", value=True)
+        value_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(value_label)
 
         title_layout.addSpacing(25)
@@ -450,7 +450,7 @@ class AffixGroupEditor(QWidget):
         self.min_greater.setEnabled(not is_auto_sync)
 
         if is_auto_sync:
-            self.min_greater.setProperty("autoSyncSpin", value=True)
+            self.min_greater.setProperty("autoSyncSpin", True)  # noqa: FBT003
             self._refresh_widget_style(self.min_greater)
 
             self.affix_pool_container.expand()
@@ -460,7 +460,7 @@ class AffixGroupEditor(QWidget):
             self.min_greater.setValue(count)
             self.update_greater_count_label()
         else:
-            self.min_greater.setProperty("autoSyncSpin", value=False)
+            self.min_greater.setProperty("autoSyncSpin", False)  # noqa: FBT003
             self._refresh_widget_style(self.min_greater)
 
     def _update_auto_sync_count(self):
@@ -605,9 +605,8 @@ class UniqueAspectWidget(QWidget):
             self.value_edit.setValidator(QDoubleValidator(self.value_edit))
             display_value = "" if self.unique_aspect.value is None else str(self.unique_aspect.value)
 
-        self.value_edit.blockSignals(b=True)
-        self.value_edit.setText(display_value)
-        self.value_edit.blockSignals(b=False)
+        with QSignalBlocker(self.value_edit):
+            self.value_edit.setText(display_value)
 
     def update_mode(self, current_text=None):
         mode = current_text or self.mode_combo.currentText()
@@ -653,7 +652,7 @@ class AffixPoolWidget(QWidget):
 
         min_count_label = QLabel("Min Count:")
         min_count_label.setMaximumWidth(100)
-        min_count_label.setProperty("affixHeaderLabel", value=True)
+        min_count_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(min_count_label)
         config_layout.addWidget(min_count_label)
 
@@ -666,7 +665,7 @@ class AffixPoolWidget(QWidget):
 
         max_count_label = QLabel("Max Count:")
         max_count_label.setMaximumWidth(100)
-        max_count_label.setProperty("affixHeaderLabel", value=True)
+        max_count_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(max_count_label)
         config_layout.addWidget(max_count_label)
 
@@ -682,19 +681,19 @@ class AffixPoolWidget(QWidget):
         title_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         affix_label = QLabel("Affixes")
-        affix_label.setProperty("affixHeaderLabel", value=True)
+        affix_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(affix_label)
 
         greater_label = QLabel("Greater")
-        greater_label.setProperty("affixHeaderLabel", value=True)
+        greater_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(greater_label)
 
         mode_label = QLabel("Mode")
-        mode_label.setProperty("affixHeaderLabel", value=True)
+        mode_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(mode_label)
 
         value_label = QLabel("Threshold")
-        value_label.setProperty("affixHeaderLabel", value=True)
+        value_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(value_label)
 
         title_layout.addSpacing(250)
@@ -798,7 +797,7 @@ class AffixWidget(QWidget):
         self.greater_checkbox = QCheckBox("Greater")
         self.greater_checkbox.setChecked(getattr(self.affix, "want_greater", False))
         self.greater_checkbox.setFixedWidth(80)
-        self.greater_checkbox.setProperty("greaterCheckbox", value=True)
+        self.greater_checkbox.setProperty("greaterCheckbox", True)  # noqa: FBT003
         self._refresh_widget_style(self.greater_checkbox)
         self.greater_checkbox.stateChanged.connect(self.update_greater)
         self.greater_checkbox.stateChanged.connect(self.update_parent_count_label)
@@ -848,9 +847,8 @@ class AffixWidget(QWidget):
             self.value_edit.setValidator(QDoubleValidator(self.value_edit))
             display_value = "" if self.affix.value is None else str(self.affix.value)
 
-        self.value_edit.blockSignals(b=True)
-        self.value_edit.setText(display_value)
-        self.value_edit.blockSignals(b=False)
+        with QSignalBlocker(self.value_edit):
+            self.value_edit.setText(display_value)
 
     def update_mode(self, current_text=None):
         mode = current_text or self.mode_combo.currentText()
