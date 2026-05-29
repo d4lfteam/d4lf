@@ -71,7 +71,7 @@ def test_extract_mobalytics_preloaded_state_ignores_unrelated_script():
 
 
 def test_log_mobalytics_page_diagnostics_reports_loaded_page_shape(caplog: pytest.LogCaptureFixture):
-    caplog.set_level(logging.ERROR)
+    caplog.set_level(logging.DEBUG, logger="src.gui.importer.mobalytics")
 
     _log_mobalytics_page_diagnostics(
         driver=_MobalyticsDiagnosticsDriver(),
