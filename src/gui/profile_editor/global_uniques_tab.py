@@ -52,27 +52,27 @@ class UniqueWidget(QWidget):
 
         self.profile_alias = QLineEdit()
         self.profile_alias.setMaximumWidth(300)
-        self.profile_alias.setText(self.unique_model.profileAlias)
+        self.profile_alias.setText(self.unique_model.profile_alias)
         self.profile_alias.textChanged.connect(self.update_profile_alias)
         self.general_form.addRow("Profile Alias:", self.profile_alias)
 
         self.min_power = IgnoreScrollWheelSpinBox()
         self.min_power.setRange(0, MAX_POWER)
-        self.min_power.setValue(self.unique_model.minPower)
+        self.min_power.setValue(self.unique_model.min_power)
         self.min_power.setMaximumWidth(150)
         self.min_power.valueChanged.connect(self.update_min_power)
         self.general_form.addRow("Minimum Power:", self.min_power)
 
         self.min_greater = IgnoreScrollWheelSpinBox()
         self.min_greater.setRange(0, 4)
-        self.min_greater.setValue(self.unique_model.minGreaterAffixCount)
+        self.min_greater.setValue(self.unique_model.min_greater_affix_count)
         self.min_greater.setMaximumWidth(150)
         self.min_greater.valueChanged.connect(self.update_min_greater_affix)
         self.general_form.addRow("Min Greater Affixes:", self.min_greater)
 
         self.min_percent = IgnoreScrollWheelSpinBox()
         self.min_percent.setRange(0, 100)
-        self.min_percent.setValue(self.unique_model.minPercentOfAspect)
+        self.min_percent.setValue(self.unique_model.min_percent_of_aspect)
         self.min_percent.setMaximumWidth(150)
         self.min_percent.valueChanged.connect(self.update_min_percent)
         self.general_form.addRow("Min Percent of Aspect:", self.min_percent)
@@ -81,16 +81,16 @@ class UniqueWidget(QWidget):
         self.content_layout.addWidget(self.general_groupbox)
 
     def update_profile_alias(self, value: str):
-        self.unique_model.profileAlias = value.strip()
+        self.unique_model.profile_alias = value.strip()
 
     def update_min_power(self):
-        self.unique_model.minPower = self.min_power.value()
+        self.unique_model.min_power = self.min_power.value()
 
     def update_min_greater_affix(self):
-        self.unique_model.minGreaterAffixCount = self.min_greater.value()
+        self.unique_model.min_greater_affix_count = self.min_greater.value()
 
     def update_min_percent(self):
-        self.unique_model.minPercentOfAspect = self.min_percent.value()
+        self.unique_model.min_percent_of_aspect = self.min_percent.value()
 
 
 class UniquesTab(QWidget):

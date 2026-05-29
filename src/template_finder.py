@@ -1,4 +1,5 @@
 import logging
+import operator
 import threading
 import time
 from dataclasses import dataclass
@@ -89,7 +90,7 @@ class SearchArgs:
 
     def wait_until_hidden(self, timeout: float = 3, suppress_debug: bool = False) -> bool:
         if (
-            not (hidden := run_until_condition(lambda: self.detect().success, lambda res: not res, timeout)[1])
+            not (hidden := run_until_condition(lambda: self.detect().success, operator.not_, timeout)[1])
             and not suppress_debug
         ):
             LOGGER.debug(f"{self.ref} still found after {timeout} seconds")

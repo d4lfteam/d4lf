@@ -1,6 +1,6 @@
 import logging
 
-from PyQt6.QtCore import QSettings, Qt, QTimer
+from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, QTimer
 from PyQt6.QtGui import QDoubleValidator, QIntValidator
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -167,7 +167,7 @@ class AffixGroupEditor(QWidget):
 
         self.min_power = IgnoreScrollWheelSpinBox()
         self.min_power.setMaximum(MAX_POWER)
-        self.min_power.setValue(self.config.minPower)
+        self.min_power.setValue(self.config.min_power)
         self.min_power.setMaximumWidth(150)
         self.min_power.valueChanged.connect(self.update_min_power)
         general_form.addRow("Minimum Power:", self.min_power)
@@ -175,7 +175,7 @@ class AffixGroupEditor(QWidget):
         min_greater_layout = QHBoxLayout()
 
         self.min_greater = QSpinBox()
-        self.min_greater.setValue(self.config.minGreaterAffixCount)
+        self.min_greater.setValue(self.config.min_greater_affix_count)
         self.min_greater.setMaximum(4)
         self.min_greater.setMinimum(0)
         self.min_greater.setMaximumWidth(80)
@@ -191,11 +191,13 @@ class AffixGroupEditor(QWidget):
             "When checked: Min Greater Affixes automatically matches the number of affixes marked as 'want greater'\n"
             "When unchecked: You can manually set Min Greater Affixes to any value"
         )
-        self.auto_sync_checkbox.setChecked(self.settings.value(f"auto_sync_ga_{self.item_name}", False, type=bool))
+        self.auto_sync_checkbox.setChecked(
+            self.settings.value(f"auto_sync_ga_{self.item_name}", defaultValue=False, type=bool)
+        )
         self.auto_sync_checkbox.stateChanged.connect(self.toggle_auto_sync)
 
         self.greater_count_label = QLabel()
-        self.greater_count_label.setProperty("greaterCountLabel", True)
+        self.greater_count_label.setProperty("greaterCountLabel", True)  # noqa: FBT003
         self._refresh_widget_style(self.greater_count_label)
         self.update_greater_count_label()
 
@@ -207,7 +209,7 @@ class AffixGroupEditor(QWidget):
         self.min_greater.setEnabled(not self.auto_sync_checkbox.isChecked())
 
         if self.auto_sync_checkbox.isChecked():
-            self.min_greater.setProperty("autoSyncSpin", True)
+            self.min_greater.setProperty("autoSyncSpin", True)  # noqa: FBT003
             self._refresh_widget_style(self.min_greater)
 
         general_form.addRow("Min Greater Affixes:", min_greater_layout)
@@ -231,12 +233,12 @@ class AffixGroupEditor(QWidget):
         pool_btn_layout.addWidget(remove_inherent_pool_btn)
 
         self.affix_pool_container = Container("Affix Pool")
-        self.affix_pool_layout = QVBoxLayout(self.affix_pool_container.contentWidget)
-        self.affix_pool_container.firstExpansion.connect(self.init_affix_pool)
+        self.affix_pool_layout = QVBoxLayout(self.affix_pool_container.content_widget)
+        self.affix_pool_container.first_expansion.connect(self.init_affix_pool)
 
         self.inherent_pool_container = Container("Inherent Pool")
-        self.inherent_pool_layout = QVBoxLayout(self.inherent_pool_container.contentWidget)
-        self.inherent_pool_container.firstExpansion.connect(self.init_inherent_pool)
+        self.inherent_pool_layout = QVBoxLayout(self.inherent_pool_container.content_widget)
+        self.inherent_pool_container.first_expansion.connect(self.init_inherent_pool)
 
         self.content_layout.addWidget(self.affix_pool_container)
         self.content_layout.addWidget(self.inherent_pool_container)
@@ -253,8 +255,8 @@ class AffixGroupEditor(QWidget):
 
     def create_unique_aspect_container(self):
         self.unique_aspect_container = Container(self._unique_aspects_title())
-        self.unique_aspect_layout = QVBoxLayout(self.unique_aspect_container.contentWidget)
-        self.unique_aspect_container.firstExpansion.connect(self.init_unique_aspects)
+        self.unique_aspect_layout = QVBoxLayout(self.unique_aspect_container.content_widget)
+        self.unique_aspect_container.first_expansion.connect(self.init_unique_aspects)
 
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -263,15 +265,15 @@ class AffixGroupEditor(QWidget):
         title_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         aspect_label = QLabel("Aspect")
-        aspect_label.setProperty("affixHeaderLabel", True)
+        aspect_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(aspect_label)
 
         mode_label = QLabel("Mode")
-        mode_label.setProperty("affixHeaderLabel", True)
+        mode_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(mode_label)
 
         value_label = QLabel("Threshold")
-        value_label.setProperty("affixHeaderLabel", True)
+        value_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(value_label)
 
         title_layout.addSpacing(25)
@@ -304,14 +306,14 @@ class AffixGroupEditor(QWidget):
         self.content_layout.addWidget(self.unique_aspect_container)
 
     def _unique_aspects_title(self):
-        aspect_names = ", ".join(unique_aspect.name for unique_aspect in self.config.uniqueAspect) or "None"
+        aspect_names = ", ".join(unique_aspect.name for unique_aspect in self.config.unique_aspect) or "None"
         return f"{UNIQUE_ASPECTS_TITLE} - {aspect_names}"
 
     def refresh_unique_aspects_title(self):
         self.unique_aspect_container.header.set_name(self._unique_aspects_title())
 
     def init_unique_aspects(self):
-        for unique_aspect in self.config.uniqueAspect:
+        for unique_aspect in self.config.unique_aspect:
             self.add_unique_aspect_item(unique_aspect)
 
     def _refresh_widget_style(self, widget):
@@ -328,12 +330,12 @@ class AffixGroupEditor(QWidget):
         self.unique_aspect_list.setItemWidget(item, widget)
 
     def add_unique_aspect(self):
-        existing_names = {unique_aspect.name for unique_aspect in self.config.uniqueAspect}
+        existing_names = {unique_aspect.name for unique_aspect in self.config.unique_aspect}
         for aspect_name in Dataloader().aspect_unique_dict:
             if aspect_name in existing_names:
                 continue
             new_unique_aspect = AspectUniqueFilterModel(name=aspect_name, value=None)
-            self.config.uniqueAspect.append(new_unique_aspect)
+            self.config.unique_aspect.append(new_unique_aspect)
             self.add_unique_aspect_item(new_unique_aspect)
             self.refresh_unique_aspects_title()
             return
@@ -345,34 +347,34 @@ class AffixGroupEditor(QWidget):
         )
         for row in selected_rows:
             self.unique_aspect_list.takeItem(row)
-            del self.config.uniqueAspect[row]
+            del self.config.unique_aspect[row]
         self.refresh_unique_aspects_title()
 
     def init_affix_pool(self):
         """Initialize affix pool content on first expansion."""
-        for pool in self.config.affixPool:
+        for pool in self.config.affix_pool:
             self.add_affix_pool_item(pool)
         QTimer.singleShot(50, self.update_greater_count_label)
 
     def init_inherent_pool(self):
         """Initialize inherent pool content on first expansion."""
-        for pool in self.config.inherentPool:
-            self.add_affix_pool_item(pool, True)
+        for pool in self.config.inherent_pool:
+            self.add_affix_pool_item(pool, inherent=True)
         QTimer.singleShot(50, self.update_greater_count_label)
 
     def add_affix_pool_item(self, pool: AffixFilterCountModel, inherent: bool = False):
         if inherent:
             nb_count = self.inherent_pool_layout.count()
-            container = Container(f"Count {nb_count}", True)
-            container_layout = QVBoxLayout(container.contentWidget)
+            container = Container(f"Count {nb_count}", color_background=True)
+            container_layout = QVBoxLayout(container.content_widget)
             widget = AffixPoolWidget(pool)
             container_layout.addWidget(widget)
             self.inherent_pool_layout.addWidget(container)
             QTimer.singleShot(50, container.expand)
         else:
             nb_count = self.affix_pool_layout.count()
-            container = Container(f"Count {nb_count}", True)
-            container_layout = QVBoxLayout(container.contentWidget)
+            container = Container(f"Count {nb_count}", color_background=True)
+            container_layout = QVBoxLayout(container.content_widget)
             widget = AffixPoolWidget(pool)
             container_layout.addWidget(widget)
             self.affix_pool_layout.addWidget(container)
@@ -384,8 +386,8 @@ class AffixGroupEditor(QWidget):
             value=None,
         )
 
-        new_pool = AffixFilterCountModel(count=[default_affix], minCount=1, maxCount=3)
-        self.config.affixPool.append(new_pool)
+        new_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
+        self.config.affix_pool.append(new_pool)
         self.add_affix_pool_item(new_pool)
 
     def add_inherent_pool(self):
@@ -394,9 +396,9 @@ class AffixGroupEditor(QWidget):
             value=None,
         )
 
-        new_pool = AffixFilterCountModel(count=[default_affix], minCount=1, maxCount=3)
-        self.config.inherentPool.append(new_pool)
-        self.add_affix_pool_item(new_pool, True)
+        new_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
+        self.config.inherent_pool.append(new_pool)
+        self.add_affix_pool_item(new_pool, inherent=True)
 
     def remove_selected(self, layout_widget: QVBoxLayout, inherent: bool = False):
         nb_pool = layout_widget.count()
@@ -412,9 +414,9 @@ class AffixGroupEditor(QWidget):
             for widget, index in to_delete_list:
                 widget.setParent(None)
                 if inherent:
-                    self.config.inherentPool.pop(index)
+                    self.config.inherent_pool.pop(index)
                 else:
-                    self.config.affixPool.pop(index)
+                    self.config.affix_pool.pop(index)
             self.reorganize_pool(layout_widget)
 
     def reorganize_pool(self, layout_widget: QVBoxLayout):
@@ -424,19 +426,19 @@ class AffixGroupEditor(QWidget):
                 item.widget().header.set_name(f"Count {i}")
 
     def refresh_item_type_summary(self):
-        self.item_type_line_edit.setText(_item_type_summary(self.config.itemType))
+        self.item_type_line_edit.setText(_item_type_summary(self.config.item_type))
 
     def edit_item_types(self):
-        item_type_picker = ItemTypePicker(self, self.item_types, self.config.itemType)
+        item_type_picker = ItemTypePicker(self, self.item_types, self.config.item_type)
         if item_type_picker.exec() == QDialog.DialogCode.Accepted:
-            self.config.itemType = item_type_picker.get_selected_item_types()
+            self.config.item_type = item_type_picker.get_selected_item_types()
             self.refresh_item_type_summary()
 
     def update_min_power(self):
-        self.config.minPower = self.min_power.value()
+        self.config.min_power = self.min_power.value()
 
     def update_min_greater_affix(self):
-        self.config.minGreaterAffixCount = self.min_greater.value()
+        self.config.min_greater_affix_count = self.min_greater.value()
 
     def toggle_auto_sync(self):
         is_auto_sync = self.auto_sync_checkbox.isChecked()
@@ -448,7 +450,7 @@ class AffixGroupEditor(QWidget):
         self.min_greater.setEnabled(not is_auto_sync)
 
         if is_auto_sync:
-            self.min_greater.setProperty("autoSyncSpin", True)
+            self.min_greater.setProperty("autoSyncSpin", True)  # noqa: FBT003
             self._refresh_widget_style(self.min_greater)
 
             self.affix_pool_container.expand()
@@ -458,7 +460,7 @@ class AffixGroupEditor(QWidget):
             self.min_greater.setValue(count)
             self.update_greater_count_label()
         else:
-            self.min_greater.setProperty("autoSyncSpin", False)
+            self.min_greater.setProperty("autoSyncSpin", False)  # noqa: FBT003
             self._refresh_widget_style(self.min_greater)
 
     def _update_auto_sync_count(self):
@@ -473,7 +475,7 @@ class AffixGroupEditor(QWidget):
 
     def _ensure_pool_widgets_initialized(self):
         for container in (self.affix_pool_container, self.inherent_pool_container):
-            was_visible = container.contentWidget.isVisible()
+            was_visible = container.content_widget.isVisible()
             if container.header.first_expansion:
                 container.expand()
                 if not was_visible:
@@ -485,9 +487,9 @@ class AffixGroupEditor(QWidget):
         # Inherents do not participate in Greater Affix auto-sync or bulk Min % updates.
         for i in range(self.affix_pool_layout.count()):
             container = self.affix_pool_layout.itemAt(i).widget()
-            if container is None or not hasattr(container, "contentWidget"):
+            if container is None or not hasattr(container, "content_widget"):
                 continue
-            pool_item = container.contentWidget.layout().itemAt(0)
+            pool_item = container.content_widget.layout().itemAt(0)
             if pool_item is None:
                 continue
             pool_widget = pool_item.widget()
@@ -565,7 +567,7 @@ class UniqueAspectWidget(QWidget):
         self.mode_combo = IgnoreScrollWheelComboBox()
         self.mode_combo.setFixedSize(100, self.mode_combo.sizeHint().height())
         self.mode_combo.addItems([AFFIX_VALUE_MODE, AFFIX_PERCENT_MODE])
-        if self.unique_aspect.minPercentOfAspect:
+        if self.unique_aspect.min_percent_of_aspect:
             self.mode_combo.setCurrentText(AFFIX_PERCENT_MODE)
         else:
             self.mode_combo.setCurrentText(AFFIX_VALUE_MODE)
@@ -596,23 +598,22 @@ class UniqueAspectWidget(QWidget):
             self.value_edit.setPlaceholderText("Percent (0-100)")
             self.value_edit.setValidator(QIntValidator(0, 100, self.value_edit))
             display_value = (
-                "" if self.unique_aspect.minPercentOfAspect == 0 else str(self.unique_aspect.minPercentOfAspect)
+                "" if self.unique_aspect.min_percent_of_aspect == 0 else str(self.unique_aspect.min_percent_of_aspect)
             )
         else:
             self.value_edit.setPlaceholderText("Value (optional)")
             self.value_edit.setValidator(QDoubleValidator(self.value_edit))
             display_value = "" if self.unique_aspect.value is None else str(self.unique_aspect.value)
 
-        self.value_edit.blockSignals(True)
-        self.value_edit.setText(display_value)
-        self.value_edit.blockSignals(False)
+        with QSignalBlocker(self.value_edit):
+            self.value_edit.setText(display_value)
 
     def update_mode(self, current_text=None):
         mode = current_text or self.mode_combo.currentText()
         if mode == AFFIX_PERCENT_MODE:
             self.unique_aspect.value = None
         else:
-            self.unique_aspect.minPercentOfAspect = 0
+            self.unique_aspect.min_percent_of_aspect = 0
         self.refresh_value_input()
 
     def update_value(self, value):
@@ -625,7 +626,7 @@ class UniqueAspectWidget(QWidget):
                 QMessageBox.warning(self, "Warning", "Min % must be between 0 and 100.")
                 self.refresh_value_input()
                 return
-            self.unique_aspect.minPercentOfAspect = percent
+            self.unique_aspect.min_percent_of_aspect = percent
             self.unique_aspect.value = None
             return
 
@@ -633,7 +634,7 @@ class UniqueAspectWidget(QWidget):
             self.unique_aspect.value = float(value) if value else None
         except ValueError:
             return
-        self.unique_aspect.minPercentOfAspect = 0
+        self.unique_aspect.min_percent_of_aspect = 0
 
 
 class AffixPoolWidget(QWidget):
@@ -651,12 +652,12 @@ class AffixPoolWidget(QWidget):
 
         min_count_label = QLabel("Min Count:")
         min_count_label.setMaximumWidth(100)
-        min_count_label.setProperty("affixHeaderLabel", True)
+        min_count_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(min_count_label)
         config_layout.addWidget(min_count_label)
 
         self.min_count = IgnoreScrollWheelSpinBox()
-        self.min_count.setValue(self.pool.minCount)
+        self.min_count.setValue(self.pool.min_count)
         self.min_count.setMaximumWidth(100)
         self.min_count.valueChanged.connect(self.update_min_count)
         config_layout.addWidget(self.min_count)
@@ -664,12 +665,12 @@ class AffixPoolWidget(QWidget):
 
         max_count_label = QLabel("Max Count:")
         max_count_label.setMaximumWidth(100)
-        max_count_label.setProperty("affixHeaderLabel", True)
+        max_count_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(max_count_label)
         config_layout.addWidget(max_count_label)
 
         self.max_count = IgnoreScrollWheelSpinBox()
-        self.max_count.setValue(min(self.pool.maxCount, 2147483647))
+        self.max_count.setValue(min(self.pool.max_count, 2147483647))
         self.max_count.setMaximumWidth(100)
         self.max_count.valueChanged.connect(self.update_max_count)
         config_layout.addWidget(self.max_count)
@@ -680,19 +681,19 @@ class AffixPoolWidget(QWidget):
         title_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         affix_label = QLabel("Affixes")
-        affix_label.setProperty("affixHeaderLabel", True)
+        affix_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(affix_label)
 
         greater_label = QLabel("Greater")
-        greater_label.setProperty("affixHeaderLabel", True)
+        greater_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(greater_label)
 
         mode_label = QLabel("Mode")
-        mode_label.setProperty("affixHeaderLabel", True)
+        mode_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(mode_label)
 
         value_label = QLabel("Threshold")
-        value_label.setProperty("affixHeaderLabel", True)
+        value_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
         self._refresh_widget_style(value_label)
 
         title_layout.addSpacing(250)
@@ -748,10 +749,10 @@ class AffixPoolWidget(QWidget):
             del self.pool.count[row]
 
     def update_min_count(self):
-        self.pool.minCount = self.min_count.value()
+        self.pool.min_count = self.min_count.value()
 
     def update_max_count(self):
-        self.pool.maxCount = self.max_count.value()
+        self.pool.max_count = self.max_count.value()
 
 
 class AffixWidget(QWidget):
@@ -796,7 +797,7 @@ class AffixWidget(QWidget):
         self.greater_checkbox = QCheckBox("Greater")
         self.greater_checkbox.setChecked(getattr(self.affix, "want_greater", False))
         self.greater_checkbox.setFixedWidth(80)
-        self.greater_checkbox.setProperty("greaterCheckbox", True)
+        self.greater_checkbox.setProperty("greaterCheckbox", True)  # noqa: FBT003
         self._refresh_widget_style(self.greater_checkbox)
         self.greater_checkbox.stateChanged.connect(self.update_greater)
         self.greater_checkbox.stateChanged.connect(self.update_parent_count_label)
@@ -818,7 +819,7 @@ class AffixWidget(QWidget):
         self.mode_combo = IgnoreScrollWheelComboBox()
         self.mode_combo.setFixedSize(100, self.mode_combo.sizeHint().height())
         self.mode_combo.addItems([AFFIX_VALUE_MODE, AFFIX_PERCENT_MODE])
-        if self.affix.minPercentOfAffix:
+        if self.affix.min_percent_of_affix:
             self.mode_combo.setCurrentText(AFFIX_PERCENT_MODE)
         else:
             self.mode_combo.setCurrentText(AFFIX_VALUE_MODE)
@@ -840,22 +841,21 @@ class AffixWidget(QWidget):
         if self.mode_combo.currentText() == AFFIX_PERCENT_MODE:
             self.value_edit.setPlaceholderText("Percent (0-100)")
             self.value_edit.setValidator(QIntValidator(0, 100, self.value_edit))
-            display_value = "" if self.affix.minPercentOfAffix == 0 else str(self.affix.minPercentOfAffix)
+            display_value = "" if self.affix.min_percent_of_affix == 0 else str(self.affix.min_percent_of_affix)
         else:
             self.value_edit.setPlaceholderText("Value (optional)")
             self.value_edit.setValidator(QDoubleValidator(self.value_edit))
             display_value = "" if self.affix.value is None else str(self.affix.value)
 
-        self.value_edit.blockSignals(True)
-        self.value_edit.setText(display_value)
-        self.value_edit.blockSignals(False)
+        with QSignalBlocker(self.value_edit):
+            self.value_edit.setText(display_value)
 
     def update_mode(self, current_text=None):
         mode = current_text or self.mode_combo.currentText()
         if mode == AFFIX_PERCENT_MODE:
             self.affix.value = None
         else:
-            self.affix.minPercentOfAffix = 0
+            self.affix.min_percent_of_affix = 0
         self.refresh_value_input()
 
     def update_value(self, value):
@@ -868,7 +868,7 @@ class AffixWidget(QWidget):
                 QMessageBox.warning(self, "Warning", "Min % must be between 0 and 100.")
                 self.refresh_value_input()
                 return
-            self.affix.minPercentOfAffix = percent
+            self.affix.min_percent_of_affix = percent
             self.affix.value = None
             return
 
@@ -876,7 +876,7 @@ class AffixWidget(QWidget):
             self.affix.value = float(value) if value else None
         except ValueError:
             return
-        self.affix.minPercentOfAffix = 0
+        self.affix.min_percent_of_affix = 0
 
     def update_greater(self):
         self.affix.want_greater = self.greater_checkbox.isChecked()
@@ -934,18 +934,18 @@ class AffixesTab(QWidget):
         remove_item_button.setText("Remove Item")
         remove_item_button.clicked.connect(self.remove_item_type)
 
-        set_all_minGreaterAffix_button = QPushButton("Set All Min GAs (Excludes Auto Synced Items)")
+        set_all_min_greater_affix_button = QPushButton("Set All Min GAs (Excludes Auto Synced Items)")
         convert_all_to_min_percent_button = QPushButton("Convert All To Min %")
-        set_all_minPower_button = QPushButton("Set all minPower")
-        set_all_minGreaterAffix_button.clicked.connect(self.set_all_minGreaterAffix)
+        set_all_min_power_button = QPushButton("Set all minPower")
+        set_all_min_greater_affix_button.clicked.connect(self.set_all_min_greater_affix)
         convert_all_to_min_percent_button.clicked.connect(self.convert_all_to_min_percent_of_affix)
-        set_all_minPower_button.clicked.connect(self.set_all_minPower)
+        set_all_min_power_button.clicked.connect(self.set_all_min_power)
 
         self.toolbar.addWidget(add_item_button)
         self.toolbar.addWidget(remove_item_button)
-        self.toolbar.addWidget(set_all_minGreaterAffix_button)
+        self.toolbar.addWidget(set_all_min_greater_affix_button)
         self.toolbar.addWidget(convert_all_to_min_percent_button)
-        self.toolbar.addWidget(set_all_minPower_button)
+        self.toolbar.addWidget(set_all_min_power_button)
 
         self.main_layout.addWidget(self.toolbar)
         self.main_layout.addWidget(self.tab_widget)
@@ -980,15 +980,15 @@ class AffixesTab(QWidget):
                 self.affixes_model.pop(index)
             return
 
-    def set_all_minGreaterAffix(self):
+    def set_all_min_greater_affix(self):
         dialog = MinGreaterDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            minGreaterAffix = dialog.get_value()
+            min_greater_affix = dialog.get_value()
             for i in range(self.tab_widget.count()):
                 tab: AffixGroupEditor = self.tab_widget.widget(i)
                 if tab.auto_sync_checkbox.isChecked():
                     continue
-                tab.min_greater.setValue(minGreaterAffix)
+                tab.min_greater.setValue(min_greater_affix)
                 tab.update_min_greater_affix()
 
     def convert_all_to_min_percent_of_affix(self):
@@ -998,11 +998,11 @@ class AffixesTab(QWidget):
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 current_tab.convert_all_to_min_percent_of_affix(dialog.get_value())
 
-    def set_all_minPower(self):
+    def set_all_min_power(self):
         dialog = MinPowerDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            minPower = dialog.get_value()
+            min_power = dialog.get_value()
             for i in range(self.tab_widget.count()):
                 tab: AffixGroupEditor = self.tab_widget.widget(i)
-                tab.min_power.setValue(minPower)
+                tab.min_power.setValue(min_power)
                 tab.update_min_power()

@@ -149,23 +149,22 @@ def check_for_proper_tts_configuration():
     else:
         local_prefs = get_d4_local_prefs_file()
         if local_prefs:
-            with Path(local_prefs).open(encoding="utf-8") as file:
-                prefs = file.read()
-                if 'UseScreenReader "1"' not in prefs:
-                    LOGGER.error(
-                        f"Use Screen Reader is not enabled in Accessibility Settings in D4. No items will be read. Read more about initial setup here: {SETUP_INSTRUCTIONS_URL}"
-                    )
-                if 'UseThirdPartyReader "1"' not in prefs:
-                    LOGGER.error(
-                        f"3rd Party Screen Reader is not enabled in Accessibility Settings in D4. No items will be read. Read more about initial setup here: {SETUP_INSTRUCTIONS_URL}"
-                    )
-                if (
-                    'FontScale "2"' in prefs
-                    and IniConfigLoader().general.vision_mode_type == VisionModeType.highlight_matches
-                ):
-                    LOGGER.error(
-                        "A font scale set to Large is not supported when using the highlight matches vision mode. Change to medium or small in the graphics options, or use the fast vision mode."
-                    )
+            prefs = Path(local_prefs).read_text(encoding="utf-8")
+            if 'UseScreenReader "1"' not in prefs:
+                LOGGER.error(
+                    f"Use Screen Reader is not enabled in Accessibility Settings in D4. No items will be read. Read more about initial setup here: {SETUP_INSTRUCTIONS_URL}"
+                )
+            if 'UseThirdPartyReader "1"' not in prefs:
+                LOGGER.error(
+                    f"3rd Party Screen Reader is not enabled in Accessibility Settings in D4. No items will be read. Read more about initial setup here: {SETUP_INSTRUCTIONS_URL}"
+                )
+            if (
+                'FontScale "2"' in prefs
+                and IniConfigLoader().general.vision_mode_type == VisionModeType.highlight_matches
+            ):
+                LOGGER.error(
+                    "A font scale set to Large is not supported when using the highlight matches vision mode. Change to medium or small in the graphics options, or use the fast vision mode."
+                )
         else:
             LOGGER.warning(
                 "Unable to find a Diablo 4 local prefs file. Can't automatically check if TTS is configured properly in-game. "

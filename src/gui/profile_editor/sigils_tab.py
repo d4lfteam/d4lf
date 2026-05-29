@@ -56,14 +56,14 @@ class SigilWidget(Container):
     dungeon_changed = pyqtSignal()
 
     def __init__(self, sigil_name: str, sigil: SigilConditionModel, whitelist: bool):
-        super().__init__(sigil_name, True)
+        super().__init__(sigil_name, color_background=True)
         self.sigil = sigil
         self.sigil_name = sigil_name
         self.whitelist = whitelist
         self.setup_ui()
 
     def setup_ui(self):
-        container_layout = QVBoxLayout(self.contentWidget)
+        container_layout = QVBoxLayout(self.content_widget)
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -126,7 +126,7 @@ class SigilWidget(Container):
 
     def revert_sigil_dungeon(self):
         self.sigil_name_combo.currentIndexChanged.disconnect()
-        self.sigil_name_combo.currentTextChanged.connect(lambda: self.update_sigil_dungeon(False))
+        self.sigil_name_combo.currentTextChanged.connect(lambda: self.update_sigil_dungeon(classic=False))
         self.sigil_name_combo.setCurrentText(self.old_name)
         self.sigil_name_combo.currentTextChanged.disconnect()
         self.sigil_name_combo.currentIndexChanged.connect(self.update_sigil_dungeon)
@@ -201,7 +201,7 @@ class SigilsTab(QWidget):
     def create_containers(self):
         # Blacklist
         self.blacklist_container = Container("Blacklist")
-        self.blacklist_layout = QVBoxLayout(self.blacklist_container.contentWidget)
+        self.blacklist_layout = QVBoxLayout(self.blacklist_container.content_widget)
         self.blacklist_sigils = []
 
         for sigil_condition in self.sigil_model.blacklist:
@@ -210,11 +210,11 @@ class SigilsTab(QWidget):
 
         # Whitelist
         self.whitelist_container = Container("Whitelist")
-        self.whitelist_layout = QVBoxLayout(self.whitelist_container.contentWidget)
+        self.whitelist_layout = QVBoxLayout(self.whitelist_container.content_widget)
         self.whitelist_sigils = []
 
         for sigil_condition in self.sigil_model.whitelist:
-            self.add_sigil(sigil_condition, True)
+            self.add_sigil(sigil_condition, whitelist=True)
             self.whitelist_sigils.append(Dataloader().affix_sigil_dict[sigil_condition.name])
 
         self.main_layout.addWidget(self.whitelist_container)
@@ -223,11 +223,11 @@ class SigilsTab(QWidget):
     def add_sigil(self, sigil_condition: SigilConditionModel, whitelist: bool = False):
         name = Dataloader().affix_sigil_dict_all["dungeons"][sigil_condition.name]
         if whitelist:
-            widget = SigilWidget(name, sigil_condition, True)
+            widget = SigilWidget(name, sigil_condition, whitelist=True)
             widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
             self.whitelist_layout.addWidget(widget)
         else:
-            widget = SigilWidget(name, sigil_condition, False)
+            widget = SigilWidget(name, sigil_condition, whitelist=False)
             widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
             self.blacklist_layout.addWidget(widget)
 
@@ -238,13 +238,13 @@ class SigilsTab(QWidget):
             reverse_dict = {v: k for k, v in Dataloader().affix_sigil_dict_all["dungeons"].items()}
             sigil_condition = SigilConditionModel(name=reverse_dict.get(sigil_name), condition=[])
             if type_name == "whitelist":
-                widget = SigilWidget(sigil_name, sigil_condition, True)
+                widget = SigilWidget(sigil_name, sigil_condition, whitelist=True)
                 widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
                 self.whitelist_layout.addWidget(widget)
                 self.whitelist_sigils.append(sigil_name)
                 self.sigil_model.whitelist.append(sigil_condition)
             elif type_name == "blacklist":
-                widget = SigilWidget(sigil_name, sigil_condition, False)
+                widget = SigilWidget(sigil_name, sigil_condition, whitelist=False)
                 widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
                 self.blacklist_layout.addWidget(widget)
                 self.blacklist_sigils.append(sigil_name)

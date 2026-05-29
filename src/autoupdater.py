@@ -95,7 +95,7 @@ class D4LFUpdater:
             #     update_data = {"version": latest_version, "zip_path": zip_path}
             #     json.dump(update_data, f)
             Path(self.version_file).write_text(latest_version, encoding="utf-8")
-        except Exception as e:
+        except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile) as e:
             LOGGER.error(f"Error during extraction: {e}")
             return False
         LOGGER.info("Files extracted successfully!")
@@ -232,8 +232,8 @@ def start_auto_update(postprocess=False):
     except KeyboardInterrupt:
         LOGGER.warning("\n\nUpdate cancelled by user.")
         sys.exit(1)
-    except Exception as e:
-        LOGGER.error(f"\n\nUnexpected error: {e}")
+    except Exception:
+        LOGGER.exception("\n\nUnexpected error during auto-update")
         input("\nPress Enter to exit...")
         sys.exit(1)
 
@@ -269,8 +269,7 @@ def _should_check_for_update(check_interval_hours=4):
 
     # Read the last check time from file if it exists
     if Path.exists(check_file):
-        with Path(check_file).open("r", encoding="utf-8") as f:
-            last_check_time = float(f.read().strip())
+        last_check_time = float(Path(check_file).read_text(encoding="utf-8").strip())
 
     # Calculate elapsed time since last check
     elapsed_time = current_time - last_check_time

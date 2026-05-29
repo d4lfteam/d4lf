@@ -11,7 +11,9 @@ from src.utils.image_operations import color_filter, crop
 def find_seperators_long(img_item_descr: np.ndarray, sep_short_match: TemplateMatch) -> list[TemplateMatch]:
     refs = ["item_seperator_long_legendary", "item_seperator_long_mythic"]
     roi = [0, sep_short_match.center[1], img_item_descr.shape[1], img_item_descr.shape[0] - sep_short_match.center[1]]
-    if not (sep_long := search(refs, img_item_descr, 0.80, roi, True, mode="all", do_multi_process=False)).success:
+    if not (
+        sep_long := search(refs, img_item_descr, 0.80, roi, use_grayscale=True, mode="all", do_multi_process=False)
+    ).success:
         return None
     matches_dict = {}
     for match in sep_long.matches:
@@ -36,7 +38,9 @@ def find_seperator_short(img_item_descr: np.ndarray) -> TemplateMatch:
         img_item_descr.shape[1],
         ResManager().offsets.find_seperator_short_offset_top,
     ]
-    if not (sep_short := search(refs, img_item_descr, 0.62, roi, True, mode="all", do_multi_process=False)).success:
+    if not (
+        sep_short := search(refs, img_item_descr, 0.62, roi, use_grayscale=True, mode="all", do_multi_process=False)
+    ).success:
         return None
     sorted_matches = sorted(sep_short.matches, key=lambda match: match.center[1])
     return sorted_matches[0]
@@ -138,7 +142,7 @@ def find_aspect_search_area(img_item_descr: np.ndarray, aspect_bullet: TemplateM
     top = aspect_bullet.center[1] - int(line_height * 0.8)
     roi_aspect = [offset_x, top, int(img_width * 0.99) - offset_x, int(img_height * 0.95) - top]
     cropped_bottom = crop(img_item_descr, roi_aspect)
-    filtered, _ = color_filter(cropped_bottom, COLORS.unique_gold, False)
+    filtered, _ = color_filter(cropped_bottom, COLORS.unique_gold, calc_filtered_img=False)
     bounding_values = np.nonzero(filtered)
     if len(bounding_values[0]) > 0:
         roi_aspect[3] = bounding_values[0].max() + int(line_height * 0.4)

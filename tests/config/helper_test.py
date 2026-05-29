@@ -1,8 +1,11 @@
+import sys
+
 import pytest
 
 from src.config.helper import singleton, str_to_int_list, validate_hotkey
 
 
+@pytest.mark.skipif(sys.platform == "darwin", reason="keyboard module not available on macOS")
 class TestKeyMustExist:
     def test_existing_key(self):
         # Test for an existing key

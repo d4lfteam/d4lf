@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 from pydantic import BaseModel, ValidationError
 from pydantic_core import PydanticUndefined
-from PyQt6.QtCore import QCoreApplication, QMimeData, Qt, QTimer
+from PyQt6.QtCore import QCoreApplication, QMimeData, QSignalBlocker, Qt, QTimer
 from PyQt6.QtGui import QDrag, QKeySequence
 from PyQt6.QtWidgets import (
     QButtonGroup,
@@ -395,10 +395,9 @@ class ConfigTab(QWidget):
                 parameter_value_widget = SegmentedControl(options, config_value, on_changed)
             else:
                 parameter_value_widget = IgnoreScrollWheelComboBox()
-                parameter_value_widget.blockSignals(True)
-                parameter_value_widget.addItems(options)
-                parameter_value_widget.setCurrentText(config_value)
-                parameter_value_widget.blockSignals(False)
+                with QSignalBlocker(parameter_value_widget):
+                    parameter_value_widget.addItems(options)
+                    parameter_value_widget.setCurrentText(config_value)
                 parameter_value_widget.currentTextChanged.connect(on_changed)
 
         elif isinstance(config_value, bool):
@@ -562,7 +561,7 @@ class MultiSegmentedControl(QWidget):
             if label in self.buttons:
                 self.buttons[label].setChecked(val in values)
 
-    def setEnabled(self, enabled):
+    def setEnabled(self, enabled):  # noqa: N802
         super().setEnabled(enabled)
         for btn in self.buttons.values():
             btn.setEnabled(enabled)
@@ -604,7 +603,7 @@ class SegmentedControl(QWidget):
         if val_str in self.buttons:
             self.buttons[val_str].setChecked(True)
 
-    def setEnabled(self, enabled):
+    def setEnabled(self, enabled):  # noqa: N802
         super().setEnabled(enabled)
         for btn in self.buttons.values():
             btn.setEnabled(enabled)
@@ -615,16 +614,15 @@ class IgnoreScrollWheelComboBox(QComboBox):
         super().__init__()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
-    def wheelEvent(self, event):
+    def wheelEvent(self, event):  # noqa: N802
         if self.hasFocus():
             return QComboBox.wheelEvent(self, event)
 
         return event.ignore()
 
     def reset_values(self, value):
-        self.blockSignals(True)
-        self.setCurrentText(str(value))
-        self.blockSignals(False)
+        with QSignalBlocker(self):
+            self.setCurrentText(str(value))
 
 
 class QChestTabWidget(QWidget):
@@ -744,9 +742,8 @@ class QProfileListSelector(QWidget):
             drag_handle.setCursor(Qt.CursorShape.SizeAllCursor)
 
             cb = CheckmarkCheckBox(name)
-            cb.blockSignals(True)
-            cb.setChecked(name in current_active)
-            cb.blockSignals(False)
+            with QSignalBlocker(cb):
+                cb.setChecked(name in current_active)
             cb.stateChanged.connect(self._on_toggle)
 
             header_hbox.addWidget(toggle_btn)
@@ -829,11 +826,11 @@ class QProfileListSelector(QWidget):
         row_widget.setGraphicsEffect(None)
         self.drop_indicator.hide()
 
-    def dragEnterEvent(self, event):
+    def dragEnterEvent(self, event):  # noqa: N802
         if event.mimeData().hasText():
             event.acceptProposedAction()
 
-    def dragMoveEvent(self, event):
+    def dragMoveEvent(self, event):  # noqa: N802
         """Handle the 'Sliding' reorder logic as the user drags."""
         source_id = event.mimeData().text()
 
@@ -888,7 +885,7 @@ class QProfileListSelector(QWidget):
 
         event.acceptProposedAction()
 
-    def dropEvent(self, event):
+    def dropEvent(self, event):  # noqa: N802
         """Finalize the reorder and trigger a save."""
         self._on_toggle()
         event.acceptProposedAction()
@@ -952,7 +949,7 @@ class QProfileListSelector(QWidget):
                 summary.append("🔱 Paragon Overlay: Data Found")
 
             return "\n".join(summary)
-        except Exception:
+        except OSError, TypeError, ValueError, yaml.YAMLError:
             return f"Path: {path}\n(Could not parse profile details)"
 
     def reset_values(self, active_list: list[str]):
@@ -974,7 +971,7 @@ class QHotkeyWidget(QWidget):
         self.open_picker_button.clicked.connect(
             lambda: self._launch_hotkey_dialog(model, section_header, config_key, self.open_picker_button.text())
         )
-        self.open_picker_button.setProperty("hotkeyButton", True)
+        self.open_picker_button.setProperty("hotkeyButton", True)  # noqa: FBT003
         layout.addWidget(self.open_picker_button)
 
         self.setLayout(layout)
@@ -1024,7 +1021,7 @@ class HotkeyListenerDialog(QDialog):  # type: ignore[misc]
 
         self.hotkey = hotkey
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event):  # noqa: N802
         key = event.key()
         if key == Qt.Key.Key_Escape:
             self.reject()

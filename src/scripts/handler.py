@@ -37,7 +37,7 @@ from src.scripts.info_overlay import _OVERLAY_LOCK, InventoryExpTracker, request
 from src.scripts.info_overlay import set_busy_checker as set_info_busy_checker
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
-from src.utils.custom_mouse import mouse
+from src.utils.custom_mouse import Mouse
 from src.utils.process_handler import kill_thread, safe_exit
 from src.utils.window import WindowSpec, is_window_foreground, screenshot
 
@@ -379,7 +379,7 @@ class ScriptHandler:
 
 def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh, no_match_action: str = "junk"):
     LOGGER.info("Running loot filter")
-    mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+    Mouse.move(*Cam().abs_window_to_monitor((0, 0)))
     check_items = src.scripts.loot_filter_tts.check_items
 
     inv = CharInventory()
@@ -390,7 +390,7 @@ def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh,
             stash.switch_to_tab(i)
             time.sleep(0.3)
             check_items(stash, force_refresh, stash_is_open=True, no_match_action="junk")
-        mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+        Mouse.move(*Cam().abs_window_to_monitor((0, 0)))
         time.sleep(0.3)
         check_items(inv, force_refresh, stash_is_open=True, no_match_action="junk")
     else:
@@ -399,5 +399,5 @@ def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh,
             LOGGER.error("Inventory did not open up")
             return
         check_items(inv, force_refresh, no_match_action=no_match_action)
-    mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+    Mouse.move(*Cam().abs_window_to_monitor((0, 0)))
     LOGGER.info("Loot filter done")

@@ -1,5 +1,6 @@
 !config/bnip/.gitkeep
 *.bak
+*.egg-info/
 *.log
 *.pyc
 *.pyo
@@ -7,16 +8,17 @@
 *_generated.py
 *info_*.png
 *info_log_parsed.txt
+.codex
 .coverage
 .idea/
 .pytest_cache/
 .venv
 .vs/
-*.egg-info/
-/tts/saapi
 /tts/.tools/
+/tts/saapi
 /tts/x64
 __pycache__/
+assets/last_update
 build/
 config/bnip/*
 config/custom.*.ini
@@ -37,6 +39,3 @@ playground.py
 stats/
 utils/live-view/
 venv
-assets/last_update
-.codex
-AGENTS.md

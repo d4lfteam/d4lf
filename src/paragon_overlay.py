@@ -15,7 +15,7 @@ import time
 import tkinter as tk
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from PIL import Image, ImageDraw, ImageFont
 from PyQt6.QtCore import QSettings
@@ -44,6 +44,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
+
+OverlaySettingT = TypeVar("OverlaySettingT", int, str, bool)
 
 # =============================================================================
 # GLOBALS & UI THREAD HANDLING
@@ -80,6 +82,7 @@ def _tk_thread_main() -> None:
             try:
                 box["result"] = fn()  # type: ignore[operator]
             except Exception as exc:
+                LOGGER.exception("Paragon overlay UI callback failed")
                 box["error"] = exc
             finally:
                 if done:
@@ -126,7 +129,7 @@ def _is_alive(w: tk.Misc | None, mapped: bool = False) -> bool:
     """Helper to safely check if a widget exists (and optionally is mapped)."""
     try:
         return bool(w and w.winfo_exists() and (w.winfo_ismapped() if mapped else True))
-    except Exception:
+    except tk.TclError:
         return False
 
 
@@ -209,7 +212,7 @@ def _load_overlay_settings() -> dict[str, Any]:
         qs.setValue("migration_done", "true")
         qs.sync()  # Force write to registry
 
-    def parse(k: str, t: type) -> Any:
+    def parse(k: str, t: type[OverlaySettingT]) -> OverlaySettingT | None:
         """Parse one QSettings value into the requested type or return None."""
         v = qs.value(k)
         if v is None:
@@ -293,7 +296,7 @@ def _clamp_int(v: int | None, lo: int, hi: int, default: int) -> int:
     """Clamp an optional integer into a safe range, with a fallback default."""
     try:
         return max(lo, min(hi, int(v))) if v is not None else default
-    except Exception:
+    except TypeError, ValueError:
         return default
 
 
@@ -509,10 +512,10 @@ class ParagonOverlay(tk.Toplevel):
         )
 
         self.title("D4LF Paragon Overlay")
-        self.attributes("-topmost", True)
+        self.attributes("-topmost", 1)
         with suppress(tk.TclError):
             self.attributes("-alpha", float(self._cfg.window_alpha))
-            self.overrideredirect(True)
+            self.overrideredirect(boolean=True)
             self.wm_attributes("-transparentcolor", TRANSPARENT_KEY)
         self.configure(bg=TRANSPARENT_KEY)
         self.protocol("WM_DELETE_WINDOW", self.close)
@@ -772,6 +775,7 @@ class ParagonOverlay(tk.Toplevel):
         try:
             return NODE_BLUE if bool(getattr(IniConfigLoader().general, "colorblind_mode", False)) else NODE_GREEN
         except Exception:
+            LOGGER.debug("Failed to determine Paragon overlay accent color.", exc_info=True)
             return NODE_GREEN
 
     def _accent_frame_thickness(self) -> int:
@@ -838,7 +842,7 @@ class ParagonOverlay(tk.Toplevel):
                 w = getattr(w, "master", None)
                 if not isinstance(w, tk.Misc):
                     break
-            except Exception:
+            except AttributeError, RuntimeError, tk.TclError:
                 break
         return False
 
@@ -1016,11 +1020,11 @@ class ParagonOverlay(tk.Toplevel):
                 highlightcolor=c,
             )
             with suppress(tk.TclError):
-                popup.overrideredirect(True)
-                popup.attributes("-topmost", True)
+                popup.overrideredirect(boolean=True)
+                popup.attributes("-topmost", 1)
             with suppress(Exception):
                 popup.transient(self)
-            popup.resizable(False, False)
+            popup.resizable(width=False, height=False)
             popup.bind("<Escape>", lambda *_: self._close_build_dropdown())
             self._build_popup = popup
             self._build_popup_refresh = self._build_build_popup(popup)
@@ -1128,7 +1132,7 @@ class ParagonOverlay(tk.Toplevel):
         scrollbar_gap = int(8 * scale) if scrollbar_width else 0
         return max(1, text_width + outer_padding + scrollbar_width + scrollbar_gap)
 
-    def _build_build_popup(self, host: tk.Misc) -> Any:
+    def _build_build_popup(self, host: tk.Misc) -> Callable[[], None]:
         """Create the scrollable builds popup and return its refresh callback."""
         scale = self._cfg.ui_scale
         c = tk.Frame(host, bg=CARD_BG, padx=int(12 * scale), pady=int(10 * scale))
@@ -1199,7 +1203,7 @@ class ParagonOverlay(tk.Toplevel):
 
         return _ref  # Initial fill is triggered by the shared popup helper.
 
-    def _build_settings_popup(self, host: tk.Misc) -> Any:
+    def _build_settings_popup(self, host: tk.Misc) -> Callable[[], None]:
         """Create the settings popup and return its refresh callback."""
         s = self._cfg.ui_scale
         c = tk.Frame(host, bg=CARD_BG, padx=int(14 * s), pady=int(10 * s))
@@ -1527,8 +1531,8 @@ class ParagonOverlay(tk.Toplevel):
                 i.save(b, format="PNG")
                 return tk.PhotoImage(data=base64.b64encode(b.getvalue()))
 
-            self._lock_img_cache = {True: _mk(True), False: _mk(False)}
-        except Exception:
+            self._lock_img_cache = {True: _mk(locked=True), False: _mk(locked=False)}
+        except OSError, ValueError, tk.TclError:
             self._lock_img_cache = {True: None, False: None}
 
     def _on_grid_drag_start(self, e: tk.Event) -> None:
@@ -1587,7 +1591,7 @@ class ParagonOverlay(tk.Toplevel):
             if not r or r.get("width", 0) <= 0:
                 return None
             return (int(r["left"]), int(r["top"]), int(r["width"]), int(r["height"]))
-        except Exception:
+        except KeyError, TypeError, ValueError:
             return None
 
     def _apply_geometry(self) -> None:

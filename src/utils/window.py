@@ -60,7 +60,7 @@ def _get_process_from_window_name(hwnd: int) -> str:
     try:
         pid = GetWindowThreadProcessId(hwnd)[1]
         return psutil.Process(pid).name().lower()
-    except Exception:
+    except psutil.Error, OSError:
         return ""
 
 
@@ -124,7 +124,7 @@ def is_self_foreground() -> bool:
         lpdw_pid = ctypes.c_ulong()
         ctypes.windll.user32.GetWindowThreadProcessId(fg_win, ctypes.byref(lpdw_pid))
         return lpdw_pid.value == os.getpid()
-    except Exception:
+    except AttributeError, OSError:
         return False
 
 

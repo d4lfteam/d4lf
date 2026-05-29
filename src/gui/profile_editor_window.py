@@ -25,7 +25,7 @@ class ProfileEditorWindow(QMainWindow):
         if ICON_PATH.exists():
             self.setWindowIcon(QIcon(str(ICON_PATH)))
 
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, on=True)
         self.setWindowTitle("Profile Editor")
 
         self.resize(self.settings.value("size", QSize(650, 800)))
@@ -42,7 +42,7 @@ class ProfileEditorWindow(QMainWindow):
         self.setCentralWidget(self.profile_tab)
         self.profile_tab.show_tab()
 
-    def closeEvent(self, event):
+    def closeEvent(self, event):  # noqa: N802
         """Save window size/position and check if profile needs saving."""
         if not self.isMaximized():
             self.settings.setValue("size", self.size())

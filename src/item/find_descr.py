@@ -69,7 +69,7 @@ def find_descr(
         roi = [match.region[0] - delta_x, roi_y, item_descr_width + 2 * delta_x, search_height]
 
         refs = ["item_seperator_short_rare", "item_seperator_short_legendary", "item_seperator_short_mythic"]
-        sep_short = search(refs, img, 0.8, roi, True, mode="first", do_multi_process=False)
+        sep_short = search(refs, img, 0.8, roi, use_grayscale=True, mode="first", do_multi_process=False)
 
         if sep_short.success:
             off_bottom_of_descr = ResManager().offsets.item_descr_off_bottom_edge

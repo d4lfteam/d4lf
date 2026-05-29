@@ -7,7 +7,7 @@ import threading
 import time
 import tkinter as tk
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, TypeVar
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,10 +21,14 @@ from src.config.loader import IniConfigLoader
 from src.gui.importer.gui_common import ACCENT_BLUE, ACCENT_GOLD, ACCENT_GREEN, CARD_BG, MUTED, TEXT, TRANSPARENT_KEY
 from src.scripts.common import get_filter_colors
 from src.tts import Publisher
-from src.utils.custom_mouse import mouse
+from src.utils.custom_mouse import Mouse
 from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground
 
 LOGGER = logging.getLogger(__name__)
+
+type InfoSettingValue = int | str | bool | tuple[int, ...] | datetime.datetime | None
+InfoValueT = TypeVar("InfoValueT", int, str, bool)
+InfoDefaultT = TypeVar("InfoDefaultT")
 
 _OVERLAY_INSTANCE: BossTimerOverlay | None = None
 _OVERLAY_LOCK = threading.RLock()
@@ -43,12 +47,13 @@ def set_busy_checker(checker: Callable[[], bool]):
     _BUSY_CHECKER = checker
 
 
-def load_info_settings() -> dict[str, Any]:
+def load_info_settings() -> dict[str, InfoSettingValue]:
     """Load info overlay and experience tracking settings from QSettings."""
     settings_q = QSettings("d4lf", "InfoOverlay")
 
-    def get_value(key: str, default: Any, type_hint: type) -> Any:
-        return settings_q.value(key, default, type=type_hint)
+    def get_value(key: str, default: InfoValueT, type_hint: type[InfoValueT]) -> InfoValueT:
+        value = settings_q.value(key, default, type=type_hint)
+        return value if isinstance(value, type_hint) else default
 
     def parse_int_from_qsettings(k: str, default: int) -> int:
         try:
@@ -62,34 +67,34 @@ def load_info_settings() -> dict[str, Any]:
             return None
         try:
             return tuple(int(x.strip()) for x in v.strip("()").replace(",", " ").split())
-        except Exception:
+        except ValueError:
             return None
 
     # Boss Timer UI Settings
-    loaded_settings = {
+    loaded_settings: dict[str, InfoSettingValue] = {
         "x": get_value("x", 100, int),
         "y": get_value("y", 100, int),
         "font_size": get_value("font_size", 14, int),
         "wb_reference": get_value("wb_reference", "2024-01-01 00:00:00", str),
         "next_boss_name": get_value("next_boss_name", "Unknown", str),
         "orientation": get_value("orientation", "horizontal", str),
-        "show_wb": get_value("show_wb", True, bool),
-        "show_legion": get_value("show_legion", True, bool),
-        "show_ht": get_value("show_ht", True, bool),
-        "show_gold": get_value("show_gold", True, bool),
-        "show_gph": get_value("show_gph", True, bool),
-        "show_total_gold": get_value("show_total_gold", True, bool),
-        "show_exp": get_value("show_exp", True, bool),
-        "show_eph": get_value("show_eph", True, bool),
-        "show_total_exp": get_value("show_total_exp", True, bool),
-        "show_t2l": get_value("show_t2l", True, bool),
-        "show_next_scan": get_value("show_next_scan", True, bool),
+        "show_wb": get_value("show_wb", default=True, type_hint=bool),
+        "show_legion": get_value("show_legion", default=True, type_hint=bool),
+        "show_ht": get_value("show_ht", default=True, type_hint=bool),
+        "show_gold": get_value("show_gold", default=True, type_hint=bool),
+        "show_gph": get_value("show_gph", default=True, type_hint=bool),
+        "show_total_gold": get_value("show_total_gold", default=True, type_hint=bool),
+        "show_exp": get_value("show_exp", default=True, type_hint=bool),
+        "show_eph": get_value("show_eph", default=True, type_hint=bool),
+        "show_total_exp": get_value("show_total_exp", default=True, type_hint=bool),
+        "show_t2l": get_value("show_t2l", default=True, type_hint=bool),
+        "show_next_scan": get_value("show_next_scan", default=True, type_hint=bool),
         "font_family": get_value("font_family", "Consolas", str),
-        "capture_gold_stats": get_value("capture_gold_stats", False, bool),
-        "capture_exp_stats": get_value("capture_exp_stats", False, bool),
-        "locked": get_value("locked", False, bool),
+        "capture_gold_stats": get_value("capture_gold_stats", default=False, type_hint=bool),
+        "capture_exp_stats": get_value("capture_exp_stats", default=False, type_hint=bool),
+        "locked": get_value("locked", default=False, type_hint=bool),
         # Experience/Tracking Settings (Moved from GeneralModel)
-        "check_exp_on_inventory_open": get_value("check_exp_on_inventory_open", True, bool),
+        "check_exp_on_inventory_open": get_value("check_exp_on_inventory_open", default=True, type_hint=bool),
         "exp_age_before_refresh": get_value("exp_age_before_refresh", 5, int),
         "exp_bar_pos": parse_tuple_from_qsettings("exp_bar_pos"),
     }
@@ -108,7 +113,7 @@ def load_info_settings() -> dict[str, Any]:
     return loaded_settings
 
 
-def save_info_settings(values: dict[str, Any]) -> None:
+def save_info_settings(values: dict[str, InfoSettingValue]) -> None:
     """Persist settings to the QSettings for InfoOverlay."""
     settings_q = QSettings("d4lf", "InfoOverlay")
 
@@ -124,7 +129,7 @@ def save_info_settings(values: dict[str, Any]) -> None:
             settings_q.setValue(k, v)
 
 
-def get_info_setting(key: str, default: Any = None) -> Any:
+def get_info_setting(key: str, default: InfoDefaultT | None = None) -> InfoSettingValue | InfoDefaultT | None:
     """Quick access to a specific info overlay setting."""
     return load_info_settings().get(key, default)
 
@@ -135,7 +140,7 @@ def update_info_stats(**kwargs):
             _OVERLAY_INSTANCE.update_stats(**kwargs)
 
 
-def _hover_experience_balance(info_config: dict[str, Any]):
+def _hover_experience_balance(info_config: dict[str, InfoSettingValue]):
     pos = info_config.get("exp_bar_pos")
     if pos:
         if isinstance(pos, str):
@@ -144,16 +149,16 @@ def _hover_experience_balance(info_config: dict[str, Any]):
         if pos and len(pos) == 4:
             p1 = (pos[0], pos[1])
             p2 = (pos[2], pos[3])
-            mouse.move(*Cam().window_to_monitor(p1))
+            Mouse.move(*Cam().window_to_monitor(p1))
             time.sleep(0.1)
-            mouse.move(*Cam().window_to_monitor(p2))
+            Mouse.move(*Cam().window_to_monitor(p2))
             return
 
     # Default fallback: bottom center
     res = Cam().window_roi
     if res:
         target = (res["width"] // 2, res["height"] - 10)
-        mouse.move(*Cam().window_to_monitor(target))
+        Mouse.move(*Cam().window_to_monitor(target))
 
 
 def request_close():
@@ -162,8 +167,8 @@ def request_close():
             try:
                 # Ensure destruction happens on the Tk thread
                 _OVERLAY_INSTANCE.after(0, _OVERLAY_INSTANCE.destroy)
-            except Exception:
-                with suppress(Exception):
+            except RuntimeError, tk.TclError:
+                with suppress(AttributeError, RuntimeError, tk.TclError):
                     _OVERLAY_INSTANCE.master.destroy()
 
 
@@ -321,7 +326,7 @@ class InventoryExpTracker:
                 self.hover_active = True
                 time.sleep(0.5)
                 _hover_experience_balance(info_config)
-                mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+                Mouse.move(*Cam().abs_window_to_monitor((0, 0)))
             finally:
                 self.hover_active = False
 
@@ -359,8 +364,8 @@ class BossTimerOverlay(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.title("D4LF Boss Timer")
-        self.attributes("-topmost", True)
-        self.overrideredirect(True)
+        self.attributes("-topmost", 1)
+        self.overrideredirect(boolean=True)
         self.wm_attributes("-transparentcolor", TRANSPARENT_KEY)
         self.configure(bg=TRANSPARENT_KEY)
 
@@ -452,7 +457,7 @@ class BossTimerOverlay(tk.Toplevel):
         roi = self._cam.window_roi
         offset_x = roi.get("left", 0) if roi else 0
         offset_y = roi.get("top", 0) if roi else 0
-        updates: dict[str, Any] = {
+        updates: dict[str, InfoSettingValue] = {
             "x": self.winfo_x() - offset_x,
             "y": self.winfo_y() - offset_y,
             "font_size": self.font_size,
@@ -485,7 +490,7 @@ class BossTimerOverlay(tk.Toplevel):
                 w = getattr(w, "master", None)
                 if not isinstance(w, tk.Misc):
                     break
-            except Exception:
+            except AttributeError, RuntimeError, tk.TclError:
                 break
         return False
 
@@ -925,8 +930,8 @@ class BossTimerOverlay(tk.Toplevel):
 
         # Create the submenu
         submenu_popup = tk.Toplevel(parent_btn.master)
-        submenu_popup.overrideredirect(True)
-        submenu_popup.attributes("-topmost", True)
+        submenu_popup.overrideredirect(boolean=True)
+        submenu_popup.attributes("-topmost", 1)
         submenu_popup.configure(bg=CARD_BG, highlightthickness=1, highlightbackground=ACCENT)
 
         # Build content inside the submenu_popup
@@ -969,8 +974,8 @@ class BossTimerOverlay(tk.Toplevel):
             self._last_menu_pos = (event.x_root, event.y_root)
 
         popup = tk.Toplevel(self)
-        popup.overrideredirect(True)
-        popup.attributes("-topmost", True)
+        popup.overrideredirect(boolean=True)
+        popup.attributes("-topmost", 1)
         popup.configure(bg=CARD_BG, highlightthickness=1, highlightbackground=ACCENT)
         self._settings_popup = popup
 
@@ -1293,9 +1298,9 @@ class BossTimerOverlay(tk.Toplevel):
     def _pick_exp_bar_pos(self):
         """Show a fullscreen overlay to capture the experience bar position via drag."""
         picker = tk.Toplevel(self)
-        picker.attributes("-fullscreen", True)
+        picker.attributes("-fullscreen", 1)
         picker.attributes("-alpha", 0.5)
-        picker.attributes("-topmost", True)
+        picker.attributes("-topmost", 1)
         picker.config(bg="black", cursor="cross")
 
         canvas = tk.Canvas(picker, bg="black", highlightthickness=0)
@@ -1445,7 +1450,7 @@ class BossTimerOverlay(tk.Toplevel):
                             self._update_timers()
 
                     self.after(0, _safe_update)
-        except Exception as e:
+        except (httpx.HTTPError, KeyError, RuntimeError, TypeError, ValueError, tk.TclError) as e:
             LOGGER.error(f"Failed to auto-sync from helltides.com: {e}")
 
     def _update_timers(self):
