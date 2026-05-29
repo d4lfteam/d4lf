@@ -14,7 +14,7 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
-from seleniumbase import SB
+from seleniumbase import Driver
 
 from src import __version__
 from src.config.loader import IniConfigLoader
@@ -335,7 +335,7 @@ def _rm_style_info(d):
 
 def setup_webdriver(uc: bool = False) -> ChromiumDriver:
     if uc:
-        return SB(uc=uc, headless2=True)
+        return Driver(uc=uc, headless2=True)
     match IniConfigLoader().general.browser:
         case BrowserType.edge:
             options = webdriver.EdgeOptions()
