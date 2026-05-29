@@ -17,6 +17,7 @@ from src.config.profile_models import (
     AffixFilterModel,
     DynamicItemFilterModel,
     GlobalUniqueModel,
+    NameRarityFilterModel,
     ProfileModel,
     SigilConditionModel,
     SigilFilterModel,
@@ -67,6 +68,8 @@ class Filter:
     aspect_upgrade_filters = {}
     paragon_filters = {}
     global_unique_filters = {}
+    seal_filters = {}
+    charm_filters = {}
     sigil_filters = {}
     tribute_filters = {}
 
@@ -236,30 +239,51 @@ class Filter:
             res.matched.append(MatchedFilter(f"{profile_name}"))
         return res
 
-    def _check_tribute(self, item: Item) -> FilterResult:
+    def _check_name_rarity_filters(
+        self,
+        item: Item,
+        item_filters: dict[str, list[NameRarityFilterModel | TributeFilterModel]],
+        section_name: str,
+        mythic_name: str,
+    ) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
-        if not self.tribute_filters.items():
-            LOGGER.info(f"{item.original_name} -- Matched Tributes")
+        if not item_filters.items():
+            LOGGER.info(f"{item.original_name} -- Matched {section_name}")
             res.keep = True
-            res.matched.append(MatchedFilter("Tributes not filtered"))
+            res.matched.append(MatchedFilter(f"{section_name} not filtered"))
 
         if item.rarity == ItemRarity.Mythic:
-            LOGGER.info(f"{item.original_name} -- Matched mythic tribute, always kept")
+            LOGGER.info(f"{item.original_name} -- Matched mythic {section_name.lower()}, always kept")
             res.keep = True
-            res.matched.append(MatchedFilter("Mythic Tribute"))
+            res.matched.append(MatchedFilter(mythic_name))
 
-        for profile_name, profile_filter in self.tribute_filters.items():
+        for profile_name, profile_filter in item_filters.items():
             for filter_item in profile_filter:
-                if filter_item.name and not item.name.startswith(filter_item.name):
+                if filter_item.name and not (item.name or "").startswith(filter_item.name):
                     continue
 
                 if filter_item.rarities and item.rarity not in filter_item.rarities:
                     continue
 
-                LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Tributes")
+                LOGGER.info(f"{item.original_name} -- Matched {profile_name}.{section_name}")
                 res.keep = True
                 res.matched.append(MatchedFilter(f"{profile_name}"))
         return res
+
+    def _check_tribute(self, item: Item) -> FilterResult:
+        return self._check_name_rarity_filters(
+            item=item, item_filters=self.tribute_filters, section_name="Tributes", mythic_name="Mythic Tribute"
+        )
+
+    def _check_seal(self, item: Item) -> FilterResult:
+        return self._check_name_rarity_filters(
+            item=item, item_filters=self.seal_filters, section_name="Seals", mythic_name="Mythic Seal"
+        )
+
+    def _check_charm(self, item: Item) -> FilterResult:
+        return self._check_name_rarity_filters(
+            item=item, item_filters=self.charm_filters, section_name="Charms", mythic_name="Mythic Charm"
+        )
 
     def _check_global_unique_filter(self, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
@@ -479,6 +503,8 @@ class Filter:
         self.affix_filters: dict[str, list[DynamicItemFilterModel]] = {}
         self.aspect_upgrade_filters: dict[str, list[str]] = {}
         self.paragon_filters: dict[str, object] = {}
+        self.seal_filters: dict[str, list[NameRarityFilterModel]] = {}
+        self.charm_filters: dict[str, list[NameRarityFilterModel]] = {}
         self.sigil_filters: dict[str, SigilFilterModel] = {}
         self.tribute_filters: dict[str, list[TributeFilterModel]] = {}
         self.global_unique_filters: dict[str, list[GlobalUniqueModel]] = {}
@@ -539,6 +565,12 @@ class Filter:
                 if data.aspect_upgrades:
                     self.aspect_upgrade_filters[data.name] = data.aspect_upgrades
                     sections.append(ASPECT_UPGRADES_LABEL)
+                if data.seals:
+                    self.seal_filters[data.name] = data.seals
+                    sections.append("Seals")
+                if data.charms:
+                    self.charm_filters[data.name] = data.charms
+                    sections.append("Charms")
                 if data.sigils and (data.sigils.blacklist or data.sigils.whitelist):
                     self.sigil_filters[data.name] = data.sigils
                     sections.append("Sigils")
@@ -574,6 +606,12 @@ class Filter:
 
         if item.item_type == ItemType.Tribute:
             return self._check_tribute(item)
+
+        if item.item_type == ItemType.HoradricSeal:
+            return self._check_seal(item)
+
+        if item.item_type == ItemType.Charm:
+            return self._check_charm(item)
 
         if item.item_type is None or item.power is None:
             return res

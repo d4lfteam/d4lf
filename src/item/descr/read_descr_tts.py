@@ -14,6 +14,7 @@ from src.item.data.item_type import (
     ItemType,
     is_armor,
     is_consumable,
+    is_horadric_spellcraft,
     is_jewelry,
     is_non_sigil_mapping,
     is_sigil,
@@ -276,7 +277,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     starting_item_type_index = 1
     if item.rarity == ItemRarity.Mythic:
         starting_item_type_index = 2
-    elif item.rarity == ItemRarity.Common:
+    elif item.rarity == ItemRarity.Common and search_string_split[0] != ItemRarity.Common.value:
         starting_item_type_index = 0
     item.item_type = _get_item_type(" ".join(search_string_split[starting_item_type_index:]))
     item.name = correct_name(tts_item[0])
@@ -451,6 +452,7 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
     if any([
         is_consumable(item.item_type),
         is_non_sigil_mapping(item.item_type),
+        is_horadric_spellcraft(item.item_type),
         is_sigil(item.item_type),
         is_socketable(item.item_type),
         item.item_type in [ItemType.Material, ItemType.Tribute],
@@ -501,6 +503,7 @@ def read_descr() -> Item | None:
     if any([
         is_consumable(item.item_type),
         is_non_sigil_mapping(item.item_type),
+        is_horadric_spellcraft(item.item_type),
         is_socketable(item.item_type),
         item.item_type in [ItemType.Material, ItemType.Tribute, ItemType.Cache, ItemType.LairBossKey],
         item.seasonal_attribute == SeasonalAttribute.sanctified,

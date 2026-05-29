@@ -23,6 +23,7 @@ from src.config.profile_models import (
     GlobalUniqueModel,
     ItemFilterModel,
     ItemRarity,
+    NameRarityFilterModel,
     ProfileModel,
     SigilConditionModel,
     SigilFilterModel,
@@ -590,6 +591,31 @@ class TestTributeFilterModel:
         assert ItemRarity.Legendary in model.rarities
 
 
+class TestNameRarityFilterModel:
+    """Test generic name and rarity filters."""
+
+    def test_name_is_normalized(self) -> None:
+        """Test item names are normalized for matching TTS item names."""
+        model = NameRarityFilterModel.model_validate("Faint Charm")
+        assert model.name == "faint_charm"
+
+    def test_parse_from_string_rarity(self) -> None:
+        """Test parsing every rarity string."""
+        for rarity in ItemRarity:
+            model = NameRarityFilterModel.model_validate(rarity.value)
+            assert rarity in model.rarities
+
+    def test_parse_from_list(self) -> None:
+        """Test parsing from a rarity list."""
+        model = NameRarityFilterModel.model_validate([ItemRarity.Legendary.value, ItemRarity.Unique.value])
+        assert model.rarities == [ItemRarity.Legendary, ItemRarity.Unique]
+
+    def test_parse_empty_list_fails(self) -> None:
+        """Test that empty lists fail."""
+        with pytest.raises(ValidationError, match="list cannot be empty"):
+            NameRarityFilterModel.model_validate([])
+
+
 class TestSigilConditionModel:
     """Test SigilConditionModel."""
 
@@ -669,6 +695,8 @@ class TestProfileModel:
             GlobalUniques=[GlobalUniqueModel(minPower=800)],
             Sigils={"blacklist": [], "whitelist": [], "priority": "blacklist"},
             Tributes=[],
+            Seals=["legendary"],
+            Charms=["rare"],
             Paragon=None,
         )
         assert model.name == "test_profile"
@@ -676,6 +704,8 @@ class TestProfileModel:
         assert model.aspect_upgrades == []
         assert len(model.global_uniques) == 1
         assert model.global_uniques[0].min_power == 800
+        assert model.seals[0].rarities == [ItemRarity.Legendary]
+        assert model.charms[0].rarities == [ItemRarity.Rare]
 
     def test_snake_case_input(self) -> None:
         """Test loading with snake_case (new format)."""
@@ -686,6 +716,8 @@ class TestProfileModel:
             global_uniques=[GlobalUniqueModel(min_power=900)],
             sigils={"blacklist": [], "whitelist": [], "priority": "blacklist"},
             tributes=[],
+            seals=["faint seal"],
+            charms=["faint charm"],
             paragon=None,
         )
         assert model.name == "test_profile"
@@ -693,6 +725,8 @@ class TestProfileModel:
         assert model.aspect_upgrades == []
         assert len(model.global_uniques) == 1
         assert model.global_uniques[0].min_power == 900
+        assert model.seals[0].name == "faint_seal"
+        assert model.charms[0].name == "faint_charm"
 
     def test_mixed_naming(self) -> None:
         """Test mixing both naming conventions."""
@@ -747,6 +781,8 @@ class TestProfileModel:
         assert "affixes" in exported
         assert "aspect_upgrades" in exported
         assert "global_uniques" in exported
+        assert "seals" in exported
+        assert "charms" in exported
         assert "sigils" in exported
         assert "tributes" in exported
         assert "paragon" in exported
@@ -758,6 +794,8 @@ class TestProfileModel:
         assert "Affixes" not in exported
         assert "AspectUpgrades" not in exported
         assert "GlobalUniques" not in exported
+        assert "Seals" not in exported
+        assert "Charms" not in exported
         assert "minPower" not in exported["global_uniques"][0]
 
     def test_export_camelcase(self) -> None:
@@ -769,6 +807,8 @@ class TestProfileModel:
         assert "Affixes" in exported
         assert "AspectUpgrades" in exported
         assert "GlobalUniques" in exported
+        assert "Seals" in exported
+        assert "Charms" in exported
         assert "Sigils" in exported
         assert "Tributes" in exported
         assert "Paragon" in exported
@@ -780,6 +820,8 @@ class TestProfileModel:
         assert "affixes" not in exported
         assert "aspect_upgrades" not in exported
         assert "global_uniques" not in exported
+        assert "seals" not in exported
+        assert "charms" not in exported
         assert "min_power" not in exported["GlobalUniques"][0]
 
     def test_defaults(self) -> None:
@@ -790,6 +832,8 @@ class TestProfileModel:
         assert model.affixes == []
         assert model.aspect_upgrades == []
         assert model.global_uniques == []
+        assert model.seals == []
+        assert model.charms == []
         assert model.tributes == []
         assert model.paragon is None
         assert model.sigils.blacklist == []

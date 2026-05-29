@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, m
 from src.config.helper import check_greater_than_zero, validate_percent
 from src.item.data.item_type import ItemType  # noqa: TC001
 from src.item.data.rarity import ItemRarity
+from src.scripts import correct_name
 
 MODULE_LOGGER = logging.getLogger(__name__)
 
@@ -17,6 +18,26 @@ def _parse_item_type_or_rarities(data: str | list[str]) -> list[str]:
     if isinstance(data, str):
         return [data]
     return data
+
+
+def _is_item_rarity(data: str) -> bool:
+    return any(rarity.value.lower() == data.lower() for rarity in ItemRarity)
+
+
+def _parse_name_or_rarities(data: str | list[str] | dict[str, str | list[str]]) -> dict[str, str | list[str]]:
+    if isinstance(data, dict):
+        return data
+    if isinstance(data, str):
+        if _is_item_rarity(data):
+            return {"rarities": [data]}
+        return {"name": data}
+    if isinstance(data, list):
+        if not data:
+            msg = "list cannot be empty"
+            raise ValueError(msg)
+        return {"rarities": data}
+    msg = "must be str or list"
+    raise ValueError(msg)
 
 
 class AffixAspectFilterModel(BaseModel):
@@ -295,19 +316,28 @@ class TributeFilterModel(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def parse_data(cls, data: str | list[str] | dict[str, str | list[str]]) -> dict[str, str | list[str]]:
-        if isinstance(data, dict):
-            return data
-        if isinstance(data, str):
-            if any(rarity.value.lower() == data.lower() for rarity in ItemRarity):
-                return {"rarities": [data]}
-            return {"name": data}
-        if isinstance(data, list):
-            if not data:
-                msg = "list cannot be empty"
-                raise ValueError(msg)
-            return {"rarities": data}
-        msg = "must be str or list"
-        raise ValueError(msg)
+        return _parse_name_or_rarities(data)
+
+    @field_validator("rarities", mode="before")
+    @classmethod
+    def parse_rarities(cls, data: str | list[str]) -> list[str]:
+        return _parse_item_type_or_rarities(data)
+
+
+class NameRarityFilterModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str | None = None
+    rarities: list[ItemRarity] = []
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, name: str | None) -> str | None:
+        return correct_name(name)
+
+    @model_validator(mode="before")
+    @classmethod
+    def parse_data(cls, data: str | list[str] | dict[str, str | list[str]]) -> dict[str, str | list[str]]:
+        return _parse_name_or_rarities(data)
 
     @field_validator("rarities", mode="before")
     @classmethod
@@ -319,8 +349,10 @@ class ProfileModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     affixes: list[DynamicItemFilterModel] = Field(default=[], alias="Affixes")
     aspect_upgrades: list[str] = Field(default=[], alias="AspectUpgrades")
+    charms: list[NameRarityFilterModel] = Field(default=[], alias="Charms")
     global_uniques: list[GlobalUniqueModel] = Field(default=[], alias="GlobalUniques")
     name: str
+    seals: list[NameRarityFilterModel] = Field(default=[], alias="Seals")
     sigils: SigilFilterModel = Field(
         default=SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist), alias="Sigils"
     )
