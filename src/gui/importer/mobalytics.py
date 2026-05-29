@@ -6,6 +6,7 @@ from urllib.parse import unquote
 
 import jsonpath
 import lxml.html
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
@@ -43,7 +44,19 @@ LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
 PROFILE_GUIDE_BASE_URL = f"{BUILD_GUIDE_BASE_URL}profile"
 SCRIPT_XPATH = "//script"
-BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
+BUILD_SCRIPT_ASSIGNMENT = re.compile(r"window\.__PRELOADED_STATE__\s*=\s*")
+PAGE_DIAGNOSTIC_MARKERS = (
+    "__PRELOADED_STATE__",
+    "__NEXT_DATA__",
+    "self.__next_f",
+    "userGeneratedDocumentBySlug",
+    "buildVariants",
+    "captcha",
+    "cloudflare",
+    "access denied",
+    "forbidden",
+    "just a moment",
+)
 
 if TYPE_CHECKING:
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
@@ -53,7 +66,7 @@ class MobalyticsError(Exception):
     pass
 
 
-@retry_importer(inject_webdriver=True)
+@retry_importer(inject_webdriver=True, uc=True)
 def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     url = config.url.strip().replace("\n", "")
     if BUILD_GUIDE_BASE_URL not in url:
@@ -64,20 +77,22 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         return
     url = _fix_input_url(url=url)
     LOGGER.info(f"Loading {url}")
-    driver.get(url)
+    _open_mobalytics_url(driver=driver, url=url)
     wait = WebDriverWait(driver, 10)
     wait.until(ec.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
     variant_id = url.split(",")[1].split("#")[0] if "activeVariantId" in url else None
-    raw_html_data = lxml.html.fromstring(driver.page_source)
+    page_source = driver.page_source
+    raw_html_data = lxml.html.fromstring(page_source)
     # The build is shoved in a massive JSON in one of the script tags. We find that json now.
     scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
     full_script_data_json = None
     for script in scripts_elem:
-        if script.text and script.text.strip().startswith(BUILD_SCRIPT_PREFIX):
-            full_script_data_json = json.loads(script.text.strip().replace(BUILD_SCRIPT_PREFIX, "")[:-1])
+        full_script_data_json = _extract_mobalytics_preloaded_state(script.text_content())
+        if full_script_data_json is not None:
             break
 
     if not full_script_data_json:
+        _log_mobalytics_page_diagnostics(driver=driver, page_source=page_source, script_count=len(scripts_elem))
         LOGGER.error(
             msg
             := "No script containing build data was found. This means Mobalytics has changed how they present data, please submit a bung."
@@ -220,7 +235,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     add_mythics_to_filters(mythic_names, finished_filters)
     profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
     if config.import_aspect_upgrades and aspect_upgrade_filters:
-        profile.AspectUpgrades = aspect_upgrade_filters
+        profile.aspect_upgrades = aspect_upgrade_filters
 
     file_name = config.custom_file_name or build_default_profile_file_name(
         source_name="mobalytics",
@@ -256,6 +271,46 @@ def _corrections(input_str: str) -> str:
 
 def _fix_input_url(url: str) -> str:
     return unquote(url)
+
+
+def _open_mobalytics_url(driver: ChromiumDriver, url: str) -> None:
+    if hasattr(driver, "uc_open_with_reconnect"):
+        driver.uc_open_with_reconnect(url, reconnect_time=4)
+        return
+    driver.get(url)
+
+
+def _extract_mobalytics_preloaded_state(script_text: str) -> dict | None:
+    match = BUILD_SCRIPT_ASSIGNMENT.search(script_text)
+    if match is None:
+        return None
+    script_json = script_text[match.end() :].strip()
+    try:
+        data, _ = json.JSONDecoder().raw_decode(script_json)
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _log_mobalytics_page_diagnostics(driver: ChromiumDriver, page_source: str, script_count: int) -> None:
+    page_source_casefold = page_source.casefold()
+    matched_markers = [marker for marker in PAGE_DIAGNOSTIC_MARKERS if marker.casefold() in page_source_casefold]
+    LOGGER.error(
+        "Mobalytics page diagnostics: current_url=%r title=%r page_source_length=%s script_count=%s markers=%s",
+        _read_mobalytics_driver_value(driver, "current_url"),
+        _read_mobalytics_driver_value(driver, "title"),
+        len(page_source),
+        script_count,
+        ", ".join(matched_markers) or "none",
+    )
+
+
+def _read_mobalytics_driver_value(driver: ChromiumDriver, value_name: str) -> str:
+    try:
+        value = getattr(driver, value_name)
+    except WebDriverException as exc:
+        return f"<unavailable: {exc.__class__.__name__}>"
+    return str(value)
 
 
 def _extract_mobalytics_season_number(full_script_data_json: dict) -> str:

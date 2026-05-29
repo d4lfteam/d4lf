@@ -1,3 +1,4 @@
+import logging
 import os
 import typing
 
@@ -5,7 +6,11 @@ import pytest
 
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.mobalytics import import_mobalytics
+from src.gui.importer.mobalytics import (
+    _extract_mobalytics_preloaded_state,
+    _log_mobalytics_page_diagnostics,
+    import_mobalytics,
+)
 from src.gui.importer.paragon_export import extract_mobalytics_paragon_steps
 
 if typing.TYPE_CHECKING:
@@ -28,6 +33,11 @@ URLS = [
 ]
 
 
+class _MobalyticsDiagnosticsDriver:
+    current_url = "https://mobalytics.gg/blocked"
+    title = "Access denied"
+
+
 def test_extract_mobalytics_paragon_steps_normalizes_warlock_starting_board():
     steps = extract_mobalytics_paragon_steps({
         "boards": [{"board": {"slug": "warlock-starter-board"}, "glyph": {"slug": "warlock-hellforge"}, "rotation": 0}],
@@ -40,6 +50,39 @@ def test_extract_mobalytics_paragon_steps_normalizes_warlock_starting_board():
     assert board["Name"] == "warlock-starting-board"
     assert board["Nodes"].count(True) == 1
     assert board["Nodes"][node_index] is True
+
+
+@pytest.mark.parametrize(
+    "script_text",
+    [
+        'window.__PRELOADED_STATE__={"userGeneratedDocumentBySlug":{"data":{}}};',
+        '\nwindow.__PRELOADED_STATE__ = {"userGeneratedDocumentBySlug":{"data":{}}};\n',
+        '(() => {})(); window.__PRELOADED_STATE__ = {"userGeneratedDocumentBySlug":{"data":{}}};',
+    ],
+)
+def test_extract_mobalytics_preloaded_state_accepts_assignment_variants(script_text: str):
+    data = _extract_mobalytics_preloaded_state(script_text)
+
+    assert data == {"userGeneratedDocumentBySlug": {"data": {}}}
+
+
+def test_extract_mobalytics_preloaded_state_ignores_unrelated_script():
+    assert _extract_mobalytics_preloaded_state("console.log('ready');") is None
+
+
+def test_log_mobalytics_page_diagnostics_reports_loaded_page_shape(caplog: pytest.LogCaptureFixture):
+    caplog.set_level(logging.ERROR)
+
+    _log_mobalytics_page_diagnostics(
+        driver=_MobalyticsDiagnosticsDriver(),
+        page_source="<html><script>self.__next_f.push([])</script>captcha</html>",
+        script_count=1,
+    )
+
+    assert "current_url='https://mobalytics.gg/blocked'" in caplog.text
+    assert "title='Access denied'" in caplog.text
+    assert "script_count=1" in caplog.text
+    assert "self.__next_f, captcha" in caplog.text
 
 
 @pytest.mark.parametrize("url", URLS)
