@@ -295,7 +295,7 @@ def _extract_mobalytics_preloaded_state(script_text: str) -> dict | None:
 def _log_mobalytics_page_diagnostics(driver: ChromiumDriver, page_source: str, script_count: int) -> None:
     page_source_casefold = page_source.casefold()
     matched_markers = [marker for marker in PAGE_DIAGNOSTIC_MARKERS if marker.casefold() in page_source_casefold]
-    LOGGER.error(
+    LOGGER.debug(
         "Mobalytics page diagnostics: current_url=%r title=%r page_source_length=%s script_count=%s markers=%s",
         _read_mobalytics_driver_value(driver, "current_url"),
         _read_mobalytics_driver_value(driver, "title"),
