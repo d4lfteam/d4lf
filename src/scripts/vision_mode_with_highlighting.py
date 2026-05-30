@@ -372,8 +372,6 @@ class VisionModeWithHighlighting:
                                 item_descr_with_loc = item_descr
                             else:
                                 item_descr_with_loc = src.item.descr.read_descr_tts.read_descr_mixed(cropped_descr)
-                                if item_descr_with_loc is None:
-                                    item_descr_with_loc = item_descr
                             res = Filter().should_keep(item_descr_with_loc)
                             match = res.keep
 
