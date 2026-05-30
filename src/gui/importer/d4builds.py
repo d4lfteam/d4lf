@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import lxml.html
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
@@ -69,7 +69,7 @@ SANCTIFIED_ICON_XPATH = ".//*[contains(@src, 'sanctified_icon.png')]"
 UNIQUE_ICON_XPATH = ".//*[contains(@src, '/Uniques/')]"
 
 
-class D4BuildsException(Exception):
+class D4BuildsError(Exception):
     pass
 
 
@@ -82,8 +82,8 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     LOGGER.info(f"Loading {url}")
     driver.get(url)
     wait = WebDriverWait(driver, 10)
-    wait.until(EC.presence_of_element_located((By.XPATH, BUILD_OVERVIEW_XPATH)))
-    wait.until(EC.presence_of_element_located((By.XPATH, PAPERDOLL_XPATH)))
+    wait.until(ec.presence_of_element_located((By.XPATH, BUILD_OVERVIEW_XPATH)))
+    wait.until(ec.presence_of_element_located((By.XPATH, PAPERDOLL_XPATH)))
     time.sleep(
         5
     )  # super hacky but I didn't find anything else. The page is not fully loaded when the above wait is done
@@ -92,7 +92,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     build_name = build_header or class_name
     if not (items := data.xpath(BUILD_OVERVIEW_XPATH)):
         LOGGER.error(msg := "No items found")
-        raise D4BuildsException(msg)
+        raise D4BuildsError(msg)
     slot_to_unique_name_map = _get_item_slots(data=data)
     finished_filters = []
     mythic_names = []
@@ -119,7 +119,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 mythic_names.append(unique_name)
                 continue
             try:
-                item_filter.uniqueAspect = [AspectUniqueFilterModel(name=unique_name)]
+                item_filter.unique_aspect = [AspectUniqueFilterModel(name=unique_name)]
             except Exception:
                 LOGGER.exception(
                     f"Unexpected error adding unique aspect for {unique_name}, please report a bug and include a link to the build you were trying to import."
@@ -170,28 +170,28 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 LOGGER.warning(
                     f"Couldn't find an item_type for weapon slot {slot}, defaulting to all weapon types instead."
                 )
-                item_filter.itemType = WEAPON_TYPES
+                item_filter.item_type = WEAPON_TYPES
             else:
-                item_filter.itemType = []
+                item_filter.item_type = []
                 LOGGER.warning(f"Couldn't match item_type: {slot}. Please edit manually")
         else:
-            item_filter.itemType = [item_type]
+            item_filter.item_type = [item_type]
 
         # We don't bother importing affixes for mythics
         if rarity != ItemRarity.Mythic:
-            item_filter.affixPool = [
+            item_filter.affix_pool = [
                 AffixFilterCountModel(
                     count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
-                    minCount=1 if rarity == ItemRarity.Unique else 3,
+                    min_count=1 if rarity == ItemRarity.Unique else 3,
                 )
             ]
             update_mingreateraffixcount(item_filter, config.require_greater_affixes)
             if inherents:
-                item_filter.inherentPool = [
+                item_filter.inherent_pool = [
                     AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
                 ]
-        item_filter.minPower = 100
-        filter_name_template = item_filter.itemType[0].name if item_type else slot.replace(" ", "")
+        item_filter.min_power = 100
+        filter_name_template = item_filter.item_type[0].name if item_type else slot.replace(" ", "")
         filter_name = filter_name_template
         i = 2
         while any(filter_name == next(iter(x)) for x in finished_filters):
@@ -202,7 +202,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     add_mythics_to_filters(mythic_names, finished_filters)
     profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
     if config.import_aspect_upgrades and aspect_upgrade_filters:
-        profile.AspectUpgrades = aspect_upgrade_filters
+        profile.aspect_upgrades = aspect_upgrade_filters
 
     file_name = config.custom_file_name or build_default_profile_file_name(
         source_name="d4builds",
@@ -216,7 +216,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     if config.export_paragon:
         steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
         if steps:
-            profile.Paragon = build_paragon_profile_payload(
+            profile.paragon = build_paragon_profile_payload(
                 build_name=build_name, source_url=url, paragon_boards_list=steps
             )
         else:
@@ -276,10 +276,10 @@ def _get_item_slots(data: lxml.html.HtmlElement) -> dict[str, tuple[str, ItemRar
     result = {}
     if not (paperdoll := data.xpath(PAPERDOLL_XPATH)):
         LOGGER.error(msg := "No paperdoll found")
-        raise D4BuildsException(msg)
+        raise D4BuildsError(msg)
     if not (items := paperdoll[0].xpath(PAPERDOLL_ITEM_XPATH)):
         LOGGER.error(msg := "No items found")
-        raise D4BuildsException(msg)
+        raise D4BuildsError(msg)
     for item in items:
         if item.xpath(PAPERDOLL_ITEM_SLOT_XPATH):
             slot = item.xpath(PAPERDOLL_ITEM_SLOT_XPATH)[0].text

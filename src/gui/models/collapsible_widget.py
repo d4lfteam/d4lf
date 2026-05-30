@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QSpacerItem, QStac
 
 
 class Header(QWidget):
-    firstExpansion = pyqtSignal()  # Signal emitted on first expansion
+    first_expansion = pyqtSignal()  # Signal emitted on first expansion
 
     def __init__(self, name, content_widget):
         super().__init__()
@@ -12,6 +12,7 @@ class Header(QWidget):
         self.name = name
         self.expand_ico = ">"  # Use text instead of image
         self.collapse_ico = "v"  # Use text instead of image
+        self._is_first_expansion = True
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         # Create a stacked layout to hold the background and widget
@@ -53,18 +54,17 @@ class Header(QWidget):
         # Set the minimum height of the background based on the layout height
         background.setMinimumHeight(int(layout.sizeHint().height() * 1.5))
         self.collapse()
-        self.first_expansion = True
 
-    def mousePressEvent(self, *args):
+    def mousePressEvent(self, *args):  # noqa: N802
         """Handle mouse events, call the function to toggle groups."""
         # Toggle between expand and collapse based on the visibility of the content widget
         self.expand() if not self.content.isVisible() else self.collapse()
 
     def expand(self):
         """Expand the collapsible group."""
-        if self.first_expansion:
-            self.firstExpansion.emit()
-            self.first_expansion = False
+        if self._is_first_expansion:
+            self.first_expansion.emit()
+            self._is_first_expansion = False
         self.content.setVisible(True)
         self.icon.setText(self.collapse_ico)  # Set text instead of pixmap
 
@@ -79,7 +79,7 @@ class Header(QWidget):
 
 
 class Container(QWidget):
-    firstExpansion = pyqtSignal()  # Signal emitted on first expansion
+    first_expansion = pyqtSignal()  # Signal emitted on first expansion
 
     def __init__(self, name, color_background=False):
         super().__init__()  # Call the constructor of the parent class
@@ -105,7 +105,7 @@ class Container(QWidget):
         layout.addWidget(self._content_widget)  # Add the _content_widget to the layout
 
         self._content_initialized = False  # Track initialization state
-        self.header.firstExpansion.connect(self.first_expansion)
+        self.header.first_expansion.connect(self._emit_first_expansion)
         # assign header methods to instance attributes so they can be called outside of this class
         self.collapse = (
             self.header.collapse
@@ -116,13 +116,13 @@ class Container(QWidget):
         )  # Assign the mousePressEvent method of the header to the instance attribute toggle
 
     @property
-    def contentWidget(self):
+    def content_widget(self):
         """Getter for the content widget.
 
         Returns: Content widget
         """
-        return self._content_widget  # Return the _content_widget when the contentWidget property is accessed
+        return self._content_widget  # Return the _content_widget when the content_widget property is accessed
 
-    def first_expansion(self):
+    def _emit_first_expansion(self):
         """Handle first expansion event."""
-        self.firstExpansion.emit()  # Notify about first expansion
+        self.first_expansion.emit()  # Notify about first expansion

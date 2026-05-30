@@ -37,7 +37,7 @@ class IgnoreScrollWheelSpinBox(QSpinBox):
         super().__init__()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
-    def wheelEvent(self, event):
+    def wheelEvent(self, event):  # noqa: N802
         if self.hasFocus():
             return QSpinBox.wheelEvent(self, event)
 
@@ -175,11 +175,13 @@ class CreateItem(QDialog):
         item_type = ItemType.Amulet
 
         item = ItemFilterModel()
-        item.itemType = [item_type]
-        item.affixPool = [
-            AffixFilterCountModel(count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())))], minCount=2)
+        item.item_type = [item_type]
+        item.affix_pool = [
+            AffixFilterCountModel(
+                count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())))], min_count=2
+            )
         ]
-        item.minPower = 100
+        item.min_power = 100
         return DynamicItemFilterModel(**{item_name: item})
 
 

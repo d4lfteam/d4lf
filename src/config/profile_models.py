@@ -4,7 +4,7 @@ import enum
 import logging
 import sys
 
-from pydantic import BaseModel, ConfigDict, RootModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 
 from src.config.helper import check_greater_than_zero, validate_percent
 from src.item.data.item_type import ItemType  # noqa: TC001
@@ -46,8 +46,9 @@ class AffixAspectFilterModel(BaseModel):
 
 
 class AffixFilterModel(AffixAspectFilterModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
     want_greater: bool = False
-    minPercentOfAffix: int = 0
+    min_percent_of_affix: int = Field(default=0, alias="minPercentOfAffix")
 
     @field_validator("name")
     @classmethod
@@ -60,26 +61,26 @@ class AffixFilterModel(AffixAspectFilterModel):
             raise ValueError(msg)
         return name
 
-    @field_validator("minPercentOfAffix")
+    @field_validator("min_percent_of_affix")
     @classmethod
     def percent_validator(cls, v: int) -> int:
         return validate_percent(v)
 
     @model_validator(mode="after")
     def value_and_percent_are_mutually_exclusive(self) -> AffixFilterModel:
-        if self.value and self.minPercentOfAffix:
+        if self.value and self.min_percent_of_affix:
             msg = "value and minPercentOfAffix cannot both be set"
             raise ValueError(msg)
         return self
 
 
 class AffixFilterCountModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
     count: list[AffixFilterModel] = []
-    maxCount: int = sys.maxsize
-    minCount: int = 0
+    max_count: int = Field(default=sys.maxsize, alias="maxCount")
+    min_count: int = Field(default=0, alias="minCount")
 
-    @field_validator("minCount", "maxCount")
+    @field_validator("min_count", "max_count")
     @classmethod
     def count_validator(cls, v: int) -> int:
         return check_greater_than_zero(v)
@@ -88,12 +89,12 @@ class AffixFilterCountModel(BaseModel):
     def model_validator(self) -> AffixFilterCountModel:
         # If minCount and maxCount are not set, we assume that the lengths of the count list is the only thing that matters.
         # To not show up in the model.dict() we need to remove them from the model_fields_set property
-        if "minCount" not in self.model_fields_set and "maxCount" not in self.model_fields_set:
-            self.minCount = len(self.count)
-            self.maxCount = len(self.count)
-            self.model_fields_set.remove("minCount")
-            self.model_fields_set.remove("maxCount")
-        if self.minCount > self.maxCount:
+        if "min_count" not in self.model_fields_set and "max_count" not in self.model_fields_set:
+            self.min_count = len(self.count)
+            self.max_count = len(self.count)
+            self.model_fields_set.remove("min_count")
+            self.model_fields_set.remove("max_count")
+        if self.min_count > self.max_count:
             msg = "minCount must be smaller than maxCount"
             raise ValueError(msg)
         if not self.count:
@@ -103,7 +104,8 @@ class AffixFilterCountModel(BaseModel):
 
 
 class AspectUniqueFilterModel(AffixAspectFilterModel):
-    minPercentOfAspect: int = 0
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    min_percent_of_aspect: int = Field(default=0, alias="minPercentOfAspect")
 
     @field_validator("name")
     @classmethod
@@ -119,32 +121,32 @@ class AspectUniqueFilterModel(AffixAspectFilterModel):
             raise ValueError(msg)
         return name
 
-    @field_validator("minPercentOfAspect")
+    @field_validator("min_percent_of_aspect")
     @classmethod
     def percent_validator(cls, v: int) -> int:
         return validate_percent(v)
 
     @model_validator(mode="after")
     def value_and_percent_are_mutually_exclusive(self) -> AspectUniqueFilterModel:
-        if self.value and self.minPercentOfAspect:
+        if self.value and self.min_percent_of_aspect:
             msg = "value and minPercentOfAspect cannot both be set"
             raise ValueError(msg)
         return self
 
 
 class GlobalUniqueModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    profileAlias: str = ""
-    minGreaterAffixCount: int = 0
-    minPercentOfAspect: int = 0
-    minPower: int = 0
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    profile_alias: str = Field(default="", alias="profileAlias")
+    min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
+    min_percent_of_aspect: int = Field(default=0, alias="minPercentOfAspect")
+    min_power: int = Field(default=0, alias="minPower")
 
-    @field_validator("minPower")
+    @field_validator("min_power")
     @classmethod
     def check_min_power(cls, v: int) -> int:
         return check_greater_than_zero(v)
 
-    @field_validator("minGreaterAffixCount")
+    @field_validator("min_greater_affix_count")
     @classmethod
     def count_validator(cls, v: int) -> int:
         if not 0 <= v <= 4:
@@ -152,27 +154,27 @@ class GlobalUniqueModel(BaseModel):
             raise ValueError(msg)
         return v
 
-    @field_validator("minPercentOfAspect")
+    @field_validator("min_percent_of_aspect")
     @classmethod
     def percent_validator(cls, v: int) -> int:
         return validate_percent(v)
 
 
 class ItemFilterModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    affixPool: list[AffixFilterCountModel] = []
-    inherentPool: list[AffixFilterCountModel] = []
-    itemType: list[ItemType] = []
-    minGreaterAffixCount: int = 0
-    minPower: int = 0
-    uniqueAspect: list[AspectUniqueFilterModel] = []
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    affix_pool: list[AffixFilterCountModel] = Field(default=[], alias="affixPool")
+    inherent_pool: list[AffixFilterCountModel] = Field(default=[], alias="inherentPool")
+    item_type: list[ItemType] = Field(default=[], alias="itemType")
+    min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
+    min_power: int = Field(default=0, alias="minPower")
+    unique_aspect: list[AspectUniqueFilterModel] = Field(default=[], alias="uniqueAspect")
 
-    @field_validator("minPower")
+    @field_validator("min_power")
     @classmethod
     def check_min_power(cls, v: int) -> int:
         return check_greater_than_zero(v)
 
-    @field_validator("minGreaterAffixCount")
+    @field_validator("min_greater_affix_count")
     @classmethod
     def min_greater_affix_in_range(cls, v: int) -> int:
         if not 0 <= v <= 4:
@@ -180,12 +182,12 @@ class ItemFilterModel(BaseModel):
             raise ValueError(msg)
         return v
 
-    @field_validator("itemType", mode="before")
+    @field_validator("item_type", mode="before")
     @classmethod
     def parse_item_type(cls, data: str | list[str]) -> list[str]:
         return _parse_item_type_or_rarities(data)
 
-    @field_validator("uniqueAspect", mode="before")
+    @field_validator("unique_aspect", mode="before")
     @classmethod
     def parse_unique_aspect(cls, data: dict | list[dict] | None) -> list[dict]:
         if not data:
@@ -196,7 +198,7 @@ class ItemFilterModel(BaseModel):
 
     @model_validator(mode="after")
     def unique_aspect_names_must_be_unique(self) -> ItemFilterModel:
-        if len({aspect.name for aspect in self.uniqueAspect}) != len(self.uniqueAspect):
+        if len({aspect.name for aspect in self.unique_aspect}) != len(self.unique_aspect):
             msg = "uniqueAspect names must be unique"
             raise ValueError(msg)
         return self
@@ -314,25 +316,29 @@ class TributeFilterModel(BaseModel):
 
 
 class ProfileModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    Affixes: list[DynamicItemFilterModel] = []
-    AspectUpgrades: list[str] = []
-    GlobalUniques: list[GlobalUniqueModel] = []
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    affixes: list[DynamicItemFilterModel] = Field(default=[], alias="Affixes")
+    aspect_upgrades: list[str] = Field(default=[], alias="AspectUpgrades")
+    global_uniques: list[GlobalUniqueModel] = Field(default=[], alias="GlobalUniques")
     name: str
-    Sigils: SigilFilterModel = SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist)
-    Tributes: list[TributeFilterModel] = []
-    Paragon: dict[str, object] | list[dict[str, object]] | None = None
+    sigils: SigilFilterModel = Field(
+        default=SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist), alias="Sigils"
+    )
+    tributes: list[TributeFilterModel] = Field(default=[], alias="Tributes")
+    paragon: dict[str, object] | list[dict[str, object]] | None = Field(default=None, alias="Paragon")
 
     @model_validator(mode="before")
     def aspects_must_exist(self) -> ProfileModel:
         # This on module level would be a circular import, so we do it lazy for now
         from src.dataloader import Dataloader  # noqa: PLC0415
 
-        if "AspectUpgrades" not in self:
+        # Check both snake_case and camelCase (alias) keys
+        aspect_key = "aspect_upgrades" if "aspect_upgrades" in self else "AspectUpgrades"
+        if aspect_key not in self:
             return self
 
         all_aspects_list = Dataloader().aspect_list
-        aspects_not_in_all_aspects = [x for x in self["AspectUpgrades"] if x not in all_aspects_list]
+        aspects_not_in_all_aspects = [x for x in self[aspect_key] if x not in all_aspects_list]
         if aspects_not_in_all_aspects:
             msg = f"The following aspects in AspectUpgrades do not exist in our data: {', '.join(aspects_not_in_all_aspects)}"
             raise ValueError(msg)

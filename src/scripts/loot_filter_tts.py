@@ -18,7 +18,7 @@ from src.scripts.common import (
     mark_as_junk,
     reset_item_status,
 )
-from src.utils.custom_mouse import mouse
+from src.utils.custom_mouse import Mouse
 from src.utils.window import screenshot
 
 if TYPE_CHECKING:
@@ -80,7 +80,7 @@ def check_items(
                 and item_descr.item_type == ItemType.TemperManual
                 and IniConfigLoader().general.auto_use_temper_manuals
             ):
-                mouse.click("right")
+                Mouse.click("right")
             continue
 
         num_of_affixed_items_checked += 1

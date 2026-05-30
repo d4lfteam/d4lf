@@ -45,7 +45,7 @@ class _Listing:
     raw_data: dict[str, Any] | None = None
 
 
-class DiabloTradeException(Exception):
+class DiabloTradeError(Exception):
     pass
 
 
@@ -112,9 +112,9 @@ def import_diablo_trade(url: str, max_listings: int, driver: seleniumbase.Driver
             / f"diablo_trade_dump_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}.json"
         ).open("w", encoding="utf-8") as f:
             json.dump(all_listings, f, indent=4, sort_keys=True)
-        raise DiabloTradeException(msg) from exc
+        raise DiabloTradeError(msg) from exc
 
-    LOGGER.info(f"Saving profile with {len(profile.Affixes)} filters")
+    LOGGER.info(f"Saving profile with {len(profile.affixes)} filters")
     save_as_profile(
         file_name=f"diablo_trade_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}",
         profile=profile,
@@ -165,9 +165,9 @@ def _create_filters_from_items(items: list[_Listing]) -> list[dict[str, ItemFilt
                 max_price=item.price,
                 min_price=item.price,
                 filter=ItemFilterModel(
-                    minPower=item.item_power,
-                    itemType=[item.item_type],
-                    affixPool=[
+                    min_power=item.item_power,
+                    item_type=[item.item_type],
+                    affix_pool=[
                         AffixFilterCountModel(
                             count=[AffixFilterModel(name=x.name, value=x.value) for x in item.affixes]
                         )
@@ -178,8 +178,8 @@ def _create_filters_from_items(items: list[_Listing]) -> list[dict[str, ItemFilt
             LOGGER.exception(f"Failed validation. Skipping {item=}")
             continue
         to_delete = []
-        for to_check_item in [x for x in to_check if x.item_type in annotated_filter.filter.itemType]:
-            annotated_filter_affixes = [(x.name, x.value) for x in annotated_filter.filter.affixPool[0].count]
+        for to_check_item in [x for x in to_check if x.item_type in annotated_filter.filter.item_type]:
+            annotated_filter_affixes = [(x.name, x.value) for x in annotated_filter.filter.affix_pool[0].count]
             to_check_item_affixes = [(x.name, x.value) for x in to_check_item.affixes]
             for x in annotated_filter_affixes:
                 if not any(a[0] == x[0] for a in to_check_item_affixes):
@@ -188,7 +188,7 @@ def _create_filters_from_items(items: list[_Listing]) -> list[dict[str, ItemFilt
                 to_delete.append(to_check_item)
                 annotated_filter.min_price = min(annotated_filter.min_price, to_check_item.price)
                 annotated_filter.max_price = max(annotated_filter.max_price, to_check_item.price)
-                for x in annotated_filter.filter.affixPool[0].count:
+                for x in annotated_filter.filter.affix_pool[0].count:
                     for y in [a for a in to_check_item.affixes if x.name == a.name]:
                         x.value = min(x.value, y.value)
         for to_delete_item in to_delete:
@@ -197,7 +197,7 @@ def _create_filters_from_items(items: list[_Listing]) -> list[dict[str, ItemFilt
     converted_result = []
     for annotated_filter in result:
         name = (
-            f"{annotated_filter.filter.itemType[0].value}_{format_number_as_short_string(annotated_filter.min_price)}"
+            f"{annotated_filter.filter.item_type[0].value}_{format_number_as_short_string(annotated_filter.min_price)}"
         )
         if annotated_filter.min_price != annotated_filter.max_price:
             name += f"_{format_number_as_short_string(annotated_filter.max_price)}"

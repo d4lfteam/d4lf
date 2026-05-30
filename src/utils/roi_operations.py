@@ -1,4 +1,5 @@
 import logging
+import operator
 from enum import Enum
 
 from src.config.ui import ResManager
@@ -131,7 +132,7 @@ def to_grid(roi: tuple[int, int, int, int], rows: int, columns: int) -> set[tupl
             cell_y_min = y_min + sum(base_cell_height + (1 if k < extra_height else 0) for k in range(i))
             rectangles.append((cell_x_min, cell_y_min, cell_width, cell_height))
 
-    rectangles.sort(key=lambda x: (x[1], x[0]))  # sort row major
+    rectangles.sort(key=operator.itemgetter(1, 0))  # sort row major
     return rectangles
 
 

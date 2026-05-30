@@ -8,10 +8,11 @@ import pathlib
 import threading
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 
 from src.config.helper import singleton
 from src.config.settings_models import AdvancedOptionsModel, CharModel, GeneralModel
+
+type SectionModel = AdvancedOptionsModel | CharModel | GeneralModel
 
 LOGGER = logging.getLogger(__name__)
 PARAMS_INI = "params.ini"
@@ -34,7 +35,7 @@ class IniConfigLoader:
         self._change_listeners: list[ConfigChangeListener] = []
         self._last_config_signature: tuple[int, int] | None = None
         self._config_revision = 0
-        self._state_snapshot: dict[str, Any] = {}
+        self._state_snapshot: dict[str, object] = {}
         self._deferred_cleanup_log_records: list[logging.LogRecord] = []
         self._defer_cleanup_log_records = True
         self.load(notify=False)
@@ -50,20 +51,20 @@ class IniConfigLoader:
         stat_result = config_path.stat()
         return stat_result.st_mtime_ns, stat_result.st_size
 
-    def _section_models(self) -> dict[str, Any]:
+    def _section_models(self) -> dict[str, SectionModel]:
         return {"advanced_options": self._advanced_options, "char": self._char, "general": self._general}
 
-    def _model_for_section(self, section: str) -> Any | None:
+    def _model_for_section(self, section: str) -> SectionModel | None:
         return self._section_models().get(section)
 
-    def _capture_state_snapshot(self) -> dict[str, Any]:
-        snapshot: dict[str, Any] = {}
+    def _capture_state_snapshot(self) -> dict[str, object]:
+        snapshot: dict[str, object] = {}
         for section_name, model in self._section_models().items():
             for key, value in model.model_dump(mode="python").items():
                 snapshot[f"{section_name}.{key}"] = value
         return snapshot
 
-    def _changed_keys(self, previous_snapshot: dict[str, Any], current_snapshot: dict[str, Any]) -> set[str]:
+    def _changed_keys(self, previous_snapshot: dict[str, object], current_snapshot: dict[str, object]) -> set[str]:
         return {
             key
             for key in previous_snapshot.keys() | current_snapshot.keys()
@@ -155,7 +156,7 @@ class IniConfigLoader:
             self._defer_cleanup_log_records = False
             return records
 
-    def _format_value_for_log(self, value: Any) -> str:
+    def _format_value_for_log(self, value: object) -> str:
         if isinstance(value, bool):
             return "on" if value else "off"
         return str(value)
@@ -274,7 +275,7 @@ class IniConfigLoader:
         with self._lock:
             return self._config_revision
 
-    def save_value(self, section: str, key: str, value: Any) -> None:
+    def save_value(self, section: str, key: str, value: object) -> None:
         changed_keys: set[str] = set()
 
         with self._lock:

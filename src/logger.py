@@ -5,7 +5,6 @@ import logging
 import logging.handlers
 import sys
 import threading
-import typing
 
 import colorama
 
@@ -39,7 +38,7 @@ class ColoredFormatter(logging.Formatter):
         style: str = "%",
         validate: bool = True,
         *,
-        defaults: dict[str, typing.Any] | None = None,
+        defaults: dict[str, object] | None = None,
     ) -> None:
         colorama.just_fix_windows_console()
         super().__init__(fmt=fmt, datefmt=datefmt, style=style, validate=validate, defaults=defaults)
@@ -127,10 +126,12 @@ def clean_up_old_log_files():
         LOGGER.debug(f"Cleaned up old log file: {file}")
 
 
-def _log_unhandled_exceptions(args: typing.Any) -> None:
-    if len(args) >= 2 and isinstance(args[1], SystemExit):
+def _log_unhandled_exceptions(args: threading.ExceptHookArgs) -> None:
+    if isinstance(args.exc_value, SystemExit):
         return
+    thread_name = args.thread.name if args.thread is not None else "unknown"
     LOGGER.critical(
-        f"Unhandled exception caused by thread '{args.thread.name}'",
+        "Unhandled exception caused by thread '%s'",
+        thread_name,
         exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
     )

@@ -6,7 +6,7 @@ from src.config.loader import IniConfigLoader
 from src.config.settings_models import MoveItemsType
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
-from src.utils.custom_mouse import mouse
+from src.utils.custom_mouse import Mouse
 
 if TYPE_CHECKING:
     from src.ui.inventory_base import ItemSlot
@@ -43,7 +43,7 @@ def move_items_to_stash():
         if not unhandled_slots:
             break
 
-    mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+    Mouse.move(*Cam().abs_window_to_monitor((0, 0)))
     LOGGER.info("Completed move")
 
 
@@ -79,7 +79,7 @@ def move_items_to_inventory():
         if empty_slot_count < 1:
             break
 
-    mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+    Mouse.move(*Cam().abs_window_to_monitor((0, 0)))
     LOGGER.info("Completed move")
 
 
@@ -102,10 +102,9 @@ def _move_items(
             (MoveItemsType.favorites in move_item_types and item.is_fav)
             or (MoveItemsType.junk in move_item_types and item.is_junk)
             or (MoveItemsType.unmarked in move_item_types and not item.is_fav and not item.is_junk)
-            or MoveItemsType.everything in move_item_types
         ):
             inv.hover_item(item)
-            mouse.click("right")
+            Mouse.click("right")
             item_move_count = item_move_count + 1
 
         if item_move_count == num_to_move:

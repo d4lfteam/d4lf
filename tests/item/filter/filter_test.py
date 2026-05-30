@@ -41,7 +41,7 @@ def _create_mocked_filter(mocker: MockerFixture) -> Filter:
 )
 def test_affixes(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.affix_filters = {filters.affix.name: filters.affix.Affixes}
+    test_filter.affix_filters = {filters.affix.name: filters.affix.affixes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
@@ -53,7 +53,7 @@ def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixtur
     general_mock = mocker.patch.object(IniConfigLoader(), "_general")
     general_mock.keep_aspects = AspectFilterType.upgrade
     mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
-    test_filter.aspect_upgrade_filters = {filters.aspects_filters.name: filters.aspects_filters.AspectUpgrades}
+    test_filter.aspect_upgrade_filters = {filters.aspects_filters.name: filters.aspects_filters.aspect_upgrades}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
@@ -62,14 +62,14 @@ def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixtur
 )
 def test_global_uniques(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.global_unique_filters = {filters.global_unique.name: filters.global_unique.GlobalUniques}
+    test_filter.global_unique_filters = {filters.global_unique.name: filters.global_unique.global_uniques}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
 @pytest.mark.parametrize(("_name", "result", "item"), natsorted(sigils), ids=[name for name, _, _ in natsorted(sigils)])
 def test_sigils(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.sigil_filters = {filters.sigil.name: filters.sigil.Sigils}
+    test_filter.sigil_filters = {filters.sigil.name: filters.sigil.sigils}
     assert natsorted([match.profile.split(".")[0] for match in test_filter.should_keep(item).matched]) == natsorted(
         result
     )
@@ -77,18 +77,18 @@ def test_sigils(_name: str, result: list[str], item: Item, mocker: MockerFixture
 
 def test_sigil_empty_lists(mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.sigil_filters = {filters.sigil_whitelist_only.name: filters.sigil_whitelist_only.Sigils}
+    test_filter.sigil_filters = {filters.sigil_whitelist_only.name: filters.sigil_whitelist_only.sigils}
     assert test_filter.should_keep(sigil_jalal).matched == []
     assert test_filter.should_keep(sigil_priority).matched[0].profile == filters.sigil_whitelist_only.name
     test_filter = _create_mocked_filter(mocker)
-    test_filter.sigil_filters = {filters.sigil_blacklist_only.name: filters.sigil_blacklist_only.Sigils}
+    test_filter.sigil_filters = {filters.sigil_blacklist_only.name: filters.sigil_blacklist_only.sigils}
     assert test_filter.should_keep(sigil_jalal).matched[0].profile == filters.sigil_blacklist_only.name
     assert test_filter.should_keep(sigil_priority).matched == []
 
 
 def test_sigil_priority(mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.sigil_filters = {filters.sigil_priority.name: filters.sigil_priority.Sigils}
+    test_filter.sigil_filters = {filters.sigil_priority.name: filters.sigil_priority.sigils}
     assert test_filter.should_keep(sigil_priority).matched == []
     test_filter.sigil_filters[next(iter(test_filter.sigil_filters))].priority = SigilPriority.whitelist
     assert test_filter.should_keep(sigil_priority).matched[0].profile == filters.sigil_priority.name
@@ -99,7 +99,7 @@ def test_sigil_priority(mocker: MockerFixture):
 )
 def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.tribute_filters = {filters.tributes.name: filters.tributes.Tributes}
+    test_filter.tribute_filters = {filters.tributes.name: filters.tributes.tributes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
@@ -110,7 +110,7 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
 )
 def test_uniques_with_affixes(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.affix_filters = {filters.unique_affixes.name: filters.unique_affixes.Affixes}
+    test_filter.affix_filters = {filters.unique_affixes.name: filters.unique_affixes.affixes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
@@ -119,5 +119,5 @@ def test_uniques_with_affixes(_name: str, result: list[str], item: Item, mocker:
 )
 def test_mythic_always_kept(_name: str, result: bool, item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.global_unique_filters = {filters.always_keep_mythics.name: filters.always_keep_mythics.GlobalUniques}
+    test_filter.global_unique_filters = {filters.always_keep_mythics.name: filters.always_keep_mythics.global_uniques}
     assert test_filter.should_keep(item).keep == result

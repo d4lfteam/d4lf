@@ -246,7 +246,7 @@ class ImporterWindow(QMainWindow):
         self.generate_button.setText("Generate")
         self.filename_input_box.clear()
 
-    def closeEvent(self, event):
+    def closeEvent(self, event):  # noqa: N802
         """Cleanup when window closes and save geometry."""
         # Save window geometry
         if not self.isMaximized():
@@ -276,10 +276,10 @@ class _GuiLogHandler(logging.Handler):
 
     def emit(self, record):
         """Called from any thread - emit signal instead of direct GUI update."""
+        log_entry = self.format(record)
         try:
-            log_entry = self.format(record)
             self.signals.log_message.emit(log_entry)
-        except Exception:
+        except RuntimeError:
             self.handleError(record)
 
     def _append_log(self, message):

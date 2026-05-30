@@ -6,8 +6,9 @@ from urllib.parse import unquote
 
 import jsonpath
 import lxml.html
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
@@ -43,17 +44,29 @@ LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
 PROFILE_GUIDE_BASE_URL = f"{BUILD_GUIDE_BASE_URL}profile"
 SCRIPT_XPATH = "//script"
-BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
+BUILD_SCRIPT_ASSIGNMENT = re.compile(r"window\.__PRELOADED_STATE__\s*=\s*")
+PAGE_DIAGNOSTIC_MARKERS = (
+    "__PRELOADED_STATE__",
+    "__NEXT_DATA__",
+    "self.__next_f",
+    "userGeneratedDocumentBySlug",
+    "buildVariants",
+    "captcha",
+    "cloudflare",
+    "access denied",
+    "forbidden",
+    "just a moment",
+)
 
 if TYPE_CHECKING:
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
 
 
-class MobalyticsException(Exception):
+class MobalyticsError(Exception):
     pass
 
 
-@retry_importer(inject_webdriver=True)
+@retry_importer(inject_webdriver=True, uc=True)
 def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     url = config.url.strip().replace("\n", "")
     if BUILD_GUIDE_BASE_URL not in url:
@@ -64,25 +77,27 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         return
     url = _fix_input_url(url=url)
     LOGGER.info(f"Loading {url}")
-    driver.get(url)
+    _open_mobalytics_url(driver=driver, url=url)
     wait = WebDriverWait(driver, 10)
-    wait.until(EC.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
+    wait.until(ec.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
     variant_id = url.split(",")[1].split("#")[0] if "activeVariantId" in url else None
-    raw_html_data = lxml.html.fromstring(driver.page_source)
+    page_source = driver.page_source
+    raw_html_data = lxml.html.fromstring(page_source)
     # The build is shoved in a massive JSON in one of the script tags. We find that json now.
     scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
     full_script_data_json = None
     for script in scripts_elem:
-        if script.text and script.text.strip().startswith(BUILD_SCRIPT_PREFIX):
-            full_script_data_json = json.loads(script.text.strip().replace(BUILD_SCRIPT_PREFIX, "")[:-1])
+        full_script_data_json = _extract_mobalytics_preloaded_state(script.text_content())
+        if full_script_data_json is not None:
             break
 
     if not full_script_data_json:
+        _log_mobalytics_page_diagnostics(driver=driver, page_source=page_source, script_count=len(scripts_elem))
         LOGGER.error(
             msg
             := "No script containing build data was found. This means Mobalytics has changed how they present data, please submit a bung."
         )
-        raise MobalyticsException(msg)
+        raise MobalyticsError(msg)
 
     # Get the JSON block that contains the build and its variants
     build_data = dict(jsonpath.findall("$..userGeneratedDocumentBySlug.data.data", full_script_data_json)[0])
@@ -90,13 +105,13 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     build_header = build_data["name"]
     if not build_header:
         LOGGER.error(msg := "No build name found")
-        raise MobalyticsException(msg)
+        raise MobalyticsError(msg)
     class_name = jsonpath.findall(
         "$..userGeneratedDocumentBySlug.data.tags.data[?@.groupSlug=='class'].name", full_script_data_json
     )[0].lower()
     if not class_name:
         LOGGER.error(msg := "No class name found")
-        raise MobalyticsException(msg)
+        raise MobalyticsError(msg)
     if variant_id:
         items = jsonpath.findall(f"$..buildVariants.values[?@.id=='{variant_id}'].genericBuilder.slots", build_data)[0]
     else:
@@ -111,7 +126,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
 
     if not items:
         LOGGER.error(msg := "No items found")
-        raise MobalyticsException(msg)
+        raise MobalyticsError(msg)
     finished_filters = []
     mythic_names = []
     aspect_upgrade_filters = []
@@ -124,10 +139,10 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
             continue
         if not (item_name := str(jsonpath.findall(".gameEntity.entity.title", item)[0])):
             LOGGER.error(msg := "No item name found")
-            raise MobalyticsException(msg)
+            raise MobalyticsError(msg)
         if not (slot_type := str(jsonpath.findall(".gameSlotSlug", item)[0])):
             LOGGER.error(msg := "No slot type found")
-            raise MobalyticsException(msg)
+            raise MobalyticsError(msg)
 
         raw_affixes = jsonpath.findall(".gameEntity.modifiers.gearStats[*]", item)
         raw_inherents = jsonpath.findall(".gameEntity.modifiers.implicitStats[*]", item)
@@ -141,7 +156,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
                 if is_mythic:
                     mythic_names.append(item_name)
                     continue
-                item_filter.uniqueAspect = [AspectUniqueFilterModel(name=item_name)]
+                item_filter.unique_aspect = [AspectUniqueFilterModel(name=item_name)]
             except Exception:
                 LOGGER.exception(f"Unexpected error adding unique aspect for {item_name}, please report a bug.")
 
@@ -185,28 +200,30 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
                 LOGGER.warning(
                     f"Couldn't find an item_type for weapon slot {slot_type}, defaulting to all weapon types instead."
                 )
-                item_filter.itemType = WEAPON_TYPES
+                item_filter.item_type = WEAPON_TYPES
             else:
-                item_filter.itemType = []
+                item_filter.item_type = []
                 LOGGER.warning(f"Couldn't match item_type: {slot_type}. Please edit manually")
         else:
-            item_filter.itemType = [item_type]
+            item_filter.item_type = [item_type]
 
         affixes = _convert_raw_to_affixes(raw_affixes, config.import_greater_affixes)
         inherents = _convert_raw_to_affixes(raw_inherents)
 
         if not is_mythic:
-            item_filter.affixPool = [
+            item_filter.affix_pool = [
                 AffixFilterCountModel(
                     count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
-                    minCount=1 if is_unique else 3,
+                    min_count=1 if is_unique else 3,
                 )
             ]
             update_mingreateraffixcount(item_filter, config.require_greater_affixes)
-        item_filter.minPower = 100
+        item_filter.min_power = 100
         if inherents and not is_mythic:
-            item_filter.inherentPool = [AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])]
-        filter_name_template = item_filter.itemType[0].name if item_type else slot_type.replace(" ", "")
+            item_filter.inherent_pool = [
+                AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
+            ]
+        filter_name_template = item_filter.item_type[0].name if item_type else slot_type.replace(" ", "")
         filter_name = filter_name_template
         i = 2
         while any(filter_name == next(iter(x)) for x in finished_filters):
@@ -218,7 +235,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     add_mythics_to_filters(mythic_names, finished_filters)
     profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
     if config.import_aspect_upgrades and aspect_upgrade_filters:
-        profile.AspectUpgrades = aspect_upgrade_filters
+        profile.aspect_upgrades = aspect_upgrade_filters
 
     file_name = config.custom_file_name or build_default_profile_file_name(
         source_name="mobalytics",
@@ -231,7 +248,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     if config.export_paragon:
         steps = extract_mobalytics_paragon_steps(paragon_data if isinstance(paragon_data, dict) else {})
         if steps:
-            profile.Paragon = build_paragon_profile_payload(
+            profile.paragon = build_paragon_profile_payload(
                 build_name=build_name, source_url=url, paragon_boards_list=steps
             )
         else:
@@ -254,6 +271,46 @@ def _corrections(input_str: str) -> str:
 
 def _fix_input_url(url: str) -> str:
     return unquote(url)
+
+
+def _open_mobalytics_url(driver: ChromiumDriver, url: str) -> None:
+    if hasattr(driver, "uc_open_with_reconnect"):
+        driver.uc_open_with_reconnect(url, reconnect_time=4)
+        return
+    driver.get(url)
+
+
+def _extract_mobalytics_preloaded_state(script_text: str) -> dict | None:
+    match = BUILD_SCRIPT_ASSIGNMENT.search(script_text)
+    if match is None:
+        return None
+    script_json = script_text[match.end() :].strip()
+    try:
+        data, _ = json.JSONDecoder().raw_decode(script_json)
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _log_mobalytics_page_diagnostics(driver: ChromiumDriver, page_source: str, script_count: int) -> None:
+    page_source_casefold = page_source.casefold()
+    matched_markers = [marker for marker in PAGE_DIAGNOSTIC_MARKERS if marker.casefold() in page_source_casefold]
+    LOGGER.debug(
+        "Mobalytics page diagnostics: current_url=%r title=%r page_source_length=%s script_count=%s markers=%s",
+        _read_mobalytics_driver_value(driver, "current_url"),
+        _read_mobalytics_driver_value(driver, "title"),
+        len(page_source),
+        script_count,
+        ", ".join(matched_markers) or "none",
+    )
+
+
+def _read_mobalytics_driver_value(driver: ChromiumDriver, value_name: str) -> str:
+    try:
+        value = getattr(driver, value_name)
+    except WebDriverException as exc:
+        return f"<unavailable: {exc.__class__.__name__}>"
+    return str(value)
 
 
 def _extract_mobalytics_season_number(full_script_data_json: dict) -> str:

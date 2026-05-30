@@ -6,7 +6,7 @@ from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
 from src.template_finder import SearchArgs
 from src.ui.inventory_base import InventoryBase
-from src.utils.custom_mouse import mouse
+from src.utils.custom_mouse import Mouse
 
 LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class Stash(InventoryBase):
         x, y, w, h = ResManager().roi.tab_slots
         section_length = w // number_tabs
         centers = [(x + (i + 0.5) * section_length, y + h // 2) for i in range(number_tabs)]
-        mouse.move(*Cam().window_to_monitor(centers[tab_idx]), randomize=2)
-        mouse.click("left")
+        Mouse.move(*Cam().window_to_monitor(centers[tab_idx]), randomize=2)
+        Mouse.click("left")
         time.sleep(0.2)
         return True

@@ -4,9 +4,9 @@ requires = ["hatchling"]
 
 [dependency-groups]
 dev = [
-    "prek",
     "pyinstaller",
     "pytest",
+    "pytest-cov",
     "pytest-env",
     "pytest-mock",
     "pytest-pythonpath",
@@ -77,10 +77,8 @@ ignore = [
     "ANN202",  # fix more in the future, this is typing
     "ANN204",  # fix more in the future, this is typing
     "ANN205",  # fix more in the future, this is typing
-    "ANN401",  # fix more in the future, this is typing
     "ARG001",  # fix more in the future
     "ARG002",  # fix more in the future
-    "BLE001",  # fix more in the future
     "C901",  # fix more in the future
     "COM812",
     "CPY",
@@ -99,22 +97,10 @@ ignore = [
     "ERA001",  # fix more in the future
     "FBT001",
     "FBT002",
-    "FBT003",  # fix more in the future
     "FIX002",  # fix more in the future
     "FIX004",  # fix more in the future
-    "FURB101",  # fix more in the future
-    "FURB118",  # fix more in the future
-    "FURB171",  # fix more in the future
     "G004",
     "LOG014",
-    "N801",  # fix more in the future
-    "N802",  # fix more in the future
-    "N803",  # fix more in the future
-    "N805",  # fix more in the future
-    "N806",  # fix more in the future
-    "N812",  # fix more in the future
-    "N815",  # fix more in the future
-    "N818",  # fix more in the future
     "NPY002",  # fix more in the future
     "PLC0206",  # fix more in the future
     "PLR0904",  # fix more in the future
@@ -134,8 +120,7 @@ ignore = [
     "PLW0108",  # fix more in the future
     "PLW0602",  # fix more in the future
     "PLW0603",  # fix more in the future
-    "PLW1641",  # fix more in the future
-    "PTH122",  # fix more in the future
+    "PLW0717",  # fix more in the future
     "RUF001",  # fix more in the future
     "RUF005",  # fix more in the future
     "RUF012",  # fix more in the future

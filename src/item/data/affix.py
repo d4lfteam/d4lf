@@ -12,6 +12,8 @@ class AffixType(enum.Enum):
 
 @dataclass
 class Affix:
+    __hash__ = None
+
     loc: tuple[int, int] = None
     max_value: float | None = None
     min_value: float | None = None

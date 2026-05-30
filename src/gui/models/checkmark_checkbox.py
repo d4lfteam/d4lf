@@ -9,7 +9,7 @@ class CheckmarkCheckBox(QCheckBox):
     The checkmark is rendered when the box is checked, using the theme's accent color.
     """
 
-    def paintEvent(self, event):
+    def paintEvent(self, event):  # noqa: N802
         super().paintEvent(event)  # Draw the default checkbox background/border
 
         if not self.isChecked():

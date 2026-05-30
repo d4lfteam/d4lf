@@ -41,7 +41,7 @@ def safe_exit(error_code=0):
                     processes_to_kill.append(proc)
             except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
                 LOGGER.debug(f"Error accessing process: {e}")
-    except Exception as e:
+    except psutil.Error as e:
         LOGGER.debug(f"Error iterating processes: {e}")
 
     # Kill all processes silently
@@ -49,7 +49,7 @@ def safe_exit(error_code=0):
         try:
             proc.kill()
             proc.wait(timeout=2)
-        except (psutil.NoSuchProcess, psutil.TimeoutExpired, Exception) as e:
+        except psutil.Error as e:
             LOGGER.debug(f"Error killing process {proc.pid}: {e}")
 
     time.sleep(0.3)
@@ -61,5 +61,5 @@ def set_process_name(name, window_spec):
         hwnd = get_window_spec_id(window_spec)
         kernel32 = ctypes.WinDLL("kernel32")
         kernel32.SetConsoleTitleW(hwnd, name)
-    except Exception:
+    except AttributeError, OSError:
         LOGGER.exception("Failed to set process name")

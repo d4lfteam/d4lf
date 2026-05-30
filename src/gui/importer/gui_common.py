@@ -14,7 +14,7 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
-from seleniumbase import SB
+from seleniumbase import Driver
 
 from src import __version__
 from src.config.loader import IniConfigLoader
@@ -181,18 +181,18 @@ def _normalize_profile_name_part(name_part: str) -> str:
 def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool):
     if require_gas:
         num_greater = 0
-        for affix in item_filter.affixPool[0].count:
+        for affix in item_filter.affix_pool[0].count:
             num_greater += 1 if affix.want_greater else 0
-        item_filter.minGreaterAffixCount = num_greater
+        item_filter.min_greater_affix_count = num_greater
     else:
-        item_filter.minGreaterAffixCount = 0
+        item_filter.min_greater_affix_count = 0
 
 
 def add_mythics_to_filters(mythic_names, finished_filters):
     if mythic_names:
         mythic_filter = ItemFilterModel()
         for mythic_name in mythic_names:
-            mythic_filter.uniqueAspect.append(AspectUniqueFilterModel(name=mythic_name))
+            mythic_filter.unique_aspect.append(AspectUniqueFilterModel(name=mythic_name))
         finished_filters.append({"Mythics": mythic_filter})
 
 
@@ -298,13 +298,13 @@ def add_to_profiles(build_name):
 
 # Built in to_yaml_str does not preserve the order of the attributes of the model, which is important for uniques
 def _to_yaml_str(profile: ProfileModel, exclude_defaults: bool, exclude: set[str]) -> str:
-    str_val = profile.model_dump_json(exclude_defaults=exclude_defaults, exclude=exclude)
+    str_val = profile.model_dump_json(by_alias=False, exclude_defaults=exclude_defaults, exclude=exclude)
     yaml = YAML()
     yaml.default_flow_style = None  # Back to original
     dict_val = yaml.load(str_val)
     _sort_profile_sections(dict_val)
     _rm_style_info(dict_val)
-    _use_block_style(dict_val.get("AspectUpgrades"))
+    _use_block_style(dict_val.get("aspect_upgrades"))
     stream = StringIO()
     yaml.dump(dict_val, stream)
     stream.seek(0)
@@ -312,8 +312,8 @@ def _to_yaml_str(profile: ProfileModel, exclude_defaults: bool, exclude: set[str
 
 
 def _sort_profile_sections(d):
-    if isinstance(d, dict) and isinstance(d.get("AspectUpgrades"), list):
-        d["AspectUpgrades"].sort(key=str.casefold)
+    if isinstance(d, dict) and isinstance(d.get("aspect_upgrades"), list):
+        d["aspect_upgrades"].sort(key=str.casefold)
 
 
 def _use_block_style(d):
@@ -335,7 +335,7 @@ def _rm_style_info(d):
 
 def setup_webdriver(uc: bool = False) -> ChromiumDriver:
     if uc:
-        return SB(uc=uc, headless2=True)
+        return Driver(uc=uc, headless2=True)
     match IniConfigLoader().general.browser:
         case BrowserType.edge:
             options = webdriver.EdgeOptions()
