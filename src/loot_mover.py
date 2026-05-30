@@ -102,7 +102,6 @@ def _move_items(
             (MoveItemsType.favorites in move_item_types and item.is_fav)
             or (MoveItemsType.junk in move_item_types and item.is_junk)
             or (MoveItemsType.unmarked in move_item_types and not item.is_fav and not item.is_junk)
-            or MoveItemsType.everything in move_item_types
         ):
             inv.hover_item(item)
             Mouse.click("right")
