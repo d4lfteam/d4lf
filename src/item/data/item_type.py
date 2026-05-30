@@ -75,7 +75,7 @@ def is_sigil(item_type: ItemType) -> bool:
     return item_type in [ItemType.Sigil, ItemType.EscalationSigil]
 
 
-def is_horadric_spellcraft(item_type: ItemType) -> bool:
+def is_seal_or_charm(item_type: ItemType) -> bool:
     return item_type in [ItemType.HoradricSeal, ItemType.Charm]
 
 

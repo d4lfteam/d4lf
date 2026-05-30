@@ -113,7 +113,7 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
         (Item(item_type=ItemType.Charm, name="faint_charm", rarity=ItemRarity.Rare), "charm_filters"),
     ],
 )
-def test_horadric_spellcraft_sections(item: Item, filter_attr: str, mocker: MockerFixture):
+def test_seal_or_charm_sections(item: Item, filter_attr: str, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
     setattr(test_filter, filter_attr, {"spellcraft": [NameRarityFilterModel(name=item.name)]})
 

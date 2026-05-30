@@ -14,9 +14,9 @@ from src.item.data.item_type import (
     ItemType,
     is_armor,
     is_consumable,
-    is_horadric_spellcraft,
     is_jewelry,
     is_non_sigil_mapping,
+    is_seal_or_charm,
     is_sigil,
     is_socketable,
     is_weapon,
@@ -452,7 +452,7 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
     if any([
         is_consumable(item.item_type),
         is_non_sigil_mapping(item.item_type),
-        is_horadric_spellcraft(item.item_type),
+        is_seal_or_charm(item.item_type),
         is_sigil(item.item_type),
         is_socketable(item.item_type),
         item.item_type in [ItemType.Material, ItemType.Tribute],
@@ -503,7 +503,7 @@ def read_descr() -> Item | None:
     if any([
         is_consumable(item.item_type),
         is_non_sigil_mapping(item.item_type),
-        is_horadric_spellcraft(item.item_type),
+        is_seal_or_charm(item.item_type),
         is_socketable(item.item_type),
         item.item_type in [ItemType.Material, ItemType.Tribute, ItemType.Cache, ItemType.LairBossKey],
         item.seasonal_attribute == SeasonalAttribute.sanctified,

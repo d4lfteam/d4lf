@@ -30,9 +30,7 @@ def test_loot_filter_controls_do_not_raise_tts_parser_error():
 
 @pytest.mark.parametrize("item_type", [ItemType.HoradricSeal, ItemType.Charm])
 @pytest.mark.parametrize(("rarity", "type_line_template"), RARITY_TTS_LINES)
-def test_horadric_spellcraft_items_parse_at_all_rarities(
-    item_type: ItemType, rarity: ItemRarity, type_line_template: str
-):
+def test_seal_or_charm_items_parse_at_all_rarities(item_type: ItemType, rarity: ItemRarity, type_line_template: str):
     item_name = f"TEST {item_type.value.upper()}"
     src.tts.LAST_ITEM = [item_name, type_line_template.format(item_type=item_type.value.title()), "Right mouse button"]
 
