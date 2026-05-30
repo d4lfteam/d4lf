@@ -240,11 +240,7 @@ class Filter:
         return res
 
     def _check_name_rarity_filters(
-        self,
-        item: Item,
-        item_filters: dict[str, list[NameRarityFilterModel | TributeFilterModel]],
-        section_name: str,
-        mythic_name: str,
+        self, item: Item, item_filters: dict[str, list[NameRarityFilterModel]], section_name: str, mythic_name: str
     ) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
         if not item_filters.items():
@@ -271,9 +267,29 @@ class Filter:
         return res
 
     def _check_tribute(self, item: Item) -> FilterResult:
-        return self._check_name_rarity_filters(
-            item=item, item_filters=self.tribute_filters, section_name="Tributes", mythic_name="Mythic Tribute"
-        )
+        res = FilterResult(keep=False, matched=[])
+        if not self.tribute_filters.items():
+            LOGGER.info(f"{item.original_name} -- Matched Tributes")
+            res.keep = True
+            res.matched.append(MatchedFilter("Tributes not filtered"))
+
+        if item.rarity == ItemRarity.Mythic:
+            LOGGER.info(f"{item.original_name} -- Matched mythic tribute, always kept")
+            res.keep = True
+            res.matched.append(MatchedFilter("Mythic Tribute"))
+
+        for profile_name, profile_filter in self.tribute_filters.items():
+            for filter_item in profile_filter:
+                if filter_item.name and not item.name.startswith(filter_item.name):
+                    continue
+
+                if filter_item.rarities and item.rarity not in filter_item.rarities:
+                    continue
+
+                LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Tributes")
+                res.keep = True
+                res.matched.append(MatchedFilter(f"{profile_name}"))
+        return res
 
     def _check_seal(self, item: Item) -> FilterResult:
         return self._check_name_rarity_filters(
