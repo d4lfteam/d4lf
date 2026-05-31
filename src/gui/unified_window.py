@@ -28,12 +28,13 @@ from src.gui.importer_window import ImporterWindow
 from src.gui.models.activity_log_widget import ActivityLogWidget
 from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.settings_window import ConfigWindow
-from src.gui.themes import DARK_THEME, LIGHT_THEME
+from src.gui.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.item.filter import Filter
 from src.logger import ThreadNameFilter, create_formatter
 from src.logger import setup as setup_logging
 from src.main import check_for_proper_tts_configuration
 from src.overlay import Overlay
+from src.scripts.common import get_filter_colors
 from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
 
@@ -454,5 +455,8 @@ class UnifiedMainWindow(QMainWindow):
 
     def apply_theme(self):
         theme_name = IniConfigLoader().general.theme
-        stylesheet = DARK_THEME if theme_name == "dark" else LIGHT_THEME
+        accent_color = get_filter_colors().matched
+        template = DARK_THEME_TEMPLATE if theme_name == "dark" else LIGHT_THEME_TEMPLATE
+        stylesheet = template.replace("{accent}", accent_color)
+
         QApplication.instance().setStyleSheet(stylesheet)

@@ -1,6 +1,6 @@
 """Original simple gray theme with dynamic asset paths."""
 
-DARK_THEME = """
+DARK_THEME_TEMPLATE = """
 QWidget {
     background-color: #1a1a1a;
     color: #e0e0e0;
@@ -83,7 +83,7 @@ QCheckBox {
     spacing: 8px;
 }
 QCheckBox:checked {
-    color: #23fc5d;
+    color: {accent};
     font-weight: bold;
 }
 QCheckBox::indicator {
@@ -98,7 +98,7 @@ QCheckBox::indicator:hover {
 }
 QCheckBox::indicator:checked {
     background-color: #2c2c2c;
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
 }
 
 /* Action Bar at bottom */
@@ -112,7 +112,7 @@ QWidget#action-bar QPushButton {
     color: #ffffff;
 }
 QWidget#action-bar QPushButton:hover {
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
 }
 
 /* Switch Toggle Styling */
@@ -124,7 +124,7 @@ QCheckBox#switch::indicator {
 }
 QCheckBox#switch::indicator:checked {
     background-color: #2c2c2c;
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
 }
 QCheckBox#switch::indicator:unchecked {
     background-color: #444;
@@ -198,8 +198,8 @@ QListWidget#nav-list::item {
 }
 QListWidget#nav-list::item:selected {
     background-color: #3c3c3c;
-    color: #23fc5d;
-    border-left: 4px solid #23fc5d;
+    color: {accent};
+    border-left: 4px solid {accent};
 }
 QToolTip {
     background-color: #1f1f1f;
@@ -265,8 +265,8 @@ QPushButton#segment-btn {
 }
 QPushButton#segment-btn:checked {
     background-color: #2c2c2c;
-    border: 1px solid #23fc5d;
-    color: #23fc5d;
+    border: 1px solid {accent};
+    color: {accent};
     font-weight: bold;
 }
 
@@ -301,10 +301,22 @@ QLabel#setting-title {
     font-weight: bold;
     font-size: 13px;
 }
+
+QLabel#profile-help {
+    color: #888;
+    font-size: 11px;
+    font-style: italic;
+    border-left: 2px solid {accent};
+    padding-left: 8px;
+    margin-bottom: 5px;
+}
+
+QFrame#drop-indicator {
+    background-color: {accent};
+}
 """
 
-
-LIGHT_THEME = """
+LIGHT_THEME_TEMPLATE = """
 QWidget {
     background-color: #ededed;
     color: #1f1f1f;
@@ -398,7 +410,7 @@ QCheckBox::indicator:hover {
 }
 QCheckBox::indicator:checked {
     background-color: #a0a0a0;
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
 }
 
 /* Switch Toggle Styling */
@@ -410,7 +422,7 @@ QCheckBox#switch::indicator {
 }
 QCheckBox#switch::indicator:checked {
     background-color: #a0a0a0;
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
 }
 QCheckBox#switch::indicator:unchecked {
     background-color: #d3d3d3;
@@ -485,7 +497,7 @@ QListWidget#nav-list::item {
 QListWidget#nav-list::item:selected {
     background-color: #c3c3c3;
     color: #000000;
-    border-left: 4px solid #23fc5d;
+    border-left: 4px solid {accent};
 }
 QToolTip {
     background-color: #e0e0e0;
@@ -546,7 +558,7 @@ QPushButton#segment-btn {
 }
 QPushButton#segment-btn:checked {
     background-color: #a0a0a0;
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
     color: #000000;
     font-weight: bold;
 }
@@ -598,6 +610,19 @@ QWidget#action-bar QPushButton {
     border: 1px solid #b0b0b0;
 }
 QWidget#action-bar QPushButton:hover {
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
+}
+
+QLabel#profile-help {
+    color: #666;
+    font-size: 11px;
+    font-style: italic;
+    border-left: 2px solid {accent};
+    padding-left: 8px;
+    margin-bottom: 5px;
+}
+
+QFrame#drop-indicator {
+    background-color: {accent};
 }
 """

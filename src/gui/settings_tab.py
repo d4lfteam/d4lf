@@ -12,8 +12,8 @@ if TYPE_CHECKING:
 
 from pydantic import BaseModel, ValidationError
 from pydantic_core import PydanticUndefined
-from PyQt6.QtCore import QCoreApplication, QMimeData, QSignalBlocker, Qt, QTimer
-from PyQt6.QtGui import QDrag, QKeySequence
+from PyQt6.QtCore import QCoreApplication, QSignalBlocker, Qt, QTimer
+from PyQt6.QtGui import QKeySequence
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -398,11 +398,21 @@ class ConfigTab(QWidget):
             parameter_value_widget = CheckmarkCheckBox()
             parameter_value_widget.setObjectName("switch")
             parameter_value_widget.setChecked(config_value)
-            parameter_value_widget.stateChanged.connect(
-                lambda: _validate_and_save_changes(
-                    model, section_config_header, config_key, str(parameter_value_widget.isChecked())
+
+            def on_bool_changed():
+                _validate_and_save_changes(
+                    model,
+                    section_config_header,
+                    config_key,
+                    str(parameter_value_widget.isChecked()),
+                    post_save_callback=(
+                        self.theme_changed_callback
+                        if config_key == "colorblind_mode" and not self._initializing
+                        else None
+                    ),
                 )
-            )
+
+            parameter_value_widget.stateChanged.connect(on_bool_changed)
         elif isinstance(config_value, int):
             parameter_value_widget = QSpinBox()
             parameter_value_widget.setRange(0, 10000)

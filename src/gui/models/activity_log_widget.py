@@ -66,16 +66,13 @@ class ActivityLogWidget(QWidget):
             "the top profile determines affix highlighting."
         )
         profile_help.setWordWrap(True)
-        profile_help.setStyleSheet(
-            "color: #888; font-size: 11px; font-style: italic; "
-            "border-left: 2px solid #23fc5d; padding-left: 8px; margin-bottom: 5px;"
-        )
+        profile_help.setObjectName("profile-help")
         profile_section.addWidget(profile_help)
 
         # Visual drop indicator for drag-and-drop
         self.drop_indicator = QFrame()
+        self.drop_indicator.setObjectName("drop-indicator")
         self.drop_indicator.setFixedHeight(2)
-        self.drop_indicator.setStyleSheet("background-color: #23fc5d;")
         self.drop_indicator.hide()
 
         self._checkboxes: dict[str, CheckmarkCheckBox] = {}
