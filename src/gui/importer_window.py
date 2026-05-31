@@ -35,6 +35,8 @@ THREADPOOL = QThreadPool()
 class ImporterWindow(QMainWindow):
     """Standalone window for Maxroll/D4Builds/Mobalytics importer."""
 
+    import_completed = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -245,6 +247,7 @@ class ImporterWindow(QMainWindow):
         self.generate_button.setEnabled(True)
         self.generate_button.setText("Generate")
         self.filename_input_box.clear()
+        self.import_completed.emit()
 
     def closeEvent(self, event):  # noqa: N802
         """Cleanup when window closes and save geometry."""
@@ -284,8 +287,12 @@ class _GuiLogHandler(logging.Handler):
 
     def _append_log(self, message):
         """Slot that runs in main thread - safe to update GUI."""
-        self.text_widget.append(message)
-        self.text_widget.ensureCursorVisible()
+        try:
+            self.text_widget.append(message)
+            self.text_widget.ensureCursorVisible()
+        except RuntimeError:
+            # Handle the case where the widget was deleted while a signal was in flight
+            pass
 
 
 class _LogSignals(QObject):

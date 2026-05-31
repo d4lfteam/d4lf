@@ -18,14 +18,19 @@ from PyQt6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
+    QSplitter,
     QVBoxLayout,
     QWidget,
 )
 
 from src.config.loader import IniConfigLoader
+from src.config.profile_models import ProfileModel
+from src.config.settings_models import IS_HOTKEY_KEY, LIVE_RELOAD_GROUP_KEY
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
+from src.item.filter import _UniqueKeyLoader
 
 if TYPE_CHECKING:
+    from collections.abc import Set as AbstractSet
     from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
@@ -36,6 +41,7 @@ class ActivityLogWidget(QWidget):
         super().__init__(parent)
         self._main_window = parent
         self._config = IniConfigLoader()
+        self._config.register_change_listener(self._on_config_changed)
         self.setAcceptDrops(True)
 
         self.main_layout = QVBoxLayout(self)
@@ -50,23 +56,21 @@ class ActivityLogWidget(QWidget):
         profile_section = QVBoxLayout()
         profile_section.setSpacing(10)
 
-        profile_hdr_layout = QHBoxLayout()
-        profile_hdr_layout.setSpacing(5)
         profile_hdr = QLabel("ACTIVE PROFILES")
         profile_hdr.setStyleSheet("font-weight: bold; color: #888; letter-spacing: 1px;")
+        profile_section.addWidget(profile_hdr)
 
-        info_icon = QLabel("ⓘ")
-        info_icon.setStyleSheet("color: #888; font-weight: bold; font-size: 14px;")
-        info_icon.setToolTip(
-            "Set which profiles you want to use for loot filtering. You can enable/disable with the checkboxes. "
-            "You can change the order by dragging up and down. If you're using vision mode with highlighting (default), "
-            "then the profile on top is the one that will have specific affixes highlighted."
+        # Inline help text instead of a tooltip for better discovery and clarity
+        profile_help = QLabel(
+            "Toggle profiles to enable them. Drag <b>⠿</b> to set priority; "
+            "the top profile determines affix highlighting."
         )
-
-        profile_hdr_layout.addWidget(profile_hdr)
-        profile_hdr_layout.addWidget(info_icon)
-        profile_hdr_layout.addStretch()
-        profile_section.addLayout(profile_hdr_layout)
+        profile_help.setWordWrap(True)
+        profile_help.setStyleSheet(
+            "color: #888; font-size: 11px; font-style: italic; "
+            "border-left: 2px solid #23fc5d; padding-left: 8px; margin-bottom: 5px;"
+        )
+        profile_section.addWidget(profile_help)
 
         # Visual drop indicator for drag-and-drop
         self.drop_indicator = QFrame()
@@ -122,14 +126,33 @@ class ActivityLogWidget(QWidget):
         hotkey_section.addStretch()
         content_hbox.addLayout(hotkey_section, stretch=4)
 
-        self.main_layout.addLayout(content_hbox, stretch=1)
+        # Use a splitter for the main dashboard content and the log viewer to allow drag-resizing
+        self.splitter = QSplitter(Qt.Orientation.Vertical)
+        self.splitter.setObjectName("dashboard-splitter")
 
-        # === BOTTOM: MINI LOG PREVIEW (Hidden by default or minimized) ===
+        # Container for the dashboard content (Profiles & Hotkeys)
+        top_content_container = QWidget()
+        top_content_container.setLayout(content_hbox)
+        self.splitter.addWidget(top_content_container)
+
+        # === BOTTOM: MINI LOG PREVIEW ===
         self.log_viewer = QPlainTextEdit()
         self.log_viewer.setReadOnly(True)
-        self.log_viewer.setMaximumHeight(100)
         self.log_viewer.setObjectName("log-viewer")
-        self.main_layout.addWidget(self.log_viewer)
+        self.splitter.addWidget(self.log_viewer)
+
+        # Set initial distribution (top takes priority, log starts at 100px)
+        self.splitter.setStretchFactor(0, 4)
+        self.splitter.setStretchFactor(1, 1)
+        self.splitter.setSizes([500, 100])
+
+        self.main_layout.addWidget(self.splitter, stretch=1)
+
+        # Hidden button that appears when the log viewer is fully collapsed
+        self.show_log_btn = QPushButton("Show Activity Log")
+        self.show_log_btn.setObjectName("secondary")
+        self.show_log_btn.setVisible(False)
+        self.main_layout.addWidget(self.show_log_btn)
 
         # === ACTION BAR ===
         action_layout = QHBoxLayout()
@@ -153,25 +176,36 @@ class ActivityLogWidget(QWidget):
         self.refresh_profiles()
 
     def _setup_hotkey_grid(self):
-        opts = self._config.advanced_options
-        keys = [
-            (opts.run_filter, "Run Filter"),
-            (opts.run_filter_drop, "Filter + Drop"),
-            (opts.run_filter_force_refresh, "Filter + Reset"),
-            (opts.run_vision_mode, "Vision Mode"),
-            (opts.force_refresh_only, "Reset Items"),
-            (opts.info_overlay, "Info Overlay"),
-            (opts.toggle_paragon_overlay, "Paragon Overlay"),
-            (opts.move_to_inv, "Chest → Inv"),
-            (opts.move_to_chest, "Inv → Chest"),
-            (self._config.char.inventory, "Open Inventory"),
-            (opts.exit_key, "Exit D4LF"),
-        ]
+        """Build the hotkey grid dynamically from AdvancedOptionsModel metadata."""
+        while self.hotkey_grid.count():
+            item = self.hotkey_grid.takeAt(0)
+            if widget := item.widget():
+                widget.deleteLater()
+            elif layout := item.layout():
+                while layout.count():
+                    child = layout.takeAt(0)
+                    if w := child.widget():
+                        w.deleteLater()
 
-        for i, (key, label) in enumerate(keys):
+        opts = self._config.advanced_options
+        schema = opts.model_json_schema()
+        properties = schema.get("properties", {})
+
+        hotkey_items = []
+        # Filter for keys that control the app (Advanced section) and are tagged as hotkeys
+        for key, field in opts.model_fields.items():
+            meta = field.json_schema_extra or {}
+            if meta.get(IS_HOTKEY_KEY) == "True" or meta.get(LIVE_RELOAD_GROUP_KEY) == "hotkeys":
+                val = getattr(opts, key)
+                prop_meta = properties.get(key, {})
+                label = prop_meta.get("title") or key.replace("_", " ").title()
+                hotkey_items.append((str(val), label))
+
+        for i, (key_val, label) in enumerate(hotkey_items):
             row, col = divmod(i, 2)
             item_layout = QHBoxLayout()
-            badge = QLabel(key.upper())
+            item_layout.setContentsMargins(0, 0, 0, 0)
+            badge = QLabel(key_val.upper())
             badge.setObjectName("key-badge")
             item_layout.addWidget(badge)
             item_layout.addWidget(QLabel(label))
@@ -218,9 +252,9 @@ class ActivityLogWidget(QWidget):
                 drag_handle.setCursor(Qt.CursorShape.SizeAllCursor)
 
                 cb = CheckmarkCheckBox(name.replace("_", " "))
-                cb.blockSignals(True)
+                cb.blockSignals(True)  # noqa: FBT003
                 cb.setChecked(name in active_list)
-                cb.blockSignals(False)
+                cb.blockSignals(False)  # noqa: FBT003
                 cb.stateChanged.connect(self._on_toggle)
 
                 header_hbox.addWidget(toggle_btn)
@@ -254,6 +288,12 @@ class ActivityLogWidget(QWidget):
                 self.profile_layout.addWidget(row_widget)
                 self._checkboxes[name] = cb
                 self._rows[name] = row_widget
+
+        if not self._rows:
+            empty_lbl = QLabel("No Profiles found. Please import a profile below.")
+            empty_lbl.setStyleSheet("color: #888; font-style: italic; padding: 20px;")
+            empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.profile_layout.addWidget(empty_lbl)
 
         if self.profile_search_input.text():
             self._filter_profiles(self.profile_search_input.text())
@@ -301,40 +341,45 @@ class ActivityLogWidget(QWidget):
                         LOGGER.exception(f"Failed to delete profile {name}")
 
     def _get_profile_summary(self, path: Path) -> str:
-        """Peeks into the YAML to build a summary tooltip."""
+        """Peeks into the YAML using ProfileModel to build a summary tooltip."""
         try:
             stat = path.stat()
             mtime = datetime.datetime.fromtimestamp(stat.st_mtime, tz=datetime.UTC).strftime("%Y-%m-%d %H:%M")
             with path.open(encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-            if not data or not isinstance(data, dict):
+                config = yaml.load(stream=f, Loader=_UniqueKeyLoader)
+            if not config or not isinstance(config, dict):
                 return f"Last Modified: {mtime}\n(Empty or invalid profile)"
+
+            # Convert to ProfileModel for robust, future-proof access
+            model = ProfileModel(name=path.stem, **config)
             summary = [f"Last Modified: {mtime}"]
-            if affixes := data.get("Affixes"):
+
+            if model.affixes:
                 types = set()
-                for item in affixes:
-                    if isinstance(item, dict):
-                        spec = next(iter(item.values()))
-                        if isinstance(spec, dict) and (it := spec.get("itemType")):
+                for filter_dict in model.affixes:
+                    for item_filter in filter_dict.root.values():
+                        if it := getattr(item_filter, "item_type", None):
                             if isinstance(it, list):
                                 types.update([str(t) for t in it])
                             else:
                                 types.add(str(it))
                 if types:
                     summary.append(f"📦 Items: {', '.join(sorted(types))}")
-                summary.append(f"🔍 Affix Filters: {len(affixes)}")
-            if aspects := data.get("AspectUpgrades"):
-                summary.append(f"✨ Aspect Upgrades: {len(aspects)}")
-            if uniques := data.get("GlobalUniques"):
-                summary.append(f"💎 Global Uniques: {len(uniques)}")
-            if data.get("Sigils"):
+                summary.append(f"🔍 Affix Filters: {len(model.affixes)}")
+
+            if model.aspect_upgrades:
+                summary.append(f"✨ Aspect Upgrades: {len(model.aspect_upgrades)}")
+            if model.global_uniques:
+                summary.append(f"💎 Global Uniques: {len(model.global_uniques)}")
+            if model.sigils:
                 summary.append("📜 Sigils: Included")
-            if data.get("Tributes"):
+            if model.tributes:
                 summary.append("🏆 Tributes: Included")
-            if data.get("Paragon"):
+            if model.paragon:
                 summary.append("🔱 Paragon Overlay: Data Found")
+
             return "\n".join(summary)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return f"Path: {path}\n(Could not parse profile details)"
 
     def _start_drag(self, event, row_widget: QWidget, handle: QWidget):
@@ -358,11 +403,11 @@ class ActivityLogWidget(QWidget):
         row_widget.setGraphicsEffect(None)
         self.drop_indicator.hide()
 
-    def dragEnterEvent(self, event):
+    def dragEnterEvent(self, event):  # noqa: N802
         if event.mimeData().hasText():
             event.acceptProposedAction()
 
-    def dragMoveEvent(self, event):
+    def dragMoveEvent(self, event):  # noqa: N802
         source_id = event.mimeData().text()
 
         # Auto-scroll the list if dragging near the top or bottom edges
@@ -399,7 +444,7 @@ class ActivityLogWidget(QWidget):
                 break
         event.acceptProposedAction()
 
-    def dropEvent(self, event):
+    def dropEvent(self, event):  # noqa: N802
         self._on_toggle()
         self._update_zebra_striping()
         event.acceptProposedAction()
@@ -423,17 +468,17 @@ class ActivityLogWidget(QWidget):
     def _select_all(self):
         active = []
         for name, cb in self._checkboxes.items():
-            cb.blockSignals(True)
+            cb.blockSignals(True)  # noqa: FBT003
             cb.setChecked(True)
-            cb.blockSignals(False)
+            cb.blockSignals(False)  # noqa: FBT003
             active.append(name)
         self._save_active_list(active)
 
     def _deselect_all(self):
         for cb in self._checkboxes.values():
-            cb.blockSignals(True)
+            cb.blockSignals(True)  # noqa: FBT003
             cb.setChecked(False)
-            cb.blockSignals(False)
+            cb.blockSignals(False)  # noqa: FBT003
         self._save_active_list([])
 
     def _on_toggle(self):
@@ -450,6 +495,23 @@ class ActivityLogWidget(QWidget):
         self._config.save_value("general", "profiles", ",".join(active))
 
     def _connect_signals(self):
+        self.splitter.splitterMoved.connect(self._on_splitter_moved)
+        self.show_log_btn.clicked.connect(self._on_show_log_clicked)
         if self._main_window:
             self.import_btn.clicked.connect(self._main_window.open_import_dialog)
             self.settings_btn.clicked.connect(self._main_window.open_settings_dialog)
+
+    def _on_config_changed(self, changed_keys: AbstractSet[str]):
+        """Refresh the hotkey grid if any relevant settings changed."""
+        if any(k.startswith("advanced_options") for k in changed_keys):
+            self._setup_hotkey_grid()
+
+    def _on_splitter_moved(self, pos: int, index: int):
+        """Show the 'Show Logs' button if the log viewer height becomes zero."""
+        self.show_log_btn.setVisible(self.splitter.sizes()[1] == 0)
+
+    def _on_show_log_clicked(self):
+        """Expand the log viewer back to a visible size."""
+        total_height = sum(self.splitter.sizes())
+        self.splitter.setSizes([total_height - 100, 100])
+        self.show_log_btn.hide()

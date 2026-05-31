@@ -351,7 +351,8 @@ class UnifiedMainWindow(QMainWindow):
                 self.activity_handler.handle(record)
 
     def open_import_dialog(self):
-        self._show_singleton_modal("importer", ImporterWindow)
+        win = self._show_singleton_modal("importer", ImporterWindow)
+        win.import_completed.connect(self.activity_tab.refresh_profiles, Qt.ConnectionType.UniqueConnection)
 
     def open_settings_dialog(self):
         self._show_singleton_modal("config", ConfigWindow, theme_changed_callback=self.apply_theme)
@@ -372,7 +373,10 @@ class UnifiedMainWindow(QMainWindow):
         if maximized:
             self.showMaximized()
         self.tabs.setCurrentIndex(settings.value("selected_tab", 0, int))
-        self.activity_tab.minimize_to_tray_cb.setChecked(settings.value("minimize_to_tray", True, type=bool))
+        # Using False as a positional argument for defaultValue is required by the QSettings API
+        self.activity_tab.minimize_to_tray_cb.setChecked(
+            settings.value("minimize_to_tray", False, type=bool)  # noqa: FBT003
+        )
 
     def save_geometry(self):
         settings = QSettings("d4lf", "mainwindow")
@@ -413,7 +417,7 @@ class UnifiedMainWindow(QMainWindow):
         self.showNormal()
         self.activateWindow()
 
-    def changeEvent(self, event: QEvent):
+    def changeEvent(self, event: QEvent):  # noqa: N802
         if (
             event.type() == QEvent.Type.WindowStateChange
             and self.isMinimized()
@@ -422,7 +426,7 @@ class UnifiedMainWindow(QMainWindow):
             self.hide()
         super().changeEvent(event)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event):  # noqa: N802
         for win in list(self._child_windows.values()):
             with suppress(Exception):
                 win.close()
@@ -447,6 +451,6 @@ class UnifiedMainWindow(QMainWindow):
         self.console_output.appendPlainText("")
 
     def apply_theme(self):
-        theme_name = getattr(self._config.general, "theme", "dark")
+        theme_name = IniConfigLoader().general.theme
         stylesheet = DARK_THEME if theme_name == "dark" else LIGHT_THEME
         QApplication.instance().setStyleSheet(stylesheet)
