@@ -134,9 +134,7 @@ class SpellcraftRuleEditor(QWidget):
         self.config.min_greater_affix_count = self.min_greater.value()
 
     def update_rarities(self):
-        self.config.rarities = [
-            rarity for rarity, checkbox in self.rarity_checkboxes.items() if checkbox.isChecked()
-        ]
+        self.config.rarities = [rarity for rarity, checkbox in self.rarity_checkboxes.items() if checkbox.isChecked()]
 
 
 class SpellcraftTab(QWidget):
@@ -223,9 +221,7 @@ class SpellcraftTab(QWidget):
         return SpellcraftFilterModel(
             affix_pool=[
                 AffixFilterCountModel(
-                    count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())))],
-                    min_count=1,
-                    max_count=3,
+                    count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())))], min_count=1, max_count=3
                 )
             ]
         )
