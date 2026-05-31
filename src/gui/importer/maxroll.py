@@ -17,6 +17,7 @@ from src.gui.importer.gui_common import (
     add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
+    create_spellcraft_filter,
     fix_offhand_type,
     fix_weapon_type,
     get_with_retry,
@@ -90,6 +91,8 @@ def import_maxroll(config: ImportConfig):
     if variant_name:
         build_name += f"_{variant_name}"
     finished_filters = []
+    charm_filters = []
+    seal_filters = []
     aspect_upgrade_filters = []
     mythic_names = []
     for item_id in active_profile["items"].values():
@@ -109,9 +112,24 @@ def import_maxroll(config: ImportConfig):
             continue
 
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
-            LOGGER.warning(
-                f"Seals and Charms are not currently supported, skipping {resolved_item.get('name', '(could not determine item name)')}."
+            spellcraft_affixes = _find_item_affixes(
+                mapping_data=mapping_data,
+                item_affixes=resolved_item["explicits"],
+                item_type=item_type,
+                import_greater_affixes=config.import_greater_affixes,
             )
+            if not spellcraft_affixes:
+                LOGGER.warning(
+                    f"Skipping {resolved_item.get('name', '(could not determine item name)')} because it had no supported affixes."
+                )
+                continue
+            spellcraft_filters = charm_filters if item_type == ItemType.Charm else seal_filters
+            filter_name = _unique_filter_name(item_type.name, spellcraft_filters)
+            spellcraft_filters.append({
+                filter_name: create_spellcraft_filter(
+                    affixes=spellcraft_affixes, rarity=rarity, require_gas=config.require_greater_affixes
+                )
+            })
             continue
 
         item_filter.item_type = [item_type]
@@ -172,7 +190,12 @@ def import_maxroll(config: ImportConfig):
 
     # Place all mythics in a single filter
     add_mythics_to_filters(mythic_names, finished_filters)
-    profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
+    profile = ProfileModel(
+        name="imported profile",
+        Affixes=sort_profile_filters(finished_filters),
+        Charms=sort_profile_filters(charm_filters),
+        Seals=sort_profile_filters(seal_filters),
+    )
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.aspect_upgrades = aspect_upgrade_filters
 
@@ -304,6 +327,15 @@ def _find_item_affixes(
                 LOGGER.error(f"Couldn't match {affix_id=}")
             break
     return res
+
+
+def _unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
+    filter_name = filter_name_template
+    i = 2
+    while any(filter_name == next(iter(existing_filter)) for existing_filter in filters):
+        filter_name = f"{filter_name_template}{i}"
+        i += 1
+    return filter_name
 
 
 def _find_skill_rank_affix_description(mapping_data: dict, affix_key: str, attribute: dict) -> str:

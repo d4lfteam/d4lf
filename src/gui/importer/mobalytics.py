@@ -24,6 +24,7 @@ from src.gui.importer.gui_common import (
     add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
+    create_spellcraft_filter,
     fix_offhand_type,
     fix_weapon_type,
     match_to_enum,
@@ -128,6 +129,8 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         LOGGER.error(msg := "No items found")
         raise MobalyticsError(msg)
     finished_filters = []
+    charm_filters = []
+    seal_filters = []
     mythic_names = []
     aspect_upgrade_filters = []
     for item in items:
@@ -135,7 +138,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         entity_type = jsonpath.findall(".gameEntity.type", item)[0]
         mythic_result = jsonpath.findall(".gameEntity.entity.mythic", item)
         is_mythic = mythic_result[0] if mythic_result else False
-        if entity_type not in ["aspects", "uniqueItems"]:
+        if entity_type not in ["aspects", "uniqueItems", "charms", "seals", "items"]:
             continue
         if not (item_name := str(jsonpath.findall(".gameEntity.entity.title", item)[0])):
             LOGGER.error(msg := "No item name found")
@@ -210,6 +213,19 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         affixes = _convert_raw_to_affixes(raw_affixes, config.import_greater_affixes)
         inherents = _convert_raw_to_affixes(raw_inherents)
 
+        if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
+            if not affixes:
+                LOGGER.warning(f"Skipping {item_name} because it had no supported affixes.")
+                continue
+            spellcraft_filters = charm_filters if item_type == ItemType.Charm else seal_filters
+            filter_name = _unique_filter_name(item_type.name, spellcraft_filters)
+            spellcraft_filters.append({
+                filter_name: create_spellcraft_filter(
+                    affixes=affixes, rarity=None, require_gas=config.require_greater_affixes
+                )
+            })
+            continue
+
         if not is_mythic:
             item_filter.affix_pool = [
                 AffixFilterCountModel(
@@ -224,16 +240,17 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
                 AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
             ]
         filter_name_template = item_filter.item_type[0].name if item_type else slot_type.replace(" ", "")
-        filter_name = filter_name_template
-        i = 2
-        while any(filter_name == next(iter(x)) for x in finished_filters):
-            filter_name = f"{filter_name_template}{i}"
-            i += 1
+        filter_name = _unique_filter_name(filter_name_template, finished_filters)
         finished_filters.append({filter_name: item_filter})
 
     # Place all mythics in a single filter
     add_mythics_to_filters(mythic_names, finished_filters)
-    profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
+    profile = ProfileModel(
+        name="imported profile",
+        Affixes=sort_profile_filters(finished_filters),
+        Charms=sort_profile_filters(charm_filters),
+        Seals=sort_profile_filters(seal_filters),
+    )
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.aspect_upgrades = aspect_upgrade_filters
 
@@ -351,6 +368,15 @@ def _convert_raw_to_affixes(raw_stats: list[dict], import_greater_affixes=False)
                 affix_obj.type = AffixType.greater
             result.append(affix_obj)
     return result
+
+
+def _unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
+    filter_name = filter_name_template
+    i = 2
+    while any(filter_name == next(iter(existing_filter)) for existing_filter in filters):
+        filter_name = f"{filter_name_template}{i}"
+        i += 1
+    return filter_name
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
+    DynamicSpellcraftFilterModel,
     GlobalUniqueModel,
     ItemFilterModel,
     ItemRarity,
@@ -695,8 +696,8 @@ class TestProfileModel:
             GlobalUniques=[GlobalUniqueModel(minPower=800)],
             Sigils={"blacklist": [], "whitelist": [], "priority": "blacklist"},
             Tributes=[],
-            Seals=["legendary"],
-            Charms=["rare"],
+            Seals=[{"Cooldown": {"affixPool": [{"count": ["cooldown_reduction"]}], "rarities": ["legendary"]}}],
+            Charms=[{"Life": {"affixPool": [{"count": ["maximum_life"]}], "rarities": ["rare"]}}],
             Paragon=None,
         )
         assert model.name == "test_profile"
@@ -704,8 +705,8 @@ class TestProfileModel:
         assert model.aspect_upgrades == []
         assert len(model.global_uniques) == 1
         assert model.global_uniques[0].min_power == 800
-        assert model.seals[0].rarities == [ItemRarity.Legendary]
-        assert model.charms[0].rarities == [ItemRarity.Rare]
+        assert model.seals[0].root["Cooldown"].rarities == [ItemRarity.Legendary]
+        assert model.charms[0].root["Life"].rarities == [ItemRarity.Rare]
 
     def test_snake_case_input(self) -> None:
         """Test loading with snake_case (new format)."""
@@ -716,8 +717,8 @@ class TestProfileModel:
             global_uniques=[GlobalUniqueModel(min_power=900)],
             sigils={"blacklist": [], "whitelist": [], "priority": "blacklist"},
             tributes=[],
-            seals=["faint seal"],
-            charms=["faint charm"],
+            seals=[{"Cooldown": {"affix_pool": [{"count": ["cooldown_reduction"]}]}}],
+            charms=[{"Life": {"affix_pool": [{"count": ["maximum_life"]}]}}],
             paragon=None,
         )
         assert model.name == "test_profile"
@@ -725,8 +726,9 @@ class TestProfileModel:
         assert model.aspect_upgrades == []
         assert len(model.global_uniques) == 1
         assert model.global_uniques[0].min_power == 900
-        assert model.seals[0].name == "faint_seal"
-        assert model.charms[0].name == "faint_charm"
+        assert isinstance(model.seals[0], DynamicSpellcraftFilterModel)
+        assert model.seals[0].root["Cooldown"].affix_pool[0].count[0].name == "cooldown_reduction"
+        assert model.charms[0].root["Life"].affix_pool[0].count[0].name == "maximum_life"
 
     def test_mixed_naming(self) -> None:
         """Test mixing both naming conventions."""

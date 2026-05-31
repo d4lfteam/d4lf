@@ -16,8 +16,8 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     DynamicItemFilterModel,
+    DynamicSpellcraftFilterModel,
     GlobalUniqueModel,
-    NameRarityFilterModel,
     ProfileModel,
     SigilConditionModel,
     SigilFilterModel,
@@ -239,8 +239,12 @@ class Filter:
             res.matched.append(MatchedFilter(f"{profile_name}"))
         return res
 
-    def _check_name_rarity_filters(
-        self, item: Item, item_filters: dict[str, list[NameRarityFilterModel]], section_name: str, mythic_name: str
+    def _check_spellcraft_filters(
+        self,
+        item: Item,
+        item_filters: dict[str, list[DynamicSpellcraftFilterModel]],
+        section_name: str,
+        mythic_name: str,
     ) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
         if not item_filters.items():
@@ -253,17 +257,35 @@ class Filter:
             res.keep = True
             res.matched.append(MatchedFilter(mythic_name))
 
+        non_tempered_affixes = [affix for affix in item.affixes if affix.type != AffixType.tempered]
         for profile_name, profile_filter in item_filters.items():
             for filter_item in profile_filter:
-                if filter_item.name and not (item.name or "").startswith(filter_item.name):
+                filter_name = next(iter(filter_item.root.keys()))
+                filter_spec = filter_item.root[filter_name]
+
+                if filter_spec.rarities and item.rarity not in filter_spec.rarities:
                     continue
 
-                if filter_item.rarities and item.rarity not in filter_item.rarities:
+                if not self._match_greater_affix_count(
+                    expected_min_count=filter_spec.min_greater_affix_count, item_affixes=non_tempered_affixes
+                ):
                     continue
 
-                LOGGER.info(f"{item.original_name} -- Matched {profile_name}.{section_name}")
+                matched_affixes = []
+                if filter_spec.affix_pool:
+                    matched_affixes = self._match_affixes_count(
+                        expected_affixes=filter_spec.affix_pool,
+                        item_affixes=non_tempered_affixes,
+                        min_greater_affix_count=filter_spec.min_greater_affix_count,
+                    )
+                    if not matched_affixes:
+                        continue
+
+                LOGGER.info(
+                    f"{item.original_name} -- Matched {profile_name}.{section_name}.{filter_name}: {[affix.name for affix in matched_affixes]}"
+                )
                 res.keep = True
-                res.matched.append(MatchedFilter(f"{profile_name}"))
+                res.matched.append(MatchedFilter(f"{profile_name}.{section_name}.{filter_name}", matched_affixes))
         return res
 
     def _check_tribute(self, item: Item) -> FilterResult:
@@ -292,12 +314,12 @@ class Filter:
         return res
 
     def _check_seal(self, item: Item) -> FilterResult:
-        return self._check_name_rarity_filters(
+        return self._check_spellcraft_filters(
             item=item, item_filters=self.seal_filters, section_name="Seals", mythic_name="Mythic Seal"
         )
 
     def _check_charm(self, item: Item) -> FilterResult:
-        return self._check_name_rarity_filters(
+        return self._check_spellcraft_filters(
             item=item, item_filters=self.charm_filters, section_name="Charms", mythic_name="Mythic Charm"
         )
 
@@ -519,8 +541,8 @@ class Filter:
         self.affix_filters: dict[str, list[DynamicItemFilterModel]] = {}
         self.aspect_upgrade_filters: dict[str, list[str]] = {}
         self.paragon_filters: dict[str, object] = {}
-        self.seal_filters: dict[str, list[NameRarityFilterModel]] = {}
-        self.charm_filters: dict[str, list[NameRarityFilterModel]] = {}
+        self.seal_filters: dict[str, list[DynamicSpellcraftFilterModel]] = {}
+        self.charm_filters: dict[str, list[DynamicSpellcraftFilterModel]] = {}
         self.sigil_filters: dict[str, SigilFilterModel] = {}
         self.tribute_filters: dict[str, list[TributeFilterModel]] = {}
         self.global_unique_filters: dict[str, list[GlobalUniqueModel]] = {}

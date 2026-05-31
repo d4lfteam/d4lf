@@ -18,8 +18,16 @@ from seleniumbase import Driver
 
 from src import __version__
 from src.config.loader import IniConfigLoader
-from src.config.profile_models import AspectUniqueFilterModel, ItemFilterModel, ProfileModel
+from src.config.profile_models import (
+    AffixFilterCountModel,
+    AffixFilterModel,
+    AspectUniqueFilterModel,
+    ItemFilterModel,
+    ProfileModel,
+    SpellcraftFilterModel,
+)
 from src.config.settings_models import BrowserType
+from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
 
 if TYPE_CHECKING:
@@ -186,6 +194,23 @@ def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool)
         item_filter.min_greater_affix_count = num_greater
     else:
         item_filter.min_greater_affix_count = 0
+
+
+def create_spellcraft_filter(affixes: list[Affix], rarity, require_gas: bool) -> SpellcraftFilterModel:
+    spellcraft_filter = SpellcraftFilterModel(
+        affix_pool=[
+            AffixFilterCountModel(
+                count=[
+                    AffixFilterModel(name=affix.name, want_greater=affix.type == AffixType.greater) for affix in affixes
+                ],
+                min_count=min(3, len(affixes)),
+            )
+        ],
+        rarities=[rarity] if rarity is not None else [],
+    )
+    if require_gas:
+        spellcraft_filter.min_greater_affix_count = len([affix for affix in affixes if affix.type == AffixType.greater])
+    return spellcraft_filter
 
 
 def add_mythics_to_filters(mythic_names, finished_filters):

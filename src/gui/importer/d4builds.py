@@ -21,6 +21,7 @@ from src.gui.importer.gui_common import (
     add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
+    create_spellcraft_filter,
     fix_offhand_type,
     fix_weapon_type,
     get_class_name,
@@ -95,6 +96,8 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         raise D4BuildsError(msg)
     slot_to_unique_name_map = _get_item_slots(data=data)
     finished_filters = []
+    charm_filters = []
+    seal_filters = []
     mythic_names = []
     aspect_upgrade_filters = _get_legendary_aspects(data=data)
     for item in items[0]:
@@ -177,6 +180,16 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         else:
             item_filter.item_type = [item_type]
 
+        if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
+            spellcraft_filters = charm_filters if item_type == ItemType.Charm else seal_filters
+            filter_name = _unique_filter_name(item_type.name, spellcraft_filters)
+            spellcraft_filters.append({
+                filter_name: create_spellcraft_filter(
+                    affixes=affixes, rarity=rarity, require_gas=config.require_greater_affixes
+                )
+            })
+            continue
+
         # We don't bother importing affixes for mythics
         if rarity != ItemRarity.Mythic:
             item_filter.affix_pool = [
@@ -192,15 +205,16 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 ]
         item_filter.min_power = 100
         filter_name_template = item_filter.item_type[0].name if item_type else slot.replace(" ", "")
-        filter_name = filter_name_template
-        i = 2
-        while any(filter_name == next(iter(x)) for x in finished_filters):
-            filter_name = f"{filter_name_template}{i}"
-            i += 1
+        filter_name = _unique_filter_name(filter_name_template, finished_filters)
         finished_filters.append({filter_name: item_filter})
     # Place all mythics in a single filter
     add_mythics_to_filters(mythic_names, finished_filters)
-    profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
+    profile = ProfileModel(
+        name="imported profile",
+        Affixes=sort_profile_filters(finished_filters),
+        Charms=sort_profile_filters(charm_filters),
+        Seals=sort_profile_filters(seal_filters),
+    )
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.aspect_upgrades = aspect_upgrade_filters
 
@@ -322,6 +336,15 @@ def _get_affix_name(stat: lxml.html.HtmlElement) -> str:
         if affix_name:
             return affix_name
     return ""
+
+
+def _unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
+    filter_name = filter_name_template
+    i = 2
+    while any(filter_name == next(iter(existing_filter)) for existing_filter in filters):
+        filter_name = f"{filter_name_template}{i}"
+        i += 1
+    return filter_name
 
 
 if __name__ == "__main__":

@@ -228,6 +228,29 @@ class ItemFilterModel(BaseModel):
 DynamicItemFilterModel = RootModel[dict[str, ItemFilterModel]]
 
 
+class SpellcraftFilterModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    affix_pool: list[AffixFilterCountModel] = Field(default=[], alias="affixPool")
+    min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
+    rarities: list[ItemRarity] = []
+
+    @field_validator("min_greater_affix_count")
+    @classmethod
+    def min_greater_affix_in_range(cls, v: int) -> int:
+        if not 0 <= v <= 4:
+            msg = "must be in [0, 4]"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("rarities", mode="before")
+    @classmethod
+    def parse_rarities(cls, data: str | list[str]) -> list[str]:
+        return _parse_item_type_or_rarities(data)
+
+
+DynamicSpellcraftFilterModel = RootModel[dict[str, SpellcraftFilterModel]]
+
+
 class SigilPriority(enum.StrEnum):
     blacklist = enum.auto()
     whitelist = enum.auto()
@@ -349,10 +372,10 @@ class ProfileModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     affixes: list[DynamicItemFilterModel] = Field(default=[], alias="Affixes")
     aspect_upgrades: list[str] = Field(default=[], alias="AspectUpgrades")
-    charms: list[NameRarityFilterModel] = Field(default=[], alias="Charms")
+    charms: list[DynamicSpellcraftFilterModel] = Field(default=[], alias="Charms")
     global_uniques: list[GlobalUniqueModel] = Field(default=[], alias="GlobalUniques")
     name: str
-    seals: list[NameRarityFilterModel] = Field(default=[], alias="Seals")
+    seals: list[DynamicSpellcraftFilterModel] = Field(default=[], alias="Seals")
     sigils: SigilFilterModel = Field(
         default=SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist), alias="Sigils"
     )

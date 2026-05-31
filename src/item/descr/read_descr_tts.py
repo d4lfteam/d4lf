@@ -24,7 +24,7 @@ from src.item.data.item_type import (
 from src.item.data.rarity import ItemRarity
 from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.item.descr import keep_letters_and_spaces
-from src.item.descr.text import find_number
+from src.item.descr.text import clean_str, find_number
 from src.item.descr.texture import find_affix_bullets, find_aspect_bullet, find_seperator_short, find_seperators_long
 from src.item.models import Item
 from src.scripts import correct_name
@@ -55,6 +55,17 @@ _FOR_SECONDS_RE = re.compile(r"for (?P<forsecondsvalue>\d+(?:\.\d+)?) Seconds")
 _REPLACE_COMPARE_RE = re.compile(r"\(.*\)")
 
 _AFFIX_REPLACEMENTS = ["%", "+", ",", "[+]", "[x]", "per 5 Seconds"]
+_AFFIX_STOP_MARKERS = (
+    "empty socket",
+    "requires level",
+    "properties lost when equipped",
+    "rampage:",
+    "feast:",
+    "hunger:",
+    "right mouse button",
+    "left mouse button",
+    "action button",
+)
 LOGGER = logging.getLogger(__name__)
 
 
@@ -70,7 +81,10 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
     elif item.rarity == ItemRarity.Common:
         affixes_num = 0
 
-    if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
+    if is_seal_or_charm(item.item_type):
+        return inherent_num, _get_spellcraft_affix_count(tts_section, start)
+
+    if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and not is_seal_or_charm(item.item_type):
         # Uniques can have variable amounts of inherents.
         unique_inherents = Dataloader().aspect_unique_dict.get(item.name)["num_inherents"]
         if unique_inherents is not None:
@@ -78,9 +92,11 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
 
     # Rares have either 3 or 4 affixes so we have to do special handling to figure out where exactly the affixes end.
     # This will also grab up slotted gems but we really don't have much choice
-    if item.rarity in [ItemRarity.Magic, ItemRarity.Rare] and not any(
-        tts_section[start + inherent_num + affixes_num].lower().startswith(x)
-        for x in ["empty socket", "requires level", "properties lost when equipped", "rampage:", "feast:", "hunger:"]
+    next_line_index = start + inherent_num + affixes_num
+    if (
+        item.rarity in [ItemRarity.Magic, ItemRarity.Rare]
+        and next_line_index < len(tts_section)
+        and not any(tts_section[next_line_index].lower().startswith(x) for x in _AFFIX_STOP_MARKERS)
     ):
         affixes_num = affixes_num + 1
     elif item.rarity == ItemRarity.Legendary and tts_section[start + inherent_num + affixes_num - 1].lower().startswith(
@@ -93,6 +109,21 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
         affixes_num = affixes_num + 1
 
     return inherent_num, affixes_num
+
+
+def _get_spellcraft_affix_count(tts_section: list[str], start: int) -> int:
+    affixes_num = 0
+    for line in tts_section[start:]:
+        if line.lower().startswith(_AFFIX_STOP_MARKERS):
+            break
+        if not _is_spellcraft_affix_line(line):
+            break
+        affixes_num += 1
+    return affixes_num
+
+
+def _is_spellcraft_affix_line(line: str) -> bool:
+    return clean_str(line) in Dataloader().affix_dict.values()
 
 
 def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
@@ -313,6 +344,8 @@ def _get_affix_starting_location_from_tts_section(tts_section: list[str], item: 
         start = _get_index_of_armor_dps_or_all_resist(tts_section, "armor") + 2
     elif is_armor(item.item_type):
         start = _get_index_of_armor_dps_or_all_resist(tts_section, "armor")
+    elif is_seal_or_charm(item.item_type):
+        start = 1
     start += 1
 
     return start
@@ -332,7 +365,9 @@ def _get_affixes_from_tts_section(tts_section: list[str], start: int, length: in
 
 def _get_aspect_from_tts_section(tts_section: list[str], item: Item, start: int, num_affixes: int):
     # Grab the aspect as well in this case
-    if item.rarity in [ItemRarity.Mythic, ItemRarity.Unique, ItemRarity.Legendary]:
+    if item.rarity in [ItemRarity.Mythic, ItemRarity.Unique, ItemRarity.Legendary] and not is_seal_or_charm(
+        item.item_type
+    ):
         aspect_index = start + num_affixes
         return tts_section[aspect_index]
 
@@ -429,6 +464,8 @@ def _get_item_rarity(data: str) -> ItemRarity | None:
 
 
 def _get_item_type(data: str):
+    if data.endswith(f" {ItemType.Charm.value}"):
+        return ItemType.Charm
     return next((it for it in ItemType if it.value == data.lower()), None)
 
 
@@ -449,10 +486,11 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
         return None
     if (item := _create_base_item_from_tts(tts_section)) is None:
         return None
+    if is_seal_or_charm(item.item_type):
+        return _add_affixes_from_tts(tts_section, item)
     if any([
         is_consumable(item.item_type),
         is_non_sigil_mapping(item.item_type),
-        is_seal_or_charm(item.item_type),
         is_sigil(item.item_type),
         is_socketable(item.item_type),
         item.item_type in [ItemType.Material, ItemType.Tribute],
@@ -500,10 +538,11 @@ def read_descr() -> Item | None:
     if item.item_type == ItemType.Cosmetic:
         item.cosmetic_upgrade = True
         return item
+    if is_seal_or_charm(item.item_type):
+        return _add_affixes_from_tts(tts_section, item)
     if any([
         is_consumable(item.item_type),
         is_non_sigil_mapping(item.item_type),
-        is_seal_or_charm(item.item_type),
         is_socketable(item.item_type),
         item.item_type in [ItemType.Material, ItemType.Tribute, ItemType.Cache, ItemType.LairBossKey],
         item.seasonal_attribute == SeasonalAttribute.sanctified,
