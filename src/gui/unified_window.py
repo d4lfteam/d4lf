@@ -216,11 +216,13 @@ class UnifiedMainWindow(QMainWindow):
             root_logger.removeHandler(h)
 
         self.console_handler = QtConsoleHandler()
+        self.console_handler.name = "QT_CONSOLE"
         self.console_handler.setFormatter(create_formatter(colored=True))
         self.console_handler.setLevel(self._config.advanced_options.log_lvl.value.upper())
         self.console_handler.addFilter(ThreadNameFilter())
 
         self.activity_handler = QtActivityHandler()
+        self.activity_handler.name = "QT_ACTIVITY"
         self.activity_handler.setFormatter(logging.Formatter("%(message)s"))
         self.activity_handler.setLevel(logging.INFO)
 
