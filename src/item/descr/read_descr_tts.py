@@ -130,7 +130,10 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
     starting_index = _get_affix_starting_location_from_tts_section(tts_section, item)
     inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
     affixes = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
-    item.set_name = _get_charm_set_from_tts_section(tts_section, item, starting_index, len(affixes))
+    if item.item_type == ItemType.Charm:
+        item.set_name = _get_set_from_tts_section(tts_section, starting_index, len(affixes))
+    elif item.item_type == ItemType.HoradricSeal:
+        item.boosted_set_name = _get_set_from_tts_section(tts_section, starting_index, len(affixes))
     aspect_text = _get_aspect_from_tts_section(tts_section, item, starting_index, len(affixes))
     for i, affix_text in enumerate(affixes):
         if i < inherent_num:
@@ -375,15 +378,17 @@ def _get_aspect_from_tts_section(tts_section: list[str], item: Item, start: int,
     return None
 
 
-def _get_charm_set_from_tts_section(tts_section: list[str], item: Item, start: int, num_affixes: int) -> str | None:
-    if item.item_type != ItemType.Charm:
-        return None
-
+def _get_set_from_tts_section(tts_section: list[str], start: int, num_affixes: int) -> str | None:
     for line in tts_section[start + num_affixes :]:
-        set_name = correct_name(line.split("(", maxsplit=1)[0])
+        set_name = _get_set_name_from_line(line)
         if set_name in Dataloader().set_list:
             return set_name
     return None
+
+
+def _get_set_name_from_line(line: str) -> str | None:
+    normalized_line = correct_name(line)
+    return next((set_name for set_name in Dataloader().set_list if set_name in normalized_line), None)
 
 
 def _get_affix_from_text(text: str) -> Affix:

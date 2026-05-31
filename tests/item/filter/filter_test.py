@@ -219,6 +219,39 @@ def test_seal_filter_matches_slot_count(mocker: MockerFixture):
     assert match.profile == "spellcraft.Seals.wanted"
 
 
+def test_seal_filter_matches_boosted_set(mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    item = Item(
+        item_type=ItemType.HoradricSeal,
+        name="unimportant_seal_name",
+        rarity=ItemRarity.Legendary,
+        boosted_set_name="berserkers_crucible",
+        affixes=[Affix(name="maximum_fury")],
+    )
+    seal_filter = SealFilterModel(boostedSet="Berserker's Crucible", affixPool=[{"count": ["maximum_fury"]}])
+    test_filter.seal_filters = {"spellcraft": [DynamicSealFilterModel(root={"wanted": seal_filter})]}
+
+    match = test_filter.should_keep(item).matched[0]
+
+    assert match.profile == "spellcraft.Seals.wanted"
+    assert match.matched_affixes == item.affixes
+
+
+def test_seal_filter_rejects_wrong_boosted_set(mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    item = Item(
+        item_type=ItemType.HoradricSeal,
+        name="unimportant_seal_name",
+        rarity=ItemRarity.Legendary,
+        boosted_set_name="berserkers_crucible",
+        affixes=[Affix(name="maximum_fury")],
+    )
+    seal_filter = SealFilterModel(boostedSet="cathans_dauntless_faith", affixPool=[{"count": ["maximum_fury"]}])
+    test_filter.seal_filters = {"spellcraft": [DynamicSealFilterModel(root={"wrong": seal_filter})]}
+
+    assert test_filter.should_keep(item).matched == []
+
+
 def test_seal_filter_rejects_wrong_slot_count(mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
     item = Item(

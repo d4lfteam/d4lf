@@ -637,6 +637,15 @@ class TestCharmFilterModel:
 
 
 class TestSealFilterModel:
+    def test_boosted_set_alias_is_validated_and_normalized(self) -> None:
+        model = SealFilterModel(boostedSet="Berserker's Crucible")
+
+        assert model.boosted_set == "berserkers_crucible"
+
+    def test_invalid_boosted_set_fails(self) -> None:
+        with pytest.raises(ValidationError, match="boostedSet invalid_set does not exist"):
+            SealFilterModel(boostedSet="invalid set")
+
     def test_slot_count_alias(self) -> None:
         model = SealFilterModel(slotCount=3)
 

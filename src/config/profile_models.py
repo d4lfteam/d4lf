@@ -40,6 +40,20 @@ def _parse_name_or_rarities(data: str | list[str] | dict[str, str | list[str]]) 
     raise ValueError(msg)
 
 
+def _normalize_existing_set_name(name: str | None, field_name: str) -> str | None:
+    if not name:
+        return None
+
+    # This on module level would be a circular import, so we do it lazy for now
+    from src.dataloader import Dataloader  # noqa: PLC0415
+
+    name = correct_name(name)
+    if name not in Dataloader().set_list:
+        msg = f"{field_name} {name} does not exist"
+        raise ValueError(msg)
+    return name
+
+
 class AffixAspectFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str
@@ -255,17 +269,7 @@ class CharmFilterModel(SpellcraftFilterModel):
     @field_validator("set_name")
     @classmethod
     def set_must_exist(cls, name: str | None) -> str | None:
-        if not name:
-            return None
-
-        # This on module level would be a circular import, so we do it lazy for now
-        from src.dataloader import Dataloader  # noqa: PLC0415
-
-        name = correct_name(name)
-        if name not in Dataloader().set_list:
-            msg = f"set {name} does not exist"
-            raise ValueError(msg)
-        return name
+        return _normalize_existing_set_name(name, "set")
 
     @field_validator("unique_aspect")
     @classmethod
@@ -274,7 +278,13 @@ class CharmFilterModel(SpellcraftFilterModel):
 
 
 class SealFilterModel(SpellcraftFilterModel):
+    boosted_set: str | None = Field(default=None, alias="boostedSet")
     slot_count: int = Field(default=0, alias="slotCount")
+
+    @field_validator("boosted_set")
+    @classmethod
+    def boosted_set_must_exist(cls, name: str | None) -> str | None:
+        return _normalize_existing_set_name(name, "boostedSet")
 
     @field_validator("slot_count")
     @classmethod

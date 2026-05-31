@@ -112,6 +112,27 @@ def test_horadric_charm_type_line_parses_as_charm():
     assert read_descr() == expected_item
 
 
+def test_seal_boosted_set_parses_from_tts():
+    src.tts.LAST_ITEM = [
+        "INIMICAL SEAL OF FURY",
+        "Legendary Horadric Seal",
+        "10% Cooldown Reduction [5 - 15]",
+        "100 Maximum Life [50 - 150]",
+        "Boosts Berserker's Crucible",
+        "Right mouse button",
+    ]
+    expected_item = Item(
+        affixes=EXPECTED_AFFIXES[:2],
+        boosted_set_name="berserkers_crucible",
+        item_type=ItemType.HoradricSeal,
+        name="inimical_seal_of_fury",
+        original_name="INIMICAL SEAL OF FURY",
+        rarity=ItemRarity.Legendary,
+    )
+
+    assert read_descr() == expected_item
+
+
 def test_set_charm_stops_affixes_before_set_bonus_text():
     src.tts.LAST_ITEM = [
         "LINTA OF THE FROZEN SEA",

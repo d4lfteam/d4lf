@@ -306,6 +306,8 @@ class Filter:
 
     @staticmethod
     def _match_seal_filter(item: Item, filter_spec: SealFilterModel) -> bool:
+        if filter_spec.boosted_set is not None and filter_spec.boosted_set != item.boosted_set_name:
+            return False
         return filter_spec.slot_count == 0 or filter_spec.slot_count == len(item.affixes)
 
     def _check_tribute(self, item: Item) -> FilterResult:
