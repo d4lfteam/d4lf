@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import (
 
 from src.config.loader import IniConfigLoader
 from src.config.profile_models import ProfileModel
-from src.config.settings_models import IS_HOTKEY_KEY, LIVE_RELOAD_GROUP_KEY
+from src.config.settings_models import IS_HOTKEY_KEY
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
 from src.item.filter import _UniqueKeyLoader
 
@@ -96,12 +96,12 @@ class ActivityLogWidget(QWidget):
         # Bulk selection buttons
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
-        self.select_all_btn = QPushButton("Select All")
-        self.deselect_all_btn = QPushButton("Deselect All")
-        self.select_all_btn.clicked.connect(self._select_all)
-        self.deselect_all_btn.clicked.connect(self._deselect_all)
-        btn_layout.addWidget(self.select_all_btn)
-        btn_layout.addWidget(self.deselect_all_btn)
+        self.enable_all_btn = QPushButton("Enable All")
+        self.disable_all_btn = QPushButton("Disable All")
+        self.enable_all_btn.clicked.connect(self._select_all)
+        self.disable_all_btn.clicked.connect(self._deselect_all)
+        btn_layout.addWidget(self.enable_all_btn)
+        btn_layout.addWidget(self.disable_all_btn)
         btn_layout.addStretch()
 
         profile_section.addLayout(btn_layout)
@@ -192,7 +192,7 @@ class ActivityLogWidget(QWidget):
         # Filter for keys that control the app (Advanced section) and are tagged as hotkeys
         for key, field in opts.model_fields.items():
             meta = field.json_schema_extra or {}
-            if meta.get(IS_HOTKEY_KEY) == "True" or meta.get(LIVE_RELOAD_GROUP_KEY) == "hotkeys":
+            if meta.get(IS_HOTKEY_KEY) == "True":
                 val = getattr(opts, key)
                 prop_meta = properties.get(key, {})
                 label = prop_meta.get("title") or key.replace("_", " ").title()
