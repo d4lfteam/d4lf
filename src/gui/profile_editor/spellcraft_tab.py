@@ -18,7 +18,11 @@ from PyQt6.QtWidgets import (
 from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
+    CharmFilterModel,
+    DynamicCharmFilterModel,
+    DynamicSealFilterModel,
     DynamicSpellcraftFilterModel,
+    SealFilterModel,
     SpellcraftFilterModel,
 )
 from src.dataloader import Dataloader
@@ -138,10 +142,19 @@ class SpellcraftRuleEditor(QWidget):
 
 
 class SpellcraftTab(QWidget):
-    def __init__(self, filters: list[DynamicSpellcraftFilterModel], section_name: str, parent=None):
+    def __init__(
+        self,
+        filters: list[DynamicSpellcraftFilterModel],
+        section_name: str,
+        dynamic_model: type[DynamicSpellcraftFilterModel | DynamicCharmFilterModel | DynamicSealFilterModel],
+        filter_model: type[SpellcraftFilterModel | CharmFilterModel | SealFilterModel],
+        parent=None,
+    ):
         super().__init__(parent)
         self.filters = filters
         self.section_name = section_name
+        self.dynamic_model = dynamic_model
+        self.filter_model = filter_model
         self.loaded = False
 
     def load(self):
@@ -195,7 +208,7 @@ class SpellcraftTab(QWidget):
             QMessageBox.warning(self, "Warning", "Rule name already exists.")
             return
 
-        new_filter = DynamicSpellcraftFilterModel(root={rule_name: self._default_filter()})
+        new_filter = self.dynamic_model(root={rule_name: self._default_filter()})
         self.filters.append(new_filter)
         self.rule_names.append(rule_name)
         self.tab_widget.addTab(SpellcraftRuleEditor(new_filter), rule_name)
@@ -216,9 +229,8 @@ class SpellcraftTab(QWidget):
             self.tab_widget.removeTab(index)
             self.filters.pop(index)
 
-    @staticmethod
-    def _default_filter() -> SpellcraftFilterModel:
-        return SpellcraftFilterModel(
+    def _default_filter(self) -> SpellcraftFilterModel:
+        return self.filter_model(
             affix_pool=[
                 AffixFilterCountModel(
                     count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())))], min_count=1, max_count=3

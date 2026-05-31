@@ -29,6 +29,7 @@ class Item:
     power: int | None = None
     rarity: ItemRarity | None = None
     seasonal_attribute: SeasonalAttribute | None = None
+    set_name: str | None = None
 
     def __eq__(self, other):
         if not isinstance(other, Item):
@@ -65,6 +66,8 @@ class Item:
             res = False
         if self.seasonal_attribute != other.seasonal_attribute:
             res = False
+        if self.set_name != other.set_name:
+            res = False
         return res
 
 
@@ -81,5 +84,6 @@ class ItemJSONEncoder(json.JSONEncoder):
                 "name": o.name or None,
                 "power": o.power or None,
                 "rarity": o.rarity.value if o.rarity else None,
+                "set_name": o.set_name or None,
             }
         return super().default(o)

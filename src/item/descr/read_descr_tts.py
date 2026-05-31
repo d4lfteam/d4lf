@@ -130,6 +130,7 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
     starting_index = _get_affix_starting_location_from_tts_section(tts_section, item)
     inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
     affixes = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
+    item.set_name = _get_charm_set_from_tts_section(tts_section, item, starting_index, len(affixes))
     aspect_text = _get_aspect_from_tts_section(tts_section, item, starting_index, len(affixes))
     for i, affix_text in enumerate(affixes):
         if i < inherent_num:
@@ -371,6 +372,17 @@ def _get_aspect_from_tts_section(tts_section: list[str], item: Item, start: int,
         aspect_index = start + num_affixes
         return tts_section[aspect_index]
 
+    return None
+
+
+def _get_charm_set_from_tts_section(tts_section: list[str], item: Item, start: int, num_affixes: int) -> str | None:
+    if item.item_type != ItemType.Charm:
+        return None
+
+    for line in tts_section[start + num_affixes :]:
+        set_name = correct_name(line.split("(", maxsplit=1)[0])
+        if set_name in Dataloader().set_list:
+            return set_name
     return None
 
 

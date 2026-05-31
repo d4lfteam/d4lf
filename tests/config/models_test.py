@@ -20,12 +20,15 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
-    DynamicSpellcraftFilterModel,
+    CharmFilterModel,
+    DynamicCharmFilterModel,
+    DynamicSealFilterModel,
     GlobalUniqueModel,
     ItemFilterModel,
     ItemRarity,
     NameRarityFilterModel,
     ProfileModel,
+    SealFilterModel,
     SigilConditionModel,
     SigilFilterModel,
     TributeFilterModel,
@@ -617,6 +620,33 @@ class TestNameRarityFilterModel:
             NameRarityFilterModel.model_validate([])
 
 
+class TestCharmFilterModel:
+    def test_set_name_is_validated_and_normalized(self) -> None:
+        model = CharmFilterModel(set="Breath of the Frozen Sea")
+
+        assert model.set_name == "breath_of_the_frozen_sea"
+
+    def test_invalid_set_fails(self) -> None:
+        with pytest.raises(ValidationError, match="set invalid_set does not exist"):
+            CharmFilterModel(set="invalid set")
+
+    def test_unique_aspect_is_normalized(self) -> None:
+        model = CharmFilterModel(uniqueAspect="Linta of the Frozen Sea")
+
+        assert model.unique_aspect == "linta_of_the_frozen_sea"
+
+
+class TestSealFilterModel:
+    def test_slot_count_alias(self) -> None:
+        model = SealFilterModel(slotCount=3)
+
+        assert model.slot_count == 3
+
+    def test_slot_count_out_of_range_fails(self) -> None:
+        with pytest.raises(ValidationError, match="must be in \\[0, 4\\]"):
+            SealFilterModel(slotCount=5)
+
+
 class TestSigilConditionModel:
     """Test SigilConditionModel."""
 
@@ -726,7 +756,8 @@ class TestProfileModel:
         assert model.aspect_upgrades == []
         assert len(model.global_uniques) == 1
         assert model.global_uniques[0].min_power == 900
-        assert isinstance(model.seals[0], DynamicSpellcraftFilterModel)
+        assert isinstance(model.seals[0], DynamicSealFilterModel)
+        assert isinstance(model.charms[0], DynamicCharmFilterModel)
         assert model.seals[0].root["Cooldown"].affix_pool[0].count[0].name == "cooldown_reduction"
         assert model.charms[0].root["Life"].affix_pool[0].count[0].name == "maximum_life"
 

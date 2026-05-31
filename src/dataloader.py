@@ -23,6 +23,7 @@ class Dataloader:
     filter_after_keyword = []
     filter_words = []
     item_types_dict = {}
+    set_list = []
     tooltips = {}
     tribute_dict = {}
 
@@ -95,3 +96,8 @@ class Dataloader:
             encoding="utf-8"
         ) as f:
             self.aspect_unique_dict = json.load(f)
+
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/sets.json").open(
+            encoding="utf-8"
+        ) as f:
+            self.set_list = json.load(f)

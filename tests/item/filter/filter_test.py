@@ -6,7 +6,13 @@ import pytest
 from natsort import natsorted
 
 from src.config.loader import IniConfigLoader
-from src.config.profile_models import DynamicSpellcraftFilterModel, SigilPriority, SpellcraftFilterModel
+from src.config.profile_models import (
+    CharmFilterModel,
+    DynamicCharmFilterModel,
+    DynamicSealFilterModel,
+    SealFilterModel,
+    SigilPriority,
+)
 from src.config.settings_models import AspectFilterType
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
@@ -108,7 +114,7 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
 
 
 @pytest.mark.parametrize(
-    ("item", "filter_attr", "section_name"),
+    ("item", "filter_attr", "section_name", "filter_model", "dynamic_model"),
     [
         (
             Item(
@@ -119,6 +125,8 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
             ),
             "seal_filters",
             "Seals",
+            SealFilterModel,
+            DynamicSealFilterModel,
         ),
         (
             Item(
@@ -129,23 +137,104 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
             ),
             "charm_filters",
             "Charms",
+            CharmFilterModel,
+            DynamicCharmFilterModel,
         ),
     ],
 )
-def test_seal_or_charm_sections(item: Item, filter_attr: str, section_name: str, mocker: MockerFixture):
+def test_seal_or_charm_sections(
+    item: Item, filter_attr: str, section_name: str, filter_model, dynamic_model, mocker: MockerFixture
+):
     test_filter = _create_mocked_filter(mocker)
-    spellcraft_filter = SpellcraftFilterModel(affix_pool=[{"count": [item.affixes[0].name]}], rarities=[item.rarity])
-    setattr(
-        test_filter, filter_attr, {"spellcraft": [DynamicSpellcraftFilterModel(root={"wanted": spellcraft_filter})]}
-    )
+    spellcraft_filter = filter_model(affix_pool=[{"count": [item.affixes[0].name]}], rarities=[item.rarity])
+    setattr(test_filter, filter_attr, {"spellcraft": [dynamic_model(root={"wanted": spellcraft_filter})]})
 
     match = test_filter.should_keep(item).matched[0]
     assert match.profile == f"spellcraft.{section_name}.wanted"
     assert match.matched_affixes == item.affixes
 
 
+def test_charm_filter_matches_set_name(mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    item = Item(
+        item_type=ItemType.Charm,
+        name="linta_of_the_frozen_sea",
+        rarity=ItemRarity.Legendary,
+        set_name="breath_of_the_frozen_sea",
+        affixes=[Affix(name="potion_healing")],
+    )
+    charm_filter = CharmFilterModel(set="Breath of the Frozen Sea")
+    test_filter.charm_filters = {"spellcraft": [DynamicCharmFilterModel(root={"wanted": charm_filter})]}
+
+    match = test_filter.should_keep(item).matched[0]
+
+    assert match.profile == "spellcraft.Charms.wanted"
+
+
+def test_charm_filter_matches_unique_aspect_name(mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    item = Item(
+        item_type=ItemType.Charm,
+        name="linta_of_the_frozen_sea",
+        rarity=ItemRarity.Legendary,
+        set_name="breath_of_the_frozen_sea",
+        affixes=[Affix(name="potion_healing")],
+    )
+    charm_filter = CharmFilterModel(uniqueAspect="Linta of the Frozen Sea")
+    test_filter.charm_filters = {"spellcraft": [DynamicCharmFilterModel(root={"wanted": charm_filter})]}
+
+    match = test_filter.should_keep(item).matched[0]
+
+    assert match.profile == "spellcraft.Charms.wanted"
+
+
+def test_charm_filter_rejects_wrong_set_or_unique_aspect(mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    item = Item(
+        item_type=ItemType.Charm,
+        name="linta_of_the_frozen_sea",
+        rarity=ItemRarity.Legendary,
+        set_name="breath_of_the_frozen_sea",
+        affixes=[Affix(name="potion_healing")],
+    )
+    charm_filter = CharmFilterModel(set="applied_alchemy", uniqueAspect="another_charm")
+    test_filter.charm_filters = {"spellcraft": [DynamicCharmFilterModel(root={"wrong": charm_filter})]}
+
+    assert test_filter.should_keep(item).matched == []
+
+
+def test_seal_filter_matches_slot_count(mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    item = Item(
+        item_type=ItemType.HoradricSeal,
+        name="unimportant_seal_name",
+        rarity=ItemRarity.Legendary,
+        affixes=[Affix(name="cooldown_reduction"), Affix(name="maximum_life")],
+    )
+    seal_filter = SealFilterModel(slotCount=2)
+    test_filter.seal_filters = {"spellcraft": [DynamicSealFilterModel(root={"wanted": seal_filter})]}
+
+    match = test_filter.should_keep(item).matched[0]
+
+    assert match.profile == "spellcraft.Seals.wanted"
+
+
+def test_seal_filter_rejects_wrong_slot_count(mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    item = Item(
+        item_type=ItemType.HoradricSeal,
+        name="unimportant_seal_name",
+        rarity=ItemRarity.Legendary,
+        affixes=[Affix(name="cooldown_reduction"), Affix(name="maximum_life")],
+    )
+    seal_filter = SealFilterModel(slotCount=3)
+    test_filter.seal_filters = {"spellcraft": [DynamicSealFilterModel(root={"wrong": seal_filter})]}
+
+    assert test_filter.should_keep(item).matched == []
+
+
 @pytest.mark.parametrize(
-    ("item", "filter_attr"),
+    ("item", "filter_attr", "filter_model", "dynamic_model"),
     [
         (
             Item(
@@ -154,6 +243,8 @@ def test_seal_or_charm_sections(item: Item, filter_attr: str, section_name: str,
                 affixes=[Affix(name="cooldown_reduction", type=AffixType.greater)],
             ),
             "seal_filters",
+            SealFilterModel,
+            DynamicSealFilterModel,
         ),
         (
             Item(
@@ -162,13 +253,17 @@ def test_seal_or_charm_sections(item: Item, filter_attr: str, section_name: str,
                 affixes=[Affix(name="maximum_life", type=AffixType.greater)],
             ),
             "charm_filters",
+            CharmFilterModel,
+            DynamicCharmFilterModel,
         ),
     ],
 )
-def test_mythic_seal_or_charm_always_kept(item: Item, filter_attr: str, mocker: MockerFixture):
+def test_mythic_seal_or_charm_always_kept(
+    item: Item, filter_attr: str, filter_model, dynamic_model, mocker: MockerFixture
+):
     test_filter = _create_mocked_filter(mocker)
-    spellcraft_filter = SpellcraftFilterModel(affix_pool=[{"count": ["movement_speed"]}], rarities=[ItemRarity.Common])
-    setattr(test_filter, filter_attr, {"spellcraft": [DynamicSpellcraftFilterModel(root={"wrong": spellcraft_filter})]})
+    spellcraft_filter = filter_model(affix_pool=[{"count": ["movement_speed"]}], rarities=[ItemRarity.Common])
+    setattr(test_filter, filter_attr, {"spellcraft": [dynamic_model(root={"wrong": spellcraft_filter})]})
 
     assert test_filter.should_keep(item).keep
     assert test_filter.should_keep(item).matched[0].profile.startswith("Mythic")

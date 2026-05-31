@@ -15,10 +15,13 @@ from src.config.profile_models import (
     AffixAspectFilterModel,
     AffixFilterCountModel,
     AffixFilterModel,
+    CharmFilterModel,
+    DynamicCharmFilterModel,
     DynamicItemFilterModel,
-    DynamicSpellcraftFilterModel,
+    DynamicSealFilterModel,
     GlobalUniqueModel,
     ProfileModel,
+    SealFilterModel,
     SigilConditionModel,
     SigilFilterModel,
     SigilPriority,
@@ -242,9 +245,10 @@ class Filter:
     def _check_spellcraft_filters(
         self,
         item: Item,
-        item_filters: dict[str, list[DynamicSpellcraftFilterModel]],
+        item_filters: dict[str, list[DynamicCharmFilterModel] | list[DynamicSealFilterModel]],
         section_name: str,
         mythic_name: str,
+        extra_match=None,
     ) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
         if not item_filters.items():
@@ -264,6 +268,9 @@ class Filter:
                 filter_spec = filter_item.root[filter_name]
 
                 if filter_spec.rarities and item.rarity not in filter_spec.rarities:
+                    continue
+
+                if extra_match and not extra_match(item, filter_spec):
                     continue
 
                 if not self._match_greater_affix_count(
@@ -287,6 +294,19 @@ class Filter:
                 res.keep = True
                 res.matched.append(MatchedFilter(f"{profile_name}.{section_name}.{filter_name}", matched_affixes))
         return res
+
+    @staticmethod
+    def _match_charm_filter(item: Item, filter_spec: CharmFilterModel) -> bool:
+        identity_fields = [filter_spec.set_name, filter_spec.unique_aspect]
+        if not any(identity_fields):
+            return True
+        return (filter_spec.set_name is not None and filter_spec.set_name == item.set_name) or (
+            filter_spec.unique_aspect is not None and filter_spec.unique_aspect == item.name
+        )
+
+    @staticmethod
+    def _match_seal_filter(item: Item, filter_spec: SealFilterModel) -> bool:
+        return filter_spec.slot_count == 0 or filter_spec.slot_count == len(item.affixes)
 
     def _check_tribute(self, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
@@ -315,12 +335,20 @@ class Filter:
 
     def _check_seal(self, item: Item) -> FilterResult:
         return self._check_spellcraft_filters(
-            item=item, item_filters=self.seal_filters, section_name="Seals", mythic_name="Mythic Seal"
+            item=item,
+            item_filters=self.seal_filters,
+            section_name="Seals",
+            mythic_name="Mythic Seal",
+            extra_match=self._match_seal_filter,
         )
 
     def _check_charm(self, item: Item) -> FilterResult:
         return self._check_spellcraft_filters(
-            item=item, item_filters=self.charm_filters, section_name="Charms", mythic_name="Mythic Charm"
+            item=item,
+            item_filters=self.charm_filters,
+            section_name="Charms",
+            mythic_name="Mythic Charm",
+            extra_match=self._match_charm_filter,
         )
 
     def _check_global_unique_filter(self, item: Item) -> FilterResult:
@@ -541,8 +569,8 @@ class Filter:
         self.affix_filters: dict[str, list[DynamicItemFilterModel]] = {}
         self.aspect_upgrade_filters: dict[str, list[str]] = {}
         self.paragon_filters: dict[str, object] = {}
-        self.seal_filters: dict[str, list[DynamicSpellcraftFilterModel]] = {}
-        self.charm_filters: dict[str, list[DynamicSpellcraftFilterModel]] = {}
+        self.seal_filters: dict[str, list[DynamicSealFilterModel]] = {}
+        self.charm_filters: dict[str, list[DynamicCharmFilterModel]] = {}
         self.sigil_filters: dict[str, SigilFilterModel] = {}
         self.tribute_filters: dict[str, list[TributeFilterModel]] = {}
         self.global_unique_filters: dict[str, list[GlobalUniqueModel]] = {}

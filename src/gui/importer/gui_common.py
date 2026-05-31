@@ -196,8 +196,10 @@ def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool)
         item_filter.min_greater_affix_count = 0
 
 
-def create_spellcraft_filter(affixes: list[Affix], rarity, require_gas: bool) -> SpellcraftFilterModel:
-    spellcraft_filter = SpellcraftFilterModel(
+def create_spellcraft_filter(
+    affixes: list[Affix], rarity, require_gas: bool, model_type: type[SpellcraftFilterModel] = SpellcraftFilterModel
+) -> SpellcraftFilterModel:
+    spellcraft_filter = model_type(
         affix_pool=[
             AffixFilterCountModel(
                 count=[

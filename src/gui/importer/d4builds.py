@@ -13,8 +13,10 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
+    CharmFilterModel,
     ItemFilterModel,
     ProfileModel,
+    SealFilterModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
@@ -183,9 +185,13 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
             spellcraft_filters = charm_filters if item_type == ItemType.Charm else seal_filters
             filter_name = _unique_filter_name(item_type.name, spellcraft_filters)
+            spellcraft_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
             spellcraft_filters.append({
                 filter_name: create_spellcraft_filter(
-                    affixes=affixes, rarity=rarity, require_gas=config.require_greater_affixes
+                    affixes=affixes,
+                    rarity=rarity,
+                    require_gas=config.require_greater_affixes,
+                    model_type=spellcraft_model,
                 )
             })
             continue

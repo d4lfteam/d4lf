@@ -248,7 +248,46 @@ class SpellcraftFilterModel(BaseModel):
         return _parse_item_type_or_rarities(data)
 
 
+class CharmFilterModel(SpellcraftFilterModel):
+    set_name: str | None = Field(default=None, alias="set")
+    unique_aspect: str | None = Field(default=None, alias="uniqueAspect")
+
+    @field_validator("set_name")
+    @classmethod
+    def set_must_exist(cls, name: str | None) -> str | None:
+        if not name:
+            return None
+
+        # This on module level would be a circular import, so we do it lazy for now
+        from src.dataloader import Dataloader  # noqa: PLC0415
+
+        name = correct_name(name)
+        if name not in Dataloader().set_list:
+            msg = f"set {name} does not exist"
+            raise ValueError(msg)
+        return name
+
+    @field_validator("unique_aspect")
+    @classmethod
+    def normalize_unique_aspect(cls, name: str | None) -> str | None:
+        return correct_name(name)
+
+
+class SealFilterModel(SpellcraftFilterModel):
+    slot_count: int = Field(default=0, alias="slotCount")
+
+    @field_validator("slot_count")
+    @classmethod
+    def slot_count_in_range(cls, v: int) -> int:
+        if not 0 <= v <= 4:
+            msg = "must be in [0, 4]"
+            raise ValueError(msg)
+        return v
+
+
 DynamicSpellcraftFilterModel = RootModel[dict[str, SpellcraftFilterModel]]
+DynamicCharmFilterModel = RootModel[dict[str, CharmFilterModel]]
+DynamicSealFilterModel = RootModel[dict[str, SealFilterModel]]
 
 
 class SigilPriority(enum.StrEnum):
@@ -372,10 +411,10 @@ class ProfileModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     affixes: list[DynamicItemFilterModel] = Field(default=[], alias="Affixes")
     aspect_upgrades: list[str] = Field(default=[], alias="AspectUpgrades")
-    charms: list[DynamicSpellcraftFilterModel] = Field(default=[], alias="Charms")
+    charms: list[DynamicCharmFilterModel] = Field(default=[], alias="Charms")
     global_uniques: list[GlobalUniqueModel] = Field(default=[], alias="GlobalUniques")
     name: str
-    seals: list[DynamicSpellcraftFilterModel] = Field(default=[], alias="Seals")
+    seals: list[DynamicSealFilterModel] = Field(default=[], alias="Seals")
     sigils: SigilFilterModel = Field(
         default=SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist), alias="Sigils"
     )

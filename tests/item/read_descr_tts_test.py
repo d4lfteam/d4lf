@@ -128,6 +128,7 @@ def test_set_charm_stops_affixes_before_set_bonus_text():
 
     assert item.item_type == ItemType.Charm
     assert item.name == "linta_of_the_frozen_sea"
+    assert item.set_name == "breath_of_the_frozen_sea"
     assert [affix.name for affix in item.affixes] == [
         "lucky_hit_up_to_a_chance_to_deal_poison_damage",
         "potion_healing",

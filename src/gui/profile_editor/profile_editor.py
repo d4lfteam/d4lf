@@ -3,7 +3,13 @@ import logging
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QMessageBox, QTabWidget
 
-from src.config.profile_models import ProfileModel
+from src.config.profile_models import (
+    CharmFilterModel,
+    DynamicCharmFilterModel,
+    DynamicSealFilterModel,
+    ProfileModel,
+    SealFilterModel,
+)
 from src.gui.importer.gui_common import save_as_profile
 from src.gui.profile_editor.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.profile_editor.aspect_upgrades_tab import ASPECT_UPGRADES_TABNAME, AspectUpgradesTab
@@ -26,8 +32,10 @@ class ProfileEditor(QTabWidget):
         # Create main tabs
         self.affixes_tab = AffixesTab(self.profile_model.affixes)
         self.aspect_upgrades_tab = AspectUpgradesTab(self.profile_model.aspect_upgrades)
-        self.seals_tab = SpellcraftTab(self.profile_model.seals, SEALS_TABNAME)
-        self.charms_tab = SpellcraftTab(self.profile_model.charms, CHARMS_TABNAME)
+        self.seals_tab = SpellcraftTab(self.profile_model.seals, SEALS_TABNAME, DynamicSealFilterModel, SealFilterModel)
+        self.charms_tab = SpellcraftTab(
+            self.profile_model.charms, CHARMS_TABNAME, DynamicCharmFilterModel, CharmFilterModel
+        )
         self.sigils_tab = SigilsTab(self.profile_model.sigils)
         self.tributes_tab = TributesTab(self.profile_model.tributes)
         self.uniques_tab = UniquesTab(self.profile_model.global_uniques)
