@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime
 import enum
 import os
 import subprocess
@@ -8,22 +7,19 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import yaml
-
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 from pydantic import BaseModel, ValidationError
 from pydantic_core import PydanticUndefined
-from PyQt6.QtCore import QCoreApplication, QMimeData, QSignalBlocker, Qt, QTimer
-from PyQt6.QtGui import QDrag, QKeySequence
+from PyQt6.QtCore import QCoreApplication, QSignalBlocker, Qt, QTimer
+from PyQt6.QtGui import QKeySequence
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
     QComboBox,
     QDialog,
     QFrame,
-    QGraphicsOpacityEffect,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -50,7 +46,6 @@ from src.config.settings_models import (
     SettingsCategory,
 )
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
-from src.gui.models.open_user_config_button import OpenUserConfigButton
 
 CONFIG_TABNAME = "config"
 
@@ -152,7 +147,6 @@ class ConfigTab(QWidget):
         action_hbox.setContentsMargins(10, 10, 10, 10)
         action_hbox.addWidget(self._setup_reset_button())
         action_hbox.addStretch()
-        action_hbox.addWidget(OpenUserConfigButton())
         layout.addWidget(action_bar)
 
         self.setLayout(layout)
@@ -170,6 +164,8 @@ class ConfigTab(QWidget):
         for model, section in models:
             meta_all = model.model_json_schema()["properties"]
             for key, val in model:
+                if key == "profiles":
+                    continue
                 meta = meta_all.get(key, {})
                 if meta.get(HIDE_FROM_GUI_KEY):
                     continue
@@ -357,8 +353,6 @@ class ConfigTab(QWidget):
                 _validate_and_save_changes(model, section_config_header, config_key, val)
 
             parameter_value_widget = SegmentedControl(["6", "7"], str(config_value), on_tabs_changed)
-        elif config_key == "profiles":
-            parameter_value_widget = QProfileListSelector(model, section_config_header, config_key, config_value)
         elif config_key in {"move_to_inv_item_type", "move_to_stash_item_type"}:
             items_map = {
                 "Favorites": MoveItemsType.favorites,
@@ -404,11 +398,21 @@ class ConfigTab(QWidget):
             parameter_value_widget = CheckmarkCheckBox()
             parameter_value_widget.setObjectName("switch")
             parameter_value_widget.setChecked(config_value)
-            parameter_value_widget.stateChanged.connect(
-                lambda: _validate_and_save_changes(
-                    model, section_config_header, config_key, str(parameter_value_widget.isChecked())
+
+            def on_bool_changed():
+                _validate_and_save_changes(
+                    model,
+                    section_config_header,
+                    config_key,
+                    str(parameter_value_widget.isChecked()),
+                    post_save_callback=(
+                        self.theme_changed_callback
+                        if config_key == "colorblind_mode" and not self._initializing
+                        else None
+                    ),
                 )
-            )
+
+            parameter_value_widget.stateChanged.connect(on_bool_changed)
         elif isinstance(config_value, int):
             parameter_value_widget = QSpinBox()
             parameter_value_widget.setRange(0, 10000)
@@ -508,12 +512,7 @@ class ConfigTab(QWidget):
 
             if isinstance(
                 parameter_value_widget,
-                QChestTabWidget
-                | QProfileListSelector
-                | QHotkeyWidget
-                | SegmentedControl
-                | MultiSegmentedControl
-                | IgnoreScrollWheelComboBox,
+                QChestTabWidget | QHotkeyWidget | SegmentedControl | MultiSegmentedControl | IgnoreScrollWheelComboBox,
             ):
                 parameter_value_widget.reset_values(config_value)  # type: ignore[attr-defined]
             elif isinstance(parameter_value_widget, QCheckBox):
@@ -651,312 +650,6 @@ class QChestTabWidget(QWidget):
     def _save_changes_on_box_change(self, model, section_header, config_key):
         active_tabs = [check_box.text() for check_box in self.all_checkboxes if check_box.isChecked()]
         _validate_and_save_changes(model, section_header, config_key, ",".join(active_tabs), self.reset_values)
-
-
-class QProfileListSelector(QWidget):
-    def __init__(self, model, section, key, current_active: list[str]):
-        super().__init__()
-        self.model = model
-        self.section = section
-        self.key = key
-        self._layout = QVBoxLayout(self)
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(5)
-
-        self.setAcceptDrops(True)
-
-        # Visual drop indicator for drag-and-drop
-        self.drop_indicator = QFrame()
-        self.drop_indicator.setFixedHeight(2)
-        self.drop_indicator.setStyleSheet("background-color: #23fc5d;")
-        self.drop_indicator.hide()
-
-        # Search bar for profiles
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Filter profiles...")
-        self.search_input.textChanged.connect(self._filter_profiles)
-        self._layout.addWidget(self.search_input)
-
-        # Bulk selection buttons
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(10)
-        self.select_all_btn = QPushButton("Select All")
-        self.deselect_all_btn = QPushButton("Deselect All")
-        self.select_all_btn.clicked.connect(self._select_all)
-        self.deselect_all_btn.clicked.connect(self._deselect_all)
-        btn_layout.addWidget(self.select_all_btn)
-        btn_layout.addWidget(self.deselect_all_btn)
-        btn_layout.addStretch()
-        self._layout.addLayout(btn_layout)
-
-        # Container for checkboxes to prevent refresh from deleting controls above
-        self.list_container = QWidget()
-        self.list_layout = QVBoxLayout(self.list_container)
-        self.list_layout.setContentsMargins(0, 0, 0, 0)
-        self.list_layout.setSpacing(2)
-        self._layout.addWidget(self.list_container)
-
-        self._checkboxes: dict[str, CheckmarkCheckBox] = {}
-        self._rows: dict[str, QWidget] = {}
-        self.refresh(current_active)
-
-    def refresh(self, current_active: list[str]):
-        """Clear and repopulate the profile checkbox list."""
-        while self.list_layout.count():
-            child = self.list_layout.takeAt(0)
-            if w := child.widget():
-                w.deleteLater()
-        self._checkboxes.clear()
-        self._rows.clear()
-
-        profiles_dir = IniConfigLoader().user_dir / "profiles"
-        profiles_dir.mkdir(parents=True, exist_ok=True)
-        all_files = list(profiles_dir.glob("*.yaml")) + list(profiles_dir.glob("*.yml"))
-        file_map = {p.stem: p for p in all_files}
-
-        if not all_files:
-            lbl = QLabel("No profile files found in " + str(profiles_dir))
-            lbl.setStyleSheet("color: #888; font-style: italic;")
-            self.list_layout.addWidget(lbl)
-            return
-
-        # Order: Active profiles in their saved order first, then remaining alphabetical
-        active_names = [n for n in current_active if n in file_map]
-        remaining = sorted([n for n in file_map if n not in active_names], key=lambda x: x.lower())
-
-        for name in active_names + remaining:
-            p = file_map[name]
-            row_widget = QWidget()
-            row_widget.setProperty("profile_name", name)
-            row_vbox = QVBoxLayout(row_widget)
-            row_vbox.setContentsMargins(0, 0, 0, 5)
-            row_vbox.setSpacing(0)
-
-            header_container = QWidget()
-            header_hbox = QHBoxLayout(header_container)
-            header_hbox.setContentsMargins(0, 0, 0, 0)
-            header_hbox.setSpacing(5)
-
-            toggle_btn = self._create_row_btn("▶")
-            drag_handle = self._create_row_btn("⠿")
-            drag_handle.setCursor(Qt.CursorShape.SizeAllCursor)
-
-            cb = CheckmarkCheckBox(name)
-            with QSignalBlocker(cb):
-                cb.setChecked(name in current_active)
-            cb.stateChanged.connect(self._on_toggle)
-
-            header_hbox.addWidget(toggle_btn)
-            header_hbox.addWidget(drag_handle)
-            header_hbox.addWidget(cb)
-            header_hbox.addStretch()
-
-            summary_lbl = QLabel(self._get_profile_summary(p))
-            summary_lbl.setObjectName("description-label")
-            summary_lbl.setContentsMargins(30, 2, 10, 8)
-            summary_lbl.setWordWrap(True)
-            summary_lbl.setVisible(False)
-            toggle_btn.clicked.connect(lambda _, lbl=summary_lbl, btn=toggle_btn: self._toggle_row(lbl, btn))
-
-            # Connect drag handle to initiation logic
-            drag_handle.mouseMoveEvent = lambda e, w=row_widget, h=drag_handle: self._start_drag(e, w, h)
-
-            row_vbox.addWidget(header_container)
-            row_vbox.addWidget(summary_lbl)
-            self.list_layout.addWidget(row_widget)
-            self._checkboxes[name] = cb
-            self._rows[name] = row_widget
-
-        # Re-apply any existing filter text
-        if self.search_input.text():
-            self._filter_profiles(self.search_input.text())
-
-    def _select_all(self):
-        for cb in self._checkboxes.values():
-            cb.setChecked(True)
-        self._on_toggle()
-
-    def _deselect_all(self):
-        for cb in self._checkboxes.values():
-            cb.setChecked(False)
-        self._on_toggle()
-
-    def _on_toggle(self):
-        active: list[str] = []
-        for i in range(self.list_layout.count()):
-            widget = self.list_layout.itemAt(i).widget()
-            if widget:
-                name = widget.property("profile_name")
-                if name and self._checkboxes.get(name) and self._checkboxes[name].isChecked():
-                    active.append(name)
-        _validate_and_save_changes(self.model, self.section, self.key, ",".join(active), self.reset_values)
-
-    def _start_drag(self, event, row_widget: QWidget, handle: QWidget):
-        """Initiate the drag operation with a visual pickup animation."""
-        if event.buttons() != Qt.MouseButton.LeftButton:
-            return
-
-        # Calculate hotspot relative to the row widget to prevent the ghost image from jumping.
-        click_pos = handle.mapTo(row_widget, event.position().toPoint())
-
-        drag = QDrag(row_widget)
-        mime = QMimeData()
-        # We use the internal object ID to safely track the widget being moved
-        mime.setText(str(id(row_widget)))
-        drag.setMimeData(mime)
-
-        # Render a 'Ghost' of the entire row for the pickup animation
-        pixmap = row_widget.grab()
-        drag.setPixmap(pixmap)
-        drag.setHotSpot(click_pos)
-
-        # Hide the original row temporarily during the drag for a cleaner look
-        opacity_effect = QGraphicsOpacityEffect()
-        opacity_effect.setOpacity(0.3)
-        row_widget.setGraphicsEffect(opacity_effect)
-
-        # Initialize the landing line at the current spot
-        idx = self.list_layout.indexOf(row_widget)
-        self.list_layout.insertWidget(idx, self.drop_indicator)
-        self.drop_indicator.show()
-
-        drag.exec(Qt.DropAction.MoveAction)
-
-        # Restore original appearance
-        row_widget.setGraphicsEffect(None)
-        self.drop_indicator.hide()
-
-    def dragEnterEvent(self, event):  # noqa: N802
-        if event.mimeData().hasText():
-            event.acceptProposedAction()
-
-    def dragMoveEvent(self, event):  # noqa: N802
-        """Handle the 'Sliding' reorder logic as the user drags."""
-        source_id = event.mimeData().text()
-
-        # Auto-scroll logic: Find the parent scroll area and adjust scrollbar if near edges
-        parent_scroll = self.parentWidget()
-        while parent_scroll and not isinstance(parent_scroll, QScrollArea):
-            parent_scroll = parent_scroll.parentWidget()
-
-        if parent_scroll:
-            # Fix for AttributeError: Use position() and map relative to viewport
-            global_pos = self.mapToGlobal(event.position().toPoint())
-            viewport_pos = parent_scroll.viewport().mapFromGlobal(global_pos)
-            margin = 40  # pixels from edge to trigger scroll
-            if viewport_pos.y() < margin:
-                sb = parent_scroll.verticalScrollBar()
-                sb.setValue(sb.value() - 8)
-            elif viewport_pos.y() > parent_scroll.viewport().height() - margin:
-                sb = parent_scroll.verticalScrollBar()
-                sb.setValue(sb.value() + 8)
-
-        # Map the drag position to the list container's local coordinates
-        pos = self.list_container.mapFrom(self, event.position().toPoint())
-
-        dragged_row = None
-        current_idx = -1
-
-        # 1. Identify the row being dragged and its current position
-        for i in range(self.list_layout.count()):
-            w = self.list_layout.itemAt(i).widget()
-            if w and str(id(w)) == source_id:
-                dragged_row = w
-                current_idx = i
-                break
-
-        if not dragged_row:
-            return
-
-        # 2. Check midpoint of other rows to determine if we should swap
-        for i in range(self.list_layout.count()):
-            target_row = self.list_layout.itemAt(i).widget()
-            if not target_row or target_row in (dragged_row, self.drop_indicator):
-                continue
-
-            rect = target_row.geometry()
-            mid_y = rect.center().y()
-
-            # Only swap if the cursor has passed the vertical midpoint of the target row
-            if (i > current_idx and pos.y() > mid_y) or (i < current_idx and pos.y() < mid_y):
-                self.list_layout.insertWidget(i, self.drop_indicator)
-                self.list_layout.insertWidget(i, dragged_row)
-                break
-
-        event.acceptProposedAction()
-
-    def dropEvent(self, event):  # noqa: N802
-        """Finalize the reorder and trigger a save."""
-        self._on_toggle()
-        event.acceptProposedAction()
-
-    def _create_row_btn(self, text: str) -> QPushButton:
-        btn = QPushButton(text)
-        btn.setFixedSize(22, 22)
-        btn.setFlat(True)
-        btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn.setStyleSheet("font-weight: bold; border: none; background: transparent;")
-        return btn
-
-    def _toggle_row(self, label: QLabel, button: QPushButton):
-        is_visible = not label.isVisible()
-        label.setVisible(is_visible)
-        button.setText("▼" if is_visible else "▶")
-
-    def _filter_profiles(self, text: str):
-        query = text.lower()
-        for name, row in self._rows.items():
-            row.setVisible(query in name.lower())
-
-    def _get_profile_summary(self, path: Path) -> str:
-        """Peeks into the YAML to build a summary tooltip."""
-        try:
-            stat = path.stat()
-            mtime = datetime.datetime.fromtimestamp(stat.st_mtime, tz=datetime.UTC).strftime("%Y-%m-%d %H:%M")
-
-            with path.open(encoding="utf-8") as f:
-                # We use safe_load for a quick scan of the keys
-                data = yaml.safe_load(f)
-
-            if not data or not isinstance(data, dict):
-                return f"Last Modified: {mtime}\n(Empty or invalid profile)"
-
-            summary = [f"Last Modified: {mtime}"]
-            if affixes := data.get("Affixes"):
-                types = set()
-                for item in affixes:
-                    if isinstance(item, dict):
-                        # Each entry is { Name: { itemType: ... } }
-                        spec = next(iter(item.values()))
-                        if isinstance(spec, dict) and (it := spec.get("itemType")):
-                            if isinstance(it, list):
-                                types.update([str(t) for t in it])
-                            else:
-                                types.add(str(it))
-                if types:
-                    summary.append(f"📦 Items: {', '.join(sorted(types))}")
-                summary.append(f"🔍 Affix Filters: {len(affixes)}")
-
-            if aspects := data.get("AspectUpgrades"):
-                summary.append(f"✨ Aspect Upgrades: {len(aspects)}")
-            if uniques := data.get("GlobalUniques"):
-                summary.append(f"💎 Global Uniques: {len(uniques)}")
-            if data.get("Sigils"):
-                summary.append("📜 Sigils: Included")
-            if data.get("Tributes"):
-                summary.append("🏆 Tributes: Included")
-            if data.get("Paragon"):
-                summary.append("🔱 Paragon Overlay: Data Found")
-
-            return "\n".join(summary)
-        except OSError, TypeError, ValueError, yaml.YAMLError:
-            return f"Path: {path}\n(Could not parse profile details)"
-
-    def reset_values(self, active_list: list[str]):
-        if isinstance(active_list, str):
-            active_list = [p.strip() for p in active_list.split(",") if p.strip()]
-        # Re-running refresh ensures the visual list order is updated to match the config
-        self.refresh(active_list)
 
 
 class QHotkeyWidget(QWidget):

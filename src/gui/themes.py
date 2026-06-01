@@ -1,6 +1,6 @@
 """Original simple gray theme with dynamic asset paths."""
 
-DARK_THEME = """
+DARK_THEME_TEMPLATE = """
 QWidget {
     background-color: #1a1a1a;
     color: #e0e0e0;
@@ -83,7 +83,7 @@ QCheckBox {
     spacing: 8px;
 }
 QCheckBox:checked {
-    color: #23fc5d;
+    color: {accent};
     font-weight: bold;
 }
 QCheckBox::indicator {
@@ -98,7 +98,7 @@ QCheckBox::indicator:hover {
 }
 QCheckBox::indicator:checked {
     background-color: #2c2c2c;
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
 }
 
 /* Action Bar at bottom */
@@ -112,7 +112,7 @@ QWidget#action-bar QPushButton {
     color: #ffffff;
 }
 QWidget#action-bar QPushButton:hover {
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
 }
 
 /* Switch Toggle Styling */
@@ -124,7 +124,7 @@ QCheckBox#switch::indicator {
 }
 QCheckBox#switch::indicator:checked {
     background-color: #2c2c2c;
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
 }
 QCheckBox#switch::indicator:unchecked {
     background-color: #444;
@@ -198,8 +198,8 @@ QListWidget#nav-list::item {
 }
 QListWidget#nav-list::item:selected {
     background-color: #3c3c3c;
-    color: #23fc5d;
-    border-left: 4px solid #23fc5d;
+    color: {accent};
+    border-left: 4px solid {accent};
 }
 QToolTip {
     background-color: #1f1f1f;
@@ -243,6 +243,12 @@ QLabel#key-badge {
     font-family: 'Consolas', 'Monospace';
 }
 
+QPlainTextEdit#log-viewer {
+    background-color: #121212;
+    color: #e0e0e0;
+    border: 1px solid #333;
+}
+
 /* Segmented Control Styling */
 QWidget#segmented-container {
     background-color: #121212;
@@ -259,9 +265,32 @@ QPushButton#segment-btn {
 }
 QPushButton#segment-btn:checked {
     background-color: #2c2c2c;
-    border: 1px solid #23fc5d;
-    color: #23fc5d;
+    border: 1px solid {accent};
+    color: {accent};
     font-weight: bold;
+}
+
+QPushButton#row-action-btn, QPushButton#delete-profile-btn {
+    background-color: transparent;
+    border: none;
+    font-weight: normal;
+    padding: 3px 8px;
+    font-size: 13px;
+}
+QPushButton#row-action-btn:hover, QPushButton#delete-profile-btn:hover {
+    background-color: #2c2c2c;
+    border-radius: 4px;
+}
+QPushButton#delete-profile-btn {
+    color: #ff4d4d;
+}
+
+QWidget#profile-row {
+    background-color: #1c1c1c;
+    border-bottom: 1px solid #252525;
+}
+QWidget#profile-row[alt="true"] {
+    background-color: #242424;
 }
 
 QLabel#description-label {
@@ -272,10 +301,22 @@ QLabel#setting-title {
     font-weight: bold;
     font-size: 13px;
 }
+
+QLabel#profile-help {
+    color: #888;
+    font-size: 11px;
+    font-style: italic;
+    border-left: 2px solid {accent};
+    padding-left: 8px;
+    margin-bottom: 5px;
+}
+
+QFrame#drop-indicator {
+    background-color: {accent};
+}
 """
 
-
-LIGHT_THEME = """
+LIGHT_THEME_TEMPLATE = """
 QWidget {
     background-color: #ededed;
     color: #1f1f1f;
@@ -290,6 +331,12 @@ QPushButton {
 QPushButton:hover {
     background-color: #d3d3d3;
     border: 1px solid #a3a3a3;
+}
+QPushButton#primary {
+    background-color: #721c24;
+    border: 1px solid #f5c6cb;
+    color: #f8d7da;
+    font-weight: bold;
 }
 QPushButton:pressed {
     background-color: #c3c3c3;
@@ -363,7 +410,7 @@ QCheckBox::indicator:hover {
 }
 QCheckBox::indicator:checked {
     background-color: #a0a0a0;
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
 }
 
 /* Switch Toggle Styling */
@@ -375,7 +422,7 @@ QCheckBox#switch::indicator {
 }
 QCheckBox#switch::indicator:checked {
     background-color: #a0a0a0;
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
 }
 QCheckBox#switch::indicator:unchecked {
     background-color: #d3d3d3;
@@ -450,7 +497,7 @@ QListWidget#nav-list::item {
 QListWidget#nav-list::item:selected {
     background-color: #c3c3c3;
     color: #000000;
-    border-left: 4px solid #23fc5d;
+    border-left: 4px solid {accent};
 }
 QToolTip {
     background-color: #e0e0e0;
@@ -481,6 +528,21 @@ QCheckBox[greaterCheckbox="true"] {
 
 /* Hotkey button styling */
 /* Segmented Control Styling */
+QLabel#key-badge {
+    background-color: #e0e0e0;
+    color: #1f1f1f;
+    border: 1px solid #a3a3a3;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: 'Consolas', 'Monospace';
+}
+
+QPlainTextEdit#log-viewer {
+    background-color: #ffffff;
+    color: #1f1f1f;
+    border: 1px solid #c3c3c3;
+}
+
 QWidget#segmented-container {
     background-color: #dcdcdc;
     border: 1px solid #c3c3c3;
@@ -496,7 +558,7 @@ QPushButton#segment-btn {
 }
 QPushButton#segment-btn:checked {
     background-color: #a0a0a0;
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
     color: #000000;
     font-weight: bold;
 }
@@ -504,6 +566,29 @@ QPushButton#segment-btn:checked {
 QPushButton[hotkeyButton="true"] {
     text-align: left;
     padding-left: 5px;
+}
+
+QPushButton#row-action-btn, QPushButton#delete-profile-btn {
+    background-color: transparent;
+    border: none;
+    font-weight: normal;
+    padding: 3px 8px;
+    font-size: 13px;
+}
+QPushButton#row-action-btn:hover, QPushButton#delete-profile-btn:hover {
+    background-color: #d3d3d3;
+    border-radius: 4px;
+}
+QPushButton#delete-profile-btn {
+    color: #cc0000;
+}
+
+QWidget#profile-row {
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #dcdcdc;
+}
+QWidget#profile-row[alt="true"] {
+    background-color: #e5e5e5;
 }
 
 QLabel#description-label {
@@ -525,6 +610,19 @@ QWidget#action-bar QPushButton {
     border: 1px solid #b0b0b0;
 }
 QWidget#action-bar QPushButton:hover {
-    border: 1px solid #23fc5d;
+    border: 1px solid {accent};
+}
+
+QLabel#profile-help {
+    color: #666;
+    font-size: 11px;
+    font-style: italic;
+    border-left: 2px solid {accent};
+    padding-left: 8px;
+    margin-bottom: 5px;
+}
+
+QFrame#drop-indicator {
+    background-color: {accent};
 }
 """

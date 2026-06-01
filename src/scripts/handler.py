@@ -172,7 +172,11 @@ class ScriptHandler:
             return
 
         root_logger = logging.getLogger()
+        root_logger.setLevel(current_log_level)
         for handler in root_logger.handlers:
+            # Skip updating the activity log handler to avoid dashboard clutter
+            if getattr(handler, "name", "") == "QT_ACTIVITY":
+                continue
             handler.setLevel(current_log_level)
         self._log_level = current_log_level
         LOGGER.info("Updated log level to %s", current_log_level)

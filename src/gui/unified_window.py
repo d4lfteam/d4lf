@@ -5,16 +5,18 @@ import time
 from contextlib import suppress
 from pathlib import Path
 
-from PyQt6.QtCore import QObject, QPoint, QSettings, QSize, Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QIcon, QTextCursor
+from PyQt6.QtCore import QEvent, QObject, QPoint, QSettings, QSize, Qt, QThread, QTimer, QUrl, pyqtSignal
+from PyQt6.QtGui import QDesktopServices, QIcon, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
+    QHBoxLayout,
+    QLabel,
     QMainWindow,
-    QMessageBox,
+    QMenu,
     QPlainTextEdit,
-    QStackedWidget,
-    QTabBar,
-    QVBoxLayout,
+    QPushButton,
+    QSystemTrayIcon,
+    QTabWidget,
     QWidget,
 )
 
@@ -26,12 +28,13 @@ from src.gui.importer_window import ImporterWindow
 from src.gui.models.activity_log_widget import ActivityLogWidget
 from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.settings_window import ConfigWindow
-from src.gui.themes import DARK_THEME, LIGHT_THEME
+from src.gui.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.item.filter import Filter
 from src.logger import ThreadNameFilter, create_formatter
 from src.logger import setup as setup_logging
 from src.main import check_for_proper_tts_configuration
 from src.overlay import Overlay
+from src.scripts.common import get_filter_colors
 from src.scripts.handler import ScriptHandler
 from src.utils.window import WindowSpec, start_detecting_window
 
@@ -41,71 +44,86 @@ BASE_DIR = (
 
 ICON_PATH = BASE_DIR / "assets" / "logo.png"
 
+
+def get_asset_path(filename: str) -> Path:
+    """Resilient helper to find assets in root/assets or src/assets, handling case sensitivity."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent / "assets" / filename
+
+    # Search paths: 3 parents (root from gui/) and 2 parents (src from gui/)
+    for parent_level in [2, 3]:
+        base = Path(__file__).resolve().parents[parent_level]
+        # Try exact name, then lowercase version
+        for name in [filename, filename.lower()]:
+            p = base / "assets" / name
+            if p.exists():
+                return p
+    # Fallback to the root path even if not found
+    return Path(__file__).resolve().parents[2] / "assets" / filename
+
+
+DISCORD_ICON = get_asset_path("Discord.png")
+GITHUB_ICON = get_asset_path("Github.png")
+
 LOGGER = logging.getLogger(__name__)
-
-ANSI_PATTERN = re.compile(r"\x1b\[(\d+)(;\d+)*m")
-
-ANSI_COLORS = {
-    "30": "#000000",
-    "31": "#AA0000",
-    "32": "#00AA00",
-    "33": "#AA5500",
-    "34": "#0000AA",
-    "35": "#AA00AA",
-    "36": "#00AAAA",
-    "37": "#AAAAAA",
-    "90": "#555555",
-    "91": "#FF5555",
-    "92": "#55FF55",
-    "93": "#FFFF55",
-    "94": "#5555FF",
-    "95": "#FF55FF",
-    "96": "#55FFFF",
-    "97": "#FFFFFF",
-}
-
-
-def ansi_to_html(text: str) -> str:
-    html = ""
-    last_end = 0
-    current_color = None
-
-    for match in ANSI_PATTERN.finditer(text):
-        start, end = match.span()
-        html += text[last_end:start].replace("<", "&lt;").replace(">", "&gt;")
-
-        codes = match.group(0)[2:-1].split(";")
-        for code in codes:
-            if code in ANSI_COLORS:
-                current_color = ANSI_COLORS[code]
-            elif code == "0":
-                current_color = None
-
-        if current_color:
-            html += f'<span style="color:{current_color}">'
-        else:
-            html += "</span>"
-
-        last_end = end
-
-    html += text[last_end:].replace("<", "&lt;").replace(">", "&gt;")
-
-    if current_color:
-        html += "</span>"
-
-    return html
 
 
 class ANSIConsoleWidget(QPlainTextEdit):
+    ANSI_PATTERN = re.compile(r"\x1b\[(\d+)(;\d+)*m")
+    ANSI_COLORS = {
+        "30": "#000000",
+        "31": "#AA0000",
+        "32": "#00AA00",
+        "33": "#AA5500",
+        "34": "#0000AA",
+        "35": "#AA00AA",
+        "36": "#00AAAA",
+        "37": "#AAAAAA",
+        "90": "#555555",
+        "91": "#FF5555",
+        "92": "#55FF55",
+        "93": "#FFFF55",
+        "94": "#5555FF",
+        "95": "#FF55FF",
+        "96": "#55FFFF",
+        "97": "#FFFFFF",
+    }
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setReadOnly(True)
         self.setStyleSheet("background-color: black; color: white; font-family: Consolas, monospace; font-size: 12px;")
 
     def append_ansi_text(self, text: str):
-        html = ansi_to_html(text)
-        self.appendHtml(html)
+        self.appendHtml(self._ansi_to_html(text))
         self.moveCursor(QTextCursor.MoveOperation.End)
+
+    def _ansi_to_html(self, text: str) -> str:
+        html = ""
+        last_end = 0
+        current_color = None
+
+        for match in self.ANSI_PATTERN.finditer(text):
+            start, end = match.span()
+            html += text[last_end:start].replace("<", "&lt;").replace(">", "&gt;")
+
+            codes = match.group(0)[2:-1].split(";")
+            for code in codes:
+                if code in self.ANSI_COLORS:
+                    current_color = self.ANSI_COLORS[code]
+                elif code == "0":
+                    current_color = None
+
+            if current_color:
+                html += f'<span style="color:{current_color}">'
+            else:
+                html += "</span>"
+            last_end = end
+
+        html += text[last_end:].replace("<", "&lt;").replace(">", "&gt;")
+        if current_color:
+            html += "</span>"
+        return html
 
 
 class QtConsoleHandler(logging.Handler, QObject):
@@ -134,6 +152,7 @@ class QtActivityHandler(logging.Handler, QObject):
 
 class BackendWorker(QObject):
     finished = pyqtSignal()
+    script_handler: ScriptHandler | None = None
 
     def run(self):
         Filter().load_files()
@@ -152,7 +171,7 @@ class BackendWorker(QObject):
 
         time.sleep(0.5)
 
-        ScriptHandler()
+        self.script_handler = ScriptHandler()
 
         check_for_proper_tts_configuration()
         tts.start_connection()
@@ -166,29 +185,30 @@ class BackendWorker(QObject):
 class UnifiedMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        # Track child windows by type for singleton behavior
-        self._config_window: ConfigWindow | None = None
-        self._importer_window: ImporterWindow | None = None
-        self._profile_editor_window: ProfileEditorWindow | None = None
+        self._child_windows: dict[str, QMainWindow] = {}
+        self._config = IniConfigLoader()
 
         if ICON_PATH.exists():
             self.setWindowIcon(QIcon(str(ICON_PATH)))
 
-        # --- Theme setup ---
-        config = IniConfigLoader()
-        theme_name = getattr(config.general, "theme", None) or "dark"
-        stylesheet = DARK_THEME if theme_name == "dark" else LIGHT_THEME
-        QApplication.instance().setStyleSheet(stylesheet)
-        # --- Logging setup ---
+        self.apply_theme()
+        self._setup_logging()
+        self._setup_ui()
+        self._setup_tray()
+        self._init_backend()
+        self.restore_geometry()
+
+        # Polling timer to keep the Dashboard status indicators in sync with the backend
+        self._status_timer = QTimer(self)
+        self._status_timer.timeout.connect(self._refresh_dashboard_status)
+        self._status_timer.start(500)
+
+    def _setup_logging(self):
         running_from_source = not getattr(sys, "frozen", False)
         root_logger = logging.getLogger()
-
-        # Ensure file logging stays enabled. unified_window previously removed all handlers (including the file handler),
-        # which stopped live log writing to d4lf/logs.
         if not any(getattr(h, "name", "") == "D4LF_FILE" for h in root_logger.handlers):
-            setup_logging(log_level=config.advanced_options.log_lvl.value, enable_stdout=running_from_source)
+            setup_logging(log_level=self._config.advanced_options.log_lvl.value, enable_stdout=running_from_source)
 
-        # Remove existing handlers, but keep file handler and (optionally) stdout when running from source
         for h in list(root_logger.handlers):
             if getattr(h, "name", "") == "D4LF_FILE":
                 continue  # Keep file logging
@@ -197,118 +217,129 @@ class UnifiedMainWindow(QMainWindow):
             root_logger.removeHandler(h)
 
         self.console_handler = QtConsoleHandler()
+        self.console_handler.name = "QT_CONSOLE"
         self.console_handler.setFormatter(create_formatter(colored=True))
-        self.console_handler.setLevel(config.advanced_options.log_lvl.value.upper())
+        self.console_handler.setLevel(self._config.advanced_options.log_lvl.value.upper())
         self.console_handler.addFilter(ThreadNameFilter())
 
         self.activity_handler = QtActivityHandler()
-        activity_formatter = logging.Formatter("%(message)s")
-        self.activity_handler.setFormatter(activity_formatter)
+        self.activity_handler.name = "QT_ACTIVITY"
+        self.activity_handler.setFormatter(logging.Formatter("%(message)s"))
         self.activity_handler.setLevel(logging.INFO)
 
         root_logger.addHandler(self.console_handler)
         root_logger.addHandler(self.activity_handler)
-        root_logger.setLevel(config.advanced_options.log_lvl.value.upper())
+        root_logger.setLevel(self._config.advanced_options.log_lvl.value.upper())
 
-        # --- Window setup: version in title bar ---
+    def _setup_ui(self):
         self.setWindowTitle(f"D4LF - Diablo 4 Loot Filter v{__version__}")
         self.setMinimumSize(800, 600)
 
-        central = QWidget()
-        layout = QVBoxLayout(central)
+        self.tabs = QTabWidget()
+        self.setCentralWidget(self.tabs)
 
-        # ActivityLogWidget is the whole page (with buttons + hotkeys)
         self.activity_tab = ActivityLogWidget(parent=self)
-        layout.addWidget(self.activity_tab)
-        self.setCentralWidget(central)
-
-        # --- Build console widget and inject stack into ActivityLogWidget ---
-        # 1) Build console widget
         self.console_output = ANSIConsoleWidget()
 
-        # 2) Get the layout of ActivityLogWidget
-        act_layout = self.activity_tab.layout()
+        self.tabs.addTab(self.activity_tab, "Dashboard")
+        self.tabs.addTab(self.console_output, "Full Logs")
+        self._setup_tab_corner_widgets()
 
-        # 3) Find the index of the existing log_viewer
-        #    (the little log box under "Activity Log:")
-        idx = act_layout.indexOf(self.activity_tab.log_viewer)
-
-        # 4) Remove the original log_viewer from layout
-        act_layout.removeWidget(self.activity_tab.log_viewer)
-
-        # 5) Create a stacked widget that holds:
-        #    - original log_viewer
-        #    - console_output
-        self.log_stack = QStackedWidget()
-        self.log_stack.addWidget(self.activity_tab.log_viewer)  # index 0: Log View
-        self.log_stack.addWidget(self.console_output)  # index 1: Console View
-
-        # 6) Insert the stack back where the log_viewer was
-        act_layout.insertWidget(idx, self.log_stack)
-
-        # 7) Create a small tab bar for Log / Console and put it just above the stack
-        self.log_tabbar = QTabBar()
-        self.log_tabbar.addTab("Log View")
-        self.log_tabbar.addTab("Console View")
-
-        # Insert the tabbar just before the stack
-        act_layout.insertWidget(idx, self.log_tabbar)
-
-        # 8) Wire tabbar to stacked widget
-        self.log_tabbar.currentChanged.connect(self.log_stack.setCurrentIndex)
-
-        # --- Logging connections ---
-        # Console handler → console_output
         self.console_handler.log_signal.connect(self.console_output.append_ansi_text)
-        # Activity handler → original log_viewer
         self.activity_handler.log_signal.connect(self.activity_tab.log_viewer.appendPlainText)
 
-        # --- Startup banner ---
         self.emit_startup_direct_to_console()
+        self._emit_deferred_config_cleanup_logs(self._config)
 
-        self._emit_deferred_config_cleanup_logs(config)
+    def _setup_tab_corner_widgets(self):
+        """Add social buttons to the top right of the tab bar."""
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 15, 0)
+        layout.setSpacing(15)
 
-        # --- Backend worker thread ---
+        # System Status Indicators
+        self.vision_indicator = QLabel("Vision Mode: STOPPED")
+        self.vision_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
+        self.tts_indicator = QLabel("TTS: Disconnected")
+        self.tts_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
+
+        layout.addWidget(self.vision_indicator)
+        layout.addWidget(self.tts_indicator)
+
+        discord_btn = QPushButton()
+        self._setup_social_button(discord_btn, DISCORD_ICON, "https://discord.gg/YyzaPhAN6T")
+        github_btn = QPushButton()
+        self._setup_social_button(github_btn, GITHUB_ICON, "https://github.com/d4lfteam/d4lf")
+
+        layout.addWidget(discord_btn)
+        layout.addWidget(github_btn)
+        self.tabs.setCornerWidget(container, Qt.Corner.TopRightCorner)
+
+    def _setup_social_button(self, btn: QPushButton, icon_path: Path, url: str):
+        # Double check existence and check for lowercase fallback on-the-fly
+        final_path = icon_path
+        if not final_path.exists():
+            alt_path = icon_path.parent / icon_path.name.lower()
+            if alt_path.exists():
+                final_path = alt_path
+
+        if final_path.exists():
+            btn.setIcon(QIcon(str(final_path)))
+            btn.setIconSize(QSize(24, 24))
+        else:
+            btn.setText("D" if "discord" in url else "G")
+        btn.setFixedSize(30, 30)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setToolTip(url)
+        btn.setStyleSheet(
+            "QPushButton { background-color: transparent; border: none; } QPushButton:hover { background-color: #333; border-radius: 4px; }"
+        )
+        btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
+
+    def _refresh_dashboard_status(self):
+        """Poll backend states and update the Dashboard labels."""
+        self.update_tts_status(tts.CONNECTED)
+        if self.worker and self.worker.script_handler:
+            self.update_vision_status(self.worker.script_handler.vision_mode.running())
+
+    def update_vision_status(self, is_running: bool):
+        if is_running:
+            self.vision_indicator.setText("Vision Mode: RUNNING")
+            self.vision_indicator.setStyleSheet("color: #23fc5d; font-weight: bold; font-size: 10pt;")
+        else:
+            self.vision_indicator.setText("Vision Mode: STOPPED")
+            self.vision_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
+
+    def update_tts_status(self, connected: bool):
+        if connected:
+            self.tts_indicator.setText("TTS: Connected")
+            self.tts_indicator.setStyleSheet("color: #23fc5d; font-weight: bold; font-size: 10pt;")
+        else:
+            self.tts_indicator.setText("TTS: Disconnected")
+            self.tts_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
+
+    def _init_backend(self):
         self.thread = QThread()
         self.worker = BackendWorker()
         self.worker.moveToThread(self.thread)
-
         self.thread.started.connect(self.worker.run)
         self.worker.finished.connect(self.thread.quit)
-
-        # --- Final setup ---
-        self.restore_geometry()
         self.thread.start()
 
-    def _show_singleton_modal(self, window_attr: str, window_class, *args, **kwargs):
-        """Helper to show a singleton modal window.
-
-        If window already exists and is visible, bring it to front.
-        Otherwise create a new one.
-        """
-        existing_window = getattr(self, window_attr)
+    def _show_singleton_modal(self, key: str, window_class, *args, **kwargs):
+        existing_window = self._child_windows.get(key)
 
         # If window exists and is visible, just bring it to front
         if existing_window is not None and existing_window.isVisible():
             existing_window.raise_()
             existing_window.activateWindow()
             return existing_window
-
-        # Create new window
         win = window_class(*args, **kwargs)
         win.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-
-        # Make it modal
         win.setWindowModality(Qt.WindowModality.ApplicationModal)
-
-        # Track the window
-        setattr(self, window_attr, win)
-
-        # Clear reference when window is destroyed
-        def on_destroyed():
-            setattr(self, window_attr, None)
-
-        win.destroyed.connect(on_destroyed)
+        self._child_windows[key] = win
+        win.destroyed.connect(lambda: self._child_windows.pop(key, None))
 
         win.show()
         return win
@@ -323,27 +354,16 @@ class UnifiedMainWindow(QMainWindow):
                 self.activity_handler.handle(record)
 
     def open_import_dialog(self):
-        try:
-            self._show_singleton_modal("_importer_window", ImporterWindow)
-        except Exception as e:
-            LOGGER.exception("Failed to open importer")
-            QMessageBox.critical(self, "Import Error", str(e))
+        win = self._show_singleton_modal("importer", ImporterWindow)
+        win.import_completed.connect(self.activity_tab.refresh_profiles, Qt.ConnectionType.UniqueConnection)
 
     def open_settings_dialog(self):
-        try:
-            self._show_singleton_modal("_config_window", ConfigWindow, theme_changed_callback=self.apply_theme)
-        except Exception as e:
-            LOGGER.exception("Failed to open settings")
-            QMessageBox.critical(self, "Settings Error", str(e))
+        self._show_singleton_modal("config", ConfigWindow, theme_changed_callback=self.apply_theme)
 
-    def open_profile_editor(self):
-        try:
-            self._show_singleton_modal("_profile_editor_window", ProfileEditorWindow)
-        except Exception:
-            LOGGER.exception("Failed to open profile editor")
+    def open_profile_editor(self, profile_name: str | None = None):
+        self._show_singleton_modal("editor", ProfileEditorWindow, profile_name=profile_name)
 
     def restore_geometry(self):
-
         settings = QSettings("d4lf", "mainwindow")
 
         size = settings.value("size", QSize(1000, 800))
@@ -355,10 +375,11 @@ class UnifiedMainWindow(QMainWindow):
 
         if maximized:
             self.showMaximized()
-
-        selected = settings.value("selected_view", 0, int)
-        self.log_tabbar.setCurrentIndex(selected)
-        self.log_stack.setCurrentIndex(selected)
+        self.tabs.setCurrentIndex(settings.value("selected_tab", 0, int))
+        # Using False as a positional argument for defaultValue is required by the QSettings API
+        self.activity_tab.minimize_to_tray_cb.setChecked(
+            settings.value("minimize_to_tray", False, type=bool)  # noqa: FBT003
+        )
 
     def save_geometry(self):
         settings = QSettings("d4lf", "mainwindow")
@@ -368,25 +389,56 @@ class UnifiedMainWindow(QMainWindow):
             settings.setValue("pos", self.pos())
 
         settings.setValue("maximized", self.isMaximized())
-        settings.setValue("selected_view", self.log_tabbar.currentIndex())
+        settings.setValue("selected_tab", self.tabs.currentIndex())
+        settings.setValue("minimize_to_tray", self.activity_tab.minimize_to_tray_cb.isChecked())
+
+    def _setup_tray(self):
+        """Initialize the system tray icon and its context menu."""
+        self.tray_icon = QSystemTrayIcon(self)
+        if ICON_PATH.exists():
+            self.tray_icon.setIcon(QIcon(str(ICON_PATH)))
+
+        tray_menu = QMenu()
+        restore_action = tray_menu.addAction("Restore")
+        restore_action.triggered.connect(self._restore_from_tray)
+
+        tray_menu.addSeparator()
+
+        exit_action = tray_menu.addAction("Exit")
+        exit_action.triggered.connect(self.close)
+
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.activated.connect(self._on_tray_icon_activated)
+        self.tray_icon.setToolTip("D4 Loot Filter")
+        self.tray_icon.show()
+
+    def _on_tray_icon_activated(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            self._restore_from_tray()
+
+    def _restore_from_tray(self):
+        self.showNormal()
+        self.activateWindow()
+
+    def changeEvent(self, event: QEvent):  # noqa: N802
+        if (
+            event.type() == QEvent.Type.WindowStateChange
+            and self.isMinimized()
+            and self.activity_tab.minimize_to_tray_cb.isChecked()
+        ):
+            self.hide()
+        super().changeEvent(event)
 
     def closeEvent(self, event):  # noqa: N802
-        # Close all child windows
-        for window_attr in ("_config_window", "_importer_window", "_profile_editor_window"):
-            win = getattr(self, window_attr)
-            if win is not None:
-                with suppress(Exception):
-                    win.close()
+        for win in list(self._child_windows.values()):
+            with suppress(Exception):
+                win.close()
 
-        # --- Existing behavior ---
         self.save_geometry()
-
         root_logger = logging.getLogger()
-
         with suppress(Exception):
             root_logger.removeHandler(self.console_handler)
             root_logger.removeHandler(self.activity_handler)
-
         with suppress(Exception):
             logging._handlerList.clear()
 
@@ -398,11 +450,13 @@ class UnifiedMainWindow(QMainWindow):
             "D4LF - Diablo 4 Loot Filter\n"
             "═══════════════════════════════════════════════════════════════════════════════"
         )
-
         self.console_output.appendPlainText(banner)
-        self.console_output.appendPlainText("")  # one blank line for spacing
+        self.console_output.appendPlainText("")
 
     def apply_theme(self):
         theme_name = IniConfigLoader().general.theme
-        stylesheet = DARK_THEME if theme_name == "dark" else LIGHT_THEME
+        accent_color = get_filter_colors().matched
+        template = DARK_THEME_TEMPLATE if theme_name == "dark" else LIGHT_THEME_TEMPLATE
+        stylesheet = template.replace("{accent}", accent_color)
+
         QApplication.instance().setStyleSheet(stylesheet)

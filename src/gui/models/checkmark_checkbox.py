@@ -2,6 +2,8 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPainter, QPen
 from PyQt6.QtWidgets import QCheckBox, QStyle, QStyleOptionButton
 
+from src.scripts.common import get_filter_colors
+
 
 class CheckmarkCheckBox(QCheckBox):
     """A custom QCheckBox that renders a checkmark inside its indicator.
@@ -24,7 +26,7 @@ class CheckmarkCheckBox(QCheckBox):
             indicator_rect = self.style().subElementRect(QStyle.SubElement.SE_CheckBoxIndicator, option, self)
 
             # Draw a simple checkmark inside the indicator
-            pen = QPen(QColor("#23fc5d"))  # Green color from theme
+            pen = QPen(QColor(get_filter_colors().matched))
             pen.setWidth(2)  # Adjust thickness as needed
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
