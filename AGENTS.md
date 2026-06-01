@@ -220,4 +220,4 @@ All UI coordinates in `src/config/data.py` are defined at **3840×2160** (UHD) a
 - The project targets **Windows only** at runtime (uses win32 APIs, PyInstaller exe, DirectX screen capture). Tests for Windows-only modules are gated in `conftest.py`.
 - User data directory: `~/.d4lf/` (profiles, params.ini, logs).
 - Version is defined in `src/__init__.py` as `__version__`.
-- Generated data files (from `src/tools/gen_data.py`) are suffixed `_generated.py` and gitignored.
+- Existing comments should be kept in place unless the code they relate to is removed
