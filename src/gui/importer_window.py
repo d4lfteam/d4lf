@@ -6,7 +6,7 @@ from pathlib import Path
 from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, Qt, QThreadPool, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
-    QCheckBox,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -22,7 +22,7 @@ from src.gui.importer.d4builds import import_d4builds
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.maxroll import import_maxroll
 from src.gui.importer.mobalytics import import_mobalytics
-from src.gui.models.open_user_config_button import OpenUserConfigButton
+from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 
@@ -34,6 +34,8 @@ THREADPOOL = QThreadPool()
 
 class ImporterWindow(QMainWindow):
     """Standalone window for Maxroll/D4Builds/Mobalytics importer."""
+
+    import_completed = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -128,16 +130,19 @@ class ImporterWindow(QMainWindow):
         # Connect toggle logic
         self.import_gas_checkbox.stateChanged.connect(lambda: disable_require_if_import_disabled())
 
-        checkbox_hbox = QHBoxLayout()
-        checkbox_hbox.addWidget(self.import_aspect_upgrades_checkbox)
-        checkbox_hbox.addWidget(self.import_gas_checkbox)
-        checkbox_hbox.addWidget(self.require_all_gas_checkbox)
-        layout.addLayout(checkbox_hbox)
-        # Second row of checkboxes, probably need a better solution for this one day
-        checkbox_hbox = QHBoxLayout()
-        checkbox_hbox.addWidget(self.export_paragon_checkbox)
-        checkbox_hbox.addWidget(self.add_to_profiles_checkbox)
-        layout.addLayout(checkbox_hbox)
+        # Use a grid layout to ensure checkboxes align vertically in columns
+        checkbox_grid = QGridLayout()
+        checkbox_grid.setContentsMargins(0, 10, 0, 10)
+        checkbox_grid.setSpacing(10)
+
+        checkbox_grid.addWidget(self.import_aspect_upgrades_checkbox, 0, 0)
+        checkbox_grid.addWidget(self.import_gas_checkbox, 0, 1)
+        checkbox_grid.addWidget(self.require_all_gas_checkbox, 0, 2)
+
+        checkbox_grid.addWidget(self.export_paragon_checkbox, 1, 0)
+        checkbox_grid.addWidget(self.add_to_profiles_checkbox, 1, 1)
+
+        layout.addLayout(checkbox_grid)
 
         # Generate button
         button_hbox = QHBoxLayout()
@@ -145,9 +150,6 @@ class ImporterWindow(QMainWindow):
         self.generate_button.setEnabled(False)
         self.generate_button.clicked.connect(self._generate_button_click)
         button_hbox.addWidget(self.generate_button)
-
-        profiles_button = OpenUserConfigButton()
-        button_hbox.addWidget(profiles_button)
         layout.addLayout(button_hbox)
 
         # Log output
@@ -195,11 +197,11 @@ class ImporterWindow(QMainWindow):
         instructions_text.setFixedHeight(text_height)
         layout.addWidget(instructions_text)
 
-    def _generate_checkbox(self, name, settings_value, desc, default_value="true") -> QCheckBox:
+    def _generate_checkbox(self, name, settings_value, desc, default_value="true") -> CheckmarkCheckBox:
         def save_setting_change(settings_value, value):
             self.settings.setValue(settings_value, value)
 
-        checkbox = QCheckBox(name)
+        checkbox = CheckmarkCheckBox(name)
         checkbox.setChecked(self.settings.value(settings_value, default_value) == "true")
         checkbox.setToolTip(desc)
         checkbox.stateChanged.connect(lambda: save_setting_change(settings_value, checkbox.isChecked()))
@@ -245,6 +247,7 @@ class ImporterWindow(QMainWindow):
         self.generate_button.setEnabled(True)
         self.generate_button.setText("Generate")
         self.filename_input_box.clear()
+        self.import_completed.emit()
 
     def closeEvent(self, event):  # noqa: N802
         """Cleanup when window closes and save geometry."""
@@ -284,8 +287,12 @@ class _GuiLogHandler(logging.Handler):
 
     def _append_log(self, message):
         """Slot that runs in main thread - safe to update GUI."""
-        self.text_widget.append(message)
-        self.text_widget.ensureCursorVisible()
+        try:
+            self.text_widget.append(message)
+            self.text_widget.ensureCursorVisible()
+        except RuntimeError:
+            # Handle the case where the widget was deleted while a signal was in flight
+            pass
 
 
 class _LogSignals(QObject):

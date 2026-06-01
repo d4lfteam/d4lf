@@ -18,9 +18,10 @@ LOGGER = logging.getLogger(__name__)
 class ProfileEditorWindow(QMainWindow):
     """Standalone window for Profile Editor."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, profile_name: str | None = None):
         super().__init__(parent)
         self.settings = QSettings("d4lf", "profile_editor")
+        self._initial_profile = profile_name
 
         if ICON_PATH.exists():
             self.setWindowIcon(QIcon(str(ICON_PATH)))
@@ -39,6 +40,8 @@ class ProfileEditorWindow(QMainWindow):
 
     def _finish_construction(self):
         self.profile_tab = ProfileTab()
+        if self._initial_profile:
+            self.profile_tab.load_selected_profile(self._initial_profile)
         self.setCentralWidget(self.profile_tab)
         self.profile_tab.show_tab()
 
