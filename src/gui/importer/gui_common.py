@@ -333,23 +333,36 @@ def _rm_style_info(d):
             _rm_style_info(elem)
 
 
-def setup_webdriver(uc: bool = False) -> ChromiumDriver:
+def setup_webdriver(
+    uc: bool = False, headless: bool = True, user_data_dir: pathlib.Path | None = None
+) -> ChromiumDriver:
     if uc:
-        return Driver(uc=uc, headless2=True)
+        kwargs = {"uc": uc}
+        if headless:
+            kwargs["headless2"] = True
+        else:
+            kwargs["headed"] = True
+        if user_data_dir is not None:
+            user_data_dir.mkdir(parents=True, exist_ok=True)
+            kwargs["user_data_dir"] = str(user_data_dir)
+        return Driver(**kwargs)
     match IniConfigLoader().general.browser:
         case BrowserType.edge:
             options = webdriver.EdgeOptions()
-            options.add_argument("--headless=new")
+            if headless:
+                options.add_argument("--headless=new")
             options.add_argument("log-level=3")
             driver = webdriver.Edge(options=options)
         case BrowserType.chrome:
             options = webdriver.ChromeOptions()
-            options.add_argument("--headless=new")
+            if headless:
+                options.add_argument("--headless=new")
             options.add_argument("log-level=3")
             driver = webdriver.Chrome(options=options)
         case BrowserType.firefox:
             options = webdriver.FirefoxOptions()
-            options.add_argument("--headless")
+            if headless:
+                options.add_argument("--headless")
             options.add_argument("log-level=3")
             driver = webdriver.Firefox(options=options)
     return driver  # It must be one of the 3 browsers due to ini validation

@@ -1,6 +1,7 @@
 import logging
 import os
 import typing
+from dataclasses import dataclass
 
 import pytest
 
@@ -8,6 +9,9 @@ from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.mobalytics import (
     _extract_mobalytics_preloaded_state,
+    _extract_mobalytics_preloaded_state_from_page,
+    _is_mobalytics_blocked_page,
+    _is_mobalytics_page_ready,
     _log_mobalytics_page_diagnostics,
     import_mobalytics,
 )
@@ -36,6 +40,11 @@ URLS = [
 class _MobalyticsDiagnosticsDriver:
     current_url = "https://mobalytics.gg/blocked"
     title = "Access denied"
+
+
+@dataclass
+class _MobalyticsPageDriver:
+    page_source: str
 
 
 def test_extract_mobalytics_paragon_steps_normalizes_warlock_starting_board():
@@ -68,6 +77,31 @@ def test_extract_mobalytics_preloaded_state_accepts_assignment_variants(script_t
 
 def test_extract_mobalytics_preloaded_state_ignores_unrelated_script():
     assert _extract_mobalytics_preloaded_state("console.log('ready');") is None
+
+
+def test_extract_mobalytics_preloaded_state_from_page_reports_script_count():
+    data, script_count = _extract_mobalytics_preloaded_state_from_page(
+        "<html><script>console.log('ready');</script>"
+        '<script>window.__PRELOADED_STATE__={"userGeneratedDocumentBySlug":{"data":{}}};</script></html>'
+    )
+
+    assert data == {"userGeneratedDocumentBySlug": {"data": {}}}
+    assert script_count == 2
+
+
+def test_is_mobalytics_blocked_page_detects_cloudflare_challenge():
+    assert _is_mobalytics_blocked_page("<html><title>Just a moment...</title>Cloudflare</html>")
+
+
+def test_mobalytics_page_ready_waits_for_data_in_visible_browser():
+    blocked_driver = _MobalyticsPageDriver("<html><title>Just a moment...</title>Cloudflare</html>")
+    data_driver = _MobalyticsPageDriver(
+        '<html><script>window.__PRELOADED_STATE__={"userGeneratedDocumentBySlug":{"data":{}}};</script></html>'
+    )
+
+    assert _is_mobalytics_page_ready(blocked_driver, stop_on_block=True)
+    assert not _is_mobalytics_page_ready(blocked_driver, stop_on_block=False)
+    assert _is_mobalytics_page_ready(data_driver, stop_on_block=False)
 
 
 def test_log_mobalytics_page_diagnostics_reports_loaded_page_shape(caplog: pytest.LogCaptureFixture):
