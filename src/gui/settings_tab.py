@@ -350,7 +350,11 @@ class ConfigTab(QWidget):
         elif config_key == "max_stash_tabs":
 
             def on_tabs_changed(val):
-                _validate_and_save_changes(model, section_config_header, config_key, val)
+                if _validate_and_save_changes(model, section_config_header, config_key, val):
+                    # Refresh the stash tabs widget to show the correct number of checkboxes
+                    tabs_widget = self.model_to_parameter_value_map.get(f"{section_config_header}.check_chest_tabs")
+                    if isinstance(tabs_widget, QChestTabWidget):
+                        tabs_widget.reset_values(model.check_chest_tabs)
 
             parameter_value_widget = SegmentedControl(["6", "7"], str(config_value), on_tabs_changed)
         elif config_key in {"move_to_inv_item_type", "move_to_stash_item_type"}:
@@ -627,25 +631,32 @@ class IgnoreScrollWheelComboBox(QComboBox):
 class QChestTabWidget(QWidget):
     def __init__(self, model, section_header, config_key, chest_tab_config: list[int], max_chest_tabs):
         super().__init__()
+        self.model = model
+        self.section_header = section_header
+        self.config_key = config_key
         self.all_checkboxes: list[CheckmarkCheckBox] = []
-        stash_checkbox_layout = QHBoxLayout()
-        stash_checkbox_layout.setContentsMargins(0, 0, 0, 0)
-        for x in range(1, max_chest_tabs + 1):
+        self.layout = QHBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.reset_values(chest_tab_config)
+
+    def reset_values(self, chest_tab_config: list[int]):
+        # Clear existing checkboxes
+        while self.all_checkboxes:
+            cb = self.all_checkboxes.pop()
+            self.layout.removeWidget(cb)
+            cb.deleteLater()
+
+        max_tabs = self.model.max_stash_tabs
+        for x in range(max_tabs):
             stash_checkbox = CheckmarkCheckBox(self)
             stash_checkbox.setText(str(x + 1))
             self.all_checkboxes.append(stash_checkbox)
-            if x in chest_tab_config:  # type: ignore[operator]
+            if x in chest_tab_config:
                 stash_checkbox.setChecked(True)
             stash_checkbox.stateChanged.connect(
-                lambda: self._save_changes_on_box_change(model, section_header, config_key)
+                lambda: self._save_changes_on_box_change(self.model, self.section_header, self.config_key)
             )
-            stash_checkbox_layout.addWidget(stash_checkbox)
-
-        self.setLayout(stash_checkbox_layout)
-
-    def reset_values(self, chest_tab_config: list[int]):
-        for check_box in self.all_checkboxes:  # type: ignore[attr-defined]
-            check_box.setChecked(int(check_box.text()) - 1 in chest_tab_config)
+            self.layout.addWidget(stash_checkbox)
 
     def _save_changes_on_box_change(self, model, section_header, config_key):
         active_tabs = [check_box.text() for check_box in self.all_checkboxes if check_box.isChecked()]

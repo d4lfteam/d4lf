@@ -1529,7 +1529,7 @@ class ParagonOverlay(tk.Toplevel):
                     ImageDraw.Draw(i).text((1, 1), "🔒" if locked else "🔓", font=fnt)
                 b = io.BytesIO()
                 i.save(b, format="PNG")
-                return tk.PhotoImage(data=base64.b64encode(b.getvalue()))
+                return tk.PhotoImage(master=self, data=base64.b64encode(b.getvalue()))
 
             self._lock_img_cache = {True: _mk(locked=True), False: _mk(locked=False)}
         except OSError, ValueError, tk.TclError:
