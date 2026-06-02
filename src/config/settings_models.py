@@ -290,7 +290,7 @@ class GeneralModel(_IniBaseModel):
         json_schema_extra={CATEGORY_KEY: SettingsCategory.SYSTEM},
     )
     check_chest_tabs: list[int] = Field(
-        default=[0, 1, 2, 3, 4, 5, 6],
+        default=[0, 1],
         description="Which stash tabs to check. Note: All tabs available (6 or 7) must be unlocked!",
         title="Stash Tabs to Filter",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},

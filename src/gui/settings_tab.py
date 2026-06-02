@@ -646,7 +646,7 @@ class QChestTabWidget(QWidget):
             self.layout.removeWidget(cb)
             cb.deleteLater()
 
-        max_tabs = getattr(self.model, "max_stash_tabs", 7)
+        max_tabs = self.model.max_stash_tabs
         for x in range(max_tabs):
             stash_checkbox = CheckmarkCheckBox(self)
             stash_checkbox.setText(str(x + 1))
