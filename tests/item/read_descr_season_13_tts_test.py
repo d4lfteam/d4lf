@@ -387,6 +387,75 @@ items = [
             seasonal_attribute=None,
         ),
     ),
+    (
+        [
+            "INIMICAL SEAL OF FURY",
+            "Legendary Horadric Seal",
+            "5 Maximum Fury [5]",
+            "Boosts Berserker's Crucible",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(
+                    max_value=5.0,
+                    min_value=5.0,
+                    name="maximum_fury",
+                    text="5 Maximum Fury [5]",
+                    type=AffixType.normal,
+                    value=5.0,
+                )
+            ],
+            aspect=None,
+            boosted_set_name="berserkers_crucible",
+            codex_upgrade=False,
+            cosmetic_upgrade=False,
+            inherent=[],
+            is_in_shop=False,
+            item_type=ItemType.HoradricSeal,
+            name="inimical_seal_of_fury",
+            original_name="INIMICAL SEAL OF FURY",
+            power=None,
+            rarity=ItemRarity.Legendary,
+            seasonal_attribute=None,
+        ),
+    ),
+    (
+        [
+            "LINTA OF THE FROZEN SEA",
+            "Set Charm",
+            "Lucky Hit: Up to a 40% Chance to Deal +650 Poison Damage",
+            "+7.0% Potion Healing",
+            "Breath of the Frozen Sea",
+            "Phoba of the Frozen Sea",
+            "Breath of the Frozen Sea (0/5). (2) Set:. Frost Skills deal 70% of their direct damage as bonus Frostbite over 12 seconds.. (3) Set:. You cannot be Chilled or Frozen.. Your Maximum Life and Barrier generation is increased by 20%.. (5) Set:. Frost Skill damage is increased by 200%.. Freezing enemies consumes all Frostbite on them, dealing its remaining damage instantly.",
+            "Requires Level 70Sorcerer. Only. Unique Equipped. Lord of Hatred Item",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(
+                    name="lucky_hit_up_to_a_chance_to_deal_poison_damage",
+                    text="Lucky Hit: Up to a 40% Chance to Deal +650 Poison Damage",
+                    type=AffixType.greater,
+                    value=40.0,
+                ),
+                Affix(name="potion_healing", text="+7.0% Potion Healing", type=AffixType.greater, value=7.0),
+            ],
+            aspect=None,
+            codex_upgrade=False,
+            cosmetic_upgrade=False,
+            inherent=[],
+            is_in_shop=False,
+            item_type=ItemType.Charm,
+            name="linta_of_the_frozen_sea",
+            original_name="LINTA OF THE FROZEN SEA",
+            power=None,
+            rarity=ItemRarity.Set,
+            seasonal_attribute=None,
+            set_name="breath_of_the_frozen_sea",
+        ),
+    ),
 ]
 
 
