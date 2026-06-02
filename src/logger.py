@@ -23,13 +23,6 @@ LOG_DIR = BASE_DIR / "logs"
 _setup_called = False
 
 
-class ThreadNameFilter(logging.Filter):
-    def filter(self, record):
-        if record.threadName.startswith("Dummy-"):
-            record.threadName = record.threadName.replace("Dummy-", "Thread-")
-        return True
-
-
 class ColoredFormatter(logging.Formatter):
     def __init__(
         self,
@@ -44,7 +37,7 @@ class ColoredFormatter(logging.Formatter):
         super().__init__(fmt=fmt, datefmt=datefmt, style=style, validate=validate, defaults=defaults)
 
     COLORS = {
-        "DEBUG": colorama.Fore.BLUE,
+        "DEBUG": colorama.Fore.LIGHTCYAN_EX,
         "INFO": colorama.Fore.GREEN,
         "WARNING": colorama.Fore.YELLOW,
         "ERROR": colorama.Fore.RED,
@@ -56,51 +49,44 @@ class ColoredFormatter(logging.Formatter):
         return self.COLORS.get(record.levelname, "") + log_message + colorama.Style.RESET_ALL
 
 
-def _setup_log_filename(fmt: str) -> str:
-    current_datetime = datetime.datetime.now(tz=datetime.UTC)
+def create_formatter(colored: bool = False, technical: bool = True, timestamp: bool = True):
+    parts = []
+    if timestamp:
+        parts.append("%(asctime)s")
+    if technical:
+        parts.extend(["%(threadName)s", "%(levelname)s", "%(name)s:%(lineno)d"])
 
-    filename = fmt.format(date=current_datetime.strftime("%Y-%m-%d"), time=current_datetime.strftime("%H-%M-%S"))
-    if filename and not filename.lower().endswith(".log"):
-        filename += ".log"
-    return filename
-
-
-def create_formatter(colored=False):
-    fmt = "%(asctime)s | %(threadName)s | %(levelname)s | %(name)s:%(lineno)d | %(message)s"
+    fmt = " | ".join(parts) + " | %(message)s" if parts else "%(message)s"
     if colored:
         return ColoredFormatter(fmt)
     return logging.Formatter(fmt)
 
 
-def setup(log_level: str = "DEBUG", *, enable_stdout: bool = True) -> None:
+def setup(
+    log_level: str = "DEBUG", *, enable_stdout: bool = True, technical: bool = False, timestamp: bool = True
+) -> None:
     LOG_DIR.mkdir(exist_ok=True)
 
     logger = logging.getLogger()
     threading.excepthook = _log_unhandled_exceptions
-    # create rotating file handler
+
+    # File handler: Always DEBUG level and always includes technical info
+    log_timestamp = datetime.datetime.now(tz=datetime.UTC).strftime("%Y_%m_%d_%H_%M_%S")
     rotating_handler = logging.handlers.RotatingFileHandler(
-        LOG_DIR / f"log_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}.txt",
-        mode="w",
-        maxBytes=10 * 1024**2,
-        backupCount=1000,
-        encoding="utf8",
+        LOG_DIR / f"log_{log_timestamp}.log", mode="a", maxBytes=10 * 1024**2, backupCount=1000, encoding="utf8"
     )
     rotating_handler.set_name("D4LF_FILE")
-    rotating_handler.setLevel(log_level.upper())
+    rotating_handler.setLevel(logging.DEBUG)
+    rotating_handler.setFormatter(create_formatter(colored=False, technical=True, timestamp=True))
+    logger.addHandler(rotating_handler)
 
     # create StreamHandler for console output (optional)
     if enable_stdout:
         stream_handler = logging.StreamHandler(stream=sys.stdout)
-        stream_handler.addFilter(ThreadNameFilter())
         stream_handler.set_name("D4LF_CONSOLE")
         stream_handler.setLevel(log_level.upper())
-        stream_handler.setFormatter(create_formatter(colored=True))
+        stream_handler.setFormatter(create_formatter(colored=True, technical=technical, timestamp=timestamp))
         logger.addHandler(stream_handler)
-
-    rotating_handler.setFormatter(create_formatter(colored=False))
-
-    # add rotating file handler
-    logger.addHandler(rotating_handler)
 
     # Set default log level for root logger
     logger.setLevel("DEBUG")

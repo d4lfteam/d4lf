@@ -130,6 +130,18 @@ class AdvancedOptionsModel(_IniBaseModel):
         title="Logging Detail Level",
         json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level", CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
+    log_timestamp: bool = Field(
+        default=True,
+        description="Include timestamps in the log messages.",
+        title="Log Timestamps",
+        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level", CATEGORY_KEY: SettingsCategory.ADVANCED},
+    )
+    technical_log_info: bool = Field(
+        default=False,
+        description="Include technical information (thread, module, line number) in the logs.",
+        title="Technical Log Info",
+        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level", CATEGORY_KEY: SettingsCategory.ADVANCED},
+    )
     move_to_chest: str = Field(
         default="f8",
         description="Hotkey to move configured items from inventory to stash",
