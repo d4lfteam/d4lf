@@ -26,7 +26,7 @@ from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.item.descr import keep_letters_and_spaces
 from src.item.descr.text import clean_str, find_number
 from src.item.descr.texture import find_affix_bullets, find_aspect_bullet, find_seperator_short, find_seperators_long
-from src.item.models import Item
+from src.item.models import BoostedSet, Item
 from src.scripts import correct_name
 from src.tts import ItemIdentifiers
 from src.utils.window import screenshot
@@ -53,6 +53,7 @@ _ASPECT_RE = re.compile(
 _FOR_SECONDS_RE = re.compile(r"for (?P<forsecondsvalue>\d+(?:\.\d+)?) Seconds")
 
 _REPLACE_COMPARE_RE = re.compile(r"\(.*\)")
+_CHARM_SLOTS_RE = re.compile(r"unlocks (?P<slots>\d+) charm slots", re.IGNORECASE)
 
 _AFFIX_REPLACEMENTS = ["%", "+", ",", "[+]", "[x]", "per 5 Seconds"]
 _AFFIX_STOP_MARKERS = (
@@ -123,17 +124,18 @@ def _get_seal_charm_affix_count(tts_section: list[str], start: int) -> int:
 
 
 def _is_seal_charm_affix_line(line: str) -> bool:
-    return clean_str(line) in Dataloader().affix_dict.values()
+    return _CHARM_SLOTS_RE.search(line) is not None or clean_str(line) in Dataloader().affix_dict.values()
 
 
 def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
     starting_index = _get_affix_starting_location_from_tts_section(tts_section, item)
     inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
     affixes = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
+    boosted_sets = []
     if item.item_type == ItemType.Charm:
         item.set_name = _get_set_from_tts_section(tts_section, starting_index, len(affixes))
     elif item.item_type == ItemType.HoradricSeal:
-        item.boosted_set_name = _get_set_from_tts_section(tts_section, starting_index, len(affixes))
+        boosted_sets = _get_boosted_sets_from_tts_section(tts_section, starting_index, len(affixes))
     aspect_text = _get_aspect_from_tts_section(tts_section, item, starting_index, len(affixes))
     for i, affix_text in enumerate(affixes):
         if i < inherent_num:
@@ -141,8 +143,14 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
             affix.type = AffixType.inherent
             item.inherent.append(affix)
         elif i < inherent_num + affixes_num:
+            if charm_slots_match := _CHARM_SLOTS_RE.search(affix_text):
+                item.charm_slots = int(charm_slots_match.group("slots"))
+                continue
             affix = _get_affix_from_text(affix_text)
             item.affixes.append(affix)
+
+    if item.item_type == ItemType.HoradricSeal:
+        _add_boosted_sets_to_item(item, boosted_sets)
 
     if aspect_text:
         if item.rarity == ItemRarity.Mythic:
@@ -164,6 +172,11 @@ def _add_affixes_from_tts_mixed(
     starting_index = _get_affix_starting_location_from_tts_section(tts_section, item)
     inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
     affixes = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
+    boosted_sets = []
+    if item.item_type == ItemType.Charm:
+        item.set_name = _get_set_from_tts_section(tts_section, starting_index, len(affixes))
+    elif item.item_type == ItemType.HoradricSeal:
+        boosted_sets = _get_boosted_sets_from_tts_section(tts_section, starting_index, len(affixes))
     aspect_text = _get_aspect_from_tts_section(tts_section, item, starting_index, len(affixes))
 
     # With advanced item compare on we'll actually find more bullets than we need, so we don't rely on them for
@@ -178,6 +191,9 @@ def _add_affixes_from_tts_mixed(
             affix.loc = affix_bullets[i].center
             item.inherent.append(affix)
         elif i < inherent_num + affixes_num:
+            if charm_slots_match := _CHARM_SLOTS_RE.search(affix_text):
+                item.charm_slots = int(charm_slots_match.group("slots"))
+                continue
             affix = _get_affix_from_text(affix_text)
             affix.loc = affix_bullets[i].center
             if affix_bullets[i].name.startswith("greater_affix"):
@@ -187,6 +203,9 @@ def _add_affixes_from_tts_mixed(
             else:
                 affix.type = AffixType.normal
             item.affixes.append(affix)
+
+    if item.item_type == ItemType.HoradricSeal:
+        _add_boosted_sets_to_item(item, boosted_sets)
 
     if aspect_text:
         if item.rarity == ItemRarity.Mythic:
@@ -379,11 +398,49 @@ def _get_aspect_from_tts_section(tts_section: list[str], item: Item, start: int,
 
 
 def _get_set_from_tts_section(tts_section: list[str], start: int, num_affixes: int) -> str | None:
+    return next(iter(_get_sets_from_tts_section(tts_section, start, num_affixes)), None)
+
+
+def _get_sets_from_tts_section(tts_section: list[str], start: int, num_affixes: int) -> list[str]:
+    set_names = []
     for line in tts_section[start + num_affixes :]:
         set_name = _get_set_name_from_line(line)
         if set_name in Dataloader().set_list:
-            return set_name
-    return None
+            set_names.append(set_name)
+    return set_names
+
+
+def _get_boosted_sets_from_tts_section(tts_section: list[str], start: int, num_affixes: int) -> list[BoostedSet]:
+    boosted_sets = []
+    index = start + num_affixes
+    while index < len(tts_section):
+        set_name = _get_set_name_from_line(tts_section[index])
+        if set_name not in Dataloader().set_list:
+            index += 1
+            continue
+
+        affix = None
+        next_index = index + 1
+        if next_index < len(tts_section) and _is_boosted_set_affix_line(tts_section[next_index]):
+            affix = _get_affix_from_text(tts_section[next_index])
+            affix.type = AffixType.normal
+            index = next_index
+        boosted_sets.append(BoostedSet(name=set_name, affix=affix))
+        index += 1
+    return boosted_sets
+
+
+def _is_boosted_set_affix_line(line: str) -> bool:
+    return (
+        not line.lower().startswith(_AFFIX_STOP_MARKERS)
+        and _get_set_name_from_line(line) is None
+        and clean_str(line) in Dataloader().affix_dict.values()
+    )
+
+
+def _add_boosted_sets_to_item(item: Item, boosted_sets: list[BoostedSet]) -> None:
+    item.boosted_sets = boosted_sets
+    item.boosted_set_name = item.boosted_sets[0].name if item.boosted_sets else None
 
 
 def _get_set_name_from_line(line: str) -> str | None:

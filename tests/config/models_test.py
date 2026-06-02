@@ -642,6 +642,44 @@ class TestSealFilterModel:
 
         assert model.boosted_set == "berserkers_crucible"
 
+    def test_required_boosted_affix_is_validated(self) -> None:
+        model = SealFilterModel(
+            boostedSet="Berserker's Crucible", boostedAffix="maximum_fury", boostedAffixRequired=True
+        )
+
+        assert model.boosted_affix.name == "maximum_fury"
+        assert model.boosted_affix_required
+
+    def test_boosted_sets_are_validated_and_normalized(self) -> None:
+        model = SealFilterModel(
+            boostedSets=[
+                {"set": "Berserker's Crucible", "affix": "maximum_fury", "required": True},
+                {"set": "Cathan's Dauntless Faith", "affix": "cooldown_reduction"},
+            ]
+        )
+
+        assert model.boosted_sets[0].set_name == "berserkers_crucible"
+        assert model.boosted_sets[0].affix.name == "maximum_fury"
+        assert model.boosted_sets[0].required
+        assert model.boosted_sets[1].set_name == "cathans_dauntless_faith"
+        assert model.boosted_sets[1].affix.name == "cooldown_reduction"
+        assert not model.boosted_sets[1].required
+
+    def test_charm_slots_alias_is_validated(self) -> None:
+        model = SealFilterModel(charmSlots=6)
+
+        assert model.charm_slots == 6
+
+    def test_required_boosted_affix_needs_set_and_affix(self) -> None:
+        with pytest.raises(ValidationError, match="boostedAffixRequired needs boostedSet and boostedAffix"):
+            SealFilterModel(boostedAffixRequired=True)
+
+        with pytest.raises(ValidationError, match="required boostedSets entries need affix"):
+            SealFilterModel(boostedSets=[{"set": "Berserker's Crucible", "required": True}])
+
+        with pytest.raises(ValidationError, match="must be greater than zero"):
+            SealFilterModel(charmSlots=-1)
+
     def test_invalid_boosted_set_fails(self) -> None:
         with pytest.raises(ValidationError, match="boostedSet invalid_set does not exist"):
             SealFilterModel(boostedSet="invalid set")

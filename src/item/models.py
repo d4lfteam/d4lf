@@ -14,12 +14,22 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
+class BoostedSet:
+    __hash__ = None
+
+    affix: Affix | None = None
+    name: str = ""
+
+
+@dataclass
 class Item:
     __hash__ = None
 
     affixes: list[Affix] = field(default_factory=list)
     aspect: Aspect | None = None
     boosted_set_name: str | None = None
+    boosted_sets: list[BoostedSet] = field(default_factory=list)
+    charm_slots: int | None = None
     codex_upgrade: bool = False
     cosmetic_upgrade: bool = False
     inherent: list[Affix] = field(default_factory=list)
@@ -43,6 +53,10 @@ class Item:
             # LOGGER.debug("Aspect not the same")
             res = False
         if self.boosted_set_name != other.boosted_set_name:
+            res = False
+        if self.boosted_sets != other.boosted_sets:
+            res = False
+        if self.charm_slots != other.charm_slots:
             res = False
         if self.codex_upgrade != other.codex_upgrade:
             # LOGGER.debug("Codex upgrade not the same")
@@ -81,6 +95,11 @@ class ItemJSONEncoder(json.JSONEncoder):
                 "affixes": [affix.__dict__ for affix in o.affixes],
                 "aspect": o.aspect.__dict__ if o.aspect else None,
                 "boosted_set_name": o.boosted_set_name or None,
+                "boosted_sets": [
+                    {"affix": boosted_set.affix.__dict__ if boosted_set.affix else None, "name": boosted_set.name}
+                    for boosted_set in o.boosted_sets
+                ],
+                "charm_slots": o.charm_slots,
                 "codex_upgrade": o.codex_upgrade,
                 "cosmetic_upgrade": o.cosmetic_upgrade,
                 "inherent": [affix.__dict__ for affix in o.inherent],

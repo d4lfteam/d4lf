@@ -15,6 +15,7 @@ from src.config.profile_models import (
     AffixAspectFilterModel,
     AffixFilterCountModel,
     AffixFilterModel,
+    BoostedSetFilterModel,
     CharmFilterModel,
     DynamicCharmFilterModel,
     DynamicItemFilterModel,
@@ -303,9 +304,43 @@ class Filter:
             filter_spec.unique_aspect is not None and filter_spec.unique_aspect == item.name
         )
 
-    @staticmethod
-    def _match_seal_filter(item: Item, filter_spec: SealFilterModel) -> bool:
-        return filter_spec.boosted_set is None or filter_spec.boosted_set == item.boosted_set_name
+    def _match_seal_filter(self, item: Item, filter_spec: SealFilterModel) -> bool:
+        if filter_spec.charm_slots and filter_spec.charm_slots != item.charm_slots:
+            return False
+
+        boosted_set_filters = list(filter_spec.boosted_sets)
+        if filter_spec.boosted_set is not None:
+            boosted_set_filters.append(
+                BoostedSetFilterModel(
+                    set=filter_spec.boosted_set,
+                    affix=filter_spec.boosted_affix,
+                    required=filter_spec.boosted_affix_required,
+                )
+            )
+
+        if not boosted_set_filters:
+            return True
+
+        return all(
+            self._match_boosted_set_filter(item, boosted_set_filter) for boosted_set_filter in boosted_set_filters
+        )
+
+    def _match_boosted_set_filter(self, item: Item, filter_spec: BoostedSetFilterModel) -> bool:
+        if not item.boosted_sets:
+            return filter_spec.set_name == item.boosted_set_name and not filter_spec.required
+
+        for boosted_set in item.boosted_sets:
+            if boosted_set.name != filter_spec.set_name:
+                continue
+            if not filter_spec.required:
+                return True
+            if (
+                boosted_set.affix is not None
+                and filter_spec.affix is not None
+                and self._match_item_aspect_or_affix(filter_spec.affix, boosted_set.affix)
+            ):
+                return True
+        return False
 
     def _check_tribute(self, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])

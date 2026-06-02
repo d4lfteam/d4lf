@@ -264,13 +264,52 @@ class CharmFilterModel(SealCharmFilterModel):
         return correct_name(name)
 
 
+class BoostedSetFilterModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    affix: AffixFilterModel | None = None
+    required: bool = False
+    set_name: str = Field(alias="set")
+
+    @field_validator("set_name")
+    @classmethod
+    def set_must_exist(cls, name: str) -> str:
+        normalized_name = _normalize_existing_set_name(name, "set")
+        if normalized_name is None:
+            msg = "set must not be empty"
+            raise ValueError(msg)
+        return normalized_name
+
+    @model_validator(mode="after")
+    def required_boosted_affix_must_have_affix(self) -> BoostedSetFilterModel:
+        if self.required and self.affix is None:
+            msg = "required boostedSets entries need affix"
+            raise ValueError(msg)
+        return self
+
+
 class SealFilterModel(SealCharmFilterModel):
+    boosted_affix: AffixFilterModel | None = Field(default=None, alias="boostedAffix")
+    boosted_affix_required: bool = Field(default=False, alias="boostedAffixRequired")
     boosted_set: str | None = Field(default=None, alias="boostedSet")
+    boosted_sets: list[BoostedSetFilterModel] = Field(default=[], alias="boostedSets")
+    charm_slots: int = Field(default=0, alias="charmSlots")
 
     @field_validator("boosted_set")
     @classmethod
     def boosted_set_must_exist(cls, name: str | None) -> str | None:
         return _normalize_existing_set_name(name, "boostedSet")
+
+    @field_validator("charm_slots")
+    @classmethod
+    def charm_slots_must_be_positive(cls, v: int) -> int:
+        return check_greater_than_zero(v)
+
+    @model_validator(mode="after")
+    def required_boosted_affix_must_have_affix(self) -> SealFilterModel:
+        if self.boosted_affix_required and (self.boosted_affix is None or self.boosted_set is None):
+            msg = "boostedAffixRequired needs boostedSet and boostedAffix"
+            raise ValueError(msg)
+        return self
 
 
 DynamicSealCharmFilterModel = RootModel[dict[str, SealCharmFilterModel]]

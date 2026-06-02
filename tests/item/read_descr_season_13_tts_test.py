@@ -6,7 +6,7 @@ from src.item.data.aspect import Aspect
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
 from src.item.descr.read_descr_tts import read_descr
-from src.item.models import Item
+from src.item.models import BoostedSet, Item
 
 items = [
     (
@@ -408,6 +408,7 @@ items = [
             ],
             aspect=None,
             boosted_set_name="berserkers_crucible",
+            boosted_sets=[BoostedSet(affix=None, name="berserkers_crucible")],
             codex_upgrade=False,
             cosmetic_upgrade=False,
             inherent=[],
@@ -415,6 +416,68 @@ items = [
             item_type=ItemType.HoradricSeal,
             name="inimical_seal_of_fury",
             original_name="INIMICAL SEAL OF FURY",
+            power=None,
+            rarity=ItemRarity.Legendary,
+            seasonal_attribute=None,
+        ),
+    ),
+    (
+        [
+            "EFFICIENT HORADRIC SEAL OF FERVOR",
+            "Legendary Horadric Seal",
+            "Unlocks 5 Charm Slots",
+            "7.5% Resource Cost Reduction [7.5]",
+            "Habacalva's Cauldron:",
+            "+255 Life On Hit",
+            "Tal Rasha's Threefold Way:",
+            "+2 to Ball Lightning",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(
+                    max_value=7.5,
+                    min_value=7.5,
+                    name="resource_cost_reduction",
+                    text="7.5% Resource Cost Reduction [7.5]",
+                    type=AffixType.normal,
+                    value=7.5,
+                )
+            ],
+            aspect=None,
+            boosted_set_name="habacalvas_cauldron",
+            boosted_sets=[
+                BoostedSet(
+                    affix=Affix(
+                        max_value=None,
+                        min_value=None,
+                        name="life_on_hit",
+                        text="+255 Life On Hit",
+                        type=AffixType.normal,
+                        value=255.0,
+                    ),
+                    name="habacalvas_cauldron",
+                ),
+                BoostedSet(
+                    affix=Affix(
+                        max_value=None,
+                        min_value=None,
+                        name="to_ball_lightning",
+                        text="+2 to Ball Lightning",
+                        type=AffixType.normal,
+                        value=2.0,
+                    ),
+                    name="tal_rashas_threefold_way",
+                ),
+            ],
+            charm_slots=5,
+            codex_upgrade=False,
+            cosmetic_upgrade=False,
+            inherent=[],
+            is_in_shop=False,
+            item_type=ItemType.HoradricSeal,
+            name="efficient_horadric_seal_of_fervor",
+            original_name="EFFICIENT HORADRIC SEAL OF FERVOR",
             power=None,
             rarity=ItemRarity.Legendary,
             seasonal_attribute=None,
