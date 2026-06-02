@@ -14,8 +14,8 @@ from src.gui.importer.gui_common import save_as_profile
 from src.gui.profile_editor.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.profile_editor.aspect_upgrades_tab import ASPECT_UPGRADES_TABNAME, AspectUpgradesTab
 from src.gui.profile_editor.global_uniques_tab import UNIQUES_TABNAME, UniquesTab
+from src.gui.profile_editor.seal_charm_tab import CHARMS_TABNAME, SEALS_TABNAME, SealCharmTab
 from src.gui.profile_editor.sigils_tab import SIGILS_TABNAME, SigilsTab
-from src.gui.profile_editor.spellcraft_tab import CHARMS_TABNAME, SEALS_TABNAME, SpellcraftTab
 from src.gui.profile_editor.tributes_tab import TRIBUTES_TABNAME, TributesTab
 
 LOGGER = logging.getLogger(__name__)
@@ -32,8 +32,8 @@ class ProfileEditor(QTabWidget):
         # Create main tabs
         self.affixes_tab = AffixesTab(self.profile_model.affixes)
         self.aspect_upgrades_tab = AspectUpgradesTab(self.profile_model.aspect_upgrades)
-        self.seals_tab = SpellcraftTab(self.profile_model.seals, SEALS_TABNAME, DynamicSealFilterModel, SealFilterModel)
-        self.charms_tab = SpellcraftTab(
+        self.seals_tab = SealCharmTab(self.profile_model.seals, SEALS_TABNAME, DynamicSealFilterModel, SealFilterModel)
+        self.charms_tab = SealCharmTab(
             self.profile_model.charms, CHARMS_TABNAME, DynamicCharmFilterModel, CharmFilterModel
         )
         self.sigils_tab = SigilsTab(self.profile_model.sigils)

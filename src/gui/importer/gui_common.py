@@ -24,7 +24,7 @@ from src.config.profile_models import (
     AspectUniqueFilterModel,
     ItemFilterModel,
     ProfileModel,
-    SpellcraftFilterModel,
+    SealCharmFilterModel,
 )
 from src.config.settings_models import BrowserType
 from src.item.data.affix import Affix, AffixType
@@ -196,10 +196,10 @@ def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool)
         item_filter.min_greater_affix_count = 0
 
 
-def create_spellcraft_filter(
-    affixes: list[Affix], rarity, require_gas: bool, model_type: type[SpellcraftFilterModel] = SpellcraftFilterModel
-) -> SpellcraftFilterModel:
-    spellcraft_filter = model_type(
+def create_seal_charm_filter(
+    affixes: list[Affix], rarity, require_gas: bool, model_type: type[SealCharmFilterModel] = SealCharmFilterModel
+) -> SealCharmFilterModel:
+    seal_charm_filter = model_type(
         affix_pool=[
             AffixFilterCountModel(
                 count=[
@@ -211,8 +211,8 @@ def create_spellcraft_filter(
         rarities=[rarity] if rarity is not None else [],
     )
     if require_gas:
-        spellcraft_filter.min_greater_affix_count = len([affix for affix in affixes if affix.type == AffixType.greater])
-    return spellcraft_filter
+        seal_charm_filter.min_greater_affix_count = len([affix for affix in affixes if affix.type == AffixType.greater])
+    return seal_charm_filter
 
 
 def add_mythics_to_filters(mythic_names, finished_filters):

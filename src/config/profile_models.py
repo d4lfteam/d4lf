@@ -6,7 +6,7 @@ import sys
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 
-from src.config.helper import check_greater_than_zero, validate_percent
+from src.config.helper import check_greater_than_zero, validate_greater_affix_count, validate_percent
 from src.item.data.item_type import ItemType  # noqa: TC001
 from src.item.data.rarity import ItemRarity
 from src.scripts import correct_name
@@ -20,15 +20,11 @@ def _parse_item_type_or_rarities(data: str | list[str]) -> list[str]:
     return data
 
 
-def _is_item_rarity(data: str) -> bool:
-    return any(rarity.value.lower() == data.lower() for rarity in ItemRarity)
-
-
-def _parse_name_or_rarities(data: str | list[str] | dict[str, str | list[str]]) -> dict[str, str | list[str]]:
+def _coerce_name_rarity_filter_data(data: str | list[str] | dict[str, str | list[str]]) -> dict[str, str | list[str]]:
     if isinstance(data, dict):
         return data
     if isinstance(data, str):
-        if _is_item_rarity(data):
+        if any(rarity.value.lower() == data.lower() for rarity in ItemRarity):
             return {"rarities": [data]}
         return {"name": data}
     if isinstance(data, list):
@@ -184,10 +180,7 @@ class GlobalUniqueModel(BaseModel):
     @field_validator("min_greater_affix_count")
     @classmethod
     def count_validator(cls, v: int) -> int:
-        if not 0 <= v <= 4:
-            msg = "must be in [0, 4]"
-            raise ValueError(msg)
-        return v
+        return validate_greater_affix_count(v)
 
     @field_validator("min_percent_of_aspect")
     @classmethod
@@ -212,10 +205,7 @@ class ItemFilterModel(BaseModel):
     @field_validator("min_greater_affix_count")
     @classmethod
     def min_greater_affix_in_range(cls, v: int) -> int:
-        if not 0 <= v <= 4:
-            msg = "must be in [0, 4]"
-            raise ValueError(msg)
-        return v
+        return validate_greater_affix_count(v)
 
     @field_validator("item_type", mode="before")
     @classmethod
@@ -242,7 +232,7 @@ class ItemFilterModel(BaseModel):
 DynamicItemFilterModel = RootModel[dict[str, ItemFilterModel]]
 
 
-class SpellcraftFilterModel(BaseModel):
+class SealCharmFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     affix_pool: list[AffixFilterCountModel] = Field(default=[], alias="affixPool")
     min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
@@ -251,10 +241,7 @@ class SpellcraftFilterModel(BaseModel):
     @field_validator("min_greater_affix_count")
     @classmethod
     def min_greater_affix_in_range(cls, v: int) -> int:
-        if not 0 <= v <= 4:
-            msg = "must be in [0, 4]"
-            raise ValueError(msg)
-        return v
+        return validate_greater_affix_count(v)
 
     @field_validator("rarities", mode="before")
     @classmethod
@@ -262,7 +249,7 @@ class SpellcraftFilterModel(BaseModel):
         return _parse_item_type_or_rarities(data)
 
 
-class CharmFilterModel(SpellcraftFilterModel):
+class CharmFilterModel(SealCharmFilterModel):
     set_name: str | None = Field(default=None, alias="set")
     unique_aspect: str | None = Field(default=None, alias="uniqueAspect")
 
@@ -277,25 +264,16 @@ class CharmFilterModel(SpellcraftFilterModel):
         return correct_name(name)
 
 
-class SealFilterModel(SpellcraftFilterModel):
+class SealFilterModel(SealCharmFilterModel):
     boosted_set: str | None = Field(default=None, alias="boostedSet")
-    slot_count: int = Field(default=0, alias="slotCount")
 
     @field_validator("boosted_set")
     @classmethod
     def boosted_set_must_exist(cls, name: str | None) -> str | None:
         return _normalize_existing_set_name(name, "boostedSet")
 
-    @field_validator("slot_count")
-    @classmethod
-    def slot_count_in_range(cls, v: int) -> int:
-        if not 0 <= v <= 4:
-            msg = "must be in [0, 4]"
-            raise ValueError(msg)
-        return v
 
-
-DynamicSpellcraftFilterModel = RootModel[dict[str, SpellcraftFilterModel]]
+DynamicSealCharmFilterModel = RootModel[dict[str, SealCharmFilterModel]]
 DynamicCharmFilterModel = RootModel[dict[str, CharmFilterModel]]
 DynamicSealFilterModel = RootModel[dict[str, SealFilterModel]]
 
@@ -388,7 +366,7 @@ class TributeFilterModel(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def parse_data(cls, data: str | list[str] | dict[str, str | list[str]]) -> dict[str, str | list[str]]:
-        return _parse_name_or_rarities(data)
+        return _coerce_name_rarity_filter_data(data)
 
     @field_validator("rarities", mode="before")
     @classmethod
@@ -409,7 +387,7 @@ class NameRarityFilterModel(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def parse_data(cls, data: str | list[str] | dict[str, str | list[str]]) -> dict[str, str | list[str]]:
-        return _parse_name_or_rarities(data)
+        return _coerce_name_rarity_filter_data(data)
 
     @field_validator("rarities", mode="before")
     @classmethod

@@ -19,7 +19,7 @@ from src.gui.importer.gui_common import (
     add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
-    create_spellcraft_filter,
+    create_seal_charm_filter,
     fix_offhand_type,
     fix_weapon_type,
     get_with_retry,
@@ -114,26 +114,26 @@ def import_maxroll(config: ImportConfig):
             continue
 
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
-            spellcraft_affixes = _find_item_affixes(
+            seal_charm_affixes = _find_item_affixes(
                 mapping_data=mapping_data,
                 item_affixes=resolved_item["explicits"],
                 item_type=item_type,
                 import_greater_affixes=config.import_greater_affixes,
             )
-            if not spellcraft_affixes:
+            if not seal_charm_affixes:
                 LOGGER.warning(
                     f"Skipping {resolved_item.get('name', '(could not determine item name)')} because it had no supported affixes."
                 )
                 continue
-            spellcraft_filters = charm_filters if item_type == ItemType.Charm else seal_filters
-            filter_name = _unique_filter_name(item_type.name, spellcraft_filters)
-            spellcraft_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
-            spellcraft_filters.append({
-                filter_name: create_spellcraft_filter(
-                    affixes=spellcraft_affixes,
+            seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
+            filter_name = _unique_filter_name(item_type.name, seal_charm_filters)
+            seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
+            seal_charm_filters.append({
+                filter_name: create_seal_charm_filter(
+                    affixes=seal_charm_affixes,
                     rarity=rarity,
                     require_gas=config.require_greater_affixes,
-                    model_type=spellcraft_model,
+                    model_type=seal_charm_model,
                 )
             })
             continue

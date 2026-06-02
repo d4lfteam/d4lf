@@ -646,15 +646,6 @@ class TestSealFilterModel:
         with pytest.raises(ValidationError, match="boostedSet invalid_set does not exist"):
             SealFilterModel(boostedSet="invalid set")
 
-    def test_slot_count_alias(self) -> None:
-        model = SealFilterModel(slotCount=3)
-
-        assert model.slot_count == 3
-
-    def test_slot_count_out_of_range_fails(self) -> None:
-        with pytest.raises(ValidationError, match="must be in \\[0, 4\\]"):
-            SealFilterModel(slotCount=5)
-
 
 class TestSigilConditionModel:
     """Test SigilConditionModel."""

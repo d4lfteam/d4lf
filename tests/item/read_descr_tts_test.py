@@ -15,6 +15,7 @@ RARITY_TTS_LINES = [
     (ItemRarity.Magic, "Magic {item_type}"),
     (ItemRarity.Rare, "Rare {item_type}"),
     (ItemRarity.Legendary, "Legendary {item_type}"),
+    (ItemRarity.Set, "Set {item_type}"),
     (ItemRarity.Unique, "Unique {item_type}"),
     (ItemRarity.Mythic, "Mythic Unique {item_type}"),
 ]
@@ -149,6 +150,7 @@ def test_set_charm_stops_affixes_before_set_bonus_text():
 
     assert item.item_type == ItemType.Charm
     assert item.name == "linta_of_the_frozen_sea"
+    assert item.rarity == ItemRarity.Set
     assert item.set_name == "breath_of_the_frozen_sea"
     assert [affix.name for affix in item.affixes] == [
         "lucky_hit_up_to_a_chance_to_deal_poison_damage",

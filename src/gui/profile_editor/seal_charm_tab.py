@@ -20,10 +20,10 @@ from src.config.profile_models import (
     AffixFilterModel,
     CharmFilterModel,
     DynamicCharmFilterModel,
+    DynamicSealCharmFilterModel,
     DynamicSealFilterModel,
-    DynamicSpellcraftFilterModel,
+    SealCharmFilterModel,
     SealFilterModel,
-    SpellcraftFilterModel,
 )
 from src.dataloader import Dataloader
 from src.gui.models.collapsible_widget import Container
@@ -35,8 +35,8 @@ SEALS_TABNAME = "Seals"
 CHARMS_TABNAME = "Charms"
 
 
-class SpellcraftRuleEditor(QWidget):
-    def __init__(self, dynamic_filter: DynamicSpellcraftFilterModel, parent=None):
+class SealCharmRuleEditor(QWidget):
+    def __init__(self, dynamic_filter: DynamicSealCharmFilterModel, parent=None):
         super().__init__(parent)
         for rule_name, config in dynamic_filter.root.items():
             self.rule_name = rule_name
@@ -141,13 +141,13 @@ class SpellcraftRuleEditor(QWidget):
         self.config.rarities = [rarity for rarity, checkbox in self.rarity_checkboxes.items() if checkbox.isChecked()]
 
 
-class SpellcraftTab(QWidget):
+class SealCharmTab(QWidget):
     def __init__(
         self,
-        filters: list[DynamicSpellcraftFilterModel],
+        filters: list[DynamicSealCharmFilterModel],
         section_name: str,
-        dynamic_model: type[DynamicSpellcraftFilterModel | DynamicCharmFilterModel | DynamicSealFilterModel],
-        filter_model: type[SpellcraftFilterModel | CharmFilterModel | SealFilterModel],
+        dynamic_model: type[DynamicSealCharmFilterModel | DynamicCharmFilterModel | DynamicSealFilterModel],
+        filter_model: type[SealCharmFilterModel | CharmFilterModel | SealFilterModel],
         parent=None,
     ):
         super().__init__(parent)
@@ -176,15 +176,15 @@ class SpellcraftTab(QWidget):
         self.toolbar.setMovable(False)
 
         self.rule_names = []
-        for spellcraft_filter in self.filters:
-            for rule_name in spellcraft_filter.root:
+        for seal_charm_filter in self.filters:
+            for rule_name in seal_charm_filter.root:
                 if rule_name in self.rule_names:
                     QMessageBox.warning(
                         self, "Warning", f"Rule name already exists. Please rename {rule_name} in the profile file."
                     )
                     continue
                 self.rule_names.append(rule_name)
-                self.tab_widget.addTab(SpellcraftRuleEditor(spellcraft_filter), rule_name)
+                self.tab_widget.addTab(SealCharmRuleEditor(seal_charm_filter), rule_name)
 
         add_rule_button = QPushButton("Create Item")
         add_rule_button.clicked.connect(self.add_rule)
@@ -211,7 +211,7 @@ class SpellcraftTab(QWidget):
         new_filter = self.dynamic_model(root={rule_name: self._default_filter()})
         self.filters.append(new_filter)
         self.rule_names.append(rule_name)
-        self.tab_widget.addTab(SpellcraftRuleEditor(new_filter), rule_name)
+        self.tab_widget.addTab(SealCharmRuleEditor(new_filter), rule_name)
 
     def close_tab(self, index):
         self.rule_names.pop(index)
@@ -229,7 +229,7 @@ class SpellcraftTab(QWidget):
             self.tab_widget.removeTab(index)
             self.filters.pop(index)
 
-    def _default_filter(self) -> SpellcraftFilterModel:
+    def _default_filter(self) -> SealCharmFilterModel:
         return self.filter_model(
             affix_pool=[
                 AffixFilterCountModel(

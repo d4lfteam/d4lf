@@ -242,7 +242,7 @@ class Filter:
             res.matched.append(MatchedFilter(f"{profile_name}"))
         return res
 
-    def _check_spellcraft_filters(
+    def _check_seal_charm_filters(
         self,
         item: Item,
         item_filters: dict[str, list[DynamicCharmFilterModel] | list[DynamicSealFilterModel]],
@@ -261,7 +261,6 @@ class Filter:
             res.keep = True
             res.matched.append(MatchedFilter(mythic_name))
 
-        non_tempered_affixes = [affix for affix in item.affixes if affix.type != AffixType.tempered]
         for profile_name, profile_filter in item_filters.items():
             for filter_item in profile_filter:
                 filter_name = next(iter(filter_item.root.keys()))
@@ -274,7 +273,7 @@ class Filter:
                     continue
 
                 if not self._match_greater_affix_count(
-                    expected_min_count=filter_spec.min_greater_affix_count, item_affixes=non_tempered_affixes
+                    expected_min_count=filter_spec.min_greater_affix_count, item_affixes=item.affixes
                 ):
                     continue
 
@@ -282,7 +281,7 @@ class Filter:
                 if filter_spec.affix_pool:
                     matched_affixes = self._match_affixes_count(
                         expected_affixes=filter_spec.affix_pool,
-                        item_affixes=non_tempered_affixes,
+                        item_affixes=item.affixes,
                         min_greater_affix_count=filter_spec.min_greater_affix_count,
                     )
                     if not matched_affixes:
@@ -306,9 +305,7 @@ class Filter:
 
     @staticmethod
     def _match_seal_filter(item: Item, filter_spec: SealFilterModel) -> bool:
-        if filter_spec.boosted_set is not None and filter_spec.boosted_set != item.boosted_set_name:
-            return False
-        return filter_spec.slot_count == 0 or filter_spec.slot_count == len(item.affixes)
+        return filter_spec.boosted_set is None or filter_spec.boosted_set == item.boosted_set_name
 
     def _check_tribute(self, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
@@ -336,7 +333,7 @@ class Filter:
         return res
 
     def _check_seal(self, item: Item) -> FilterResult:
-        return self._check_spellcraft_filters(
+        return self._check_seal_charm_filters(
             item=item,
             item_filters=self.seal_filters,
             section_name="Seals",
@@ -345,7 +342,7 @@ class Filter:
         )
 
     def _check_charm(self, item: Item) -> FilterResult:
-        return self._check_spellcraft_filters(
+        return self._check_seal_charm_filters(
             item=item,
             item_filters=self.charm_filters,
             section_name="Charms",

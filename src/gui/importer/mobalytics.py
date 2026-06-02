@@ -26,7 +26,7 @@ from src.gui.importer.gui_common import (
     add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
-    create_spellcraft_filter,
+    create_seal_charm_filter,
     fix_offhand_type,
     fix_weapon_type,
     match_to_enum,
@@ -219,15 +219,15 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
             if not affixes:
                 LOGGER.warning(f"Skipping {item_name} because it had no supported affixes.")
                 continue
-            spellcraft_filters = charm_filters if item_type == ItemType.Charm else seal_filters
-            filter_name = _unique_filter_name(item_type.name, spellcraft_filters)
-            spellcraft_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
-            spellcraft_filters.append({
-                filter_name: create_spellcraft_filter(
+            seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
+            filter_name = _unique_filter_name(item_type.name, seal_charm_filters)
+            seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
+            seal_charm_filters.append({
+                filter_name: create_seal_charm_filter(
                     affixes=affixes,
                     rarity=None,
                     require_gas=config.require_greater_affixes,
-                    model_type=spellcraft_model,
+                    model_type=seal_charm_model,
                 )
             })
             continue

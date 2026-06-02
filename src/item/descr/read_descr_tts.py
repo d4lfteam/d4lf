@@ -82,7 +82,7 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
         affixes_num = 0
 
     if is_seal_or_charm(item.item_type):
-        return inherent_num, _get_spellcraft_affix_count(tts_section, start)
+        return inherent_num, _get_seal_charm_affix_count(tts_section, start)
 
     if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and not is_seal_or_charm(item.item_type):
         # Uniques can have variable amounts of inherents.
@@ -111,18 +111,18 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
     return inherent_num, affixes_num
 
 
-def _get_spellcraft_affix_count(tts_section: list[str], start: int) -> int:
+def _get_seal_charm_affix_count(tts_section: list[str], start: int) -> int:
     affixes_num = 0
     for line in tts_section[start:]:
         if line.lower().startswith(_AFFIX_STOP_MARKERS):
             break
-        if not _is_spellcraft_affix_line(line):
+        if not _is_seal_charm_affix_line(line):
             break
         affixes_num += 1
     return affixes_num
 
 
-def _is_spellcraft_affix_line(line: str) -> bool:
+def _is_seal_charm_affix_line(line: str) -> bool:
     return clean_str(line) in Dataloader().affix_dict.values()
 
 
