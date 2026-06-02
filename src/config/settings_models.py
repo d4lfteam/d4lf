@@ -290,7 +290,7 @@ class GeneralModel(_IniBaseModel):
         json_schema_extra={CATEGORY_KEY: SettingsCategory.SYSTEM},
     )
     check_chest_tabs: list[int] = Field(
-        default=[0, 1],
+        default=[0, 1, 2, 3, 4, 5, 6],
         description="Which stash tabs to check. Note: All tabs available (6 or 7) must be unlocked!",
         title="Stash Tabs to Filter",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
@@ -403,13 +403,22 @@ class GeneralModel(_IniBaseModel):
 
     @field_validator("check_chest_tabs", mode="before")
     @classmethod
-    def check_chest_tabs_index(cls, v: str) -> list[int]:
+    def check_chest_tabs_index(cls, v: object) -> list[int]:
         if isinstance(v, str):
-            v = v.split(",")
-        elif not isinstance(v, list):
-            msg = "must be a list or a string"
-            raise ValueError(msg)
-        return sorted([int(x) - 1 for x in v])
+            return sorted([int(x.strip()) - 1 for x in v.split(",") if x.strip()])
+        if isinstance(v, list):
+            # Subtract 1 only if the element is a string (external 1-based format)
+            return sorted([int(x) - 1 if isinstance(x, str) else int(x) for x in v])
+        msg = "must be a list or a string"
+        raise ValueError(msg)
+
+    @model_validator(mode="after")
+    def validate_stash_tabs(self) -> GeneralModel:
+        # Constrain check_chest_tabs to the range [0, max_stash_tabs - 1]
+        new_tabs = sorted({t for t in self.check_chest_tabs if 0 <= t < self.max_stash_tabs})
+        if new_tabs != self.check_chest_tabs:
+            self.__dict__["check_chest_tabs"] = new_tabs
+        return self
 
     @field_validator("max_stash_tabs")
     @classmethod
