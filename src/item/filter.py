@@ -288,11 +288,65 @@ class Filter:
                     if not matched_affixes:
                         continue
 
+                if (
+                    getattr(filter_spec, "charm_slots", 0) > 0
+                    and item.charm_slots is not None
+                    and item.charm_slots >= filter_spec.charm_slots
+                    and getattr(item, "charm_slots_loc", None)
+                ):
+                    matched_affixes.append(Affix(name="charm_slots", loc=item.charm_slots_loc))
+
+                boosted_set_filters = []
+                if getattr(filter_spec, "boosted_sets", None):
+                    boosted_set_filters.extend(filter_spec.boosted_sets)
+                if getattr(filter_spec, "boosted_set", None) is not None:
+                    boosted_set_filters.append(
+                        BoostedSetFilterModel(
+                            set=filter_spec.boosted_set,
+                            affix=filter_spec.boosted_affix,
+                            required=filter_spec.boosted_affix_required,
+                        )
+                    )
+                for bsf in boosted_set_filters:
+                    for bs in item.boosted_sets:
+                        if bs.name == bsf.set_name:
+                            if not bsf.required and bs.loc:
+                                matched_affixes.append(Affix(name=bs.name, loc=bs.loc))
+                            elif (
+                                bs.affix is not None
+                                and bsf.affix is not None
+                                and self._match_item_aspect_or_affix(bsf.affix, bs.affix)
+                                and bs.loc
+                            ):
+                                matched_affixes.append(Affix(name=f"{bs.name} ({bs.affix.name})", loc=bs.loc))
+
+                if item.item_type == ItemType.HoradricSeal:
+                    matched_locs = {affix.loc for affix in matched_affixes if affix.loc}
+                    for boosted_set in item.boosted_sets:
+                        if boosted_set.loc and boosted_set.loc not in matched_locs:
+                            matched_affixes.append(Affix(name=boosted_set.name, loc=boosted_set.loc))
+                            matched_locs.add(boosted_set.loc)
+
+                if (
+                    getattr(filter_spec, "set_name", None) is not None
+                    and item.set_name == filter_spec.set_name
+                    and getattr(item, "set_name_loc", None)
+                ):
+                    matched_affixes.append(Affix(name=item.set_name, loc=item.set_name_loc))
+
+                aspect_match = (
+                    getattr(filter_spec, "unique_aspect", None) is not None and item.name == filter_spec.unique_aspect
+                )
+
                 LOGGER.info(
                     f"{item.original_name} -- Matched {profile_name}.{section_name}.{filter_name}: {[affix.name for affix in matched_affixes]}"
                 )
                 res.keep = True
-                res.matched.append(MatchedFilter(f"{profile_name}.{section_name}.{filter_name}", matched_affixes))
+                res.matched.append(
+                    MatchedFilter(
+                        f"{profile_name}.{section_name}.{filter_name}", matched_affixes, aspect_match=aspect_match
+                    )
+                )
         return res
 
     @staticmethod
@@ -305,7 +359,7 @@ class Filter:
         )
 
     def _match_seal_filter(self, item: Item, filter_spec: SealFilterModel) -> bool:
-        if filter_spec.charm_slots and filter_spec.charm_slots != item.charm_slots:
+        if filter_spec.charm_slots and (item.charm_slots is None or item.charm_slots < filter_spec.charm_slots):
             return False
 
         boosted_set_filters = list(filter_spec.boosted_sets)

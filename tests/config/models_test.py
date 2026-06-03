@@ -677,8 +677,14 @@ class TestSealFilterModel:
         with pytest.raises(ValidationError, match="required boostedSets entries need affix"):
             SealFilterModel(boostedSets=[{"set": "Berserker's Crucible", "required": True}])
 
-        with pytest.raises(ValidationError, match="must be greater than zero"):
+        with pytest.raises(ValidationError, match="charm_slots must be between 3 and 6"):
             SealFilterModel(charmSlots=-1)
+
+        with pytest.raises(ValidationError, match="charm_slots must be between 3 and 6"):
+            SealFilterModel(charmSlots=2)
+
+        with pytest.raises(ValidationError, match="charm_slots must be between 3 and 6"):
+            SealFilterModel(charmSlots=7)
 
     def test_invalid_boosted_set_fails(self) -> None:
         with pytest.raises(ValidationError, match="boostedSet invalid_set does not exist"):

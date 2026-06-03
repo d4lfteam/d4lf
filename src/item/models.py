@@ -19,6 +19,7 @@ class BoostedSet:
 
     affix: Affix | None = None
     name: str = ""
+    loc: tuple[int, int] | None = None
 
 
 @dataclass
@@ -30,6 +31,7 @@ class Item:
     boosted_set_name: str | None = None
     boosted_sets: list[BoostedSet] = field(default_factory=list)
     charm_slots: int | None = None
+    charm_slots_loc: tuple[int, int] | None = None
     codex_upgrade: bool = False
     cosmetic_upgrade: bool = False
     inherent: list[Affix] = field(default_factory=list)
@@ -41,6 +43,7 @@ class Item:
     rarity: ItemRarity | None = None
     seasonal_attribute: SeasonalAttribute | None = None
     set_name: str | None = None
+    set_name_loc: tuple[int, int] | None = None
 
     def __eq__(self, other):
         if not isinstance(other, Item):

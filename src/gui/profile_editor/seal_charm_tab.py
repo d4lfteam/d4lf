@@ -109,14 +109,14 @@ class SealCharmRuleEditor(QWidget):
     def add_boosted_set_fields(self, form: QFormLayout):
         charm_slots_layout = QHBoxLayout()
         self.charm_slot_checkboxes = {}
-        for slots in range(1, 7):
+        for slots in range(3, 7):
             checkbox = QCheckBox(str(slots))
             checkbox.setChecked(self.config.charm_slots == slots)
             checkbox.clicked.connect(partial(self.update_charm_slots, slots))
             self.charm_slot_checkboxes[slots] = checkbox
             charm_slots_layout.addWidget(checkbox)
         charm_slots_layout.addStretch()
-        form.addRow("Charm Slots:", charm_slots_layout)
+        form.addRow("Min Charm Slots:", charm_slots_layout)
 
         boosted_set_filters = list(self.config.boosted_sets)
         if self.config.boosted_set:

@@ -7,6 +7,7 @@ import rapidfuzz
 
 import src.tts
 from src import TP
+from src.config.ui import ResManager
 from src.dataloader import Dataloader
 from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect
@@ -193,6 +194,8 @@ def _add_affixes_from_tts_mixed(
         elif i < inherent_num + affixes_num:
             if charm_slots_match := _CHARM_SLOTS_RE.search(affix_text):
                 item.charm_slots = int(charm_slots_match.group("slots"))
+                if i < len(affix_bullets):
+                    item.charm_slots_loc = affix_bullets[i].center
                 continue
             affix = _get_affix_from_text(affix_text)
             affix.loc = affix_bullets[i].center
@@ -204,8 +207,49 @@ def _add_affixes_from_tts_mixed(
                 affix.type = AffixType.normal
             item.affixes.append(affix)
 
+    extra_idx = len(affixes)
+    last_known_bullet_loc = (
+        affix_bullets[min(len(affixes), len(affix_bullets)) - 1].center if affixes and affix_bullets else None
+    )
+    line_height = ResManager().offsets.item_descr_line_height
     if item.item_type == ItemType.HoradricSeal:
         _add_boosted_sets_to_item(item, boosted_sets)
+        previous_boosted_set_loc = None
+        for boosted_set in item.boosted_sets:
+            if previous_boosted_set_loc is not None:
+                min_next_boosted_set_y = previous_boosted_set_loc[1] + int(line_height * 1.2)
+            elif last_known_bullet_loc is not None:
+                min_next_boosted_set_y = last_known_bullet_loc[1] + line_height // 2
+            else:
+                min_next_boosted_set_y = 0
+            while extra_idx < len(affix_bullets) and (
+                not affix_bullets[extra_idx].name.startswith("boosted_bullet_point")
+                or affix_bullets[extra_idx].center[1] < min_next_boosted_set_y
+            ):
+                extra_idx += 1
+            if extra_idx < len(affix_bullets):
+                boosted_set.loc = affix_bullets[extra_idx].center
+                last_known_bullet_loc = boosted_set.loc
+                previous_boosted_set_loc = boosted_set.loc
+                extra_idx += 1
+            elif previous_boosted_set_loc is not None:
+                boosted_set.loc = (previous_boosted_set_loc[0], previous_boosted_set_loc[1] + line_height * 2)
+                last_known_bullet_loc = boosted_set.loc
+                previous_boosted_set_loc = boosted_set.loc
+            elif last_known_bullet_loc is not None:
+                last_known_bullet_loc = (last_known_bullet_loc[0], last_known_bullet_loc[1] + line_height)
+                boosted_set.loc = last_known_bullet_loc
+                previous_boosted_set_loc = boosted_set.loc
+            if boosted_set.affix is not None and boosted_set.loc is not None:
+                last_known_bullet_loc = (boosted_set.loc[0], boosted_set.loc[1] + line_height)
+    elif item.item_type == ItemType.Charm and item.set_name:
+        if extra_idx < len(affix_bullets):
+            item.set_name_loc = affix_bullets[extra_idx].center
+            last_known_bullet_loc = item.set_name_loc
+            extra_idx += 1
+        elif last_known_bullet_loc is not None:
+            last_known_bullet_loc = (last_known_bullet_loc[0], last_known_bullet_loc[1] + line_height)
+            item.set_name_loc = last_known_bullet_loc
 
     if aspect_text:
         if item.rarity == ItemRarity.Mythic:
@@ -214,8 +258,12 @@ def _add_affixes_from_tts_mixed(
             item.aspect = _get_aspect_from_text(aspect_text, item.name)
         else:
             item.aspect = _get_aspect_from_name(aspect_text, item.name)
-        if item.aspect and aspect_bullet:
-            item.aspect.loc = aspect_bullet.center
+        if item.aspect:
+            if aspect_bullet:
+                item.aspect.loc = aspect_bullet.center
+            elif is_seal_or_charm(item.item_type) and extra_idx < len(affix_bullets):
+                item.aspect.loc = affix_bullets[extra_idx].center
+                extra_idx += 1
     return item
 
 
@@ -560,8 +608,6 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
         return None
     if (item := _create_base_item_from_tts(tts_section)) is None:
         return None
-    if is_seal_or_charm(item.item_type):
-        return _add_affixes_from_tts(tts_section, item)
     if any([
         is_consumable(item.item_type),
         is_non_sigil_mapping(item.item_type),
@@ -570,13 +616,28 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
         item.item_type in [ItemType.Material, ItemType.Tribute],
     ]):
         return item
-    if all([not is_armor(item.item_type), not is_jewelry(item.item_type), not is_weapon(item.item_type)]):
+    if all([
+        not is_armor(item.item_type),
+        not is_jewelry(item.item_type),
+        not is_weapon(item.item_type),
+        not is_seal_or_charm(item.item_type),
+    ]):
         return None
 
     if (sep_short_match := find_seperator_short(img_item_descr)) is None:
         LOGGER.warning("Could not detect item_seperator_short.")
         screenshot("failed_seperator_short", img=img_item_descr)
+        if is_seal_or_charm(item.item_type):
+            return _add_affixes_from_tts(tts_section, item)
         return None
+
+    affix_bullets = find_affix_bullets(
+        img_item_descr, sep_short_match, is_seal_or_charm=is_seal_or_charm(item.item_type)
+    )
+
+    if is_seal_or_charm(item.item_type):
+        return _add_affixes_from_tts_mixed(tts_section, item, affix_bullets, img_item_descr, aspect_bullet=None)
+
     futures = {
         "sep_long": TP.submit(find_seperators_long, img_item_descr, sep_short_match),
         "aspect_bullet": (
@@ -585,8 +646,6 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
             else None
         ),
     }
-
-    affix_bullets = find_affix_bullets(img_item_descr, sep_short_match)
 
     if item.rarity == ItemRarity.Unique and item.name not in Dataloader().aspect_unique_dict:
         msg = (

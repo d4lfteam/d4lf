@@ -301,8 +301,11 @@ class SealFilterModel(SealCharmFilterModel):
 
     @field_validator("charm_slots")
     @classmethod
-    def charm_slots_must_be_positive(cls, v: int) -> int:
-        return check_greater_than_zero(v)
+    def charm_slots_in_valid_range(cls, v: int) -> int:
+        if v != 0 and not (3 <= v <= 6):
+            msg = "charm_slots must be between 3 and 6"
+            raise ValueError(msg)
+        return v
 
     @model_validator(mode="after")
     def required_boosted_affix_must_have_affix(self) -> SealFilterModel:
