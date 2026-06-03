@@ -49,6 +49,13 @@ POSITIONS = (
             (3730, 1220),
             (3304, 1218),
             (3416, 1218),
+            # Charm slots
+            (3127, 468),  # Top
+            (3393, 615),  # Top-Right
+            (3393, 911),  # Bottom-Right
+            (3126, 1066),  # Bottom (Locked in screenshot)
+            (2865, 915),  # Bottom-Left
+            (2861, 622),  # Top-Left
         ],
         window_dimensions=(3840, 2160),
     ),

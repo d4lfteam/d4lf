@@ -455,10 +455,13 @@ def _get_affixes_from_tts_section(tts_section: list[str], start: int, length: in
 
 
 def _get_aspect_from_tts_section(tts_section: list[str], item: Item, start: int, num_affixes: int):
+    if item.item_type == ItemType.HoradricSeal and item.rarity not in [ItemRarity.Unique, ItemRarity.Mythic]:
+        return None
     # Grab the aspect as well in this case
     if item.rarity in [ItemRarity.Mythic, ItemRarity.Unique, ItemRarity.Legendary]:
         aspect_index = start + num_affixes
-        return tts_section[aspect_index]
+        if aspect_index < len(tts_section):
+            return tts_section[aspect_index]
 
     return None
 
@@ -480,21 +483,27 @@ def _get_boosted_sets_from_tts_section(tts_section: list[str], start: int, num_a
     boosted_sets = []
     index = start + num_affixes
     while index < len(tts_section):
-        set_name = _get_set_name_from_line(tts_section[index])
+        line = tts_section[index]
+        set_name = _get_set_name_from_line(line)
         if set_name not in Dataloader().set_list:
             index += 1
             continue
 
         affix = None
-        next_index = index + 1
-        if (
-            next_index < len(tts_section)
-            and not tts_section[next_index].lower().startswith(_AFFIX_STOP_MARKERS)
-            and _get_set_name_from_line(tts_section[next_index]) is None
-        ):
-            affix = _get_affix_from_text(tts_section[next_index])
+        parts = line.split(":", maxsplit=1)
+        if len(parts) > 1 and any(char.isdigit() for char in parts[1]):
+            affix = _get_affix_from_text(parts[1].strip())
             affix.type = AffixType.normal
-            index = next_index
+        else:
+            next_index = index + 1
+            if (
+                next_index < len(tts_section)
+                and not tts_section[next_index].lower().startswith(_AFFIX_STOP_MARKERS)
+                and _get_set_name_from_line(tts_section[next_index]) is None
+            ):
+                affix = _get_affix_from_text(tts_section[next_index])
+                affix.type = AffixType.normal
+                index = next_index
         boosted_sets.append(BoostedSet(name=set_name, affix=affix))
         index += 1
     return boosted_sets

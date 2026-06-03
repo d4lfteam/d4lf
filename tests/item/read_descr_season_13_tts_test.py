@@ -556,6 +556,45 @@ items = [
             seasonal_attribute=None,
         ),
     ),
+    (
+        [
+            "SWIFT HORADRIC SEAL OF CURRENT",
+            "Legendary Horadric Seal",
+            "Unlocks 5 Charm Slots",
+            "10.0% Cooldown Reduction",
+            "Cains Wild Lighting:. +4 Mana per Second",
+            "Tal Rasha's Threefold Way: +9% Maximum Mana",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(name="cooldown_reduction", text="10.0% Cooldown Reduction", type=AffixType.greater, value=10.0)
+            ],
+            aspect=None,
+            boosted_set_name="cains_wild_lightning",
+            boosted_sets=[
+                BoostedSet(
+                    name="cains_wild_lightning",
+                    affix=Affix(name="mana_per_second", text=". +4 Mana per Second", type=AffixType.normal, value=4.0),
+                ),
+                BoostedSet(
+                    name="tal_rashas_threefold_way",
+                    affix=Affix(name="maximum_mana", text="+9% Maximum Mana", type=AffixType.normal, value=9.0),
+                ),
+            ],
+            charm_slots=5,
+            codex_upgrade=False,
+            cosmetic_upgrade=False,
+            inherent=[],
+            is_in_shop=False,
+            item_type=ItemType.HoradricSeal,
+            name="swift_horadric_seal_of_current",
+            original_name="SWIFT HORADRIC SEAL OF CURRENT",
+            power=None,
+            rarity=ItemRarity.Legendary,
+            seasonal_attribute=None,
+        ),
+    ),
 ]
 
 

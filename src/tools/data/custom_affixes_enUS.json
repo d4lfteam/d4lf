@@ -1,4 +1,5 @@
 {
     "charm_slot": "charm slot",
-    "crafting_material_drop_rate": "crafting material drop rate"
+    "crafting_material_drop_rate": "crafting material drop rate",
+    "mana_per_second": "mana per second"
 }
