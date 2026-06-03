@@ -84,7 +84,18 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
         affixes_num = 0
 
     if is_seal_or_charm(item.item_type):
-        return inherent_num, _get_seal_charm_affix_count(tts_section, start)
+        total = _get_seal_charm_affix_count(tts_section, start)
+        if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
+            # Unique/mythic charms include a unique power (aspect) line and
+            # possibly flavor text that _get_seal_charm_affix_count incorrectly
+            # counts as affixes. Strip the trailing flavor text (no digits) and
+            # subtract 1 for the aspect.
+            lines = tts_section[start : start + total]
+            if total > 0 and not _has_numbers(lines[-1]):
+                total -= 1
+            if total > 0:
+                total -= 1
+        return inherent_num, total
 
     if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
         # Uniques can have variable amounts of inherents.

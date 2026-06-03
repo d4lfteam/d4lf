@@ -519,6 +519,43 @@ items = [
             set_name="breath_of_the_frozen_sea",
         ),
     ),
+    (
+        [
+            "EMBERFURY",
+            "Unique Charm",
+            "+8.1% Crafting Material Drop Rate",
+            "+2 to Shock Skills",
+            "Overpower increases your Pyromancy Skill damage by 22% and size, Mana cost and Cooldowns by 10%.",
+            "The greatest power is often the shortest lived.",
+            "Requires Level 70",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(
+                    name="crafting_material_drop_rate",
+                    text="+8.1% Crafting Material Drop Rate",
+                    type=AffixType.greater,
+                    value=8.1,
+                ),
+                Affix(name="to_shock_skills", text="+2 to Shock Skills", type=AffixType.greater, value=2.0),
+            ],
+            aspect=Aspect(
+                name="emberfury",
+                text="Overpower increases your Pyromancy Skill damage by 22% and size, Mana cost and Cooldowns by 10%.",
+            ),
+            codex_upgrade=False,
+            cosmetic_upgrade=False,
+            inherent=[],
+            is_in_shop=False,
+            item_type=ItemType.Charm,
+            name="emberfury",
+            original_name="EMBERFURY",
+            power=None,
+            rarity=ItemRarity.Unique,
+            seasonal_attribute=None,
+        ),
+    ),
 ]
 
 
