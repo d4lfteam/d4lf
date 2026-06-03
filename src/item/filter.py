@@ -19,6 +19,7 @@ from src.config.profile_models import (
     CharmFilterModel,
     DynamicCharmFilterModel,
     DynamicItemFilterModel,
+    DynamicSealCharmFilterModel,
     DynamicSealFilterModel,
     GlobalUniqueModel,
     ProfileModel,
@@ -246,7 +247,7 @@ class Filter:
     def _check_seal_charm_filters(
         self,
         item: Item,
-        item_filters: dict[str, list[DynamicCharmFilterModel] | list[DynamicSealFilterModel]],
+        item_filters: dict[str, list[DynamicSealCharmFilterModel]],
         section_name: str,
         mythic_name: str,
         extra_match=None,
@@ -289,25 +290,14 @@ class Filter:
                         continue
 
                 if (
-                    getattr(filter_spec, "charm_slots", 0) > 0
+                    getattr(filter_spec, "slots", 0) > 0
                     and item.charm_slots is not None
-                    and item.charm_slots >= filter_spec.charm_slots
+                    and item.charm_slots >= filter_spec.slots
                     and getattr(item, "charm_slots_loc", None)
                 ):
                     matched_affixes.append(Affix(name="charm_slots", loc=item.charm_slots_loc))
 
-                boosted_set_filters = []
-                if getattr(filter_spec, "boosted_sets", None):
-                    boosted_set_filters.extend(filter_spec.boosted_sets)
-                if getattr(filter_spec, "boosted_set", None) is not None:
-                    boosted_set_filters.append(
-                        BoostedSetFilterModel(
-                            set=filter_spec.boosted_set,
-                            affix=filter_spec.boosted_affix,
-                            required=filter_spec.boosted_affix_required,
-                        )
-                    )
-                for bsf in boosted_set_filters:
+                for bsf in getattr(filter_spec, "boosted_sets", []):
                     for bs in item.boosted_sets:
                         if bs.name == bsf.set_name:
                             if not bsf.required and bs.loc:
@@ -359,24 +349,14 @@ class Filter:
         )
 
     def _match_seal_filter(self, item: Item, filter_spec: SealFilterModel) -> bool:
-        if filter_spec.charm_slots and (item.charm_slots is None or item.charm_slots < filter_spec.charm_slots):
+        if filter_spec.slots and (item.charm_slots is None or item.charm_slots < filter_spec.slots):
             return False
 
-        boosted_set_filters = list(filter_spec.boosted_sets)
-        if filter_spec.boosted_set is not None:
-            boosted_set_filters.append(
-                BoostedSetFilterModel(
-                    set=filter_spec.boosted_set,
-                    affix=filter_spec.boosted_affix,
-                    required=filter_spec.boosted_affix_required,
-                )
-            )
-
-        if not boosted_set_filters:
+        if not filter_spec.boosted_sets:
             return True
 
         return all(
-            self._match_boosted_set_filter(item, boosted_set_filter) for boosted_set_filter in boosted_set_filters
+            self._match_boosted_set_filter(item, boosted_set_filter) for boosted_set_filter in filter_spec.boosted_sets
         )
 
     def _match_boosted_set_filter(self, item: Item, filter_spec: BoostedSetFilterModel) -> bool:

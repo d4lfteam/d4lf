@@ -26,7 +26,6 @@ from src.config.profile_models import (
     GlobalUniqueModel,
     ItemFilterModel,
     ItemRarity,
-    NameRarityFilterModel,
     ProfileModel,
     SealFilterModel,
     SigilConditionModel,
@@ -595,31 +594,6 @@ class TestTributeFilterModel:
         assert ItemRarity.Legendary in model.rarities
 
 
-class TestNameRarityFilterModel:
-    """Test generic name and rarity filters."""
-
-    def test_name_is_normalized(self) -> None:
-        """Test item names are normalized for matching TTS item names."""
-        model = NameRarityFilterModel.model_validate("Faint Charm")
-        assert model.name == "faint_charm"
-
-    def test_parse_from_string_rarity(self) -> None:
-        """Test parsing every rarity string."""
-        for rarity in ItemRarity:
-            model = NameRarityFilterModel.model_validate(rarity.value)
-            assert rarity in model.rarities
-
-    def test_parse_from_list(self) -> None:
-        """Test parsing from a rarity list."""
-        model = NameRarityFilterModel.model_validate([ItemRarity.Legendary.value, ItemRarity.Unique.value])
-        assert model.rarities == [ItemRarity.Legendary, ItemRarity.Unique]
-
-    def test_parse_empty_list_fails(self) -> None:
-        """Test that empty lists fail."""
-        with pytest.raises(ValidationError, match="list cannot be empty"):
-            NameRarityFilterModel.model_validate([])
-
-
 class TestCharmFilterModel:
     def test_set_name_is_validated_and_normalized(self) -> None:
         model = CharmFilterModel(set="Breath of the Frozen Sea")
@@ -637,19 +611,6 @@ class TestCharmFilterModel:
 
 
 class TestSealFilterModel:
-    def test_boosted_set_alias_is_validated_and_normalized(self) -> None:
-        model = SealFilterModel(boostedSet="Berserker's Crucible")
-
-        assert model.boosted_set == "berserkers_crucible"
-
-    def test_required_boosted_affix_is_validated(self) -> None:
-        model = SealFilterModel(
-            boostedSet="Berserker's Crucible", boostedAffix="maximum_fury", boostedAffixRequired=True
-        )
-
-        assert model.boosted_affix.name == "maximum_fury"
-        assert model.boosted_affix_required
-
     def test_boosted_sets_are_validated_and_normalized(self) -> None:
         model = SealFilterModel(
             boostedSets=[
@@ -665,30 +626,38 @@ class TestSealFilterModel:
         assert model.boosted_sets[1].affix.name == "cooldown_reduction"
         assert not model.boosted_sets[1].required
 
-    def test_charm_slots_alias_is_validated(self) -> None:
-        model = SealFilterModel(charmSlots=6)
+    def test_slots_default_is_three(self) -> None:
+        model = SealFilterModel()
 
-        assert model.charm_slots == 6
+        assert model.slots == 3
 
-    def test_required_boosted_affix_needs_set_and_affix(self) -> None:
-        with pytest.raises(ValidationError, match="boostedAffixRequired needs boostedSet and boostedAffix"):
-            SealFilterModel(boostedAffixRequired=True)
+    def test_slots_is_validated(self) -> None:
+        model = SealFilterModel(slots=6)
 
+        assert model.slots == 6
+        assert model.model_dump()["slots"] == 6
+
+    def test_legacy_charm_slots_aliases_are_validated(self) -> None:
+        assert SealFilterModel(charmSlots=5).slots == 5
+        assert SealFilterModel(charm_slots=6).slots == 6
+
+    def test_required_boosted_set_affix_needs_affix(self) -> None:
         with pytest.raises(ValidationError, match="required boostedSets entries need affix"):
             SealFilterModel(boostedSets=[{"set": "Berserker's Crucible", "required": True}])
 
-        with pytest.raises(ValidationError, match="charm_slots must be between 3 and 6"):
-            SealFilterModel(charmSlots=-1)
+    def test_invalid_slot_count_fails(self) -> None:
+        with pytest.raises(ValidationError, match="slots must be 0 or between 3 and 6"):
+            SealFilterModel(slots=-1)
 
-        with pytest.raises(ValidationError, match="charm_slots must be between 3 and 6"):
-            SealFilterModel(charmSlots=2)
+        with pytest.raises(ValidationError, match="slots must be 0 or between 3 and 6"):
+            SealFilterModel(slots=2)
 
-        with pytest.raises(ValidationError, match="charm_slots must be between 3 and 6"):
-            SealFilterModel(charmSlots=7)
+        with pytest.raises(ValidationError, match="slots must be 0 or between 3 and 6"):
+            SealFilterModel(slots=7)
 
     def test_invalid_boosted_set_fails(self) -> None:
-        with pytest.raises(ValidationError, match="boostedSet invalid_set does not exist"):
-            SealFilterModel(boostedSet="invalid set")
+        with pytest.raises(ValidationError, match="set invalid_set does not exist"):
+            SealFilterModel(boostedSets=[{"set": "invalid set"}])
 
 
 class TestSigilConditionModel:

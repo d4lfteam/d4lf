@@ -82,6 +82,8 @@ class SealCharmRuleEditor(QWidget):
         general_form.addRow("Rarities:", rarity_layout)
         if isinstance(self.config, SealFilterModel):
             self.add_boosted_set_fields(general_form)
+        elif isinstance(self.config, CharmFilterModel):
+            self.add_charm_fields(general_form)
         self.content_layout.addLayout(general_form)
 
         pool_btn_layout = QHBoxLayout()
@@ -106,12 +108,35 @@ class SealCharmRuleEditor(QWidget):
 
         QTimer.singleShot(100, self.affix_pool_container.expand)
 
+    def add_charm_fields(self, form: QFormLayout):
+        self.set_name_combo = IgnoreScrollWheelComboBox()
+        self.set_name_combo.setEditable(True)
+        self.set_name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.set_name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.set_name_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+        self.set_name_combo.addItems(["", *sorted(Dataloader().set_list)])
+        if self.config.set_name:
+            self.set_name_combo.setCurrentText(self.config.set_name)
+        self.set_name_combo.currentTextChanged.connect(self.update_set_name)
+        form.addRow("Set:", self.set_name_combo)
+
+        self.unique_aspect_combo = IgnoreScrollWheelComboBox()
+        self.unique_aspect_combo.setEditable(True)
+        self.unique_aspect_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.unique_aspect_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.unique_aspect_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+        self.unique_aspect_combo.addItems(["", *sorted(Dataloader().aspect_unique_dict.keys())])
+        if self.config.unique_aspect:
+            self.unique_aspect_combo.setCurrentText(self.config.unique_aspect)
+        self.unique_aspect_combo.currentTextChanged.connect(self.update_unique_aspect)
+        form.addRow("Unique Aspect:", self.unique_aspect_combo)
+
     def add_boosted_set_fields(self, form: QFormLayout):
         charm_slots_layout = QHBoxLayout()
         self.charm_slot_checkboxes = {}
         for slots in range(3, 7):
             checkbox = QCheckBox(str(slots))
-            checkbox.setChecked(self.config.charm_slots == slots)
+            checkbox.setChecked(self.config.slots == slots)
             checkbox.clicked.connect(partial(self.update_charm_slots, slots))
             self.charm_slot_checkboxes[slots] = checkbox
             charm_slots_layout.addWidget(checkbox)
@@ -119,18 +144,6 @@ class SealCharmRuleEditor(QWidget):
         form.addRow("Min Charm Slots:", charm_slots_layout)
 
         boosted_set_filters = list(self.config.boosted_sets)
-        if self.config.boosted_set:
-            boosted_set_filters.append(
-                BoostedSetFilterModel(
-                    set=self.config.boosted_set,
-                    affix=self.config.boosted_affix,
-                    required=self.config.boosted_affix_required,
-                )
-            )
-            self.config.boosted_set = None
-            self.config.boosted_affix = None
-            self.config.boosted_affix_required = False
-            self.config.boosted_sets = boosted_set_filters
 
         self.boosted_set_combos = []
         self.boosted_affix_combos = []
@@ -245,13 +258,19 @@ class SealCharmRuleEditor(QWidget):
     def update_rarities(self):
         self.config.rarities = [rarity for rarity, checkbox in self.rarity_checkboxes.items() if checkbox.isChecked()]
 
+    def update_set_name(self, text: str):
+        self.config.set_name = correct_name(text) if text.strip() else None
+
+    def update_unique_aspect(self, text: str):
+        self.config.unique_aspect = correct_name(text) if text.strip() else None
+
     def update_charm_slots(self, slots: int, checked: bool):
         if not checked:
-            if self.config.charm_slots == slots:
-                self.config.charm_slots = 0
+            if self.config.slots == slots:
+                self.config.slots = 0
             return
 
-        self.config.charm_slots = slots
+        self.config.slots = slots
         for other_slots, checkbox in self.charm_slot_checkboxes.items():
             if other_slots == slots:
                 continue
@@ -303,9 +322,6 @@ class SealCharmRuleEditor(QWidget):
                 )
             )
 
-        self.config.boosted_set = None
-        self.config.boosted_affix = None
-        self.config.boosted_affix_required = False
         self.config.boosted_sets = boosted_sets
 
     def boosted_affix_from_controls(self, index: int) -> AffixFilterModel | None:

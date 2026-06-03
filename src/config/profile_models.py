@@ -4,7 +4,7 @@ import enum
 import logging
 import sys
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 
 from src.config.helper import check_greater_than_zero, validate_greater_affix_count, validate_percent
 from src.item.data.item_type import ItemType  # noqa: TC001
@@ -18,22 +18,6 @@ def _parse_item_type_or_rarities(data: str | list[str]) -> list[str]:
     if isinstance(data, str):
         return [data]
     return data
-
-
-def _coerce_name_rarity_filter_data(data: str | list[str] | dict[str, str | list[str]]) -> dict[str, str | list[str]]:
-    if isinstance(data, dict):
-        return data
-    if isinstance(data, str):
-        if any(rarity.value.lower() == data.lower() for rarity in ItemRarity):
-            return {"rarities": [data]}
-        return {"name": data}
-    if isinstance(data, list):
-        if not data:
-            msg = "list cannot be empty"
-            raise ValueError(msg)
-        return {"rarities": data}
-    msg = "must be str or list"
-    raise ValueError(msg)
 
 
 def _normalize_existing_set_name(name: str | None, field_name: str) -> str | None:
@@ -288,31 +272,16 @@ class BoostedSetFilterModel(BaseModel):
 
 
 class SealFilterModel(SealCharmFilterModel):
-    boosted_affix: AffixFilterModel | None = Field(default=None, alias="boostedAffix")
-    boosted_affix_required: bool = Field(default=False, alias="boostedAffixRequired")
-    boosted_set: str | None = Field(default=None, alias="boostedSet")
     boosted_sets: list[BoostedSetFilterModel] = Field(default=[], alias="boostedSets")
-    charm_slots: int = Field(default=0, alias="charmSlots")
+    slots: int = Field(default=3, validation_alias=AliasChoices("slots", "charmSlots", "charm_slots"))
 
-    @field_validator("boosted_set")
+    @field_validator("slots")
     @classmethod
-    def boosted_set_must_exist(cls, name: str | None) -> str | None:
-        return _normalize_existing_set_name(name, "boostedSet")
-
-    @field_validator("charm_slots")
-    @classmethod
-    def charm_slots_in_valid_range(cls, v: int) -> int:
+    def slots_in_valid_range(cls, v: int) -> int:
         if v != 0 and not (3 <= v <= 6):
-            msg = "charm_slots must be between 3 and 6"
+            msg = "slots must be 0 or between 3 and 6"
             raise ValueError(msg)
         return v
-
-    @model_validator(mode="after")
-    def required_boosted_affix_must_have_affix(self) -> SealFilterModel:
-        if self.boosted_affix_required and (self.boosted_affix is None or self.boosted_set is None):
-            msg = "boostedAffixRequired needs boostedSet and boostedAffix"
-            raise ValueError(msg)
-        return self
 
 
 DynamicSealCharmFilterModel = RootModel[dict[str, SealCharmFilterModel]]
@@ -408,28 +377,19 @@ class TributeFilterModel(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def parse_data(cls, data: str | list[str] | dict[str, str | list[str]]) -> dict[str, str | list[str]]:
-        return _coerce_name_rarity_filter_data(data)
-
-    @field_validator("rarities", mode="before")
-    @classmethod
-    def parse_rarities(cls, data: str | list[str]) -> list[str]:
-        return _parse_item_type_or_rarities(data)
-
-
-class NameRarityFilterModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    name: str | None = None
-    rarities: list[ItemRarity] = []
-
-    @field_validator("name")
-    @classmethod
-    def normalize_name(cls, name: str | None) -> str | None:
-        return correct_name(name)
-
-    @model_validator(mode="before")
-    @classmethod
-    def parse_data(cls, data: str | list[str] | dict[str, str | list[str]]) -> dict[str, str | list[str]]:
-        return _coerce_name_rarity_filter_data(data)
+        if isinstance(data, dict):
+            return data
+        if isinstance(data, str):
+            if any(rarity.value.lower() == data.lower() for rarity in ItemRarity):
+                return {"rarities": [data]}
+            return {"name": data}
+        if isinstance(data, list):
+            if not data:
+                msg = "list cannot be empty"
+                raise ValueError(msg)
+            return {"rarities": data}
+        msg = "must be str or list"
+        raise ValueError(msg)
 
     @field_validator("rarities", mode="before")
     @classmethod
