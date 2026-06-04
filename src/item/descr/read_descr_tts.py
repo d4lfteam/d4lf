@@ -61,6 +61,8 @@ _AFFIX_STOP_MARKERS = (
     "empty socket",
     "requires level",
     "properties lost when equipped",
+    "cannot salvage",
+    "sell value",
     "rampage:",
     "feast:",
     "hunger:",
