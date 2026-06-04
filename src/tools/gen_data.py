@@ -384,26 +384,80 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
         key, value = normalised
         affix_dict[key] = value
 
-    merge_custom_affixes(affix_dict, language)
+    merge_custom_data(affix_dict, "affixes", language)
     output_path = output_file or D4LF_BASE_DIR / f"assets/lang/{language}/affixes.json"
     with output_path.open("w", encoding="utf-8") as json_file:
         json.dump(affix_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
         json_file.write("\n")
 
 
-def merge_custom_affixes(affix_dict: dict[str, str], language: str):
-    custom_affixes_file = D4LF_BASE_DIR / f"src/tools/data/custom_affixes_{language}.json"
-    with custom_affixes_file.open(encoding="utf-8") as file:
-        data = json.load(file)
-        for key, value in data.items():
-            if key in affix_dict:
-                if affix_dict[key] == value:
-                    print(f"Affix {key} already exists in affixes.json. Can be deleted from custom json")
-                else:
-                    print(f"Affix {key} already exists in affixes.json but with different value")
-                    affix_dict[key] = value
+def merge_custom_data(data: dict | list, name: str, language: str):
+    """Merge entries from a custom override file into the generated data.
+
+    Reads the *name* section from a single ``src/tools/data/custom_<language>.json``
+    file.  The file groups all custom overrides by target (e.g. ``"affixes"``,
+    ``"sigils"``, ``"aspects"``).
+
+    Supports three data shapes:
+    - **list**: custom entries are appended (duplicates skipped with a warning).
+    - **flat dict**: custom key/value pairs are merged (conflicts logged).
+    - **nested dict** (dict of dicts): merges one level deep (e.g. sigils).
+
+    If the file does not exist or the section is missing, the call is a no-op.
+    """
+    custom_file = D4LF_BASE_DIR / f"src/tools/data/custom_{language}.json"
+    if not custom_file.exists():
+        return
+    with custom_file.open(encoding="utf-8") as file:
+        all_custom = json.load(file)
+
+    custom = all_custom.get(name)
+    if custom is None:
+        return
+
+    if isinstance(data, list):
+        _merge_list(data, custom, name)
+    elif isinstance(data, dict) and custom and all(isinstance(v, dict) for v in custom.values()):
+        _merge_nested_dict(data, custom, name)
+    elif isinstance(data, dict):
+        _merge_flat_dict(data, custom, name)
+
+
+def _merge_list(data: list, custom: list, name: str):
+    existing = set(data)
+    for entry in custom:
+        if entry in existing:
+            print(f"{name}: '{entry}' already exists. Can be deleted from custom json")
+        else:
+            data.append(entry)
+
+
+def _merge_flat_dict(data: dict, custom: dict, name: str):
+    for key, value in custom.items():
+        if key in data:
+            if data[key] == value:
+                print(f"{name}: '{key}' already exists. Can be deleted from custom json")
             else:
-                affix_dict[key] = value
+                print(f"{name}: '{key}' already exists but with different value")
+                data[key] = value
+        else:
+            data[key] = value
+
+
+def _merge_nested_dict(data: dict, custom: dict, name: str):
+    for section, entries in custom.items():
+        if section not in data:
+            data[section] = entries
+            continue
+        for key, value in entries.items():
+            if key in data[section]:
+                if data[section][key] == value:
+                    print(f"{name}: '{key}' in '{section}' already exists. Can be deleted from custom json")
+                else:
+                    print(f"{name}: '{key}' in '{section}' already exists but with different value")
+                    data[section][key] = value
+            else:
+                data[section][key] = value
 
 
 def get_string_list_name(string_list_file: Path) -> str | None:
@@ -464,6 +518,7 @@ def main(d4data_dir: Path):
                 )
                 tribute_dict[tribute_name.replace(" ", "_").replace("(", "").replace(")", "")] = tribute_name
 
+        merge_custom_data(tribute_dict, "tributes", language)
         with Path(D4LF_BASE_DIR / f"assets/lang/{language}/tributes.json").open("w", encoding="utf-8") as json_file:
             json.dump(tribute_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
             json_file.write("\n")
@@ -486,6 +541,7 @@ def main(d4data_dir: Path):
                 name_str: str = check_ms(data["arStrings"][name_idx]["szText"]).lower().strip()
                 if item_type in whitelist_types:
                     item_typ_dict[item_type] = name_str
+        merge_custom_data(item_typ_dict, "item_types", language)
         with Path(D4LF_BASE_DIR / f"assets/lang/{language}/item_types.json").open("w", encoding="utf-8") as json_file:
             json.dump(item_typ_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
             json_file.write("\n")
@@ -499,6 +555,7 @@ def main(d4data_dir: Path):
             for ar_string in data["arStrings"]:
                 if ar_string["szLabel"] == "ItemPower":
                     tooltip_dict["ItemPower"] = remove_content_in_braces(check_ms(ar_string["szText"].lower()))
+        merge_custom_data(tooltip_dict, "tooltips", language)
         with Path(D4LF_BASE_DIR / f"assets/lang/{language}/tooltips.json").open("w", encoding="utf-8") as json_file:
             json.dump(tooltip_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
             json_file.write("\n")
@@ -534,8 +591,9 @@ def generate_aspects(d4data_dir, language):
             continue
         aspects_list.append(aspect_name_clean)
 
+    merge_custom_data(aspects_list, "aspects", language)
+    aspects_list.sort()
     with Path(D4LF_BASE_DIR / f"assets/lang/{language}/aspects.json").open("w", encoding="utf-8") as json_file:
-        aspects_list.sort()
         json.dump(aspects_list, json_file, indent=4, ensure_ascii=False, sort_keys=True)
         json_file.write("\n")
 
@@ -589,22 +647,7 @@ def generate_sigils(d4data_dir, language):
             if rarity:
                 sigil_rarity_dict[sigil_name_key] = rarity
 
-    # Add any sigils we might be missing. Right now, that's none, but we leave the option for the future
-    with Path(D4LF_BASE_DIR / f"src/tools/data/custom_sigils_{language}.json").open(encoding="utf-8") as file:
-        data = json.load(file)
-        for key, values in data.items():
-            if key in sigil_dict:
-                for key2, value2 in values.items():
-                    if key2 in sigil_dict[key]:
-                        if sigil_dict[key][key2] == value2:
-                            print(f"Sigil {key2} already exists in sigils.json. Can be deleted from custom json")
-                        else:
-                            print(f"Sigil {key2} already exists in sigils.json but with different value")
-                            sigil_dict[key][key2] = value2
-                    else:
-                        sigil_dict[key][key2] = value2
-            else:
-                sigil_dict[key] = values
+    merge_custom_data(sigil_dict, "sigils", language)
 
     sigil_dict["rarities"] = sigil_rarity_dict
 
@@ -671,6 +714,7 @@ def generate_uniques(d4data_dir, language):
 
         unique_dict[name_clean] = {"num_inherents": num_inherents}
 
+    merge_custom_data(unique_dict, "uniques", language)
     with Path(D4LF_BASE_DIR / f"assets/lang/{language}/uniques.json").open("w", encoding="utf-8") as json_file:
         json.dump(unique_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
         json_file.write("\n")
@@ -705,6 +749,8 @@ def generate_sets(d4data_dir, language):
         sets_list.append(set_name_clean)
 
     sets_list = sorted(set(sets_list))
+    merge_custom_data(sets_list, "sets", language)
+    sets_list.sort()
     with Path(D4LF_BASE_DIR / f"assets/lang/{language}/sets.json").open("w", encoding="utf-8") as json_file:
         json.dump(sets_list, json_file, indent=4, ensure_ascii=False, sort_keys=True)
         json_file.write("\n")
