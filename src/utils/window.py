@@ -60,7 +60,7 @@ def _get_process_from_window_name(hwnd: int) -> str:
     try:
         pid = GetWindowThreadProcessId(hwnd)[1]
         return psutil.Process(pid).name().lower()
-    except psutil.Error, OSError:
+    except psutil.Error, OSError, ValueError:
         return ""
 
 
