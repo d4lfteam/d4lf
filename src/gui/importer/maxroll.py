@@ -184,6 +184,7 @@ def import_maxroll(config: ImportConfig):
             season_number=guide_season,
             build_header=build_header,
             variant_name=variant_name,
+            filename_components=config.filename_components,
         )
 
     # Optionally embed Paragon data into the profile model before saving

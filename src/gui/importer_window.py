@@ -5,17 +5,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, Qt, QThreadPool, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import (
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMainWindow,
-    QPushButton,
-    QTextEdit,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QTextEdit, QVBoxLayout, QWidget
 
 from src.config.loader import IniConfigLoader
 from src.gui.importer.d4builds import import_d4builds
@@ -72,18 +62,65 @@ class ImporterWindow(QMainWindow):
         url_hbox.addWidget(self.input_box)
         layout.addLayout(url_hbox)
 
-        # Filename input
-        filename_hbox = QHBoxLayout()
-        filename_label = QLabel("Custom file name:")
-        filename_hbox.addWidget(filename_label)
+        # Filename input with inline filename options row
         self.filename_input_box = QLineEdit()
         self.filename_input_box.setPlaceholderText("Leave blank for default filename")
-        filename_hbox.addWidget(self.filename_input_box)
-        layout.addLayout(filename_hbox)
 
-        # Checkboxes
+        self.filename_label = QLabel("Custom file name:")
+        self.filename_label_layout = QHBoxLayout()
+        self.filename_label_layout.addWidget(self.filename_label)
+        self.filename_label_layout.addWidget(self.filename_input_box)
+
+        # Filename Options label and checkboxes in a single row
+        self.filename_options_label = QLabel("Filename Options:")
+        self.filename_options_label.setFixedWidth(120)
+
+        self.include_source_checkbox = CheckmarkCheckBox("Source")
+        self.include_source_checkbox.setToolTip("Include the build source (e.g., maxroll, d4builds, mobalytics)")
+        self.include_source_checkbox.setChecked(True)
+
+        self.include_season_checkbox = CheckmarkCheckBox("Season")
+        self.include_season_checkbox.setToolTip("Include the season number (e.g., s5)")
+        self.include_season_checkbox.setChecked(True)
+
+        self.include_class_checkbox = CheckmarkCheckBox("Class")
+        self.include_class_checkbox.setToolTip("Include the character class (e.g., Barbarian, Druid)")
+        self.include_class_checkbox.setChecked(True)
+
+        self.include_header_checkbox = CheckmarkCheckBox("Build Name")
+        self.include_header_checkbox.setToolTip("Include the main build name/guide title")
+        self.include_header_checkbox.setChecked(True)
+
+        self.include_subbuild_checkbox = CheckmarkCheckBox("Sub Build")
+        self.include_subbuild_checkbox.setToolTip("Include the sub-build/variant name")
+        self.include_subbuild_checkbox.setChecked(True)
+
+        self.filename_options_hbox = QHBoxLayout()
+        self.filename_options_hbox.addWidget(self.filename_options_label)
+        self.filename_options_hbox.addWidget(self.include_source_checkbox)
+        self.filename_options_hbox.addWidget(self.include_season_checkbox)
+        self.filename_options_hbox.addWidget(self.include_class_checkbox)
+        self.filename_options_hbox.addWidget(self.include_header_checkbox)
+        self.filename_options_hbox.addWidget(self.include_subbuild_checkbox)
+        self.filename_options_hbox.addStretch()
+
+        layout.addLayout(self.filename_label_layout)
+        layout.addLayout(self.filename_options_hbox)
+
+        # Generate button
+        button_hbox = QHBoxLayout()
+        self.generate_button = QPushButton("Generate")
+        self.generate_button.setEnabled(False)
+        self.generate_button.clicked.connect(self._generate_button_click)
+        button_hbox.addWidget(self.generate_button)
+        layout.addLayout(button_hbox)
+
+        # Import Options label and checkboxes in a single row
+        self.import_options_label = QLabel("Import Options:")
+        self.import_options_label.setFixedWidth(120)
+
         self.import_aspect_upgrades_checkbox = self._generate_checkbox(
-            "Import Aspect Upgrades",
+            "Aspect Upgrades",
             "import_aspect_upgrades",
             "If legendary aspects are in the build, do you want an aspect upgrades section generated for them?",
         )
@@ -105,7 +142,7 @@ class ImporterWindow(QMainWindow):
         )
 
         self.export_paragon_checkbox = self._generate_checkbox(
-            "Import Paragon",
+            "Paragon",
             "export_paragon",
             "Import Paragon boards into your profile for the integrated Paragon overlay.",
             "false",
@@ -130,27 +167,16 @@ class ImporterWindow(QMainWindow):
         # Connect toggle logic
         self.import_gas_checkbox.stateChanged.connect(lambda: disable_require_if_import_disabled())
 
-        # Use a grid layout to ensure checkboxes align vertically in columns
-        checkbox_grid = QGridLayout()
-        checkbox_grid.setContentsMargins(0, 10, 0, 10)
-        checkbox_grid.setSpacing(10)
+        self.import_options_hbox = QHBoxLayout()
+        self.import_options_hbox.addWidget(self.import_options_label)
+        self.import_options_hbox.addWidget(self.import_aspect_upgrades_checkbox)
+        self.import_options_hbox.addWidget(self.add_to_profiles_checkbox)
+        self.import_options_hbox.addWidget(self.import_gas_checkbox)
+        self.import_options_hbox.addWidget(self.require_all_gas_checkbox)
+        self.import_options_hbox.addWidget(self.export_paragon_checkbox)
+        self.import_options_hbox.addStretch()
 
-        checkbox_grid.addWidget(self.import_aspect_upgrades_checkbox, 0, 0)
-        checkbox_grid.addWidget(self.import_gas_checkbox, 0, 1)
-        checkbox_grid.addWidget(self.require_all_gas_checkbox, 0, 2)
-
-        checkbox_grid.addWidget(self.export_paragon_checkbox, 1, 0)
-        checkbox_grid.addWidget(self.add_to_profiles_checkbox, 1, 1)
-
-        layout.addLayout(checkbox_grid)
-
-        # Generate button
-        button_hbox = QHBoxLayout()
-        self.generate_button = QPushButton("Generate")
-        self.generate_button.setEnabled(False)
-        self.generate_button.clicked.connect(self._generate_button_click)
-        button_hbox.addWidget(self.generate_button)
-        layout.addLayout(button_hbox)
+        layout.addLayout(self.import_options_hbox)
 
         # Log output
         log_label = QLabel("Log:")
@@ -210,6 +236,23 @@ class ImporterWindow(QMainWindow):
     def _handle_text_changed(self, text):
         """Enable/disable generate button based on input."""
         self.generate_button.setEnabled(bool(text.strip()))
+        # Show/hide filename options based on whether a custom filename is entered
+        self.filename_options_label.setVisible(not bool(text.strip()))
+        self.include_source_checkbox.setVisible(not bool(text.strip()))
+        self.include_season_checkbox.setVisible(not bool(text.strip()))
+        self.include_class_checkbox.setVisible(not bool(text.strip()))
+        self.include_header_checkbox.setVisible(not bool(text.strip()))
+        self.include_subbuild_checkbox.setVisible(not bool(text.strip()))
+
+    def _get_filename_components(self) -> dict:
+        """Build and return the filename_components dict from checkbox states."""
+        return {
+            "include_source": self.include_source_checkbox.isChecked(),
+            "include_season": self.include_season_checkbox.isChecked(),
+            "include_class": self.include_class_checkbox.isChecked(),
+            "include_header": self.include_header_checkbox.isChecked(),
+            "include_subbuild": self.include_subbuild_checkbox.isChecked(),
+        }
 
     def _generate_button_click(self):
         self.log_output.clear()
@@ -228,6 +271,7 @@ class ImporterWindow(QMainWindow):
             self.require_all_gas_checkbox.isChecked(),
             self.export_paragon_checkbox.isChecked(),
             custom_filename,
+            self._get_filename_components() if not custom_filename else None,
         )
 
         if "maxroll" in url:

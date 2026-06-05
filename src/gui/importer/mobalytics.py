@@ -243,6 +243,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         season_number=season_number,
         build_header=build_header,
         variant_name=variant_name,
+        filename_components=config.filename_components,
     )
     # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
