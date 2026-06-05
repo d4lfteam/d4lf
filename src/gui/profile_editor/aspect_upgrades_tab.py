@@ -25,6 +25,7 @@ class AspectUpgradesTab(QWidget):
         label = QLabel(
             "Add any legendary aspects you'd like to have favorited if an upgrade is found. See the readme on AspectUpgrades for more information."
         )
+        label.setWordWrap(True)
         main_layout.addWidget(label)
         button_layout = self.create_button_layout()
         main_layout.addLayout(button_layout)
@@ -36,14 +37,17 @@ class AspectUpgradesTab(QWidget):
     def create_button_layout(self) -> QHBoxLayout:
         btn_layout = QHBoxLayout()
 
-        add_tribute_btn = QPushButton("Add Aspect")
-        add_tribute_btn.clicked.connect(self.add_aspect)
+        add_aspect_btn = QPushButton("Add Aspect")
+        add_aspect_btn.setFixedWidth(140)
+        add_aspect_btn.clicked.connect(self.add_aspect)
 
-        remove_tribute_btn = QPushButton("Remove Aspect")
-        remove_tribute_btn.clicked.connect(self.remove_aspect)
+        remove_aspect_btn = QPushButton("Remove Aspect")
+        remove_aspect_btn.setFixedWidth(140)
+        remove_aspect_btn.clicked.connect(self.remove_aspect)
 
-        btn_layout.addWidget(add_tribute_btn)
-        btn_layout.addWidget(remove_tribute_btn)
+        btn_layout.addWidget(add_aspect_btn)
+        btn_layout.addWidget(remove_aspect_btn)
+        btn_layout.addStretch()
         return btn_layout
 
     def add_aspect(self):
@@ -54,6 +58,8 @@ class AspectUpgradesTab(QWidget):
             self.upgrade_list_widget.addItem(aspect_upgrade)
 
     def remove_aspect(self):
+        if not self.upgrade_list_widget.currentRow() >= 0:
+            return
         current_aspect = self.upgrade_list_widget.currentItem().text()
         self.aspect_upgrades.remove(current_aspect)
         self.upgrade_list_widget.takeItem(self.upgrade_list_widget.currentRow())

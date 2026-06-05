@@ -50,13 +50,13 @@ class ProfileTab(QWidget):
         scroll_area.setWidgetResizable(True)
 
         info_layout = QHBoxLayout()
-        info_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        info_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         tools_groupbox = QGroupBox("Profile")
         tools_groupbox_layout = QHBoxLayout()
         self.profile_combo = QComboBox()
-        self.save_button = QPushButton("Save")
-        self.refresh_button = QPushButton("Undo Changes")
+        self.save_button = QPushButton("Save Profile")
+        self.refresh_button = QPushButton("Revert to Saved")
         self.profile_combo.currentIndexChanged.connect(self.profile_selection_changed)
         self.save_button.clicked.connect(self.save_yaml)
         self.refresh_button.clicked.connect(self.refresh)
@@ -79,13 +79,19 @@ class ProfileTab(QWidget):
 
         instructions_text = QTextBrowser()
         instructions_text.append(
-            "Select a profile from the dropdown. Click 'Save' to save your changes. Click 'Undo Changes' to revert your changes."
+            "Select a profile from the dropdown. Click 'Save Profile' to persist your changes. Click 'Revert to Saved' to discard unsaved edits."
         )
 
         instructions_text.setFixedHeight(50)
         self.main_layout.addWidget(instructions_text)
         self.setLayout(self.main_layout)
         self.populate_profile_dropdown()
+
+    def has_unsaved_changes(self) -> bool:
+        """Return True if the current profile has unsaved changes."""
+        if not self.root or not self.original_root:
+            return False
+        return self.root != self.original_root
 
     def confirm_discard_changes(self):
         reply = QMessageBox.warning(
@@ -97,7 +103,26 @@ class ProfileTab(QWidget):
         if reply == QMessageBox.StandardButton.Yes:
             self.save_yaml()
             return True
-        return reply == QMessageBox.StandardButton.No
+        if reply == QMessageBox.StandardButton.No:
+            self._has_unsaved_changes = False
+            return True
+        return False
+
+    def confirm_discard_profile_switch(self) -> bool:
+        """Prompt user to save changes before switching profiles. Returns True if safe to proceed."""
+        reply = QMessageBox.warning(
+            self,
+            "Unsaved Changes",
+            "You have unsaved changes. What would you like to do before switching profiles?",
+            QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
+        )
+        if reply == QMessageBox.StandardButton.Save:
+            self.save_yaml()
+            return not self.has_unsaved_changes()  # True if save cleared dirty state
+        if reply == QMessageBox.StandardButton.Discard:
+            self._has_unsaved_changes = False
+            return True
+        return False  # Cancel
 
     def create_alert(self, msg: str):
         reply = QMessageBox.warning(self, "Alert", msg, QMessageBox.StandardButton.Ok)
@@ -111,6 +136,9 @@ class ProfileTab(QWidget):
     def profile_selection_changed(self, index):
         selected_profile = self.profile_combo.itemData(index, Qt.ItemDataRole.UserRole)
         if selected_profile and selected_profile != self.current_profile_name:
+            # Check for unsaved changes before switching
+            if self.has_unsaved_changes() and not self.confirm_discard_profile_switch():
+                return  # User cancelled
             self.load_selected_profile(selected_profile)
 
     def load_selected_profile(self, profile_name):
@@ -266,8 +294,11 @@ class ProfileTab(QWidget):
         return True
 
     def save_yaml(self):
-        self.original_root = copy.deepcopy(self.root)
+        if not self.root or not self.model_editor:
+            return
         self.model_editor.save_all()
+        self.original_root = copy.deepcopy(self.root)
+        # Mark as saved by comparing after save
 
     def check_close_save(self):
         if self.root and self.original_root != self.root:
@@ -281,3 +312,7 @@ class ProfileTab(QWidget):
         self.model_editor = ProfileEditor(self.root)
         self.scrollable_layout.addWidget(self.model_editor)
         LOGGER.info(f"Profile {self.root.name} refreshed.")
+
+    def set_unsaved_changes(self, has_changes: bool):
+        """Called by ProfileEditor when edits are made."""
+        self._has_unsaved_changes = has_changes

@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import datetime
+import functools
 import logging
 from typing import TYPE_CHECKING
 
 import yaml
-from PyQt6.QtCore import QMimeData, Qt
+from PyQt6.QtCore import QMimeData, QSettings, Qt
 from PyQt6.QtGui import QDrag
 from PyQt6.QtWidgets import (
+    QDialog,
     QFrame,
     QGraphicsOpacityEffect,
     QGridLayout,
@@ -24,9 +26,17 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config.loader import IniConfigLoader
-from src.config.profile_models import ProfileModel
+from src.config.profile_models import DynamicItemFilterModel, ItemFilterModel, ProfileModel
 from src.config.settings_models import IS_HOTKEY_KEY
+from src.gui.importer.d4builds import import_d4builds
+from src.gui.importer.gui_common import add_to_profiles, save_as_profile
+from src.gui.importer.importer_config import ImportConfig
+from src.gui.importer.maxroll import import_maxroll
+from src.gui.importer.mobalytics import import_mobalytics
+from src.gui.importer_window import THREADPOOL, _Worker
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
+from src.gui.models.dialog import CreateProfileDialog
+from src.gui.profile_editor.paper_doll import BASE_GEAR_SLOTS, get_weapon_slots
 from src.item.filter import _UniqueKeyLoader
 
 if TYPE_CHECKING:
@@ -155,12 +165,14 @@ class ActivityLogWidget(QWidget):
         action_layout = QHBoxLayout()
         self.import_btn = QPushButton("Import Profile")
         self.import_btn.setObjectName("primary")
+
+        self.create_profile_btn = QPushButton("Create Profile")
         self.settings_btn = QPushButton("Settings")
 
         self.minimize_to_tray_cb = CheckmarkCheckBox("Minimize to Tray")
         self.minimize_to_tray_cb.setObjectName("switch")
 
-        for btn in [self.import_btn, self.settings_btn]:
+        for btn in [self.import_btn, self.create_profile_btn, self.settings_btn]:
             btn.setFixedHeight(34)
             btn.setFixedWidth(130)
             action_layout.addWidget(btn)
@@ -264,6 +276,11 @@ class ActivityLogWidget(QWidget):
                 edit_btn.clicked.connect(lambda _, n=name: self._edit_profile(n))
                 header_hbox.addWidget(edit_btn)
 
+                refresh_btn = self._create_row_btn("Refresh")
+                refresh_btn.setToolTip("Refresh build from source URL")
+                refresh_btn.clicked.connect(lambda _, n=name: self._refresh_profile(n))
+                header_hbox.addWidget(refresh_btn)
+
                 delete_btn = self._create_row_btn("Delete")
                 delete_btn.setObjectName("delete-profile-btn")
                 delete_btn.setToolTip("Delete Profile")
@@ -337,6 +354,106 @@ class ActivityLogWidget(QWidget):
                     except Exception:
                         LOGGER.exception(f"Failed to delete profile {name}")
 
+    def _refresh_profile(self, name: str):
+        """Re-import the build from its source URL while merging manual rules."""
+        profiles_dir = self._config.user_dir / "profiles"
+        p_path = None
+        for ext in [".yaml", ".yml"]:
+            test_path = profiles_dir / f"{name}{ext}"
+            if test_path.exists():
+                p_path = test_path
+                break
+
+        if not p_path:
+            return
+
+        try:
+            with p_path.open(encoding="utf-8") as f:
+                config_data = yaml.load(stream=f, Loader=_UniqueKeyLoader)
+            old_model = ProfileModel(name=name, **config_data)
+        except Exception:
+            LOGGER.exception(f"Failed to load profile {name} for refresh")
+            return
+
+        url = old_model.source_url
+        if not url:
+            # Fallback for older profiles: try to extract from the top-level comment
+            with p_path.open(encoding="utf-8") as f:
+                first_line = f.readline()
+                if first_line.startswith("# http"):
+                    url = first_line[2:].strip()
+
+        if not url:
+            QMessageBox.warning(self, "Refresh Profile", "No source URL found in this profile. It cannot be refreshed.")
+            return
+
+        msg = (
+            f"Are you sure you want to refresh '{name}' from its source URL?\n\n"
+            f"URL: {url}\n\n"
+            "Warning: This will update all items and aspects from the planner. "
+            "Your manual Sigil, Tribute, and Global Unique rules will be preserved."
+        )
+        if (
+            QMessageBox.question(
+                self, "Refresh Profile", msg, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            != QMessageBox.StandardButton.Yes
+        ):
+            return
+
+        # Imports needed for background worker
+
+        import_settings = QSettings("d4lf", "ImporterWindow")
+        importer_config = ImportConfig(
+            url=url,
+            import_aspect_upgrades=import_settings.value("import_aspect_upgrades", "true") == "true",
+            add_to_profiles=False,
+            import_greater_affixes=import_settings.value("import_gas", "true") == "true",
+            require_greater_affixes=import_settings.value("require_all_gas", "false") == "true",
+            export_paragon=import_settings.value("export_paragon", "false") == "true",
+            custom_file_name=name,
+            filename_components=None,
+        )
+
+        fn = import_mobalytics
+        if "maxroll" in url:
+            fn = import_maxroll
+        elif "d4builds" in url:
+            fn = import_d4builds
+
+        worker = _Worker(name=f"refresh-{name}", fn=fn, config=importer_config)
+        finish_callback = functools.partial(self._on_refresh_finished, name, old_model)
+        worker.signals.finished.connect(finish_callback)
+
+        THREADPOOL.start(worker)
+        QMessageBox.information(self, "Refresh Profile", f"Refreshing '{name}' in the background...")
+
+    def _on_refresh_finished(self, name: str, old_model: ProfileModel):
+        """Merge user-protected sections back into the refreshed profile."""
+        profiles_dir = self._config.user_dir / "profiles"
+        p_path = next(
+            (profiles_dir / f"{name}{ext}" for ext in [".yaml", ".yml"] if (profiles_dir / f"{name}{ext}").exists()),
+            None,
+        )
+
+        if p_path:
+            try:
+                with p_path.open(encoding="utf-8") as f:
+                    new_config = yaml.load(stream=f, Loader=_UniqueKeyLoader)
+                new_model = ProfileModel(name=name, **new_config)
+
+                # Restore sections importers don't touch
+                new_model.sigils = old_model.sigils
+                new_model.tributes = old_model.tributes
+                new_model.global_uniques = old_model.global_uniques
+
+                save_as_profile(file_name=name, profile=new_model, url=new_model.source_url, exclude={"name"})
+                LOGGER.info(f"Refreshed profile '{name}' and restored manual rules.")
+            except Exception:
+                LOGGER.exception(f"Failed to merge manual rules into refreshed profile '{name}'")
+
+        self.refresh_profiles()
+
     def _get_profile_summary(self, path: Path) -> str:
         """Peeks into the YAML using ProfileModel to build a summary tooltip."""
         try:
@@ -350,6 +467,12 @@ class ActivityLogWidget(QWidget):
             # Convert to ProfileModel for robust, future-proof access
             model = ProfileModel(name=path.stem, **config)
             summary = [f"Last Modified: {mtime}"]
+
+            if model.class_name and model.class_name != "unknown":
+                summary.append(f"👤 Class: {model.class_name.title()}")
+
+            if model.source_url:
+                summary.append(f"🔗 Source: {model.source_url}")
 
             if model.affixes:
                 types = set()
@@ -496,7 +619,36 @@ class ActivityLogWidget(QWidget):
         self.show_log_btn.clicked.connect(self._on_show_log_clicked)
         if self._main_window:
             self.import_btn.clicked.connect(self._main_window.open_import_dialog)
+            self.create_profile_btn.clicked.connect(self._create_profile)
             self.settings_btn.clicked.connect(self._main_window.open_settings_dialog)
+
+    def _create_profile(self):
+        """Create a new empty profile and save it to disk."""
+        existing_profile_names = self._config.general.profiles
+        dialog = CreateProfileDialog(existing_profile_names, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            profile_name, class_name = dialog.get_value()
+
+            # Create base items for each slot matching the current naming and class
+            all_slots = BASE_GEAR_SLOTS + get_weapon_slots(class_name)
+            initial_affixes = []
+            for slot_name, item_types, _ in all_slots:
+                # Initialize with minPower 100 as a standard baseline
+                item_filter = ItemFilterModel(item_type=item_types, min_power=100)
+                initial_affixes.append(DynamicItemFilterModel({slot_name: item_filter}))
+
+            new_profile_model = ProfileModel(name=profile_name, class_name=class_name, affixes=initial_affixes)
+            saved_file_name = save_as_profile(
+                file_name=profile_name,
+                profile=new_profile_model,
+                url="manually_created",
+                exclude={"name"},
+                backup_file=False,
+            )
+            add_to_profiles(saved_file_name)
+            self.refresh_profiles()
+            if self._main_window:
+                self._main_window.open_profile_editor(profile_name=saved_file_name)
 
     def _on_config_changed(self, changed_keys: AbstractSet[str]):
         """Refresh the hotkey grid if any relevant settings changed."""

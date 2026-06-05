@@ -27,7 +27,7 @@ from src.config.profile_models import (
     TributeFilterModel,
 )
 from src.dataloader import Dataloader
-from src.gui.importer.gui_common import MAX_POWER
+from src.gui.importer.gui_common import MAX_POWER, PLAYER_CLASSES, normalize_profile_file_name
 from src.gui.settings_tab import IgnoreScrollWheelComboBox
 from src.item.data.item_type import ItemType
 
@@ -183,6 +183,60 @@ class CreateItem(QDialog):
         ]
         item.min_power = 100
         return DynamicItemFilterModel(**{item_name: item})
+
+
+class CreateProfileDialog(QDialog):
+    def __init__(self, existing_profile_names: list[str], parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Create New Profile")
+        self.setFixedSize(300, 150)
+        self.existing_profile_names = existing_profile_names
+
+        self.main_layout = QVBoxLayout()
+        self.form_layout = QFormLayout()
+
+        # Profile Name
+        self.name_label = QLabel("Profile Name:")
+        self.name_input = QLineEdit()
+        self.form_layout.addRow(self.name_label, self.name_input)
+
+        self.buttonLayout = QHBoxLayout()
+        self.okButton = QPushButton("OK")
+        self.okButton.clicked.connect(self.accept)
+
+        # Class Selection
+        self.class_label = QLabel("Class:")
+        self.class_input = QComboBox()
+        self.class_input.addItems(sorted([c.title() for c in PLAYER_CLASSES]))
+        self.form_layout.addRow(self.class_label, self.class_input)
+
+        self.cancelButton = QPushButton("Cancel")
+        self.cancelButton.clicked.connect(self.reject)
+
+        self.buttonLayout.addWidget(self.okButton)
+        self.buttonLayout.addWidget(self.cancelButton)
+
+        self.main_layout.addLayout(self.form_layout)
+        self.main_layout.addLayout(self.buttonLayout)
+
+        self.setLayout(self.main_layout)
+
+    def accept(self):
+        profile_name = self.name_input.text().strip()
+        if not profile_name:
+            QMessageBox.warning(self, "Warning", "Profile name cannot be empty.")
+            return
+
+        normalized_name = normalize_profile_file_name(profile_name)
+
+        if normalized_name in [normalize_profile_file_name(n) for n in self.existing_profile_names]:
+            QMessageBox.warning(self, "Warning", f"A profile with the name '{profile_name}' already exists.")
+            return
+
+        super().accept()
+
+    def get_value(self) -> tuple[str, str]:
+        return self.name_input.text().strip(), self.class_input.currentText().lower()
 
 
 class DeleteItem(QDialog):

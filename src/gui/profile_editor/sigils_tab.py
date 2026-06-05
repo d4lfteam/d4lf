@@ -18,6 +18,7 @@ from src.config.profile_models import SigilConditionModel, SigilFilterModel, Sig
 from src.dataloader import Dataloader
 from src.gui.models.collapsible_widget import Container
 from src.gui.models.dialog import CreateSigil, IgnoreScrollWheelComboBox, RemoveSigil
+from src.gui.profile_editor.affixes_tab import TruncatingComboBox
 
 SIGILS_TABNAME = "Sigils"
 
@@ -30,7 +31,7 @@ class ConditionWidget(QWidget):
         self.condition = condition
         widget_layout = QHBoxLayout()
         widget_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.name_combo = IgnoreScrollWheelComboBox()
+        self.name_combo = TruncatingComboBox()
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
@@ -162,7 +163,7 @@ class SigilsTab(QWidget):
     def setup_ui(self):
         """Populate the grid layout with existing groups."""
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 20, 0, 20)
+        self.main_layout.setContentsMargins(0, 5, 0, 5)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.create_button_layout()
         self.create_form()

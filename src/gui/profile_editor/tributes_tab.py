@@ -32,7 +32,7 @@ class TributesTab(QWidget):
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 20, 0, 20)
+        main_layout.setContentsMargins(0, 5, 0, 5)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         label = QLabel(
             "Add tribute names and tribute rarities you want to keep. These rules are evaluated independently."

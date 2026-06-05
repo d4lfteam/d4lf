@@ -1,60 +1,165 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, QTimer
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QFormLayout,
     QFrame,
     QGroupBox,
+    QHBoxLayout,
+    QLabel,
     QLineEdit,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
+    QTabBar,
     QTabWidget,
-    QToolBar,
-    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
-from src.config.profile_models import GlobalUniqueModel
+from src.config.profile_models import AffixFilterModel, AspectUniqueFilterModel, GlobalUniqueModel
+from src.dataloader import Dataloader
 from src.gui.importer.gui_common import MAX_POWER
 from src.gui.models.dialog import DeleteItem, IgnoreScrollWheelSpinBox
+from src.gui.profile_editor.affixes_tab import (
+    AffixSummaryWidget,
+    CharacterSpinBox,
+    ItemTypePicker,
+    UniqueAspectWidget,
+    _create_column_footer,
+    _create_column_header,
+    _create_summary_card_style,
+    _item_type_summary,
+)
+from src.item.data.item_type import ItemType, is_armor, is_jewelry, is_weapon
 
-UNIQUES_TABNAME = "GlobalUniques"
+UNIQUES_TABNAME = "GlobalRules"
 
 
 class UniqueWidget(QWidget):
     def __init__(self, unique_model: GlobalUniqueModel, parent=None):
         super().__init__(parent)
+        self.settings = QSettings("d4lf", "profile_editor")
         self.unique_model = unique_model
-
+        self.item_types = [
+            item for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)
+        ]
         self.setup_ui()
 
     def setup_ui(self):
-        scroll_area = QScrollArea(self)
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-
-        content_widget = QWidget()
-        self.content_layout = QVBoxLayout(content_widget)
+        self.content_layout = QVBoxLayout(self)
         self.content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.setStyleSheet(_create_summary_card_style())
 
         self.create_general_groupbox()
 
-        scroll_area.setWidget(content_widget)
-        self.main_layout = QVBoxLayout()
-        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.main_layout.addWidget(scroll_area)
-        self.setLayout(self.main_layout)
+        # Rule Content
+        columns_layout = QHBoxLayout()
+        columns_layout.setSpacing(15)
+
+        def create_col(title, add_cb, pool_model=None):
+            col_widget = QWidget()
+            col_layout = QVBoxLayout(col_widget)
+            col_layout.setContentsMargins(0, 0, 0, 0)
+            col_layout.setSpacing(0)
+
+            header = _create_column_header(title, add_cb)
+            col_layout.addWidget(header)
+
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QFrame.Shape.Panel)
+            scroll.setStyleSheet(
+                "QScrollArea { border: 1px solid #3c3c3c; background-color: #121212; border-bottom: none; }"
+            )
+
+            inner = QWidget()
+            inner_layout = QVBoxLayout(inner)
+            inner_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            scroll.setWidget(inner)
+            col_layout.addWidget(scroll)
+
+            footer = None
+            if pool_model is not None:
+                footer = _create_column_footer(pool_model, self.update_greater_count_label)
+                footer.setStyleSheet("background-color: #1a1a1a; border: 1px solid #3c3c3c; border-top: none;")
+                col_layout.addWidget(footer)
+
+            return col_widget, inner_layout, footer
+
+        # Init columns
+        col1_w, self.aspect_rows_layout, _ = create_col("Unique Aspects", self.add_unique_aspect)
+        col2_w, self.affix_pool_layout, self.affix_footer = create_col(
+            "Affix Pool", self.add_affix_pool, self.unique_model.affix_pool[0]
+        )
+        col3_w, self.inherent_pool_layout, self.inherent_footer = create_col(
+            "Inherent Pool", self.add_inherent_pool, self.unique_model.inherent_pool[0]
+        )
+
+        columns_layout.addWidget(col1_w)
+        columns_layout.addWidget(col2_w)
+        columns_layout.addWidget(col3_w)
+
+        self.content_layout.addLayout(columns_layout)
+
+        # Initialize content
+        self.init_aspects()
+        self.init_affix_pool()
+        self.init_inherent_pool()
+
+    def init_aspects(self):
+        for aspect in self.unique_model.unique_aspect:
+            self.add_unique_aspect_item(aspect)
+
+    def init_affix_pool(self):
+        for affix in self.unique_model.affix_pool[0].count:
+            self.add_affix_item(affix, inherent=False)
+
+    def init_inherent_pool(self):
+        for affix in self.unique_model.inherent_pool[0].count:
+            self.add_affix_item(affix, inherent=True)
+
+    def add_affix_item(self, model: AffixFilterModel, inherent: bool = False):
+        layout = self.inherent_pool_layout if inherent else self.affix_pool_layout
+        widget = AffixSummaryWidget(model)
+        widget.delete_requested.connect(lambda: self.remove_affix_item_widget(widget, inherent))
+        widget.config_changed.connect(self.update_greater_count_label)
+        layout.addWidget(widget)
+        return widget
+
+    def remove_affix_item_widget(self, widget, inherent: bool):
+        layout = self.inherent_pool_layout if inherent else self.affix_pool_layout
+        pool = self.unique_model.inherent_pool[0] if inherent else self.unique_model.affix_pool[0]
+        idx = layout.indexOf(widget)
+        if idx != -1:
+            pool.count.pop(idx)
+            widget.setParent(None)
+            widget.deleteLater()
+            self.update_greater_count_label()
 
     def create_general_groupbox(self):
         self.general_groupbox = QGroupBox()
         self.general_groupbox.setTitle("Global Unique Rule")
         self.general_form = QFormLayout()
 
+        # Profile Alias / Name
         self.profile_alias = QLineEdit()
         self.profile_alias.setMaximumWidth(300)
         self.profile_alias.setText(self.unique_model.profile_alias)
         self.profile_alias.textChanged.connect(self.update_profile_alias)
-        self.general_form.addRow("Profile Alias:", self.profile_alias)
+        self.general_form.addRow("Rule Alias:", self.profile_alias)
+
+        # Item Types (Slots)
+        self.item_type_line_edit = QLineEdit()
+        self.item_type_line_edit.setReadOnly(True)
+        self.refresh_item_type_summary()
+        item_type_layout = QHBoxLayout()
+        item_type_layout.addWidget(self.item_type_line_edit)
+        edit_item_types_btn = QPushButton("Select Slots")
+        edit_item_types_btn.setMaximumWidth(100)
+        edit_item_types_btn.clicked.connect(self.edit_item_types)
+        item_type_layout.addWidget(edit_item_types_btn)
+        self.general_form.addRow("Target Slots:", item_type_layout)
 
         self.min_power = IgnoreScrollWheelSpinBox()
         self.min_power.setRange(0, MAX_POWER)
@@ -63,25 +168,107 @@ class UniqueWidget(QWidget):
         self.min_power.valueChanged.connect(self.update_min_power)
         self.general_form.addRow("Minimum Power:", self.min_power)
 
-        self.min_greater = IgnoreScrollWheelSpinBox()
-        self.min_greater.setRange(0, 4)
-        self.min_greater.setValue(self.unique_model.min_greater_affix_count)
-        self.min_greater.setMaximumWidth(150)
-        self.min_greater.valueChanged.connect(self.update_min_greater_affix)
-        self.general_form.addRow("Min Greater Affixes:", self.min_greater)
+        # Min Greater Affixes with Auto Sync
+        min_greater_layout = QHBoxLayout()
+        self.min_greater = CharacterSpinBox()
+        self.min_greater.set_range(0, 4)
+        self.min_greater.set_value(self.unique_model.min_greater_affix_count)
+        self.min_greater.setFixedWidth(100)
+        self.min_greater.value_changed.connect(self.update_min_greater_affix)
 
-        self.min_percent = IgnoreScrollWheelSpinBox()
-        self.min_percent.setRange(0, 100)
-        self.min_percent.setValue(self.unique_model.min_percent_of_aspect)
-        self.min_percent.setMaximumWidth(150)
-        self.min_percent.valueChanged.connect(self.update_min_percent)
-        self.general_form.addRow("Min Percent of Aspect:", self.min_percent)
+        self.auto_sync_checkbox = QCheckBox("Auto Sync")
+        self.auto_sync_checkbox.setChecked(
+            self.settings.value(f"auto_sync_ga_global_{self.unique_model.profile_alias}", defaultValue=False, type=bool)
+        )
+        self.auto_sync_checkbox.stateChanged.connect(self.toggle_auto_sync)
+        self.greater_count_label = QLabel()
+        self.greater_count_label.setStyleSheet("color: gray; font-style: italic;")
+
+        min_greater_layout.addWidget(self.min_greater)
+        min_greater_layout.addWidget(self.auto_sync_checkbox)
+        min_greater_layout.addWidget(self.greater_count_label)
+        min_greater_layout.addStretch()
+
+        self.min_greater.setEnabled(not self.auto_sync_checkbox.isChecked())
+        self.general_form.addRow("Min Greater Affixes:", self.min_greater)
 
         self.general_groupbox.setLayout(self.general_form)
         self.content_layout.addWidget(self.general_groupbox)
+        QTimer.singleShot(100, self.update_greater_count_label)
+
+    def add_unique_aspect_item(self, model: AspectUniqueFilterModel) -> UniqueAspectWidget:
+        widget = UniqueAspectWidget(model)
+        widget.delete_requested.connect(lambda: self.remove_unique_aspect_widget(widget))
+        self.aspect_rows_layout.addWidget(widget)
+        return widget
+
+    def add_unique_aspect(self):
+        aspect_name = next(iter(Dataloader().aspect_unique_dict.keys()))
+        new_aspect = AspectUniqueFilterModel(name=aspect_name)
+        self.unique_model.unique_aspect.append(new_aspect)
+        self.add_unique_aspect_item(new_aspect).open_config_dialog()
+
+    def remove_unique_aspect_widget(self, widget: UniqueAspectWidget):
+        if widget.unique_aspect in self.unique_model.unique_aspect:
+            self.unique_model.unique_aspect.remove(widget.unique_aspect)
+        widget.setParent(None)
+        widget.deleteLater()
+
+    def add_affix_pool(self):
+        affix_name = next(iter(Dataloader().affix_dict.keys()))
+        new_affix = AffixFilterModel(name=affix_name)
+        self.unique_model.affix_pool[0].count.append(new_affix)
+        self.add_affix_item(new_affix).open_config_dialog()
+
+    def add_inherent_pool(self):
+        affix_name = next(iter(Dataloader().affix_dict.keys()))
+        new_affix = AffixFilterModel(name=affix_name)
+        self.unique_model.inherent_pool[0].count.append(new_affix)
+        self.add_affix_item(new_affix, inherent=True).open_config_dialog()
+
+    def toggle_auto_sync(self):
+        is_auto = self.auto_sync_checkbox.isChecked()
+        self.settings.setValue(f"auto_sync_ga_global_{self.unique_model.profile_alias}", is_auto)
+        self.min_greater.setEnabled(not is_auto)
+        if is_auto:
+            self.update_greater_count_label()
+
+    def update_greater_count_label(self):
+        count = 0
+        # Count in affix pools
+        for pool in self.unique_model.affix_pool:
+            for affix in pool.count:
+                if getattr(affix, "want_greater", False):
+                    count += 1
+
+        if count == 0:
+            self.greater_count_label.setText("(no greater affixes marked)")
+        else:
+            self.greater_count_label.setText(f"({count} GAs required)")
+            if self.auto_sync_checkbox.isChecked():
+                with QSignalBlocker(self.min_greater):
+                    self.min_greater.set_value(count)
+
+    def refresh_item_type_summary(self):
+        self.item_type_line_edit.setText(_item_type_summary(self.unique_model.item_type))
+
+    def edit_item_types(self):
+        picker = ItemTypePicker(self, self.item_types, self.unique_model.item_type)
+        if picker.exec() == QDialog.DialogCode.Accepted:
+            self.unique_model.item_type = picker.get_selected_item_types()
+            self.refresh_item_type_summary()
 
     def update_profile_alias(self, value: str):
         self.unique_model.profile_alias = value.strip()
+        self.update_parent_tab_text()
+
+    def update_parent_tab_text(self):
+        p = self.parent()
+        while p:
+            if type(p).__name__ == "UniquesTab":
+                p.rename_tabs()
+                break
+            p = p.parent()
 
     def update_min_power(self):
         self.unique_model.min_power = self.min_power.value()
@@ -97,7 +284,10 @@ class UniquesTab(QWidget):
     def __init__(self, unique_model_list: list[GlobalUniqueModel], parent=None):
         super().__init__(parent)
         self.unique_model_list = unique_model_list
+        self._current_slot_name = ""
+        self._current_slot_item_types = []
         self.loaded = False
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def load(self):
         if not self.loaded:
@@ -106,37 +296,171 @@ class UniquesTab(QWidget):
 
     def setup_ui(self):
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 20, 0, 20)
+        self.main_layout.setContentsMargins(0, 5, 0, 5)
         self.tab_widget = QTabWidget(self)
-        self.tab_widget.setTabsClosable(True)
-        self.tab_widget.tabCloseRequested.connect(self.close_tab)
+        with QSignalBlocker(self.tab_widget):
+            self.tab_widget.setTabsClosable(True)
+            self.tab_widget.tabCloseRequested.connect(self.close_tab)
+            self.tab_widget.currentChanged.connect(self._on_tab_changed)
+            self.tab_widget.tabBar().tabBarClicked.connect(self._on_tab_bar_clicked)
 
-        self.add_button = QToolButton()
-        self.add_button.setText("+")
-        self.add_button.clicked.connect(self.add_item_type)
+            # Add a persistent "+" tab at the end
+            self.tab_widget.addTab(QWidget(), "+")
 
-        self.tab_widget.setCornerWidget(self.add_button)
-        self.toolbar = QToolBar("MyToolBar", self)
-        self.toolbar.setMinimumHeight(50)
-        self.toolbar.setContentsMargins(10, 10, 10, 10)
-        self.toolbar.setMovable(False)
-        for i, unique_model in enumerate(self.unique_model_list):
-            group = UniqueWidget(unique_model)
-            self.tab_widget.addTab(group, f"Unique Rule {i}")
+            for i, unique_model in enumerate(self.unique_model_list):
+                self.tab_widget.insertTab(
+                    self.tab_widget.count() - 1, QWidget(), unique_model.profile_alias or f"Rule {i}"
+                )
 
-        add_item_button = QPushButton("Create Rule")
-        remove_item_button = QPushButton("Remove Rule")
-        add_item_button.clicked.connect(self.add_item_type)
-        remove_item_button.clicked.connect(self.remove_item_type)
-        self.toolbar.addWidget(add_item_button)
-        self.toolbar.addWidget(remove_item_button)
-        self.main_layout.addWidget(self.toolbar)
+        self._update_plus_tab_button()
+
         self.main_layout.addWidget(self.tab_widget)
 
+    def _on_tab_changed(self, index):
+        if index >= 0 and self.tab_widget.tabText(index) == "+":
+            self.add_item_type()
+
+    def _on_tab_bar_clicked(self, index):
+        # This handles clicking the "+" tab when it's already selected
+        if index >= 0 and self.tab_widget.tabText(index) == "+" and self.tab_widget.currentIndex() == index:
+            self.add_item_type()
+
+    def _update_plus_tab_button(self):
+        for i in range(self.tab_widget.count()):
+            if self.tab_widget.tabText(i) == "+":
+                self.tab_widget.tabBar().setTabButton(i, QTabBar.ButtonPosition.RightSide, None)
+                self.tab_widget.setTabToolTip(i, "Create Rule")
+
     def close_tab(self, index):
-        self.tab_widget.removeTab(index)
-        self.unique_model_list.pop(index)
+        if self.tab_widget.tabText(index) == "+":
+            return
+        with QSignalBlocker(self.tab_widget):
+            self.tab_widget.removeTab(index)
+            self.unique_model_list.pop(index)
         self.rename_tabs()
+        self._update_plus_tab_button()
+
+    def filter_by_item_types(self, item_types: list[ItemType] | None, slot_name: str | None = None):
+        """Show only tabs that match the provided item types."""
+        if not hasattr(self, "tab_widget"):
+            return
+        self._current_slot_name = slot_name
+        self._current_slot_item_types = item_types
+
+        with QSignalBlocker(self.tab_widget):
+            if slot_name is None:  # Global Rules view
+                for i in range(self.tab_widget.count()):
+                    if self.tab_widget.tabText(i) == "+":
+                        self.tab_widget.setTabVisible(i, True)  # noqa: FBT003
+                        continue
+                    self._ensure_tab_instantiated(i)
+                    self.tab_widget.setTabVisible(i, True)  # noqa: FBT003
+                return
+
+            slot_match_name = slot_name.lower().replace(" ", "").replace("-", "") if slot_name else None
+            is_rings = slot_match_name == "rings"
+            is_dw_all = slot_match_name == "dualwields"
+            is_ring_2 = slot_match_name == "ring2"
+            is_ring_1 = slot_match_name == "ring1"
+            is_dw_1 = slot_match_name == "dualwield1"
+            is_dw_2 = slot_match_name == "dualwield2"
+            is_dw_ranged = slot_match_name == "rangedweapon"
+            is_bludgeoning = slot_match_name == "bludgeoning"
+            is_slashing = slot_match_name == "slashing"
+            is_main_hand = slot_match_name == "mainhand"
+            type_names = [t.value.lower().replace(" ", "").replace("-", "") for t in item_types] if item_types else []
+
+            # Check for exact matches in rule aliases/names
+            has_exact_match = False
+            if slot_match_name:
+                for i in range(self.tab_widget.count()):
+                    if self.tab_widget.tabText(i) == "+":
+                        continue
+                    model = self.unique_model_list[i]
+                    alias = model.profile_alias.lower().replace(" ", "").replace("-", "")
+                    if (
+                        alias == slot_match_name
+                        or (slot_match_name and slot_match_name in alias)
+                        or (alias and alias in slot_match_name)
+                        or (is_rings and "ring" in alias)
+                        or (is_dw_all and "dualwield" in alias)
+                        or (is_ring_1 and alias == "ring")
+                        or (is_dw_1 and alias == "dualwield")
+                        or (is_dw_2 and alias == "dualwield")
+                        or (is_dw_ranged and alias == "ranged")
+                        or (
+                            alias in type_names
+                            and not (is_ring_2 or is_dw_2 or is_dw_1 or is_bludgeoning or is_slashing or is_dw_ranged)
+                        )
+                        or (is_main_hand and alias == "weapon")
+                    ):
+                        has_exact_match = True
+                        break
+
+            for i in range(self.tab_widget.count()):
+                if self.tab_widget.tabText(i) == "+":
+                    self.tab_widget.setTabVisible(i, True)  # noqa: FBT003
+                    continue
+
+                model = self.unique_model_list[i]
+                alias = model.profile_alias.lower().replace(" ", "").replace("-", "")
+                rule_types = getattr(model, "item_type", [])
+                type_match = not item_types or not rule_types or any(t in rule_types for t in item_types)
+
+                if has_exact_match:
+                    visible = type_match and (
+                        alias == slot_match_name
+                        or (slot_match_name and slot_match_name in alias)
+                        or (alias and alias in slot_match_name)
+                        or (is_rings and "ring" in alias)
+                        or (is_dw_all and "dualwield" in alias)
+                        or (is_ring_1 and alias == "ring")
+                        or (is_dw_1 and alias == "dualwield")
+                        or (is_dw_2 and alias == "dualwield")
+                        or (is_dw_ranged and alias == "ranged")
+                        or (
+                            alias in type_names
+                            and not (is_ring_2 or is_dw_2 or is_dw_1 or is_bludgeoning or is_slashing or is_dw_ranged)
+                        )
+                        or (is_main_hand and alias == "weapon")
+                    )
+                else:
+                    visible = type_match
+
+                if visible:
+                    self._ensure_tab_instantiated(i)
+                self.tab_widget.setTabVisible(i, visible)
+
+            # Ensure a valid content tab is focused instead of the '+' tab
+            curr = self.tab_widget.currentIndex()
+            if curr == -1 or not self.tab_widget.isTabVisible(curr) or self.tab_widget.tabText(curr) == "+":
+                for i in range(self.tab_widget.count()):
+                    if self.tab_widget.isTabVisible(i) and self.tab_widget.tabText(i) != "+":
+                        self.tab_widget.setCurrentIndex(i)
+                        break
+
+    def _ensure_tab_instantiated(self, index: int):
+        if index < 0 or index >= self.tab_widget.count():
+            return
+        if not isinstance(self.tab_widget.widget(index), UniqueWidget):
+            # Find the correct model by counting non-plus tabs before this one
+            model_idx = 0
+            for i in range(index):
+                if self.tab_widget.tabText(i) != "+":
+                    model_idx += 1
+
+            if model_idx >= len(self.unique_model_list):
+                return
+
+            model = self.unique_model_list[model_idx]
+            widget = UniqueWidget(model)
+            name = self.tab_widget.tabText(index)
+            is_current = self.tab_widget.currentIndex() == index
+            with QSignalBlocker(self.tab_widget):
+                self.tab_widget.removeTab(index)
+                self.tab_widget.insertTab(index, widget, name)
+                if is_current:
+                    self.tab_widget.setCurrentIndex(index)
 
     def remove_item_type(self):
         dialog = DeleteItem([self.tab_widget.tabText(i) for i in range(self.tab_widget.count())], self)
@@ -150,14 +474,32 @@ class UniquesTab(QWidget):
                 self.tab_widget.removeTab(index)
                 self.unique_model_list.pop(index)
             self.rename_tabs()
+            self._update_plus_tab_button()
             return
 
     def rename_tabs(self):
         for i in range(self.tab_widget.count()):
-            self.tab_widget.setTabText(i, f"Unique Rule {i}")
+            if self.tab_widget.tabText(i) == "+":
+                continue
+            model = self.unique_model_list[i]
+            self.tab_widget.setTabText(i, model.profile_alias or f"Rule {i}")
 
     def add_item_type(self):
-        unique_model = GlobalUniqueModel()
+        item_types = self._current_slot_item_types or []
+        plus_idx = -1
+        for i in range(self.tab_widget.count()):
+            if self.tab_widget.tabText(i) == "+":
+                plus_idx = i
+                break
+
+        # Switch to previous tab if we were triggered by clicking the "+" tab
+        if self.tab_widget.currentIndex() == plus_idx and plus_idx > 0:
+            self.tab_widget.setCurrentIndex(plus_idx - 1)
+
+        alias = f"New Rule {self.tab_widget.count()}"
+        unique_model = GlobalUniqueModel(item_type=item_types, profileAlias=alias)
         group = UniqueWidget(unique_model)
-        self.tab_widget.addTab(group, f"Unique Rule {self.tab_widget.count()}")
+        self.tab_widget.insertTab(plus_idx, group, alias)
         self.unique_model_list.append(unique_model)
+        self.tab_widget.setCurrentIndex(plus_idx)
+        self._update_plus_tab_button()

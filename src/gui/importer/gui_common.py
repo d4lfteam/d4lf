@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import functools
 import logging
@@ -18,7 +20,6 @@ from seleniumbase import Driver
 
 from src import __version__
 from src.config.loader import IniConfigLoader
-from src.config.profile_models import AspectUniqueFilterModel, ItemFilterModel, ProfileModel
 from src.config.settings_models import BrowserType
 from src.item.data.item_type import ItemType
 
@@ -26,6 +27,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
+
+    from src.config.profile_models import ItemFilterModel, ProfileModel
 
 LOGGER = logging.getLogger(__name__)
 
@@ -222,14 +225,6 @@ def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool)
         item_filter.min_greater_affix_count = num_greater
     else:
         item_filter.min_greater_affix_count = 0
-
-
-def add_mythics_to_filters(mythic_names, finished_filters):
-    if mythic_names:
-        mythic_filter = ItemFilterModel()
-        for mythic_name in mythic_names:
-            mythic_filter.unique_aspect.append(AspectUniqueFilterModel(name=mythic_name))
-        finished_filters.append({"Mythics": mythic_filter})
 
 
 def sort_profile_filters(filters: list[dict[str, ItemFilterModel]]) -> list[dict[str, ItemFilterModel]]:

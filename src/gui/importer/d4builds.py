@@ -18,7 +18,6 @@ from src.config.profile_models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
-    add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
     fix_offhand_type,
@@ -95,7 +94,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         raise D4BuildsError(msg)
     slot_to_unique_name_map = _get_item_slots(data=data)
     finished_filters = []
-    mythic_names = []
     aspect_upgrade_filters = _get_legendary_aspects(data=data)
     for item in items[0]:
         item_filter = ItemFilterModel()
@@ -115,9 +113,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
 
         if slot_to_unique_name_map[slot]:
             unique_name, rarity = slot_to_unique_name_map[slot]
-            if rarity == ItemRarity.Mythic:
-                mythic_names.append(unique_name)
-                continue
             try:
                 item_filter.unique_aspect = [AspectUniqueFilterModel(name=unique_name)]
             except Exception:
@@ -198,9 +193,9 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             filter_name = f"{filter_name_template}{i}"
             i += 1
         finished_filters.append({filter_name: item_filter})
-    # Place all mythics in a single filter
-    add_mythics_to_filters(mythic_names, finished_filters)
-    profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
+    profile = ProfileModel(
+        name="imported profile", affixes=sort_profile_filters(finished_filters), class_name=class_name, source_url=url
+    )
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.aspect_upgrades = aspect_upgrade_filters
 

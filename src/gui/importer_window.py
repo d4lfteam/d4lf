@@ -236,13 +236,6 @@ class ImporterWindow(QMainWindow):
     def _handle_text_changed(self, text):
         """Enable/disable generate button based on input."""
         self.generate_button.setEnabled(bool(text.strip()))
-        # Show/hide filename options based on whether a custom filename is entered
-        self.filename_options_label.setVisible(not bool(text.strip()))
-        self.include_source_checkbox.setVisible(not bool(text.strip()))
-        self.include_season_checkbox.setVisible(not bool(text.strip()))
-        self.include_class_checkbox.setVisible(not bool(text.strip()))
-        self.include_header_checkbox.setVisible(not bool(text.strip()))
-        self.include_subbuild_checkbox.setVisible(not bool(text.strip()))
 
     def _get_filename_components(self) -> dict:
         """Build and return the filename_components dict from checkbox states."""
