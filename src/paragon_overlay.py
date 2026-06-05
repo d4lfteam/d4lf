@@ -632,7 +632,7 @@ class ParagonOverlay(tk.Toplevel):
 
         self.btn_settings = _tk_btn(
             btn_cont,
-            text="ParagonOverlay⚙ ▼",
+            text="Settings⚙ ▼",
             cmd=self._show_settings_dropdown,
             font=("Segoe UI", int(FS_BUTTON * self._cfg.ui_scale), "bold"),
             padx=int(10 * self._cfg.ui_scale),
