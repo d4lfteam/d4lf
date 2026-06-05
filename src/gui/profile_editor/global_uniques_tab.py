@@ -249,6 +249,20 @@ class UniqueWidget(QWidget):
                 with QSignalBlocker(self.min_greater):
                     self.min_greater.set_value(count)
 
+        # Update pool footers with new Min Count constraints
+        for footer, model in [
+            (self.affix_footer, self.unique_model.affix_pool[0]),
+            (self.inherent_footer, self.unique_model.inherent_pool[0]),
+        ]:
+            if footer and model:
+                min_spin = footer.property("min_spin")
+                if min_spin:
+                    min_allowed = sum(1 for a in model.count if getattr(a, "required", False))
+                    min_spin.set_minimum(min_allowed)
+                    if model.min_count < min_allowed:
+                        model.min_count = min_allowed
+                        min_spin.set_value(min_allowed)
+
     def refresh_item_type_summary(self):
         self.item_type_line_edit.setText(_item_type_summary(self.unique_model.item_type))
 

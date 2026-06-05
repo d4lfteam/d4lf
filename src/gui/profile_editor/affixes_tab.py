@@ -283,11 +283,11 @@ def _affix_summary(pool: AffixFilterCountModel) -> str:
     for a in pool.count:
         name = Dataloader().affix_dict.get(a.name, a.name)
         if getattr(a, "required", False):
-            name = f"[REQ] {name}"
+            name = f'<span style="color: #ef4444;">[REQ]</span> {name}'
         if a.want_greater:
             name += " (GA)"
         names.append(name)
-    return "\n".join(names)
+    return "<br>".join(names)
 
 
 def _affix_card_summary(model: AffixFilterModel) -> str:
@@ -800,9 +800,7 @@ class AffixGroupEditor(QWidget):
             self.reorganize_pool(layout_widget)
 
     def reorganize_pool(self, layout_widget: QVBoxLayout):
-        for i in range(layout_widget.count()):
-            item = layout_widget.itemAt(i)
-            item and item.widget() is not None
+        pass
 
     def update_min_power(self):
         self.config.min_power = self.min_power.value()
@@ -828,6 +826,8 @@ class AffixGroupEditor(QWidget):
         else:
             self.min_greater.setProperty("autoSyncSpin", False)  # noqa: FBT003
             self._refresh_widget_style(self.min_greater)
+
+        self.update_greater_count_label()
 
     def _update_auto_sync_count(self):
         count = self.count_want_greater_affixes()
@@ -873,6 +873,20 @@ class AffixGroupEditor(QWidget):
             self.greater_count_label.setText("(1 greater affix marked)")
         else:
             self.greater_count_label.setText(f"({count} greater affixes marked)")
+
+        # Update pool footers with new Min Count constraints
+        for footer, model in [
+            (self.affix_footer, self.config.affix_pool[0]),
+            (self.inherent_footer, self.config.inherent_pool[0]),
+        ]:
+            if footer and model:
+                min_spin = footer.property("min_spin")
+                if min_spin:
+                    min_allowed = sum(1 for a in model.count if getattr(a, "required", False))
+                    min_spin.set_minimum(min_allowed)
+                    if model.min_count < min_allowed:
+                        model.min_count = min_allowed
+                        min_spin.set_value(min_allowed)
 
     def convert_all_to_min_percent_of_affix(self, percent: int):
         for affix_widget in self.iter_affix_widgets():
@@ -1034,10 +1048,13 @@ class AffixSummaryWidget(QWidget):
 
     def refresh_display(self):
         name = Dataloader().affix_dict.get(self.model.name, self.model.name)
-        prefix = "[REQ] " if getattr(self.model, "required", False) else ""
         if self.model.want_greater:
             name += " (GA)"
-        self.summary_label.setText(f"{prefix}{name}")
+
+        if getattr(self.model, "required", False):
+            self.summary_label.setText(f'<span style="color: #ef4444;">[REQ]</span> {name}')
+        else:
+            self.summary_label.setText(name)
 
         if self.model.min_percent_of_affix:
             self.threshold_label.setText(f"{self.model.min_percent_of_affix}%")
