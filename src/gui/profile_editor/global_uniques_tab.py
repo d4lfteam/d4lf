@@ -35,7 +35,6 @@ from src.gui.profile_editor.affixes_tab import (
     UniqueAspectWidget,
     _create_column_footer,
     _create_column_header,
-    _create_summary_card_style,
     _item_type_summary,
 )
 from src.item.data.item_type import ItemType, is_armor, is_jewelry, is_weapon
@@ -61,8 +60,8 @@ class UniqueWidget(QWidget):
 
     def setup_ui(self):
         self.content_layout = QVBoxLayout(self)
+        self.content_layout.setContentsMargins(0, 10, 0, 0)
         self.content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.setStyleSheet(_create_summary_card_style())
 
         self.create_general_groupbox()
 
@@ -103,9 +102,10 @@ class UniqueWidget(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.Panel)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.viewport().setAutoFillBackground(False)
         scroll.setStyleSheet(
-            "QScrollArea { border: 1px solid #3c3c3c; background-color: #121212; border-bottom: none; }"
+            "QScrollArea { border: 1px solid #2d2d2d; background-color: #121212; border-bottom: none; }"
         )
 
         inner = QWidget()
@@ -396,8 +396,11 @@ class UniquesTab(QWidget):
 
     def setup_ui(self):
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 5, 0, 5)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.tab_widget = QTabWidget(self)
+        self.tab_widget.setStyleSheet(
+            "QTabWidget { background: transparent; } QTabWidget::pane { border: none; } QTabBar { background: transparent; }"
+        )
         with QSignalBlocker(self.tab_widget):
             self.tab_widget.setTabsClosable(True)
             self.tab_widget.tabCloseRequested.connect(self.close_tab)

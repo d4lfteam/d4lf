@@ -1,8 +1,26 @@
+from typing import override
+
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QDialog, QFrame, QHBoxLayout, QLabel, QScrollArea, QSizePolicy, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QScrollArea,
+    QSizePolicy,
+    QStyle,
+    QStyleOption,
+    QVBoxLayout,
+    QWidget,
+)
 
 from src.gui.models.dialog import AddAspectUpgrade
-from src.gui.profile_editor.affixes_tab import _create_column_header, _create_delete_btn, _create_summary_card_style
+from src.gui.profile_editor.affixes_tab import (
+    QPainter,
+    _create_column_header,
+    _create_delete_btn,
+    _create_summary_card_style,
+)
 
 ASPECT_UPGRADES_TABNAME = "Aspect Upgrades"
 
@@ -30,6 +48,14 @@ class AspectUpgradeSummaryWidget(QWidget):
         self.delete_btn = _create_delete_btn()
         self.delete_btn.clicked.connect(self.delete_requested.emit)
         self.main_layout.addWidget(self.delete_btn)
+
+    @override
+    def paintEvent(self, event):
+        opt = QStyleOption()
+        opt.initFrom(self)
+        p = QPainter(self)
+        self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, opt, p, self)
+        p.end()
 
 
 class AspectUpgradesTab(QWidget):

@@ -12,6 +12,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QScrollArea,
     QSizePolicy,
+    QStyle,
+    QStyleOption,
     QVBoxLayout,
     QWidget,
 )
@@ -19,6 +21,7 @@ from PyQt6.QtWidgets import (
 from src.config.profile_models import ItemRarity, TributeFilterModel
 from src.dataloader import Dataloader
 from src.gui.profile_editor.affixes_tab import (
+    QPainter,
     TruncatingComboBox,
     _create_column_header,
     _create_delete_btn,
@@ -63,6 +66,14 @@ class TributeSummaryWidget(QWidget):
         self.main_layout.addWidget(self.delete_btn)
 
         self.refresh_display()
+
+    @override
+    def paintEvent(self, event):
+        opt = QStyleOption()
+        opt.initFrom(self)
+        p = QPainter(self)
+        self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, opt, p, self)
+        p.end()
 
     @override
     def mousePressEvent(self, event):

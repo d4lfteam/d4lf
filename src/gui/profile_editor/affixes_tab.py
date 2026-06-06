@@ -3,7 +3,7 @@ import logging
 from typing import override
 
 from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, pyqtSignal
-from PyQt6.QtGui import QDoubleValidator, QIntValidator
+from PyQt6.QtGui import QDoubleValidator, QIntValidator, QPainter
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -21,6 +21,8 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QStyle,
+    QStyleOption,
     QTabBar,
     QTabWidget,
     QVBoxLayout,
@@ -302,15 +304,17 @@ def _affix_card_summary(model: AffixFilterModel) -> str:
 
 def _create_summary_card_style() -> str:
     return """
-        #SummaryCard {
-            border: 1px solid #3c3c3c;
-            border-radius: 6px;
-            background-color: #1a1a1a;
+        QWidget#SummaryCard {
+            border: 1px solid #2d2d2d;
+            border-left: 3px solid #3b82f6;
+            border-radius: 4px;
+            background-color: #1e1e1e;
             margin-bottom: 4px;
         }
-        #SummaryCard:hover {
-            background-color: #242424;
-            border-color: #5c5c5c;
+        QWidget#SummaryCard:hover {
+            background-color: #262626;
+            border-color: #404040;
+            border-left-color: #60a5fa;
         }
     """
 
@@ -348,9 +352,19 @@ def _create_column_header(title: str, add_callback: callable, remove_callback: c
 
 def _create_column_footer(model: AffixFilterCountModel, on_change_cb: callable) -> QWidget:
     footer = QWidget()
-    layout = QHBoxLayout(footer)
-    layout.setContentsMargins(5, 5, 5, 5)
+    main_layout = QVBoxLayout(footer)
+    main_layout.setContentsMargins(5, 5, 5, 5)
+    main_layout.setSpacing(2)
+
+    flavor_lbl = QLabel("Set the quantity of affixes wanted for a match.")
+    flavor_lbl.setStyleSheet("color: #64748b; font-size: 10px; font-style: italic;")
+    flavor_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    main_layout.addWidget(flavor_lbl)
+
+    layout = QHBoxLayout()
+    layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(10)
+    main_layout.addLayout(layout)
 
     layout.addStretch()
 
@@ -499,6 +513,10 @@ class AffixPoolDialog(QDialog):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("background: transparent;")
+        scroll.viewport().setStyleSheet("background: transparent;")
+
         self.rows_container = QWidget()
         self.rows_layout = QVBoxLayout(self.rows_container)
         self.rows_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -567,6 +585,7 @@ class AffixGroupEditor(QWidget):
 
     def setup_ui(self):
         self.content_layout = QVBoxLayout(self)
+        self.content_layout.setContentsMargins(0, 10, 0, 0)
         self.content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Row 1: Item Alias, Min Power, Duplicate Button
@@ -806,8 +825,15 @@ class AffixGroupEditor(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.Panel)
-        scroll.setStyleSheet("QScrollArea { border: 1px solid #3c3c3c; background-color: #121212; }")
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.viewport().setAutoFillBackground(False)
+        if pool_model is not None:
+            scroll.setStyleSheet(
+                "QScrollArea { border: 1px solid #2d2d2d; border-bottom: none; background-color: #121212; }"
+            )
+        else:
+            scroll.setStyleSheet("QScrollArea { border: 1px solid #2d2d2d; background: transparent; }")
+            scroll.viewport().setStyleSheet("background: transparent;")
 
         inner = QWidget()
         inner_layout = QVBoxLayout(inner)
@@ -1024,6 +1050,14 @@ class UniqueAspectWidget(QWidget):
         self.refresh_display()
 
     @override
+    def paintEvent(self, event):
+        opt = QStyleOption()
+        opt.initFrom(self)
+        p = QPainter(self)
+        self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, opt, p, self)
+        p.end()
+
+    @override
     def mousePressEvent(self, event):
         if event is None or event.button() == Qt.MouseButton.LeftButton:
             self.open_config_dialog()
@@ -1134,6 +1168,14 @@ class AffixSummaryWidget(QWidget):
         self.main_layout.addWidget(self.delete_btn)
 
         self.refresh_display()
+
+    @override
+    def paintEvent(self, event):
+        opt = QStyleOption()
+        opt.initFrom(self)
+        p = QPainter(self)
+        self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, opt, p, self)
+        p.end()
 
     @override
     def mousePressEvent(self, event):
@@ -1270,9 +1312,6 @@ class AffixWidget(QWidget):
         self.name_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         if self.affix.name in Dataloader().affix_dict:
             self.name_combo.setCurrentText(Dataloader().affix_dict[self.affix.name])
-            self.name_combo.setCurrentText(
-                Dataloader().affix_dict[self.affix.name]
-            )  # TruncatingComboBox handles truncation
         self.name_combo.currentTextChanged.connect(self.update_name)
 
     def create_required_checkbox(self):
@@ -1400,9 +1439,12 @@ class AffixesTab(QWidget):
     def setup_ui(self):
         """Populate the grid layout with existing groups."""
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 5, 0, 5)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
 
         self.tab_widget = QTabWidget(self)
+        self.tab_widget.setStyleSheet(
+            "QTabWidget { background: transparent; } QTabWidget::pane { border: none; } QTabBar { background: transparent; }"
+        )
         with QSignalBlocker(self.tab_widget):
             self.tab_widget.setTabsClosable(True)
             self.tab_widget.tabCloseRequested.connect(self.close_tab)

@@ -16,6 +16,8 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QStyle,
+    QStyleOption,
     QVBoxLayout,
     QWidget,
 )
@@ -24,6 +26,7 @@ from src.config.profile_models import SigilConditionModel, SigilFilterModel, Sig
 from src.dataloader import Dataloader
 from src.gui.models.dialog import IgnoreScrollWheelComboBox
 from src.gui.profile_editor.affixes_tab import (
+    QPainter,
     SelectionDialog,
     TruncatingComboBox,
     _create_column_header,
@@ -75,6 +78,14 @@ class SigilSummaryWidget(QWidget):
         self.delete_btn = _create_delete_btn()
         self.delete_btn.clicked.connect(self.delete_requested.emit)
         self.main_layout.addWidget(self.delete_btn)
+
+    @override
+    def paintEvent(self, event):
+        opt = QStyleOption()
+        opt.initFrom(self)
+        p = QPainter(self)
+        self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, opt, p, self)
+        p.end()
 
     @override
     def mousePressEvent(self, event):
