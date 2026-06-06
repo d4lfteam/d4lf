@@ -54,13 +54,22 @@ class ProfileEditor(QWidget):
         self.setup_ui()
 
         # Reset window expansion state on load to prevent accumulation when switching profiles
-        QTimer.singleShot(50, lambda: self._adjust_window_size(expanding=False))
+        QTimer.singleShot(50, self._safe_initial_resize)
+
+    def _safe_initial_resize(self):
+        """Perform initial window adjustment safely to avoid RuntimeError if widget is deleted."""
+        with contextlib.suppress(RuntimeError):
+            self._adjust_window_size(expanding=False)
 
     def _detect_class(self) -> str:
         """Return the character class defined in the profile model."""
         return self.profile_model.class_name.lower()
 
     def setup_ui(self):
+        # Set a base minimum height to prevent the window from being "rolled up"
+        # into an unusable state.
+        self.setMinimumHeight(750)
+
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -226,31 +235,33 @@ class ProfileEditor(QWidget):
 
     def _adjust_window_size(self, expanding: bool):
         """Resize the top-level window to accommodate the side panel."""
-        win = self.window()
-        if not win or win.isMaximized():
-            return
+        with contextlib.suppress(RuntimeError):
+            win = self.window()
+            if not win or win.isMaximized():
+                return
 
-        # Use dynamic properties on the main window to track expansion state globally across instances.
-        # This prevents the window from getting wider and wider when switching profiles.
-        is_already_expanded = win.property("profile_editor_expanded") is True
+            # Use dynamic properties on the main window to track expansion state globally across instances.
+            # This prevents the window from getting wider and wider when switching profiles.
+            is_already_expanded = win.property("profile_editor_expanded") is True
 
-        if expanding and not is_already_expanded:
-            # Store the current width before expanding so we can return to it exactly
-            win.setProperty("profile_editor_pre_expansion_width", win.width())
-            current_size = win.size()
-            win.resize(current_size.width() + 850, current_size.height())
-            win.setProperty("profile_editor_expanded", True)  # noqa: FBT003
-        elif not expanding and is_already_expanded:
-            # Restore the window to the exact width it had before the expansion
-            pre_width = win.property("profile_editor_pre_expansion_width")
-            current_size = win.size()
-            if pre_width is not None:
-                win.resize(pre_width, current_size.height())
-            else:
-                # Fallback if the property is missing
-                new_width = max(800, current_size.width() - 850)
-                win.resize(new_width, current_size.height())
-            win.setProperty("profile_editor_expanded", False)  # noqa: FBT003
+            if expanding and not is_already_expanded:
+                # Use the actual sidebar minimum width to determine expansion delta
+                sidebar_w = self.paper_doll.side_panel.minimumWidth()
+                # Store the current width before expanding so we can return to it exactly
+                win.setProperty("profile_editor_pre_expansion_width", win.width())
+                win.resize(win.width() + sidebar_w, win.height())
+                win.setProperty("profile_editor_expanded", True)  # noqa: FBT003
+            elif not expanding:
+                # Restore the window to the exact width it had before the expansion
+                pre_width = win.property("profile_editor_pre_expansion_width")
+                if pre_width is not None and is_already_expanded:
+                    win.resize(int(pre_width), win.height())
+                else:
+                    # Force to the smallest allowed width (paper doll base width)
+                    win.resize(350, win.height())
+                win.setProperty("profile_editor_expanded", False)  # noqa: FBT003
+
+            self.updateGeometry()
 
     def save_all(self):
         """Save all tabs' configurations."""

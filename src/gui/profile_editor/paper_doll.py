@@ -256,8 +256,11 @@ class CharacterCanvas(QFrame):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.setMinimumSize(370, 255)
         self.setStyleSheet("QFrame {   background-color: #0f172a;   border: none;}")
+
+    @override
+    def sizeHint(self) -> QSize:
+        return QSize(self.REF_WIDTH, self.REF_HEIGHT)
 
     @override
     def resizeEvent(self, event):
@@ -329,6 +332,7 @@ class PaperDollWidget(QWidget):
         # Special Navigation Tabs at the Top
         self.special_nav_layout = QHBoxLayout()
         self.special_nav_layout.setSpacing(15)
+        self.special_nav_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         for name in SPECIAL_TABS:
             btn = EquipmentSlotButton(name, [], QRect(0, 0, 145, 60))
             btn.clicked.connect(lambda n=name: self._on_slot_clicked(n))
@@ -355,6 +359,7 @@ class PaperDollWidget(QWidget):
         # Side panel (right side) - initially shows placeholder
         self.side_panel = QFrame()
         self.side_panel.setStyleSheet("QFrame {   background-color: #1e293b;   border-left: 1px solid #334155;}")
+        self.side_panel.setMinimumWidth(600)
         side_layout = QVBoxLayout(self.side_panel)
         side_layout.setContentsMargins(20, 10, 20, 20)
 
@@ -402,13 +407,19 @@ class PaperDollWidget(QWidget):
         sx = self.character_canvas.width() / 740.0
         sy = self.character_canvas.height() / 510.0
 
-        for button in self._slot_buttons.values():
+        # Scale the layout spacing for the top navigation
+        self.special_nav_layout.setSpacing(int(15 * sx))
+
+        for name, button in self._slot_buttons.items():
             if button.parent() == self.character_canvas:
                 # Use the rect stored internally during add_slot
                 rect = button._slot_rect
                 button.setGeometry(
                     int(rect.x() * sx), int(rect.y() * sy), int(rect.width() * sx), int(rect.height() * sy)
                 )
+            elif name in SPECIAL_TABS:
+                # Scale the special buttons to match the canvas items
+                button.setFixedSize(int(145 * sx), int(60 * sy))
             button.show()
 
     def _on_slot_clicked(self, slot_name: str):
