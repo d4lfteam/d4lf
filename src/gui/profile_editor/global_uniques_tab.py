@@ -2,7 +2,6 @@ import copy
 
 from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QDialog,
     QFrame,
     QGroupBox,
@@ -27,6 +26,7 @@ from src.config.profile_models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import MAX_POWER
+from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
 from src.gui.models.dialog import DeleteItem, IgnoreScrollWheelSpinBox
 from src.gui.profile_editor.affixes_tab import (
     AffixSummaryWidget,
@@ -61,12 +61,12 @@ class UniqueWidget(QWidget):
     def setup_ui(self):
         self.content_layout = QVBoxLayout(self)
         self.content_layout.setContentsMargins(0, 10, 0, 0)
-        self.content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.create_general_groupbox()
 
         # Rule Content
         self.columns_layout = QHBoxLayout()
+        self.columns_layout.setContentsMargins(0, 0, 0, 0)
         self.columns_layout.setSpacing(15)
 
         # Column 1: Unique Aspects
@@ -105,7 +105,7 @@ class UniqueWidget(QWidget):
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.viewport().setAutoFillBackground(False)
         scroll.setStyleSheet(
-            "QScrollArea { border: 1px solid #2d2d2d; background-color: #121212; border-bottom: none; }"
+            "QScrollArea { border: 1px solid #2d2d2d; border-left: none; background-color: #121212; border-bottom: none; }"
         )
 
         inner = QWidget()
@@ -117,7 +117,9 @@ class UniqueWidget(QWidget):
         footer = None
         if pool_model is not None:
             footer = _create_column_footer(pool_model, self.update_greater_count_label)
-            footer.setStyleSheet("background-color: #1a1a1a; border: 1px solid #3c3c3c; border-top: none;")
+            footer.setStyleSheet(
+                "background-color: #1a1a1a; border: 1px solid #2d2d2d; border-left: none; border-top: none;"
+            )
             col_layout.addWidget(footer)
 
         return col_widget, inner_layout, footer
@@ -131,7 +133,15 @@ class UniqueWidget(QWidget):
         remove_cb = (lambda: self.remove_affix_pool_column(pool_model)) if is_additional else None
 
         col_widget, inner_layout, footer = self._create_col_helper("Affix Pool", add_cb, pool_model, remove_cb)
-        insert_idx = self.columns_layout.count() - 1
+
+        # Match the insertion logic in affixes_tab to ensure Aspects are on the left
+        # and Affix Pools are in the middle.
+        inherent_idx = -1
+        if hasattr(self, "inherent_col"):
+            inherent_idx = self.columns_layout.indexOf(self.inherent_col)
+
+        insert_idx = inherent_idx if inherent_idx != -1 else self.columns_layout.count()
+
         self.columns_layout.insertWidget(insert_idx, col_widget)
         self.affix_column_widgets.append(col_widget)
         self.affix_pool_layouts.append(inner_layout)
@@ -196,6 +206,7 @@ class UniqueWidget(QWidget):
     def create_general_groupbox(self):
         self.general_groupbox = QGroupBox()
         self.general_groupbox.setTitle("Global Unique Rule Configuration")
+        self.general_groupbox.setStyleSheet("QGroupBox { border-left: none; border-right: none; }")
 
         main_vbox = QVBoxLayout(self.general_groupbox)
         main_vbox.setContentsMargins(10, 15, 10, 10)
@@ -205,6 +216,15 @@ class UniqueWidget(QWidget):
         top_row.addWidget(QLabel("Rule Alias:"))
         self.profile_alias = QLineEdit()
         self.profile_alias.setFixedWidth(200)
+        self.profile_alias.setStyleSheet("""
+            QLineEdit {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+            }
+            QLineEdit:focus { border-color: #3b82f6; }
+        """)
         self.profile_alias.setText(self.unique_model.profile_alias)
         self.profile_alias.textChanged.connect(self.update_profile_alias)
         top_row.addWidget(self.profile_alias)
@@ -249,7 +269,8 @@ class UniqueWidget(QWidget):
         self.min_greater.setFixedWidth(100)
         self.min_greater.value_changed.connect(self.update_min_greater_affix_from_spin)
 
-        self.auto_sync_checkbox = QCheckBox("Auto Sync")
+        self.auto_sync_checkbox = CheckmarkCheckBox("Auto Sync")
+        self.auto_sync_checkbox.setStyleSheet("background: transparent;")
         self.auto_sync_checkbox.setChecked(
             self.settings.value(f"auto_sync_ga_global_{self.unique_model.profile_alias}", defaultValue=False, type=bool)
         )
@@ -398,9 +419,32 @@ class UniquesTab(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.tab_widget = QTabWidget(self)
-        self.tab_widget.setStyleSheet(
-            "QTabWidget { background: transparent; } QTabWidget::pane { border: none; } QTabBar { background: transparent; }"
-        )
+        self.tab_widget.setStyleSheet("""
+            QTabWidget { background: transparent; }
+            QTabWidget::pane { border: none; }
+            QTabBar::tab {
+                background: #1a1a1a;
+                color: #94a3b8;
+                padding: 8px 16px;
+                border: 1px solid #334155;
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                margin-right: 2px;
+            }
+            QTabBar::close-button { right: 8px; }
+            QTabBar::tab:selected {
+                background: #1e3a5f;
+                color: #e2e8f0;
+                border: 1px solid #3b82f6;
+                border-bottom: 2px solid #3b82f6;
+            }
+            QTabBar::tab:last, QTabBar::tab:selected:last {
+                background: #06201b;
+                color: #22c55e;
+                border: 1px solid #064e3b;
+            }
+        """)
         with QSignalBlocker(self.tab_widget):
             self.tab_widget.setTabsClosable(True)
             self.tab_widget.tabCloseRequested.connect(self.close_tab)

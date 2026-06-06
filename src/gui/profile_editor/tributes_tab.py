@@ -2,7 +2,6 @@ from typing import override
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -20,6 +19,7 @@ from PyQt6.QtWidgets import (
 
 from src.config.profile_models import ItemRarity, TributeFilterModel
 from src.dataloader import Dataloader
+from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
 from src.gui.profile_editor.affixes_tab import (
     QPainter,
     TruncatingComboBox,
@@ -105,7 +105,7 @@ class TributeEditDialog(QDialog):
         self.setWindowTitle("Configure Tribute Rule")
         self.setMinimumWidth(450)
         self.model = model
-        self.rarity_checkboxes: dict[ItemRarity, QCheckBox] = {}
+        self.rarity_checkboxes: dict[ItemRarity, CheckmarkCheckBox] = {}
 
         layout = QVBoxLayout(self)
         form = QFormLayout()
@@ -122,7 +122,7 @@ class TributeEditDialog(QDialog):
         rarity_group = QGroupBox("Target Rarities")
         rarity_layout = QVBoxLayout(rarity_group)
         for rarity in ItemRarity:
-            cb = QCheckBox(rarity.name.title())
+            cb = CheckmarkCheckBox(rarity.name.title())
             cb.setChecked(rarity in self.model.rarities)
             self.rarity_checkboxes[rarity] = cb
             rarity_layout.addWidget(cb)
@@ -174,7 +174,7 @@ class TributesTab(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.Panel)
-        scroll.setStyleSheet("QScrollArea { border: 1px solid #3c3c3c; background-color: #121212; }")
+        scroll.setStyleSheet("QScrollArea { border: 1px solid #2d2d2d; border-left: none; background-color: #121212; }")
 
         self.scroll_widget = QWidget()
         self.list_layout = QVBoxLayout(self.scroll_widget)

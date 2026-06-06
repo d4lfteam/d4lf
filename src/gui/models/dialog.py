@@ -1,6 +1,5 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QCompleter,
     QDialog,
@@ -28,6 +27,7 @@ from src.config.profile_models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import MAX_POWER, PLAYER_CLASSES, normalize_profile_file_name
+from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
 from src.gui.settings_tab import IgnoreScrollWheelComboBox
 from src.item.data.item_type import ItemType
 
@@ -36,6 +36,16 @@ class IgnoreScrollWheelSpinBox(QSpinBox):
     def __init__(self):
         super().__init__()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
+        self.setStyleSheet("""
+            QSpinBox {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+            }
+            QSpinBox:focus { border-color: #3b82f6; }
+        """)
 
     def wheelEvent(self, event):  # noqa: N802
         if self.hasFocus():
@@ -259,7 +269,7 @@ class DeleteItem(QDialog):
 
         self.checkbox_list = []
         for name in item_names:
-            checkbox = QCheckBox(name)
+            checkbox = CheckmarkCheckBox(name)
             scrollable_layout.addWidget(checkbox)
             self.checkbox_list.append(checkbox)
         scroll_widget.setLayout(scrollable_layout)
@@ -308,7 +318,7 @@ class DeleteAffixPool(QDialog):
 
         self.checkbox_list = []
         for i in range(nb_affix_pool):
-            checkbox = QCheckBox(f"Count {i}")
+            checkbox = CheckmarkCheckBox(f"Count {i}")
             scrollable_layout.addWidget(checkbox)
             self.checkbox_list.append(checkbox)
         scroll_widget.setLayout(scrollable_layout)
@@ -415,7 +425,7 @@ class RemoveSigil(QDialog):
 
         self.checkbox_list = []
         for sigil in self.sigils:
-            checkbox = QCheckBox(sigil)
+            checkbox = CheckmarkCheckBox(sigil)
             scrollable_layout.addWidget(checkbox)
             self.checkbox_list.append(checkbox)
         scroll_widget.setLayout(scrollable_layout)
@@ -563,7 +573,7 @@ class RemoveTribute(QDialog):
 
         self.checkbox_list = []
         for tribute in self.tributes:
-            checkbox = QCheckBox(Dataloader().tribute_dict[tribute]) if tribute else QCheckBox("None")
+            checkbox = CheckmarkCheckBox(Dataloader().tribute_dict[tribute]) if tribute else CheckmarkCheckBox("None")
             scrollable_layout.addWidget(checkbox)
             self.checkbox_list.append(checkbox)
         scroll_widget.setLayout(scrollable_layout)
@@ -647,8 +657,8 @@ class CreateUnique(QDialog):
 
         self.checkbox_list = []
 
-        checkbox_aspect = QCheckBox("Aspect")
-        checkbox_affixe = QCheckBox("Affixes")
+        checkbox_aspect = CheckmarkCheckBox("Aspect")
+        checkbox_affixe = CheckmarkCheckBox("Affixes")
         self.groupbox_layout.addWidget(checkbox_aspect)
         self.groupbox_layout.addWidget(checkbox_affixe)
         self.checkbox_list.append(checkbox_aspect)

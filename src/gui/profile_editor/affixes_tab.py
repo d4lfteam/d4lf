@@ -5,7 +5,6 @@ from typing import override
 from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, pyqtSignal
 from PyQt6.QtGui import QDoubleValidator, QIntValidator, QPainter
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QCompleter,
     QDialog,
@@ -38,6 +37,7 @@ from src.config.profile_models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import MAX_POWER
+from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
 from src.gui.models.dialog import (
     CreateItem,
     DeleteAffixPool,
@@ -86,79 +86,33 @@ class TruncatingComboBox(IgnoreScrollWheelComboBox):
         return text
 
 
-class CharacterSpinBox(QWidget):
+class CharacterSpinBox(IgnoreScrollWheelSpinBox):
     value_changed = pyqtSignal(int)
 
     def __init__(self, value=0, min_val=0, max_val=100, step=1, parent=None):
-        super().__init__(parent)
-        self._value = value
-        self.min_val = min_val
-        self.max_val = max_val
-        self.step = step
-
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        self.down_btn = QPushButton("−")
-        self.down_btn.setObjectName("left")
-        self.down_btn.setFixedSize(26, 26)
-        self.down_btn.clicked.connect(self._decrement)
-        self.down_btn.setStyleSheet(
-            "QPushButton { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; font-size: 16px; padding: 0; }"
-        )
-
-        self.edit = QLineEdit(str(self._value))
-        self.edit.setReadOnly(True)
-        self.edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.edit.setFixedHeight(26)
-        self.edit.setStyleSheet("QLineEdit { border-radius: 0; }")
-
-        self.up_btn = QPushButton("+")
-        self.up_btn.setObjectName("right")
-        self.up_btn.setFixedSize(26, 26)
-        self.up_btn.clicked.connect(self._increment)
-        self.up_btn.setStyleSheet(
-            "QPushButton { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none; font-size: 16px; padding: 0; }"
-        )
-
-        layout.addWidget(self.down_btn)
-        layout.addWidget(self.edit)
-        layout.addWidget(self.up_btn)
-
-    def _increment(self):
-        if self._value + self.step <= self.max_val:
-            self._value += self.step
-            self.edit.setText(str(self._value))
-            self.value_changed.emit(self._value)
-
-    def _decrement(self):
-        if self._value - self.step >= self.min_val:
-            self._value -= self.step
-            self.edit.setText(str(self._value))
-            self.value_changed.emit(self._value)
-
-    def value(self) -> int:
-        return self._value
+        super().__init__()
+        self.setRange(min_val, max_val)
+        self.setValue(value)
+        self.setSingleStep(step)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setFixedHeight(26)
+        self.valueChanged.connect(self.value_changed.emit)
 
     def set_value(self, val: int):
-        self._value = val
-        self.edit.setText(str(self._value))
+        self.setValue(val)
 
     def set_range(self, min_val: int, max_val: int):
-        self.min_val = min_val
-        self.max_val = max_val
+        self.setRange(min_val, max_val)
 
     def set_minimum(self, val: int):
-        self.min_val = val
+        self.setMinimum(val)
 
     def set_maximum(self, val: int):
-        self.max_val = val
+        self.setMaximum(val)
 
     @override
     def setFixedWidth(self, w: int):
         super().setFixedWidth(w)
-        self.edit.setFixedWidth(max(10, w - 52))
 
 
 def _item_type_summary(item_types: list[ItemType]) -> str:
@@ -172,7 +126,7 @@ class ItemTypePicker(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Select Item Types")
         self.resize(650, 500)
-        self.checkboxes: dict[ItemType, QCheckBox] = {}
+        self.checkboxes: dict[ItemType, CheckmarkCheckBox] = {}
 
         selected_item_type_set = set(selected_item_types)
         weapon_item_types = [
@@ -213,7 +167,7 @@ class ItemTypePicker(QDialog):
         content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         for item_type in item_types:
-            checkbox = QCheckBox(item_type.value)
+            checkbox = CheckmarkCheckBox(item_type.value)
             checkbox.setChecked(item_type in selected_item_types)
             self.checkboxes[item_type] = checkbox
             content_layout.addWidget(checkbox)
@@ -321,6 +275,10 @@ def _create_summary_card_style() -> str:
 
 def _create_column_header(title: str, add_callback: callable, remove_callback: callable | None = None) -> QWidget:
     header = QWidget()
+    header.setObjectName("ColumnHeader")
+    header.setStyleSheet(
+        "QWidget#ColumnHeader { background-color: #1e3a5f; border-top-left-radius: 4px; border-top-right-radius: 4px; }"
+    )
     layout = QHBoxLayout(header)
     layout.setContentsMargins(5, 5, 5, 5)
 
@@ -329,13 +287,13 @@ def _create_column_header(title: str, add_callback: callable, remove_callback: c
         btn.clicked.connect(remove_callback)
         layout.addWidget(btn)
     else:
-        spacer = QWidget()
-        spacer.setFixedWidth(30)
-        layout.addWidget(spacer)
+        layout.addSpacing(30)
     layout.addStretch()
 
     lbl = QLabel(title)
-    lbl.setStyleSheet("font-weight: bold; font-size: 13px; color: #94a3b8; text-transform: uppercase;")
+    lbl.setStyleSheet(
+        "font-weight: bold; font-size: 13px; color: #e2e8f0; text-transform: uppercase; border: none; background: transparent;"
+    )
     lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
     layout.addWidget(lbl)
     layout.addStretch()
@@ -344,6 +302,16 @@ def _create_column_header(title: str, add_callback: callable, remove_callback: c
     btn.setFixedWidth(30)
     btn.setToolTip(f"Add to {title}")
     btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    btn.setStyleSheet("""
+        QPushButton {
+            color: #22c55e;
+            font-weight: bold;
+            font-size: 16px;
+            border: 1px solid #064e3b;
+            background-color: #06201b;
+        }
+        QPushButton:hover { background-color: #064e3b; color: white; }
+    """)
     btn.clicked.connect(add_callback)
     layout.addWidget(btn)
 
@@ -357,7 +325,7 @@ def _create_column_footer(model: AffixFilterCountModel, on_change_cb: callable) 
     main_layout.setSpacing(2)
 
     flavor_lbl = QLabel("Set the quantity of affixes wanted for a match.")
-    flavor_lbl.setStyleSheet("color: #64748b; font-size: 10px; font-style: italic;")
+    flavor_lbl.setStyleSheet("color: #64748b; font-size: 12px; font-style: italic;")
     flavor_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
     main_layout.addWidget(flavor_lbl)
 
@@ -369,7 +337,7 @@ def _create_column_footer(model: AffixFilterCountModel, on_change_cb: callable) 
     layout.addStretch()
 
     min_lbl = QLabel("Min:")
-    min_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
+    min_lbl.setStyleSheet("color: #94a3b8; font-size: 11px; border: none;")
     layout.addWidget(min_lbl)
 
     min_spin = CharacterSpinBox()
@@ -380,7 +348,7 @@ def _create_column_footer(model: AffixFilterCountModel, on_change_cb: callable) 
     layout.addWidget(min_spin)
 
     max_lbl = QLabel("Max:")
-    max_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
+    max_lbl.setStyleSheet("color: #94a3b8; font-size: 11px; border: none;")
     layout.addWidget(max_lbl)
 
     max_spin = CharacterSpinBox()
@@ -425,6 +393,15 @@ class UniqueAspectDialog(QDialog):
         form.addRow("Mode:", self.mode_combo)
 
         self.value_edit = QLineEdit()
+        self.value_edit.setStyleSheet("""
+            QLineEdit {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+            }
+            QLineEdit:focus { border-color: #3b82f6; }
+        """)
         if model.min_percent_of_aspect:
             self.value_edit.setText(str(model.min_percent_of_aspect))
         elif model.value is not None:
@@ -586,7 +563,6 @@ class AffixGroupEditor(QWidget):
     def setup_ui(self):
         self.content_layout = QVBoxLayout(self)
         self.content_layout.setContentsMargins(0, 10, 0, 0)
-        self.content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Row 1: Item Alias, Min Power, Duplicate Button
         top_row_layout = QHBoxLayout()
@@ -595,6 +571,15 @@ class AffixGroupEditor(QWidget):
         top_row_layout.addWidget(QLabel("Item Name / Alias:"))
         self.alias_edit = QLineEdit()
         self.alias_edit.setText(self.item_name)
+        self.alias_edit.setStyleSheet("""
+            QLineEdit {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+            }
+            QLineEdit:focus { border-color: #3b82f6; }
+        """)
         self.alias_edit.setFixedWidth(200)
         self.alias_edit.textChanged.connect(self.update_item_alias)
         top_row_layout.addWidget(self.alias_edit)
@@ -634,11 +619,12 @@ class AffixGroupEditor(QWidget):
         )
         self.min_greater.value_changed.connect(self.update_min_greater_affix_from_spin)
 
-        self.auto_sync_checkbox = QCheckBox("Auto Sync")
+        self.auto_sync_checkbox = CheckmarkCheckBox("Auto Sync")
         self.auto_sync_checkbox.setToolTip(
             "When checked: Min Greater Affixes automatically matches the number of affixes marked as 'want greater'\n"
             "When unchecked: You can manually set Min Greater Affixes to any value"
         )
+        self.auto_sync_checkbox.setStyleSheet("background: transparent;")
         self.auto_sync_checkbox.setChecked(
             self.settings.value(f"auto_sync_ga_{self.item_name}", defaultValue=False, type=bool)
         )
@@ -669,6 +655,7 @@ class AffixGroupEditor(QWidget):
 
         # 3-Column Layout
         columns_layout = QHBoxLayout()
+        columns_layout.setContentsMargins(0, 0, 0, 0)
         columns_layout.setSpacing(15)
         self.columns_layout = columns_layout
 
@@ -827,13 +814,9 @@ class AffixGroupEditor(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.viewport().setAutoFillBackground(False)
-        if pool_model is not None:
-            scroll.setStyleSheet(
-                "QScrollArea { border: 1px solid #2d2d2d; border-bottom: none; background-color: #121212; }"
-            )
-        else:
-            scroll.setStyleSheet("QScrollArea { border: 1px solid #2d2d2d; background: transparent; }")
-            scroll.viewport().setStyleSheet("background: transparent;")
+        scroll.setStyleSheet(
+            "QScrollArea { border: 1px solid #2d2d2d; border-left: none; border-bottom: none; background-color: #121212; }"
+        )
 
         inner = QWidget()
         inner_layout = QVBoxLayout(inner)
@@ -844,7 +827,9 @@ class AffixGroupEditor(QWidget):
         footer = None
         if pool_model is not None:
             footer = _create_column_footer(pool_model, self.update_greater_count_label)
-            footer.setStyleSheet("background-color: #1a1a1a; border: 1px solid #3c3c3c; border-top: none;")
+            footer.setStyleSheet(
+                "background-color: #1a1a1a; border: 1px solid #2d2d2d; border-left: none; border-top: none;"
+            )
             col_layout.addWidget(footer)
 
         return col_widget, inner_layout, footer
@@ -1033,14 +1018,15 @@ class UniqueAspectWidget(QWidget):
 
     def setup_ui(self):
         self.main_layout = QHBoxLayout(self)
-        self.main_layout.setContentsMargins(10, 8, 10, 8)
+        self.main_layout.setContentsMargins(22, 8, 10, 8)
 
         self.summary_label = QLabel()
         self.summary_label.setStyleSheet("font-weight: bold; color: #e2e8f0;")
         self.main_layout.addWidget(self.summary_label, 1)
 
         self.threshold_label = QLabel()
-        self.threshold_label.setStyleSheet("color: #94a3b8; font-size: 11px;")
+        self.threshold_label.setMinimumWidth(60)
+        self.threshold_label.setStyleSheet("color: #94a3b8; font-size: 13px; font-weight: bold;")
         self.main_layout.addWidget(self.threshold_label)
 
         self.delete_btn = _create_delete_btn()
@@ -1153,14 +1139,15 @@ class AffixSummaryWidget(QWidget):
 
     def setup_ui(self):
         self.main_layout = QHBoxLayout(self)
-        self.main_layout.setContentsMargins(10, 8, 10, 8)
+        self.main_layout.setContentsMargins(22, 8, 10, 8)
 
         self.summary_label = QLabel()
         self.summary_label.setStyleSheet("font-weight: bold; color: #e2e8f0;")
         self.main_layout.addWidget(self.summary_label, 1)
 
         self.threshold_label = QLabel()
-        self.threshold_label.setStyleSheet("color: #94a3b8; font-size: 11px;")
+        self.threshold_label.setMinimumWidth(60)
+        self.threshold_label.setStyleSheet("color: #94a3b8; font-size: 13px; font-weight: bold;")
         self.main_layout.addWidget(self.threshold_label)
 
         self.delete_btn = _create_delete_btn()
@@ -1220,7 +1207,7 @@ class AffixPoolWidget(QWidget):
 
     def setup_ui(self):
         self.main_layout = QHBoxLayout(self)
-        self.main_layout.setContentsMargins(10, 8, 10, 8)
+        self.main_layout.setContentsMargins(22, 8, 10, 8)
         self.main_layout.setSpacing(10)
 
         # Container for labels on the left
@@ -1234,7 +1221,7 @@ class AffixPoolWidget(QWidget):
         text_layout.addWidget(self.affix_summary)
 
         self.count_label = QLabel()
-        self.count_label.setStyleSheet("color: #94a3b8; font-size: 11px;")
+        self.count_label.setStyleSheet("color: #94a3b8; font-size: 13px; font-weight: bold;")
         text_layout.addWidget(self.count_label)
 
         self.main_layout.addLayout(text_layout, 1)
@@ -1315,7 +1302,7 @@ class AffixWidget(QWidget):
         self.name_combo.currentTextChanged.connect(self.update_name)
 
     def create_required_checkbox(self):
-        self.required_checkbox = QCheckBox("Required")
+        self.required_checkbox = CheckmarkCheckBox("Required")
         self.required_checkbox.setChecked(getattr(self.affix, "required", False))
         self.required_checkbox.setFixedWidth(85)
         self.required_checkbox.stateChanged.connect(self.update_required)
@@ -1324,7 +1311,7 @@ class AffixWidget(QWidget):
         self.affix.required = self.required_checkbox.isChecked()
 
     def create_greater_checkbox(self):
-        self.greater_checkbox = QCheckBox("GA")
+        self.greater_checkbox = CheckmarkCheckBox("GA")
         self.greater_checkbox.setChecked(getattr(self.affix, "want_greater", False))
         self.greater_checkbox.setFixedWidth(80)
         self.greater_checkbox.setProperty("greaterCheckbox", True)  # noqa: FBT003
@@ -1357,6 +1344,15 @@ class AffixWidget(QWidget):
     def create_value_input(self):
         self.value_edit = QLineEdit()
         self.value_edit.setFixedWidth(80)
+        self.value_edit.setStyleSheet("""
+            QLineEdit {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+            }
+            QLineEdit:focus { border-color: #3b82f6; }
+        """)
         self.value_edit.textChanged.connect(self.update_value)
 
     def update_name(self, current_text=None):
@@ -1442,9 +1438,32 @@ class AffixesTab(QWidget):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
 
         self.tab_widget = QTabWidget(self)
-        self.tab_widget.setStyleSheet(
-            "QTabWidget { background: transparent; } QTabWidget::pane { border: none; } QTabBar { background: transparent; }"
-        )
+        self.tab_widget.setStyleSheet("""
+            QTabWidget { background: transparent; }
+            QTabWidget::pane { border: none; }
+            QTabBar::tab {
+                background: #1a1a1a;
+                color: #94a3b8;
+                padding: 8px 16px;
+                border: 1px solid #334155;
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                margin-right: 2px;
+            }
+            QTabBar::close-button { right: 8px; }
+            QTabBar::tab:selected {
+                background: #1e3a5f;
+                color: #e2e8f0;
+                border: 1px solid #3b82f6;
+                border-bottom: 2px solid #3b82f6;
+            }
+            QTabBar::tab:last, QTabBar::tab:selected:last {
+                background: #06201b;
+                color: #22c55e;
+                border: 1px solid #064e3b;
+            }
+        """)
         with QSignalBlocker(self.tab_widget):
             self.tab_widget.setTabsClosable(True)
             self.tab_widget.tabCloseRequested.connect(self.close_tab)

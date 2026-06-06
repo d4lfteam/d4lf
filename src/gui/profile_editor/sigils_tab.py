@@ -228,7 +228,9 @@ class SigilsTab(QWidget):
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
             scroll.setFrameShape(QFrame.Shape.Panel)
-            scroll.setStyleSheet("QScrollArea { border: 1px solid #3c3c3c; background-color: #121212; }")
+            scroll.setStyleSheet(
+                "QScrollArea { border: 1px solid #2d2d2d; border-left: none; background-color: #121212; }"
+            )
 
             inner = QWidget()
             inner_layout = QVBoxLayout(inner)

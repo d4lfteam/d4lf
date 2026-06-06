@@ -113,11 +113,19 @@ class ProfileEditor(QWidget):
         self.gear_view_scroll.setFrameShape(QFrame.Shape.NoFrame)
         self.gear_view_container = QWidget()
         self.gear_view_layout = QVBoxLayout(self.gear_view_container)
-        self.gear_view_layout.setContentsMargins(0, 0, 10, 0)
+        self.gear_view_layout.setContentsMargins(0, 0, 0, 0)
 
         self.gear_view_header = QLabel()
         self.gear_view_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 10px;")
         self.gear_view_layout.addWidget(self.gear_view_header)
+
+        self.gear_view_subheader = QLabel()
+        self.gear_view_subheader.setStyleSheet(
+            "font-size: 13px; color: #94a3b8; font-style: italic; margin-bottom: 15px;"
+        )
+        self.gear_view_layout.addWidget(self.gear_view_subheader)
+        self.gear_view_subheader.hide()
+
         self.gear_view_layout.addWidget(self.affixes_tab)
         self.gear_view_layout.addWidget(self.uniques_tab)
         self.gear_view_scroll.setWidget(self.gear_view_container)
@@ -149,6 +157,7 @@ class ProfileEditor(QWidget):
             ]:
                 widget.hide()
             self.paper_doll.clear_side_panel()
+            self.gear_view_subheader.hide()
             self._adjust_window_size(expanding=False)
             return
 
@@ -173,6 +182,7 @@ class ProfileEditor(QWidget):
             self.affixes_tab.filter_by_item_types(item_types, slot_name)
 
             self.gear_view_header.setText(f"Slot: {slot_name}")
+            self.gear_view_subheader.hide()
             self.side_content_widget = self.gear_view_scroll
         elif slot_name == "Aspect Upgrades":
             self.aspect_upgrades_tab.load()
@@ -193,9 +203,12 @@ class ProfileEditor(QWidget):
             self.uniques_tab.filter_by_item_types(None)
             self.uniques_tab.show()
 
-            # Hide the gear-specific parts
+            # Show header for Global Rules and hide the affixes tab
+            self.gear_view_header.setText("Global Rules")
+            self.gear_view_subheader.setText("These are rules that cover more than one item type.")
+            self.gear_view_subheader.show()
+            self.gear_view_header.show()
             self.affixes_tab.hide()
-            self.gear_view_header.hide()
 
             self.side_content_widget = self.gear_view_scroll
         else:

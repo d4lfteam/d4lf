@@ -339,7 +339,9 @@ class PaperDollWidget(QWidget):
 
         title_label = QLabel("Equipment")
         title_label.setProperty("titleLabel", True)  # noqa: FBT003
-        title_label.setStyleSheet("QLabel {   color: #e2e8f0;   font-size: 18px;   font-weight: bold;   padding: 8px;}")
+        title_label.setStyleSheet(
+            "QLabel { color: #e2e8f0; font-size: 18px; font-weight: bold; padding: 10px; border-top: 1px solid #334155; border-bottom: 1px solid #334155; border-left: none; border-right: none; }"
+        )
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         char_layout.addWidget(title_label)
 
