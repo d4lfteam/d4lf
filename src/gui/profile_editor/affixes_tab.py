@@ -676,7 +676,6 @@ class AffixGroupEditor(QWidget):
         self.affix_column_widgets = []
         self.affix_pool_layouts = []
         self.affix_footers = []
-        self.inherent_footer = None
         self.dynamic_filter = dynamic_filter
         for item_name, config in dynamic_filter.root.items():
             self.item_name = item_name
@@ -810,19 +809,11 @@ class AffixGroupEditor(QWidget):
         for pool in self.config.affix_pool:
             self._add_affix_pool_column_widget(pool)
 
-        # Column 3: Inherent Pool
-        self.inherent_col, self.inherent_pool_layout, self.inherent_footer = self._create_col_helper(
-            "Inherent Pool", self.add_inherent_pool, self.config.inherent_pool[0]
-        )
-        columns_layout.addWidget(self.inherent_col)
-        self.inherent_col.hide()
-
         self.content_layout.addLayout(columns_layout)
 
         # Initialize content
         self.init_unique_aspects()
         self.init_affix_pool()
-        self.init_inherent_pool()
 
     def _on_duplicate_clicked(self):
         self.duplicate_requested.emit(self.dynamic_filter)
@@ -834,12 +825,7 @@ class AffixGroupEditor(QWidget):
     def init_affix_pool(self):
         for i, pool in enumerate(self.config.affix_pool):
             for affix in pool.count:
-                self.add_affix_item(affix, inherent=False, pool_idx=i)
-
-    def init_inherent_pool(self):
-        for i, pool in enumerate(self.config.inherent_pool):
-            for affix in pool.count:
-                self.add_affix_item(affix, inherent=True, pool_idx=i)
+                self.add_affix_item(affix, pool_idx=i)
 
     def _refresh_widget_style(self, widget):
         widget.style().unpolish(widget)
@@ -865,19 +851,17 @@ class AffixGroupEditor(QWidget):
         widget.setParent(None)
         widget.deleteLater()
 
-    def add_affix_item(self, model: AffixFilterModel, inherent: bool = False, pool_idx: int = 0):
-        layout = self.inherent_pool_layout if inherent else self.affix_pool_layouts[pool_idx]
-
+    def add_affix_item(self, model: AffixFilterModel, pool_idx: int = 0):
+        layout = self.affix_pool_layouts[pool_idx]
         widget = AffixSummaryWidget(model)
-        widget.delete_requested.connect(lambda: self.remove_affix_item_widget(widget, inherent, pool_idx))
+        widget.delete_requested.connect(lambda: self.remove_affix_item_widget(widget, pool_idx))
         widget.config_changed.connect(self.update_greater_count_label)
         layout.addWidget(widget)
         return widget
 
-    def remove_affix_item_widget(self, widget, inherent: bool, pool_idx: int = 0):
-        layout = self.inherent_pool_layout if inherent else self.affix_pool_layouts[pool_idx]
-        pool = self.config.inherent_pool[0] if inherent else self.config.affix_pool[pool_idx]
-
+    def remove_affix_item_widget(self, widget, pool_idx: int = 0):
+        layout = self.affix_pool_layouts[pool_idx]
+        pool = self.config.affix_pool[pool_idx]
         idx = layout.indexOf(widget)
         if idx != -1:
             pool.count.pop(idx)
@@ -901,28 +885,11 @@ class AffixGroupEditor(QWidget):
         pool_model.count.append(default_affix)
         widget = self.add_affix_item(default_affix, pool_idx=idx)
         if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
-            self.remove_affix_item_widget(widget, inherent=False, pool_idx=idx)
+            self.remove_affix_item_widget(widget, pool_idx=idx)
 
     def add_affix_pool(self):
         if self.config.affix_pool:
             self.add_affix_to_pool(self.config.affix_pool[0])
-
-    def add_inherent_pool(self):
-        common_affixes = ["Strength", "Dexterity", "Vitality", "Intelligence"]
-        default_name = None
-        reverse_dict = {v: k for k, v in Dataloader().affix_dict.items()}
-        for affix in common_affixes:
-            if affix in reverse_dict:
-                default_name = reverse_dict[affix]
-                break
-        if default_name is None:
-            default_name = next(iter(Dataloader().affix_dict.keys()))
-
-        default_affix = AffixFilterModel(name=default_name, value=None)
-        self.config.inherent_pool[0].count.append(default_affix)
-        widget = self.add_affix_item(default_affix, inherent=True)
-        if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
-            self.remove_affix_item_widget(widget, inherent=True)
 
     def remove_selected(self, layout_widget: QVBoxLayout, inherent: bool = False):
         nb_pool = layout_widget.count()
@@ -986,18 +953,8 @@ class AffixGroupEditor(QWidget):
         # Only provide a remove callback for additional pools (index > 0)
         is_additional = self.config.affix_pool.index(pool_model) > 0
         remove_cb = (lambda: self.remove_affix_pool_column(pool_model)) if is_additional else None
-
         col_widget, inner_layout, footer = self._create_col_helper("Affix Pool", add_cb, pool_model, remove_cb)
-
-        # Check if inherent_col is in the layout to ensure correct order
-        inherent_idx = -1
-        if hasattr(self, "inherent_col"):
-            inherent_idx = self.columns_layout.indexOf(self.inherent_col)
-
-        if inherent_idx != -1:
-            self.columns_layout.insertWidget(inherent_idx, col_widget)
-        else:
-            self.columns_layout.addWidget(col_widget)
+        self.columns_layout.addWidget(col_widget)
 
         self.affix_column_widgets.append(col_widget)
         self.affix_pool_layouts.append(inner_layout)
@@ -1097,7 +1054,7 @@ class AffixGroupEditor(QWidget):
         return []
 
     def refresh_all_summaries(self):
-        for layouts in [self.affix_pool_layouts, [self.inherent_pool_layout]]:
+        for layouts in [self.affix_pool_layouts]:
             for layout in layouts:
                 for i in range(layout.count()):
                     w = layout.itemAt(i).widget()
@@ -1130,9 +1087,6 @@ class AffixGroupEditor(QWidget):
         # Update affix pool footers
         for footer, model in zip(self.affix_footers, self.config.affix_pool, strict=False):
             self._update_footer_constraints(footer, model)
-
-        # Update inherent pool footer
-        self._update_footer_constraints(self.inherent_footer, self.config.inherent_pool[0])
 
     def _update_footer_constraints(self, footer, model):
         if footer and model:
@@ -1592,7 +1546,7 @@ class AffixesTab(QWidget):
             QTabBar::tab {
                 background: #1a1a1a;
                 color: #94a3b8;
-                padding: 8px 24px 8px 12px;
+                padding: 8px 30px 8px 12px;
                 border: 1px solid #334155;
                 border-bottom: none;
                 border-top-left-radius: 4px;

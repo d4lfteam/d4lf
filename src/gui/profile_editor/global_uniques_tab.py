@@ -78,19 +78,11 @@ class UniqueWidget(QWidget):
         for pool in self.unique_model.affix_pool:
             self._add_affix_pool_column_widget(pool)
 
-        # Column 3: Inherent Pool (Hidden)
-        self.inherent_col, self.inherent_pool_layout, self.inherent_footer = self._create_col_helper(
-            "Inherent Pool", self.add_inherent_pool, self.unique_model.inherent_pool[0]
-        )
-        self.columns_layout.addWidget(self.inherent_col)
-        self.inherent_col.hide()
-
         self.content_layout.addLayout(self.columns_layout)
 
         # Initialize content
         self.init_aspects()
         self.init_affix_pool()
-        self.init_inherent_pool()
 
     def _create_col_helper(self, title, add_cb, pool_model=None, remove_cb=None):
         col_widget = QWidget()
@@ -134,16 +126,8 @@ class UniqueWidget(QWidget):
         remove_cb = (lambda: self.remove_affix_pool_column(pool_model)) if is_additional else None
 
         col_widget, inner_layout, footer = self._create_col_helper("Affix Pool", add_cb, pool_model, remove_cb)
+        self.columns_layout.addWidget(col_widget)
 
-        # Match the insertion logic in affixes_tab to ensure Aspects are on the left
-        # and Affix Pools are in the middle.
-        inherent_idx = -1
-        if hasattr(self, "inherent_col"):
-            inherent_idx = self.columns_layout.indexOf(self.inherent_col)
-
-        insert_idx = inherent_idx if inherent_idx != -1 else self.columns_layout.count()
-
-        self.columns_layout.insertWidget(insert_idx, col_widget)
         self.affix_column_widgets.append(col_widget)
         self.affix_pool_layouts.append(inner_layout)
         self.affix_footers.append(footer)
@@ -179,24 +163,19 @@ class UniqueWidget(QWidget):
     def init_affix_pool(self):
         for i, pool in enumerate(self.unique_model.affix_pool):
             for affix in pool.count:
-                self.add_affix_item(affix, inherent=False, pool_idx=i)
+                self.add_affix_item(affix, pool_idx=i)
 
-    def init_inherent_pool(self):
-        for i, pool in enumerate(self.unique_model.inherent_pool):
-            for affix in pool.count:
-                self.add_affix_item(affix, inherent=True, pool_idx=i)
-
-    def add_affix_item(self, model: AffixFilterModel, inherent: bool = False, pool_idx: int = 0):
-        layout = self.inherent_pool_layout if inherent else self.affix_pool_layouts[pool_idx]
+    def add_affix_item(self, model: AffixFilterModel, pool_idx: int = 0):
+        layout = self.affix_pool_layouts[pool_idx]
         widget = AffixSummaryWidget(model)
-        widget.delete_requested.connect(lambda: self.remove_affix_item_widget(widget, inherent, pool_idx))
+        widget.delete_requested.connect(lambda: self.remove_affix_item_widget(widget, pool_idx))
         widget.config_changed.connect(self.update_greater_count_label)
         layout.addWidget(widget)
         return widget
 
-    def remove_affix_item_widget(self, widget, inherent: bool, pool_idx: int = 0):
-        layout = self.inherent_pool_layout if inherent else self.affix_pool_layouts[pool_idx]
-        pool = self.unique_model.inherent_pool[0] if inherent else self.unique_model.affix_pool[pool_idx]
+    def remove_affix_item_widget(self, widget, pool_idx: int = 0):
+        layout = self.affix_pool_layouts[pool_idx]
+        pool = self.unique_model.affix_pool[pool_idx]
         idx = layout.indexOf(widget)
         if idx != -1:
             pool.count.pop(idx)
@@ -285,8 +264,10 @@ class UniqueWidget(QWidget):
             self.settings.value(f"auto_sync_ga_global_{self.unique_model.profile_alias}", defaultValue=False, type=bool)
         )
         self.auto_sync_checkbox.stateChanged.connect(self.toggle_auto_sync)
+
         self.greater_count_label = QLabel()
-        self.greater_count_label.setStyleSheet("color: gray; font-style: italic;")
+        self.greater_count_label.setProperty("greaterCountLabel", True)  # noqa: FBT003
+        self._refresh_widget_style(self.greater_count_label)
 
         ga_row.addWidget(self.min_greater)
         ga_row.addWidget(self.auto_sync_checkbox)
@@ -306,10 +287,19 @@ class UniqueWidget(QWidget):
         """)
         add_pool_btn.clicked.connect(self.add_additional_affix_pool_column)
         ga_row.addWidget(add_pool_btn)
+
+        if self.auto_sync_checkbox.isChecked():
+            self.min_greater.setProperty("autoSyncSpin", True)  # noqa: FBT003
+            self._refresh_widget_style(self.min_greater)
+
         main_vbox.addLayout(ga_row)
 
         self.min_greater.setEnabled(not self.auto_sync_checkbox.isChecked())
         self.content_layout.addWidget(self.general_groupbox)
+
+    def _refresh_widget_style(self, widget):
+        widget.style().unpolish(widget)
+        widget.style().polish(widget)
 
     def _on_duplicate_clicked(self):
         self.duplicate_requested.emit(self.unique_model)
@@ -334,31 +324,44 @@ class UniqueWidget(QWidget):
         widget.setParent(None)
         widget.deleteLater()
 
+    def _get_default_affix_name(self) -> str:
+        common_affixes = ["Energy", "Strength", "Dexterity", "Vitality", "Intelligence"]
+        reverse_dict = {v: k for k, v in Dataloader().affix_dict.items()}
+        for affix in common_affixes:
+            if affix in reverse_dict:
+                return reverse_dict[affix]
+        return next(iter(Dataloader().affix_dict.keys()))
+
     def add_affix_to_pool(self, pool_model: AffixFilterCountModel):
         idx = self.unique_model.affix_pool.index(pool_model)
-        affix_name = next(iter(Dataloader().affix_dict.keys()))
-        new_affix = AffixFilterModel(name=affix_name)
+        new_affix = AffixFilterModel(name=self._get_default_affix_name())
         pool_model.count.append(new_affix)
         widget = self.add_affix_item(new_affix, pool_idx=idx)
         if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
-            self.remove_affix_item_widget(widget, inherent=False, pool_idx=idx)
+            self.remove_affix_item_widget(widget, pool_idx=idx)
 
     def add_affix_pool(self):
         if self.unique_model.affix_pool:
             self.add_affix_to_pool(self.unique_model.affix_pool[0])
 
     def add_inherent_pool(self):
-        affix_name = next(iter(Dataloader().affix_dict.keys()))
-        new_affix = AffixFilterModel(name=affix_name)
+        new_affix = AffixFilterModel(name=self._get_default_affix_name())
         self.unique_model.inherent_pool[0].count.append(new_affix)
-        widget = self.add_affix_item(new_affix, inherent=True)
+        widget = self.add_affix_item(new_affix)
         if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
-            self.remove_affix_item_widget(widget, inherent=True)
+            self.remove_affix_item_widget(widget)
 
     def toggle_auto_sync(self):
         is_auto = self.auto_sync_checkbox.isChecked()
         self.settings.setValue(f"auto_sync_ga_global_{self.unique_model.profile_alias}", is_auto)
+
         self.min_greater.setEnabled(not is_auto)
+        if is_auto:
+            self.min_greater.setProperty("autoSyncSpin", True)  # noqa: FBT003
+        else:
+            self.min_greater.setProperty("autoSyncSpin", False)  # noqa: FBT003
+        self._refresh_widget_style(self.min_greater)
+
         if is_auto:
             self.update_greater_count_label()
 
@@ -372,8 +375,10 @@ class UniqueWidget(QWidget):
 
         if count == 0:
             self.greater_count_label.setText("(no greater affixes marked)")
+        elif count == 1:
+            self.greater_count_label.setText("(1 greater affix marked)")
         else:
-            self.greater_count_label.setText(f"({count} GAs required)")
+            self.greater_count_label.setText(f"({count} greater affixes marked)")
             if self.auto_sync_checkbox.isChecked():
                 with QSignalBlocker(self.min_greater):
                     self.min_greater.set_value(count)
@@ -381,9 +386,6 @@ class UniqueWidget(QWidget):
         # Update affix pool footers
         for footer, model in zip(self.affix_footers, self.unique_model.affix_pool, strict=False):
             self._update_footer_constraints(footer, model)
-
-        # Update inherent pool footer
-        self._update_footer_constraints(self.inherent_footer, self.unique_model.inherent_pool[0])
 
     def _update_footer_constraints(self, footer, model):
         if footer and model:
@@ -452,14 +454,14 @@ class UniquesTab(QWidget):
             QTabBar::tab {
                 background: #1a1a1a;
                 color: #94a3b8;
-                padding: 8px 24px 8px 12px;
+                padding: 8px 50px 8px 16px;
                 border: 1px solid #334155;
                 border-bottom: none;
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
                 margin-right: 2px;
             }
-            QTabBar::close-button:hover { background-color: rgba(255, 255, 255, 0.1); }
+            QTabBar::close-button:hover { background-color: #f87171; }
             QTabBar::tab:selected {
                 background: #1e3a5f;
                 color: #e2e8f0;
