@@ -545,37 +545,7 @@ class AffixEditDialog(QDialog):
         form = QFormLayout()
 
         affix_dict = Dataloader().affix_dict
-        affix_metadata = _get_affix_metadata()
-
-        filtered_affixes = []
-        if allowed_item_types is None:
-            # Global rules: show all affixes regardless of metadata
-            filtered_affixes = sorted(affix_dict.values())
-        else:
-            # Legendary items: smartly use metadata whitelist
-            if not allowed_item_types:
-                # If no slots specified, show all affixes present in metadata (the active whitelist)
-                for affix_id, display_name in affix_dict.items():
-                    if affix_id in affix_metadata:
-                        filtered_affixes.append(display_name)
-            else:
-                # Filter by specific slots defined in the rule
-                allowed_slot_names = [t.name for t in allowed_item_types]
-                for affix_id, display_name in affix_dict.items():
-                    meta = affix_metadata.get(affix_id)
-                    if meta:
-                        slots = meta.get("slots", [])
-                        if any(s in allowed_slot_names for s in slots):
-                            filtered_affixes.append(display_name)
-
-            # Fallback if metadata is missing or filter returned nothing
-            if not filtered_affixes:
-                filtered_affixes = sorted(affix_dict.values())
-
-            filtered_affixes.sort()
-
-        if not filtered_affixes:
-            filtered_affixes = sorted(affix_dict.values())
+        filtered_affixes = sorted(affix_dict.values())
 
         self.name_combo = TruncatingComboBox()
         self.name_combo.setEditable(True)
@@ -732,30 +702,7 @@ class AffixPoolDialog(QDialog):
 
     def add_affix(self, allowed_item_types: list[ItemType] | None = None):
         affix_dict = Dataloader().affix_dict
-        affix_metadata = _get_affix_metadata()
-
-        filtered_affixes = []
-        if allowed_item_types is None:
-            filtered_affixes = sorted(affix_dict.values())
-        else:
-            if not allowed_item_types:
-                for affix_id, display_name in affix_dict.items():
-                    if affix_id in affix_metadata:
-                        filtered_affixes.append(display_name)
-            else:
-                allowed_slot_names = [t.name for t in allowed_item_types]
-                for affix_id, display_name in affix_dict.items():
-                    meta = affix_metadata.get(affix_id)
-                    if meta and any(s in allowed_slot_names for s in meta.get("slots", [])):
-                        filtered_affixes.append(display_name)
-
-            if not filtered_affixes:
-                filtered_affixes = sorted(affix_dict.values())
-
-            filtered_affixes.sort()
-
-        if not filtered_affixes:
-            filtered_affixes = sorted(affix_dict.values())
+        filtered_affixes = sorted(affix_dict.values())
 
         dialog = SelectionDialog(self, "Select Affix", filtered_affixes)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -1555,28 +1502,8 @@ class AffixWidget(QWidget):
         main_vbox.addLayout(bottom_hbox)
 
     def create_affix_name_combobox(self):
-        # The previous line `self.name_combo = IgnoreScrollWheelComboBox()` was redundant and overwritten.
-        # The TruncatingComboBox needs to be initialized correctly.
         affix_dict = Dataloader().affix_dict
-        affix_metadata = _get_affix_metadata()
-
-        filtered_affixes = []
-        if not self.allowed_item_types:
-            filtered_affixes = sorted(affix_dict.values())
-        else:
-            allowed_slot_names = [t.name for t in self.allowed_item_types]
-            for affix_id, display_name in affix_dict.items():
-                meta = affix_metadata.get(affix_id)
-                if meta:
-                    slots = meta.get("slots", [])
-                    if any(s in allowed_slot_names for s in slots):
-                        filtered_affixes.append(display_name)
-                elif not affix_metadata:
-                    filtered_affixes.append(display_name)
-            filtered_affixes.sort()
-
-        if not filtered_affixes:
-            filtered_affixes = sorted(affix_dict.values())
+        filtered_affixes = sorted(affix_dict.values())
 
         self.name_combo = TruncatingComboBox(parent=self)
         self.name_combo.setEditable(True)
