@@ -186,6 +186,7 @@ class GlobalUniqueModel(BaseModel):
             raise ValueError(msg)
         if not self.affix_pool:
             self.affix_pool = [AffixFilterCountModel(count=[], min_count=0)]
+            self.affix_pool = [AffixFilterCountModel(count=[], min_count=0)]
         if not self.inherent_pool:
             self.inherent_pool = [AffixFilterCountModel(count=[], min_count=0)]
         return self

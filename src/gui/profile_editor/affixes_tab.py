@@ -315,14 +315,19 @@ def _create_summary_card_style() -> str:
     """
 
 
-def _create_column_header(title: str, add_callback: callable) -> QWidget:
+def _create_column_header(title: str, add_callback: callable, remove_callback: callable | None = None) -> QWidget:
     header = QWidget()
     layout = QHBoxLayout(header)
     layout.setContentsMargins(5, 5, 5, 5)
 
-    spacer = QWidget()
-    spacer.setFixedWidth(30)
-    layout.addWidget(spacer)
+    if remove_callback:
+        btn = _create_delete_btn()
+        btn.clicked.connect(remove_callback)
+        layout.addWidget(btn)
+    else:
+        spacer = QWidget()
+        spacer.setFixedWidth(30)
+        layout.addWidget(spacer)
     layout.addStretch()
 
     lbl = QLabel(title)
@@ -548,7 +553,9 @@ class AffixGroupEditor(QWidget):
     def __init__(self, dynamic_filter: DynamicItemFilterModel, parent=None):
         super().__init__(parent)
         self.settings = QSettings("d4lf", "profile_editor")
-        self.affix_footer = None
+        self.affix_column_widgets = []
+        self.affix_pool_layouts = []
+        self.affix_footers = []
         self.inherent_footer = None
         self.dynamic_filter = dynamic_filter
         for item_name, config in dynamic_filter.root.items():
@@ -562,44 +569,51 @@ class AffixGroupEditor(QWidget):
         self.content_layout = QVBoxLayout(self)
         self.content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        general_form = QFormLayout()
+        # Row 1: Item Alias, Min Power, Duplicate Button
+        top_row_layout = QHBoxLayout()
+        top_row_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Item Alias/Name
-        alias_layout = QHBoxLayout()
+        top_row_layout.addWidget(QLabel("Item Name / Alias:"))
         self.alias_edit = QLineEdit()
         self.alias_edit.setText(self.item_name)
-        self.alias_edit.setMaximumWidth(300)
+        self.alias_edit.setFixedWidth(200)
         self.alias_edit.textChanged.connect(self.update_item_alias)
-        alias_layout.addWidget(self.alias_edit)
+        top_row_layout.addWidget(self.alias_edit)
+
+        top_row_layout.addSpacing(30)
+
+        top_row_layout.addWidget(QLabel("Minimum Power:"))
+        self.min_power = IgnoreScrollWheelSpinBox()
+        self.min_power.setMaximum(MAX_POWER)
+        self.min_power.setValue(self.config.min_power)
+        self.min_power.setFixedWidth(80)
+        self.min_power.valueChanged.connect(self.update_min_power)
+        top_row_layout.addWidget(self.min_power)
+
+        top_row_layout.addStretch()
 
         duplicate_btn = QPushButton("Duplicate Item")
         duplicate_btn.setFixedWidth(120)
         duplicate_btn.clicked.connect(self._on_duplicate_clicked)
-        alias_layout.addWidget(duplicate_btn)
-        alias_layout.addStretch()
+        top_row_layout.addWidget(duplicate_btn)
 
-        general_form.addRow("Item Name / Alias:", alias_layout)
+        self.content_layout.addLayout(top_row_layout)
 
-        self.min_power = IgnoreScrollWheelSpinBox()
-        self.min_power.setMaximum(MAX_POWER)
-        self.min_power.setValue(self.config.min_power)
-        self.min_power.setMaximumWidth(150)
-        self.min_power.valueChanged.connect(self.update_min_power)
-        general_form.addRow("Minimum Power:", self.min_power)
+        # Row 2: Min Greater Affixes, Auto Sync, Add Pool Button
+        ga_row_layout = QHBoxLayout()
+        ga_row_layout.setContentsMargins(0, 5, 0, 10)
 
-        min_greater_layout = QHBoxLayout()
-
+        ga_row_layout.addWidget(QLabel("Min Greater Affixes:"))
         self.min_greater = CharacterSpinBox()
+        self.min_greater.set_range(0, 4)
         self.min_greater.set_value(self.config.min_greater_affix_count)
-        self.min_greater.set_maximum(4)
-        self.min_greater.set_minimum(0)
         self.min_greater.setFixedWidth(100)
         self.min_greater.setToolTip(
             "Minimum number of checked affixes that must be Greater Affixes.\n"
             "0 = Accept items even without GAs (for leveling)\n"
             "1-4 = At least this many checked affixes must be GA"
         )
-        self.min_greater.value_changed.connect(self.update_min_greater_affix)
+        self.min_greater.value_changed.connect(self.update_min_greater_affix_from_spin)
 
         self.auto_sync_checkbox = QCheckBox("Auto Sync")
         self.auto_sync_checkbox.setToolTip(
@@ -616,10 +630,15 @@ class AffixGroupEditor(QWidget):
         self._refresh_widget_style(self.greater_count_label)
         self.update_greater_count_label()
 
-        min_greater_layout.addWidget(self.min_greater)
-        min_greater_layout.addWidget(self.auto_sync_checkbox)
-        min_greater_layout.addWidget(self.greater_count_label)
-        min_greater_layout.addStretch()
+        ga_row_layout.addWidget(self.min_greater)
+        ga_row_layout.addWidget(self.auto_sync_checkbox)
+        ga_row_layout.addWidget(self.greater_count_label)
+        ga_row_layout.addStretch()
+
+        add_pool_btn = QPushButton("Add Additional Affix Pool")
+        add_pool_btn.setFixedWidth(180)
+        add_pool_btn.clicked.connect(self.add_additional_affix_pool_column)
+        ga_row_layout.addWidget(add_pool_btn)
 
         self.min_greater.setEnabled(not self.auto_sync_checkbox.isChecked())
 
@@ -627,52 +646,25 @@ class AffixGroupEditor(QWidget):
             self.min_greater.setProperty("autoSyncSpin", True)  # noqa: FBT003
             self._refresh_widget_style(self.min_greater)
 
-        general_form.addRow("Min Greater Affixes:", min_greater_layout)
-        self.content_layout.addLayout(general_form)
+        self.content_layout.addLayout(ga_row_layout)
 
         # 3-Column Layout
         columns_layout = QHBoxLayout()
         columns_layout.setSpacing(15)
+        self.columns_layout = columns_layout
 
-        def create_col(title, add_cb, pool_model=None):
-            col_widget = QWidget()
-            col_layout = QVBoxLayout(col_widget)
-            col_layout.setContentsMargins(0, 0, 0, 0)
-            col_layout.setSpacing(0)
+        # Column 1: Unique Aspects
+        self.aspect_col, self.aspect_rows_layout, _ = self._create_col_helper("Unique Aspects", self.add_unique_aspect)
+        columns_layout.addWidget(self.aspect_col)
 
-            header = _create_column_header(title, add_cb)
-            col_layout.addWidget(header)
+        # Column(s) 2: Affix Pool(s)
+        for pool in self.config.affix_pool:
+            self._add_affix_pool_column_widget(pool)
 
-            scroll = QScrollArea()
-            scroll.setWidgetResizable(True)
-            scroll.setFrameShape(QFrame.Shape.Panel)
-            scroll.setStyleSheet("QScrollArea { border: 1px solid #3c3c3c; background-color: #121212; }")
-
-            inner = QWidget()
-            inner_layout = QVBoxLayout(inner)
-            inner_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-            scroll.setWidget(inner)
-            col_layout.addWidget(scroll)
-
-            footer = None
-            if pool_model is not None:
-                footer = _create_column_footer(pool_model, self.update_greater_count_label)
-                footer.setStyleSheet("background-color: #1a1a1a; border: 1px solid #3c3c3c; border-top: none;")
-                col_layout.addWidget(footer)
-
-            return col_widget, inner_layout, footer
-
-        # Init columns
-        self.aspect_col, self.aspect_rows_layout, _ = create_col("Unique Aspects", self.add_unique_aspect)
-        self.affix_col, self.affix_pool_layout, self.affix_footer = create_col(
-            "Affix Pool", self.add_affix_pool, self.config.affix_pool[0]
-        )
-        self.inherent_col, self.inherent_pool_layout, self.inherent_footer = create_col(
+        # Column 3: Inherent Pool
+        self.inherent_col, self.inherent_pool_layout, self.inherent_footer = self._create_col_helper(
             "Inherent Pool", self.add_inherent_pool, self.config.inherent_pool[0]
         )
-
-        columns_layout.addWidget(self.aspect_col)
-        columns_layout.addWidget(self.affix_col)
         columns_layout.addWidget(self.inherent_col)
         self.inherent_col.hide()
 
@@ -691,40 +683,18 @@ class AffixGroupEditor(QWidget):
             self.add_unique_aspect_item(aspect)
 
     def init_affix_pool(self):
-        for affix in self.config.affix_pool[0].count:
-            self.add_affix_item(affix, inherent=False)
+        for i, pool in enumerate(self.config.affix_pool):
+            for affix in pool.count:
+                self.add_affix_item(affix, inherent=False, pool_idx=i)
 
     def init_inherent_pool(self):
-        for affix in self.config.inherent_pool[0].count:
-            self.add_affix_item(affix, inherent=True)
+        for i, pool in enumerate(self.config.inherent_pool):
+            for affix in pool.count:
+                self.add_affix_item(affix, inherent=True, pool_idx=i)
 
     def _refresh_widget_style(self, widget):
         widget.style().unpolish(widget)
         widget.style().polish(widget)
-
-    def update_item_alias(self, text: str):
-        new_name = text.strip()
-        if not new_name or new_name == self.item_name:
-            return
-
-        # Update root dictionary key
-        if self.item_name in self.dynamic_filter.root:
-            self.dynamic_filter.root[new_name] = self.dynamic_filter.root.pop(self.item_name)
-            self.item_name = new_name
-
-            # Signal parent to refresh tab text
-            p = self.parent()
-            while p:
-                if isinstance(p, AffixesTab):
-                    # Find index of this item in the parent's map
-                    if self.item_name in p.item_data_map:
-                        idx = p.item_names.index(
-                            next(k for k, v in p.item_data_map.items() if v == self.dynamic_filter)
-                        )
-                        p.item_names[idx] = self.item_name
-                        p.tab_widget.setTabText(idx, self.item_name)
-                    break
-                p = p.parent()
 
     def add_unique_aspect_item(self, model: AspectUniqueFilterModel):
         widget = UniqueAspectWidget(model)
@@ -748,18 +718,18 @@ class AffixGroupEditor(QWidget):
         widget.setParent(None)
         widget.deleteLater()
 
-    def add_affix_item(self, model: AffixFilterModel, inherent: bool = False):
-        layout = self.inherent_pool_layout if inherent else self.affix_pool_layout
+    def add_affix_item(self, model: AffixFilterModel, inherent: bool = False, pool_idx: int = 0):
+        layout = self.inherent_pool_layout if inherent else self.affix_pool_layouts[pool_idx]
 
         widget = AffixSummaryWidget(model)
-        widget.delete_requested.connect(lambda: self.remove_affix_item_widget(widget, inherent))
+        widget.delete_requested.connect(lambda: self.remove_affix_item_widget(widget, inherent, pool_idx))
         widget.config_changed.connect(self.update_greater_count_label)
         layout.addWidget(widget)
         return widget
 
-    def remove_affix_item_widget(self, widget, inherent: bool):
-        layout = self.inherent_pool_layout if inherent else self.affix_pool_layout
-        pool = self.config.inherent_pool[0] if inherent else self.config.affix_pool[0]
+    def remove_affix_item_widget(self, widget, inherent: bool, pool_idx: int = 0):
+        layout = self.inherent_pool_layout if inherent else self.affix_pool_layouts[pool_idx]
+        pool = self.config.inherent_pool[0] if inherent else self.config.affix_pool[pool_idx]
 
         idx = layout.indexOf(widget)
         if idx != -1:
@@ -768,7 +738,8 @@ class AffixGroupEditor(QWidget):
             widget.deleteLater()
             self.update_greater_count_label()
 
-    def add_affix_pool(self):
+    def add_affix_to_pool(self, pool_model: AffixFilterCountModel):
+        idx = self.config.affix_pool.index(pool_model)
         common_affixes = ["Energy", "Strength", "Dexterity", "Vitality", "Intelligence"]
         default_name = None
         reverse_dict = {v: k for k, v in Dataloader().affix_dict.items()}
@@ -780,8 +751,12 @@ class AffixGroupEditor(QWidget):
             default_name = next(iter(Dataloader().affix_dict.keys()))
 
         default_affix = AffixFilterModel(name=default_name, value=None)
-        self.config.affix_pool[0].count.append(default_affix)
-        self.add_affix_item(default_affix).open_config_dialog()
+        pool_model.count.append(default_affix)
+        self.add_affix_item(default_affix, pool_idx=idx).open_config_dialog()
+
+    def add_affix_pool(self):
+        if self.config.affix_pool:
+            self.add_affix_to_pool(self.config.affix_pool[0])
 
     def add_inherent_pool(self):
         common_affixes = ["Strength", "Dexterity", "Vitality", "Intelligence"]
@@ -820,11 +795,114 @@ class AffixGroupEditor(QWidget):
     def reorganize_pool(self, layout_widget: QVBoxLayout):
         pass
 
+    def _create_col_helper(self, title, add_cb, pool_model=None, remove_cb=None):
+        col_widget = QWidget()
+        col_layout = QVBoxLayout(col_widget)
+        col_layout.setContentsMargins(0, 0, 0, 0)
+        col_layout.setSpacing(0)
+
+        header = _create_column_header(title, add_cb, remove_cb)
+        col_layout.addWidget(header)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.Panel)
+        scroll.setStyleSheet("QScrollArea { border: 1px solid #3c3c3c; background-color: #121212; }")
+
+        inner = QWidget()
+        inner_layout = QVBoxLayout(inner)
+        inner_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        scroll.setWidget(inner)
+        col_layout.addWidget(scroll)
+
+        footer = None
+        if pool_model is not None:
+            footer = _create_column_footer(pool_model, self.update_greater_count_label)
+            footer.setStyleSheet("background-color: #1a1a1a; border: 1px solid #3c3c3c; border-top: none;")
+            col_layout.addWidget(footer)
+
+        return col_widget, inner_layout, footer
+
+    def _add_affix_pool_column_widget(self, pool_model: AffixFilterCountModel):
+        def add_cb():
+            self.add_affix_to_pool(pool_model)
+
+        # Only provide a remove callback for additional pools (index > 0)
+        is_additional = self.config.affix_pool.index(pool_model) > 0
+        remove_cb = (lambda: self.remove_affix_pool_column(pool_model)) if is_additional else None
+
+        col_widget, inner_layout, footer = self._create_col_helper("Affix Pool", add_cb, pool_model, remove_cb)
+
+        # Check if inherent_col is in the layout to ensure correct order
+        inherent_idx = -1
+        if hasattr(self, "inherent_col"):
+            inherent_idx = self.columns_layout.indexOf(self.inherent_col)
+
+        if inherent_idx != -1:
+            self.columns_layout.insertWidget(inherent_idx, col_widget)
+        else:
+            self.columns_layout.addWidget(col_widget)
+
+        self.affix_column_widgets.append(col_widget)
+        self.affix_pool_layouts.append(inner_layout)
+        self.affix_footers.append(footer)
+
+    def add_additional_affix_pool_column(self):
+        new_pool = AffixFilterCountModel(count=[], min_count=1)
+        self.config.affix_pool.append(new_pool)
+        self._add_affix_pool_column_widget(new_pool)
+
+    def remove_affix_pool_column(self, pool_model: AffixFilterCountModel):
+        reply = QMessageBox.question(
+            self,
+            "Confirm Deletion",
+            "Are you sure you want to delete this entire affix pool?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            idx = self.config.affix_pool.index(pool_model)
+            self.config.affix_pool.pop(idx)
+
+            widget = self.affix_column_widgets.pop(idx)
+            self.affix_pool_layouts.pop(idx)
+            self.affix_footers.pop(idx)
+
+            widget.setParent(None)
+            widget.deleteLater()
+            self.update_greater_count_label()
+
+    def update_item_alias(self, new_name: str):
+        new_name = new_name.strip()
+        if not new_name or new_name == self.item_name:
+            return
+
+        if self.item_name in self.dynamic_filter.root:
+            model = self.dynamic_filter.root.pop(self.item_name)
+            self.dynamic_filter.root[new_name] = model
+
+        old_name = self.item_name
+        self.item_name = new_name
+
+        p = self.parent()
+        while p:
+            if isinstance(p, AffixesTab):
+                if old_name in p.item_names:
+                    idx = p.item_names.index(old_name)
+                    p.item_names[idx] = new_name
+                    p.item_data_map.pop(old_name, None)
+                    p.item_data_map[new_name] = self.dynamic_filter
+                    p.tab_widget.setTabText(idx, new_name)
+                break
+            p = p.parent()
+
     def update_min_power(self):
         self.config.min_power = self.min_power.value()
 
     def update_min_greater_affix(self):
         self.config.min_greater_affix_count = self.min_greater.value()
+
+    def update_min_greater_affix_from_spin(self, value):
+        self.config.min_greater_affix_count = value
 
     def toggle_auto_sync(self):
         is_auto_sync = self.auto_sync_checkbox.isChecked()
@@ -863,11 +941,12 @@ class AffixGroupEditor(QWidget):
         return []
 
     def refresh_all_summaries(self):
-        for layout in (self.affix_pool_layout, self.inherent_pool_layout):
-            for i in range(layout.count()):
-                w = layout.itemAt(i).widget()
-                if isinstance(w, AffixPoolWidget):
-                    w.refresh_display()
+        for layouts in [self.affix_pool_layouts, [self.inherent_pool_layout]]:
+            for layout in layouts:
+                for i in range(layout.count()):
+                    w = layout.itemAt(i).widget()
+                    if isinstance(w, AffixSummaryWidget):
+                        w.refresh_display()
         for i in range(self.aspect_rows_layout.count()):
             w = self.aspect_rows_layout.itemAt(i).widget()
             if isinstance(w, UniqueAspectWidget):
@@ -892,19 +971,22 @@ class AffixGroupEditor(QWidget):
         else:
             self.greater_count_label.setText(f"({count} greater affixes marked)")
 
-        # Update pool footers with new Min Count constraints
-        for footer, model in [
-            (self.affix_footer, self.config.affix_pool[0]),
-            (self.inherent_footer, self.config.inherent_pool[0]),
-        ]:
-            if footer and model:
-                min_spin = footer.property("min_spin")
-                if min_spin:
-                    min_allowed = sum(1 for a in model.count if getattr(a, "required", False))
-                    min_spin.set_minimum(min_allowed)
-                    if model.min_count < min_allowed:
-                        model.min_count = min_allowed
-                        min_spin.set_value(min_allowed)
+        # Update affix pool footers
+        for footer, model in zip(self.affix_footers, self.config.affix_pool, strict=False):
+            self._update_footer_constraints(footer, model)
+
+        # Update inherent pool footer
+        self._update_footer_constraints(self.inherent_footer, self.config.inherent_pool[0])
+
+    def _update_footer_constraints(self, footer, model):
+        if footer and model:
+            min_spin = footer.property("min_spin")
+            if min_spin:
+                min_allowed = sum(1 for a in model.count if getattr(a, "required", False))
+                min_spin.set_minimum(min_allowed)
+                if model.min_count < min_allowed:
+                    model.min_count = min_allowed
+                    min_spin.set_value(min_allowed)
 
     def convert_all_to_min_percent_of_affix(self, percent: int):
         for affix_widget in self.iter_affix_widgets():
@@ -961,7 +1043,7 @@ class UniqueAspectWidget(QWidget):
         elif self.unique_aspect.value is not None:
             self.threshold_label.setText(str(self.unique_aspect.value))
         else:
-            self.threshold_label.setText("No Threshold")
+            self.threshold_label.setText("Any")
 
     def update_name(self, current_text=None):
         aspect_name = current_text or self.name_combo.currentText()
@@ -1079,7 +1161,7 @@ class AffixSummaryWidget(QWidget):
         elif self.model.value is not None:
             self.threshold_label.setText(str(self.model.value))
         else:
-            self.threshold_label.setText("No Threshold")
+            self.threshold_label.setText("Any")
 
 
 class AffixPoolWidget(QWidget):

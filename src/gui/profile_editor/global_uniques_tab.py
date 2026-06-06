@@ -1,15 +1,15 @@
 import copy
 
-from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
     QDialog,
-    QFormLayout,
     QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -19,7 +19,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.profile_models import AffixFilterModel, AspectUniqueFilterModel, GlobalUniqueModel
+from src.config.profile_models import (
+    AffixFilterCountModel,
+    AffixFilterModel,
+    AspectUniqueFilterModel,
+    GlobalUniqueModel,
+)
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import MAX_POWER
 from src.gui.models.dialog import DeleteItem, IgnoreScrollWheelSpinBox
@@ -45,7 +50,9 @@ class UniqueWidget(QWidget):
         super().__init__(parent)
         self.settings = QSettings("d4lf", "profile_editor")
         self.unique_model = unique_model
-        self.affix_footer = None
+        self.affix_column_widgets = []
+        self.affix_pool_layouts = []
+        self.affix_footers = []
         self.inherent_footer = None
         self.item_types = [
             item for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)
@@ -60,83 +67,125 @@ class UniqueWidget(QWidget):
         self.create_general_groupbox()
 
         # Rule Content
-        columns_layout = QHBoxLayout()
-        columns_layout.setSpacing(15)
+        self.columns_layout = QHBoxLayout()
+        self.columns_layout.setSpacing(15)
 
-        def create_col(title, add_cb, pool_model=None):
-            col_widget = QWidget()
-            col_layout = QVBoxLayout(col_widget)
-            col_layout.setContentsMargins(0, 0, 0, 0)
-            col_layout.setSpacing(0)
+        # Column 1: Unique Aspects
+        self.aspect_col, self.aspect_rows_layout, _ = self._create_col_helper("Unique Aspects", self.add_unique_aspect)
+        self.columns_layout.addWidget(self.aspect_col)
 
-            header = _create_column_header(title, add_cb)
-            col_layout.addWidget(header)
+        # Column(s) 2: Affix Pool(s)
+        for pool in self.unique_model.affix_pool:
+            self._add_affix_pool_column_widget(pool)
 
-            scroll = QScrollArea()
-            scroll.setWidgetResizable(True)
-            scroll.setFrameShape(QFrame.Shape.Panel)
-            scroll.setStyleSheet(
-                "QScrollArea { border: 1px solid #3c3c3c; background-color: #121212; border-bottom: none; }"
-            )
-
-            inner = QWidget()
-            inner_layout = QVBoxLayout(inner)
-            inner_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-            scroll.setWidget(inner)
-            col_layout.addWidget(scroll)
-
-            footer = None
-            if pool_model is not None:
-                footer = _create_column_footer(pool_model, self.update_greater_count_label)
-                footer.setStyleSheet("background-color: #1a1a1a; border: 1px solid #3c3c3c; border-top: none;")
-                col_layout.addWidget(footer)
-
-            return col_widget, inner_layout, footer
-
-        # Init columns
-        col1_w, self.aspect_rows_layout, _ = create_col("Unique Aspects", self.add_unique_aspect)
-        col2_w, self.affix_pool_layout, self.affix_footer = create_col(
-            "Affix Pool", self.add_affix_pool, self.unique_model.affix_pool[0]
-        )
-        col3_w, self.inherent_pool_layout, self.inherent_footer = create_col(
+        # Column 3: Inherent Pool (Hidden)
+        self.inherent_col, self.inherent_pool_layout, self.inherent_footer = self._create_col_helper(
             "Inherent Pool", self.add_inherent_pool, self.unique_model.inherent_pool[0]
         )
+        self.columns_layout.addWidget(self.inherent_col)
+        self.inherent_col.hide()
 
-        columns_layout.addWidget(col1_w)
-        columns_layout.addWidget(col2_w)
-        columns_layout.addWidget(col3_w)
-        col3_w.hide()
-
-        self.content_layout.addLayout(columns_layout)
+        self.content_layout.addLayout(self.columns_layout)
 
         # Initialize content
         self.init_aspects()
         self.init_affix_pool()
         self.init_inherent_pool()
 
+    def _create_col_helper(self, title, add_cb, pool_model=None, remove_cb=None):
+        col_widget = QWidget()
+        col_layout = QVBoxLayout(col_widget)
+        col_layout.setContentsMargins(0, 0, 0, 0)
+        col_layout.setSpacing(0)
+
+        header = _create_column_header(title, add_cb, remove_cb)
+        col_layout.addWidget(header)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.Panel)
+        scroll.setStyleSheet(
+            "QScrollArea { border: 1px solid #3c3c3c; background-color: #121212; border-bottom: none; }"
+        )
+
+        inner = QWidget()
+        inner_layout = QVBoxLayout(inner)
+        inner_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        scroll.setWidget(inner)
+        col_layout.addWidget(scroll)
+
+        footer = None
+        if pool_model is not None:
+            footer = _create_column_footer(pool_model, self.update_greater_count_label)
+            footer.setStyleSheet("background-color: #1a1a1a; border: 1px solid #3c3c3c; border-top: none;")
+            col_layout.addWidget(footer)
+
+        return col_widget, inner_layout, footer
+
+    def _add_affix_pool_column_widget(self, pool_model: AffixFilterCountModel):
+        def add_cb():
+            self.add_affix_to_pool(pool_model)
+
+        # Only provide a remove callback for additional pools (index > 0)
+        is_additional = self.unique_model.affix_pool.index(pool_model) > 0
+        remove_cb = (lambda: self.remove_affix_pool_column(pool_model)) if is_additional else None
+
+        col_widget, inner_layout, footer = self._create_col_helper("Affix Pool", add_cb, pool_model, remove_cb)
+        insert_idx = self.columns_layout.count() - 1
+        self.columns_layout.insertWidget(insert_idx, col_widget)
+        self.affix_column_widgets.append(col_widget)
+        self.affix_pool_layouts.append(inner_layout)
+        self.affix_footers.append(footer)
+
+    def add_additional_affix_pool_column(self):
+        new_pool = AffixFilterCountModel(count=[], min_count=1)
+        self.unique_model.affix_pool.append(new_pool)
+        self._add_affix_pool_column_widget(new_pool)
+
+    def remove_affix_pool_column(self, pool_model: AffixFilterCountModel):
+        reply = QMessageBox.question(
+            self,
+            "Confirm Deletion",
+            "Are you sure you want to delete this entire affix pool?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            idx = self.unique_model.affix_pool.index(pool_model)
+            self.unique_model.affix_pool.pop(idx)
+
+            widget = self.affix_column_widgets.pop(idx)
+            self.affix_pool_layouts.pop(idx)
+            self.affix_footers.pop(idx)
+
+            widget.setParent(None)
+            widget.deleteLater()
+            self.update_greater_count_label()
+
     def init_aspects(self):
         for aspect in self.unique_model.unique_aspect:
             self.add_unique_aspect_item(aspect)
 
     def init_affix_pool(self):
-        for affix in self.unique_model.affix_pool[0].count:
-            self.add_affix_item(affix, inherent=False)
+        for i, pool in enumerate(self.unique_model.affix_pool):
+            for affix in pool.count:
+                self.add_affix_item(affix, inherent=False, pool_idx=i)
 
     def init_inherent_pool(self):
-        for affix in self.unique_model.inherent_pool[0].count:
-            self.add_affix_item(affix, inherent=True)
+        for i, pool in enumerate(self.unique_model.inherent_pool):
+            for affix in pool.count:
+                self.add_affix_item(affix, inherent=True, pool_idx=i)
 
-    def add_affix_item(self, model: AffixFilterModel, inherent: bool = False):
-        layout = self.inherent_pool_layout if inherent else self.affix_pool_layout
+    def add_affix_item(self, model: AffixFilterModel, inherent: bool = False, pool_idx: int = 0):
+        layout = self.inherent_pool_layout if inherent else self.affix_pool_layouts[pool_idx]
         widget = AffixSummaryWidget(model)
-        widget.delete_requested.connect(lambda: self.remove_affix_item_widget(widget, inherent))
+        widget.delete_requested.connect(lambda: self.remove_affix_item_widget(widget, inherent, pool_idx))
         widget.config_changed.connect(self.update_greater_count_label)
         layout.addWidget(widget)
         return widget
 
-    def remove_affix_item_widget(self, widget, inherent: bool):
-        layout = self.inherent_pool_layout if inherent else self.affix_pool_layout
-        pool = self.unique_model.inherent_pool[0] if inherent else self.unique_model.affix_pool[0]
+    def remove_affix_item_widget(self, widget, inherent: bool, pool_idx: int = 0):
+        layout = self.inherent_pool_layout if inherent else self.affix_pool_layouts[pool_idx]
+        pool = self.unique_model.inherent_pool[0] if inherent else self.unique_model.affix_pool[pool_idx]
         idx = layout.indexOf(widget)
         if idx != -1:
             pool.count.pop(idx)
@@ -146,51 +195,59 @@ class UniqueWidget(QWidget):
 
     def create_general_groupbox(self):
         self.general_groupbox = QGroupBox()
-        self.general_groupbox.setTitle("Global Unique Rule")
-        self.general_form = QFormLayout()
+        self.general_groupbox.setTitle("Global Unique Rule Configuration")
+
+        main_vbox = QVBoxLayout(self.general_groupbox)
+        main_vbox.setContentsMargins(10, 15, 10, 10)
 
         # Profile Alias / Name
-        alias_layout = QHBoxLayout()
+        top_row = QHBoxLayout()
+        top_row.addWidget(QLabel("Rule Alias:"))
         self.profile_alias = QLineEdit()
-        self.profile_alias.setMaximumWidth(300)
+        self.profile_alias.setFixedWidth(200)
         self.profile_alias.setText(self.unique_model.profile_alias)
         self.profile_alias.textChanged.connect(self.update_profile_alias)
-        alias_layout.addWidget(self.profile_alias)
+        top_row.addWidget(self.profile_alias)
+
+        top_row.addSpacing(30)
+
+        top_row.addWidget(QLabel("Minimum Power:"))
+        self.min_power = IgnoreScrollWheelSpinBox()
+        self.min_power.setRange(0, MAX_POWER)
+        self.min_power.setValue(self.unique_model.min_power)
+        self.min_power.setFixedWidth(80)
+        self.min_power.valueChanged.connect(self.update_min_power)
+        top_row.addWidget(self.min_power)
+
+        top_row.addStretch()
 
         duplicate_btn = QPushButton("Duplicate Rule")
         duplicate_btn.setFixedWidth(120)
         duplicate_btn.clicked.connect(self._on_duplicate_clicked)
-        alias_layout.addWidget(duplicate_btn)
-        alias_layout.addStretch()
-
-        self.general_form.addRow("Rule Alias:", alias_layout)
+        top_row.addWidget(duplicate_btn)
+        main_vbox.addLayout(top_row)
 
         # Item Types (Slots)
+        slots_row = QHBoxLayout()
+        slots_row.addWidget(QLabel("Target Slots:"))
         self.item_type_line_edit = QLineEdit()
         self.item_type_line_edit.setReadOnly(True)
         self.refresh_item_type_summary()
-        item_type_layout = QHBoxLayout()
-        item_type_layout.addWidget(self.item_type_line_edit)
+        slots_row.addWidget(self.item_type_line_edit)
         edit_item_types_btn = QPushButton("Select Slots")
         edit_item_types_btn.setMaximumWidth(100)
         edit_item_types_btn.clicked.connect(self.edit_item_types)
-        item_type_layout.addWidget(edit_item_types_btn)
-        self.general_form.addRow("Target Slots:", item_type_layout)
-
-        self.min_power = IgnoreScrollWheelSpinBox()
-        self.min_power.setRange(0, MAX_POWER)
-        self.min_power.setValue(self.unique_model.min_power)
-        self.min_power.setMaximumWidth(150)
-        self.min_power.valueChanged.connect(self.update_min_power)
-        self.general_form.addRow("Minimum Power:", self.min_power)
+        slots_row.addWidget(edit_item_types_btn)
+        main_vbox.addLayout(slots_row)
 
         # Min Greater Affixes with Auto Sync
-        min_greater_layout = QHBoxLayout()
+        ga_row = QHBoxLayout()
+        ga_row.addWidget(QLabel("Min Greater Affixes:"))
         self.min_greater = CharacterSpinBox()
         self.min_greater.set_range(0, 4)
         self.min_greater.set_value(self.unique_model.min_greater_affix_count)
         self.min_greater.setFixedWidth(100)
-        self.min_greater.value_changed.connect(self.update_min_greater_affix)
+        self.min_greater.value_changed.connect(self.update_min_greater_affix_from_spin)
 
         self.auto_sync_checkbox = QCheckBox("Auto Sync")
         self.auto_sync_checkbox.setChecked(
@@ -200,17 +257,19 @@ class UniqueWidget(QWidget):
         self.greater_count_label = QLabel()
         self.greater_count_label.setStyleSheet("color: gray; font-style: italic;")
 
-        min_greater_layout.addWidget(self.min_greater)
-        min_greater_layout.addWidget(self.auto_sync_checkbox)
-        min_greater_layout.addWidget(self.greater_count_label)
-        min_greater_layout.addStretch()
+        ga_row.addWidget(self.min_greater)
+        ga_row.addWidget(self.auto_sync_checkbox)
+        ga_row.addWidget(self.greater_count_label)
+        ga_row.addStretch()
+
+        add_pool_btn = QPushButton("Add Additional Affix Pool")
+        add_pool_btn.setFixedWidth(180)
+        add_pool_btn.clicked.connect(self.add_additional_affix_pool_column)
+        ga_row.addWidget(add_pool_btn)
+        main_vbox.addLayout(ga_row)
 
         self.min_greater.setEnabled(not self.auto_sync_checkbox.isChecked())
-        self.general_form.addRow("Min Greater Affixes:", self.min_greater)
-
-        self.general_groupbox.setLayout(self.general_form)
         self.content_layout.addWidget(self.general_groupbox)
-        QTimer.singleShot(100, self.update_greater_count_label)
 
     def _on_duplicate_clicked(self):
         self.duplicate_requested.emit(self.unique_model)
@@ -233,11 +292,16 @@ class UniqueWidget(QWidget):
         widget.setParent(None)
         widget.deleteLater()
 
-    def add_affix_pool(self):
+    def add_affix_to_pool(self, pool_model: AffixFilterCountModel):
+        idx = self.unique_model.affix_pool.index(pool_model)
         affix_name = next(iter(Dataloader().affix_dict.keys()))
         new_affix = AffixFilterModel(name=affix_name)
-        self.unique_model.affix_pool[0].count.append(new_affix)
-        self.add_affix_item(new_affix).open_config_dialog()
+        pool_model.count.append(new_affix)
+        self.add_affix_item(new_affix, pool_idx=idx).open_config_dialog()
+
+    def add_affix_pool(self):
+        if self.unique_model.affix_pool:
+            self.add_affix_to_pool(self.unique_model.affix_pool[0])
 
     def add_inherent_pool(self):
         affix_name = next(iter(Dataloader().affix_dict.keys()))
@@ -268,31 +332,22 @@ class UniqueWidget(QWidget):
                 with QSignalBlocker(self.min_greater):
                     self.min_greater.set_value(count)
 
-        # Update pool footers with new Min Count constraints
-        for footer, model in [
-            (self.affix_footer, self.unique_model.affix_pool[0]),
-            (self.inherent_footer, self.unique_model.inherent_pool[0]),
-        ]:
-            if footer and model:
-                min_spin = footer.property("min_spin")
-                if min_spin:
-                    min_allowed = sum(1 for a in model.count if getattr(a, "required", False))
-                    min_spin.set_minimum(min_allowed)
-                    if model.min_count < min_allowed:
-                        model.min_count = min_allowed
-                        min_spin.set_value(min_allowed)
-        # for footer, model in [
-        #     (self.affix_footer, self.unique_model.affix_pool[0]),
-        #     (self.inherent_footer, self.unique_model.inherent_pool[0]),
-        # ]:
-        #     if footer and model:
-        #         min_spin = footer.property("min_spin")
-        #         if min_spin:
-        #             min_allowed = sum(1 for a in model.count if getattr(a, "required", False))
-        #             min_spin.set_minimum(min_allowed)
-        #             if model.min_count < min_allowed:
-        #                 model.min_count = min_allowed
-        #                 min_spin.set_value(min_allowed)
+        # Update affix pool footers
+        for footer, model in zip(self.affix_footers, self.unique_model.affix_pool, strict=False):
+            self._update_footer_constraints(footer, model)
+
+        # Update inherent pool footer
+        self._update_footer_constraints(self.inherent_footer, self.unique_model.inherent_pool[0])
+
+    def _update_footer_constraints(self, footer, model):
+        if footer and model:
+            min_spin = footer.property("min_spin")
+            if min_spin:
+                min_allowed = sum(1 for a in model.count if getattr(a, "required", False))
+                min_spin.set_minimum(min_allowed)
+                if model.min_count < min_allowed:
+                    model.min_count = min_allowed
+                    min_spin.set_value(min_allowed)
 
     def refresh_item_type_summary(self):
         self.item_type_line_edit.setText(_item_type_summary(self.unique_model.item_type))
@@ -321,8 +376,8 @@ class UniqueWidget(QWidget):
     def update_min_greater_affix(self):
         self.unique_model.min_greater_affix_count = self.min_greater.value()
 
-    def update_min_percent(self):
-        self.unique_model.min_percent_of_aspect = self.min_percent.value()
+    def update_min_greater_affix_from_spin(self, value: int):
+        self.unique_model.min_greater_affix_count = value
 
 
 class UniquesTab(QWidget):
