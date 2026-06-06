@@ -163,6 +163,7 @@ class ProfileEditor(QWidget):
         if is_gear_slot:
             # Ensure children are loaded before filtering
             self.affixes_tab.load()
+            self.uniques_tab.load()
             # Ensure gear view components are visible (they might have been hidden by Global Rules)
             self.affixes_tab.show()
             self.uniques_tab.hide()

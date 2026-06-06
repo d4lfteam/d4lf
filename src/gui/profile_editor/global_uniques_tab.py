@@ -1,4 +1,6 @@
-from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, QTimer
+import copy
+
+from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -37,10 +39,14 @@ UNIQUES_TABNAME = "GlobalRules"
 
 
 class UniqueWidget(QWidget):
+    duplicate_requested = pyqtSignal(GlobalUniqueModel)
+
     def __init__(self, unique_model: GlobalUniqueModel, parent=None):
         super().__init__(parent)
         self.settings = QSettings("d4lf", "profile_editor")
         self.unique_model = unique_model
+        self.affix_footer = None
+        self.inherent_footer = None
         self.item_types = [
             item for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)
         ]
@@ -99,6 +105,7 @@ class UniqueWidget(QWidget):
         columns_layout.addWidget(col1_w)
         columns_layout.addWidget(col2_w)
         columns_layout.addWidget(col3_w)
+        col3_w.hide()
 
         self.content_layout.addLayout(columns_layout)
 
@@ -143,11 +150,20 @@ class UniqueWidget(QWidget):
         self.general_form = QFormLayout()
 
         # Profile Alias / Name
+        alias_layout = QHBoxLayout()
         self.profile_alias = QLineEdit()
         self.profile_alias.setMaximumWidth(300)
         self.profile_alias.setText(self.unique_model.profile_alias)
         self.profile_alias.textChanged.connect(self.update_profile_alias)
-        self.general_form.addRow("Rule Alias:", self.profile_alias)
+        alias_layout.addWidget(self.profile_alias)
+
+        duplicate_btn = QPushButton("Duplicate Rule")
+        duplicate_btn.setFixedWidth(120)
+        duplicate_btn.clicked.connect(self._on_duplicate_clicked)
+        alias_layout.addWidget(duplicate_btn)
+        alias_layout.addStretch()
+
+        self.general_form.addRow("Rule Alias:", alias_layout)
 
         # Item Types (Slots)
         self.item_type_line_edit = QLineEdit()
@@ -195,6 +211,9 @@ class UniqueWidget(QWidget):
         self.general_groupbox.setLayout(self.general_form)
         self.content_layout.addWidget(self.general_groupbox)
         QTimer.singleShot(100, self.update_greater_count_label)
+
+    def _on_duplicate_clicked(self):
+        self.duplicate_requested.emit(self.unique_model)
 
     def add_unique_aspect_item(self, model: AspectUniqueFilterModel) -> UniqueAspectWidget:
         widget = UniqueAspectWidget(model)
@@ -262,6 +281,18 @@ class UniqueWidget(QWidget):
                     if model.min_count < min_allowed:
                         model.min_count = min_allowed
                         min_spin.set_value(min_allowed)
+        # for footer, model in [
+        #     (self.affix_footer, self.unique_model.affix_pool[0]),
+        #     (self.inherent_footer, self.unique_model.inherent_pool[0]),
+        # ]:
+        #     if footer and model:
+        #         min_spin = footer.property("min_spin")
+        #         if min_spin:
+        #             min_allowed = sum(1 for a in model.count if getattr(a, "required", False))
+        #             min_spin.set_minimum(min_allowed)
+        #             if model.min_count < min_allowed:
+        #                 model.min_count = min_allowed
+        #                 min_spin.set_value(min_allowed)
 
     def refresh_item_type_summary(self):
         self.item_type_line_edit.setText(_item_type_summary(self.unique_model.item_type))
@@ -468,6 +499,7 @@ class UniquesTab(QWidget):
 
             model = self.unique_model_list[model_idx]
             widget = UniqueWidget(model)
+            widget.duplicate_requested.connect(self.duplicate_rule_tab)
             name = self.tab_widget.tabText(index)
             is_current = self.tab_widget.currentIndex() == index
             with QSignalBlocker(self.tab_widget):
@@ -475,6 +507,38 @@ class UniquesTab(QWidget):
                 self.tab_widget.insertTab(index, widget, name)
                 if is_current:
                     self.tab_widget.setCurrentIndex(index)
+
+    def duplicate_rule_tab(self, original_model: GlobalUniqueModel):
+        # Find a unique alias for the duplicated rule
+        original_alias = original_model.profile_alias or "New Rule"
+        new_alias_base = f"{original_alias} (Copy)"
+        new_alias = new_alias_base
+
+        existing_aliases = [m.profile_alias for m in self.unique_model_list]
+        i = 1
+        while new_alias in existing_aliases:
+            i += 1
+            new_alias = f"{new_alias_base} {i}"
+
+        # Create a deep copy of the unique rule model
+        new_model = copy.deepcopy(original_model)
+        new_model.profile_alias = new_alias
+        self.unique_model_list.append(new_model)
+
+        plus_idx = -1
+        for i in range(self.tab_widget.count()):
+            if self.tab_widget.tabText(i) == "+":
+                plus_idx = i
+                break
+
+        # Create the actual editor widget and insert the tab
+        editor = UniqueWidget(new_model)
+        editor.duplicate_requested.connect(self.duplicate_rule_tab)
+
+        if plus_idx != -1:
+            self.tab_widget.insertTab(plus_idx, editor, new_alias)
+            self.tab_widget.setCurrentIndex(plus_idx)
+        self._update_plus_tab_button()
 
     def remove_item_type(self):
         dialog = DeleteItem([self.tab_widget.tabText(i) for i in range(self.tab_widget.count())], self)
@@ -513,6 +577,7 @@ class UniquesTab(QWidget):
         alias = f"New Rule {self.tab_widget.count()}"
         unique_model = GlobalUniqueModel(item_type=item_types, profileAlias=alias)
         group = UniqueWidget(unique_model)
+        group.duplicate_requested.connect(self.duplicate_rule_tab)
         self.tab_widget.insertTab(plus_idx, group, alias)
         self.unique_model_list.append(unique_model)
         self.tab_widget.setCurrentIndex(plus_idx)

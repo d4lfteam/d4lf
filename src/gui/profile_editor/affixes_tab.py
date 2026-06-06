@@ -1,3 +1,4 @@
+import copy
 import logging
 from typing import override
 
@@ -542,9 +543,13 @@ class AffixPoolDialog(QDialog):
 
 
 class AffixGroupEditor(QWidget):
+    duplicate_requested = pyqtSignal(DynamicItemFilterModel)
+
     def __init__(self, dynamic_filter: DynamicItemFilterModel, parent=None):
         super().__init__(parent)
         self.settings = QSettings("d4lf", "profile_editor")
+        self.affix_footer = None
+        self.inherent_footer = None
         self.dynamic_filter = dynamic_filter
         for item_name, config in dynamic_filter.root.items():
             self.item_name = item_name
@@ -560,11 +565,20 @@ class AffixGroupEditor(QWidget):
         general_form = QFormLayout()
 
         # Item Alias/Name
+        alias_layout = QHBoxLayout()
         self.alias_edit = QLineEdit()
         self.alias_edit.setText(self.item_name)
         self.alias_edit.setMaximumWidth(300)
         self.alias_edit.textChanged.connect(self.update_item_alias)
-        general_form.addRow("Item Name / Alias:", self.alias_edit)
+        alias_layout.addWidget(self.alias_edit)
+
+        duplicate_btn = QPushButton("Duplicate Item")
+        duplicate_btn.setFixedWidth(120)
+        duplicate_btn.clicked.connect(self._on_duplicate_clicked)
+        alias_layout.addWidget(duplicate_btn)
+        alias_layout.addStretch()
+
+        general_form.addRow("Item Name / Alias:", alias_layout)
 
         self.min_power = IgnoreScrollWheelSpinBox()
         self.min_power.setMaximum(MAX_POWER)
@@ -660,6 +674,7 @@ class AffixGroupEditor(QWidget):
         columns_layout.addWidget(self.aspect_col)
         columns_layout.addWidget(self.affix_col)
         columns_layout.addWidget(self.inherent_col)
+        self.inherent_col.hide()
 
         self.content_layout.addLayout(columns_layout)
 
@@ -667,6 +682,9 @@ class AffixGroupEditor(QWidget):
         self.init_unique_aspects()
         self.init_affix_pool()
         self.init_inherent_pool()
+
+    def _on_duplicate_clicked(self):
+        self.duplicate_requested.emit(self.dynamic_filter)
 
     def init_unique_aspects(self):
         for aspect in self.config.unique_aspect:
@@ -1356,6 +1374,7 @@ class AffixesTab(QWidget):
             is_current = self.tab_widget.currentIndex() == index
             with QSignalBlocker(self.tab_widget):
                 editor = AffixGroupEditor(affix_group)
+                editor.duplicate_requested.connect(self.duplicate_item_tab)
                 self.tab_widget.removeTab(index)
                 self.tab_widget.insertTab(index, editor, item_name)
                 if is_current:
@@ -1415,6 +1434,42 @@ class AffixesTab(QWidget):
             self.item_data_map.pop(name, None)
             self.tab_widget.removeTab(index)
             self.affixes_model.pop(index)
+        self._update_plus_tab_button()
+
+    def duplicate_item_tab(self, original_filter: DynamicItemFilterModel):
+        # Find a unique name for the duplicated item
+        original_name = next(iter(original_filter.root.keys()))
+        new_name_base = f"{original_name} (Copy)"
+        new_name = new_name_base
+        i = 1
+        while new_name in self.item_names:
+            i += 1
+            new_name = f"{new_name_base} {i}"
+
+        # Create a deep copy of the filter model
+        new_filter_model = copy.deepcopy(original_filter)
+        # Update the key in the root dictionary to the new name
+        new_filter_model.root = {new_name: new_filter_model.root.pop(original_name)}
+
+        # Add to our internal lists and create a new tab
+        self.item_names.append(new_name)
+        self.item_data_map[new_name] = new_filter_model
+        self.affixes_model.append(new_filter_model)
+
+        # Find the "+" tab index to insert before it
+        plus_idx = -1
+        for i in range(self.tab_widget.count()):
+            if self.tab_widget.tabText(i) == "+":
+                plus_idx = i
+                break
+
+        # Create the actual editor widget and insert the tab
+        editor = AffixGroupEditor(new_filter_model)
+        editor.duplicate_requested.connect(self.duplicate_item_tab)
+
+        if plus_idx != -1:
+            self.tab_widget.insertTab(plus_idx, editor, new_name)
+            self.tab_widget.setCurrentIndex(plus_idx)
         self._update_plus_tab_button()
 
     def remove_item_type(self):

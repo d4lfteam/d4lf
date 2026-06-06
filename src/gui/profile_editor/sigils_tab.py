@@ -1,152 +1,182 @@
+from typing import override
+
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
     QCompleter,
     QDialog,
+    QDialogButtonBox,
     QFormLayout,
+    QFrame,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
-    QListWidgetItem,
     QMessageBox,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
 from src.config.profile_models import SigilConditionModel, SigilFilterModel, SigilPriority
 from src.dataloader import Dataloader
-from src.gui.models.collapsible_widget import Container
-from src.gui.models.dialog import CreateSigil, IgnoreScrollWheelComboBox, RemoveSigil
-from src.gui.profile_editor.affixes_tab import TruncatingComboBox
+from src.gui.models.dialog import IgnoreScrollWheelComboBox
+from src.gui.profile_editor.affixes_tab import (
+    SelectionDialog,
+    TruncatingComboBox,
+    _create_column_header,
+    _create_delete_btn,
+    _create_summary_card_style,
+)
 
 SIGILS_TABNAME = "Sigils"
 
 
-class ConditionWidget(QWidget):
-    condition_changed = pyqtSignal(str, str)
+class SigilSummaryWidget(QWidget):
+    delete_requested = pyqtSignal()
+    config_changed = pyqtSignal()
 
-    def __init__(self, condition: str, parent=None):
+    def __init__(self, model: SigilConditionModel, whitelist: bool, parent=None):
         super().__init__(parent)
-        self.condition = condition
-        widget_layout = QHBoxLayout()
-        widget_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.model = model
+        self.whitelist = whitelist
+        self.setObjectName("SummaryCard")
+        self.setStyleSheet(_create_summary_card_style())
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setup_ui()
+
+    def setup_ui(self):
+        self.main_layout = QHBoxLayout(self)
+        self.main_layout.setContentsMargins(10, 8, 10, 8)
+
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(2)
+
+        name = Dataloader().affix_sigil_dict_all["dungeons"].get(self.model.name, self.model.name)
+        self.name_label = QLabel(name)
+        self.name_label.setStyleSheet("font-weight: bold; color: #e2e8f0;")
+        text_layout.addWidget(self.name_label)
+
+        # Build condition summary
+        cond_text = "No conditions"
+        if self.model.condition:
+            names = [Dataloader().affix_sigil_dict.get(c, c) for c in self.model.condition if c]
+            cond_text = ", ".join(names)
+
+        self.cond_label = QLabel(cond_text)
+        self.cond_label.setStyleSheet("color: #94a3b8; font-size: 11px;")
+        self.cond_label.setWordWrap(True)
+        text_layout.addWidget(self.cond_label)
+
+        self.main_layout.addLayout(text_layout, 1)
+
+        self.delete_btn = _create_delete_btn()
+        self.delete_btn.clicked.connect(self.delete_requested.emit)
+        self.main_layout.addWidget(self.delete_btn)
+
+    @override
+    def mousePressEvent(self, event):
+        if event is None or event.button() == Qt.MouseButton.LeftButton:
+            self.open_config_dialog()
+
+    def open_config_dialog(self):
+        name = Dataloader().affix_sigil_dict_all["dungeons"].get(self.model.name, self.model.name)
+        dialog = SigilEditDialog(self, self.model, name)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.refresh_display()
+            self.config_changed.emit()
+
+    def refresh_display(self):
+        name = Dataloader().affix_sigil_dict_all["dungeons"].get(self.model.name, self.model.name)
+        self.name_label.setText(name)
+
+        cond_text = "No conditions"
+        if self.model.condition:
+            names = [Dataloader().affix_sigil_dict.get(c, c) for c in self.model.condition if c]
+            cond_text = ", ".join(names)
+        self.cond_label.setText(cond_text)
+
+
+class SigilEditDialog(QDialog):
+    def __init__(self, parent: QWidget, model: SigilConditionModel, dungeon_name: str):
+        super().__init__(parent)
+        self.setWindowTitle("Configure Sigil Rule")
+        self.setMinimumWidth(500)
+        self.model = model
+
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+
         self.name_combo = TruncatingComboBox()
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.name_combo.addItems(sorted(Dataloader().affix_sigil_dict_all["dungeons"].values()))
+        self.name_combo.setCurrentText(dungeon_name)
+        form.addRow("Dungeon:", self.name_combo)
+        layout.addLayout(form)
+
+        layout.addWidget(QLabel("Conditions (Must match ANY):"))
+        self.cond_list = QListWidget()
+        self.cond_list.setMinimumHeight(200)
+        for cond in self.model.condition:
+            if cond:
+                self.cond_list.addItem(Dataloader().affix_sigil_dict.get(cond, cond))
+        layout.addWidget(self.cond_list)
+
+        btn_layout = QHBoxLayout()
+        add_btn = QPushButton("+ Add Condition")
+        add_btn.clicked.connect(self._add_condition)
+        remove_btn = QPushButton("− Remove Selected")
+        remove_btn.clicked.connect(self._remove_condition)
+        btn_layout.addWidget(add_btn)
+        btn_layout.addWidget(remove_btn)
+        layout.addLayout(btn_layout)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.save_and_accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def _add_condition(self):
         affix_sigil_dict = {
             **Dataloader().affix_sigil_dict_all["minor"],
             **Dataloader().affix_sigil_dict_all["major"],
             **Dataloader().affix_sigil_dict_all["positive"],
         }
-        self.name_combo.addItems(sorted(affix_sigil_dict.values()))
-        self.name_combo.setMaximumWidth(600)
-        self.name_combo.setCurrentText(condition)
-        self.name_combo.currentIndexChanged.connect(self.update_condition)
-        widget_layout.addWidget(self.name_combo)
-        self.setLayout(widget_layout)
+        items = sorted(affix_sigil_dict.values())
+        dialog = SelectionDialog(self, "Select Condition", items)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            val = dialog.get_value()
+            if val:
+                # Avoid adding same condition multiple times in UI
+                existing = [self.cond_list.item(i).text() for i in range(self.cond_list.count())]
+                if val not in existing:
+                    self.cond_list.addItem(val)
 
-    def update_condition(self):
-        old_condition = self.condition
-        self.condition = self.name_combo.currentText()
-        self.condition_changed.emit(old_condition, self.condition)
+    def _remove_condition(self):
+        for item in self.cond_list.selectedItems():
+            self.cond_list.takeItem(self.cond_list.row(item))
 
+    def save_and_accept(self):
+        new_name = self.name_combo.currentText()
+        reverse_dungeon = {v: k for k, v in Dataloader().affix_sigil_dict_all["dungeons"].items()}
+        dungeon_id = reverse_dungeon.get(new_name)
+        if not dungeon_id:
+            QMessageBox.warning(self, "Warning", "Please select a valid dungeon from the list.")
+            return
 
-class SigilWidget(Container):
-    dungeon_changed = pyqtSignal()
+        self.model.name = dungeon_id
 
-    def __init__(self, sigil_name: str, sigil: SigilConditionModel, whitelist: bool):
-        super().__init__(sigil_name, color_background=True)
-        self.sigil = sigil
-        self.sigil_name = sigil_name
-        self.whitelist = whitelist
-        self.setup_ui()
-
-    def setup_ui(self):
-        container_layout = QVBoxLayout(self.content_widget)
-        widget = QWidget()
-        layout = QVBoxLayout()
-        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        title_layout = QHBoxLayout()
-        title_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
-        form_layout = QFormLayout()
-        self.sigil_name_combo = IgnoreScrollWheelComboBox()
-        self.sigil_name_combo.setEditable(True)
-        self.sigil_name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.sigil_name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.sigil_name_combo.addItems(sorted(Dataloader().affix_sigil_dict_all["dungeons"].values()))
-        self.sigil_name_combo.setCurrentText(self.sigil_name)
-        self.sigil_name_combo.setMaximumWidth(150)
-        self.sigil_name_combo.currentIndexChanged.connect(self.update_sigil_dungeon)
-        form_layout.addRow("Dungeon:", self.sigil_name_combo)
-
-        comparison_label = QLabel("Condition")
-        title_layout.addSpacing(100)
-        title_layout.addWidget(comparison_label)
-        self.condition_list = QListWidget()
-        self.condition_list.setMinimumHeight(50)
-        self.condition_list.setAlternatingRowColors(True)
-        for condition in self.sigil.condition:
-            if not condition:
-                continue
-            self.add_condition_to_list(Dataloader().affix_sigil_dict[condition])
-
-        condition_btn_layout = QHBoxLayout()
-        add_condition_btn = QPushButton("Add Condition")
-        add_condition_btn.clicked.connect(self.add_condition)
-        condition_btn_layout.addWidget(add_condition_btn)
-        remove_condition_btn = QPushButton("Remove Condition")
-        remove_condition_btn.clicked.connect(self.remove_selected)
-        condition_btn_layout.addWidget(remove_condition_btn)
-        layout.addLayout(form_layout)
-        layout.addLayout(condition_btn_layout)
-        layout.addLayout(title_layout)
-        layout.addWidget(self.condition_list)
-        widget.setLayout(layout)
-        container_layout.addWidget(widget)
-
-    def add_condition_to_list(self, condition):
-        widget_item = QListWidgetItem()
-        widget = ConditionWidget(condition)
-        widget.condition_changed.connect(self.on_condition_update)
-        widget_item.setSizeHint(widget.sizeHint())
-        self.condition_list.addItem(widget_item)
-        self.condition_list.setItemWidget(widget_item, widget)
-
-    def add_condition(self):
-        self.add_condition_to_list(next(iter(Dataloader().affix_sigil_dict_all["minor"].values())))
-        self.sigil.condition.append(next(iter(Dataloader().affix_sigil_dict_all["minor"].keys())))
-
-    def remove_selected(self):
-        for item in self.condition_list.selectedItems():
-            row = self.condition_list.row(item)
-            self.condition_list.takeItem(row)
-            self.sigil.condition.pop(row)
-
-    def revert_sigil_dungeon(self):
-        self.sigil_name_combo.currentIndexChanged.disconnect()
-        self.sigil_name_combo.currentTextChanged.connect(lambda: self.update_sigil_dungeon(classic=False))
-        self.sigil_name_combo.setCurrentText(self.old_name)
-        self.sigil_name_combo.currentTextChanged.disconnect()
-        self.sigil_name_combo.currentIndexChanged.connect(self.update_sigil_dungeon)
-
-    def update_sigil_dungeon(self, classic=True):
-        new_name = self.sigil_name_combo.currentText()
-        self.old_name = self.sigil_name
-        self.sigil_name = new_name
-        self.header.set_name(new_name)
-        reverse_dict = {v: k for k, v in Dataloader().affix_sigil_dict_all["dungeons"].items()}
-        self.sigil.name = reverse_dict.get(new_name)
-        if classic:
-            self.dungeon_changed.emit()
-
-    def on_condition_update(self, old_condition, condition: str):
-        reverse_dict = {v: k for k, v in Dataloader().affix_sigil_dict.items()}
-        index = self.sigil.condition.index(reverse_dict.get(old_condition, ""))
-        self.sigil.condition.pop(index)
-        self.sigil.condition.insert(index, reverse_dict.get(condition))
+        reverse_cond = {v: k for k, v in Dataloader().affix_sigil_dict.items()}
+        self.model.condition = []
+        for i in range(self.cond_list.count()):
+            text = self.cond_list.item(i).text()
+            if key := reverse_cond.get(text):
+                self.model.condition.append(key)
+        self.accept()
 
 
 class SigilsTab(QWidget):
@@ -154,6 +184,7 @@ class SigilsTab(QWidget):
         super().__init__(parent)
         self.sigil_model = sigil_model
         self.loaded = False
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def load(self):
         if not self.loaded:
@@ -164,140 +195,96 @@ class SigilsTab(QWidget):
         """Populate the grid layout with existing groups."""
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 5, 0, 5)
+        self.main_layout.setSpacing(0)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.create_button_layout()
-        self.create_form()
-        self.create_containers()
 
-    def create_button_layout(self):
-        btn_layout = QHBoxLayout()
+        # 1. General Config
+        self.create_general_groupbox()
 
-        add_sigil_btn = QPushButton("Add Sigil")
-        add_sigil_btn.clicked.connect(self.create_sigil)
+        # 2. Columns Layout
+        columns_layout = QHBoxLayout()
+        columns_layout.setSpacing(15)
 
-        remove_whitelist_sigil_btn = QPushButton("Remove Whitelist Sigil")
-        remove_whitelist_sigil_btn.clicked.connect(lambda: self.remove_sigil())
+        def create_col(title, add_cb):
+            col_widget = QWidget()
+            col_layout = QVBoxLayout(col_widget)
+            col_layout.setContentsMargins(0, 0, 0, 0)
+            col_layout.setSpacing(0)
 
-        remove_blacklist_sigil_btn = QPushButton("Remove Blacklist Sigil")
-        remove_blacklist_sigil_btn.clicked.connect(lambda: self.remove_sigil(blacklist=True))
+            header = _create_column_header(title, add_cb)
+            col_layout.addWidget(header)
 
-        btn_layout.addWidget(add_sigil_btn)
-        btn_layout.addWidget(remove_whitelist_sigil_btn)
-        btn_layout.addWidget(remove_blacklist_sigil_btn)
-        self.main_layout.addLayout(btn_layout)
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QFrame.Shape.Panel)
+            scroll.setStyleSheet("QScrollArea { border: 1px solid #3c3c3c; background-color: #121212; }")
 
-    def create_form(self):
-        self.general_form = QFormLayout()
+            inner = QWidget()
+            inner_layout = QVBoxLayout(inner)
+            inner_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            scroll.setWidget(inner)
+
+            col_layout.addWidget(scroll)
+            return col_widget, inner_layout
+
+        self.whitelist_col, self.whitelist_layout = create_col("Whitelist", self.add_whitelist_sigil)
+        self.blacklist_col, self.blacklist_layout = create_col("Blacklist", self.add_blacklist_sigil)
+
+        columns_layout.addWidget(self.whitelist_col)
+        columns_layout.addWidget(self.blacklist_col)
+        self.main_layout.addLayout(columns_layout)
+
+        # 3. Init content
+        self.init_sigils()
+
+    def create_general_groupbox(self):
+        group = QGroupBox("Sigil Filtering")
+        form = QFormLayout(group)
         self.priority_combobox = IgnoreScrollWheelComboBox()
-        self.priority_combobox.setEditable(True)
-        self.priority_combobox.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.priority_combobox.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.priority_combobox.addItems(SigilPriority._member_names_)
         self.priority_combobox.setCurrentText(self.sigil_model.priority)
         self.priority_combobox.setMaximumWidth(150)
         self.priority_combobox.currentIndexChanged.connect(self.update_priority)
-        self.general_form.addRow("Priority:", self.priority_combobox)
-        self.main_layout.addLayout(self.general_form)
+        form.addRow("Priority Mode:", self.priority_combobox)
+        self.main_layout.addWidget(group)
 
-    def create_containers(self):
-        # Blacklist
-        self.blacklist_container = Container("Blacklist")
-        self.blacklist_layout = QVBoxLayout(self.blacklist_container.content_widget)
-        self.blacklist_sigils = []
+    def init_sigils(self):
+        for sigil in self.sigil_model.whitelist:
+            self.add_sigil_widget(sigil, whitelist=True)
+        for sigil in self.sigil_model.blacklist:
+            self.add_sigil_widget(sigil, whitelist=False)
 
-        for sigil_condition in self.sigil_model.blacklist:
-            self.add_sigil(sigil_condition)
-            self.blacklist_sigils.append(Dataloader().affix_sigil_dict[sigil_condition.name])
+    def add_sigil_widget(self, model: SigilConditionModel, whitelist: bool):
+        layout = self.whitelist_layout if whitelist else self.blacklist_layout
+        widget = SigilSummaryWidget(model, whitelist)
+        widget.delete_requested.connect(lambda: self.remove_sigil_item(widget, whitelist))
+        layout.addWidget(widget)
+        return widget
 
-        # Whitelist
-        self.whitelist_container = Container("Whitelist")
-        self.whitelist_layout = QVBoxLayout(self.whitelist_container.content_widget)
-        self.whitelist_sigils = []
+    def add_whitelist_sigil(self):
+        self._create_new_sigil(whitelist=True)
 
-        for sigil_condition in self.sigil_model.whitelist:
-            self.add_sigil(sigil_condition, whitelist=True)
-            self.whitelist_sigils.append(Dataloader().affix_sigil_dict[sigil_condition.name])
+    def add_blacklist_sigil(self):
+        self._create_new_sigil(whitelist=False)
 
-        self.main_layout.addWidget(self.whitelist_container)
-        self.main_layout.addWidget(self.blacklist_container)
+    def _create_new_sigil(self, whitelist: bool):
+        # Default to first dungeon key available
+        dungeon_key = next(iter(Dataloader().affix_sigil_dict_all["dungeons"].keys()))
+        new_sigil = SigilConditionModel(name=dungeon_key, condition=[])
 
-    def add_sigil(self, sigil_condition: SigilConditionModel, whitelist: bool = False):
-        name = Dataloader().affix_sigil_dict_all["dungeons"][sigil_condition.name]
         if whitelist:
-            widget = SigilWidget(name, sigil_condition, whitelist=True)
-            widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
-            self.whitelist_layout.addWidget(widget)
+            self.sigil_model.whitelist.append(new_sigil)
         else:
-            widget = SigilWidget(name, sigil_condition, whitelist=False)
-            widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
-            self.blacklist_layout.addWidget(widget)
+            self.sigil_model.blacklist.append(new_sigil)
 
-    def create_sigil(self):
-        dialog = CreateSigil(self.whitelist_sigils, self.blacklist_sigils)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            sigil_name, type_name = dialog.get_value()
-            reverse_dict = {v: k for k, v in Dataloader().affix_sigil_dict_all["dungeons"].items()}
-            sigil_condition = SigilConditionModel(name=reverse_dict.get(sigil_name), condition=[])
-            if type_name == "whitelist":
-                widget = SigilWidget(sigil_name, sigil_condition, whitelist=True)
-                widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
-                self.whitelist_layout.addWidget(widget)
-                self.whitelist_sigils.append(sigil_name)
-                self.sigil_model.whitelist.append(sigil_condition)
-            elif type_name == "blacklist":
-                widget = SigilWidget(sigil_name, sigil_condition, whitelist=False)
-                widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
-                self.blacklist_layout.addWidget(widget)
-                self.blacklist_sigils.append(sigil_name)
-                self.sigil_model.blacklist.append(sigil_condition)
+        self.add_sigil_widget(new_sigil, whitelist).open_config_dialog()
 
-    def remove_sigil(self, blacklist: bool = False):
-        dialog = RemoveSigil(self.blacklist_sigils, blacklist=True) if blacklist else RemoveSigil(self.whitelist_sigils)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            to_delete = dialog.get_value()
-            if blacklist:
-                for sigil in to_delete:
-                    self.blacklist_sigils.remove(sigil)
-                to_delete_list = []
-                for i in range(self.blacklist_layout.count()):
-                    sigil_widget: SigilWidget = self.blacklist_layout.itemAt(i).widget()
-                    if sigil_widget.sigil_name in to_delete:
-                        to_delete_list.append(sigil_widget)
-                for sig_widget in to_delete_list:
-                    sig_widget.setParent(None)
-                    self.sigil_model.blacklist.remove(sig_widget.sigil)
-            else:
-                for sigil in to_delete:
-                    self.whitelist_sigils.remove(sigil)
-                to_delete_list = []
-                for i in range(self.whitelist_layout.count()):
-                    sigil_widget: SigilWidget = self.whitelist_layout.itemAt(i).widget()
-                    if sigil_widget.sigil_name in to_delete:
-                        to_delete_list.append(sigil_widget)
-                for sig_widget in to_delete_list:
-                    sig_widget.setParent(None)
-                    self.sigil_model.whitelist.remove(sig_widget.sigil)
+    def remove_sigil_item(self, widget: SigilSummaryWidget, whitelist: bool):
+        model_list = self.sigil_model.whitelist if whitelist else self.sigil_model.blacklist
+        if widget.model in model_list:
+            model_list.remove(widget.model)
+        widget.setParent(None)
+        widget.deleteLater()
 
     def update_priority(self):
         self.sigil_model.priority = SigilPriority(self.priority_combobox.currentText())
-
-    def on_dungeon_changed(self, sigil_widget: SigilWidget):
-        whitelist = sigil_widget.whitelist
-        new_name = sigil_widget.sigil_name
-        old_name = sigil_widget.old_name
-        if whitelist and new_name in self.whitelist_sigils:
-            QMessageBox.warning(self, "Warning", "Sigil already exist in whitelist. You can modify the existing one.")
-            sigil_widget.revert_sigil_dungeon()
-            return
-        if not whitelist and new_name in self.blacklist_sigils:
-            QMessageBox.warning(self, "Warning", "Sigil already exist in blacklist. You can modify the existing one.")
-            sigil_widget.revert_sigil_dungeon()
-            return
-        if whitelist and old_name in self.whitelist_sigils:
-            index = self.whitelist_sigils.index(old_name)
-            self.whitelist_sigils.pop(index)
-            self.whitelist_sigils.insert(index, new_name)
-        if not whitelist and old_name in self.blacklist_sigils:
-            index = self.blacklist_sigils.index(old_name)
-            self.blacklist_sigils.pop(index)
-            self.blacklist_sigils.insert(index, new_name)
