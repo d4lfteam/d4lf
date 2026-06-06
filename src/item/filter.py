@@ -122,22 +122,22 @@ class Filter:
                 # check affixes
                 matched_affixes = []
                 if filter_spec.affix_pool:
-                    matched_affixes = self._match_affixes_count(
+                    success, matched_affixes = self._match_affixes_count(
                         expected_affixes=filter_spec.affix_pool,
                         item_affixes=non_tempered_affixes,
                         min_greater_affix_count=filter_spec.min_greater_affix_count,
                     )
-                    if not matched_affixes:
+                    if not success:
                         continue
                 # check inherent
                 matched_inherents = []
                 if filter_spec.inherent_pool:
-                    matched_inherents = self._match_affixes_count(
+                    success, matched_inherents = self._match_affixes_count(
                         expected_affixes=filter_spec.inherent_pool,
                         item_affixes=item.inherent,
                         min_greater_affix_count=filter_spec.min_greater_affix_count,
                     )
-                    if not matched_inherents:
+                    if not success:
                         continue
                 all_matches = matched_affixes + matched_inherents
                 # Build a detailed string showing which affixes are GAs
@@ -263,6 +263,7 @@ class Filter:
 
     def _check_global_unique_filter(self, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
+        non_tempered_affixes = [affix for affix in item.affixes if affix.type != AffixType.tempered]
 
         if not self.global_unique_filters:
             keep = IniConfigLoader().general.handle_uniques != UnfilteredUniquesType.junk
@@ -282,12 +283,38 @@ class Filter:
                     expected_percent=filter_item.min_percent_of_aspect, item_aspect_or_affix=item.aspect
                 ):
                     continue
-                LOGGER.info(f"{item.original_name} -- Matched {profile_name}.GlobalUniques: {item.aspect.name}")
+
+                # Check affixes
+                matched_affixes = []
+                if filter_item.affix_pool:
+                    success, matched_affixes = self._match_affixes_count(
+                        expected_affixes=filter_item.affix_pool,
+                        item_affixes=non_tempered_affixes,
+                        min_greater_affix_count=filter_item.min_greater_affix_count,
+                    )
+                    if not success:
+                        continue
+
+                # Check inherent
+                matched_inherents = []
+                if filter_item.inherent_pool:
+                    success, matched_inherents = self._match_affixes_count(
+                        expected_affixes=filter_item.inherent_pool,
+                        item_affixes=item.inherent,
+                        min_greater_affix_count=filter_item.min_greater_affix_count,
+                    )
+                    if not success:
+                        continue
+
+                all_matches = matched_affixes + matched_inherents
+                LOGGER.info(
+                    f"{item.original_name} -- Matched {profile_name}.GlobalUniques: {item.aspect.name if item.aspect else 'Rule'}"
+                )
                 res.keep = True
-                matched_full_name = f"{profile_name}.{item.aspect.name}"
+                matched_full_name = f"{profile_name}.{item.aspect.name if item.aspect else 'Unique'}"
                 if filter_item.profile_alias:
-                    matched_full_name = f"{filter_item.profile_alias}.{item.aspect.name}"
-                res.matched.append(MatchedFilter(matched_full_name, aspect_match=True))
+                    matched_full_name = f"{filter_item.profile_alias}.{item.aspect.name if item.aspect else 'Unique'}"
+                res.matched.append(MatchedFilter(matched_full_name, all_matches, aspect_match=True))
 
         return res
 
@@ -309,20 +336,30 @@ class Filter:
 
     def _match_affixes_count(
         self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix], min_greater_affix_count: int = 0
-    ) -> list[Affix]:
+    ) -> tuple[bool, list[Affix]]:
         result = []
         for count_group in expected_affixes:
             group_res = []
+
+            # Track required matches
+            required_names = [a.name for a in count_group.count if getattr(a, "required", False)]
+            matched_required_names = set()
 
             # Do the normal affix matching first
             for affix in count_group.count:
                 matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
                 if matched_item_affix is not None and self._match_item_aspect_or_affix(affix, matched_item_affix):
                     group_res.append(matched_item_affix)
+                    if getattr(affix, "required", False):
+                        matched_required_names.add(affix.name)
+
+            # Check if all required affixes matched
+            if len(matched_required_names) < len(required_names):
+                return False, []
 
             # Check minCount and maxCount
             if not (count_group.min_count <= len(group_res) <= count_group.max_count):
-                return []  # if one group fails, everything fails
+                return False, []  # if one group fails, everything fails
 
             # Check want_greater requirements (2-mode system)
             want_greater_affixes = [a for a in count_group.count if getattr(a, "want_greater", False)]
@@ -334,7 +371,7 @@ class Filter:
                     for affix in want_greater_affixes:
                         matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
                         if matched_item_affix is None or matched_item_affix.type != AffixType.greater:
-                            return []  # Flagged affix is missing or not GA, fail
+                            return False, []  # Flagged affix is missing or not GA, fail
                 else:
                     # Mode 2: At least min_greater_affix_count of the flagged affixes must be GA (flexible)
                     flagged_ga_count = sum(
@@ -344,10 +381,10 @@ class Filter:
                         and matched.type == AffixType.greater
                     )
                     if flagged_ga_count < min_greater_affix_count:
-                        return []  # Not enough flagged affixes are GA
+                        return False, []  # Not enough flagged affixes are GA
 
             result.extend(group_res)
-        return result
+        return True, result
 
     @staticmethod
     def _match_affixes_sigils(

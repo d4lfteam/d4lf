@@ -185,7 +185,7 @@ class GlobalUniqueModel(BaseModel):
             msg = "uniqueAspect names must be unique"
             raise ValueError(msg)
         if not self.affix_pool:
-            self.affix_pool = [AffixFilterCountModel(count=[], min_count=1)]
+            self.affix_pool = [AffixFilterCountModel(count=[], min_count=0)]
         if not self.inherent_pool:
             self.inherent_pool = [AffixFilterCountModel(count=[], min_count=0)]
         return self
@@ -233,7 +233,7 @@ class ItemFilterModel(BaseModel):
             msg = "uniqueAspect names must be unique"
             raise ValueError(msg)
         if not self.affix_pool:
-            self.affix_pool = [AffixFilterCountModel(count=[], min_count=3)]
+            self.affix_pool = [AffixFilterCountModel(count=[], min_count=0)]
         if not self.inherent_pool:
             self.inherent_pool = [AffixFilterCountModel(count=[], min_count=0)]
         return self
