@@ -32,6 +32,15 @@ from src.tools.gen_data_helpers import (
 
 D4LF_BASE_DIR = Path(__file__).parent.parent.parent
 
+SNO_CLASS_MAP = {
+    410764: "barbarian",
+    410765: "druid",
+    521360: "necromancer",
+    410766: "rogue",
+    410767: "sorcerer",
+    550604: "spiritborn",
+}
+
 
 class AffixGenerationContext(TypedDict):
     attribute_descriptions: dict[str, str]
@@ -43,6 +52,119 @@ class AffixGenerationContext(TypedDict):
     skill_tags_by_sno: dict[int, list[str]]
     ui_tooltips: dict[str, str]
     weapon_types_by_sno: dict[int, str]
+
+
+def _get_slot_lookup() -> dict[str, str]:
+    lookup = {g.lower(): g for g in GEAR_TYPES}
+    lookup.update({
+        "chest": "ChestArmor",
+        "body": "ChestArmor",
+        "pants": "Legs",
+        "axe_2h": "Axe2H",
+        "mace_2h": "Mace2H",
+        "scythe_2h": "Scythe2H",
+        "sword_2h": "Sword2H",
+        "crossbow_2h": "Crossbow2H",
+        "focusbookoffhand": "Focus",
+        "offhandtotem": "OffHandTotem",
+        "offhandshield": "Shield",
+        "offhandtome": "Focus",
+    })
+    return lookup
+
+
+def build_affix_slot_map(d4data_dir: Path) -> dict[int, list[str]]:
+    lookup = _get_slot_lookup()
+    pool_to_slots = {}
+    ity_files = (
+        list(d4data_dir.glob("**/*.itt.json"))
+        or list(d4data_dir.glob("**/*.ity.json"))
+        or list(d4data_dir.glob("**/ItemType*/*.json"))
+        or list(d4data_dir.glob("**/ItemType/*.json"))
+    )
+    matched_slots = set()
+
+    def find_pools(d, potential_pools, depth=0):
+        if isinstance(d, dict):
+            for k, v in d.items():
+                if k.startswith(("sno", "unk_")) or "Pool" in k or "Group" in k or "Affix" in k or k == "__raw__":
+                    sno = v.get("__raw__") if isinstance(v, dict) else v
+                    if isinstance(sno, int) and sno != -1:
+                        potential_pools.append(sno % (2**32))
+                    elif isinstance(v, int) and v != -1:
+                        v_norm = v % (2**32)
+                        if v_norm > 10000:
+                            potential_pools.append(v_norm)
+                find_pools(v, potential_pools, depth + 1)
+        elif isinstance(d, list):
+            for item in d:
+                find_pools(item, potential_pools, depth + 1)
+
+    def scan_for_affixes(obj, found_affix_snos, pool_sno):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if k.startswith(("sno", "unk_")) or "Affix" in k or k == "__raw__":
+                    val = v.get("__raw__") if isinstance(v, dict) else v
+                    if isinstance(val, int):
+                        val_norm = val % (2**32)
+                        if val_norm > 10000 and val_norm != pool_sno:
+                            found_affix_snos.append(val_norm)
+                scan_for_affixes(v, found_affix_snos, pool_sno)
+        elif isinstance(obj, list):
+            for item in obj:
+                scan_for_affixes(item, found_affix_snos, pool_sno)
+
+    for ity_file in ity_files:
+        ity_data = load_json_file(ity_file)
+        ity_type = str(ity_data.get("__type__", "")).lower()
+        is_metadata = (
+            "itemtype" in ity_type or "definition" in ity_type or ".itt" in ity_file.name or ".ity" in ity_file.name
+        )
+        if not is_metadata and ity_type:
+            continue
+        raw_stem = ity_file.name.split(".")[0].lower().replace("_", "").replace("-", "")
+        slot_name = lookup.get(raw_stem)
+        if not slot_name:
+            for key, internal_name in lookup.items():
+                if key in raw_stem:
+                    slot_name = internal_name
+                    break
+        if not slot_name:
+            continue
+        matched_slots.add(slot_name)
+
+        potential_pools = []
+        find_pools(ity_data, potential_pools)
+        for pool_sno in potential_pools:
+            if pool_sno not in pool_to_slots:
+                pool_to_slots[pool_sno] = set()
+            pool_to_slots[pool_sno].add(slot_name)
+
+    apf_files = (
+        list(d4data_dir.glob("**/*.apf.json"))
+        or list(d4data_dir.glob("**/AffixPool*/**/*.json"))
+        or list(d4data_dir.glob("**/Affix*/**/*.json"))
+        or list(d4data_dir.glob("**/AffixPool/*.json"))
+    )
+    affix_to_slots = {}
+    for apf_file in apf_files:
+        apf_data = load_json_file(apf_file)
+        pool_sno_raw = (
+            apf_data.get("__snoID__") or apf_data.get("snoID") or apf_data.get("snoId") or apf_data.get("snoID_")
+        )
+        if pool_sno_raw is None:
+            continue
+        pool_sno = int(pool_sno_raw) % (2**32)
+        if pool_sno not in pool_to_slots:
+            continue
+        slots = pool_to_slots[pool_sno]
+        found_affix_snos = []
+        scan_for_affixes(apf_data, found_affix_snos, pool_sno)
+        for affix_sno in set(found_affix_snos):
+            if affix_sno not in affix_to_slots:
+                affix_to_slots[affix_sno] = set()
+            affix_to_slots[affix_sno].update(slots)
+    return {k: sorted(v) for k, v in affix_to_slots.items()}
 
 
 def remove_content_in_braces(input_string) -> str:
@@ -302,7 +424,21 @@ def companion_style_affix_description(
 
     description = ""
     for attribute in attributes:
-        localisation = context["attribute_descriptions"].get(attribute["id"], "")
+        attr_id = attribute["id"]
+        if any(
+            attr_id.startswith(p)
+            for p in [
+                "Affix_Value_",
+                "Affix_Flat_Value_",
+                "Item_Granted_Skill_Tree_Reward",
+                "Multiplicative_Damage_Percent_Bonus_Per_Skill_Tag",
+                "DOT_DPS_Reduction_Percent_Per_Damage_Type",
+            ]
+        ):
+            localisation = "#"
+        else:
+            localisation = context["attribute_descriptions"].get(attribute["id"]) or ""
+
         if not localisation:
             if (affix_name, attribute["id"]) not in EXPECTED_MISSING_AFFIX_LOCALISATIONS:
                 print(f"WARNING: ({affix_name}) Localisation id {attribute['id']} not found.")
@@ -360,12 +496,26 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
     if not context["skill_tags_by_sno"]:
         context["skill_tags_by_sno"] = {int(key) % (2**32): value for key, value in gbid.get("56", {}).items()}
 
+    lookup = _get_slot_lookup()
+    affix_slot_map = build_affix_slot_map(d4data_dir)
     affix_dict = {}
+    affix_metadata = {}
+
     affix_pattern = "json/base/meta/Affix/*.json"
     affix_files = sorted(d4data_dir.glob(affix_pattern, case_sensitive=False))
     for affix_file in affix_files:
         affix_data = load_json_file(affix_file)
         affix_name = Path(affix_data["__fileName__"]).stem
+        sno_raw = (
+            affix_data.get("__snoID__")
+            or affix_data.get("snoID")
+            or affix_data.get("snoId")
+            or affix_data.get("snoID_")
+        )
+        if sno_raw is None:
+            continue
+        affix_sno = int(sno_raw) % (2**32)
+
         if affix_data.get("eMagicType") != 0:
             continue
         if affix_name.startswith("zz"):
@@ -382,12 +532,56 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
         if normalised is None:
             continue
         key, value = normalised
-        affix_dict[key] = value
+        affix_dict[key] = value  # All affixes go here
+
+        slots = affix_slot_map.get(affix_sno, [])
+        if not slots:
+            fn_lower = affix_name.lower().replace("_", "").replace("-", "")
+            for raw_stem, internal_name in lookup.items():
+                if raw_stem in fn_lower:
+                    slots.append(internal_name)
+            if not slots:
+                # Generic stats (Life, Attributes, Resistance, Core Power) should be available on all armor/jewelry/shields
+                if any(
+                    x in fn_lower
+                    for x in [
+                        "armor",
+                        "life",
+                        "stat",
+                        "resist",
+                        "dex",
+                        "str",
+                        "int",
+                        "will",
+                        "energy",
+                        "essence",
+                        "resource",
+                        "fury",
+                        "spirit",
+                        "mana",
+                    ]
+                ):
+                    slots = ["Amulet", "Boots", "ChestArmor", "Gloves", "Helm", "Legs", "Ring", "Shield"]
+                # Offense-related stats should be on all weapons/jewelry
+                elif any(w in fn_lower for w in ["weapon", "attack", "damage", "crit", "speed"]):
+                    slots = [t for t in GEAR_TYPES if t not in ["Boots", "ChestArmor", "Gloves", "Helm", "Legs"]]
+
+        if slots:
+            if key not in affix_metadata:
+                affix_metadata[key] = {"slots": []}
+            combined_slots = set(affix_metadata[key]["slots"])
+            combined_slots.update(slots)
+            affix_metadata[key]["slots"] = sorted(combined_slots)
 
     merge_custom_affixes(affix_dict, language)
     output_path = output_file or D4LF_BASE_DIR / f"assets/lang/{language}/affixes.json"
     with output_path.open("w", encoding="utf-8") as json_file:
         json.dump(affix_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
+        json_file.write("\n")
+
+    metadata_path = D4LF_BASE_DIR / f"assets/lang/{language}/affix_metadata.json"
+    with metadata_path.open("w", encoding="utf-8") as json_file:
+        json.dump(affix_metadata, json_file, indent=4, ensure_ascii=False, sort_keys=True)
         json_file.write("\n")
 
 
@@ -632,14 +826,52 @@ def generate_uniques(d4data_dir, language):
         if core_unique_file.name.startswith("S10_"):
             # Chaos uniques really throw off our inherent counts
             continue
+
         # Get inherent count and item type from this file. Beyond that, we need the file name to find the enUS strings file.
+        item_type = ""
+        character_class = "all"
         num_inherents = 0
+
         with Path(core_unique_file).open(encoding="utf-8") as unique_item_file:
             unique_item_data = json.load(unique_item_file)
             if "arForcedAffixes" not in unique_item_data or not unique_item_data["arForcedAffixes"]:
                 continue
             item_type = unique_item_data["snoItemType"]["name"]
             inherent_affixes = unique_item_data["arInherentAffixes"]
+            class_info = unique_item_data.get("snoCharacterClass")
+            if class_info:
+                raw_id = int(class_info.get("__raw__", -1)) % (2**32)
+                if class_info.get("name"):
+                    name_lower = class_info["name"].lower()
+                    if "warlock" in name_lower or "sorcerer" in name_lower:
+                        character_class = "sorcerer"
+                    elif "barbarian" in name_lower:
+                        character_class = "barbarian"
+                    elif "druid" in name_lower:
+                        character_class = "druid"
+                    elif "necromancer" in name_lower:
+                        character_class = "necromancer"
+                    elif "rogue" in name_lower:
+                        character_class = "rogue"
+                    elif "spiritborn" in name_lower:
+                        character_class = "spiritborn"
+                if character_class == "all" and raw_id in SNO_CLASS_MAP:
+                    character_class = SNO_CLASS_MAP[raw_id]
+
+            if character_class == "all":
+                fn_lower = core_unique_file.name.lower()
+                class_patterns = {
+                    "_barb": "barbarian",
+                    "_dru": "druid",
+                    "_necro": "necromancer",
+                    "_rog": "rogue",
+                    "_sorc": "sorcerer",
+                    "_spirit": "spiritborn",
+                }
+                for pattern, c_name in class_patterns.items():
+                    if pattern in fn_lower:
+                        character_class = c_name
+                        break
 
         if item_type not in GEAR_TYPES and item_type != "FocusBookOffHand":
             continue
@@ -669,7 +901,7 @@ def generate_uniques(d4data_dir, language):
         if name_clean is None or name_clean in items_to_ignore or is_placeholder_or_test_name(name_clean):
             continue
 
-        unique_dict[name_clean] = {"num_inherents": num_inherents}
+        unique_dict[name_clean] = {"num_inherents": num_inherents, "item_type": item_type, "class": character_class}
 
     with Path(D4LF_BASE_DIR / f"assets/lang/{language}/uniques.json").open("w", encoding="utf-8") as json_file:
         json.dump(unique_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)

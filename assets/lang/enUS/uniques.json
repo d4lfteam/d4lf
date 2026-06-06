@@ -1,887 +1,1477 @@
 {
     "100000_steps": {
+        "class": "barbarian",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "accord_of_the_wilds": {
+        "class": "druid",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "aegroms_schism": {
+        "class": "all",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "ahavarion_spear_of_lycander": {
+        "class": "all",
+        "item_type": "Staff",
         "num_inherents": 0
     },
     "airidahs_inexorable_will": {
+        "class": "druid",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "anathema_of_the_primes": {
+        "class": "all",
+        "item_type": "Sword2H",
         "num_inherents": 0
     },
     "ancients_oath": {
+        "class": "barbarian",
+        "item_type": "Axe2H",
         "num_inherents": 0
     },
     "andariels_visage": {
+        "class": "all",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "arcadia": {
+        "class": "all",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "argent_veil": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "arreats_bearing": {
+        "class": "barbarian",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "ashearas_khanjar": {
+        "class": "rogue",
+        "item_type": "Dagger",
         "num_inherents": 0
     },
     "assassins_stride": {
+        "class": "rogue",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "autumnal_crown": {
+        "class": "druid",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "axial_conduit": {
+        "class": "sorcerer",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "azurewrath": {
+        "class": "all",
+        "item_type": "Sword",
         "num_inherents": 0
     },
     "balazans_maxtlatl": {
+        "class": "spiritborn",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "band_of_first_breath": {
+        "class": "spiritborn",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "bands_of_ichorous_rose": {
+        "class": "rogue",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "bane_of_ahjad-den": {
+        "class": "barbarian",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "banished_lords_talisman": {
+        "class": "all",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "bastion_of_sir_matthias": {
+        "class": "all",
+        "item_type": "Shield",
         "num_inherents": 2
     },
     "battle_trance": {
+        "class": "barbarian",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "beastfall_boots": {
+        "class": "rogue",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "bindings_of_attrition": {
+        "class": "all",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "black_river": {
+        "class": "necromancer",
+        "item_type": "Scythe",
         "num_inherents": 0
     },
     "blood-mad_idol": {
+        "class": "all",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "blood_artisans_cuirass": {
+        "class": "necromancer",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "blood_moon_breeches": {
+        "class": "necromancer",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "blood_wake": {
+        "class": "necromancer",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "bloodless_scream": {
+        "class": "necromancer",
+        "item_type": "Scythe2H",
         "num_inherents": 0
     },
     "blue_rose": {
+        "class": "sorcerer",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "bridle_of_torbaalos": {
+        "class": "all",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "cage_of_madness": {
+        "class": "all",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "cassias_grace": {
+        "class": "rogue",
+        "item_type": "Bow",
         "num_inherents": 0
     },
     "cathedrals_song": {
+        "class": "all",
+        "item_type": "Shield",
         "num_inherents": 2
     },
     "chainscourged_mail": {
+        "class": "barbarian",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "cluckeye": {
+        "class": "all",
+        "item_type": "Bow",
         "num_inherents": 0
     },
     "cluckonomicon": {
+        "class": "all",
+        "item_type": "Staff",
         "num_inherents": 0
     },
     "condemnation": {
+        "class": "rogue",
+        "item_type": "Dagger",
         "num_inherents": 0
     },
     "coop_de_grâce": {
+        "class": "all",
+        "item_type": "Polearm",
         "num_inherents": 0
     },
     "cowl_of_malefic_torment": {
+        "class": "all",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "cowl_of_the_nameless": {
+        "class": "rogue",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "craze_of_the_dead_god": {
+        "class": "spiritborn",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "crown_of_lucion": {
+        "class": "all",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "cruors_embrace": {
+        "class": "necromancer",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "dark_howl": {
+        "class": "druid",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "dark_stalkers_medallion": {
+        "class": "barbarian",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "dawnfire": {
+        "class": "all",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "deathgrip": {
+        "class": "necromancer",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "deathless_visage": {
+        "class": "necromancer",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "deathmask_of_nirmitruq": {
+        "class": "rogue",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "deaths_pavane": {
+        "class": "rogue",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "deathspeakers_pendant": {
+        "class": "necromancer",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "desperate_march": {
+        "class": "rogue",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "dirge_of_airidah": {
+        "class": "druid",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "dirge_of_odium": {
+        "class": "all",
+        "item_type": "Axe2H",
         "num_inherents": 0
     },
     "dolmen_stone": {
+        "class": "druid",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "doombringer": {
+        "class": "all",
+        "item_type": "Sword",
         "num_inherents": 0
     },
     "drognans_anguish": {
+        "class": "sorcerer",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "eaglehorn": {
+        "class": "rogue",
+        "item_type": "Bow",
         "num_inherents": 0
     },
     "earthbreaker": {
+        "class": "druid",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "ebonpiercer": {
+        "class": "necromancer",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "echo_of_kwatli": {
+        "class": "spiritborn",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "eggcecutioner": {
+        "class": "all",
+        "item_type": "Scythe2H",
         "num_inherents": 0
     },
     "eggis": {
+        "class": "all",
+        "item_type": "Shield",
         "num_inherents": 2
     },
     "eldruin_sword_of_justice": {
+        "class": "all",
+        "item_type": "Sword",
         "num_inherents": 1
     },
     "elegy": {
+        "class": "all",
+        "item_type": "Sword",
         "num_inherents": 0
     },
     "emberfury": {
+        "class": "sorcerer",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "emblem_of_staalbreak": {
+        "class": "barbarian",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "endurant_faith": {
+        "class": "all",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "esadoras_overflowing_cameo": {
+        "class": "sorcerer",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "esus_heirloom": {
+        "class": "sorcerer",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "etnas_lost_dagger": {
+        "class": "rogue",
+        "item_type": "Dagger",
         "num_inherents": 0
     },
     "eye_of_baal": {
+        "class": "all",
+        "item_type": "Focus",
         "num_inherents": 0
     },
     "eyes_in_the_dark": {
+        "class": "rogue",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "fang_of_the_vipermagi": {
+        "class": "sorcerer",
+        "item_type": "Dagger",
         "num_inherents": 0
     },
     "fields_of_crimson": {
+        "class": "barbarian",
+        "item_type": "Sword2H",
         "num_inherents": 0
     },
     "fist_of_the_iron_rose": {
+        "class": "rogue",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "fists_of_fate": {
+        "class": "all",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "flamescar": {
+        "class": "sorcerer",
+        "item_type": "Wand",
         "num_inherents": 0
     },
     "flameweaver": {
+        "class": "sorcerer",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "fleshrender": {
+        "class": "druid",
+        "item_type": "Mace",
         "num_inherents": 0
     },
     "fleshwrit_carapace": {
+        "class": "all",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "flickerstep": {
+        "class": "all",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "footfalls_of_the_waning_world": {
+        "class": "all",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "fractured_runestone": {
+        "class": "druid",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "fractured_winterglass": {
+        "class": "sorcerer",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "frostburn": {
+        "class": "all",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "fury_of_the_wilds": {
+        "class": "druid",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "galvanic_azurite": {
+        "class": "sorcerer",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "gate_of_the_red_dawn": {
+        "class": "all",
+        "item_type": "Shield",
         "num_inherents": 2
     },
     "gathlens_birthright": {
+        "class": "druid",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "gauntlets_of_sheol": {
+        "class": "all",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "gift_of_frost": {
+        "class": "sorcerer",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "gladiators_triumph": {
+        "class": "rogue",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "gloves_of_the_illuminator": {
+        "class": "sorcerer",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "godslayer_crown": {
+        "class": "all",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "gohrs_devastating_grips": {
+        "class": "barbarian",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "gospel_of_the_devotee": {
+        "class": "necromancer",
+        "item_type": "FocusBookOffHand",
         "num_inherents": 0
     },
     "grasp_of_shadow": {
+        "class": "rogue",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "gravewalkers_hand": {
+        "class": "necromancer",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "greatstaff_of_the_crone": {
+        "class": "druid",
+        "item_type": "Staff",
         "num_inherents": 0
     },
     "greaves_of_the_empty_tomb": {
+        "class": "necromancer",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "greenwalkers_oath": {
+        "class": "druid",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "greenwalkers_signet": {
+        "class": "druid",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "griswolds_opus": {
+        "class": "all",
+        "item_type": "Sword",
         "num_inherents": 0
     },
     "hail_of_verglas": {
+        "class": "sorcerer",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "hand_of_apotheosis": {
+        "class": "all",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "hands_of_the_worldbreaker": {
+        "class": "all",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "hangmans_hand": {
+        "class": "necromancer",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "harlequin_crest": {
+        "class": "all",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "harmony_of_ebewaka": {
+        "class": "spiritborn",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "heart_of_azgar": {
+        "class": "druid",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "hecaton_chasm": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "heir_of_perdition": {
+        "class": "all",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "hellbrand_signet": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "hellhammer": {
+        "class": "barbarian",
+        "item_type": "Mace2H",
         "num_inherents": 0
     },
     "hellhounds_sabatons": {
+        "class": "all",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "herald_of_zakarum": {
+        "class": "all",
+        "item_type": "Shield",
         "num_inherents": 3
     },
     "heralds_morningstar": {
+        "class": "all",
+        "item_type": "Mace",
         "num_inherents": 0
     },
     "hesha_e_kesungi": {
+        "class": "spiritborn",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "hooves_of_the_mountain_god": {
+        "class": "barbarian",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "howl_from_below": {
+        "class": "necromancer",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "hunters_zenith": {
+        "class": "druid",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "iceheart_brais": {
+        "class": "sorcerer",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "ifehs_dire_totem": {
+        "class": "druid",
+        "item_type": "OffHandTotem",
         "num_inherents": 0
     },
     "indiras_memory": {
+        "class": "necromancer",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "infernal_homunculus": {
+        "class": "all",
+        "item_type": "Focus",
         "num_inherents": 0
     },
     "insatiable_fury": {
+        "class": "druid",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "jacinth_shell": {
+        "class": "spiritborn",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "judgment_of_auriel": {
+        "class": "all",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "judicants_glaivehelm": {
+        "class": "all",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "kabraxis_will": {
+        "class": "all",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "kessimes_legacy": {
+        "class": "necromancer",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "khamsin_steppewalkers": {
+        "class": "druid",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "kilt_of_blackwing": {
+        "class": "druid",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "levin_grasp": {
+        "class": "sorcerer",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "lidless_wall": {
+        "class": "necromancer",
+        "item_type": "Shield",
         "num_inherents": 2
     },
     "lights_rebuke": {
+        "class": "all",
+        "item_type": "Flail",
         "num_inherents": 0
     },
     "litany_of_sable": {
+        "class": "all",
+        "item_type": "Dagger",
         "num_inherents": 0
     },
     "locrans_talisman": {
+        "class": "all",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "loyaltys_mantle": {
+        "class": "spiritborn",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "lurid_pact": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "mace_of_king_leoric": {
+        "class": "necromancer",
+        "item_type": "Mace",
         "num_inherents": 0
     },
     "mad_wolfs_glee": {
+        "class": "druid",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "malefic_crescent": {
+        "class": "druid",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "mantle_of_mountains_fury": {
+        "class": "barbarian",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "mantle_of_the_grey": {
+        "class": "all",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "march_of_the_stalwart_soul": {
+        "class": "all",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "mark_of_the_old_wolf": {
+        "class": "druid",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "melted_heart_of_selig": {
+        "class": "all",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "might_of_qual-kehk": {
+        "class": "barbarian",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "might_of_the_ursine": {
+        "class": "druid",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "misericorde": {
+        "class": "rogue",
+        "item_type": "Sword",
         "num_inherents": 0
     },
     "mjölnic_ryng": {
+        "class": "druid",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "molochs_beating_flame": {
+        "class": "all",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "molten_band": {
+        "class": "sorcerer",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "morlu_fleshward": {
+        "class": "all",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "mothers_embrace": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "mutilator_plate": {
+        "class": "necromancer",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "nails_of_the_gore-crowned": {
+        "class": "all",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "nesekem_the_herald": {
+        "class": "spiritborn",
+        "item_type": "Glaive",
         "num_inherents": 0
     },
     "night_terror": {
+        "class": "all",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "nomads_longing_heart": {
+        "class": "barbarian",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "okuns_catalyst": {
+        "class": "sorcerer",
+        "item_type": "FocusBookOffHand",
         "num_inherents": 1
     },
     "omen_of_pain": {
+        "class": "necromancer",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "onyx_soul": {
+        "class": "sorcerer",
+        "item_type": "FocusBookOffHand",
         "num_inherents": 0
     },
     "ophidian_iris": {
+        "class": "sorcerer",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "orphan_maker": {
+        "class": "rogue",
+        "item_type": "Crossbow2H",
         "num_inherents": 0
     },
     "orsivane": {
+        "class": "sorcerer",
+        "item_type": "Mace",
         "num_inherents": 0
     },
     "overkill": {
+        "class": "barbarian",
+        "item_type": "Mace2H",
         "num_inherents": 0
     },
     "pact_of_bone": {
+        "class": "necromancer",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "paingorgers_gauntlets": {
+        "class": "all",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "path_of_the_emissary": {
+        "class": "spiritborn",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "path_of_tragoul": {
+        "class": "necromancer",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "peacemongers_signet": {
+        "class": "spiritborn",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "penitent_greaves": {
+        "class": "all",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "pitfighters_gull": {
+        "class": "rogue",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "protean_heart": {
+        "class": "spiritborn",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "protection_of_the_prime": {
+        "class": "spiritborn",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "purified_lightbringer": {
+        "class": "druid",
+        "item_type": "Mace2H",
         "num_inherents": 0
     },
     "rage_of_harrogath": {
+        "class": "barbarian",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "raiment_of_the_infinite": {
+        "class": "sorcerer",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "raiment_of_the_sea": {
+        "class": "sorcerer",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "rakanoths_wake": {
+        "class": "all",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "ramaladnis_magnum_opus": {
+        "class": "barbarian",
+        "item_type": "Sword",
         "num_inherents": 0
     },
     "razorplate": {
+        "class": "all",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "red_blessing": {
+        "class": "necromancer",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "red_sermon": {
+        "class": "all",
+        "item_type": "Sword2H",
         "num_inherents": 0
     },
     "rictus_of_terror": {
+        "class": "all",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "rimeblood": {
+        "class": "sorcerer",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "ring_of_mendeln": {
+        "class": "necromancer",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "ring_of_red_furor": {
+        "class": "barbarian",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "ring_of_starless_skies": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "ring_of_the_midday_hunt": {
+        "class": "spiritborn",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "ring_of_the_midnight_sun": {
+        "class": "spiritborn",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "ring_of_the_ravenous": {
+        "class": "barbarian",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "ring_of_the_sacrilegious_soul": {
+        "class": "necromancer",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "ring_of_writhing_moon": {
+        "class": "spiritborn",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "rod_of_kepeleke": {
+        "class": "spiritborn",
+        "item_type": "Quarterstaff",
         "num_inherents": 0
     },
     "rotting_lightbringer": {
+        "class": "druid",
+        "item_type": "Mace2H",
         "num_inherents": 0
     },
     "rustbitten_dirk": {
+        "class": "all",
+        "item_type": "Dagger",
         "num_inherents": 0
     },
     "saboteurs_signet": {
+        "class": "rogue",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "sabre_of_tsasgal": {
+        "class": "barbarian",
+        "item_type": "Sword",
         "num_inherents": 0
     },
     "sanctis_of_kethamar": {
+        "class": "all",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "sanguivor_blade_of_zir": {
+        "class": "necromancer",
+        "item_type": "Sword2H",
         "num_inherents": 0
     },
     "sashes_of_the_wretched": {
+        "class": "all",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "scepter_of_the_three": {
+        "class": "all",
+        "item_type": "Mace2H",
         "num_inherents": 0
     },
     "scorn_of_the_earth": {
+        "class": "spiritborn",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "scoundrels_kiss": {
+        "class": "rogue",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "scoundrels_leathers": {
+        "class": "rogue",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "scourge_of_duriel": {
+        "class": "all",
+        "item_type": "Flail",
         "num_inherents": 0
     },
     "sea_lords_fine_gloves": {
+        "class": "rogue",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "seal_of_the_ophanim": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "seal_of_the_second_trumpet": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "seed_of_horazon": {
+        "class": "all",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "sepazontec": {
+        "class": "spiritborn",
+        "item_type": "Quarterstaff",
         "num_inherents": 0
     },
     "shanars_resonance": {
+        "class": "sorcerer",
+        "item_type": "FocusBookOffHand",
         "num_inherents": 0
     },
     "shard_of_verathiel": {
+        "class": "all",
+        "item_type": "Sword",
         "num_inherents": 0
     },
     "shattered_vow": {
+        "class": "all",
+        "item_type": "Polearm",
         "num_inherents": 0
     },
     "shroud_of_false_death": {
+        "class": "all",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "shroud_of_khanduras": {
+        "class": "rogue",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "shrouded_gift": {
+        "class": "rogue",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "sidhe_bindings": {
+        "class": "sorcerer",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "signet_of_pelghain": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "sire_of_sin": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "skyhunter": {
+        "class": "rogue",
+        "item_type": "Bow",
         "num_inherents": 0
     },
     "sliver_of_hate": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "soulbrand": {
+        "class": "all",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "spine_of_tathamet": {
+        "class": "all",
+        "item_type": "Mace",
         "num_inherents": 0
     },
     "staff_of_endless_rage": {
+        "class": "sorcerer",
+        "item_type": "Staff",
         "num_inherents": 0
     },
     "staff_of_lam_esen": {
+        "class": "sorcerer",
+        "item_type": "Staff",
         "num_inherents": 0
     },
     "staff_of_zerae": {
+        "class": "sorcerer",
+        "item_type": "Staff",
         "num_inherents": 0
     },
     "starfall_coronet": {
+        "class": "sorcerer",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "stone_of_vehemen": {
+        "class": "druid",
+        "item_type": "OffHandTotem",
         "num_inherents": 0
     },
     "storms_companion": {
+        "class": "druid",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "strike_of_stormhorn": {
+        "class": "sorcerer",
+        "item_type": "FocusBookOffHand",
         "num_inherents": 0
     },
     "sunbirds_gorget": {
+        "class": "spiritborn",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "sunbrand": {
+        "class": "all",
+        "item_type": "Flail",
         "num_inherents": 0
     },
     "sundered_night": {
+        "class": "all",
+        "item_type": "Axe2H",
         "num_inherents": 0
     },
     "sunstained_war-crozier": {
+        "class": "spiritborn",
+        "item_type": "Quarterstaff",
         "num_inherents": 0
     },
     "supplication": {
+        "class": "all",
+        "item_type": "Sword",
         "num_inherents": 0
     },
     "tal_rashas_iridescent_loop": {
+        "class": "sorcerer",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "tassets_of_the_dawning_sky": {
+        "class": "all",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "temerity": {
+        "class": "all",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "tempest_roar": {
+        "class": "druid",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "the_basilisk": {
+        "class": "druid",
+        "item_type": "Staff",
         "num_inherents": 0
     },
     "the_blade_of_sight_aflame": {
+        "class": "all",
+        "item_type": "Sword",
         "num_inherents": 0
     },
     "the_butchers_cleaver": {
+        "class": "all",
+        "item_type": "Axe",
         "num_inherents": 0
     },
     "the_eightfold_idol": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "the_fecund_seal": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "the_gloom_ward": {
+        "class": "necromancer",
+        "item_type": "Shield",
         "num_inherents": 2
     },
     "the_grandfather": {
+        "class": "all",
+        "item_type": "Sword2H",
         "num_inherents": 1
     },
     "the_hand_of_naz": {
+        "class": "necromancer",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "the_hemat_stone": {
+        "class": "all",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "the_maestro": {
+        "class": "rogue",
+        "item_type": "Dagger",
         "num_inherents": 0
     },
     "the_mortacrux": {
+        "class": "necromancer",
+        "item_type": "Dagger",
         "num_inherents": 0
     },
     "the_oculus": {
+        "class": "sorcerer",
+        "item_type": "Wand",
         "num_inherents": 0
     },
     "the_open_eye_of_gorgorra": {
+        "class": "barbarian",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "the_relentless_heart": {
+        "class": "barbarian",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "the_third_blade": {
+        "class": "barbarian",
+        "item_type": "Sword",
         "num_inherents": 0
     },
     "the_umbracrux": {
+        "class": "rogue",
+        "item_type": "Dagger",
         "num_inherents": 0
     },
     "the_undercrown": {
+        "class": "necromancer",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "the_unmaker": {
+        "class": "necromancer",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "thousand-eye_reaver": {
+        "class": "all",
+        "item_type": "Axe",
         "num_inherents": 0
     },
     "thrice-woven_nightmare": {
+        "class": "all",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "thundergods_blessing": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "tibaults_will": {
+        "class": "all",
+        "item_type": "Legs",
         "num_inherents": 0
     },
     "tuskhelm_of_joritz_the_mighty": {
+        "class": "barbarian",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "twin_strikes": {
+        "class": "barbarian",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "tyraels_might": {
+        "class": "all",
+        "item_type": "ChestArmor",
         "num_inherents": 1
     },
     "ugly_bastard_helm": {
+        "class": "barbarian",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "unbroken_chain": {
+        "class": "barbarian",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "unsung_ascetics_wraps": {
+        "class": "druid",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "vasilys_prayer": {
+        "class": "druid",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "vengeful_sinew": {
+        "class": "necromancer",
+        "item_type": "ChestArmor",
         "num_inherents": 0
     },
     "vision_of_the_firestorm": {
+        "class": "sorcerer",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "vox_omnium": {
+        "class": "sorcerer",
+        "item_type": "Staff",
         "num_inherents": 0
     },
     "ward_of_the_white_dove": {
+        "class": "all",
+        "item_type": "Shield",
         "num_inherents": 2
     },
     "waxing_gibbous": {
+        "class": "druid",
+        "item_type": "Axe",
         "num_inherents": 0
     },
     "wendigo_brand": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "widows_web": {
+        "class": "spiritborn",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "wildheart_hunger": {
+        "class": "druid",
+        "item_type": "Boots",
         "num_inherents": 0
     },
     "will_of_rathma": {
+        "class": "necromancer",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "will_of_stone": {
+        "class": "druid",
+        "item_type": "Helm",
         "num_inherents": 0
     },
     "windforce": {
+        "class": "rogue",
+        "item_type": "Bow",
         "num_inherents": 0
     },
     "word_of_hakan": {
+        "class": "rogue",
+        "item_type": "Amulet",
         "num_inherents": 0
     },
     "wound_drinker": {
+        "class": "spiritborn",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "wreath_of_auric_laurel": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "writhing_band_of_trickery": {
+        "class": "rogue",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "wushe_nak_pa": {
+        "class": "spiritborn",
+        "item_type": "Glaive",
         "num_inherents": 0
     },
     "wyrdskin": {
+        "class": "all",
+        "item_type": "Gloves",
         "num_inherents": 0
     },
     "xfals_corroded_signet": {
+        "class": "all",
+        "item_type": "Ring",
         "num_inherents": 0
     },
     "yens_blessing": {
+        "class": "all",
+        "item_type": "Boots",
         "num_inherents": 0
     }
 }

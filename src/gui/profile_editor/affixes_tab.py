@@ -1,6 +1,8 @@
 import contextlib
 import copy
+import json
 import logging
+from pathlib import Path
 from typing import override
 
 from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, pyqtSignal
@@ -117,6 +119,22 @@ def _item_type_summary(item_types: list[ItemType]) -> str:
     if not item_types:
         return "All item types"
     return ", ".join(item_type.value for item_type in item_types)
+
+
+def _get_affix_metadata() -> dict:
+    """Helper to load affix metadata for slot filtering."""
+    try:
+        meta_path = Path("assets/lang/enUS/affix_metadata.json")
+        if not meta_path.exists():
+            LOGGER.warning(f"Affix metadata file not found: {meta_path}")
+            return {}
+        with meta_path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        LOGGER.error(f"Error decoding affix metadata JSON from {meta_path}: {e}")
+    except OSError as e:
+        LOGGER.error(f"Error reading affix metadata file {meta_path}: {e}")
+    return {}
 
 
 class ItemTypePicker(QDialog):
@@ -368,7 +386,13 @@ def _create_column_footer(model: AffixFilterCountModel, on_change_cb: callable) 
 
 
 class UniqueAspectDialog(QDialog):
-    def __init__(self, parent: QWidget, model: AspectUniqueFilterModel):
+    def __init__(
+        self,
+        parent: QWidget,
+        model: AspectUniqueFilterModel,
+        character_class: str = "all",
+        allowed_item_types: list[ItemType] | None = None,
+    ):
         super().__init__(parent)
         self.setWindowTitle("Configure Unique Aspect")
         self.setMinimumWidth(550)
@@ -405,12 +429,39 @@ class UniqueAspectDialog(QDialog):
 
         form = QFormLayout()
 
+        unique_dict = Dataloader().aspect_unique_dict
+        filtered_uniques = []
+
+        # Normalize class for internal lookup
+        search_class = character_class.lower()
+        if "warlock" in search_class:
+            search_class = "sorcerer"
+
+        for name, data in unique_dict.items():
+            # Class Filter: Keep if item is for 'all' or matches the current class
+            u_class = str(data.get("class", "all")).lower()
+            if search_class != "all" and u_class not in ("all", search_class):
+                continue
+
+            # Slot Filter: Keep if item type matches any of the allowed types for this filter
+            u_type = str(data.get("item_type"))
+            if allowed_item_types and u_type and not any(u_type in (t.name, t.value) for t in allowed_item_types):
+                continue
+
+            filtered_uniques.append(name)
+
+        if not filtered_uniques:
+            filtered_uniques = list(unique_dict.keys())
+
         self.name_combo = TruncatingComboBox()
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.name_combo.addItems(sorted(Dataloader().aspect_unique_dict.keys()))
-        self.name_combo.setCurrentText(model.name)
+        self.name_combo.addItems(sorted(filtered_uniques))
+        if model.name in filtered_uniques:
+            self.name_combo.setCurrentText(model.name)
+        elif self.name_combo.count() > 0:
+            self.name_combo.setCurrentIndex(0)
         form.addRow("Aspect:", self.name_combo)
 
         self.mode_combo = IgnoreScrollWheelComboBox()
@@ -456,7 +507,7 @@ class UniqueAspectDialog(QDialog):
 
 
 class AffixEditDialog(QDialog):
-    def __init__(self, parent: QWidget, model: AffixFilterModel):
+    def __init__(self, parent: QWidget, model: AffixFilterModel, allowed_item_types: list[ItemType] | None = None):
         super().__init__(parent)
         self.setWindowTitle("Configure Affix")
         self.setMinimumWidth(550)
@@ -493,14 +544,48 @@ class AffixEditDialog(QDialog):
 
         form = QFormLayout()
 
+        affix_dict = Dataloader().affix_dict
+        affix_metadata = _get_affix_metadata()
+
+        filtered_affixes = []
+        if allowed_item_types is None:
+            # Global rules: show all affixes regardless of metadata
+            filtered_affixes = sorted(affix_dict.values())
+        else:
+            # Legendary items: smartly use metadata whitelist
+            if not allowed_item_types:
+                # If no slots specified, show all affixes present in metadata (the active whitelist)
+                for affix_id, display_name in affix_dict.items():
+                    if affix_id in affix_metadata:
+                        filtered_affixes.append(display_name)
+            else:
+                # Filter by specific slots defined in the rule
+                allowed_slot_names = [t.name for t in allowed_item_types]
+                for affix_id, display_name in affix_dict.items():
+                    meta = affix_metadata.get(affix_id)
+                    if meta:
+                        slots = meta.get("slots", [])
+                        if any(s in allowed_slot_names for s in slots):
+                            filtered_affixes.append(display_name)
+
+            # Fallback if metadata is missing or filter returned nothing
+            if not filtered_affixes:
+                filtered_affixes = sorted(affix_dict.values())
+
+            filtered_affixes.sort()
+
+        if not filtered_affixes:
+            filtered_affixes = sorted(affix_dict.values())
+
         self.name_combo = TruncatingComboBox()
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.name_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
-        self.name_combo.addItems(sorted(Dataloader().affix_dict.values()))
-        if model.name in Dataloader().affix_dict:
-            self.name_combo.setCurrentText(Dataloader().affix_dict[model.name])
+        self.name_combo.addItems(filtered_affixes)
+        if model.name in affix_dict:
+            current_display = affix_dict[model.name]
+            self.name_combo.setCurrentText(current_display)
         form.addRow("Affix:", self.name_combo)
 
         options_layout = QHBoxLayout()
@@ -561,7 +646,9 @@ class AffixEditDialog(QDialog):
 
 
 class AffixPoolDialog(QDialog):
-    def __init__(self, parent: QWidget, pool: AffixFilterCountModel, title: str):
+    def __init__(
+        self, parent: QWidget, pool: AffixFilterCountModel, title: str, allowed_item_types: list[ItemType] | None = None
+    ):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setMinimumSize(700, 600)
@@ -624,13 +711,13 @@ class AffixPoolDialog(QDialog):
         self.rows_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         for affix in pool.count:
-            self.add_affix_row(affix)
+            self.add_affix_row(affix, allowed_item_types)
 
         scroll.setWidget(self.rows_container)
         layout.addWidget(scroll)
 
         add_btn = QPushButton("+ Add Affix to Pool")
-        add_btn.clicked.connect(self.add_affix)
+        add_btn.clicked.connect(lambda: self.add_affix(allowed_item_types))
         layout.addWidget(add_btn)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
@@ -638,14 +725,39 @@ class AffixPoolDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
-    def add_affix_row(self, model: AffixFilterModel):
-        widget = AffixWidget(model)
+    def add_affix_row(self, model: AffixFilterModel, allowed_item_types: list[ItemType] | None = None):
+        widget = AffixWidget(model, allowed_item_types=allowed_item_types)
         widget.delete_requested.connect(lambda: self.remove_affix_widget(widget))
         self.rows_layout.addWidget(widget)
 
-    def add_affix(self):
-        items = sorted(Dataloader().affix_dict.values())
-        dialog = SelectionDialog(self, "Select Affix", items)
+    def add_affix(self, allowed_item_types: list[ItemType] | None = None):
+        affix_dict = Dataloader().affix_dict
+        affix_metadata = _get_affix_metadata()
+
+        filtered_affixes = []
+        if allowed_item_types is None:
+            filtered_affixes = sorted(affix_dict.values())
+        else:
+            if not allowed_item_types:
+                for affix_id, display_name in affix_dict.items():
+                    if affix_id in affix_metadata:
+                        filtered_affixes.append(display_name)
+            else:
+                allowed_slot_names = [t.name for t in allowed_item_types]
+                for affix_id, display_name in affix_dict.items():
+                    meta = affix_metadata.get(affix_id)
+                    if meta and any(s in allowed_slot_names for s in meta.get("slots", [])):
+                        filtered_affixes.append(display_name)
+
+            if not filtered_affixes:
+                filtered_affixes = sorted(affix_dict.values())
+
+            filtered_affixes.sort()
+
+        if not filtered_affixes:
+            filtered_affixes = sorted(affix_dict.values())
+
+        dialog = SelectionDialog(self, "Select Affix", filtered_affixes)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             val = dialog.get_value()
             if val:
@@ -653,7 +765,7 @@ class AffixPoolDialog(QDialog):
                 affix_id = reverse_dict.get(val)
                 new_model = AffixFilterModel(name=affix_id, value=None)
                 self.pool.count.append(new_model)
-                self.add_affix_row(new_model)
+                self.add_affix_row(new_model, allowed_item_types)
 
     def remove_affix_widget(self, widget: AffixWidget):
         if widget.affix in self.pool.count:
@@ -1148,7 +1260,22 @@ class UniqueAspectWidget(QWidget):
             self.open_config_dialog()
 
     def open_config_dialog(self) -> QDialog.DialogCode:
-        dialog = UniqueAspectDialog(self, self.unique_aspect)
+        # Gather context by crawling up the widget tree
+        char_class = "all"
+        allowed_types = []
+        curr = self.parent()
+        while curr:
+            if hasattr(curr, "profile_model"):  # ProfileEditor
+                char_class = curr.profile_model.class_name.lower()
+            # Check for Item Types in AffixGroupEditor (Affixes Tab)
+            if hasattr(curr, "config") and hasattr(curr.config, "item_type"):
+                allowed_types = curr.config.item_type
+            # Check for Item Types in UniqueWidget (Global Uniques Tab)
+            if hasattr(curr, "unique_model") and hasattr(curr.unique_model, "item_type"):
+                allowed_types = curr.unique_model.item_type
+            curr = curr.parent()
+
+        dialog = UniqueAspectDialog(self, self.unique_aspect, char_class, allowed_types)
         result = dialog.exec()
         if result == QDialog.DialogCode.Accepted:
             self.refresh_display()
@@ -1271,7 +1398,23 @@ class AffixSummaryWidget(QWidget):
             self.open_config_dialog()
 
     def open_config_dialog(self) -> QDialog.DialogCode:
-        dialog = AffixEditDialog(self, self.model)
+        # Gather context by crawling up the widget tree
+        allowed_types = []
+        is_global = False
+        curr = self.parent()
+        while curr:
+            # Check for Item Types in AffixGroupEditor (Affixes Tab)
+            if hasattr(curr, "config") and hasattr(curr.config, "item_type"):
+                allowed_types = curr.config.item_type
+                is_global = False
+                break
+            # If we hit UniqueWidget, we are in a Global Rule
+            if hasattr(curr, "unique_model"):
+                is_global = True
+                break
+            curr = curr.parent()
+
+        dialog = AffixEditDialog(self, self.model, None if is_global else allowed_types)
         result = dialog.exec()
         if result == QDialog.DialogCode.Accepted:
             self.refresh_display()
@@ -1346,7 +1489,21 @@ class AffixPoolWidget(QWidget):
             self.open_config_dialog()
 
     def open_config_dialog(self):
-        dialog = AffixPoolDialog(self, self.pool, self.pool_name_label.text())
+        # Find allowed types
+        allowed_types = []
+        is_global = False
+        curr = self.parent()
+        while curr:
+            if hasattr(curr, "config") and hasattr(curr.config, "item_type"):
+                allowed_types = curr.config.item_type
+                is_global = False
+                break
+            if hasattr(curr, "unique_model"):
+                is_global = True
+                break
+            curr = curr.parent()
+
+        dialog = AffixPoolDialog(self, self.pool, self.pool_name_label.text(), None if is_global else allowed_types)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.refresh_display()
             self.config_changed.emit()
@@ -1363,9 +1520,10 @@ class AffixPoolWidget(QWidget):
 class AffixWidget(QWidget):
     delete_requested = pyqtSignal()
 
-    def __init__(self, affix: AffixFilterModel, parent=None):
+    def __init__(self, affix: AffixFilterModel, parent=None, allowed_item_types: list[ItemType] | None = None):
         super().__init__(parent)
         self.affix = affix
+        self.allowed_item_types = allowed_item_types
         self.setStyleSheet("background: transparent; border: none;")
         self.setup_ui()
 
@@ -1399,15 +1557,36 @@ class AffixWidget(QWidget):
     def create_affix_name_combobox(self):
         # The previous line `self.name_combo = IgnoreScrollWheelComboBox()` was redundant and overwritten.
         # The TruncatingComboBox needs to be initialized correctly.
+        affix_dict = Dataloader().affix_dict
+        affix_metadata = _get_affix_metadata()
+
+        filtered_affixes = []
+        if not self.allowed_item_types:
+            filtered_affixes = sorted(affix_dict.values())
+        else:
+            allowed_slot_names = [t.name for t in self.allowed_item_types]
+            for affix_id, display_name in affix_dict.items():
+                meta = affix_metadata.get(affix_id)
+                if meta:
+                    slots = meta.get("slots", [])
+                    if any(s in allowed_slot_names for s in slots):
+                        filtered_affixes.append(display_name)
+                elif not affix_metadata:
+                    filtered_affixes.append(display_name)
+            filtered_affixes.sort()
+
+        if not filtered_affixes:
+            filtered_affixes = sorted(affix_dict.values())
+
         self.name_combo = TruncatingComboBox(parent=self)
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.name_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
-        self.name_combo.addItems(sorted(Dataloader().affix_dict.values()))
+        self.name_combo.addItems(filtered_affixes)
         self.name_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        if self.affix.name in Dataloader().affix_dict:
-            self.name_combo.setCurrentText(Dataloader().affix_dict[self.affix.name])
+        if self.affix.name in affix_dict:
+            self.name_combo.setCurrentText(affix_dict[self.affix.name])
         self.name_combo.currentTextChanged.connect(self.update_name)
 
     def create_required_checkbox(self):
