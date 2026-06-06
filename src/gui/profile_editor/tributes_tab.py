@@ -1,3 +1,4 @@
+import contextlib
 from typing import override
 
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -153,9 +154,10 @@ class TributesTab(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def load(self):
-        if not self.loaded:
-            self.setup_ui()
-            self.loaded = True
+        with contextlib.suppress(RuntimeError):
+            if not self.loaded:
+                self.setup_ui()
+                self.loaded = True
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)

@@ -1,5 +1,6 @@
 """Profile editor with paper doll layout."""
 
+import contextlib
 import logging
 
 from PyQt6.QtCore import QTimer, pyqtSignal
@@ -155,7 +156,8 @@ class ProfileEditor(QWidget):
                 self.tributes_tab,
                 self.uniques_tab,
             ]:
-                widget.hide()
+                with contextlib.suppress(RuntimeError):
+                    widget.hide()
             self.paper_doll.clear_side_panel()
             self.gear_view_subheader.hide()
             self._adjust_window_size(expanding=False)
@@ -185,32 +187,34 @@ class ProfileEditor(QWidget):
             self.gear_view_subheader.hide()
             self.side_content_widget = self.gear_view_scroll
         elif slot_name == "Aspect Upgrades":
-            self.aspect_upgrades_tab.load()
-            self.aspect_upgrades_tab.show()
-            self.side_content_widget = self.aspect_upgrades_tab
+            with contextlib.suppress(RuntimeError):
+                self.aspect_upgrades_tab.load()
+                self.aspect_upgrades_tab.show()
+                self.side_content_widget = self.aspect_upgrades_tab
         elif slot_name == "Sigils":
-            self.sigils_tab.load()
-            self.sigils_tab.show()
-            self.side_content_widget = self.sigils_tab
+            with contextlib.suppress(RuntimeError):
+                self.sigils_tab.load()
+                self.sigils_tab.show()
+                self.side_content_widget = self.sigils_tab
         elif slot_name == "Tributes":
-            self.tributes_tab.load()
-            self.tributes_tab.show()
-            self.side_content_widget = self.tributes_tab
+            with contextlib.suppress(RuntimeError):
+                self.tributes_tab.load()
+                self.tributes_tab.show()
+                self.side_content_widget = self.tributes_tab
         elif slot_name == "Global Rules":
-            self.uniques_tab.load()
-            # When clicking global tab, show all rules via the integrated view
-            # to avoid widget reparenting issues that break the layout.
-            self.uniques_tab.filter_by_item_types(None)
-            self.uniques_tab.show()
-
-            # Show header for Global Rules and hide the affixes tab
-            self.gear_view_header.setText("Global Rules")
-            self.gear_view_subheader.setText("These are rules that cover more than one item type.")
-            self.gear_view_subheader.show()
-            self.gear_view_header.show()
-            self.affixes_tab.hide()
-
-            self.side_content_widget = self.gear_view_scroll
+            with contextlib.suppress(RuntimeError):
+                self.uniques_tab.load()
+                # When clicking global tab, show all rules via the integrated view
+                # to avoid widget reparenting issues that break the layout.
+                self.uniques_tab.filter_by_item_types(None)
+                self.uniques_tab.show()
+                # Show header for Global Rules and hide the affixes tab
+                self.gear_view_header.setText("Global Rules")
+                self.gear_view_subheader.setText("These are rules that cover more than one item type.")
+                self.gear_view_subheader.show()
+                self.gear_view_header.show()
+                self.affixes_tab.hide()
+                self.side_content_widget = self.gear_view_scroll
         else:
             self.side_content_widget = None
 

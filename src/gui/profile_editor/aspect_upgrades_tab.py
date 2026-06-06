@@ -1,3 +1,6 @@
+"""Tab widget for managing the whitelist of aspects to track for Codex upgrades."""
+
+import contextlib
 from typing import override
 
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -66,18 +69,19 @@ class AspectUpgradesTab(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def load(self):
-        if not self.loaded:
-            self.setup_ui()
-            self.loaded = True
+        with contextlib.suppress(RuntimeError):
+            if not self.loaded:
+                self.setup_ui()
+                self.loaded = True
 
     def setup_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 5, 0, 5)
-        main_layout.setSpacing(0)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 5, 0, 5)
+        self.main_layout.setSpacing(0)
+        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         header = _create_column_header("Aspect Upgrades", self.add_aspect)
-        main_layout.addWidget(header)
+        self.main_layout.addWidget(header)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -91,13 +95,13 @@ class AspectUpgradesTab(QWidget):
         self.list_layout.setSpacing(4)
 
         scroll.setWidget(self.scroll_widget)
-        main_layout.addWidget(scroll)
+        self.main_layout.addWidget(scroll)
 
         # Populate initial items
         for aspect in self.aspect_upgrades:
             self.add_aspect_item(aspect)
 
-        self.setLayout(main_layout)
+        self.setLayout(self.main_layout)
 
     def add_aspect_item(self, aspect_key: str):
         widget = AspectUpgradeSummaryWidget(aspect_key)
