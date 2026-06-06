@@ -278,7 +278,7 @@ def _create_column_header(title: str, add_callback: callable, remove_callback: c
     header = QWidget()
     header.setObjectName("ColumnHeader")
     header.setStyleSheet(
-        "QWidget#ColumnHeader { background-color: #1e3a5f; border-top-left-radius: 4px; border-top-right-radius: 4px; }"
+        "QWidget#ColumnHeader { background-color: #1e3a5f; border-top-left-radius: 8px; border-top-right-radius: 8px; }"
     )
     layout = QHBoxLayout(header)
     layout.setContentsMargins(5, 5, 5, 5)
@@ -293,7 +293,7 @@ def _create_column_header(title: str, add_callback: callable, remove_callback: c
 
     lbl = QLabel(title)
     lbl.setStyleSheet(
-        "font-weight: bold; font-size: 13px; color: #e2e8f0; text-transform: uppercase; border: none; background: transparent;"
+        "font-weight: bold; font-size: 15px; color: #e2e8f0; text-transform: uppercase; border: none; background: transparent;"
     )
     lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
     layout.addWidget(lbl)
@@ -599,6 +599,15 @@ class AffixGroupEditor(QWidget):
 
         duplicate_btn = QPushButton("Duplicate Item")
         duplicate_btn.setFixedWidth(120)
+        duplicate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1e3a5f;
+                border: 1px solid #3b82f6;
+                color: #e2e8f0;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #2563eb; }
+        """)
         duplicate_btn.clicked.connect(self._on_duplicate_clicked)
         top_row_layout.addWidget(duplicate_btn)
 
@@ -643,6 +652,15 @@ class AffixGroupEditor(QWidget):
 
         add_pool_btn = QPushButton("Add Additional Affix Pool")
         add_pool_btn.setFixedWidth(180)
+        add_pool_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #06201b;
+                border: 1px solid #064e3b;
+                color: #22c55e;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #064e3b; color: white; }
+        """)
         add_pool_btn.clicked.connect(self.add_additional_affix_pool_column)
         ga_row_layout.addWidget(add_pool_btn)
 
@@ -1436,12 +1454,13 @@ class AffixesTab(QWidget):
 
     def setup_ui(self):
         """Populate the grid layout with existing groups."""
+        self.setStyleSheet("background: transparent; border: none;")
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
 
         self.tab_widget = QTabWidget(self)
         self.tab_widget.setStyleSheet("""
-            QTabWidget { background: transparent; }
+            QTabWidget { background: transparent; border: none; }
             QTabWidget::pane { border: none; }
             QTabBar::tab {
                 background: #1a1a1a;

@@ -160,6 +160,7 @@ class TributesTab(QWidget):
                 self.loaded = True
 
     def setup_ui(self):
+        self.setStyleSheet("background: transparent; border: none;")
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 5, 0, 5)
         main_layout.setSpacing(0)

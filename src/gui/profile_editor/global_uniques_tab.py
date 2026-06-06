@@ -244,6 +244,15 @@ class UniqueWidget(QWidget):
 
         duplicate_btn = QPushButton("Duplicate Rule")
         duplicate_btn.setFixedWidth(120)
+        duplicate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1e3a5f;
+                border: 1px solid #3b82f6;
+                color: #e2e8f0;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #2563eb; }
+        """)
         duplicate_btn.clicked.connect(self._on_duplicate_clicked)
         top_row.addWidget(duplicate_btn)
         main_vbox.addLayout(top_row)
@@ -286,6 +295,15 @@ class UniqueWidget(QWidget):
 
         add_pool_btn = QPushButton("Add Additional Affix Pool")
         add_pool_btn.setFixedWidth(180)
+        add_pool_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #06201b;
+                border: 1px solid #064e3b;
+                color: #22c55e;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #064e3b; color: white; }
+        """)
         add_pool_btn.clicked.connect(self.add_additional_affix_pool_column)
         ga_row.addWidget(add_pool_btn)
         main_vbox.addLayout(ga_row)
@@ -418,6 +436,7 @@ class UniquesTab(QWidget):
                 self.loaded = True
 
     def setup_ui(self):
+        self.setStyleSheet("background: transparent; border: none;")
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.tab_widget = QTabWidget(self)

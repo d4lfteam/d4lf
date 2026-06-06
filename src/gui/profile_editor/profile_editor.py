@@ -121,17 +121,22 @@ class ProfileEditor(QWidget):
         self.gear_view_scroll = QScrollArea()
         self.gear_view_scroll.setWidgetResizable(True)
         self.gear_view_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.gear_view_scroll.setStyleSheet("background: transparent; border: none;")
+
         self.gear_view_container = QWidget()
+        self.gear_view_container.setStyleSheet("background: transparent;")
         self.gear_view_layout = QVBoxLayout(self.gear_view_container)
         self.gear_view_layout.setContentsMargins(0, 0, 0, 0)
 
         self.gear_view_header = QLabel()
-        self.gear_view_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 10px;")
+        self.gear_view_header.setStyleSheet(
+            "font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 10px; background: transparent; border: none;"
+        )
         self.gear_view_layout.addWidget(self.gear_view_header)
 
         self.gear_view_subheader = QLabel()
         self.gear_view_subheader.setStyleSheet(
-            "font-size: 13px; color: #94a3b8; font-style: italic; margin-bottom: 15px;"
+            "font-size: 13px; color: #94a3b8; font-style: italic; margin-bottom: 15px; background: transparent; border: none;"
         )
         self.gear_view_layout.addWidget(self.gear_view_subheader)
         self.gear_view_subheader.hide()
@@ -252,13 +257,10 @@ class ProfileEditor(QWidget):
                 win.resize(win.width() + sidebar_w, win.height())
                 win.setProperty("profile_editor_expanded", True)  # noqa: FBT003
             elif not expanding:
-                # Restore the window to the exact width it had before the expansion
-                pre_width = win.property("profile_editor_pre_expansion_width")
-                if pre_width is not None and is_already_expanded:
-                    win.resize(int(pre_width), win.height())
-                else:
-                    # Force to the smallest allowed width (paper doll base width)
-                    win.resize(350, win.height())
+                # Snap back to the base width (800) whenever the sidebar is closed.
+                # This eliminates empty space on the right and ensures the paper doll
+                # always opens at its "perfect" resolution.
+                win.resize(800, win.height())
                 win.setProperty("profile_editor_expanded", False)  # noqa: FBT003
 
             self.updateGeometry()

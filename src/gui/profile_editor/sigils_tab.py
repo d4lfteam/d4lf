@@ -206,6 +206,7 @@ class SigilsTab(QWidget):
 
     def setup_ui(self):
         """Populate the grid layout with existing groups."""
+        self.setStyleSheet("background: transparent; border: none;")
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 5, 0, 5)
         self.main_layout.setSpacing(0)

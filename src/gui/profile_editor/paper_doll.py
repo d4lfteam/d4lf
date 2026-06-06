@@ -319,6 +319,7 @@ class PaperDollWidget(QWidget):
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         # Character silhouette panel (left side) - fill remaining space
         self.character_panel = QFrame()
@@ -359,7 +360,7 @@ class PaperDollWidget(QWidget):
         # Side panel (right side) - initially shows placeholder
         self.side_panel = QFrame()
         self.side_panel.setStyleSheet("QFrame {   background-color: #1e293b;   border-left: 1px solid #334155;}")
-        self.side_panel.setMinimumWidth(650)
+        self.side_panel.setMinimumWidth(700)
         side_layout = QVBoxLayout(self.side_panel)
         side_layout.setContentsMargins(20, 10, 20, 20)
 
