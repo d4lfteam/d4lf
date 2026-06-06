@@ -93,12 +93,14 @@ class SigilSummaryWidget(QWidget):
         if event is None or event.button() == Qt.MouseButton.LeftButton:
             self.open_config_dialog()
 
-    def open_config_dialog(self):
+    def open_config_dialog(self) -> QDialog.DialogCode:
         name = Dataloader().affix_sigil_dict_all["dungeons"].get(self.model.name, self.model.name)
         dialog = SigilEditDialog(self, self.model, name)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
             self.refresh_display()
             self.config_changed.emit()
+        return result
 
     def refresh_display(self):
         name = Dataloader().affix_sigil_dict_all["dungeons"].get(self.model.name, self.model.name)
@@ -115,10 +117,39 @@ class SigilEditDialog(QDialog):
     def __init__(self, parent: QWidget, model: SigilConditionModel, dungeon_name: str):
         super().__init__(parent)
         self.setWindowTitle("Configure Sigil Rule")
-        self.setMinimumWidth(500)
+        self.setMinimumWidth(550)
         self.model = model
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QLineEdit, QComboBox, QSpinBox, QListWidget {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+                padding: 4px;
+            }
+            QLineEdit:focus, QComboBox:focus, QSpinBox:focus { border-color: #3b82f6; }
+            QListWidget::item:selected { background-color: #1e3a5f; color: #e2e8f0; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+        """)
 
         layout = QVBoxLayout(self)
+        header = QLabel("Sigil Rule Configuration")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;")
+        layout.addWidget(header)
+
+        desc = QLabel("Select a dungeon and define the specific affixes required for this rule.")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
         form = QFormLayout()
 
         self.name_combo = TruncatingComboBox()
@@ -212,6 +243,21 @@ class SigilsTab(QWidget):
         self.main_layout.setSpacing(0)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
+        self.header = QLabel("Sigil Filtering")
+        self.header.setStyleSheet(
+            "font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 10px; background: transparent; border: none;"
+        )
+        self.main_layout.addWidget(self.header)
+
+        self.desc = QLabel(
+            "Define which dungeons and affixes you want to whitelist or blacklist. Priority mode determines which list takes precedence."
+        )
+        self.desc.setWordWrap(True)
+        self.desc.setStyleSheet(
+            "font-size: 13px; color: #94a3b8; font-style: italic; margin-bottom: 15px; background: transparent; border: none;"
+        )
+        self.main_layout.addWidget(self.desc)
+
         # 1. General Config
         self.create_general_groupbox()
 
@@ -254,7 +300,8 @@ class SigilsTab(QWidget):
         self.init_sigils()
 
     def create_general_groupbox(self):
-        group = QGroupBox("Sigil Filtering")
+        group = QGroupBox("Configuration")
+        group.setStyleSheet("QGroupBox { margin-top: 10px; }")
         form = QFormLayout(group)
         self.priority_combobox = IgnoreScrollWheelComboBox()
         self.priority_combobox.addItems(SigilPriority._member_names_)
@@ -293,7 +340,9 @@ class SigilsTab(QWidget):
         else:
             self.sigil_model.blacklist.append(new_sigil)
 
-        self.add_sigil_widget(new_sigil, whitelist).open_config_dialog()
+        widget = self.add_sigil_widget(new_sigil, whitelist)
+        if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
+            self.remove_sigil_item(widget, whitelist)
 
     def remove_sigil_item(self, widget: SigilSummaryWidget, whitelist: bool):
         model_list = self.sigil_model.whitelist if whitelist else self.sigil_model.blacklist

@@ -324,7 +324,9 @@ class UniqueWidget(QWidget):
         aspect_name = next(iter(Dataloader().aspect_unique_dict.keys()))
         new_aspect = AspectUniqueFilterModel(name=aspect_name)
         self.unique_model.unique_aspect.append(new_aspect)
-        self.add_unique_aspect_item(new_aspect).open_config_dialog()
+        widget = self.add_unique_aspect_item(new_aspect)
+        if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
+            self.remove_unique_aspect_widget(widget)
 
     def remove_unique_aspect_widget(self, widget: UniqueAspectWidget):
         if widget.unique_aspect in self.unique_model.unique_aspect:
@@ -337,7 +339,9 @@ class UniqueWidget(QWidget):
         affix_name = next(iter(Dataloader().affix_dict.keys()))
         new_affix = AffixFilterModel(name=affix_name)
         pool_model.count.append(new_affix)
-        self.add_affix_item(new_affix, pool_idx=idx).open_config_dialog()
+        widget = self.add_affix_item(new_affix, pool_idx=idx)
+        if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
+            self.remove_affix_item_widget(widget, inherent=False, pool_idx=idx)
 
     def add_affix_pool(self):
         if self.unique_model.affix_pool:
@@ -347,7 +351,9 @@ class UniqueWidget(QWidget):
         affix_name = next(iter(Dataloader().affix_dict.keys()))
         new_affix = AffixFilterModel(name=affix_name)
         self.unique_model.inherent_pool[0].count.append(new_affix)
-        self.add_affix_item(new_affix, inherent=True).open_config_dialog()
+        widget = self.add_affix_item(new_affix, inherent=True)
+        if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
+            self.remove_affix_item_widget(widget, inherent=True)
 
     def toggle_auto_sync(self):
         is_auto = self.auto_sync_checkbox.isChecked()
@@ -446,24 +452,25 @@ class UniquesTab(QWidget):
             QTabBar::tab {
                 background: #1a1a1a;
                 color: #94a3b8;
-                padding: 8px 16px;
+                padding: 8px 24px 8px 12px;
                 border: 1px solid #334155;
                 border-bottom: none;
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
                 margin-right: 2px;
             }
-            QTabBar::close-button { right: 8px; }
+            QTabBar::close-button:hover { background-color: rgba(255, 255, 255, 0.1); }
             QTabBar::tab:selected {
                 background: #1e3a5f;
                 color: #e2e8f0;
                 border: 1px solid #3b82f6;
                 border-bottom: 2px solid #3b82f6;
             }
-            QTabBar::tab:last, QTabBar::tab:selected:last {
+            QTabBar::tab:last, QTabBar::tab:selected:last, QTabBar::tab:only-one, QTabBar::tab:selected:only-one {
                 background: #06201b;
                 color: #22c55e;
                 border: 1px solid #064e3b;
+                border-bottom: 1px solid #064e3b;
             }
         """)
         with QSignalBlocker(self.tab_widget):
@@ -502,6 +509,18 @@ class UniquesTab(QWidget):
     def close_tab(self, index):
         if self.tab_widget.tabText(index) == "+":
             return
+
+        rule_name = self.tab_widget.tabText(index)
+        reply = QMessageBox.question(
+            self,
+            "Confirm Deletion",
+            f"Are you sure you want to delete the global rule '{rule_name}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
         with QSignalBlocker(self.tab_widget):
             self.tab_widget.removeTab(index)
             self.unique_model_list.pop(index)

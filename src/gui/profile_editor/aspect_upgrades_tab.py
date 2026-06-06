@@ -80,6 +80,21 @@ class AspectUpgradesTab(QWidget):
         self.main_layout.setSpacing(0)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
+        self.header = QLabel("Aspect Upgrades")
+        self.header.setStyleSheet(
+            "font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 10px; background: transparent; border: none;"
+        )
+        self.main_layout.addWidget(self.header)
+
+        self.desc = QLabel(
+            "Whitelist specific aspects to track for Codex upgrades. Items matching these will be favorited and highlighted in orange when an upgrade is detected."
+        )
+        self.desc.setWordWrap(True)
+        self.desc.setStyleSheet(
+            "font-size: 13px; color: #94a3b8; font-style: italic; margin-bottom: 15px; background: transparent; border: none;"
+        )
+        self.main_layout.addWidget(self.desc)
+
         header = _create_column_header("Aspect Upgrades", self.add_aspect)
         self.main_layout.addWidget(header)
 

@@ -81,11 +81,13 @@ class TributeSummaryWidget(QWidget):
         if event is None or event.button() == Qt.MouseButton.LeftButton:
             self.open_config_dialog()
 
-    def open_config_dialog(self):
+    def open_config_dialog(self) -> QDialog.DialogCode:
         dialog = TributeEditDialog(self, self.model)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
             self.refresh_display()
             self.config_changed.emit()
+        return result
 
     def refresh_display(self):
         if self.model.name:
@@ -104,11 +106,47 @@ class TributeEditDialog(QDialog):
     def __init__(self, parent: QWidget, model: TributeFilterModel):
         super().__init__(parent)
         self.setWindowTitle("Configure Tribute Rule")
-        self.setMinimumWidth(450)
+        self.setMinimumWidth(500)
         self.model = model
         self.rarity_checkboxes: dict[ItemRarity, CheckmarkCheckBox] = {}
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QLineEdit, QComboBox, QSpinBox {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+                padding: 4px;
+            }
+            QLineEdit:focus, QComboBox:focus, QSpinBox:focus { border-color: #3b82f6; }
+            QGroupBox {
+                font-weight: bold;
+                color: #3b82f6;
+                border: 1px solid #334155;
+                margin-top: 1.1em;
+                padding-top: 10px;
+            }
+            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+        """)
 
         layout = QVBoxLayout(self)
+        header = QLabel("Tribute Rule Configuration")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;")
+        layout.addWidget(header)
+
+        desc = QLabel("Set a specific tribute or configure rarity-based filtering.")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
         form = QFormLayout()
 
         self.name_combo = TruncatingComboBox()
@@ -166,10 +204,20 @@ class TributesTab(QWidget):
         main_layout.setSpacing(0)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        label = QLabel("Add tributes or rarity-based rules you want to keep. These rules are evaluated independently.")
-        label.setWordWrap(True)
-        label.setStyleSheet("color: #94a3b8; font-size: 11px; padding: 5px 10px;")
-        main_layout.addWidget(label)
+        self.header = QLabel("Tributes")
+        self.header.setStyleSheet(
+            "font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 10px; background: transparent; border: none;"
+        )
+        main_layout.addWidget(self.header)
+
+        self.desc = QLabel(
+            "Add tributes or rarity-based rules you want to keep. These rules are evaluated independently."
+        )
+        self.desc.setWordWrap(True)
+        self.desc.setStyleSheet(
+            "font-size: 13px; color: #94a3b8; font-style: italic; margin-bottom: 15px; background: transparent; border: none;"
+        )
+        main_layout.addWidget(self.desc)
 
         header = _create_column_header("Tributes", self.add_tribute)
         main_layout.addWidget(header)
@@ -205,7 +253,9 @@ class TributesTab(QWidget):
         tribute_id = next(iter(Dataloader().tribute_dict.keys()))
         new_rule = TributeFilterModel(name=tribute_id, rarities=[])
         self.tributes.append(new_rule)
-        self.add_tribute_widget(new_rule).open_config_dialog()
+        widget = self.add_tribute_widget(new_rule)
+        if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
+            self.remove_tribute_item(widget)
 
     def remove_tribute_item(self, widget: TributeSummaryWidget):
         if widget.model in self.tributes:

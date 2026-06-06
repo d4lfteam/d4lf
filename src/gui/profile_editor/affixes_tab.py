@@ -62,10 +62,7 @@ MAX_DROPDOWN_TEXT_LENGTH = 50
 
 class TruncatingComboBox(IgnoreScrollWheelComboBox):
     def __init__(self, max_length=MAX_DROPDOWN_TEXT_LENGTH, parent=None):
-        # Initialize QComboBox (grandparent) with parent
-        QComboBox.__init__(self, parent)
-        # Then call the immediate parent's __init__ (IgnoreScrollWheelComboBox) without parent
-        IgnoreScrollWheelComboBox.__init__(self)
+        super().__init__(parent)
         self.max_length = max_length
 
     @override
@@ -374,10 +371,38 @@ class UniqueAspectDialog(QDialog):
     def __init__(self, parent: QWidget, model: AspectUniqueFilterModel):
         super().__init__(parent)
         self.setWindowTitle("Configure Unique Aspect")
-        self.setMinimumWidth(500)
+        self.setMinimumWidth(550)
         self.model = model
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QLineEdit, QComboBox, QSpinBox {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+                padding: 4px;
+            }
+            QLineEdit:focus, QComboBox:focus, QSpinBox:focus { border-color: #3b82f6; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+        """)
 
         layout = QVBoxLayout(self)
+        header = QLabel("Unique Aspect Configuration")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;")
+        layout.addWidget(header)
+
+        desc = QLabel("Set the name and threshold value or percentage for this unique aspect.")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
         form = QFormLayout()
 
         self.name_combo = TruncatingComboBox()
@@ -394,15 +419,6 @@ class UniqueAspectDialog(QDialog):
         form.addRow("Mode:", self.mode_combo)
 
         self.value_edit = QLineEdit()
-        self.value_edit.setStyleSheet("""
-            QLineEdit {
-                background-color: #09090b;
-                border: 1px solid #3f3f46;
-                border-radius: 4px;
-                color: #e2e8f0;
-            }
-            QLineEdit:focus { border-color: #3b82f6; }
-        """)
         if model.min_percent_of_aspect:
             self.value_edit.setText(str(model.min_percent_of_aspect))
         elif model.value is not None:
@@ -443,12 +459,74 @@ class AffixEditDialog(QDialog):
     def __init__(self, parent: QWidget, model: AffixFilterModel):
         super().__init__(parent)
         self.setWindowTitle("Configure Affix")
-        self.setMinimumWidth(500)
+        self.setMinimumWidth(550)
         self.model = model
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QLineEdit, QComboBox, QSpinBox {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+                padding: 4px;
+            }
+            QLineEdit:focus, QComboBox:focus, QSpinBox:focus { border-color: #3b82f6; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+        """)
 
         layout = QVBoxLayout(self)
-        self.editor = AffixWidget(model)
-        layout.addWidget(self.editor)
+        header = QLabel("Affix Configuration")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;")
+        layout.addWidget(header)
+
+        desc = QLabel("Configure the properties, GA requirements, and thresholds for this affix.")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
+        form = QFormLayout()
+
+        self.name_combo = TruncatingComboBox()
+        self.name_combo.setEditable(True)
+        self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.name_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+        self.name_combo.addItems(sorted(Dataloader().affix_dict.values()))
+        if model.name in Dataloader().affix_dict:
+            self.name_combo.setCurrentText(Dataloader().affix_dict[model.name])
+        form.addRow("Affix:", self.name_combo)
+
+        options_layout = QHBoxLayout()
+        self.required_checkbox = CheckmarkCheckBox("Required")
+        self.required_checkbox.setChecked(getattr(model, "required", False))
+        self.greater_checkbox = CheckmarkCheckBox("GA")
+        self.greater_checkbox.setChecked(model.want_greater)
+        self.greater_checkbox.setProperty("greaterCheckbox", True)  # noqa: FBT003
+        options_layout.addWidget(self.required_checkbox)
+        options_layout.addWidget(self.greater_checkbox)
+        options_layout.addStretch()
+        form.addRow("Options:", options_layout)
+
+        self.mode_combo = IgnoreScrollWheelComboBox()
+        self.mode_combo.addItems([AFFIX_VALUE_MODE, AFFIX_PERCENT_MODE])
+        self.mode_combo.setCurrentText(AFFIX_PERCENT_MODE if model.min_percent_of_affix else AFFIX_VALUE_MODE)
+        form.addRow("Mode:", self.mode_combo)
+
+        self.value_edit = QLineEdit()
+        if model.min_percent_of_affix:
+            self.value_edit.setText(str(model.min_percent_of_affix))
+        elif model.value is not None:
+            self.value_edit.setText(str(model.value))
+        form.addRow("Threshold:", self.value_edit)
+
+        layout.addLayout(form)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.save_and_accept)
@@ -456,10 +534,29 @@ class AffixEditDialog(QDialog):
         layout.addWidget(buttons)
 
     def save_and_accept(self):
-        # AffixWidget updates model live on changes, but we ensure final strings are set
-        self.editor.update_name()
-        self.editor.update_required()
-        self.editor.update_value(self.editor.value_edit.text())
+        reverse_dict = {v: k for k, v in Dataloader().affix_dict.items()}
+        affix_id = reverse_dict.get(self.name_combo.currentText())
+        if affix_id:
+            self.model.name = affix_id
+
+        self.model.required = self.required_checkbox.isChecked()
+        self.model.want_greater = self.greater_checkbox.isChecked()
+
+        mode = self.mode_combo.currentText()
+        val_str = self.value_edit.text()
+
+        if mode == AFFIX_PERCENT_MODE:
+            try:
+                self.model.min_percent_of_affix = int(val_str) if val_str else 0
+            except ValueError:
+                self.model.min_percent_of_affix = 0
+            self.model.value = None
+        else:
+            try:
+                self.model.value = float(val_str) if val_str else None
+            except ValueError:
+                self.model.value = None
+            self.model.min_percent_of_affix = 0
         self.accept()
 
 
@@ -467,10 +564,37 @@ class AffixPoolDialog(QDialog):
     def __init__(self, parent: QWidget, pool: AffixFilterCountModel, title: str):
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.setMinimumSize(600, 500)
+        self.setMinimumSize(700, 600)
         self.pool = pool
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QLineEdit, QComboBox, QSpinBox {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+                padding: 4px;
+            }
+            QLineEdit:focus, QComboBox:focus, QSpinBox:focus { border-color: #3b82f6; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+        """)
 
         layout = QVBoxLayout(self)
+        header = QLabel(title)
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;")
+        layout.addWidget(header)
+
+        desc = QLabel("Manage the list of affixes in this pool and define how many matches are required.")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
 
         config_layout = QHBoxLayout()
         self.min_count = CharacterSpinBox()
@@ -728,14 +852,12 @@ class AffixGroupEditor(QWidget):
         return widget
 
     def add_unique_aspect(self):
-        items = sorted(Dataloader().aspect_unique_dict.keys())
-        dialog = SelectionDialog(self, "Select Unique Aspect", items)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            val = dialog.get_value()
-            if val:
-                new_model = AspectUniqueFilterModel(name=val, value=None)
-                self.config.unique_aspect.append(new_model)
-                self.add_unique_aspect_item(new_model).open_config_dialog()
+        aspect_name = next(iter(Dataloader().aspect_unique_dict.keys()))
+        new_model = AspectUniqueFilterModel(name=aspect_name)
+        self.config.unique_aspect.append(new_model)
+        widget = self.add_unique_aspect_item(new_model)
+        if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
+            self.remove_unique_aspect_widget(widget)
 
     def remove_unique_aspect_widget(self, widget: UniqueAspectWidget):
         if widget.unique_aspect in self.config.unique_aspect:
@@ -777,7 +899,9 @@ class AffixGroupEditor(QWidget):
 
         default_affix = AffixFilterModel(name=default_name, value=None)
         pool_model.count.append(default_affix)
-        self.add_affix_item(default_affix, pool_idx=idx).open_config_dialog()
+        widget = self.add_affix_item(default_affix, pool_idx=idx)
+        if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
+            self.remove_affix_item_widget(widget, inherent=False, pool_idx=idx)
 
     def add_affix_pool(self):
         if self.config.affix_pool:
@@ -796,7 +920,9 @@ class AffixGroupEditor(QWidget):
 
         default_affix = AffixFilterModel(name=default_name, value=None)
         self.config.inherent_pool[0].count.append(default_affix)
-        self.add_affix_item(default_affix, inherent=True).open_config_dialog()
+        widget = self.add_affix_item(default_affix, inherent=True)
+        if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
+            self.remove_affix_item_widget(widget, inherent=True)
 
     def remove_selected(self, layout_widget: QVBoxLayout, inherent: bool = False):
         nb_pool = layout_widget.count()
@@ -1067,11 +1193,13 @@ class UniqueAspectWidget(QWidget):
         if event is None or event.button() == Qt.MouseButton.LeftButton:
             self.open_config_dialog()
 
-    def open_config_dialog(self):
+    def open_config_dialog(self) -> QDialog.DialogCode:
         dialog = UniqueAspectDialog(self, self.unique_aspect)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
             self.refresh_display()
             self.config_changed.emit()
+        return result
 
     def refresh_display(self):
         name = Dataloader().aspect_unique_dict.get(self.unique_aspect.name, {}).get("name", self.unique_aspect.name)
@@ -1188,11 +1316,13 @@ class AffixSummaryWidget(QWidget):
         if event is None or event.button() == Qt.MouseButton.LeftButton:
             self.open_config_dialog()
 
-    def open_config_dialog(self):
+    def open_config_dialog(self) -> QDialog.DialogCode:
         dialog = AffixEditDialog(self, self.model)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
             self.refresh_display()
             self.config_changed.emit()
+        return result
 
     def refresh_display(self):
         name = Dataloader().affix_dict.get(self.model.name, self.model.name)
@@ -1282,12 +1412,13 @@ class AffixWidget(QWidget):
     def __init__(self, affix: AffixFilterModel, parent=None):
         super().__init__(parent)
         self.affix = affix
+        self.setStyleSheet("background: transparent; border: none;")
         self.setup_ui()
 
     def setup_ui(self):
-        layout = QHBoxLayout()
-        layout.setContentsMargins(0, 2, 0, 2)
-        layout.setSpacing(10)
+        main_vbox = QVBoxLayout(self)
+        main_vbox.setContentsMargins(0, 5, 0, 5)
+        main_vbox.setSpacing(8)
 
         self.create_affix_name_combobox()
         self.create_greater_checkbox()
@@ -1298,13 +1429,18 @@ class AffixWidget(QWidget):
         self.mode_combo.currentTextChanged.connect(self.update_mode)
         self.update_mode(self.mode_combo.currentText())
 
-        layout.addWidget(self.name_combo)
-        layout.addWidget(self.required_checkbox)
-        layout.addWidget(self.greater_checkbox)
-        layout.addWidget(self.mode_combo, stretch=0)
-        layout.addWidget(self.value_edit, stretch=0)
+        # Top row: Affix selection
+        main_vbox.addWidget(self.name_combo)
 
-        self.setLayout(layout)
+        # Bottom row: Options and Values
+        bottom_hbox = QHBoxLayout()
+        bottom_hbox.setSpacing(10)
+        bottom_hbox.addWidget(self.required_checkbox)
+        bottom_hbox.addWidget(self.greater_checkbox)
+        bottom_hbox.addStretch()
+        bottom_hbox.addWidget(self.mode_combo)
+        bottom_hbox.addWidget(self.value_edit)
+        main_vbox.addLayout(bottom_hbox)
 
     def create_affix_name_combobox(self):
         # The previous line `self.name_combo = IgnoreScrollWheelComboBox()` was redundant and overwritten.
@@ -1363,15 +1499,6 @@ class AffixWidget(QWidget):
     def create_value_input(self):
         self.value_edit = QLineEdit()
         self.value_edit.setFixedWidth(80)
-        self.value_edit.setStyleSheet("""
-            QLineEdit {
-                background-color: #09090b;
-                border: 1px solid #3f3f46;
-                border-radius: 4px;
-                color: #e2e8f0;
-            }
-            QLineEdit:focus { border-color: #3b82f6; }
-        """)
         self.value_edit.textChanged.connect(self.update_value)
 
     def update_name(self, current_text=None):
@@ -1465,24 +1592,25 @@ class AffixesTab(QWidget):
             QTabBar::tab {
                 background: #1a1a1a;
                 color: #94a3b8;
-                padding: 8px 16px;
+                padding: 8px 24px 8px 12px;
                 border: 1px solid #334155;
                 border-bottom: none;
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
                 margin-right: 2px;
             }
-            QTabBar::close-button { right: 8px; }
+            QTabBar::close-button:hover { background-color: rgba(255, 255, 255, 0.1); }
             QTabBar::tab:selected {
                 background: #1e3a5f;
                 color: #e2e8f0;
                 border: 1px solid #3b82f6;
                 border-bottom: 2px solid #3b82f6;
             }
-            QTabBar::tab:last, QTabBar::tab:selected:last {
+            QTabBar::tab:last, QTabBar::tab:selected:last, QTabBar::tab:only-one, QTabBar::tab:selected:only-one {
                 background: #06201b;
                 color: #22c55e;
                 border: 1px solid #064e3b;
+                border-bottom: 1px solid #064e3b;
             }
         """)
         with QSignalBlocker(self.tab_widget):
@@ -1591,6 +1719,17 @@ class AffixesTab(QWidget):
 
     def close_tab(self, index):
         if self.tab_widget.tabText(index) == "+":
+            return
+
+        item_name = self.item_names[index]
+        reply = QMessageBox.question(
+            self,
+            "Confirm Deletion",
+            f"Are you sure you want to delete the item filter '{item_name}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
             return
 
         with QSignalBlocker(self.tab_widget):
