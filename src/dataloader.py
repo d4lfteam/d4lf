@@ -14,6 +14,8 @@ DATALOADER_LOCK = threading.Lock()
 
 class Dataloader:
     affix_dict = {}
+    charm_affix_dict = {}
+    seal_affix_dict = {}
     affix_sigil_dict = {}
     affix_sigil_dict_all = {}
     aspect_list = []
@@ -44,6 +46,16 @@ class Dataloader:
             encoding="utf-8"
         ) as f:
             self.affix_dict: dict = json.load(f)
+
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/seals_affixes.json").open(
+            encoding="utf-8"
+        ) as f:
+            self.seal_affix_dict: dict = json.load(f)
+
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/charms_affixes.json").open(
+            encoding="utf-8"
+        ) as f:
+            self.charm_affix_dict: dict = json.load(f)
 
         with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/aspects.json").open(
             encoding="utf-8"

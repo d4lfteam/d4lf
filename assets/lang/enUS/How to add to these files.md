@@ -14,14 +14,20 @@ The custom file is a single JSON object with sections named after the target fil
 
 ```json
 {
-    "affixes": { "my_affix": "my affix description" },
-    "aspects": ["my_new_aspect"],
-    "sigils":  { "dungeons": { "my_dungeon": "my dungeon" } },
-    "uniques": { "my_unique": { "num_inherents": 2 } },
-    "sets":    ["my_set_name"],
-    "tributes": { "my_tribute": "my tribute" },
-    "item_types": { "MyType": "my type" },
-    "tooltips": { "MyTooltip": "my tooltip" }
+    "affixes": { "mana_per_second": "mana per second" },
+    "charms_affixes": { "lucky_hit_up_to_a_chance_to_deal_holy_damage": "lucky hit up to a chance to deal holy damage" },
+    "seals_affixes": { "maximum_resolve": "maximum resolve" },
+    "aspects": ["aspect_of_inner_calm"],
+    "sigils": {
+        "dungeons": { "aldurwood": "aldurwood" },
+        "major": { "death_pulse": "death pulse" },
+        "positive": { "reduce_cooldowns_on_kill": "reduce cooldowns on kill" }
+    },
+    "uniques": { "harlequin_crest": { "num_inherents": 2 } },
+    "sets": ["arms_of_arreat"],
+    "tributes": { "tribute_of_radiance": "tribute of radiance" },
+    "item_types": { "HoradricSeal": "horadric seal" },
+    "tooltips": { "ItemPower": "item power" }
 }
 ```
 

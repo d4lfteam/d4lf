@@ -225,7 +225,10 @@ class SealCharmRuleEditor(QWidget):
         QTimer.singleShot(50, container.expand)
 
     def add_affix_pool(self):
-        default_affix = AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())), value=None)
+        affix_dict = (
+            Dataloader().seal_affix_dict if isinstance(self.config, SealFilterModel) else Dataloader().charm_affix_dict
+        )
+        default_affix = AffixFilterModel(name=next(iter(affix_dict.keys())), value=None)
         new_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
         self.config.affix_pool.append(new_pool)
         self.add_affix_pool_item(new_pool)
@@ -472,10 +475,13 @@ class SealCharmTab(QWidget):
             self.filters.pop(index)
 
     def _default_filter(self) -> SealCharmFilterModel:
+        affix_dict = (
+            Dataloader().seal_affix_dict if self.filter_model == SealFilterModel else Dataloader().charm_affix_dict
+        )
         return self.filter_model(
             affix_pool=[
                 AffixFilterCountModel(
-                    count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())))], min_count=1, max_count=3
+                    count=[AffixFilterModel(name=next(iter(affix_dict.keys())))], min_count=1, max_count=3
                 )
             ]
         )

@@ -50,6 +50,7 @@ def remove_content_in_braces(input_string) -> str:
     result = re.sub(pattern, "", input_string)
     pattern = r"\[.*?\]"
     result = re.sub(pattern, "", result)
+    result = re.sub(r"\([^()]*#%[^()]*\)", "", result)
     result = re.sub(r"#%.*?#%", "", result)
     result = re.sub(r"\|.*?:", "|:", result)
     result = result.replace("|", "")
@@ -334,6 +335,22 @@ def normalise_affix_description(description: str) -> tuple[str, str] | None:
     return desc.replace(",", "").replace(" ", "_"), desc
 
 
+def affix_string_description(
+    affix_name: str, string_list_dir: Path, strip_prefix_pattern: str | None = None
+) -> str | None:
+    string_list_file = string_list_dir / f"Affix_{affix_name}.stl.json"
+    if not string_list_file.exists():
+        return None
+
+    description = string_list_map(string_list_file).get("Desc", "")
+    if not description:
+        return None
+
+    if strip_prefix_pattern is not None:
+        return re.sub(strip_prefix_pattern, "", description, count=1)
+    return description
+
+
 def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None = None):
     print(f"Gen Affixes for {language} (This one takes a while)")
     core_toc = load_json_file(d4data_dir / "json/base/CoreTOC.dat.json")
@@ -361,12 +378,16 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
         context["skill_tags_by_sno"] = {int(key) % (2**32): value for key, value in gbid.get("56", {}).items()}
 
     affix_dict = {}
+    seal_dict = {}
+    charm_dict = {}
     affix_pattern = "json/base/meta/Affix/*.json"
     affix_files = sorted(d4data_dir.glob(affix_pattern, case_sensitive=False))
     for affix_file in affix_files:
         affix_data = load_json_file(affix_file)
         affix_name = Path(affix_data["__fileName__"]).stem
-        if affix_data.get("eMagicType") != 0:
+        is_seal_affix = affix_name.startswith("Talisman_SealAffix_")
+        is_charm_affix = affix_name.startswith("Talisman_Charm_")
+        if affix_data.get("eMagicType") != 0 and not is_seal_affix:
             continue
         if affix_name.startswith("zz"):
             continue
@@ -374,20 +395,43 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
             continue
         if affix_name.casefold() == "2HStaff_Unique_AF_001_Int_Decrease".casefold():
             continue
-        if not affix_data.get("ptItemAffixAttributes"):
-            continue
-
-        description = companion_style_affix_description(affix_data, context, d4data_dir, language)
+        description = None
+        if is_seal_affix:
+            description = affix_string_description(affix_name, string_list_dir, r"^\{c_set\}.*?\{/c\}:\s*")
+        elif is_charm_affix:
+            description = affix_string_description(affix_name, string_list_dir)
+        if description is None:
+            if affix_data.get("eMagicType") != 0 or not affix_data.get("ptItemAffixAttributes"):
+                continue
+            description = companion_style_affix_description(affix_data, context, d4data_dir, language)
         normalised = normalise_affix_description(description)
         if normalised is None:
             continue
         key, value = normalised
-        affix_dict[key] = value
+        if is_seal_affix:
+            seal_dict[key] = value
+        elif is_charm_affix:
+            charm_dict[key] = value
+        else:
+            affix_dict[key] = value
 
     merge_custom_data(affix_dict, "affixes", language)
+    merge_custom_data(seal_dict, "seals_affixes", language)
+    merge_custom_data(charm_dict, "charms_affixes", language)
+
     output_path = output_file or D4LF_BASE_DIR / f"assets/lang/{language}/affixes.json"
     with output_path.open("w", encoding="utf-8") as json_file:
         json.dump(affix_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
+        json_file.write("\n")
+
+    seal_output_path = D4LF_BASE_DIR / f"assets/lang/{language}/seals_affixes.json"
+    with seal_output_path.open("w", encoding="utf-8") as json_file:
+        json.dump(seal_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
+        json_file.write("\n")
+
+    charm_output_path = D4LF_BASE_DIR / f"assets/lang/{language}/charms_affixes.json"
+    with charm_output_path.open("w", encoding="utf-8") as json_file:
+        json.dump(charm_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
         json_file.write("\n")
 
 
@@ -477,6 +521,8 @@ def main(d4data_dir: Path):
     for lang in lang_arr:
         file_names = [
             f"assets/lang/{lang}/affixes.json",
+            f"assets/lang/{lang}/seals_affixes.json",
+            f"assets/lang/{lang}/charms_affixes.json",
             f"assets/lang/{lang}/aspects.json",
             f"assets/lang/{lang}/sets.json",
             f"assets/lang/{lang}/uniques.json",

@@ -71,7 +71,11 @@ class AffixFilterModel(AffixAspectFilterModel):
         # This on module level would be a circular import, so we do it lazy for now
         from src.dataloader import Dataloader  # noqa: PLC0415
 
-        if name not in Dataloader().affix_dict:
+        if (
+            name not in Dataloader().affix_dict
+            and name not in Dataloader().charm_affix_dict
+            and name not in Dataloader().seal_affix_dict
+        ):
             msg = f"affix {name} does not exist"
             raise ValueError(msg)
         return name

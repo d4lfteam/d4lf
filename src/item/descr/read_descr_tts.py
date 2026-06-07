@@ -165,11 +165,11 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
     aspect_text = _get_aspect_from_tts_section(tts_section, item, starting_index, len(affixes))
     for i, affix_text in enumerate(affixes):
         if i < inherent_num:
-            affix = _get_affix_from_text(affix_text)
+            affix = _get_affix_from_text(affix_text, item.item_type)
             affix.type = AffixType.inherent
             item.inherent.append(affix)
         elif i < inherent_num + affixes_num:
-            affix = _get_affix_from_text(affix_text)
+            affix = _get_affix_from_text(affix_text, item.item_type)
             item.affixes.append(affix)
 
     if item.item_type == ItemType.HoradricSeal:
@@ -213,12 +213,12 @@ def _add_affixes_from_tts_mixed(
     for i, affix_text in enumerate(affixes):
         bullet_index = affix_bullet_start + i
         if i < inherent_num:
-            affix = _get_affix_from_text(affix_text)
+            affix = _get_affix_from_text(affix_text, item.item_type)
             affix.type = AffixType.inherent
             affix.loc = affix_bullets[bullet_index].center
             item.inherent.append(affix)
         elif i < inherent_num + affixes_num:
-            affix = _get_affix_from_text(affix_text)
+            affix = _get_affix_from_text(affix_text, item.item_type)
             affix.loc = affix_bullets[bullet_index].center
             if affix_bullets[bullet_index].name.startswith("greater_affix"):
                 affix.type = AffixType.greater
@@ -521,7 +521,7 @@ def _get_set_name_from_line(line: str) -> str | None:
     return next((set_name for set_name in Dataloader().set_list if set_name in normalized_line), None)
 
 
-def _get_affix_from_text(text: str) -> Affix:
+def _get_affix_from_text(text: str, item_type: ItemType | None = None) -> Affix:
     result = Affix(text=text)
     for x in _AFFIX_REPLACEMENTS:
         text = text.replace(x, "")
@@ -560,9 +560,15 @@ def _get_affix_from_text(text: str) -> Affix:
     if matched_groups.get("onlyvalue") is not None:
         result.min_value = float(matched_groups.get("onlyvalue"))
         result.max_value = float(matched_groups.get("onlyvalue"))
+    affix_dict = Dataloader().affix_dict
+    if item_type == ItemType.HoradricSeal:
+        affix_dict = Dataloader().affix_dict | Dataloader().seal_affix_dict
+    elif item_type == ItemType.Charm:
+        affix_dict = Dataloader().affix_dict | Dataloader().charm_affix_dict
+
     result.name = rapidfuzz.process.extractOne(
         keep_letters_and_spaces(_REPLACE_COMPARE_RE.sub("", result.text).strip()),
-        list(Dataloader().affix_dict),
+        list(affix_dict),
         scorer=rapidfuzz.distance.Levenshtein.distance,
     )[0]
     return result
