@@ -835,6 +835,11 @@ AI usage is not banned for D4LF, but some things need to be kept in mind:
 
 Ultimately, please understand there is only 1 full-time maintainer of D4LF and that maintainer does not use AI. The code needs to remain human readable, and humans are who initially wrote it. If an AI and a human disagree, the human always wins. AIs can be helpful but also very stupid.
 
+## Tip
+
+If you want to support the project, the best way is to share it with your friends and in your communities. If you want to contribute financially, you can do so on [Ko-fi](https://ko-fi.com/d4lf).
+The money goes directly to funding AI tokens or cloud time and helps fund development and other expenses related to the project.
+
 ## Credits
 
 - Icon based of: [CarbotAnimations](https://www.youtube.com/carbotanimations/about)
