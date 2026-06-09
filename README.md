@@ -1,7 +1,5 @@
 # ![logo](assets/logo.png)
 
-## Note: D4LF will be updated for Season 13. However, there were a lot of itemization updates and it may take a few weeks for the new features to be complete. You can monitor progress and make suggestions in discord: https://discord.com/channels/1168807680295571456/1499898416572928115
-
 Filter items and sigils in your inventory based on affixes, aspects and thresholds of their values. For questions,
 feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6T) or use github issues.
 
@@ -834,6 +832,11 @@ AI usage is not banned for D4LF, but some things need to be kept in mind:
 - Be prepared for a lot of comments on your PR. Everything that's being done needs to be understandable by the maintainer because he has to fix it 3 months later if something goes wrong.
 
 Ultimately, please understand there is only 1 full-time maintainer of D4LF and that maintainer does not use AI. The code needs to remain human readable, and humans are who initially wrote it. If an AI and a human disagree, the human always wins. AIs can be helpful but also very stupid.
+
+## Tip
+
+If you want to support the project, the best way is to share it with your friends and in your communities. If you want to contribute financially, you can do so on [Ko-fi](https://ko-fi.com/d4lf).
+The money goes directly to funding AI tokens or cloud time and helps fund development and other expenses related to the project.
 
 ## Credits
 
