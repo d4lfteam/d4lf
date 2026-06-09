@@ -14,8 +14,9 @@ D4LF is a Windows desktop application that filters items, sigils, and tributes i
 - **Screen capture**: mss, OpenCV, NumPy
 - **Config/models**: Pydantic, PyYAML, configparser
 - **Testing**: pytest (with pytest-xdist for parallel, pytest-mock, pytest-cov)
+- **Browser importers**: Selenium/SeleniumBase for site importers; prefer existing SeleniumBase patterns for anti-bot-sensitive flows
 - **Linting/formatting**: Ruff (all rules enabled, see `pyproject.toml` for ignores)
-- **Pre-commit**: pre-commit with ruff, clang-format, mdformat, TOML/YAML formatters
+- **Pre-commit**: prek/pre-commit hooks with ruff, clang-format, mdformat, TOML/YAML formatters
 - **CI**: GitHub Actions on `windows-latest`
 - **Distribution**: PyInstaller → single `.exe`
 
@@ -129,40 +130,42 @@ uv sync --all-groups
 
 ## Common Commands
 
+Prefer `uv run ...` locally so Codex and VS Code use the repository environment instead of a globally installed tool. CI may run bare `pytest` after the setup action has prepared the environment.
+
 ### Running Tests
 
 ```bash
 # Run all tests (excluding selenium-based tests), in parallel
-pytest . -m "not selenium" -v -n logical
+uv run pytest . -m "not selenium" -v -n logical
 
 # Run a specific test file
-pytest tests/item/filter/filter_test.py -v
+uv run pytest tests/item/filter/filter_test.py -v
 
 # Run tests with coverage
-pytest . -m "not selenium" --cov=src -v -n logical
+uv run pytest . -m "not selenium" --cov=src -v -n logical
 ```
 
 ### Linting and Formatting
 
 ```bash
 # Check linting (all ruff rules enabled)
-ruff check src/ tests/
+uv run ruff check src/ tests/
 
 # Auto-fix lint issues
-ruff check --fix src/ tests/
+uv run ruff check --fix src/ tests/
 
 # Format code
-ruff format src/ tests/
+uv run ruff format src/ tests/
 
-# Run all pre-commit hooks
-pre-commit run --all-files
+# Run all prek/pre-commit hooks
+prek run -a
 ```
 
 ### Building
 
 ```bash
 # Build the distributable exe (PyInstaller, Windows only)
-python build.py
+uv run python build.py
 ```
 
 ## Key Architecture Concepts
@@ -196,12 +199,12 @@ All UI coordinates in `src/config/data.py` are defined at **3840×2160** (UHD) a
 
 - Tests run on **Windows only** in CI (`windows-latest`). Some test modules are skipped on macOS via `conftest.py`.
 - Pytest markers: `requests` (tests using HTTP), `selenium` (browser-based tests — currently disabled in CI).
-- Season-specific TTS parsing tests exist per-season (`read_descr_season*_test.py`) to handle game data changes.
+- Season-specific TTS parsing tests exist per-season (`read_descr_season*_test.py`) to handle game data changes. Check the newest season test file before editing parser behavior.
 - The filter tests in `tests/item/filter/` use YAML fixture data in `tests/item/filter/data/`.
 
 ## CI/CD
 
-- **CI** (`.github/workflows/ci.yml`): Runs on PRs and pushes to `main`. Sets up uv + Python 3.14, runs pre-commit hooks, then `pytest . -m "not selenium" -v -n logical`.
+- **CI** (`.github/workflows/ci.yml`): Runs on PRs and pushes to `main`. Sets up uv + Python 3.14, runs prek hooks, then `pytest . -m "not selenium" -v -n logical`.
 - **Release** (`.github/workflows/release.yml`): Triggered on merged PRs with `release` label or manual dispatch. Builds exe via `build.py`, creates a GitHub release with the zip.
 
 ## Code Style
@@ -213,11 +216,23 @@ All UI coordinates in `src/config/data.py` are defined at **3840×2160** (UHD) a
 - Import sorting: isort via ruff, no trailing comma splits
 - Docstring convention: **Google style**
 - C++ files (TTS DLL): formatted with **clang-format**
-- TOML/YAML: auto-formatted via pre-commit hooks
+- TOML/YAML: auto-formatted via prek/pre-commit hooks
+- Prefer direct inline logic over private one-line helper functions when the logic is used only once.
+- Do not introduce tiny helper methods only to satisfy linting or style preferences. Add a helper only when it is reused, hides meaningful domain logic, or makes a complex block easier to read.
+- Before adding a new helper, check whether an existing helper or model validator already covers the same path.
+
+## Codex Edit Rules
+
+- Make the smallest safe change that fixes the issue and preserves existing behavior.
+- Avoid new abstractions for single-use logic; keep one-line checks inline at the call site.
+- Reuse existing validators, helpers, constants, and data models before adding new ones.
+- Do not move logic across files unless there is a clear cross-file benefit.
+- Keep existing comments unless the code they explain is removed.
+- When touching profile models, importer parsing, or season data, run targeted model/importer tests when available.
 
 ## Important Conventions
 
-- The project targets **Windows only** at runtime (uses win32 APIs, PyInstaller exe, DirectX screen capture). Tests for Windows-only modules are gated in `conftest.py`.
+- The project targets **Windows only** at runtime (uses win32 APIs, PyInstaller exe builds, and mss/OpenCV-based screen capture). Tests for Windows-only modules are gated in `conftest.py`.
 - User data directory: `~/.d4lf/` (profiles, params.ini, logs).
 - Version is defined in `src/__init__.py` as `__version__`.
 - Existing comments should be kept in place unless the code they relate to is removed
