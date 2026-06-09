@@ -32,6 +32,11 @@ from src.tools.gen_data_helpers import (
 
 D4LF_BASE_DIR = Path(__file__).parent.parent.parent
 
+EXCLUDED_SEAL_AFFIX_KEYS = {
+    "when_you_gain_a_stack_of_stoicism_gain_damage_for_second",
+    "while_in_a_feral_rage_your_werewolf_skills_gain_attack_speed",
+}
+
 
 class AffixGenerationContext(TypedDict):
     attribute_descriptions: dict[str, str]
@@ -396,9 +401,7 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
         if affix_name.casefold() == "2HStaff_Unique_AF_001_Int_Decrease".casefold():
             continue
         description = None
-        if is_seal_affix:
-            description = affix_string_description(affix_name, string_list_dir, r"^\{c_set\}.*?\{/c\}:\s*")
-        elif is_charm_affix:
+        if is_seal_affix or is_charm_affix:
             description = affix_string_description(affix_name, string_list_dir)
         if description is None:
             if affix_data.get("eMagicType") != 0 or not affix_data.get("ptItemAffixAttributes"):
@@ -408,6 +411,12 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
         if normalised is None:
             continue
         key, value = normalised
+        if is_seal_affix and (
+            key in EXCLUDED_SEAL_AFFIX_KEYS
+            or (key.startswith("while_at_least_") and "_charms_equipped_" in key)
+            or "_charm_equipped_" in key
+        ):
+            continue
         if is_seal_affix:
             seal_dict[key] = value
         elif is_charm_affix:
