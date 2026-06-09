@@ -1,5 +1,7 @@
 # ![logo](assets/logo.png)
 
+## Note: D4LF will be updated for Season 13. However, there were a lot of itemization updates and it may take a few weeks for the new features to be complete. You can monitor progress and make suggestions in discord: https://discord.com/channels/1168807680295571456/1499898416572928115
+
 Filter items and sigils in your inventory based on affixes, aspects and thresholds of their values. For questions,
 feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6T) or use github issues.
 
