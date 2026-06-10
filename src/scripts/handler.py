@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 if sys.platform != "darwin":
     import keyboard
 
+import src.logger
 import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
@@ -167,19 +168,27 @@ class ScriptHandler:
         LOGGER.info("Reloaded language assets for %s", self._language)
 
     def _refresh_logging_level(self, config: IniConfigLoader) -> None:
-        current_log_level = config.advanced_options.log_lvl.value.upper()
-        if current_log_level == self._log_level:
-            return
+        adv = config.advanced_options
+        lvl = adv.log_lvl.value.upper()
 
-        root_logger = logging.getLogger()
-        root_logger.setLevel(current_log_level)
-        for handler in root_logger.handlers:
-            # Skip updating the activity log handler to avoid dashboard clutter
-            if getattr(handler, "name", "") == "QT_ACTIVITY":
+        root = logging.getLogger()
+        # File handler is always DEBUG; console and Qt handlers follow user settings.
+        for h in root.handlers:
+            if getattr(h, "name", "") == "D4LF_FILE":
                 continue
-            handler.setLevel(current_log_level)
-        self._log_level = current_log_level
-        LOGGER.info("Updated log level to %s", current_log_level)
+            h.setLevel(lvl)
+            h.setFormatter(
+                src.logger.create_formatter(
+                    colored=("CONSOLE" in str(h.name) or "QT" in str(h.name)),
+                    technical=adv.technical_log_info,
+                    timestamp=adv.log_timestamp,
+                )
+            )
+
+        self._log_level = lvl
+        LOGGER.info(
+            "Updated log settings (Level: %s, Tech: %s, TS: %s)", lvl, adv.technical_log_info, adv.log_timestamp
+        )
 
     def _notify_manual_restart_required(self, reason: str) -> None:
         if self._manual_restart_warning:

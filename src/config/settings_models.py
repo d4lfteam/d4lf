@@ -130,6 +130,18 @@ class AdvancedOptionsModel(_IniBaseModel):
         title="Logging Detail Level",
         json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level", CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
+    log_timestamp: bool = Field(
+        default=True,
+        description="Include timestamps in the log messages.",
+        title="Log Timestamps",
+        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level", CATEGORY_KEY: SettingsCategory.ADVANCED},
+    )
+    technical_log_info: bool = Field(
+        default=False,
+        description="Include technical information (thread, module, line number) in the logs.",
+        title="Technical Log Info",
+        json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level", CATEGORY_KEY: SettingsCategory.ADVANCED},
+    )
     move_to_chest: str = Field(
         default="f8",
         description="Hotkey to move configured items from inventory to stash",
@@ -290,7 +302,7 @@ class GeneralModel(_IniBaseModel):
         json_schema_extra={CATEGORY_KEY: SettingsCategory.SYSTEM},
     )
     check_chest_tabs: list[int] = Field(
-        default=[0, 1],
+        default=[0, 1, 2, 3, 4, 5, 6],
         description="Which stash tabs to check. Note: All tabs available (6 or 7) must be unlocked!",
         title="Stash Tabs to Filter",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.STASH},
