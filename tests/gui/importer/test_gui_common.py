@@ -4,8 +4,9 @@ from src.gui.importer.gui_common import _to_yaml_str, build_default_profile_file
 
 
 class _UserDataDir:
-    mkdir_called = False
-    mkdir_kwargs = {}
+    def __init__(self) -> None:
+        self.mkdir_called = False
+        self.mkdir_kwargs = {}
 
     def mkdir(self, **kwargs) -> None:
         self.mkdir_called = True

@@ -56,7 +56,6 @@ PAGE_DIAGNOSTIC_MARKERS = (
 )
 HEADLESS_WAIT_SECONDS = 10
 VISIBLE_BROWSER_WAIT_SECONDS = 180
-FORCE_VISIBLE_FALLBACK_FOR_TESTING = False
 
 if TYPE_CHECKING:
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
@@ -261,8 +260,8 @@ def _open_mobalytics_url(driver: ChromiumDriver, url: str) -> None:
     driver.get(url)
 
 
-def _load_mobalytics_preloaded_state(driver: ChromiumDriver, url: str) -> dict:
-    if FORCE_VISIBLE_FALLBACK_FOR_TESTING:
+def _load_mobalytics_preloaded_state(driver: ChromiumDriver, url: str, *, _force_visible: bool = False) -> dict:
+    if _force_visible:
         LOGGER.warning("Forcing visible Mobalytics browser fallback for local testing.")
         return _load_mobalytics_preloaded_state_with_visible_browser(url=url)
 

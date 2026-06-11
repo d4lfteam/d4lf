@@ -12,6 +12,7 @@ from src.gui.importer.mobalytics import (
     _extract_mobalytics_preloaded_state_from_page,
     _is_mobalytics_blocked_page,
     _is_mobalytics_page_ready,
+    _load_mobalytics_preloaded_state,
     _log_mobalytics_page_diagnostics,
     import_mobalytics,
 )
@@ -102,6 +103,22 @@ def test_mobalytics_page_ready_waits_for_data_in_visible_browser():
     assert _is_mobalytics_page_ready(blocked_driver, stop_on_block=True)
     assert not _is_mobalytics_page_ready(blocked_driver, stop_on_block=False)
     assert _is_mobalytics_page_ready(data_driver, stop_on_block=False)
+
+
+def test_load_mobalytics_preloaded_state_allows_forced_visible_fallback(mocker: MockerFixture):
+    read_preloaded_state = mocker.patch("src.gui.importer.mobalytics._read_mobalytics_preloaded_state")
+    visible_fallback = mocker.patch(
+        "src.gui.importer.mobalytics._load_mobalytics_preloaded_state_with_visible_browser",
+        return_value={"build": "data"},
+    )
+
+    data = _load_mobalytics_preloaded_state(
+        driver=mocker.Mock(), url="https://mobalytics.gg/diablo-4/builds/test", _force_visible=True
+    )
+
+    assert data == {"build": "data"}
+    visible_fallback.assert_called_once_with(url="https://mobalytics.gg/diablo-4/builds/test")
+    read_preloaded_state.assert_not_called()
 
 
 def test_log_mobalytics_page_diagnostics_reports_loaded_page_shape(caplog: pytest.LogCaptureFixture):
