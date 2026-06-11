@@ -39,6 +39,10 @@ from src.gui.importer.gui_common import (
 from src.item.filter import Filter
 from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground
 
+if sys.platform == "win32":
+    import win32con
+    import win32gui
+
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
@@ -529,6 +533,8 @@ class ParagonOverlay(tk.Toplevel):
         self._warmup_after_id = self.after(600, self._warmup_settings_assets)
         self.after(self._cfg.poll_ms, self._poll_window_state)
         self.after(50, self._poll_close_request)
+        if sys.platform == "win32":
+            self.after(100, self._poll_click_through)
 
     def _apply_dpi_scaling(self) -> None:
         """Apply DPI-aware sizing before widgets are created."""
@@ -626,7 +632,7 @@ class ParagonOverlay(tk.Toplevel):
 
         self.btn_settings = _tk_btn(
             btn_cont,
-            text="ParagonOverlay⚙ ▼",
+            text="Settings⚙ ▼",
             cmd=self._show_settings_dropdown,
             font=("Segoe UI", int(FS_BUTTON * self._cfg.ui_scale), "bold"),
             padx=int(10 * self._cfg.ui_scale),
@@ -745,6 +751,8 @@ class ParagonOverlay(tk.Toplevel):
         """Enable or disable all grid movement and zoom controls."""
         self._cfg.grid_locked = not self._cfg.grid_locked
         self._persist_state()
+        if sys.platform == "win32":
+            self._update_click_through()
 
     def _toggle_gold_frames(self) -> None:
         """Toggle the optional gold accent color override for all frames."""
@@ -1575,6 +1583,80 @@ class ParagonOverlay(tk.Toplevel):
         if self._dragging_grid:
             self._dragging_grid = False
             self._persist_state()
+
+    def _set_click_through(self, *, enabled: bool) -> None:
+        """Set WS_EX_TRANSPARENT style on the window handle to enable/disable click-through.
+
+        Args:
+            enabled: True to enable click-through, False to disable it.
+        """
+        if sys.platform != "win32":
+            return
+        try:
+            hwnd = win32gui.GetAncestor(int(self.winfo_id()), win32con.GA_ROOT)
+            styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+            new_styles = styles | win32con.WS_EX_TRANSPARENT if enabled else styles & ~win32con.WS_EX_TRANSPARENT
+            if new_styles != styles:
+                LOGGER.debug("Paragon overlay click-through changing to: %s", enabled)
+                win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, new_styles)
+                win32gui.SetWindowPos(
+                    hwnd,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOZORDER | win32con.SWP_FRAMECHANGED,
+                )
+        except tk.TclError, AttributeError, win32gui.error:
+            LOGGER.debug("Failed to set click through style", exc_info=True)
+
+    def _update_click_through(self) -> None:
+        """Update click-through style depending on grid lock and mouse position."""
+        if sys.platform != "win32":
+            return
+
+        try:
+            if not self._cfg.grid_locked:
+                self._set_click_through(enabled=False)
+                return
+
+            if not self.winfo_viewable():
+                return
+
+            px, py = self.winfo_pointerxy()
+            rx = self.winfo_rootx()
+            ry = self.winfo_rooty()
+            rw = self._cfg.panel_w
+            rh = self.winfo_height()
+
+            popup_active = _is_alive(getattr(self, "_settings_popup", None), mapped=True) or _is_alive(
+                getattr(self, "_build_popup", None), mapped=True
+            )
+
+            over_panel = (rx <= px < rx + rw) and (ry <= py < ry + rh)
+            target_enabled = not (over_panel or popup_active)
+            LOGGER.debug(
+                "Paragon overlay click-through debug: mouse=(%s, %s), root=(%s, %s), rw=%s, rh=%s, over_panel=%s, popup_active=%s, target_enabled=%s",
+                px,
+                py,
+                rx,
+                ry,
+                rw,
+                rh,
+                over_panel,
+                popup_active,
+                target_enabled,
+            )
+            self._set_click_through(enabled=target_enabled)
+        except (tk.TclError, AttributeError, ValueError, TypeError, win32gui.error) as e:
+            LOGGER.debug("Failed to update click-through state: %s", e)
+
+    def _poll_click_through(self) -> None:
+        """Poll the click-through state frequently when window is viewable."""
+        if sys.platform == "win32" and _is_alive(self):
+            self._update_click_through()
+            self.after(100, self._poll_click_through)
 
     # --- GEOMETRY & RENDERING ---
 
