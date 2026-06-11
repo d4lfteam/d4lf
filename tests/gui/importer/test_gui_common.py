@@ -1,5 +1,19 @@
 from src.config.profile_models import ProfileModel
+from src.gui.importer import gui_common
 from src.gui.importer.gui_common import _to_yaml_str, build_default_profile_file_name
+
+
+class _UserDataDir:
+    def __init__(self) -> None:
+        self.mkdir_called = False
+        self.mkdir_kwargs = {}
+
+    def mkdir(self, **kwargs) -> None:
+        self.mkdir_called = True
+        self.mkdir_kwargs = kwargs
+
+    def __str__(self) -> str:
+        return "browser/mobalytics"
 
 
 def test_build_default_profile_file_name_maxroll() -> None:
@@ -61,3 +75,15 @@ def test_to_yaml_str_sorts_aspect_upgrades_and_uses_block_style(mock_ini_loader)
 
     assert "aspect_upgrades:\n- accelerating\n- snowveiled\n" in yaml_str
     assert "aspect_upgrades: [" not in yaml_str
+
+
+def test_setup_webdriver_uc_visible_uses_persistent_profile(mocker) -> None:
+    driver_cls = mocker.patch.object(gui_common, "Driver")
+    user_data_dir = _UserDataDir()
+
+    driver = gui_common.setup_webdriver(uc=True, headless=False, user_data_dir=user_data_dir)
+
+    assert driver == driver_cls.return_value
+    assert user_data_dir.mkdir_called
+    assert user_data_dir.mkdir_kwargs == {"parents": True, "exist_ok": True}
+    driver_cls.assert_called_once_with(uc=True, headed=True, user_data_dir=str(user_data_dir))

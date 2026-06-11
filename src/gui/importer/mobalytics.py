@@ -6,12 +6,11 @@ from urllib.parse import unquote
 
 import jsonpath
 import lxml.html
-from selenium.common.exceptions import WebDriverException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as ec
+from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
+from src.config.loader import IniConfigLoader
 from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
@@ -29,6 +28,7 @@ from src.gui.importer.gui_common import (
     match_to_enum,
     retry_importer,
     save_as_profile,
+    setup_webdriver,
     sort_profile_filters,
     update_mingreateraffixcount,
 )
@@ -45,18 +45,17 @@ BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
 PROFILE_GUIDE_BASE_URL = f"{BUILD_GUIDE_BASE_URL}profile"
 SCRIPT_XPATH = "//script"
 BUILD_SCRIPT_ASSIGNMENT = re.compile(r"window\.__PRELOADED_STATE__\s*=\s*")
+BLOCKED_PAGE_MARKERS = ("captcha", "cloudflare", "access denied", "forbidden", "just a moment")
 PAGE_DIAGNOSTIC_MARKERS = (
     "__PRELOADED_STATE__",
     "__NEXT_DATA__",
     "self.__next_f",
     "userGeneratedDocumentBySlug",
     "buildVariants",
-    "captcha",
-    "cloudflare",
-    "access denied",
-    "forbidden",
-    "just a moment",
+    *BLOCKED_PAGE_MARKERS,
 )
+HEADLESS_WAIT_SECONDS = 10
+VISIBLE_BROWSER_WAIT_SECONDS = 180
 
 if TYPE_CHECKING:
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
@@ -77,27 +76,8 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         return
     url = _fix_input_url(url=url)
     LOGGER.info(f"Loading {url}")
-    _open_mobalytics_url(driver=driver, url=url)
-    wait = WebDriverWait(driver, 10)
-    wait.until(ec.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
     variant_id = url.split(",")[1].split("#")[0] if "activeVariantId" in url else None
-    page_source = driver.page_source
-    raw_html_data = lxml.html.fromstring(page_source)
-    # The build is shoved in a massive JSON in one of the script tags. We find that json now.
-    scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
-    full_script_data_json = None
-    for script in scripts_elem:
-        full_script_data_json = _extract_mobalytics_preloaded_state(script.text_content())
-        if full_script_data_json is not None:
-            break
-
-    if not full_script_data_json:
-        _log_mobalytics_page_diagnostics(driver=driver, page_source=page_source, script_count=len(scripts_elem))
-        LOGGER.error(
-            msg
-            := "No script containing build data was found. This means Mobalytics has changed how they present data, please submit a bung."
-        )
-        raise MobalyticsError(msg)
+    full_script_data_json = _load_mobalytics_preloaded_state(driver=driver, url=url)
 
     # Get the JSON block that contains the build and its variants
     build_data = dict(jsonpath.findall("$..userGeneratedDocumentBySlug.data.data", full_script_data_json)[0])
@@ -280,6 +260,95 @@ def _open_mobalytics_url(driver: ChromiumDriver, url: str) -> None:
     driver.get(url)
 
 
+def _load_mobalytics_preloaded_state(driver: ChromiumDriver, url: str, *, _force_visible: bool = False) -> dict:
+    if _force_visible:
+        LOGGER.warning("Forcing visible Mobalytics browser fallback for local testing.")
+        return _load_mobalytics_preloaded_state_with_visible_browser(url=url)
+
+    full_script_data_json, page_source, script_count = _read_mobalytics_preloaded_state(
+        driver=driver, url=url, timeout_seconds=HEADLESS_WAIT_SECONDS, stop_on_block=True
+    )
+    if full_script_data_json is not None:
+        return full_script_data_json
+
+    _log_mobalytics_page_diagnostics(driver=driver, page_source=page_source, script_count=script_count)
+    if _is_mobalytics_blocked_page(page_source):
+        return _load_mobalytics_preloaded_state_with_visible_browser(url=url)
+
+    LOGGER.error(
+        msg
+        := "No script containing build data was found. This means Mobalytics has changed how they present data, please submit a bug."
+    )
+    raise MobalyticsError(msg)
+
+
+def _load_mobalytics_preloaded_state_with_visible_browser(url: str) -> dict:
+    user_data_dir = IniConfigLoader().user_dir / "browser" / "mobalytics"
+    LOGGER.warning(
+        "Mobalytics blocked the headless importer. Opening a visible browser so you can complete any challenge. "
+        "The browser profile will be reused from %s.",
+        user_data_dir,
+    )
+    visible_driver = setup_webdriver(uc=True, headless=False, user_data_dir=user_data_dir)
+    try:
+        full_script_data_json, page_source, script_count = _read_mobalytics_preloaded_state(
+            driver=visible_driver, url=url, timeout_seconds=VISIBLE_BROWSER_WAIT_SECONDS, stop_on_block=False
+        )
+        if full_script_data_json is not None:
+            return full_script_data_json
+
+        _log_mobalytics_page_diagnostics(driver=visible_driver, page_source=page_source, script_count=script_count)
+        if _is_mobalytics_blocked_page(page_source):
+            LOGGER.error(
+                msg
+                := "Mobalytics is still blocking the importer. Complete the browser challenge, then retry the import."
+            )
+            raise MobalyticsError(msg)
+
+        LOGGER.error(
+            msg
+            := "No script containing build data was found after opening the visible browser. This means Mobalytics has changed how they present data, please submit a bug."
+        )
+        raise MobalyticsError(msg)
+    finally:
+        visible_driver.quit()
+
+
+def _read_mobalytics_preloaded_state(
+    driver: ChromiumDriver, url: str, timeout_seconds: int, stop_on_block: bool
+) -> tuple[dict | None, str, int]:
+    _open_mobalytics_url(driver=driver, url=url)
+    wait = WebDriverWait(driver, timeout_seconds)
+    try:
+        wait.until(lambda active_driver: _is_mobalytics_page_ready(active_driver, stop_on_block=stop_on_block))
+    except TimeoutException:
+        LOGGER.debug("Timed out waiting for Mobalytics build data.")
+
+    page_source = driver.page_source
+    full_script_data_json, script_count = _extract_mobalytics_preloaded_state_from_page(page_source)
+    return full_script_data_json, page_source, script_count
+
+
+def _is_mobalytics_page_ready(driver: ChromiumDriver, stop_on_block: bool) -> bool:
+    try:
+        page_source = driver.page_source
+    except WebDriverException:
+        return False
+    if BUILD_SCRIPT_ASSIGNMENT.search(page_source):
+        return True
+    return stop_on_block and _is_mobalytics_blocked_page(page_source)
+
+
+def _extract_mobalytics_preloaded_state_from_page(page_source: str) -> tuple[dict | None, int]:
+    raw_html_data = lxml.html.fromstring(page_source)
+    scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
+    for script in scripts_elem:
+        full_script_data_json = _extract_mobalytics_preloaded_state(script.text_content())
+        if full_script_data_json is not None:
+            return full_script_data_json, len(scripts_elem)
+    return None, len(scripts_elem)
+
+
 def _extract_mobalytics_preloaded_state(script_text: str) -> dict | None:
     match = BUILD_SCRIPT_ASSIGNMENT.search(script_text)
     if match is None:
@@ -292,9 +361,17 @@ def _extract_mobalytics_preloaded_state(script_text: str) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
-def _log_mobalytics_page_diagnostics(driver: ChromiumDriver, page_source: str, script_count: int) -> None:
+def _is_mobalytics_blocked_page(page_source: str) -> bool:
+    return bool(_find_mobalytics_page_markers(page_source=page_source, markers=BLOCKED_PAGE_MARKERS))
+
+
+def _find_mobalytics_page_markers(page_source: str, markers: tuple[str, ...]) -> list[str]:
     page_source_casefold = page_source.casefold()
-    matched_markers = [marker for marker in PAGE_DIAGNOSTIC_MARKERS if marker.casefold() in page_source_casefold]
+    return [marker for marker in markers if marker.casefold() in page_source_casefold]
+
+
+def _log_mobalytics_page_diagnostics(driver: ChromiumDriver, page_source: str, script_count: int) -> None:
+    matched_markers = _find_mobalytics_page_markers(page_source=page_source, markers=PAGE_DIAGNOSTIC_MARKERS)
     LOGGER.debug(
         "Mobalytics page diagnostics: current_url=%r title=%r page_source_length=%s script_count=%s markers=%s",
         _read_mobalytics_driver_value(driver, "current_url"),
