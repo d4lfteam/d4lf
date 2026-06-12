@@ -57,7 +57,12 @@ charms = [
             set=None,
             affixes=[
                 Affix(name="cold_resistance", value=486.0, min_value=416.0, max_value=523.0),
-                Affix(name="lucky_hit_up_to_a_chance_to_deal_physical_damage", value=950.0, min_value=550.0, max_value=1000.0),
+                Affix(
+                    name="lucky_hit_up_to_a_chance_to_deal_physical_damage",
+                    value=950.0,
+                    min_value=550.0,
+                    max_value=1000.0,
+                ),
             ],
         ),
     ),

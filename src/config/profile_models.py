@@ -221,7 +221,7 @@ class ItemFilterModel(BaseModel):
 DynamicItemFilterModel = RootModel[dict[str, ItemFilterModel]]
 
 
-class SealCharmFilterModel(BaseModel):
+class _BaseSealOrCharmFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     affix_pool: list[AffixFilterCountModel] = Field(default=[], alias="affixPool")
     min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
@@ -238,7 +238,7 @@ class SealCharmFilterModel(BaseModel):
         return _parse_item_type_or_rarities(data)
 
 
-class CharmFilterModel(SealCharmFilterModel):
+class CharmFilterModel(_BaseSealOrCharmFilterModel):
     model_config = ConfigDict(populate_by_name=True)
     set: list[str] = Field(default=[], alias="set")
     unique_aspect: list[AspectUniqueFilterModel] = Field(default=[], alias="uniqueAspect")
@@ -265,8 +265,12 @@ class CharmFilterModel(SealCharmFilterModel):
         return self
 
 
-DynamicSealCharmFilterModel = RootModel[dict[str, SealCharmFilterModel]]
+class SealFilterModel(_BaseSealOrCharmFilterModel):
+    pass
+
+
 DynamicCharmFilterModel = RootModel[dict[str, CharmFilterModel]]
+DynamicSealFilterModel = RootModel[dict[str, SealFilterModel]]
 
 
 class SigilPriority(enum.StrEnum):
@@ -384,7 +388,7 @@ class ProfileModel(BaseModel):
     charms: list[DynamicCharmFilterModel] = Field(default=[], alias="Charms")
     global_uniques: list[GlobalUniqueModel] = Field(default=[], alias="GlobalUniques")
     name: str
-    seals: list[DynamicSealCharmFilterModel] = Field(default=[], alias="Seals")
+    seals: list[DynamicSealFilterModel] = Field(default=[], alias="Seals")
     sigils: SigilFilterModel = Field(
         default=SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist), alias="Sigils"
     )
