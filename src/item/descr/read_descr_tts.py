@@ -7,7 +7,6 @@ import rapidfuzz
 
 import src.tts
 from src import TP
-from src.config.ui import ResManager
 from src.dataloader import Dataloader
 from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect
@@ -27,7 +26,7 @@ from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.item.descr import keep_letters_and_spaces
 from src.item.descr.text import find_number
 from src.item.descr.texture import find_affix_bullets, find_aspect_bullet, find_seperator_short, find_seperators_long
-from src.item.models import BoostedSet, Item
+from src.item.models import Item
 from src.scripts import correct_name
 from src.tts import ItemIdentifiers
 from src.utils.window import screenshot
@@ -54,7 +53,7 @@ _ASPECT_RE = re.compile(
 _FOR_SECONDS_RE = re.compile(r"for (?P<forsecondsvalue>\d+(?:\.\d+)?) Seconds")
 
 _REPLACE_COMPARE_RE = re.compile(r"\(.*\)")
-_CHARM_SLOTS_RE = re.compile(r"unlocks (?P<slots>\d+) charm slots", re.IGNORECASE)
+_GET_FIRST_NUMBER_RE = re.compile(r"\d+")
 
 _AFFIX_REPLACEMENTS = ["%", "+", ",", "[+]", "[x]", "per 5 Seconds"]
 _AFFIX_STOP_MARKERS = (
@@ -78,26 +77,18 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
     inherent_num = 0
     affixes_num = 4
     # We assume these objects have the minimum number of affixes and then try to determine if they have more.
-    if item.rarity == ItemRarity.Rare:
-        affixes_num = 3
+    if item.rarity == ItemRarity.Common:
+        affixes_num = 0
     elif item.rarity == ItemRarity.Magic:
         affixes_num = 1
-    elif item.rarity == ItemRarity.Common:
-        affixes_num = 0
-
-    if is_seal_or_charm(item.item_type):
-        total = _get_seal_charm_affix_count(tts_section, start)
-        if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
-            # Unique/mythic charms include a unique power (aspect) line and
-            # possibly flavor text that _get_seal_charm_affix_count incorrectly
-            # counts as affixes. Strip the trailing flavor text (no digits) and
-            # subtract 1 for the aspect.
-            lines = tts_section[start : start + total]
-            if total > 0 and not _has_numbers(lines[-1]):
-                total -= 1
-            if total > 0:
-                total -= 1
-        return inherent_num, total
+    elif item.rarity == ItemRarity.Rare:
+        affixes_num = 2 if is_seal_or_charm(item.item_type) else 3
+    elif item.rarity == ItemRarity.Legendary:
+        affixes_num = 3 if is_seal_or_charm(item.item_type) else 4
+    elif item.rarity == ItemRarity.Set:
+        affixes_num = 2
+    elif item.rarity == ItemRarity.Unique:
+        affixes_num = 2 if is_seal_or_charm(item.item_type) else 4
 
     if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
         # Uniques can have variable amounts of inherents.
@@ -126,43 +117,11 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
     return inherent_num, affixes_num
 
 
-def _get_seal_charm_affix_count(tts_section: list[str], start: int) -> int:
-    affixes_num = 0
-    for line in tts_section[start:]:
-        if line.lower().startswith(_AFFIX_STOP_MARKERS) or _get_set_name_from_line(line) is not None:
-            break
-        affixes_num += 1
-    return affixes_num
-
-
-def _read_charm_slots_from_tts_section(
-    tts_section: list[str], item: Item, starting_index: int, affix_bullets: list[TemplateMatch] | None = None
-) -> tuple[int, int]:
-    if item.item_type != ItemType.HoradricSeal or starting_index >= len(tts_section):
-        return starting_index, 0
-
-    charm_slots_match = _CHARM_SLOTS_RE.search(tts_section[starting_index])
-    if charm_slots_match is None:
-        return starting_index, 0
-
-    item.charm_slots = int(charm_slots_match.group("slots"))
-    if affix_bullets:
-        item.charm_slots_loc = affix_bullets[0].center
-        return starting_index + 1, 1
-    return starting_index + 1, 0
-
-
 def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
     starting_index = _get_affix_starting_location_from_tts_section(tts_section, item)
-    starting_index, _affix_bullet_start = _read_charm_slots_from_tts_section(tts_section, item, starting_index)
     inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
     affixes = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
-    boosted_sets = []
-    if item.item_type == ItemType.Charm:
-        item.set_name = _get_set_from_tts_section(tts_section, starting_index, len(affixes))
-    elif item.item_type == ItemType.HoradricSeal:
-        boosted_sets = _get_boosted_sets_from_tts_section(tts_section, starting_index, len(affixes))
-    aspect_text = _get_aspect_from_tts_section(tts_section, item, starting_index, len(affixes))
+    aspect_or_set_text = _get_aspect_or_set_from_tts_section(tts_section, item, starting_index, len(affixes))
     for i, affix_text in enumerate(affixes):
         if i < inherent_num:
             affix = _get_affix_from_text(affix_text, item.item_type)
@@ -172,16 +131,15 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
             affix = _get_affix_from_text(affix_text, item.item_type)
             item.affixes.append(affix)
 
-    if item.item_type == ItemType.HoradricSeal:
-        _add_boosted_sets_to_item(item, boosted_sets)
-
-    if aspect_text:
+    if aspect_or_set_text:
         if item.rarity == ItemRarity.Mythic:
-            item.aspect = Aspect(name=item.name, text=aspect_text, value=find_number(aspect_text))
+            item.aspect = Aspect(name=item.name, text=aspect_or_set_text, value=find_number(aspect_or_set_text))
         elif item.rarity == ItemRarity.Unique:
-            item.aspect = _get_aspect_from_text(aspect_text, item.name)
+            item.aspect = _get_aspect_from_text(aspect_or_set_text, item.name)
+        elif item.rarity == ItemRarity.Set:
+            item.set = _get_set_from_text(aspect_or_set_text)
         else:
-            item.aspect = _get_aspect_from_name(aspect_text, item.name)
+            item.aspect = _get_aspect_from_name(aspect_or_set_text, item.name)
     return item
 
 
@@ -193,98 +151,47 @@ def _add_affixes_from_tts_mixed(
     aspect_bullet: TemplateMatch | None,
 ) -> Item:
     starting_index = _get_affix_starting_location_from_tts_section(tts_section, item)
-    starting_index, affix_bullet_start = _read_charm_slots_from_tts_section(
-        tts_section, item, starting_index, affix_bullets
-    )
     inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
     affixes = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
-    boosted_sets = []
-    if item.item_type == ItemType.Charm:
-        item.set_name = _get_set_from_tts_section(tts_section, starting_index, len(affixes))
-    elif item.item_type == ItemType.HoradricSeal:
-        boosted_sets = _get_boosted_sets_from_tts_section(tts_section, starting_index, len(affixes))
-    aspect_text = _get_aspect_from_tts_section(tts_section, item, starting_index, len(affixes))
+    aspect_or_set_text = _get_aspect_or_set_from_tts_section(tts_section, item, starting_index, len(affixes))
+
+    # A seal will always have one extra bullet that represents the number of slots
+    if item.item_type == ItemType.HoradricSeal:
+        affix_bullets.pop(0)
 
     # With advanced item compare on we'll actually find more bullets than we need, so we don't rely on them for
     # number of affixes
-    if affix_bullet_start + len(affixes) > len(affix_bullets):
+    if len(affixes) > len(affix_bullets):
         _raise_index_error(affixes, affix_bullets, item, img_item_descr)
 
     for i, affix_text in enumerate(affixes):
-        bullet_index = affix_bullet_start + i
         if i < inherent_num:
             affix = _get_affix_from_text(affix_text, item.item_type)
             affix.type = AffixType.inherent
-            affix.loc = affix_bullets[bullet_index].center
+            affix.loc = affix_bullets[i].center
             item.inherent.append(affix)
         elif i < inherent_num + affixes_num:
             affix = _get_affix_from_text(affix_text, item.item_type)
-            affix.loc = affix_bullets[bullet_index].center
-            if affix_bullets[bullet_index].name.startswith("greater_affix"):
+            affix.loc = affix_bullets[i].center
+            if affix_bullets[i].name.startswith("greater_affix"):
                 affix.type = AffixType.greater
-            elif affix_bullets[bullet_index].name.startswith("rerolled"):
+            elif affix_bullets[i].name.startswith("rerolled"):
                 affix.type = AffixType.rerolled
             else:
                 affix.type = AffixType.normal
             item.affixes.append(affix)
 
-    extra_idx = affix_bullet_start + len(affixes)
-    last_known_bullet_loc = (
-        affix_bullets[min(extra_idx, len(affix_bullets)) - 1].center if extra_idx and affix_bullets else None
-    )
-    line_height = ResManager().offsets.item_descr_line_height
-    if item.item_type == ItemType.HoradricSeal:
-        _add_boosted_sets_to_item(item, boosted_sets)
-        previous_boosted_set_loc = None
-        for boosted_set in item.boosted_sets:
-            if previous_boosted_set_loc is not None:
-                min_next_boosted_set_y = previous_boosted_set_loc[1] + int(line_height * 1.2)
-            elif last_known_bullet_loc is not None:
-                min_next_boosted_set_y = last_known_bullet_loc[1] + line_height // 2
-            else:
-                min_next_boosted_set_y = 0
-            while extra_idx < len(affix_bullets) and (
-                not affix_bullets[extra_idx].name.startswith("boosted_bullet_point")
-                or affix_bullets[extra_idx].center[1] < min_next_boosted_set_y
-            ):
-                extra_idx += 1
-            if extra_idx < len(affix_bullets):
-                boosted_set.loc = affix_bullets[extra_idx].center
-                last_known_bullet_loc = boosted_set.loc
-                previous_boosted_set_loc = boosted_set.loc
-                extra_idx += 1
-            elif previous_boosted_set_loc is not None:
-                boosted_set.loc = (previous_boosted_set_loc[0], previous_boosted_set_loc[1] + line_height * 2)
-                last_known_bullet_loc = boosted_set.loc
-                previous_boosted_set_loc = boosted_set.loc
-            elif last_known_bullet_loc is not None:
-                last_known_bullet_loc = (last_known_bullet_loc[0], last_known_bullet_loc[1] + line_height)
-                boosted_set.loc = last_known_bullet_loc
-                previous_boosted_set_loc = boosted_set.loc
-            if boosted_set.affix is not None and boosted_set.loc is not None:
-                last_known_bullet_loc = (boosted_set.loc[0], boosted_set.loc[1] + line_height)
-    elif item.item_type == ItemType.Charm and item.set_name:
-        if extra_idx < len(affix_bullets):
-            item.set_name_loc = affix_bullets[extra_idx].center
-            last_known_bullet_loc = item.set_name_loc
-            extra_idx += 1
-        elif last_known_bullet_loc is not None:
-            last_known_bullet_loc = (last_known_bullet_loc[0], last_known_bullet_loc[1] + line_height)
-            item.set_name_loc = last_known_bullet_loc
-
-    if aspect_text:
+    if aspect_or_set_text:
         if item.rarity == ItemRarity.Mythic:
-            item.aspect = Aspect(name=item.name, text=aspect_text, value=find_number(aspect_text))
+            item.aspect = Aspect(name=item.name, text=aspect_or_set_text, value=find_number(aspect_or_set_text))
         elif item.rarity == ItemRarity.Unique:
-            item.aspect = _get_aspect_from_text(aspect_text, item.name)
+            item.aspect = _get_aspect_from_text(aspect_or_set_text, item.name)
+        elif item.rarity == ItemRarity.Set:
+            item.set = _get_set_from_text(aspect_or_set_text)
         else:
-            item.aspect = _get_aspect_from_name(aspect_text, item.name)
-        if item.aspect:
-            if aspect_bullet:
-                item.aspect.loc = aspect_bullet.center
-            elif is_seal_or_charm(item.item_type) and extra_idx < len(affix_bullets):
-                item.aspect.loc = affix_bullets[extra_idx].center
-                extra_idx += 1
+            item.aspect = _get_aspect_from_name(aspect_or_set_text, item.name)
+        if item.aspect and aspect_bullet:
+            item.aspect.loc = aspect_bullet.center
     return item
 
 
@@ -385,7 +292,6 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         search_string_split = tts_item[1].split(" ")
         item.rarity = _get_item_rarity(search_string_split[0])
         return item
-
     if "bloodied" in tts_item[1].lower():
         item.seasonal_attribute = SeasonalAttribute.bloodied
 
@@ -396,13 +302,12 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     search_string = tts_item[1].lower().replace("ancestral", "").replace("bloodied", "").strip()
     search_string = _REPLACE_COMPARE_RE.sub("", search_string).strip()
     search_string_split = search_string.split(" ")
-    rarity_token = search_string_split[0]
-    item.rarity = _get_item_rarity(rarity_token)
-    starting_item_type_index = 0
+    item.rarity = _get_item_rarity(search_string_split[0])
+    starting_item_type_index = 1
     if item.rarity == ItemRarity.Mythic:
         starting_item_type_index = 2
-    elif rarity_token == item.rarity.value:
-        starting_item_type_index = 1
+    elif item.rarity == ItemRarity.Common:
+        starting_item_type_index = 0
     item.item_type = _get_item_type(" ".join(search_string_split[starting_item_type_index:]))
     item.name = correct_name(tts_item[0])
     if item.name in Dataloader().bad_tts_uniques:
@@ -437,8 +342,10 @@ def _get_affix_starting_location_from_tts_section(tts_section: list[str], item: 
         start = _get_index_of_armor_dps_or_all_resist(tts_section, "armor") + 2
     elif is_armor(item.item_type):
         start = _get_index_of_armor_dps_or_all_resist(tts_section, "armor")
-    elif is_seal_or_charm(item.item_type):
-        start = 1
+    elif item.item_type == ItemType.HoradricSeal:
+        return 3
+    elif item.item_type == ItemType.Charm:
+        return 2
     start += 1
 
     return start
@@ -456,73 +363,34 @@ def _get_affixes_from_tts_section(tts_section: list[str], start: int, length: in
     return tts_section[start : start + length]
 
 
-def _get_aspect_from_tts_section(tts_section: list[str], item: Item, start: int, num_affixes: int):
-    if item.item_type == ItemType.HoradricSeal and item.rarity not in [ItemRarity.Unique, ItemRarity.Mythic]:
+def _get_aspect_or_set_from_tts_section(tts_section: list[str], item: Item, start: int, num_affixes: int):
+    if item.item_type == ItemType.HoradricSeal and item.rarity == ItemRarity.Legendary:
         return None
-    # Grab the aspect as well in this case
+    # Grab the aspect/set as well in this case
     if item.rarity in [ItemRarity.Mythic, ItemRarity.Unique, ItemRarity.Legendary]:
         aspect_index = start + num_affixes
-        if aspect_index < len(tts_section):
-            return tts_section[aspect_index]
+        return tts_section[aspect_index]
+    if item.rarity == ItemRarity.Set:
+        for line in tts_section[start + num_affixes :]:
+            set_name = _get_set_from_text(line)
+            if set_name:
+                return set_name
 
     return None
 
 
-def _get_set_from_tts_section(tts_section: list[str], start: int, num_affixes: int) -> str | None:
-    return next(iter(_get_sets_from_tts_section(tts_section, start, num_affixes)), None)
-
-
-def _get_sets_from_tts_section(tts_section: list[str], start: int, num_affixes: int) -> list[str]:
-    set_names = []
-    for line in tts_section[start + num_affixes :]:
-        set_name = _get_set_name_from_line(line)
-        if set_name in Dataloader().set_list:
-            set_names.append(set_name)
-    return set_names
-
-
-def _get_boosted_sets_from_tts_section(tts_section: list[str], start: int, num_affixes: int) -> list[BoostedSet]:
-    boosted_sets = []
-    index = start + num_affixes
-    while index < len(tts_section):
-        line = tts_section[index]
-        set_name = _get_set_name_from_line(line)
-        if set_name not in Dataloader().set_list:
-            index += 1
-            continue
-
-        affix = None
-        parts = line.split(":", maxsplit=1)
-        if len(parts) > 1 and any(char.isdigit() for char in parts[1]):
-            affix = _get_affix_from_text(parts[1].strip())
-            affix.type = AffixType.normal
-        else:
-            next_index = index + 1
-            if (
-                next_index < len(tts_section)
-                and not tts_section[next_index].lower().startswith(_AFFIX_STOP_MARKERS)
-                and _get_set_name_from_line(tts_section[next_index]) is None
-            ):
-                affix = _get_affix_from_text(tts_section[next_index])
-                affix.type = AffixType.normal
-                index = next_index
-        boosted_sets.append(BoostedSet(name=set_name, affix=affix))
-        index += 1
-    return boosted_sets
-
-
-def _add_boosted_sets_to_item(item: Item, boosted_sets: list[BoostedSet]) -> None:
-    item.boosted_sets = boosted_sets
-    item.boosted_set_name = item.boosted_sets[0].name if item.boosted_sets else None
-
-
-def _get_set_name_from_line(line: str) -> str | None:
-    normalized_line = correct_name(line)
-    return next((set_name for set_name in Dataloader().set_list if set_name in normalized_line), None)
+def _get_set_from_text(set_text: str) -> str | None:
+    set_name = correct_name(set_text)
+    if set_name in Dataloader().bad_tts_uniques:
+        set_name = Dataloader().bad_tts_uniques[set_name]
+    if set_name in Dataloader().set_list:
+        return set_name
+    return None
 
 
 def _get_affix_from_text(text: str, item_type: ItemType | None = None) -> Affix:
     result = Affix(text=text)
+
     for x in _AFFIX_REPLACEMENTS:
         text = text.replace(x, "")
     text = _REPLACE_COMPARE_RE.sub("", text).strip()
@@ -560,6 +428,10 @@ def _get_affix_from_text(text: str, item_type: ItemType | None = None) -> Affix:
     if matched_groups.get("onlyvalue") is not None:
         result.min_value = float(matched_groups.get("onlyvalue"))
         result.max_value = float(matched_groups.get("onlyvalue"))
+
+    if "Charm Slot" in text:  # These are never greater even if they look like they are greater
+        result.type = AffixType.normal
+
     affix_dict = Dataloader().affix_dict
     if item_type == ItemType.HoradricSeal:
         affix_dict = Dataloader().affix_dict | Dataloader().seal_affix_dict
@@ -656,17 +528,7 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
     if (sep_short_match := find_seperator_short(img_item_descr)) is None:
         LOGGER.warning("Could not detect item_seperator_short.")
         screenshot("failed_seperator_short", img=img_item_descr)
-        if is_seal_or_charm(item.item_type):
-            return _add_affixes_from_tts(tts_section, item)
         return None
-
-    affix_bullets = find_affix_bullets(
-        img_item_descr, sep_short_match, is_seal_or_charm=is_seal_or_charm(item.item_type)
-    )
-
-    if is_seal_or_charm(item.item_type):
-        return _add_affixes_from_tts_mixed(tts_section, item, affix_bullets, img_item_descr, aspect_bullet=None)
-
     futures = {
         "sep_long": TP.submit(find_seperators_long, img_item_descr, sep_short_match),
         "aspect_bullet": (
@@ -675,6 +537,8 @@ def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
             else None
         ),
     }
+
+    affix_bullets = find_affix_bullets(img_item_descr, sep_short_match)
 
     if item.rarity == ItemRarity.Unique and item.name not in Dataloader().aspect_unique_dict:
         msg = (
@@ -700,8 +564,7 @@ def read_descr() -> Item | None:
     if item.item_type == ItemType.Cosmetic:
         item.cosmetic_upgrade = True
         return item
-    if is_seal_or_charm(item.item_type):
-        return _add_affixes_from_tts(tts_section, item)
+
     if any([
         is_consumable(item.item_type),
         is_non_sigil_mapping(item.item_type),
@@ -715,7 +578,7 @@ def read_descr() -> Item | None:
         not is_armor(item.item_type),
         not is_jewelry(item.item_type),
         not is_weapon(item.item_type),
-        item.item_type != ItemType.Shield,
+        not is_seal_or_charm(item.item_type),
     ]):
         return None
 

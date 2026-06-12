@@ -84,9 +84,7 @@ def _find_bullets(
     return sorted(filtered_matches, key=lambda match: match.center[1])
 
 
-def find_affix_bullets(
-    img_item_descr: np.ndarray, sep_short_match: TemplateMatch, is_seal_or_charm: bool = False
-) -> list[TemplateMatch]:
+def find_affix_bullets(img_item_descr: np.ndarray, sep_short_match: TemplateMatch) -> list[TemplateMatch]:
     affix_icons = [f"affix_bullet_point_{x}" for x in range(1, 3)]
     rerolled_icons = [f"rerolled_bullet_point_{x}" for x in range(1, 3)]
     tempered_icons = [f"tempered_affix_bullet_point_{x}" for x in range(1, 7)]
@@ -96,18 +94,13 @@ def find_affix_bullets(
             "greater_affix_bullet_point_masterworked",
             "masterworking_affix_bullet",
             "masterworking_affix_bullet_2",
+            "seal_set_bullet_point",
         ]
         + affix_icons
         + rerolled_icons
         + tempered_icons
     )
-    if is_seal_or_charm:
-        template_list += [
-            "legendary_bullet_point",
-            "unique_bullet_point",
-            "mythic_bullet_point",
-            "boosted_bullet_point",
-        ]
+
     all_templates = [f"{x}_medium" for x in template_list] + template_list
     search_threshold = 0.80
     if ResManager().resolution[1] <= 1200:

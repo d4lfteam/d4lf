@@ -35,6 +35,7 @@ D4LF_BASE_DIR = Path(__file__).parent.parent.parent
 EXCLUDED_SEAL_AFFIX_KEYS = {
     "when_you_gain_a_stack_of_stoicism_gain_damage_for_second",
     "while_in_a_feral_rage_your_werewolf_skills_gain_attack_speed",
+    "cannot_have_more_than_sockets_but_can_equip_unique_charms",
 }
 
 
@@ -333,6 +334,8 @@ def companion_style_affix_description(
 
 def normalise_affix_description(description: str) -> tuple[str, str] | None:
     desc = description.lower().strip().replace("'", "").replace("’", "").replace("â€™", "").replace(".", "")
+    # A little hacky but we'll fix this bad data here. If we find more we'll make a better solution
+    desc = desc.replace("lighting", "lightning")
     desc = remove_content_in_braces(desc)
     desc = desc.removeprefix("x ")
     if len(desc) <= 2:

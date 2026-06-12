@@ -14,24 +14,11 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
-class BoostedSet:
-    __hash__ = None
-
-    affix: Affix | None = None
-    name: str = ""
-    loc: tuple[int, int] | None = None
-
-
-@dataclass
 class Item:
     __hash__ = None
 
     affixes: list[Affix] = field(default_factory=list)
     aspect: Aspect | None = None
-    boosted_set_name: str | None = None
-    boosted_sets: list[BoostedSet] = field(default_factory=list)
-    charm_slots: int | None = None
-    charm_slots_loc: tuple[int, int] | None = None
     codex_upgrade: bool = False
     cosmetic_upgrade: bool = False
     inherent: list[Affix] = field(default_factory=list)
@@ -42,8 +29,7 @@ class Item:
     power: int | None = None
     rarity: ItemRarity | None = None
     seasonal_attribute: SeasonalAttribute | None = None
-    set_name: str | None = None
-    set_name_loc: tuple[int, int] | None = None
+    set: str | None = None
 
     def __eq__(self, other):
         if not isinstance(other, Item):
@@ -54,12 +40,6 @@ class Item:
             res = False
         if self.aspect != other.aspect:
             # LOGGER.debug("Aspect not the same")
-            res = False
-        if self.boosted_set_name != other.boosted_set_name:
-            res = False
-        if self.boosted_sets != other.boosted_sets:
-            res = False
-        if self.charm_slots != other.charm_slots:
             res = False
         if self.codex_upgrade != other.codex_upgrade:
             # LOGGER.debug("Codex upgrade not the same")
@@ -86,7 +66,7 @@ class Item:
             res = False
         if self.seasonal_attribute != other.seasonal_attribute:
             res = False
-        if self.set_name != other.set_name:
+        if self.set != other.set:
             res = False
         return res
 
@@ -97,11 +77,6 @@ class ItemJSONEncoder(json.JSONEncoder):
             return {
                 "affixes": [affix.__dict__ for affix in o.affixes],
                 "aspect": o.aspect.__dict__ if o.aspect else None,
-                "boosted_set_name": o.boosted_set_name or None,
-                "boosted_sets": [
-                    {"affix": boosted_set.affix.__dict__ if boosted_set.affix else None, "name": boosted_set.name}
-                    for boosted_set in o.boosted_sets
-                ],
                 "charm_slots": o.charm_slots,
                 "codex_upgrade": o.codex_upgrade,
                 "cosmetic_upgrade": o.cosmetic_upgrade,
@@ -110,6 +85,6 @@ class ItemJSONEncoder(json.JSONEncoder):
                 "name": o.name or None,
                 "power": o.power or None,
                 "rarity": o.rarity.value if o.rarity else None,
-                "set_name": o.set_name or None,
+                "set_name": o.set or None,
             }
         return super().default(o)

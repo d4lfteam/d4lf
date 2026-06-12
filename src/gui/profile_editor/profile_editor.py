@@ -3,18 +3,11 @@ import logging
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QMessageBox, QTabWidget
 
-from src.config.profile_models import (
-    CharmFilterModel,
-    DynamicCharmFilterModel,
-    DynamicSealFilterModel,
-    ProfileModel,
-    SealFilterModel,
-)
+from src.config.profile_models import ProfileModel
 from src.gui.importer.gui_common import save_as_profile
 from src.gui.profile_editor.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.profile_editor.aspect_upgrades_tab import ASPECT_UPGRADES_TABNAME, AspectUpgradesTab
 from src.gui.profile_editor.global_uniques_tab import UNIQUES_TABNAME, UniquesTab
-from src.gui.profile_editor.seal_charm_tab import CHARMS_TABNAME, SEALS_TABNAME, SealCharmTab
 from src.gui.profile_editor.sigils_tab import SIGILS_TABNAME, SigilsTab
 from src.gui.profile_editor.tributes_tab import TRIBUTES_TABNAME, TributesTab
 
@@ -32,10 +25,6 @@ class ProfileEditor(QTabWidget):
         # Create main tabs
         self.affixes_tab = AffixesTab(self.profile_model.affixes)
         self.aspect_upgrades_tab = AspectUpgradesTab(self.profile_model.aspect_upgrades)
-        self.seals_tab = SealCharmTab(self.profile_model.seals, SEALS_TABNAME, DynamicSealFilterModel, SealFilterModel)
-        self.charms_tab = SealCharmTab(
-            self.profile_model.charms, CHARMS_TABNAME, DynamicCharmFilterModel, CharmFilterModel
-        )
         self.sigils_tab = SigilsTab(self.profile_model.sigils)
         self.tributes_tab = TributesTab(self.profile_model.tributes)
         self.uniques_tab = UniquesTab(self.profile_model.global_uniques)
@@ -44,8 +33,6 @@ class ProfileEditor(QTabWidget):
         # Add tabs with icons
         self.addTab(self.affixes_tab, AFFIXES_TABNAME)
         self.addTab(self.aspect_upgrades_tab, ASPECT_UPGRADES_TABNAME)
-        self.addTab(self.seals_tab, SEALS_TABNAME)
-        self.addTab(self.charms_tab, CHARMS_TABNAME)
         self.addTab(self.sigils_tab, SIGILS_TABNAME)
         self.addTab(self.tributes_tab, TRIBUTES_TABNAME)
         self.addTab(self.uniques_tab, UNIQUES_TABNAME)
@@ -61,10 +48,6 @@ class ProfileEditor(QTabWidget):
             self.affixes_tab.load()
         elif self.tabText(index) == ASPECT_UPGRADES_TABNAME:
             self.aspect_upgrades_tab.load()
-        elif self.tabText(index) == SEALS_TABNAME:
-            self.seals_tab.load()
-        elif self.tabText(index) == CHARMS_TABNAME:
-            self.charms_tab.load()
         elif self.tabText(index) == SIGILS_TABNAME:
             self.sigils_tab.load()
         elif self.tabText(index) == TRIBUTES_TABNAME:

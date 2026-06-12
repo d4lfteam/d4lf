@@ -33,7 +33,7 @@ from src.config.profile_models import (
     AspectUniqueFilterModel,
     CharmFilterModel,
     DynamicItemFilterModel,
-    SealFilterModel,
+    SealCharmFilterModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import MAX_POWER
@@ -68,7 +68,7 @@ def _affix_dict_for_widget(widget: QWidget) -> dict[str, str]:
     curr = widget
     while curr:
         config = getattr(curr, "config", None)
-        if isinstance(config, SealFilterModel):
+        if isinstance(config, SealCharmFilterModel):
             return Dataloader().seal_affix_dict
         if isinstance(config, CharmFilterModel):
             return Dataloader().charm_affix_dict
@@ -324,7 +324,7 @@ class AffixGroupEditor(QWidget):
         return f"{UNIQUE_ASPECTS_TITLE} - {aspect_names}"
 
     def refresh_unique_aspects_title(self):
-        self.unique_aspect_container.header.set_name(self._unique_aspects_title())
+        self.unique_aspect_container.header.set(self._unique_aspects_title())
 
     def init_unique_aspects(self):
         for unique_aspect in self.config.unique_aspect:
@@ -437,7 +437,7 @@ class AffixGroupEditor(QWidget):
         for i in range(layout_widget.count()):
             item = layout_widget.itemAt(i)
             if item and item.widget() is not None:
-                item.widget().header.set_name(f"Count {i}")
+                item.widget().header.set(f"Count {i}")
 
     def refresh_item_type_summary(self):
         self.item_type_line_edit.setText(_item_type_summary(self.config.item_type))

@@ -4,7 +4,7 @@ import enum
 import logging
 import sys
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 
 from src.config.helper import check_greater_than_zero, validate_greater_affix_count, validate_percent
 from src.item.data.item_type import ItemType  # noqa: TC001
@@ -20,7 +20,7 @@ def _parse_item_type_or_rarities(data: str | list[str]) -> list[str]:
     return data
 
 
-def _normalize_existing_set_name(name: str | None, field_name: str) -> str | None:
+def _validate_set_name(name: str | None, field_name: str) -> str | None:
     if not name:
         return None
 
@@ -62,8 +62,8 @@ class AffixAspectFilterModel(BaseModel):
 
 class AffixFilterModel(AffixAspectFilterModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
-    want_greater: bool = False
     min_percent_of_affix: int = Field(default=0, alias="minPercentOfAffix")
+    want_greater: bool = False
 
     @field_validator("name")
     @classmethod
@@ -90,6 +90,7 @@ class AffixFilterModel(AffixAspectFilterModel):
         if self.value and self.min_percent_of_affix:
             msg = "value and minPercentOfAffix cannot both be set"
             raise ValueError(msg)
+
         return self
 
 
@@ -238,59 +239,34 @@ class SealCharmFilterModel(BaseModel):
 
 
 class CharmFilterModel(SealCharmFilterModel):
-    set_name: str | None = Field(default=None, alias="set")
-    unique_aspect: str | None = Field(default=None, alias="uniqueAspect")
+    model_config = ConfigDict(populate_by_name=True)
+    set: list[str] = Field(default=[], alias="set")
+    unique_aspect: list[AspectUniqueFilterModel] = Field(default=[], alias="uniqueAspect")
 
-    @field_validator("set_name")
+    @field_validator("set")
     @classmethod
-    def set_must_exist(cls, name: str | None) -> str | None:
-        return _normalize_existing_set_name(name, "set")
-
-    @field_validator("unique_aspect")
-    @classmethod
-    def normalize_unique_aspect(cls, name: str | None) -> str | None:
-        return correct_name(name)
-
-
-class BoostedSetFilterModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
-    affix: AffixFilterModel | None = None
-    required: bool = False
-    set_name: str = Field(alias="set")
-
-    @field_validator("set_name")
-    @classmethod
-    def set_must_exist(cls, name: str) -> str:
-        normalized_name = _normalize_existing_set_name(name, "set")
-        if normalized_name is None:
-            msg = "set must not be empty"
-            raise ValueError(msg)
-        return normalized_name
+    def set_must_exist(cls, sets: list[str]) -> list[str]:
+        return [_validate_set_name(name, "set") for name in sets]
 
     @model_validator(mode="after")
-    def required_boosted_affix_must_have_affix(self) -> BoostedSetFilterModel:
-        if self.required and self.affix is None:
-            msg = "required boostedSets entries need affix"
+    def set_and_unique_aspects_must_be_unique(self) -> CharmFilterModel:
+        if len({aspect.name for aspect in self.unique_aspect}) != len(self.unique_aspect):
+            msg = "uniqueAspect names must be unique"
             raise ValueError(msg)
+
+        if len(set(self.set)) != len(self.set):
+            msg = "set names must be unique"
+            raise ValueError(msg)
+
+        if self.set and self.unique_aspect:
+            msg = "can't define both set and unique aspect"
+            raise ValueError(msg)
+
         return self
-
-
-class SealFilterModel(SealCharmFilterModel):
-    boosted_sets: list[BoostedSetFilterModel] = Field(default=[], alias="boostedSets")
-    slots: int = Field(default=3, validation_alias=AliasChoices("slots", "charmSlots", "charm_slots"))
-
-    @field_validator("slots")
-    @classmethod
-    def slots_in_valid_range(cls, v: int) -> int:
-        if v != 0 and not (3 <= v <= 6):
-            msg = "slots must be 0 or between 3 and 6"
-            raise ValueError(msg)
-        return v
 
 
 DynamicSealCharmFilterModel = RootModel[dict[str, SealCharmFilterModel]]
 DynamicCharmFilterModel = RootModel[dict[str, CharmFilterModel]]
-DynamicSealFilterModel = RootModel[dict[str, SealFilterModel]]
 
 
 class SigilPriority(enum.StrEnum):
@@ -408,7 +384,7 @@ class ProfileModel(BaseModel):
     charms: list[DynamicCharmFilterModel] = Field(default=[], alias="Charms")
     global_uniques: list[GlobalUniqueModel] = Field(default=[], alias="GlobalUniques")
     name: str
-    seals: list[DynamicSealFilterModel] = Field(default=[], alias="Seals")
+    seals: list[DynamicSealCharmFilterModel] = Field(default=[], alias="Seals")
     sigils: SigilFilterModel = Field(
         default=SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist), alias="Sigils"
     )

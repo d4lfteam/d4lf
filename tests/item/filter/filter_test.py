@@ -5,12 +5,14 @@ import typing
 import pytest
 from natsort import natsorted
 
+from item.data.aspect import Aspect
 from src.config.loader import IniConfigLoader
 from src.config.profile_models import (
+    AspectUniqueFilterModel,
     CharmFilterModel,
     DynamicCharmFilterModel,
-    DynamicSealFilterModel,
-    SealFilterModel,
+    DynamicSealCharmFilterModel,
+    SealCharmFilterModel,
     SigilPriority,
 )
 from src.config.settings_models import AspectFilterType
@@ -18,7 +20,7 @@ from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter, FilterResult
-from src.item.models import BoostedSet, Item
+from src.item.models import Item
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.aspects import aspects
@@ -33,7 +35,7 @@ if typing.TYPE_CHECKING:
 def _create_mocked_filter(mocker: MockerFixture) -> Filter:
     filter_obj = Filter()
     # Filter is singleton so we need to reset the filters to be safe
-    filter_obj.affix_filters = {}
+    filter_obj.item_filters = {}
     filter_obj.aspect_upgrade_filters = {}
     filter_obj.paragon_filters = {}
     filter_obj.global_unique_filters = {}
@@ -51,7 +53,7 @@ def _create_mocked_filter(mocker: MockerFixture) -> Filter:
 )
 def test_affixes(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.affix_filters = {filters.affix.name: filters.affix.affixes}
+    test_filter.item_filters = {filters.affix.name: filters.affix.affixes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
@@ -62,7 +64,7 @@ def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixtur
     test_filter = _create_mocked_filter(mocker)
     general_mock = mocker.patch.object(IniConfigLoader(), "_general")
     general_mock.keep_aspects = AspectFilterType.upgrade
-    mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
+    mocker.patch.object(test_filter, "_check_item_filters", return_value=FilterResult(keep=False, matched=[]))
     test_filter.aspect_upgrade_filters = {filters.aspects_filters.name: filters.aspects_filters.aspect_upgrades}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
@@ -121,13 +123,12 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
                 item_type=ItemType.HoradricSeal,
                 name="unimportant_seal_name",
                 rarity=ItemRarity.Legendary,
-                charm_slots=3,
                 affixes=[Affix(name="cooldown_reduction")],
             ),
             "seal_filters",
             "Seals",
-            SealFilterModel,
-            DynamicSealFilterModel,
+            SealCharmFilterModel,
+            DynamicSealCharmFilterModel,
         ),
         (
             Item(
@@ -161,285 +162,79 @@ def test_charm_filter_matches_set_name(mocker: MockerFixture):
         item_type=ItemType.Charm,
         name="linta_of_the_frozen_sea",
         rarity=ItemRarity.Legendary,
-        set_name="breath_of_the_frozen_sea",
-        set_name_loc=(10, 20),
+        set="breath_of_the_frozen_sea",
         affixes=[Affix(name="potion_healing")],
     )
-    charm_filter = CharmFilterModel(set="Breath of the Frozen Sea")
+    charm_filter = CharmFilterModel(set=["Breath of the Frozen Sea"])
     test_filter.charm_filters = {"seal_charm": [DynamicCharmFilterModel(root={"wanted": charm_filter})]}
 
     match = test_filter.should_keep(item).matched[0]
 
     assert match.profile == "seal_charm.Charms.wanted"
-    assert [(affix.name, affix.loc) for affix in match.matched_affixes] == [("breath_of_the_frozen_sea", (10, 20))]
+    assert match.set_match
 
 
 def test_charm_filter_matches_unique_aspect_name(mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
     item = Item(
         item_type=ItemType.Charm,
-        name="linta_of_the_frozen_sea",
-        rarity=ItemRarity.Legendary,
-        set_name="breath_of_the_frozen_sea",
+        name="fractured_winterglass",
+        rarity=ItemRarity.Unique,
+        aspect=Aspect(name="fractured_winterglass"),
+        set=None,
         affixes=[Affix(name="potion_healing")],
     )
-    charm_filter = CharmFilterModel(uniqueAspect="Linta of the Frozen Sea")
+    charm_filter = CharmFilterModel(uniqueAspect=[AspectUniqueFilterModel(name="fractured_winterglass")])
     test_filter.charm_filters = {"seal_charm": [DynamicCharmFilterModel(root={"wanted": charm_filter})]}
 
     match = test_filter.should_keep(item).matched[0]
 
     assert match.profile == "seal_charm.Charms.wanted"
+    assert match.aspect_match
 
 
-def test_charm_filter_rejects_wrong_set_or_unique_aspect(mocker: MockerFixture):
+def test_charm_filter_rejects_wrong_unique_aspect(mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
     item = Item(
         item_type=ItemType.Charm,
         name="linta_of_the_frozen_sea",
-        rarity=ItemRarity.Legendary,
-        set_name="breath_of_the_frozen_sea",
+        rarity=ItemRarity.Unique,
+        aspect=Aspect(name="flickerstep"),
+        set=None,
         affixes=[Affix(name="potion_healing")],
     )
-    charm_filter = CharmFilterModel(set="applied_alchemy", uniqueAspect="another_charm")
+    charm_filter = CharmFilterModel(uniqueAspect=[AspectUniqueFilterModel(name="fractured_winterglass")])
     test_filter.charm_filters = {"seal_charm": [DynamicCharmFilterModel(root={"wrong": charm_filter})]}
 
     assert test_filter.should_keep(item).matched == []
 
 
-def test_seal_filter_matches_boosted_set(mocker: MockerFixture):
+def test_charm_filter_rejects_wrong_set(mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
     item = Item(
-        item_type=ItemType.HoradricSeal,
-        name="unimportant_seal_name",
-        rarity=ItemRarity.Legendary,
-        charm_slots=3,
-        boosted_set_name="berserkers_crucible",
-        affixes=[Affix(name="maximum_fury")],
+        item_type=ItemType.Charm,
+        name="linta_of_the_frozen_sea",
+        rarity=ItemRarity.Set,
+        set="breath_of_the_frozen_sea",
+        affixes=[Affix(name="potion_healing")],
     )
-    seal_filter = SealFilterModel(
-        boostedSets=[{"set": "Berserker's Crucible"}], affixPool=[{"count": ["maximum_fury"]}]
-    )
-    test_filter.seal_filters = {"seal_charm": [DynamicSealFilterModel(root={"wanted": seal_filter})]}
-
-    match = test_filter.should_keep(item).matched[0]
-
-    assert match.profile == "seal_charm.Seals.wanted"
-    assert match.matched_affixes == item.affixes
-
-
-def test_seal_filter_matches_any_boosted_set(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.HoradricSeal,
-        name="unimportant_seal_name",
-        rarity=ItemRarity.Legendary,
-        charm_slots=3,
-        boosted_sets=[
-            BoostedSet(name="cathans_dauntless_faith", affix=Affix(name="cooldown_reduction")),
-            BoostedSet(name="berserkers_crucible", affix=Affix(name="maximum_fury")),
-        ],
-        affixes=[Affix(name="cooldown_reduction"), Affix(name="maximum_fury")],
-    )
-    seal_filter = SealFilterModel(boostedSets=[{"set": "Berserker's Crucible"}])
-    test_filter.seal_filters = {"seal_charm": [DynamicSealFilterModel(root={"wanted": seal_filter})]}
-
-    match = test_filter.should_keep(item).matched[0]
-
-    assert match.profile == "seal_charm.Seals.wanted"
-
-
-def test_seal_filter_matches_charm_slots_and_boosted_set(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.HoradricSeal,
-        name="unimportant_seal_name",
-        rarity=ItemRarity.Legendary,
-        charm_slots=6,
-        charm_slots_loc=(10, 20),
-        boosted_sets=[
-            BoostedSet(name="habacalvas_cauldron", affix=Affix(name="life_on_hit", value=255.0), loc=(30, 40)),
-            BoostedSet(name="tal_rashas_threefold_way", affix=Affix(name="to_ball_lightning", value=2.0), loc=(70, 80)),
-        ],
-        affixes=[Affix(name="resource_cost_reduction", value=7.5)],
-    )
-    seal_filter = SealFilterModel(slots=6, boostedSets=[{"set": "Habacalva's Cauldron"}])
-    test_filter.seal_filters = {"seal_charm": [DynamicSealFilterModel(root={"wanted": seal_filter})]}
-
-    match = test_filter.should_keep(item).matched[0]
-
-    assert match.profile == "seal_charm.Seals.wanted"
-    assert [(affix.name, affix.loc) for affix in match.matched_affixes] == [
-        ("charm_slots", (10, 20)),
-        ("habacalvas_cauldron", (30, 40)),
-        ("tal_rashas_threefold_way", (70, 80)),
-    ]
-
-
-def test_seal_filter_rejects_insufficient_charm_slots(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.HoradricSeal,
-        name="unimportant_seal_name",
-        rarity=ItemRarity.Legendary,
-        charm_slots=5,
-        boosted_sets=[BoostedSet(name="habacalvas_cauldron", affix=Affix(name="life_on_hit", value=255.0))],
-        affixes=[Affix(name="resource_cost_reduction", value=7.5)],
-    )
-    seal_filter = SealFilterModel(slots=6, boostedSets=[{"set": "Habacalva's Cauldron"}])
-    test_filter.seal_filters = {"seal_charm": [DynamicSealFilterModel(root={"wrong": seal_filter})]}
+    charm_filter = CharmFilterModel(set=["applied_alchemy"])
+    test_filter.charm_filters = {"seal_charm": [DynamicCharmFilterModel(root={"wrong": charm_filter})]}
 
     assert test_filter.should_keep(item).matched == []
 
 
-def test_seal_filter_matches_more_charm_slots_than_minimum(mocker: MockerFixture):
+def test_charm_filter_rejects_no_set(mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
     item = Item(
-        item_type=ItemType.HoradricSeal,
-        name="unimportant_seal_name",
-        rarity=ItemRarity.Legendary,
-        charm_slots=6,
-        boosted_sets=[BoostedSet(name="habacalvas_cauldron", affix=Affix(name="life_on_hit", value=255.0))],
-        affixes=[Affix(name="resource_cost_reduction", value=7.5)],
+        item_type=ItemType.Charm,
+        name="linta_of_the_frozen_sea",
+        rarity=ItemRarity.Rare,
+        set=None,
+        affixes=[Affix(name="potion_healing")],
     )
-    seal_filter = SealFilterModel(slots=5, boostedSets=[{"set": "Habacalva's Cauldron"}])
-    test_filter.seal_filters = {"seal_charm": [DynamicSealFilterModel(root={"wanted": seal_filter})]}
-
-    match = test_filter.should_keep(item).matched[0]
-
-    assert match.profile == "seal_charm.Seals.wanted"
-
-
-def test_seal_filter_matches_required_boosted_affix(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.HoradricSeal,
-        name="unimportant_seal_name",
-        rarity=ItemRarity.Legendary,
-        charm_slots=3,
-        boosted_sets=[
-            BoostedSet(name="cathans_dauntless_faith", affix=Affix(name="cooldown_reduction"), loc=(10, 20)),
-            BoostedSet(name="berserkers_crucible", affix=Affix(name="maximum_fury"), loc=(50, 60)),
-        ],
-        affixes=[Affix(name="cooldown_reduction"), Affix(name="maximum_fury")],
-    )
-    seal_filter = SealFilterModel(
-        boostedSets=[{"set": "Berserker's Crucible", "affix": "maximum_fury", "required": True}]
-    )
-    test_filter.seal_filters = {"seal_charm": [DynamicSealFilterModel(root={"wanted": seal_filter})]}
-
-    match = test_filter.should_keep(item).matched[0]
-
-    assert match.profile == "seal_charm.Seals.wanted"
-    assert [(affix.name, affix.loc) for affix in match.matched_affixes] == [
-        ("berserkers_crucible (maximum_fury)", (50, 60)),
-        ("cathans_dauntless_faith", (10, 20)),
-    ]
-
-
-def test_seal_filter_matches_two_boosted_sets_with_required_affixes(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.HoradricSeal,
-        name="unimportant_seal_name",
-        rarity=ItemRarity.Legendary,
-        charm_slots=3,
-        boosted_sets=[
-            BoostedSet(name="cathans_dauntless_faith", affix=Affix(name="cooldown_reduction"), loc=(10, 20)),
-            BoostedSet(name="berserkers_crucible", affix=Affix(name="maximum_fury"), loc=(50, 60)),
-        ],
-        affixes=[Affix(name="cooldown_reduction"), Affix(name="maximum_fury")],
-    )
-    seal_filter = SealFilterModel(
-        boostedSets=[
-            {"set": "Berserker's Crucible", "affix": "maximum_fury", "required": True},
-            {"set": "Cathan's Dauntless Faith", "affix": "cooldown_reduction", "required": True},
-        ]
-    )
-    test_filter.seal_filters = {"seal_charm": [DynamicSealFilterModel(root={"wanted": seal_filter})]}
-
-    match = test_filter.should_keep(item).matched[0]
-
-    assert match.profile == "seal_charm.Seals.wanted"
-    assert [(affix.name, affix.loc) for affix in match.matched_affixes] == [
-        ("berserkers_crucible (maximum_fury)", (50, 60)),
-        ("cathans_dauntless_faith (cooldown_reduction)", (10, 20)),
-    ]
-
-
-def test_seal_filter_rejects_missing_second_boosted_set(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.HoradricSeal,
-        name="unimportant_seal_name",
-        rarity=ItemRarity.Legendary,
-        charm_slots=3,
-        boosted_sets=[BoostedSet(name="berserkers_crucible", affix=Affix(name="maximum_fury"))],
-        affixes=[Affix(name="maximum_fury")],
-    )
-    seal_filter = SealFilterModel(
-        boostedSets=[
-            {"set": "Berserker's Crucible", "affix": "maximum_fury", "required": True},
-            {"set": "Cathan's Dauntless Faith", "affix": "cooldown_reduction", "required": True},
-        ]
-    )
-    test_filter.seal_filters = {"seal_charm": [DynamicSealFilterModel(root={"wrong": seal_filter})]}
-
-    assert test_filter.should_keep(item).matched == []
-
-
-def test_seal_filter_ignores_boosted_affix_when_not_required(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.HoradricSeal,
-        name="unimportant_seal_name",
-        rarity=ItemRarity.Legendary,
-        charm_slots=3,
-        boosted_sets=[BoostedSet(name="berserkers_crucible", affix=Affix(name="maximum_fury"))],
-        affixes=[Affix(name="maximum_fury")],
-    )
-    seal_filter = SealFilterModel(boostedSets=[{"set": "Berserker's Crucible", "affix": "cooldown_reduction"}])
-    test_filter.seal_filters = {"seal_charm": [DynamicSealFilterModel(root={"wanted": seal_filter})]}
-
-    match = test_filter.should_keep(item).matched[0]
-
-    assert match.profile == "seal_charm.Seals.wanted"
-
-
-def test_seal_filter_rejects_wrong_required_boosted_affix(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.HoradricSeal,
-        name="unimportant_seal_name",
-        rarity=ItemRarity.Legendary,
-        charm_slots=3,
-        boosted_sets=[
-            BoostedSet(name="cathans_dauntless_faith", affix=Affix(name="cooldown_reduction")),
-            BoostedSet(name="berserkers_crucible", affix=Affix(name="maximum_fury")),
-        ],
-        affixes=[Affix(name="cooldown_reduction"), Affix(name="maximum_fury")],
-    )
-    seal_filter = SealFilterModel(
-        boostedSets=[{"set": "Berserker's Crucible", "affix": "cooldown_reduction", "required": True}]
-    )
-    test_filter.seal_filters = {"seal_charm": [DynamicSealFilterModel(root={"wrong": seal_filter})]}
-
-    assert test_filter.should_keep(item).matched == []
-
-
-def test_seal_filter_rejects_wrong_boosted_set(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.HoradricSeal,
-        name="unimportant_seal_name",
-        rarity=ItemRarity.Legendary,
-        charm_slots=3,
-        boosted_set_name="berserkers_crucible",
-        affixes=[Affix(name="maximum_fury")],
-    )
-    seal_filter = SealFilterModel(
-        boostedSets=[{"set": "cathans_dauntless_faith"}], affixPool=[{"count": ["maximum_fury"]}]
-    )
-    test_filter.seal_filters = {"seal_charm": [DynamicSealFilterModel(root={"wrong": seal_filter})]}
+    charm_filter = CharmFilterModel(set=["applied_alchemy"])
+    test_filter.charm_filters = {"seal_charm": [DynamicCharmFilterModel(root={"wrong": charm_filter})]}
 
     assert test_filter.should_keep(item).matched == []
 
@@ -454,8 +249,8 @@ def test_seal_filter_rejects_wrong_boosted_set(mocker: MockerFixture):
                 affixes=[Affix(name="cooldown_reduction", type=AffixType.greater)],
             ),
             "seal_filters",
-            SealFilterModel,
-            DynamicSealFilterModel,
+            SealCharmFilterModel,
+            DynamicSealCharmFilterModel,
         ),
         (
             Item(
@@ -473,7 +268,7 @@ def test_mythic_seal_or_charm_always_kept(
     item: Item, filter_attr: str, filter_model, dynamic_model, mocker: MockerFixture
 ):
     test_filter = _create_mocked_filter(mocker)
-    seal_charm_filter = filter_model(affix_pool=[{"count": ["movement_speed"]}], rarities=[ItemRarity.Common])
+    seal_charm_filter = filter_model(affixPool=[{"count": ["movement_speed"]}], rarities=[ItemRarity.Common])
     setattr(test_filter, filter_attr, {"seal_charm": [dynamic_model(root={"wrong": seal_charm_filter})]})
 
     assert test_filter.should_keep(item).keep
@@ -487,7 +282,7 @@ def test_mythic_seal_or_charm_always_kept(
 )
 def test_uniques_with_affixes(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.affix_filters = {filters.unique_affixes.name: filters.unique_affixes.affixes}
+    test_filter.item_filters = {filters.unique_affixes.name: filters.unique_affixes.affixes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 

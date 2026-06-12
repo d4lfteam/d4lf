@@ -22,12 +22,11 @@ from src.config.profile_models import (
     AspectUniqueFilterModel,
     CharmFilterModel,
     DynamicCharmFilterModel,
-    DynamicSealFilterModel,
+    DynamicSealCharmFilterModel,
     GlobalUniqueModel,
     ItemFilterModel,
     ItemRarity,
     ProfileModel,
-    SealFilterModel,
     SigilConditionModel,
     SigilFilterModel,
     TributeFilterModel,
@@ -582,13 +581,13 @@ class TestTributeFilterModel:
 
     def test_rarities_parse_string(self) -> None:
         """Test rarities field parsing from string (line 315)."""
-        model = TributeFilterModel(rarities=ItemRarity.Legendary.value)
+        model = TributeFilterModel(rarities=[ItemRarity.Legendary])
         # Verify it's an ItemRarity enum
         assert ItemRarity.Legendary in model.rarities
 
     def test_rarities_parse_list(self) -> None:
         """Test rarities field parsing from list (line 315)."""
-        model = TributeFilterModel(rarities=[ItemRarity.Legendary.value])
+        model = TributeFilterModel(rarities=[ItemRarity.Legendary])
         assert len(model.rarities) == 1
         # Verify it's an ItemRarity enum
         assert ItemRarity.Legendary in model.rarities
@@ -596,68 +595,18 @@ class TestTributeFilterModel:
 
 class TestCharmFilterModel:
     def test_set_name_is_validated_and_normalized(self) -> None:
-        model = CharmFilterModel(set="Breath of the Frozen Sea")
+        model = CharmFilterModel(set=["Breath of the Frozen Sea"])
 
-        assert model.set_name == "breath_of_the_frozen_sea"
+        assert model.set == ["breath_of_the_frozen_sea"]
 
     def test_invalid_set_fails(self) -> None:
         with pytest.raises(ValidationError, match="set invalid_set does not exist"):
-            CharmFilterModel(set="invalid set")
+            CharmFilterModel(set=["invalid set"])
 
     def test_unique_aspect_is_normalized(self) -> None:
-        model = CharmFilterModel(uniqueAspect="Linta of the Frozen Sea")
+        model = CharmFilterModel(uniqueAspect=[AspectUniqueFilterModel(name="Fractured Winterglass")])
 
-        assert model.unique_aspect == "linta_of_the_frozen_sea"
-
-
-class TestSealFilterModel:
-    def test_boosted_sets_are_validated_and_normalized(self) -> None:
-        model = SealFilterModel(
-            boostedSets=[
-                {"set": "Berserker's Crucible", "affix": "maximum_fury", "required": True},
-                {"set": "Cathan's Dauntless Faith", "affix": "cooldown_reduction"},
-            ]
-        )
-
-        assert model.boosted_sets[0].set_name == "berserkers_crucible"
-        assert model.boosted_sets[0].affix.name == "maximum_fury"
-        assert model.boosted_sets[0].required
-        assert model.boosted_sets[1].set_name == "cathans_dauntless_faith"
-        assert model.boosted_sets[1].affix.name == "cooldown_reduction"
-        assert not model.boosted_sets[1].required
-
-    def test_slots_default_is_three(self) -> None:
-        model = SealFilterModel()
-
-        assert model.slots == 3
-
-    def test_slots_is_validated(self) -> None:
-        model = SealFilterModel(slots=6)
-
-        assert model.slots == 6
-        assert model.model_dump()["slots"] == 6
-
-    def test_legacy_charm_slots_aliases_are_validated(self) -> None:
-        assert SealFilterModel(charmSlots=5).slots == 5
-        assert SealFilterModel(charm_slots=6).slots == 6
-
-    def test_required_boosted_set_affix_needs_affix(self) -> None:
-        with pytest.raises(ValidationError, match="required boostedSets entries need affix"):
-            SealFilterModel(boostedSets=[{"set": "Berserker's Crucible", "required": True}])
-
-    def test_invalid_slot_count_fails(self) -> None:
-        with pytest.raises(ValidationError, match="slots must be 0 or between 3 and 6"):
-            SealFilterModel(slots=-1)
-
-        with pytest.raises(ValidationError, match="slots must be 0 or between 3 and 6"):
-            SealFilterModel(slots=2)
-
-        with pytest.raises(ValidationError, match="slots must be 0 or between 3 and 6"):
-            SealFilterModel(slots=7)
-
-    def test_invalid_boosted_set_fails(self) -> None:
-        with pytest.raises(ValidationError, match="set invalid_set does not exist"):
-            SealFilterModel(boostedSets=[{"set": "invalid set"}])
+        assert model.unique_aspect == [AspectUniqueFilterModel(name="fractured_winterglass")]
 
 
 class TestSigilConditionModel:
@@ -769,7 +718,7 @@ class TestProfileModel:
         assert model.aspect_upgrades == []
         assert len(model.global_uniques) == 1
         assert model.global_uniques[0].min_power == 900
-        assert isinstance(model.seals[0], DynamicSealFilterModel)
+        assert isinstance(model.seals[0], DynamicSealCharmFilterModel)
         assert isinstance(model.charms[0], DynamicCharmFilterModel)
         assert model.seals[0].root["Cooldown"].affix_pool[0].count[0].name == "cooldown_reduction"
         assert model.charms[0].root["Life"].affix_pool[0].count[0].name == "maximum_life"
