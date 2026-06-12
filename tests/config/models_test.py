@@ -22,7 +22,7 @@ from src.config.profile_models import (
     AspectUniqueFilterModel,
     CharmFilterModel,
     DynamicCharmFilterModel,
-    DynamicSealCharmFilterModel,
+    DynamicSealFilterModel,
     GlobalUniqueModel,
     ItemFilterModel,
     ItemRarity,
@@ -608,6 +608,25 @@ class TestCharmFilterModel:
 
         assert model.unique_aspect == [AspectUniqueFilterModel(name="fractured_winterglass")]
 
+    def test_duplicate_unique_aspects_fail(self) -> None:
+        with pytest.raises(ValidationError, match="uniqueAspect names must be unique"):
+            CharmFilterModel(
+                uniqueAspect=[
+                    AspectUniqueFilterModel(name="tuskhelm_of_joritz_the_mighty"),
+                    AspectUniqueFilterModel(name="Tuskhelm of Joritz the Mighty"),
+                ]
+            )
+
+    def test_duplicate_sets_fail(self) -> None:
+        with pytest.raises(ValidationError, match="set names must be unique"):
+            CharmFilterModel(set=["Sescherons Fury", "sescherons_fury"])
+
+    def test_set_and_unique_aspect_are_mutually_exclusive(self) -> None:
+        with pytest.raises(ValidationError, match="can't define both set and unique aspect"):
+            CharmFilterModel(
+                set=["Sescherons Fury"], uniqueAspect=[AspectUniqueFilterModel(name="tuskhelm_of_joritz_the_mighty")]
+            )
+
 
 class TestSigilConditionModel:
     """Test SigilConditionModel."""
@@ -718,7 +737,7 @@ class TestProfileModel:
         assert model.aspect_upgrades == []
         assert len(model.global_uniques) == 1
         assert model.global_uniques[0].min_power == 900
-        assert isinstance(model.seals[0], DynamicSealCharmFilterModel)
+        assert isinstance(model.seals[0], DynamicSealFilterModel)
         assert isinstance(model.charms[0], DynamicCharmFilterModel)
         assert model.seals[0].root["Cooldown"].affix_pool[0].count[0].name == "cooldown_reduction"
         assert model.charms[0].root["Life"].affix_pool[0].count[0].name == "maximum_life"

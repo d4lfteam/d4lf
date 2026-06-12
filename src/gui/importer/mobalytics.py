@@ -19,7 +19,7 @@ from src.config.profile_models import (
     CharmFilterModel,
     ItemFilterModel,
     ProfileModel,
-    SealCharmFilterModel,
+    SealFilterModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
@@ -221,7 +221,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
                 continue
             seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
             filter_name = _unique_filter_name(item_type.name, seal_charm_filters)
-            seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealCharmFilterModel
+            seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
             seal_charm_filters.append({
                 filter_name: create_seal_charm_filter(
                     affixes=affixes,

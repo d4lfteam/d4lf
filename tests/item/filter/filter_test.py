@@ -5,31 +5,23 @@ import typing
 import pytest
 from natsort import natsorted
 
-from item.data.aspect import Aspect
 from src.config.loader import IniConfigLoader
-from src.config.profile_models import (
-    AspectUniqueFilterModel,
-    CharmFilterModel,
-    DynamicCharmFilterModel,
-    DynamicSealCharmFilterModel,
-    SealCharmFilterModel,
-    SigilPriority,
-)
+from src.config.profile_models import SigilPriority
 from src.config.settings_models import AspectFilterType
-from src.item.data.affix import Affix, AffixType
-from src.item.data.item_type import ItemType
-from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter, FilterResult
-from src.item.models import Item
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.aspects import aspects
+from tests.item.filter.data.charms import charms
+from tests.item.filter.data.seals import seals
 from tests.item.filter.data.sigils import sigil_jalal, sigil_priority, sigils
 from tests.item.filter.data.tributes import tributes
 from tests.item.filter.data.uniques import global_uniques, simple_mythics, uniques_with_affixes
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
+
+    from src.item.models import Item
 
 
 def _create_mocked_filter(mocker: MockerFixture) -> Filter:
@@ -115,164 +107,30 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
-@pytest.mark.parametrize(
-    ("item", "filter_attr", "section_name", "filter_model", "dynamic_model"),
-    [
-        (
-            Item(
-                item_type=ItemType.HoradricSeal,
-                name="unimportant_seal_name",
-                rarity=ItemRarity.Legendary,
-                affixes=[Affix(name="cooldown_reduction")],
-            ),
-            "seal_filters",
-            "Seals",
-            SealCharmFilterModel,
-            DynamicSealCharmFilterModel,
-        ),
-        (
-            Item(
-                item_type=ItemType.Charm,
-                name="unimportant_charm_name",
-                rarity=ItemRarity.Rare,
-                affixes=[Affix(name="maximum_life")],
-            ),
-            "charm_filters",
-            "Charms",
-            CharmFilterModel,
-            DynamicCharmFilterModel,
-        ),
-    ],
-)
-def test_seal_or_charm_sections(
-    item: Item, filter_attr: str, section_name: str, filter_model, dynamic_model, mocker: MockerFixture
-):
+@pytest.mark.parametrize(("_name", "result", "item"), natsorted(seals), ids=[name for name, _, _ in natsorted(seals)])
+def test_seals(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    seal_charm_filter = filter_model(affix_pool=[{"count": [item.affixes[0].name]}], rarities=[item.rarity])
-    setattr(test_filter, filter_attr, {"seal_charm": [dynamic_model(root={"wanted": seal_charm_filter})]})
+    test_filter.seal_filters = {filters.seal_charm.name: filters.seal_charm.seals}
+    matches = test_filter.should_keep(item).matched
+    assert natsorted([match.profile for match in matches]) == natsorted(result)
+    for match in matches:
+        if match.profile.startswith("seal_charm.Seals."):
+            assert match.matched_affixes
 
-    match = test_filter.should_keep(item).matched[0]
-    assert match.profile == f"seal_charm.{section_name}.wanted"
-    assert match.matched_affixes == item.affixes
 
-
-def test_charm_filter_matches_set_name(mocker: MockerFixture):
+@pytest.mark.parametrize(("_name", "result", "item"), natsorted(charms), ids=[name for name, _, _ in natsorted(charms)])
+def test_charms(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.Charm,
-        name="linta_of_the_frozen_sea",
-        rarity=ItemRarity.Legendary,
-        set="breath_of_the_frozen_sea",
-        affixes=[Affix(name="potion_healing")],
-    )
-    charm_filter = CharmFilterModel(set=["Breath of the Frozen Sea"])
-    test_filter.charm_filters = {"seal_charm": [DynamicCharmFilterModel(root={"wanted": charm_filter})]}
-
-    match = test_filter.should_keep(item).matched[0]
-
-    assert match.profile == "seal_charm.Charms.wanted"
-    assert match.set_match
-
-
-def test_charm_filter_matches_unique_aspect_name(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.Charm,
-        name="fractured_winterglass",
-        rarity=ItemRarity.Unique,
-        aspect=Aspect(name="fractured_winterglass"),
-        set=None,
-        affixes=[Affix(name="potion_healing")],
-    )
-    charm_filter = CharmFilterModel(uniqueAspect=[AspectUniqueFilterModel(name="fractured_winterglass")])
-    test_filter.charm_filters = {"seal_charm": [DynamicCharmFilterModel(root={"wanted": charm_filter})]}
-
-    match = test_filter.should_keep(item).matched[0]
-
-    assert match.profile == "seal_charm.Charms.wanted"
-    assert match.aspect_match
-
-
-def test_charm_filter_rejects_wrong_unique_aspect(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.Charm,
-        name="linta_of_the_frozen_sea",
-        rarity=ItemRarity.Unique,
-        aspect=Aspect(name="flickerstep"),
-        set=None,
-        affixes=[Affix(name="potion_healing")],
-    )
-    charm_filter = CharmFilterModel(uniqueAspect=[AspectUniqueFilterModel(name="fractured_winterglass")])
-    test_filter.charm_filters = {"seal_charm": [DynamicCharmFilterModel(root={"wrong": charm_filter})]}
-
-    assert test_filter.should_keep(item).matched == []
-
-
-def test_charm_filter_rejects_wrong_set(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.Charm,
-        name="linta_of_the_frozen_sea",
-        rarity=ItemRarity.Set,
-        set="breath_of_the_frozen_sea",
-        affixes=[Affix(name="potion_healing")],
-    )
-    charm_filter = CharmFilterModel(set=["applied_alchemy"])
-    test_filter.charm_filters = {"seal_charm": [DynamicCharmFilterModel(root={"wrong": charm_filter})]}
-
-    assert test_filter.should_keep(item).matched == []
-
-
-def test_charm_filter_rejects_no_set(mocker: MockerFixture):
-    test_filter = _create_mocked_filter(mocker)
-    item = Item(
-        item_type=ItemType.Charm,
-        name="linta_of_the_frozen_sea",
-        rarity=ItemRarity.Rare,
-        set=None,
-        affixes=[Affix(name="potion_healing")],
-    )
-    charm_filter = CharmFilterModel(set=["applied_alchemy"])
-    test_filter.charm_filters = {"seal_charm": [DynamicCharmFilterModel(root={"wrong": charm_filter})]}
-
-    assert test_filter.should_keep(item).matched == []
-
-
-@pytest.mark.parametrize(
-    ("item", "filter_attr", "filter_model", "dynamic_model"),
-    [
-        (
-            Item(
-                item_type=ItemType.HoradricSeal,
-                rarity=ItemRarity.Mythic,
-                affixes=[Affix(name="cooldown_reduction", type=AffixType.greater)],
-            ),
-            "seal_filters",
-            SealCharmFilterModel,
-            DynamicSealCharmFilterModel,
-        ),
-        (
-            Item(
-                item_type=ItemType.Charm,
-                rarity=ItemRarity.Mythic,
-                affixes=[Affix(name="maximum_life", type=AffixType.greater)],
-            ),
-            "charm_filters",
-            CharmFilterModel,
-            DynamicCharmFilterModel,
-        ),
-    ],
-)
-def test_mythic_seal_or_charm_always_kept(
-    item: Item, filter_attr: str, filter_model, dynamic_model, mocker: MockerFixture
-):
-    test_filter = _create_mocked_filter(mocker)
-    seal_charm_filter = filter_model(affixPool=[{"count": ["movement_speed"]}], rarities=[ItemRarity.Common])
-    setattr(test_filter, filter_attr, {"seal_charm": [dynamic_model(root={"wrong": seal_charm_filter})]})
-
-    assert test_filter.should_keep(item).keep
-    assert test_filter.should_keep(item).matched[0].profile.startswith("Mythic")
+    test_filter.charm_filters = {filters.seal_charm.name: filters.seal_charm.charms}
+    matches = test_filter.should_keep(item).matched
+    assert natsorted([match.profile for match in matches]) == natsorted(result)
+    for match in matches:
+        if match.profile in {"seal_charm.Charms.basic_magic", "seal_charm.Charms.speed"}:
+            assert match.matched_affixes
+        if match.profile == "seal_charm.Charms.wanted_set":
+            assert match.set_match
+        if match.profile == "seal_charm.Charms.wanted_unique_aspect":
+            assert match.aspect_match
 
 
 @pytest.mark.parametrize(

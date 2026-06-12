@@ -33,7 +33,7 @@ from src.config.profile_models import (
     AspectUniqueFilterModel,
     CharmFilterModel,
     DynamicItemFilterModel,
-    SealCharmFilterModel,
+    SealFilterModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import MAX_POWER
@@ -68,7 +68,7 @@ def _affix_dict_for_widget(widget: QWidget) -> dict[str, str]:
     curr = widget
     while curr:
         config = getattr(curr, "config", None)
-        if isinstance(config, SealCharmFilterModel):
+        if isinstance(config, SealFilterModel):
             return Dataloader().seal_affix_dict
         if isinstance(config, CharmFilterModel):
             return Dataloader().charm_affix_dict

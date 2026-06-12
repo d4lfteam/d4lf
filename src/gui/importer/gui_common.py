@@ -22,9 +22,10 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
+    CharmFilterModel,
     ItemFilterModel,
     ProfileModel,
-    SealCharmFilterModel,
+    SealFilterModel,
 )
 from src.config.settings_models import BrowserType
 from src.item.data.affix import Affix, AffixType
@@ -197,8 +198,11 @@ def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool)
 
 
 def create_seal_charm_filter(
-    affixes: list[Affix], rarity, require_gas: bool, model_type: type[SealCharmFilterModel] = SealCharmFilterModel
-) -> SealCharmFilterModel:
+    affixes: list[Affix],
+    rarity,
+    require_gas: bool,
+    model_type: type[CharmFilterModel | SealFilterModel] = SealFilterModel,
+) -> CharmFilterModel | SealFilterModel:
     seal_charm_filter = model_type(
         affix_pool=[
             AffixFilterCountModel(

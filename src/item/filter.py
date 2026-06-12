@@ -19,7 +19,7 @@ from src.config.profile_models import (
     CharmFilterModel,
     DynamicCharmFilterModel,
     DynamicItemFilterModel,
-    DynamicSealCharmFilterModel,
+    DynamicSealFilterModel,
     GlobalUniqueModel,
     ProfileModel,
     SigilConditionModel,
@@ -252,7 +252,7 @@ class Filter:
     def _check_seal_charm_filters(
         self,
         seal_or_charm: Item,
-        seal_or_charm_filters: dict[str, list[DynamicSealCharmFilterModel]],
+        seal_or_charm_filters: dict[str, list[DynamicSealFilterModel | DynamicCharmFilterModel]],
         section_name: str,
         mythic_name: str,
     ) -> FilterResult:
@@ -568,7 +568,7 @@ class Filter:
         self.item_filters: dict[str, list[DynamicItemFilterModel]] = {}
         self.aspect_upgrade_filters: dict[str, list[str]] = {}
         self.paragon_filters: dict[str, object] = {}
-        self.seal_filters: dict[str, list[DynamicSealCharmFilterModel]] = {}
+        self.seal_filters: dict[str, list[DynamicSealFilterModel]] = {}
         self.charm_filters: dict[str, list[DynamicCharmFilterModel]] = {}
         self.sigil_filters: dict[str, SigilFilterModel] = {}
         self.tribute_filters: dict[str, list[TributeFilterModel]] = {}
