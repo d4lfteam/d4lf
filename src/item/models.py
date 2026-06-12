@@ -77,7 +77,6 @@ class ItemJSONEncoder(json.JSONEncoder):
             return {
                 "affixes": [affix.__dict__ for affix in o.affixes],
                 "aspect": o.aspect.__dict__ if o.aspect else None,
-                "charm_slots": o.charm_slots,
                 "codex_upgrade": o.codex_upgrade,
                 "cosmetic_upgrade": o.cosmetic_upgrade,
                 "inherent": [affix.__dict__ for affix in o.inherent],

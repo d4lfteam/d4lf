@@ -594,6 +594,10 @@ class TestTributeFilterModel:
 
 
 class TestCharmFilterModel:
+    def test_extra_fields_are_forbidden(self) -> None:
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            CharmFilterModel(unexpected=True)
+
     def test_set_name_is_validated_and_normalized(self) -> None:
         model = CharmFilterModel(set=["Breath of the Frozen Sea"])
 

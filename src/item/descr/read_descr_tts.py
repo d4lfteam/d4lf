@@ -137,7 +137,7 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
         elif item.rarity == ItemRarity.Unique:
             item.aspect = _get_aspect_from_text(aspect_or_set_text, item.name)
         elif item.rarity == ItemRarity.Set:
-            item.set = _get_set_from_text(aspect_or_set_text)
+            item.set = aspect_or_set_text
         else:
             item.aspect = _get_aspect_from_name(aspect_or_set_text, item.name)
     return item
@@ -187,7 +187,7 @@ def _add_affixes_from_tts_mixed(
         elif item.rarity == ItemRarity.Unique:
             item.aspect = _get_aspect_from_text(aspect_or_set_text, item.name)
         elif item.rarity == ItemRarity.Set:
-            item.set = _get_set_from_text(aspect_or_set_text)
+            item.set = aspect_or_set_text
         else:
             item.aspect = _get_aspect_from_name(aspect_or_set_text, item.name)
         if item.aspect and aspect_bullet:

@@ -16,6 +16,7 @@ from src.config.profile_models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
+    _unique_filter_name,
     add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
@@ -333,15 +334,6 @@ def _find_item_affixes(
                 LOGGER.error(f"Couldn't match {affix_id=}")
             break
     return res
-
-
-def _unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
-    filter_name = filter_name_template
-    i = 2
-    while any(filter_name == next(iter(existing_filter)) for existing_filter in filters):
-        filter_name = f"{filter_name_template}{i}"
-        i += 1
-    return filter_name
 
 
 def _find_skill_rank_affix_description(mapping_data: dict, affix_key: str, attribute: dict) -> str:

@@ -295,9 +295,9 @@ class Filter:
                     ):
                         continue
                     elif filter_spec.set:
-                        if seal_or_charm.set not in filter_spec.set:
-                            continue
                         if not seal_or_charm.set:  # This would mean there's no set but a set is expected
+                            continue
+                        if seal_or_charm.set not in filter_spec.set:
                             continue
                         matched_set = True
 

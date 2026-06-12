@@ -1,5 +1,5 @@
 from src.config.profile_models import ProfileModel
-from src.gui.importer.gui_common import _to_yaml_str, build_default_profile_file_name
+from src.gui.importer.gui_common import _to_yaml_str, _unique_filter_name, build_default_profile_file_name
 
 
 def test_build_default_profile_file_name_maxroll() -> None:
@@ -52,6 +52,12 @@ def test_build_default_profile_file_name_replaces_stale_season_marker_in_header(
     )
 
     assert file_name == "maxroll_sorcerer_s12_crackling_energy_sorc"
+
+
+def test_unique_filter_name_adds_suffix_for_existing_filter_names() -> None:
+    filter_name = _unique_filter_name("Charm", [{"Charm": object()}, {"Charm2": object()}])
+
+    assert filter_name == "Charm3"
 
 
 def test_to_yaml_str_sorts_aspect_upgrades_and_uses_block_style(mock_ini_loader) -> None:

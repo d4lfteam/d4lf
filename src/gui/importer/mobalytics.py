@@ -23,6 +23,7 @@ from src.config.profile_models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
+    _unique_filter_name,
     add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
@@ -374,15 +375,6 @@ def _convert_raw_to_affixes(raw_stats: list[dict], import_greater_affixes=False)
                 affix_obj.type = AffixType.greater
             result.append(affix_obj)
     return result
-
-
-def _unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
-    filter_name = filter_name_template
-    i = 2
-    while any(filter_name == next(iter(existing_filter)) for existing_filter in filters):
-        filter_name = f"{filter_name_template}{i}"
-        i += 1
-    return filter_name
 
 
 if __name__ == "__main__":

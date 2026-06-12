@@ -219,6 +219,15 @@ def create_seal_charm_filter(
     return seal_charm_filter
 
 
+def _unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
+    filter_name = filter_name_template
+    i = 2
+    while any(filter_name == next(iter(existing_filter)) for existing_filter in filters):
+        filter_name = f"{filter_name_template}{i}"
+        i += 1
+    return filter_name
+
+
 def add_mythics_to_filters(mythic_names, finished_filters):
     if mythic_names:
         mythic_filter = ItemFilterModel()
