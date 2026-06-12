@@ -130,6 +130,46 @@ QCheckBox#switch::indicator:unchecked {
     background-color: #444;
 }
 
+/* SpinBox Styling - Fixes hard to read arrows and click issues */
+QSpinBox, QDoubleSpinBox {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    padding-right: 24px;
+    min-height: 26px;
+}
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 24px;
+    background-color: #252525;
+    border-left: 1px solid #3c3c3c;
+    border-bottom: 1px solid #3c3c3c;
+    border-top-right-radius: 4px;
+}
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 24px;
+    background-color: #252525;
+    border-left: 1px solid #3c3c3c;
+    border-bottom-right-radius: 4px;
+}
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+    background-color: #3c3c3c;
+}
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: none;
+    width: 8px;
+    height: 8px;
+}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: none;
+    width: 8px;
+    height: 8px;
+}
+
 /* Disabled checkbox styling */
 QCheckBox:disabled {
     color: gray;
@@ -426,6 +466,46 @@ QCheckBox#switch::indicator:checked {
 }
 QCheckBox#switch::indicator:unchecked {
     background-color: #d3d3d3;
+}
+
+/* SpinBox Styling */
+QSpinBox, QDoubleSpinBox {
+    background-color: #ffffff;
+    color: #1f1f1f;
+    border: 1px solid #c3c3c3;
+    border-radius: 4px;
+    padding-right: 24px;
+    min-height: 26px;
+}
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 24px;
+    background-color: #e0e0e0;
+    border-left: 1px solid #c3c3c3;
+    border-bottom: 1px solid #c3c3c3;
+    border-top-right-radius: 4px;
+}
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 24px;
+    background-color: #e0e0e0;
+    border-left: 1px solid #c3c3c3;
+    border-bottom-right-radius: 4px;
+}
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+    background-color: #d3d3d3;
+}
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: none;
+    width: 8px;
+    height: 8px;
+}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: none;
+    width: 8px;
+    height: 8px;
 }
 
 /* Disabled checkbox styling */

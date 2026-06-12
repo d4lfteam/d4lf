@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import functools
 import logging
@@ -18,7 +20,6 @@ from seleniumbase import Driver
 
 from src import __version__
 from src.config.loader import IniConfigLoader
-from src.config.profile_models import AspectUniqueFilterModel, ItemFilterModel, ProfileModel
 from src.config.settings_models import BrowserType
 from src.item.data.item_type import ItemType
 
@@ -26,6 +27,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
+
+    from src.config.profile_models import ItemFilterModel, ProfileModel
 
 LOGGER = logging.getLogger(__name__)
 
@@ -135,21 +138,57 @@ def normalize_profile_file_name(file_name: str) -> str:
 
 
 def build_default_profile_file_name(
-    source_name: str, class_name: str = "", season_number: str = "", build_header: str = "", variant_name: str = ""
+    source_name: str,
+    class_name: str = "",
+    season_number: str = "",
+    build_header: str = "",
+    variant_name: str = "",
+    filename_components=None,
 ) -> str:
+    if filename_components is None:
+        # Default behavior (include all non-empty components)
+        filename_components = {
+            "include_source": True,
+            "include_season": True,
+            "include_class": True,
+            "include_header": True,
+            "include_subbuild": True,
+        }
+
     normalized_source_name = _normalize_profile_name_part(source_name) or "imported"
     clean_title = _clean_build_header(normalized_source_name, build_header, season_number)
     normalized_class_name = _normalize_profile_name_part(class_name) or "unknown"
     normalized_variant_name = _normalize_profile_name_part(variant_name)
+
+    # Normalize season number
     season_match = re.search(r"\d+", str(season_number))
-    normalized_season_name = f"s{season_match.group(0)}" if season_match else ""
-    file_name_parts = [normalized_source_name, normalized_class_name]
-    if normalized_season_name:
+    normalized_season_name = (
+        f"s{season_match.group(0)}" if season_match and filename_components["include_season"] else ""
+    )
+
+    file_name_parts = []
+
+    # Include components based on user preferences
+    if filename_components["include_source"]:
+        file_name_parts.append(normalized_source_name)
+
+    if filename_components["include_class"] and normalized_class_name != "unknown":
+        file_name_parts.append(normalized_class_name)
+
+    if season_match and filename_components["include_season"]:
         file_name_parts.append(normalized_season_name)
-    if clean_title:
+
+    # Include build header only if clean_title is non-empty and user wants it included
+    if clean_title and filename_components["include_header"]:
         file_name_parts.append(clean_title)
-    if normalized_variant_name:
+
+    if normalized_variant_name and filename_components["include_subbuild"]:
         file_name_parts.append(normalized_variant_name)
+
+    # Default fallback: include at least the source
+    if not file_name_parts:
+        return normalize_profile_file_name(normalized_source_name + "_imported")
+
     return normalize_profile_file_name("_".join(file_name_parts))
 
 
@@ -186,14 +225,6 @@ def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool)
         item_filter.min_greater_affix_count = num_greater
     else:
         item_filter.min_greater_affix_count = 0
-
-
-def add_mythics_to_filters(mythic_names, finished_filters):
-    if mythic_names:
-        mythic_filter = ItemFilterModel()
-        for mythic_name in mythic_names:
-            mythic_filter.unique_aspect.append(AspectUniqueFilterModel(name=mythic_name))
-        finished_filters.append({"Mythics": mythic_filter})
 
 
 def sort_profile_filters(filters: list[dict[str, ItemFilterModel]]) -> list[dict[str, ItemFilterModel]]:

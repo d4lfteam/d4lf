@@ -1,122 +1,264 @@
-from PyQt6.QtCore import Qt
+import contextlib
+from typing import override
+
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QAbstractItemView,
     QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
-    QListWidget,
-    QMessageBox,
-    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QStyle,
+    QStyleOption,
     QVBoxLayout,
     QWidget,
 )
 
 from src.config.profile_models import ItemRarity, TributeFilterModel
 from src.dataloader import Dataloader
-from src.gui.models.dialog import AddTributeRarity, CreateTribute
+from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
+from src.gui.profile_editor.affixes_tab import (
+    QPainter,
+    TruncatingComboBox,
+    _create_column_header,
+    _create_delete_btn,
+    _create_summary_card_style,
+)
 
 TRIBUTES_TABNAME = "Tributes"
+
+
+class TributeSummaryWidget(QWidget):
+    delete_requested = pyqtSignal()
+    config_changed = pyqtSignal()
+
+    def __init__(self, model: TributeFilterModel, parent=None):
+        super().__init__(parent)
+        self.model = model
+        self.setObjectName("SummaryCard")
+        self.setStyleSheet(_create_summary_card_style())
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setup_ui()
+
+    def setup_ui(self):
+        self.main_layout = QHBoxLayout(self)
+        self.main_layout.setContentsMargins(10, 8, 10, 8)
+
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(2)
+
+        self.name_label = QLabel()
+        self.name_label.setStyleSheet("font-weight: bold; color: #e2e8f0;")
+        text_layout.addWidget(self.name_label)
+
+        self.details_label = QLabel()
+        self.details_label.setStyleSheet("color: #94a3b8; font-size: 11px;")
+        self.details_label.setWordWrap(True)
+        text_layout.addWidget(self.details_label)
+
+        self.main_layout.addLayout(text_layout, 1)
+
+        self.delete_btn = _create_delete_btn()
+        self.delete_btn.clicked.connect(self.delete_requested.emit)
+        self.main_layout.addWidget(self.delete_btn)
+
+        self.refresh_display()
+
+    @override
+    def paintEvent(self, event):
+        opt = QStyleOption()
+        opt.initFrom(self)
+        p = QPainter(self)
+        self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, opt, p, self)
+        p.end()
+
+    @override
+    def mousePressEvent(self, event):
+        if event is None or event.button() == Qt.MouseButton.LeftButton:
+            self.open_config_dialog()
+
+    def open_config_dialog(self) -> QDialog.DialogCode:
+        dialog = TributeEditDialog(self, self.model)
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
+            self.refresh_display()
+            self.config_changed.emit()
+        return result
+
+    def refresh_display(self):
+        if self.model.name:
+            name = Dataloader().tribute_dict.get(self.model.name, self.model.name)
+            self.name_label.setText(name.replace("Tribute of ", ""))
+        else:
+            self.name_label.setText("Broad Rarity Filter")
+
+        rarity_text = "All Rarities"
+        if self.model.rarities:
+            rarity_text = ", ".join(r.name.title() for r in self.model.rarities)
+        self.details_label.setText(rarity_text)
+
+
+class TributeEditDialog(QDialog):
+    def __init__(self, parent: QWidget, model: TributeFilterModel):
+        super().__init__(parent)
+        self.setWindowTitle("Configure Tribute Rule")
+        self.setMinimumWidth(500)
+        self.model = model
+        self.rarity_checkboxes: dict[ItemRarity, CheckmarkCheckBox] = {}
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QLineEdit, QComboBox, QSpinBox {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+                padding: 4px;
+            }
+            QLineEdit:focus, QComboBox:focus, QSpinBox:focus { border-color: #3b82f6; }
+            QGroupBox {
+                font-weight: bold;
+                color: #3b82f6;
+                border: 1px solid #334155;
+                margin-top: 1.1em;
+                padding-top: 10px;
+            }
+            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+        """)
+
+        layout = QVBoxLayout(self)
+        header = QLabel("Tribute Rule Configuration")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;")
+        layout.addWidget(header)
+
+        desc = QLabel("Set a specific tribute or configure rarity-based filtering.")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
+        form = QFormLayout()
+
+        self.name_combo = TruncatingComboBox()
+        self.name_combo.addItems(["[None / Rarity Only]"] + sorted(Dataloader().tribute_dict.values()))
+        if self.model.name:
+            self.name_combo.setCurrentText(Dataloader().tribute_dict.get(self.model.name, self.model.name))
+        else:
+            self.name_combo.setCurrentIndex(0)
+        form.addRow("Tribute:", self.name_combo)
+        layout.addLayout(form)
+
+        rarity_group = QGroupBox("Target Rarities")
+        rarity_layout = QVBoxLayout(rarity_group)
+        for rarity in ItemRarity:
+            cb = CheckmarkCheckBox(rarity.name.title())
+            cb.setChecked(rarity in self.model.rarities)
+            self.rarity_checkboxes[rarity] = cb
+            rarity_layout.addWidget(cb)
+        layout.addWidget(rarity_group)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.save_and_accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def save_and_accept(self):
+        val = self.name_combo.currentText()
+        if val == "[None / Rarity Only]":
+            self.model.name = None
+        else:
+            reverse_dict = {v: k for k, v in Dataloader().tribute_dict.items()}
+            self.model.name = reverse_dict.get(val)
+
+        self.model.rarities = [r for r, cb in self.rarity_checkboxes.items() if cb.isChecked()]
+        self.accept()
 
 
 class TributesTab(QWidget):
     def __init__(self, tributes: list[TributeFilterModel] | None, parent=None):
         super().__init__(parent)
         self.tributes = tributes if tributes is not None else []
-        self.tribute_list_widget = QListWidget()
         self.loaded = False
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def load(self):
-        if not self.loaded:
-            self.setup_ui()
-            self.loaded = True
+        with contextlib.suppress(RuntimeError):
+            if not self.loaded:
+                self.setup_ui()
+                self.loaded = True
 
     def setup_ui(self):
+        self.setStyleSheet("background: transparent; border: none;")
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 20, 0, 20)
+        main_layout.setContentsMargins(0, 5, 0, 5)
+        main_layout.setSpacing(0)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        label = QLabel(
-            "Add tribute names and tribute rarities you want to keep. These rules are evaluated independently."
-        )
-        label.setWordWrap(True)
-        main_layout.addWidget(label)
-        button_layout = self.create_button_layout()
-        main_layout.addLayout(button_layout)
 
-        self.tribute_list_widget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        self._reload_tribute_list_widget()
-        main_layout.addWidget(self.tribute_list_widget)
+        self.header = QLabel("Tributes")
+        self.header.setStyleSheet(
+            "font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 10px; background: transparent; border: none;"
+        )
+        main_layout.addWidget(self.header)
+
+        self.desc = QLabel(
+            "Add tributes or rarity-based rules you want to keep. These rules are evaluated independently."
+        )
+        self.desc.setWordWrap(True)
+        self.desc.setStyleSheet(
+            "font-size: 13px; color: #94a3b8; font-style: italic; margin-bottom: 15px; background: transparent; border: none;"
+        )
+        main_layout.addWidget(self.desc)
+
+        header = _create_column_header("Tributes", self.add_tribute)
+        main_layout.addWidget(header)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.Panel)
+        scroll.setStyleSheet("QScrollArea { border: 1px solid #2d2d2d; border-left: none; background-color: #121212; }")
+
+        self.scroll_widget = QWidget()
+        self.list_layout = QVBoxLayout(self.scroll_widget)
+        self.list_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.list_layout.setContentsMargins(10, 10, 10, 10)
+        self.list_layout.setSpacing(4)
+
+        scroll.setWidget(self.scroll_widget)
+        main_layout.addWidget(scroll)
+
+        self.init_tributes()
         self.setLayout(main_layout)
 
-    def create_button_layout(self) -> QHBoxLayout:
-        btn_layout = QHBoxLayout()
-
-        add_tribute_btn = QPushButton("Add Tribute")
-        add_tribute_btn.clicked.connect(self.add_tribute)
-
-        add_rarity_btn = QPushButton("Add Rarity")
-        add_rarity_btn.clicked.connect(self.add_rarity)
-
-        remove_rule_btn = QPushButton("Remove Selected")
-        remove_rule_btn.clicked.connect(self.remove_selected)
-
-        btn_layout.addWidget(add_tribute_btn)
-        btn_layout.addWidget(add_rarity_btn)
-        btn_layout.addWidget(remove_rule_btn)
-        return btn_layout
-
-    def _reload_tribute_list_widget(self):
-        self.tribute_list_widget.clear()
+    def init_tributes(self):
         for tribute in self.tributes:
-            self.tribute_list_widget.addItem(self._display_text(tribute))
+            self.add_tribute_widget(tribute)
 
-    @staticmethod
-    def _display_text(tribute: TributeFilterModel) -> str:
-        if not tribute.name and not tribute.rarities:
-            return "Empty tribute rule"
-
-        parts = []
-        if tribute.name:
-            tribute_name = Dataloader().tribute_dict.get(tribute.name, tribute.name)
-            parts.append(f"Tribute: {tribute_name}")
-
-        if tribute.rarities:
-            rarity_names = ", ".join(ItemRarity(rarity).name for rarity in tribute.rarities)
-            parts.append(f"Rarities: {rarity_names}")
-
-        return " | ".join(parts)
+    def add_tribute_widget(self, model: TributeFilterModel):
+        widget = TributeSummaryWidget(model)
+        widget.delete_requested.connect(lambda: self.remove_tribute_item(widget))
+        self.list_layout.addWidget(widget)
+        return widget
 
     def add_tribute(self):
-        dialog = CreateTribute(self._existing_tribute_names())
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            tribute_filter = dialog.get_value()
-            self.tributes.append(tribute_filter)
-            self.tribute_list_widget.addItem(self._display_text(tribute_filter))
+        tribute_id = next(iter(Dataloader().tribute_dict.keys()))
+        new_rule = TributeFilterModel(name=tribute_id, rarities=[])
+        self.tributes.append(new_rule)
+        widget = self.add_tribute_widget(new_rule)
+        if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
+            self.remove_tribute_item(widget)
 
-    def add_rarity(self):
-        dialog = AddTributeRarity(self._existing_rarities())
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            tribute_filter = dialog.get_value()
-            self.tributes.append(tribute_filter)
-            self.tribute_list_widget.addItem(self._display_text(tribute_filter))
-
-    def remove_selected(self):
-        rows = sorted(
-            {self.tribute_list_widget.row(item) for item in self.tribute_list_widget.selectedItems()}, reverse=True
-        )
-        if not rows:
-            QMessageBox.warning(self, "Warning", "Select at least one tribute rule to remove.")
-            return
-
-        for row in rows:
-            self.tribute_list_widget.takeItem(row)
-            self.tributes.pop(row)
-
-    def _existing_tribute_names(self) -> list[str]:
-        return [tribute.name for tribute in self.tributes if tribute.name and not tribute.rarities]
-
-    def _existing_rarities(self) -> list[ItemRarity]:
-        return [
-            ItemRarity(tribute.rarities[0])
-            for tribute in self.tributes
-            if tribute.rarities and not tribute.name and len(tribute.rarities) == 1
-        ]
+    def remove_tribute_item(self, widget: TributeSummaryWidget):
+        if widget.model in self.tributes:
+            self.tributes.remove(widget.model)
+        widget.setParent(None)
+        widget.deleteLater()

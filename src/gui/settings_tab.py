@@ -613,8 +613,8 @@ class SegmentedControl(QWidget):
 
 
 class IgnoreScrollWheelComboBox(QComboBox):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
     def wheelEvent(self, event):  # noqa: N802

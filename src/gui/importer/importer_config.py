@@ -10,3 +10,4 @@ class ImportConfig:
     require_greater_affixes: bool
     export_paragon: bool = False
     custom_file_name: str | None = None
+    filename_components: dict = None

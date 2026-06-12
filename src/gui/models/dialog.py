@@ -1,6 +1,5 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QCompleter,
     QDialog,
@@ -27,7 +26,8 @@ from src.config.profile_models import (
     TributeFilterModel,
 )
 from src.dataloader import Dataloader
-from src.gui.importer.gui_common import MAX_POWER
+from src.gui.importer.gui_common import MAX_POWER, PLAYER_CLASSES, normalize_profile_file_name
+from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
 from src.gui.settings_tab import IgnoreScrollWheelComboBox
 from src.item.data.item_type import ItemType
 
@@ -36,6 +36,16 @@ class IgnoreScrollWheelSpinBox(QSpinBox):
     def __init__(self):
         super().__init__()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
+        self.setStyleSheet("""
+            QSpinBox {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+            }
+            QSpinBox:focus { border-color: #3b82f6; }
+        """)
 
     def wheelEvent(self, event):  # noqa: N802
         if self.hasFocus():
@@ -48,11 +58,41 @@ class MinPowerDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Set Min Power")
-        self.setFixedSize(250, 150)
-        self.main_layout = QVBoxLayout()
+        self.setMinimumWidth(400)
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QLineEdit, QComboBox, QSpinBox {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+                padding: 4px;
+            }
+            QLineEdit:focus, QComboBox:focus, QSpinBox:focus { border-color: #3b82f6; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+        """)
+
+        self.main_layout = QVBoxLayout(self)
+
+        header = QLabel("Set Minimum Power")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;")
+        self.main_layout.addWidget(header)
+
+        desc = QLabel("Set the minimum item power for all filtered items in this profile.")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        self.main_layout.addWidget(desc)
 
         self.form_layout = QFormLayout()
-        self.label = QLabel("Min Power:")
+        self.label = QLabel("Item Power:")
+        self.label.setStyleSheet("color: #e2e8f0;")
         self.spinBox = IgnoreScrollWheelSpinBox()
         self.spinBox.setRange(0, MAX_POWER)
         self.spinBox.setValue(MAX_POWER)
@@ -68,7 +108,6 @@ class MinPowerDialog(QDialog):
         self.buttonLayout.addWidget(self.cancelButton)
 
         self.main_layout.addLayout(self.buttonLayout)
-        self.setLayout(self.main_layout)
 
     def get_value(self):
         return self.spinBox.value()
@@ -78,11 +117,41 @@ class MinGreaterDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Set Min Greater Affix")
-        self.setFixedSize(250, 150)
-        self.main_layout = QVBoxLayout()
+        self.setMinimumWidth(400)
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QLineEdit, QComboBox, QSpinBox {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+                padding: 4px;
+            }
+            QLineEdit:focus, QComboBox:focus, QSpinBox:focus { border-color: #3b82f6; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+        """)
+
+        self.main_layout = QVBoxLayout(self)
+
+        header = QLabel("Set Minimum Greater Affixes")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;")
+        self.main_layout.addWidget(header)
+
+        desc = QLabel("Set the minimum number of Greater Affixes required for all items in this profile.")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        self.main_layout.addWidget(desc)
 
         self.form_layout = QFormLayout()
-        self.label = QLabel("Min Greater Affix:")
+        self.label = QLabel("GA Count:")
+        self.label.setStyleSheet("color: #e2e8f0;")
         self.spinBox = IgnoreScrollWheelSpinBox()
         self.spinBox.setRange(0, 4)
         self.spinBox.setValue(0)
@@ -98,7 +167,6 @@ class MinGreaterDialog(QDialog):
         self.buttonLayout.addWidget(self.cancelButton)
 
         self.main_layout.addLayout(self.buttonLayout)
-        self.setLayout(self.main_layout)
 
     def get_value(self):
         return self.spinBox.value()
@@ -108,11 +176,41 @@ class MinPercentDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Set Min Percent Of Affix")
-        self.setFixedSize(250, 150)
-        self.main_layout = QVBoxLayout()
+        self.setMinimumWidth(400)
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QLineEdit, QComboBox, QSpinBox {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+                padding: 4px;
+            }
+            QLineEdit:focus, QComboBox:focus, QSpinBox:focus { border-color: #3b82f6; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+        """)
+
+        self.main_layout = QVBoxLayout(self)
+
+        header = QLabel("Set Minimum Roll Percentage")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;")
+        self.main_layout.addWidget(header)
+
+        desc = QLabel("Update all affixes in this profile to use a minimum roll percentage threshold.")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        self.main_layout.addWidget(desc)
 
         self.form_layout = QFormLayout()
-        self.label = QLabel("Min Percent Of Affix:")
+        self.label = QLabel("Roll %:")
+        self.label.setStyleSheet("color: #e2e8f0;")
         self.spinBox = IgnoreScrollWheelSpinBox()
         self.spinBox.setRange(0, 100)
         self.spinBox.setValue(70)
@@ -128,7 +226,6 @@ class MinPercentDialog(QDialog):
         self.buttonLayout.addWidget(self.cancelButton)
 
         self.main_layout.addLayout(self.buttonLayout)
-        self.setLayout(self.main_layout)
 
     def get_value(self):
         return self.spinBox.value()
@@ -138,12 +235,42 @@ class CreateItem(QDialog):
     def __init__(self, item_list: list[str], parent=None):
         super().__init__(parent)
         self.setWindowTitle("Create Item")
-        self.setFixedSize(300, 150)
-        self.main_layout = QVBoxLayout()
+        self.setMinimumWidth(400)
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QLineEdit, QComboBox {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+                padding: 4px;
+            }
+            QLineEdit:focus, QComboBox:focus { border-color: #3b82f6; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+        """)
+
+        self.main_layout = QVBoxLayout(self)
+
+        header = QLabel("Create New Item Filter")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;")
+        self.main_layout.addWidget(header)
+
+        desc = QLabel("Enter a descriptive name for this item configuration (e.g., 'Tornado Gloves').")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        self.main_layout.addWidget(desc)
 
         self.form_layout = QFormLayout()
 
         self.name_label = QLabel("Item Name:")
+        self.name_label.setStyleSheet("color: #e2e8f0;")
         self.name_input = QLineEdit()
         self.form_layout.addRow(self.name_label, self.name_input)
         self.item_list = item_list
@@ -158,8 +285,6 @@ class CreateItem(QDialog):
 
         self.main_layout.addLayout(self.form_layout)
         self.main_layout.addLayout(self.buttonLayout)
-
-        self.setLayout(self.main_layout)
 
     def accept(self):
         if not self.name_input.text():
@@ -185,27 +310,131 @@ class CreateItem(QDialog):
         return DynamicItemFilterModel(**{item_name: item})
 
 
+class CreateProfileDialog(QDialog):
+    def __init__(self, existing_profile_names: list[str], parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Create New Profile")
+        self.setMinimumWidth(450)
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QLineEdit, QComboBox {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+                padding: 4px;
+            }
+            QLineEdit:focus, QComboBox:focus { border-color: #3b82f6; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+        """)
+
+        self.existing_profile_names = existing_profile_names
+        self.main_layout = QVBoxLayout(self)
+
+        header = QLabel("Create New Profile")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;")
+        self.main_layout.addWidget(header)
+
+        desc = QLabel("Enter a name and select your character class to initialize a new filtering profile.")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        self.main_layout.addWidget(desc)
+
+        self.form_layout = QFormLayout()
+
+        # Profile Name
+        self.name_label = QLabel("Profile Name:")
+        self.name_label.setStyleSheet("color: #e2e8f0;")
+        self.name_input = QLineEdit()
+        self.form_layout.addRow(self.name_label, self.name_input)
+
+        self.buttonLayout = QHBoxLayout()
+        self.okButton = QPushButton("OK")
+        self.okButton.clicked.connect(self.accept)
+
+        # Class Selection
+        self.class_label = QLabel("Class:")
+        self.class_input = QComboBox()
+        self.class_input.addItems(sorted([c.title() for c in PLAYER_CLASSES]))
+        self.form_layout.addRow(self.class_label, self.class_input)
+
+        self.cancelButton = QPushButton("Cancel")
+        self.cancelButton.clicked.connect(self.reject)
+
+        self.buttonLayout.addWidget(self.okButton)
+        self.buttonLayout.addWidget(self.cancelButton)
+
+        self.main_layout.addLayout(self.form_layout)
+        self.main_layout.addLayout(self.buttonLayout)
+
+    def accept(self):
+        profile_name = self.name_input.text().strip()
+        if not profile_name:
+            QMessageBox.warning(self, "Warning", "Profile name cannot be empty.")
+            return
+
+        normalized_name = normalize_profile_file_name(profile_name)
+
+        if normalized_name in [normalize_profile_file_name(n) for n in self.existing_profile_names]:
+            QMessageBox.warning(self, "Warning", f"A profile with the name '{profile_name}' already exists.")
+            return
+
+        super().accept()
+
+    def get_value(self) -> tuple[str, str]:
+        return self.name_input.text().strip(), self.class_input.currentText().lower()
+
+
 class DeleteItem(QDialog):
     def __init__(self, item_names, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Delete Items")
-        self.setFixedSize(300, 200)
-        self.main_layout = QVBoxLayout()
+        self.setMinimumWidth(400)
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+            QScrollArea { background-color: #09090b; border: 1px solid #3f3f46; border-radius: 4px; }
+        """)
+
+        self.main_layout = QVBoxLayout(self)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
+        header = QLabel("Delete Item Filters")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #ef4444; margin-bottom: 5px;")
+        self.main_layout.addWidget(header)
+
+        desc = QLabel("Select the item configurations you wish to permanently remove.")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        self.main_layout.addWidget(desc)
+
         self.groupbox = QGroupBox("Items")
+        self.groupbox.setStyleSheet(
+            "QGroupBox { border: 1px solid #3f3f46; margin-top: 10px; padding-top: 10px; color: #e2e8f0; }"
+        )
         scroll_area = QScrollArea(self)
         scroll_widget = QWidget(scroll_area)
         scrollable_layout = QVBoxLayout(scroll_widget)
+        scrollable_layout.setContentsMargins(10, 10, 10, 10)
         self.groupbox_layout = QVBoxLayout()
-
-        label = QLabel("Select items to delete:")
-        label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        self.groupbox_layout.addWidget(label)
 
         self.checkbox_list = []
         for name in item_names:
-            checkbox = QCheckBox(name)
+            checkbox = CheckmarkCheckBox(name)
             scrollable_layout.addWidget(checkbox)
             self.checkbox_list.append(checkbox)
         scroll_widget.setLayout(scrollable_layout)
@@ -223,8 +452,6 @@ class DeleteItem(QDialog):
 
         self.main_layout.addWidget(self.groupbox)
         self.main_layout.addLayout(self.buttonLayout)
-
-        self.setLayout(self.main_layout)
 
     def get_value(self):
         return [checkbox.text() for checkbox in self.checkbox_list if checkbox.isChecked()]
@@ -239,22 +466,45 @@ class DeleteAffixPool(QDialog):
         else:
             self.setWindowTitle("Delete Affix Pool")
             self.groupbox = QGroupBox("Affix Pool")
-        self.setFixedSize(300, 200)
-        self.main_layout = QVBoxLayout()
+        self.setMinimumWidth(400)
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+            QScrollArea { background-color: #09090b; border: 1px solid #3f3f46; border-radius: 4px; }
+        """)
+
+        self.main_layout = QVBoxLayout(self)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        header = QLabel("Remove Affix Pools")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #ef4444; margin-bottom: 5px;")
+        self.main_layout.addWidget(header)
+
+        desc = QLabel("Select the specific affix pools you want to remove from this item.")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        self.main_layout.addWidget(desc)
 
         scroll_area = QScrollArea(self)
         scroll_widget = QWidget(scroll_area)
         scrollable_layout = QVBoxLayout(scroll_widget)
+        scrollable_layout.setContentsMargins(10, 10, 10, 10)
         self.groupbox_layout = QVBoxLayout()
 
-        label = QLabel("Select items to delete:")
-        label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        self.groupbox_layout.addWidget(label)
+        self.groupbox.setStyleSheet(
+            "QGroupBox { border: 1px solid #3f3f46; margin-top: 10px; padding-top: 10px; color: #e2e8f0; }"
+        )
 
         self.checkbox_list = []
         for i in range(nb_affix_pool):
-            checkbox = QCheckBox(f"Count {i}")
+            checkbox = CheckmarkCheckBox(f"Count {i}")
             scrollable_layout.addWidget(checkbox)
             self.checkbox_list.append(checkbox)
         scroll_widget.setLayout(scrollable_layout)
@@ -272,8 +522,6 @@ class DeleteAffixPool(QDialog):
 
         self.main_layout.addWidget(self.groupbox)
         self.main_layout.addLayout(self.buttonLayout)
-
-        self.setLayout(self.main_layout)
 
     def get_value(self):
         return [checkbox.text() for checkbox in self.checkbox_list if checkbox.isChecked()]
@@ -361,7 +609,7 @@ class RemoveSigil(QDialog):
 
         self.checkbox_list = []
         for sigil in self.sigils:
-            checkbox = QCheckBox(sigil)
+            checkbox = CheckmarkCheckBox(sigil)
             scrollable_layout.addWidget(checkbox)
             self.checkbox_list.append(checkbox)
         scroll_widget.setLayout(scrollable_layout)
@@ -509,7 +757,7 @@ class RemoveTribute(QDialog):
 
         self.checkbox_list = []
         for tribute in self.tributes:
-            checkbox = QCheckBox(Dataloader().tribute_dict[tribute]) if tribute else QCheckBox("None")
+            checkbox = CheckmarkCheckBox(Dataloader().tribute_dict[tribute]) if tribute else CheckmarkCheckBox("None")
             scrollable_layout.addWidget(checkbox)
             self.checkbox_list.append(checkbox)
         scroll_widget.setLayout(scrollable_layout)
@@ -542,14 +790,45 @@ class AddAspectUpgrade(QDialog):
         self.aspect_upgrades = aspect_upgrades
 
         self.setWindowTitle("Add Aspect")
-        self.setFixedSize(300, 150)
+        self.setMinimumWidth(450)
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #e2e8f0; }
+            QLineEdit, QComboBox {
+                background-color: #09090b;
+                border: 1px solid #3f3f46;
+                border-radius: 4px;
+                color: #e2e8f0;
+                padding: 4px;
+            }
+            QLineEdit:focus, QComboBox:focus { border-color: #3b82f6; }
+            QPushButton {
+                background-color: #262626;
+                border: 1px solid #3f3f46;
+                color: #e2e8f0;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #323232; border-color: #52525b; }
+        """)
 
-        self.main_layout = QVBoxLayout()
+        self.main_layout = QVBoxLayout(self)
+
+        header = QLabel("Add Aspect to Whitelist")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;")
+        self.main_layout.addWidget(header)
+
+        desc = QLabel("Select a legendary aspect to track for Codex of Power upgrades.")
+        desc.setStyleSheet("font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 15px;")
+        desc.setWordWrap(True)
+        self.main_layout.addWidget(desc)
+
         self.form_layout = QFormLayout()
 
         unchosen_aspect_ugprades = [x for x in Dataloader().aspect_list if x not in aspect_upgrades]
 
-        self.name_label = QLabel("Aspect:")
+        self.name_label = QLabel("Aspect Name:")
+        self.name_label.setStyleSheet("color: #e2e8f0;")
+
         self.name_input = IgnoreScrollWheelComboBox()
         self.name_input.setEditable(True)
         self.name_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
@@ -568,8 +847,6 @@ class AddAspectUpgrade(QDialog):
 
         self.main_layout.addLayout(self.form_layout)
         self.main_layout.addLayout(self.buttonLayout)
-
-        self.setLayout(self.main_layout)
 
     def get_value(self):
         return self.name_input.currentText()
@@ -593,8 +870,8 @@ class CreateUnique(QDialog):
 
         self.checkbox_list = []
 
-        checkbox_aspect = QCheckBox("Aspect")
-        checkbox_affixe = QCheckBox("Affixes")
+        checkbox_aspect = CheckmarkCheckBox("Aspect")
+        checkbox_affixe = CheckmarkCheckBox("Affixes")
         self.groupbox_layout.addWidget(checkbox_aspect)
         self.groupbox_layout.addWidget(checkbox_affixe)
         self.checkbox_list.append(checkbox_aspect)

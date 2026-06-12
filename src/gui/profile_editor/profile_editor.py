@@ -1,100 +1,287 @@
+"""Profile editor with paper doll layout."""
+
+import contextlib
 import logging
 
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QMessageBox, QTabWidget
+from PyQt6.QtCore import QTimer, pyqtSignal
+from PyQt6.QtWidgets import (
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
 from src.config.profile_models import ProfileModel
 from src.gui.importer.gui_common import save_as_profile
-from src.gui.profile_editor.affixes_tab import AFFIXES_TABNAME, AffixesTab
-from src.gui.profile_editor.aspect_upgrades_tab import ASPECT_UPGRADES_TABNAME, AspectUpgradesTab
-from src.gui.profile_editor.global_uniques_tab import UNIQUES_TABNAME, UniquesTab
-from src.gui.profile_editor.sigils_tab import SIGILS_TABNAME, SigilsTab
-from src.gui.profile_editor.tributes_tab import TRIBUTES_TABNAME, TributesTab
+from src.gui.profile_editor.affixes_tab import AffixesTab
+from src.gui.profile_editor.aspect_upgrades_tab import AspectUpgradesTab
+from src.gui.profile_editor.global_uniques_tab import UniquesTab
+from src.gui.profile_editor.paper_doll import BASE_GEAR_SLOTS, PaperDollWidget, get_weapon_slots
+from src.gui.profile_editor.sigils_tab import SigilsTab
+from src.gui.profile_editor.tributes_tab import TributesTab
 
 LOGGER = logging.getLogger(__name__)
 
 
-class ProfileEditor(QTabWidget):
+class ProfileEditor(QWidget):
+    """Profile editor with paper doll layout and side panel for editing."""
+
     # Signal emitted when profile is saved (passes profile name)
     profile_saved = pyqtSignal(str)
 
-    def __init__(self, profile_model: ProfileModel, parent=None):
+    def __init__(self, profile_model: ProfileModel, parent: QWidget | None = None):
         super().__init__(parent)
-
         self.profile_model = profile_model
-        # Create main tabs
-        self.affixes_tab = AffixesTab(self.profile_model.affixes)
-        self.aspect_upgrades_tab = AspectUpgradesTab(self.profile_model.aspect_upgrades)
-        self.sigils_tab = SigilsTab(self.profile_model.sigils)
-        self.tributes_tab = TributesTab(self.profile_model.tributes)
-        self.uniques_tab = UniquesTab(self.profile_model.global_uniques)
 
-        self.currentChanged.connect(self.tab_changed)
-        # Add tabs with icons
-        self.addTab(self.affixes_tab, AFFIXES_TABNAME)
-        self.addTab(self.aspect_upgrades_tab, ASPECT_UPGRADES_TABNAME)
-        self.addTab(self.sigils_tab, SIGILS_TABNAME)
-        self.addTab(self.tributes_tab, TRIBUTES_TABNAME)
-        self.addTab(self.uniques_tab, UNIQUES_TABNAME)
+        # Create all tab widgets upfront (lazy-loaded internally)
+        self.affixes_tab = AffixesTab(self.profile_model.affixes, self)
+        self.aspect_upgrades_tab = AspectUpgradesTab(self.profile_model.aspect_upgrades, self)
+        self.sigils_tab = SigilsTab(self.profile_model.sigils, self)
+        self.tributes_tab = TributesTab(self.profile_model.tributes, self)
+        self.uniques_tab = UniquesTab(self.profile_model.global_uniques, self)
 
-        # Configure tab widget properties
-        self.setDocumentMode(True)
-        self.setMovable(False)
-        self.setTabPosition(QTabWidget.TabPosition.North)
-        self.setElideMode(Qt.TextElideMode.ElideRight)
+        # Side panel content widget (swaps based on slot selection)
+        self.side_content_widget: QWidget | None = None
 
-    def tab_changed(self, index):
-        if self.tabText(index) == AFFIXES_TABNAME:
+        self.current_class = self._detect_class()
+
+        # Build the UI
+        self.setup_ui()
+
+        # Reset window expansion state on load to prevent accumulation when switching profiles
+        QTimer.singleShot(50, self._safe_initial_resize)
+
+    def _safe_initial_resize(self):
+        """Perform initial window adjustment safely to avoid RuntimeError if widget is deleted."""
+        with contextlib.suppress(RuntimeError):
+            self._adjust_window_size(expanding=False)
+
+    def _detect_class(self) -> str:
+        """Return the character class defined in the profile model."""
+        return self.profile_model.class_name.lower()
+
+    def setup_ui(self):
+        # Set a base minimum height to prevent the window from being "rolled up"
+        # into an unusable state.
+        self.setMinimumHeight(750)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Paper doll widget (left side with clickable slots)
+        self.paper_doll = PaperDollWidget()
+
+        # Add base gear slots
+        for slot_name, item_types, rect in BASE_GEAR_SLOTS:
+            self.paper_doll.add_slot(slot_name, item_types, rect)
+
+        # Add dynamic weapon slots based on class
+        self.weapon_slots = get_weapon_slots(self.current_class)
+        for slot_name, item_types, rect in self.weapon_slots:
+            self.paper_doll.add_slot(slot_name, item_types, rect)
+
+        # Position all slot buttons on the canvas
+        self.paper_doll.position_slots()
+
+        # Add Bulk Actions at bottom of armory
+        actions_group = QGroupBox("Profile-Wide Actions")
+        actions_layout = QHBoxLayout(actions_group)
+        actions_layout.setContentsMargins(10, 15, 10, 10)
+
+        btn_min_ga = QPushButton("Set Min GAs")
+        btn_min_ga.setToolTip("Set the Minimum Greater Affix requirement for every legendary filter in this profile.")
+        btn_min_ga.clicked.connect(self.affixes_tab.set_all_min_greater_affix)
+
+        btn_min_power = QPushButton("Set minPower")
+        btn_min_power.setToolTip(
+            "Set the Minimum Power threshold (e.g. 900) for every legendary filter in this profile."
+        )
+        btn_min_power.clicked.connect(self.affixes_tab.set_all_min_power)
+
+        btn_to_percent = QPushButton("Convert to Min %")
+        btn_to_percent.setToolTip(
+            "Convert every legendary filter in this profile to use 'Min %' mode instead of fixed values."
+        )
+        btn_to_percent.clicked.connect(self.affixes_tab.convert_all_to_min_percent_of_affix)
+
+        for btn in [btn_min_ga, btn_min_power, btn_to_percent]:
+            btn.setFixedHeight(32)
+            actions_layout.addWidget(btn)
+
+        # Insert into the paper doll panel's vertical layout (after the canvas)
+        self.paper_doll.character_panel.layout().addWidget(actions_group)
+
+        # Pre-create integrated gear view components to avoid heavy construction on every click
+        self.gear_view_scroll = QScrollArea()
+        self.gear_view_scroll.setWidgetResizable(True)
+        self.gear_view_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.gear_view_scroll.setStyleSheet("background: transparent; border: none;")
+
+        self.gear_view_container = QWidget()
+        self.gear_view_container.setStyleSheet("background: transparent;")
+        self.gear_view_layout = QVBoxLayout(self.gear_view_container)
+        self.gear_view_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.gear_view_header = QLabel()
+        self.gear_view_header.setStyleSheet(
+            "font-size: 18px; font-weight: bold; color: #3b82f6; margin-bottom: 10px; background: transparent; border: none;"
+        )
+        self.gear_view_layout.addWidget(self.gear_view_header)
+
+        self.gear_view_subheader = QLabel()
+        self.gear_view_subheader.setStyleSheet(
+            "font-size: 13px; color: #94a3b8; font-style: italic; margin-bottom: 15px; background: transparent; border: none;"
+        )
+        self.gear_view_layout.addWidget(self.gear_view_subheader)
+        self.gear_view_subheader.hide()
+
+        self.gear_view_layout.addWidget(self.affixes_tab)
+        self.gear_view_layout.addWidget(self.uniques_tab)
+        self.gear_view_scroll.setWidget(self.gear_view_container)
+
+        # Connect slot click signal
+        self.paper_doll.slot_clicked.connect(self.on_slot_clicked)
+
+        main_layout.addWidget(self.paper_doll)
+
+    def _update_equilibrium_config_status(self):
+        """Update the config status indicators on equipment slots."""
+        # TODO: Implement logic to check which items in self.profile_model.affixes match slot types
+        has_affix_config = len(self.profile_model.affixes) > 0
+        self.paper_doll.update_config_status("Equipment", has_affix_config)
+
+    def on_slot_clicked(self, slot_name: str):
+        """Handle equipment slot click - show relevant tab in side panel."""
+        self.side_content_widget = None
+        item_types = None
+
+        if not slot_name:
+            # Hide all content widgets and show placeholder
+            for widget in [
+                self.affixes_tab,
+                self.aspect_upgrades_tab,
+                self.sigils_tab,
+                self.tributes_tab,
+                self.uniques_tab,
+            ]:
+                with contextlib.suppress(RuntimeError):
+                    widget.hide()
+            self.paper_doll.clear_side_panel()
+            self.gear_view_subheader.hide()
+            self._adjust_window_size(expanding=False)
+            return
+
+        # Find item types for the clicked slot
+        all_equipment = BASE_GEAR_SLOTS + self.weapon_slots
+        slot_info = next((s for s in all_equipment if s[0] == slot_name), None)
+        item_types = slot_info[1] if slot_info else None
+
+        # Determine if it's a gear/weapon slot (Affixes + Unique Rules)
+        is_gear_slot = any(s[0] == slot_name for s in all_equipment)
+
+        if is_gear_slot:
+            # Ensure children are loaded before filtering
             self.affixes_tab.load()
-        elif self.tabText(index) == ASPECT_UPGRADES_TABNAME:
-            self.aspect_upgrades_tab.load()
-        elif self.tabText(index) == SIGILS_TABNAME:
-            self.sigils_tab.load()
-        elif self.tabText(index) == TRIBUTES_TABNAME:
-            self.tributes_tab.load()
-        elif self.tabText(index) == UNIQUES_TABNAME:
             self.uniques_tab.load()
+            # Ensure gear view components are visible (they might have been hidden by Global Rules)
+            self.affixes_tab.show()
+            self.uniques_tab.hide()
+            self.gear_view_header.show()
 
-    @staticmethod
-    def show_warning():
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Icon.Warning)
-        msg.setWindowTitle("Warning")
+            # Filter both tabs for this specific slot
+            self.affixes_tab.filter_by_item_types(item_types, slot_name)
 
-        # Newline in message text
-        msg.setText("The profile model might not be valid. Do you still want to save your changes ?")
+            self.gear_view_header.setText(f"Slot: {slot_name}")
+            self.gear_view_subheader.hide()
+            self.side_content_widget = self.gear_view_scroll
+        elif slot_name == "Aspect Upgrades":
+            with contextlib.suppress(RuntimeError):
+                self.aspect_upgrades_tab.load()
+                self.aspect_upgrades_tab.show()
+                self.side_content_widget = self.aspect_upgrades_tab
+        elif slot_name == "Sigils":
+            with contextlib.suppress(RuntimeError):
+                self.sigils_tab.load()
+                self.sigils_tab.show()
+                self.side_content_widget = self.sigils_tab
+        elif slot_name == "Tributes":
+            with contextlib.suppress(RuntimeError):
+                self.tributes_tab.load()
+                self.tributes_tab.show()
+                self.side_content_widget = self.tributes_tab
+        elif slot_name == "Global Rules":
+            with contextlib.suppress(RuntimeError):
+                self.uniques_tab.load()
+                # When clicking global tab, show all rules via the integrated view
+                # to avoid widget reparenting issues that break the layout.
+                self.uniques_tab.filter_by_item_types(None)
+                self.uniques_tab.show()
+                # Show header for Global Rules and hide the affixes tab
+                self.gear_view_header.setText("Global Rules")
+                self.gear_view_subheader.setText("These are rules that cover more than one item type.")
+                self.gear_view_subheader.show()
+                self.gear_view_header.show()
+                self.affixes_tab.hide()
+                self.side_content_widget = self.gear_view_scroll
+        else:
+            self.side_content_widget = None
 
-        msg.setStandardButtons(QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard)
+        if self.side_content_widget is not None:
+            self.paper_doll.restore_side_panel(self.side_content_widget)
+            self._adjust_window_size(expanding=True)
+        else:
+            self.paper_doll.show_message(f"Configuration for '{slot_name}' coming soon")
 
-        response = msg.exec()
-        return response == QMessageBox.StandardButton.Save
+    def _adjust_window_size(self, expanding: bool):
+        """Resize the top-level window to accommodate the side panel."""
+        with contextlib.suppress(RuntimeError):
+            win = self.window()
+            if not win or win.isMaximized():
+                return
+
+            # Use dynamic properties on the main window to track expansion state globally across instances.
+            # This prevents the window from getting wider and wider when switching profiles.
+            is_already_expanded = win.property("profile_editor_expanded") is True
+
+            if expanding and not is_already_expanded:
+                # Use the actual sidebar minimum width to determine expansion delta
+                sidebar_w = self.paper_doll.side_panel.minimumWidth()
+                # Store the current width before expanding so we can return to it exactly
+                win.setProperty("profile_editor_pre_expansion_width", win.width())
+                win.resize(win.width() + sidebar_w, win.height())
+                win.setProperty("profile_editor_expanded", True)  # noqa: FBT003
+            elif not expanding:
+                # Snap back to the base width (800) whenever the sidebar is closed.
+                # This eliminates empty space on the right and ensures the paper doll
+                # always opens at its "perfect" resolution.
+                win.resize(800, win.height())
+                win.setProperty("profile_editor_expanded", False)  # noqa: FBT003
+
+            self.updateGeometry()
 
     def save_all(self):
         """Save all tabs' configurations."""
         try:
-            # Validate
-            model = ProfileModel.model_validate(self.profile_model)
-            if model != self.profile_model:
-                if self.show_warning():
-                    save_as_profile(
-                        self.profile_model.name, self.profile_model, "custom", exclude={"name"}, backup_file=True
-                    )
-                    # Emit signal for hot reload
-                    self.profile_saved.emit(self.profile_model.name)
-                    QMessageBox.information(
-                        self, "Info", f"Profile saved successfully to {self.profile_model.name + '.yaml'}"
-                    )
-                else:
-                    QMessageBox.information(self, "Info", "Profile not saved.")
-            else:
-                save_as_profile(
-                    self.profile_model.name, self.profile_model, "custom", exclude={"name"}, backup_file=True
-                )
-                # Emit signal for hot reload
-                self.profile_saved.emit(self.profile_model.name)
-                QMessageBox.information(
-                    self, "Info", f"Profile saved successfully to {self.profile_model.name + '.yaml'}"
-                )
+            # Re-validate to catch schema issues
+            ProfileModel.model_validate(self.profile_model)
+
+            save_as_profile(
+                file_name=self.profile_model.name,
+                profile=self.profile_model,
+                url="custom",
+                exclude={"name"},
+                backup_file=True,
+            )
+
+            # Emit signal for hot reload
+            self.profile_saved.emit(self.profile_model.name)
+            QMessageBox.information(self, "Info", f"Profile saved successfully to {self.profile_model.name + '.yaml'}")
         except Exception as e:
             LOGGER.exception("Failed to save profile")
             QMessageBox.critical(self, "Error", f"Failed to save profile: {e}")

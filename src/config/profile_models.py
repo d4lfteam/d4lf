@@ -48,6 +48,7 @@ class AffixAspectFilterModel(BaseModel):
 class AffixFilterModel(AffixAspectFilterModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     want_greater: bool = False
+    required: bool = False
     min_percent_of_affix: int = Field(default=0, alias="minPercentOfAffix")
 
     @field_validator("name")
@@ -94,11 +95,12 @@ class AffixFilterCountModel(BaseModel):
             self.max_count = len(self.count)
             self.model_fields_set.remove("min_count")
             self.model_fields_set.remove("max_count")
+
+        req_count = sum(1 for a in self.count if a.required)
+        self.min_count = max(self.min_count, req_count)
+
         if self.min_count > self.max_count:
             msg = "minCount must be smaller than maxCount"
-            raise ValueError(msg)
-        if not self.count:
-            msg = "count must not be empty"
             raise ValueError(msg)
         return self
 
@@ -140,6 +142,10 @@ class GlobalUniqueModel(BaseModel):
     min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
     min_percent_of_aspect: int = Field(default=0, alias="minPercentOfAspect")
     min_power: int = Field(default=0, alias="minPower")
+    item_type: list[ItemType] = Field(default=[], alias="itemType")
+    affix_pool: list[AffixFilterCountModel] = Field(default=[], alias="affixPool")
+    inherent_pool: list[AffixFilterCountModel] = Field(default=[], alias="inherentPool")
+    unique_aspect: list[AspectUniqueFilterModel] = Field(default=[], alias="uniqueAspect")
 
     @field_validator("min_power")
     @classmethod
@@ -158,6 +164,29 @@ class GlobalUniqueModel(BaseModel):
     @classmethod
     def percent_validator(cls, v: int) -> int:
         return validate_percent(v)
+
+    @field_validator("item_type", mode="before")
+    @classmethod
+    def parse_item_type(cls, data: str | list[str]) -> list[str]:
+        return _parse_item_type_or_rarities(data)
+
+    @field_validator("unique_aspect", mode="before")
+    @classmethod
+    def parse_unique_aspect(cls, data: dict | list[dict] | None) -> list[dict]:
+        if not data:
+            return []
+        if isinstance(data, dict):
+            return [data]
+        return data
+
+    @model_validator(mode="after")
+    def unique_aspect_names_must_be_unique(self) -> GlobalUniqueModel:
+        if len({aspect.name for aspect in self.unique_aspect}) != len(self.unique_aspect):
+            msg = "uniqueAspect names must be unique"
+            raise ValueError(msg)
+        if not self.affix_pool:
+            self.affix_pool = [AffixFilterCountModel(count=[], min_count=0)]
+        return self
 
 
 class ItemFilterModel(BaseModel):
@@ -201,6 +230,8 @@ class ItemFilterModel(BaseModel):
         if len({aspect.name for aspect in self.unique_aspect}) != len(self.unique_aspect):
             msg = "uniqueAspect names must be unique"
             raise ValueError(msg)
+        if not self.affix_pool:
+            self.affix_pool = [AffixFilterCountModel(count=[], min_count=0)]
         return self
 
 
@@ -321,11 +352,13 @@ class ProfileModel(BaseModel):
     aspect_upgrades: list[str] = Field(default=[], alias="AspectUpgrades")
     global_uniques: list[GlobalUniqueModel] = Field(default=[], alias="GlobalUniques")
     name: str
+    class_name: str = Field(default="unknown", alias="ClassName")
     sigils: SigilFilterModel = Field(
         default=SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist), alias="Sigils"
     )
     tributes: list[TributeFilterModel] = Field(default=[], alias="Tributes")
     paragon: dict[str, object] | list[dict[str, object]] | None = Field(default=None, alias="Paragon")
+    source_url: str = Field(default="", alias="SourceUrl")
 
     @model_validator(mode="before")
     def aspects_must_exist(self) -> ProfileModel:

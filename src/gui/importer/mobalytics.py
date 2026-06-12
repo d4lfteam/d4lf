@@ -21,7 +21,6 @@ from src.config.profile_models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
-    add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
     fix_offhand_type,
@@ -128,13 +127,10 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         LOGGER.error(msg := "No items found")
         raise MobalyticsError(msg)
     finished_filters = []
-    mythic_names = []
     aspect_upgrade_filters = []
     for item in items:
         item_filter = ItemFilterModel()
         entity_type = jsonpath.findall(".gameEntity.type", item)[0]
-        mythic_result = jsonpath.findall(".gameEntity.entity.mythic", item)
-        is_mythic = mythic_result[0] if mythic_result else False
         if entity_type not in ["aspects", "uniqueItems"]:
             continue
         if not (item_name := str(jsonpath.findall(".gameEntity.entity.title", item)[0])):
@@ -152,10 +148,6 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         is_unique = entity_type == "uniqueItems"
         if is_unique:
             try:
-                # We handle mythics at the end
-                if is_mythic:
-                    mythic_names.append(item_name)
-                    continue
                 item_filter.unique_aspect = [AspectUniqueFilterModel(name=item_name)]
             except Exception:
                 LOGGER.exception(f"Unexpected error adding unique aspect for {item_name}, please report a bug.")
@@ -210,16 +202,15 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         affixes = _convert_raw_to_affixes(raw_affixes, config.import_greater_affixes)
         inherents = _convert_raw_to_affixes(raw_inherents)
 
-        if not is_mythic:
-            item_filter.affix_pool = [
-                AffixFilterCountModel(
-                    count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
-                    min_count=1 if is_unique else 3,
-                )
-            ]
-            update_mingreateraffixcount(item_filter, config.require_greater_affixes)
+        item_filter.affix_pool = [
+            AffixFilterCountModel(
+                count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
+                min_count=1 if is_unique else 3,
+            )
+        ]
+        update_mingreateraffixcount(item_filter, config.require_greater_affixes)
         item_filter.min_power = 100
-        if inherents and not is_mythic:
+        if inherents:
             item_filter.inherent_pool = [
                 AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
             ]
@@ -231,9 +222,10 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
             i += 1
         finished_filters.append({filter_name: item_filter})
 
-    # Place all mythics in a single filter
-    add_mythics_to_filters(mythic_names, finished_filters)
-    profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
+    profile = ProfileModel(
+        name="imported profile", affixes=sort_profile_filters(finished_filters), class_name=class_name, source_url=url
+    )
+
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.aspect_upgrades = aspect_upgrade_filters
 
@@ -243,6 +235,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         season_number=season_number,
         build_header=build_header,
         variant_name=variant_name,
+        filename_components=config.filename_components,
     )
     # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:

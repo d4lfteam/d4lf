@@ -29,7 +29,7 @@ class ProfileEditorWindow(QMainWindow):
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, on=True)
         self.setWindowTitle("Profile Editor")
 
-        self.resize(self.settings.value("size", QSize(650, 800)))
+        self.resize(self.settings.value("size", QSize(800, 800)))
         self.move(self.settings.value("pos", QPoint(0, 0)))
 
         if self.settings.value("maximized", "true") == "true":
@@ -48,11 +48,22 @@ class ProfileEditorWindow(QMainWindow):
     def closeEvent(self, event):  # noqa: N802
         """Save window size/position and check if profile needs saving."""
         if not self.isMaximized():
-            self.settings.setValue("size", self.size())
+            save_size = self.size()
+            # If we are currently expanded, we want to save the width we had BEFORE expansion
+            # so that next time the editor opens, it opens to just the paper doll view.
+            if self.property("profile_editor_expanded") is True:
+                pre_width = self.property("profile_editor_pre_expansion_width")
+                if pre_width is not None:
+                    save_size.setWidth(int(pre_width))
+
+            self.settings.setValue("size", save_size)
             self.settings.setValue("pos", self.pos())
         self.settings.setValue("maximized", self.isMaximized())
 
-        if self.profile_tab.check_close_save():
-            event.accept()
+        if hasattr(self, "profile_tab"):
+            if self.profile_tab.check_close_save():
+                event.accept()
+            else:
+                event.ignore()
         else:
-            event.ignore()
+            event.accept()
