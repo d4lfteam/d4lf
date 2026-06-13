@@ -4,6 +4,9 @@ import time
 from typing import TYPE_CHECKING
 
 import lxml.html
+import rapidfuzz
+from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
@@ -25,9 +28,11 @@ from src.gui.importer.gui_common import (
     add_to_profiles,
     build_default_profile_file_name,
     create_seal_charm_filter,
+    deduplicate_filters,
     fix_offhand_type,
     fix_weapon_type,
     get_class_name,
+    match_charm_to_set_or_unique,
     match_to_enum,
     retry_importer,
     save_as_profile,
@@ -111,9 +116,16 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         if slot not in slot_to_unique_name_map:
             LOGGER.warning(f"Empty slots are not supported. Skipping: {slot}")
             continue
-        if not (stats := item.xpath(ITEM_STATS_XPATH)):
+
+        slot_lower = slot.lower()
+        is_charm = "charm" in slot_lower
+        is_seal = "seal" in slot_lower
+
+        stats = item.xpath(ITEM_STATS_XPATH)
+        if not stats and not (is_charm or is_seal):
             LOGGER.error(f"No stats found for {slot=}")
             continue
+
         item_type = None
         rarity = None
         affixes = []
@@ -153,9 +165,12 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                     substring in affix_name.lower() for substring in ["focus", "offhand", "shield", "totem"]
                 ):  # special line indicating the item type
                     continue
-            affix_obj = Affix(
-                name=closest_match(clean_str(_corrections(input_str=affix_name)), Dataloader().affix_dict)
-            )
+            combined_dict = Dataloader().affix_dict
+            if is_seal:
+                combined_dict = combined_dict | Dataloader().seal_affix_dict
+            elif is_charm:
+                combined_dict = combined_dict | Dataloader().charm_affix_dict
+            affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=affix_name)), combined_dict))
             if affix_obj.name is None:
                 LOGGER.error(f"Couldn't match {affix_name=}")
                 continue
@@ -163,14 +178,15 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 affix_obj.type = AffixType.greater
             affixes.append(affix_obj)
 
-        if not affixes:
-            continue
-
         item_type = (
             match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot.replace(" ", "")))
             if item_type is None
             else item_type
         )
+
+        if not affixes and item_type not in [ItemType.HoradricSeal, ItemType.Charm]:
+            continue
+
         if item_type is None:
             if is_weapon:
                 LOGGER.warning(
@@ -187,12 +203,22 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
             filter_name = _unique_filter_name(item_type.name, seal_charm_filters)
             seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
+            # Extract unique aspect and set info for charms
+            charm_unique_aspect = None
+            charm_set_name = None
+            if item_type == ItemType.Charm and slot_to_unique_name_map.get(slot):
+                unique_name, unique_rarity = slot_to_unique_name_map[slot]
+                charm_unique_aspect, charm_set_name = match_charm_to_set_or_unique(unique_name)
+            if not affixes and not charm_unique_aspect and not charm_set_name:
+                continue
             seal_charm_filters.append({
                 filter_name: create_seal_charm_filter(
                     affixes=affixes,
                     rarity=rarity,
                     require_gas=config.require_greater_affixes,
                     model_type=seal_charm_model,
+                    unique_aspect=charm_unique_aspect,
+                    set_name=charm_set_name,
                 )
             })
             continue
@@ -216,11 +242,152 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         finished_filters.append({filter_name: item_filter})
     # Place all mythics in a single filter
     add_mythics_to_filters(mythic_names, finished_filters)
+
+    # Detect set name from active charms to assist in seal affix matching
+    guessed_set_name = None
+    try:
+        active_charms_elements = driver.find_elements(
+            By.XPATH, "//*[contains(@class, 'builder__charm') and contains(@class, 'active')]"
+        )
+        for charm_el in active_charms_elements:
+            try:
+                imgs = charm_el.find_elements(By.TAG_NAME, "img")
+                if imgs:
+                    alt = imgs[0].get_attribute("alt") or ""
+                    src = imgs[0].get_attribute("src") or ""
+                    _, set_name = match_charm_to_set_or_unique(alt, src)
+                    if set_name:
+                        guessed_set_name = set_name
+                        break
+            except WebDriverException:
+                LOGGER.debug("Failed to inspect an active charm while detecting the set name.", exc_info=True)
+    except WebDriverException:
+        LOGGER.debug("Failed to find active charms while detecting the set name.", exc_info=True)
+
+    # Parse active seals from the builder__charms section
+    try:
+        active_seals_elements = driver.find_elements(
+            By.XPATH, "//*[contains(@class, 'builder__seal') and contains(@class, 'active')]"
+        )
+        for idx, seal_el in enumerate(active_seals_elements):
+            affixes = []
+            try:
+                ActionChains(driver).move_to_element(seal_el).perform()
+                time.sleep(0.4)
+                tooltip_html = driver.find_element(By.CLASS_NAME, "seal__tooltip").get_attribute("outerHTML")
+                tooltip_data = lxml.html.fromstring(tooltip_html)
+                raw_affixes = [
+                    v.text_content().strip()
+                    for v in tooltip_data.xpath(".//*[contains(@class, 'seal__tooltip__value__text')]")
+                ]
+                combined_dict = Dataloader().affix_dict | Dataloader().seal_affix_dict
+                for affix_name in raw_affixes:
+                    affix_clean = clean_str(_corrections(input_str=affix_name))
+                    name_matched = None
+                    if guessed_set_name:
+                        # First check if the affix is a generic affix with an exact or very close match
+                        best_global_key = closest_match(affix_clean, combined_dict)
+                        is_exact_generic = False
+                        if best_global_key and best_global_key != "damage":
+                            global_display = combined_dict[best_global_key]
+                            if rapidfuzz.distance.Levenshtein.distance(affix_clean, global_display) <= 2:
+                                # Ensure it's not a set-specific affix of another set
+                                is_set_specific = False
+                                for set_name in Dataloader().set_list:
+                                    if best_global_key.startswith(set_name + "_"):
+                                        is_set_specific = True
+                                        break
+                                if not is_set_specific:
+                                    is_exact_generic = True
+                                    name_matched = best_global_key
+
+                        if not is_exact_generic:
+                            set_keys = {
+                                k: v
+                                for k, v in Dataloader().seal_affix_dict.items()
+                                if k.startswith(guessed_set_name + "_")
+                            }
+                            potential_match = closest_match(affix_clean, set_keys)
+                            if potential_match:
+                                display_name = Dataloader().seal_affix_dict[potential_match]
+                                if rapidfuzz.fuzz.token_set_ratio(affix_clean, display_name) >= 50:
+                                    name_matched = potential_match
+                    if not name_matched:
+                        name_matched = closest_match(affix_clean, combined_dict)
+
+                    if name_matched:
+                        affixes.append(Affix(name=name_matched))
+                    else:
+                        LOGGER.warning(f"Couldn't match seal affix: {affix_name}")
+            except Exception as e:  # noqa: BLE001
+                LOGGER.warning(f"Failed to hover/extract affixes for seal {idx}: {e}")
+
+            seal_filters.append({
+                _unique_filter_name("HoradricSeal", seal_filters): create_seal_charm_filter(
+                    affixes=affixes, rarity=None, require_gas=False, model_type=SealFilterModel
+                )
+            })
+    except Exception:
+        LOGGER.exception("Failed to parse active seals")
+
+    # Parse active charms from the builder__charms section
+    try:
+        active_charms_elements = driver.find_elements(
+            By.XPATH, "//*[contains(@class, 'builder__charm') and contains(@class, 'active')]"
+        )
+        for idx, charm_el in enumerate(active_charms_elements):
+            alt = ""
+            src = ""
+            try:
+                imgs = charm_el.find_elements(By.TAG_NAME, "img")
+                if imgs:
+                    alt = imgs[0].get_attribute("alt") or ""
+                    src = imgs[0].get_attribute("src") or ""
+            except Exception as e:  # noqa: BLE001
+                LOGGER.warning(f"Failed to get img details for charm {idx}: {e}")
+
+            affixes = []
+            try:
+                ActionChains(driver).move_to_element(charm_el).perform()
+                time.sleep(0.4)
+                tooltip_html = driver.find_element(By.CLASS_NAME, "charm__tooltip").get_attribute("outerHTML")
+                tooltip_data = lxml.html.fromstring(tooltip_html)
+                raw_affixes = [
+                    v.text_content().strip()
+                    for v in tooltip_data.xpath(
+                        ".//*[contains(@class, 'charm__tooltip__value') and not(contains(@class, 'values'))]"
+                    )
+                ]
+                combined_dict = Dataloader().affix_dict | Dataloader().charm_affix_dict
+                for affix_name in raw_affixes:
+                    name_matched = closest_match(clean_str(_corrections(input_str=affix_name)), combined_dict)
+                    if name_matched:
+                        affixes.append(Affix(name=name_matched))
+                    else:
+                        LOGGER.warning(f"Couldn't match charm affix: {affix_name}")
+            except Exception as e:  # noqa: BLE001
+                LOGGER.warning(f"Failed to hover/extract affixes for charm {idx}: {e}")
+
+            charm_unique_aspect, charm_set_name = match_charm_to_set_or_unique(alt, src)
+            if affixes or charm_unique_aspect or charm_set_name:
+                charm_filters.append({
+                    _unique_filter_name("Charm", charm_filters): create_seal_charm_filter(
+                        affixes=affixes,
+                        rarity=None,
+                        require_gas=False,
+                        model_type=CharmFilterModel,
+                        unique_aspect=charm_unique_aspect,
+                        set_name=charm_set_name,
+                    )
+                })
+    except Exception:
+        LOGGER.exception("Failed to parse active charms")
+
     profile = ProfileModel(
         name="imported profile",
         Affixes=sort_profile_filters(finished_filters),
-        Charms=sort_profile_filters(charm_filters),
-        Seals=sort_profile_filters(seal_filters),
+        Charms=sort_profile_filters(deduplicate_filters(charm_filters)),
+        Seals=sort_profile_filters(deduplicate_filters(seal_filters)),
     )
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.aspect_upgrades = aspect_upgrade_filters
@@ -265,7 +432,23 @@ def _corrections(input_str: str) -> str:
 def _extract_build_metadata(data: lxml.html.HtmlElement) -> tuple[str, str, str, str]:
     class_name = "Unknown"
     if header_nodes := data.xpath(CLASS_XPATH):
-        class_name = get_class_name(" ".join(header_nodes[0].text_content().split()))
+        text = " ".join(header_nodes[0].text_content().split()).strip()
+        if text:
+            class_name = get_class_name(text)
+    if class_name == "Unknown":
+        for selector in [
+            "//*[contains(@class, 'builder__header__icon')]",
+            "//*[contains(@class, 'builder__header__description')]",
+            "//title",
+        ]:
+            for node in data.xpath(selector):
+                text = node.text_content() or node.get("class", "") or node.get("alt", "")
+                if (x := get_class_name(text)) != "Unknown":
+                    class_name = x
+                    break
+            if class_name != "Unknown":
+                break
+
     build_header = ""
     if description_nodes := data.xpath(BUILD_DESCRIPTION_XPATH):
         build_header = " ".join(description_nodes[0].text_content().split())

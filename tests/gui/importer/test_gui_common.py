@@ -1,5 +1,10 @@
-from src.config.profile_models import ProfileModel
-from src.gui.importer.gui_common import _to_yaml_str, _unique_filter_name, build_default_profile_file_name
+from src.config.profile_models import CharmFilterModel, ProfileModel
+from src.gui.importer.gui_common import (
+    _to_yaml_str,
+    _unique_filter_name,
+    build_default_profile_file_name,
+    deduplicate_filters,
+)
 
 
 def test_build_default_profile_file_name_maxroll() -> None:
@@ -67,3 +72,17 @@ def test_to_yaml_str_sorts_aspect_upgrades_and_uses_block_style(mock_ini_loader)
 
     assert "aspect_upgrades:\n- accelerating\n- snowveiled\n" in yaml_str
     assert "aspect_upgrades: [" not in yaml_str
+
+
+def test_deduplicate_filters() -> None:
+    f1 = CharmFilterModel(set=["tal_rashas_threefold_way"])
+    f2 = CharmFilterModel(set=["tal_rashas_threefold_way"])
+    f3 = CharmFilterModel(set=["applied_alchemy"])
+
+    filters = [{"Charm": f1}, {"Charm": f2}, {"Charm": f3}]
+
+    deduped = deduplicate_filters(filters)
+    assert len(deduped) == 2
+    assert "Charm(x2)" in deduped[0]
+    assert deduped[0]["Charm(x2)"] == f1
+    assert "Charm" in deduped[1] or "Charm2" in deduped[1]

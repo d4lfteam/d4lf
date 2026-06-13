@@ -128,7 +128,9 @@ def format_number_as_short_string(n: int) -> str:
 
 
 def get_class_name(input_str: str) -> str:
-    input_str = input_str.lower()
+    input_str = input_str.strip().lower()
+    if not input_str:
+        return "Unknown"
     for class_name in PLAYER_CLASSES:
         if class_name in input_str:
             return class_name.title()
@@ -202,21 +204,67 @@ def create_seal_charm_filter(
     rarity,
     require_gas: bool,
     model_type: type[CharmFilterModel | SealFilterModel] = SealFilterModel,
+    unique_aspect: str | None = None,
+    set_name: str | None = None,
 ) -> CharmFilterModel | SealFilterModel:
-    seal_charm_filter = model_type(
-        affix_pool=[
+    kwargs = {"rarities": [rarity] if rarity is not None else []}
+    if affixes:
+        kwargs["affix_pool"] = [
             AffixFilterCountModel(
                 count=[
                     AffixFilterModel(name=affix.name, want_greater=affix.type == AffixType.greater) for affix in affixes
                 ],
                 min_count=min(3, len(affixes)),
             )
-        ],
-        rarities=[rarity] if rarity is not None else [],
-    )
+        ]
+    if model_type is CharmFilterModel:
+        if unique_aspect:
+            kwargs["unique_aspect"] = [AspectUniqueFilterModel(name=unique_aspect)]
+        if set_name:
+            kwargs["set"] = [set_name]
+    seal_charm_filter = model_type(**kwargs)
     if require_gas:
         seal_charm_filter.min_greater_affix_count = len([affix for affix in affixes if affix.type == AffixType.greater])
     return seal_charm_filter
+
+
+def match_charm_to_set_or_unique(charm_name: str, icon_url: str | None = None) -> tuple[str | None, str | None]:
+    if not charm_name:
+        return None, None
+
+    from src.dataloader import Dataloader  # noqa: PLC0415
+    from src.scripts import correct_name  # noqa: PLC0415
+
+    # 1. Clean the charm name and normalize it
+    name_clean = correct_name(charm_name)
+    if not name_clean:
+        return None, None
+
+    # Check if the name matches a known unique charm (like "endurant_faith")
+    if name_clean in Dataloader().aspect_unique_dict:
+        return name_clean, None
+
+    # 2. Try to match set name from the icon_url first
+    if icon_url:
+        icon_slug = icon_url.rsplit("/", maxsplit=1)[-1].split(".", maxsplit=1)[0].replace("-", "_")
+        if icon_slug in Dataloader().set_list:
+            return None, icon_slug
+
+    # 3. Try to match the set name from the clean name
+    for set_name in Dataloader().set_list:
+        set_clean = set_name.replace("_", " ")
+        name_spaces = name_clean.replace("_", " ")
+        if set_name in name_clean or set_clean in name_spaces:
+            return None, set_name
+
+        set_words = set_name.split("_")
+        name_words = name_clean.split("_")
+        # Find if any word (length > 3) matches
+        for sw in set_words:
+            if len(sw) > 3 and sw not in ["of", "the", "way", "will", "bite", "flow", "call"] and sw in name_words:
+                return None, set_name
+
+    return name_clean, None
 
 
 def _unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
@@ -226,6 +274,45 @@ def _unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
         filter_name = f"{filter_name_template}{i}"
         i += 1
     return filter_name
+
+
+def deduplicate_filters(filters: list[dict]) -> list[dict]:
+    """Merge identical charm/seal filters, naming duplicates with an (xN) count suffix.
+
+    Filters are compared by their Pydantic model data (all fields except the dict key/name).
+    Identical filters are collapsed into a single entry.  When N > 1, the key is rewritten
+    as ``BaseType(xN)`` (e.g. ``Charm(x3)``); single-occurrence filters keep their original
+    key unchanged.
+    """
+    if not filters:
+        return filters
+
+    # Build groups keyed by a hashable representation of the filter model
+    groups: list[tuple[str, object, int]] = []  # (base_name, filter_model, count)
+    for entry in filters:
+        name, model = next(iter(entry.items()))
+        model_data = model.model_dump() if hasattr(model, "model_dump") else model
+        # Check if this model already exists in groups
+        merged = False
+        for idx, (base_name, existing_model, count) in enumerate(groups):
+            existing_data = existing_model.model_dump() if hasattr(existing_model, "model_dump") else existing_model
+            if model_data == existing_data:
+                groups[idx] = (base_name, existing_model, count + 1)
+                merged = True
+                break
+        if not merged:
+            # Strip trailing digits to get the base type name (e.g. "Charm3" -> "Charm")
+            base = re.sub(r"\d+$", "", name)
+            groups.append((base, model, 1))
+
+    # Rebuild the list with deduplicated names
+    result: list[dict] = []
+    used_names: list[dict] = []
+    for base_name, model, count in groups:
+        key = f"{base_name}(x{count})" if count > 1 else _unique_filter_name(base_name, used_names)
+        result.append({key: model})
+        used_names.append({key: model})
+    return result
 
 
 def add_mythics_to_filters(mythic_names, finished_filters):
