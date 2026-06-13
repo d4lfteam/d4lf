@@ -80,16 +80,16 @@ charms = [
         ),
     ),
     (
-        "unique charm without aspect rejected",
+        "rare charm against unique aspect filter rejected",
         [],
         Item(
             item_type=ItemType.Charm,
-            name="tuskhelm_of_joritz_the_mighty",
-            original_name="TUSKHELM OF JORITZ THE MIGHTY",
-            rarity=ItemRarity.Unique,
+            name="speedy_charm_of_greed",
+            original_name="SPEEDY CHARM OF GREED",
+            rarity=ItemRarity.Rare,
             aspect=None,
             set=None,
-            affixes=[Affix(name="cold_resistance", value=486.0, min_value=416.0, max_value=523.0)],
+            affixes=[Affix(name="gold_drop_rate", value=7.0, min_value=5.0, max_value=9.0)],
         ),
     ),
     (
