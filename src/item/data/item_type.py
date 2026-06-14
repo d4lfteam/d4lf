@@ -75,6 +75,10 @@ def is_sigil(item_type: ItemType) -> bool:
     return item_type in [ItemType.Sigil, ItemType.EscalationSigil]
 
 
+def is_seal_or_charm(item_type: ItemType) -> bool:
+    return item_type in [ItemType.HoradricSeal, ItemType.Charm]
+
+
 def is_jewelry(item_type: ItemType) -> bool:
     return item_type in [ItemType.Amulet, ItemType.Ring]
 

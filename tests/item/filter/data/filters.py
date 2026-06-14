@@ -2,9 +2,13 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
+    CharmFilterModel,
+    DynamicCharmFilterModel,
+    DynamicSealFilterModel,
     GlobalUniqueModel,
     ItemFilterModel,
     ProfileModel,
+    SealFilterModel,
     SigilConditionModel,
     SigilFilterModel,
     TributeFilterModel,
@@ -238,6 +242,59 @@ sigil_priority = ProfileModel(
         blacklist=[SigilConditionModel(name="reduce_cooldowns_on_kill")],
         whitelist=[SigilConditionModel(name="iron_hold", condition=["shadow_damage"])],
     ),
+)
+
+seal_charm = ProfileModel(
+    name="seal_charm",
+    seals=[
+        DynamicSealFilterModel(
+            root={
+                "resistance": SealFilterModel(
+                    affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name="resistance_to_all_elements")])],
+                    rarities=[ItemRarity.Legendary],
+                )
+            }
+        ),
+        DynamicSealFilterModel(
+            root={
+                "greater_cains": SealFilterModel(
+                    affix_pool=[
+                        AffixFilterCountModel(
+                            count=[AffixFilterModel(name="cains_wild_lightning_mana_per_second", want_greater=True)]
+                        )
+                    ],
+                    min_greater_affix_count=1,
+                    rarities=[ItemRarity.Legendary],
+                )
+            }
+        ),
+    ],
+    charms=[
+        DynamicCharmFilterModel(
+            root={
+                "speed": CharmFilterModel(
+                    affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name="movement_speed")])],
+                    rarities=[ItemRarity.Rare],
+                )
+            }
+        ),
+        DynamicCharmFilterModel(
+            root={
+                "basic_magic": CharmFilterModel(
+                    affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name="to_basic_skills")])],
+                    rarities=[ItemRarity.Magic],
+                )
+            }
+        ),
+        DynamicCharmFilterModel(root={"wanted_set": CharmFilterModel(set=["Sescherons Fury"])}),
+        DynamicCharmFilterModel(
+            root={
+                "wanted_unique_aspect": CharmFilterModel(
+                    uniqueAspect=[AspectUniqueFilterModel(name="tuskhelm_of_joritz_the_mighty")]
+                )
+            }
+        ),
+    ],
 )
 
 # noinspection PyTypeChecker

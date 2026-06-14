@@ -13,17 +13,22 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
+    CharmFilterModel,
     ItemFilterModel,
     ProfileModel,
+    SealFilterModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
+    create_seal_charm_filter,
+    deduplicate_filters,
     fix_offhand_type,
     fix_weapon_type,
     get_class_name,
+    match_charm_to_set_or_unique,
     match_to_enum,
     retry_importer,
     save_as_profile,
@@ -95,6 +100,8 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         raise D4BuildsError(msg)
     slot_to_unique_name_map = _get_item_slots(data=data)
     finished_filters = []
+    charm_filters = []
+    seal_filters = []
     mythic_names = []
     aspect_upgrade_filters = _get_legendary_aspects(data=data)
     for item in items[0]:
@@ -105,9 +112,16 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         if slot not in slot_to_unique_name_map:
             LOGGER.warning(f"Empty slots are not supported. Skipping: {slot}")
             continue
-        if not (stats := item.xpath(ITEM_STATS_XPATH)):
+
+        slot_lower = slot.lower()
+        is_charm = "charm" in slot_lower
+        is_seal = "seal" in slot_lower
+
+        stats = item.xpath(ITEM_STATS_XPATH)
+        if not stats and not (is_charm or is_seal):
             LOGGER.error(f"No stats found for {slot=}")
             continue
+
         item_type = None
         rarity = None
         affixes = []
@@ -126,6 +140,11 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 )
 
         is_weapon = "weapon" in slot.lower()
+        combined_dict = Dataloader().affix_dict
+        if is_seal:
+            combined_dict = combined_dict | Dataloader().seal_affix_dict
+        elif is_charm:
+            combined_dict = combined_dict | Dataloader().charm_affix_dict
         for stat in stats:
             if stat.xpath(TEMPERING_ICON_XPATH) or stat.xpath(SANCTIFIED_ICON_XPATH):
                 continue
@@ -147,9 +166,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                     substring in affix_name.lower() for substring in ["focus", "offhand", "shield", "totem"]
                 ):  # special line indicating the item type
                     continue
-            affix_obj = Affix(
-                name=closest_match(clean_str(_corrections(input_str=affix_name)), Dataloader().affix_dict)
-            )
+            affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=affix_name)), combined_dict))
             if affix_obj.name is None:
                 LOGGER.error(f"Couldn't match {affix_name=}")
                 continue
@@ -157,14 +174,15 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 affix_obj.type = AffixType.greater
             affixes.append(affix_obj)
 
-        if not affixes:
-            continue
-
         item_type = (
             match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot.replace(" ", "")))
             if item_type is None
             else item_type
         )
+
+        if not affixes and item_type not in [ItemType.HoradricSeal, ItemType.Charm]:
+            continue
+
         if item_type is None:
             if is_weapon:
                 LOGGER.warning(
@@ -176,6 +194,28 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 LOGGER.warning(f"Couldn't match item_type: {slot}. Please edit manually")
         else:
             item_filter.item_type = [item_type]
+
+        if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
+            seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
+            seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
+            # Extract unique aspect and set info for charms
+            charm_unique_aspect = None
+            charm_set_name = None
+            if item_type == ItemType.Charm and slot_to_unique_name_map.get(slot):
+                unique_name, unique_rarity = slot_to_unique_name_map[slot]
+                charm_unique_aspect, charm_set_name = match_charm_to_set_or_unique(unique_name)
+            if not affixes and not charm_unique_aspect and not charm_set_name:
+                continue
+            seal_charm_filters.append(
+                create_seal_charm_filter(
+                    affixes=affixes,
+                    require_gas=config.require_greater_affixes,
+                    model_type=seal_charm_model,
+                    unique_aspect=charm_unique_aspect,
+                    set_name=charm_set_name,
+                )
+            )
+            continue
 
         # We don't bother importing affixes for mythics
         if rarity != ItemRarity.Mythic:
@@ -191,16 +231,17 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                     AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
                 ]
         item_filter.min_power = 100
-        filter_name_template = item_filter.item_type[0].name if item_type else slot.replace(" ", "")
-        filter_name = filter_name_template
-        i = 2
-        while any(filter_name == next(iter(x)) for x in finished_filters):
-            filter_name = f"{filter_name_template}{i}"
-            i += 1
-        finished_filters.append({filter_name: item_filter})
+        finished_filters.append(item_filter)
     # Place all mythics in a single filter
-    add_mythics_to_filters(mythic_names, finished_filters)
-    profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
+    affix_filters = deduplicate_filters(finished_filters)
+    add_mythics_to_filters(mythic_names, affix_filters)
+
+    profile = ProfileModel(
+        name="imported profile",
+        Affixes=sort_profile_filters(affix_filters),
+        Charms=sort_profile_filters(deduplicate_filters(charm_filters)),
+        Seals=sort_profile_filters(deduplicate_filters(seal_filters)),
+    )
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.aspect_upgrades = aspect_upgrade_filters
 
@@ -244,7 +285,10 @@ def _corrections(input_str: str) -> str:
 def _extract_build_metadata(data: lxml.html.HtmlElement) -> tuple[str, str, str, str]:
     class_name = "Unknown"
     if header_nodes := data.xpath(CLASS_XPATH):
-        class_name = get_class_name(" ".join(header_nodes[0].text_content().split()))
+        text = " ".join(header_nodes[0].text_content().split()).strip()
+        if text:
+            class_name = get_class_name(text)
+
     build_header = ""
     if description_nodes := data.xpath(BUILD_DESCRIPTION_XPATH):
         build_header = " ".join(description_nodes[0].text_content().split())

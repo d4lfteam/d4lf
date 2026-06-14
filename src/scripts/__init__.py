@@ -3,8 +3,8 @@ def correct_name(name: str) -> str | None:
         return (
             name
             .strip()
-            .replace(" (CRUCIBLE)", "")  # S12 Crucible items are identical to regular uniques
             .lower()
+            .replace(" (crucible)", "")  # S12 Crucible items are identical to regular uniques
             .replace("'", "")
             .replace(" ", "_")
             .replace("\xa0", "_")

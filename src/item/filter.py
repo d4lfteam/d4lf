@@ -15,7 +15,11 @@ from src.config.profile_models import (
     AffixAspectFilterModel,
     AffixFilterCountModel,
     AffixFilterModel,
+    AspectUniqueFilterModel,
+    CharmFilterModel,
+    DynamicCharmFilterModel,
     DynamicItemFilterModel,
+    DynamicSealFilterModel,
     GlobalUniqueModel,
     ProfileModel,
     SigilConditionModel,
@@ -41,6 +45,7 @@ class MatchedFilter:
     profile: str
     matched_affixes: list[Affix] = field(default_factory=list)
     aspect_match: bool = False
+    set_match: bool = False
 
 
 @dataclass
@@ -63,10 +68,12 @@ class _UniqueKeyLoader(yaml.SafeLoader):
 
 
 class Filter:
-    affix_filters = {}
+    item_filters = {}
     aspect_upgrade_filters = {}
     paragon_filters = {}
     global_unique_filters = {}
+    seal_filters = {}
+    charm_filters = {}
     sigil_filters = {}
     tribute_filters = {}
 
@@ -83,12 +90,32 @@ class Filter:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def _check_affixes(self, item: Item) -> FilterResult:
+    def _check_unique_aspects_for_item(self, item: Item, unique_aspects: list[AspectUniqueFilterModel]) -> bool:
+        # check the unique aspect. The model enforces name uniqueness so we can safely grab the first one that matches
+        matched_unique_aspect = None
+        for unique_aspect in unique_aspects:
+            if self._match_item_aspect_or_affix(expected_aspect=unique_aspect, item_aspect=item.aspect):
+                matched_unique_aspect = unique_aspect
+                break
+        if unique_aspects and not matched_unique_aspect:
+            return False
+        # If the item is unique but doesn't match a unique aspect we continue. We don't check affixes
+        if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and not matched_unique_aspect:
+            return False
+        # check the aspect matches the min percent. We only check the one that passed the previous check
+        return not (
+            matched_unique_aspect
+            and not self._match_item_roll_is_in_percent_range(
+                expected_percent=matched_unique_aspect.min_percent_of_aspect, item_aspect_or_affix=item.aspect
+            )
+        )
+
+    def _check_item_filters(self, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
-        if not self.affix_filters:
+        if not self.item_filters:
             return FilterResult(keep=False, matched=[])
         non_tempered_affixes = [affix for affix in item.affixes if affix.type != AffixType.tempered]
-        for profile_name, profile_filter in self.affix_filters.items():
+        for profile_name, profile_filter in self.item_filters.items():
             for filter_item in profile_filter:
                 filter_name = next(iter(filter_item.root.keys()))
                 filter_spec = filter_item.root[filter_name]
@@ -103,21 +130,7 @@ class Filter:
                     expected_min_count=filter_spec.min_greater_affix_count, item_affixes=non_tempered_affixes
                 ):
                     continue
-                # check the unique aspect. The model enforces name uniqueness so we can safely grab the first one that matches
-                matched_unique_aspect = None
-                for unique_aspect in filter_spec.unique_aspect:
-                    if self._match_item_aspect_or_affix(expected_aspect=unique_aspect, item_aspect=item.aspect):
-                        matched_unique_aspect = unique_aspect
-                        break
-                if filter_spec.unique_aspect and not matched_unique_aspect:
-                    continue
-                # If the item is unique but doesn't match a unique aspect we continue. We don't check affixes
-                if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and not matched_unique_aspect:
-                    continue
-                # check the aspect matches the min percent. We only check the one that passed the previous check
-                if matched_unique_aspect and not self._match_item_roll_is_in_percent_range(
-                    expected_percent=matched_unique_aspect.min_percent_of_aspect, item_aspect_or_affix=item.aspect
-                ):
+                if not self._check_unique_aspects_for_item(item, filter_spec.unique_aspect):
                     continue
                 # check affixes
                 matched_affixes = []
@@ -156,7 +169,7 @@ class Filter:
                 )
         return res
 
-    def _check_legendary_aspect(self, item: Item) -> FilterResult:
+    def _check_aspect_upgrades(self, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
 
         if item.codex_upgrade and self.aspect_upgrade_filters:
@@ -234,6 +247,80 @@ class Filter:
             LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Sigils")
             res.keep = True
             res.matched.append(MatchedFilter(f"{profile_name}"))
+        return res
+
+    def _check_seal_charm_filters(
+        self,
+        seal_or_charm: Item,
+        seal_or_charm_filters: dict[str, list[DynamicSealFilterModel | DynamicCharmFilterModel]],
+        section_name: str,
+        mythic_name: str,
+    ) -> FilterResult:
+        res = FilterResult(keep=False, matched=[])
+
+        for profile_name, profile_filter in seal_or_charm_filters.items():
+            for filter_item in profile_filter:
+                filter_name = next(iter(filter_item.root.keys()))
+                filter_spec = filter_item.root[filter_name]
+
+                if filter_spec.rarities and seal_or_charm.rarity not in filter_spec.rarities:
+                    continue
+
+                if not self._match_greater_affix_count(
+                    expected_min_count=filter_spec.min_greater_affix_count, item_affixes=seal_or_charm.affixes
+                ):
+                    continue
+
+                matched_affixes = []
+                if filter_spec.affix_pool:
+                    matched_affixes = self._match_affixes_count(
+                        expected_affixes=filter_spec.affix_pool,
+                        item_affixes=seal_or_charm.affixes,
+                        min_greater_affix_count=filter_spec.min_greater_affix_count,
+                    )
+                    if not matched_affixes:
+                        continue
+
+                # For charms we check the set or aspect
+                matched_aspect = False
+                matched_set = False
+                if isinstance(filter_spec, CharmFilterModel):
+                    # You can't have both a unique aspect and a set
+                    if filter_spec.unique_aspect:
+                        if not self._check_unique_aspects_for_item(seal_or_charm, filter_spec.unique_aspect):
+                            continue
+                        matched_aspect = True
+                    elif seal_or_charm.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
+                        continue
+                    elif filter_spec.set:
+                        if not seal_or_charm.set:  # This would mean there's no set but a set is expected
+                            continue
+                        if seal_or_charm.set not in filter_spec.set:
+                            continue
+                        matched_set = True
+
+                LOGGER.info(
+                    f"{seal_or_charm.original_name} -- Matched {profile_name}.{section_name}.{filter_name}: {[affix.name for affix in matched_affixes]}"
+                )
+                if matched_aspect or matched_set:
+                    LOGGER.info(
+                        f"{seal_or_charm.original_name} -- Matched {profile_name}.{section_name}.{filter_name}: {'Unique aspect' if matched_aspect else 'Set'}"
+                    )
+                res.keep = True
+                res.matched.append(
+                    MatchedFilter(
+                        f"{profile_name}.{section_name}.{filter_name}",
+                        matched_affixes,
+                        aspect_match=matched_aspect,
+                        set_match=matched_set,
+                    )
+                )
+
+        if not res.keep and seal_or_charm.rarity == ItemRarity.Mythic:
+            LOGGER.info(f"{seal_or_charm.original_name} -- Matched mythic {section_name.lower()}, always kept")
+            res.keep = True
+            res.matched.append(MatchedFilter(mythic_name))
+
         return res
 
     def _check_tribute(self, item: Item) -> FilterResult:
@@ -476,9 +563,11 @@ class Filter:
 
     def load_files(self):
         self.files_loaded = True
-        self.affix_filters: dict[str, list[DynamicItemFilterModel]] = {}
+        self.item_filters: dict[str, list[DynamicItemFilterModel]] = {}
         self.aspect_upgrade_filters: dict[str, list[str]] = {}
         self.paragon_filters: dict[str, object] = {}
+        self.seal_filters: dict[str, list[DynamicSealFilterModel]] = {}
+        self.charm_filters: dict[str, list[DynamicCharmFilterModel]] = {}
         self.sigil_filters: dict[str, SigilFilterModel] = {}
         self.tribute_filters: dict[str, list[TributeFilterModel]] = {}
         self.global_unique_filters: dict[str, list[GlobalUniqueModel]] = {}
@@ -534,11 +623,17 @@ class Filter:
 
                 sections: list[str] = []
                 if data.affixes:
-                    self.affix_filters[data.name] = data.affixes
+                    self.item_filters[data.name] = data.affixes
                     sections.append("Affixes")
                 if data.aspect_upgrades:
                     self.aspect_upgrade_filters[data.name] = data.aspect_upgrades
                     sections.append(ASPECT_UPGRADES_LABEL)
+                if data.seals:
+                    self.seal_filters[data.name] = data.seals
+                    sections.append("Seals")
+                if data.charms:
+                    self.charm_filters[data.name] = data.charms
+                    sections.append("Charms")
                 if data.sigils and (data.sigils.blacklist or data.sigils.whitelist):
                     self.sigil_filters[data.name] = data.sigils
                     sections.append("Sigils")
@@ -575,14 +670,30 @@ class Filter:
         if item.item_type == ItemType.Tribute:
             return self._check_tribute(item)
 
+        if item.item_type == ItemType.HoradricSeal:
+            return self._check_seal_charm_filters(
+                seal_or_charm=item,
+                seal_or_charm_filters=self.seal_filters,
+                section_name="Seals",
+                mythic_name="Mythic Seal",
+            )
+
+        if item.item_type == ItemType.Charm:
+            return self._check_seal_charm_filters(
+                seal_or_charm=item,
+                seal_or_charm_filters=self.charm_filters,
+                section_name="Charms",
+                mythic_name="Mythic Charm",
+            )
+
         if item.item_type is None or item.power is None:
             return res
 
-        keep_affixes = self._check_affixes(item)
+        keep_affixes = self._check_item_filters(item)
         if keep_affixes.keep:
             return keep_affixes
         if item.rarity == ItemRarity.Legendary:
-            res = self._check_legendary_aspect(item)
+            res = self._check_aspect_upgrades(item)
         elif item.rarity == ItemRarity.Unique:
             res = self._check_global_unique_filter(item)
         elif item.rarity == ItemRarity.Mythic:

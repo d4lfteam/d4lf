@@ -31,7 +31,9 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
+    CharmFilterModel,
     DynamicItemFilterModel,
+    SealFilterModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import MAX_POWER
@@ -60,6 +62,18 @@ def _item_type_summary(item_types: list[ItemType]) -> str:
     if not item_types:
         return "All item types"
     return ", ".join(item_type.value for item_type in item_types)
+
+
+def _affix_dict_for_widget(widget: QWidget) -> dict[str, str]:
+    curr = widget
+    while curr:
+        config = getattr(curr, "config", None)
+        if isinstance(config, SealFilterModel):
+            return Dataloader().seal_affix_dict
+        if isinstance(config, CharmFilterModel):
+            return Dataloader().charm_affix_dict
+        curr = curr.parent()
+    return Dataloader().affix_dict
 
 
 class ItemTypePicker(QDialog):
@@ -310,7 +324,7 @@ class AffixGroupEditor(QWidget):
         return f"{UNIQUE_ASPECTS_TITLE} - {aspect_names}"
 
     def refresh_unique_aspects_title(self):
-        self.unique_aspect_container.header.set_name(self._unique_aspects_title())
+        self.unique_aspect_container.header.set(self._unique_aspects_title())
 
     def init_unique_aspects(self):
         for unique_aspect in self.config.unique_aspect:
@@ -423,7 +437,7 @@ class AffixGroupEditor(QWidget):
         for i in range(layout_widget.count()):
             item = layout_widget.itemAt(i)
             if item and item.widget() is not None:
-                item.widget().header.set_name(f"Count {i}")
+                item.widget().header.set(f"Count {i}")
 
     def refresh_item_type_summary(self):
         self.item_type_line_edit.setText(_item_type_summary(self.config.item_type))
@@ -732,13 +746,17 @@ class AffixPoolWidget(QWidget):
 
     def add_affix_item(self, affix: AffixFilterModel):
         item = QListWidgetItem()
-        widget = AffixWidget(affix)
+        widget = AffixWidget(affix, self)
         item.setSizeHint(widget.sizeHint())
         self.affix_list.addItem(item)
         self.affix_list.setItemWidget(item, widget)
 
+    def get_affix_dict(self):
+        return _affix_dict_for_widget(self)
+
     def add_affix(self):
-        new_affix = AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())), value=None)
+        affix_dict = self.get_affix_dict()
+        new_affix = AffixFilterModel(name=next(iter(affix_dict.keys())), value=None)
         self.pool.count.append(new_affix)
         self.add_affix_item(new_affix)
 
@@ -780,16 +798,20 @@ class AffixWidget(QWidget):
 
         self.setLayout(layout)
 
+    def get_affix_dict(self):
+        return _affix_dict_for_widget(self)
+
     def create_affix_name_combobox(self):
         self.name_combo = IgnoreScrollWheelComboBox()
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.name_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
-        self.name_combo.addItems(sorted(Dataloader().affix_dict.values()))
+        affix_dict = self.get_affix_dict()
+        self.name_combo.addItems(sorted(affix_dict.values()))
         self.name_combo.setMaximumWidth(600)
-        if self.affix.name in Dataloader().affix_dict:
-            self.name_combo.setCurrentText(Dataloader().affix_dict[self.affix.name])
+        if self.affix.name in affix_dict:
+            self.name_combo.setCurrentText(affix_dict[self.affix.name])
         # currentIndexChanged misses some editable-combobox keyboard flows.
         self.name_combo.currentTextChanged.connect(self.update_name)
 
@@ -831,7 +853,8 @@ class AffixWidget(QWidget):
 
     def update_name(self, current_text=None):
         """Update the model only when the editable combobox contains a valid affix."""
-        reverse_dict = {v: k for k, v in Dataloader().affix_dict.items()}
+        affix_dict = self.get_affix_dict()
+        reverse_dict = {v: k for k, v in affix_dict.items()}
         affix_name = reverse_dict.get(current_text or self.name_combo.currentText())
         if affix_name is None:
             return

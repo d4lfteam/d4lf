@@ -9,17 +9,22 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
+    CharmFilterModel,
     ItemFilterModel,
     ProfileModel,
+    SealFilterModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
+    create_seal_charm_filter,
+    deduplicate_filters,
     fix_offhand_type,
     fix_weapon_type,
     get_with_retry,
+    match_charm_to_set_or_unique,
     match_to_enum,
     retry_importer,
     save_as_profile,
@@ -90,6 +95,8 @@ def import_maxroll(config: ImportConfig):
     if variant_name:
         build_name += f"_{variant_name}"
     finished_filters = []
+    charm_filters = []
+    seal_filters = []
     aspect_upgrade_filters = []
     mythic_names = []
     for item_id in active_profile["items"].values():
@@ -109,8 +116,35 @@ def import_maxroll(config: ImportConfig):
             continue
 
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
-            LOGGER.warning(
-                f"Seals and Charms are not currently supported, skipping {resolved_item.get('name', '(could not determine item name)')}."
+            seal_charm_affixes = _find_item_affixes(
+                mapping_data=mapping_data,
+                item_affixes=resolved_item["explicits"],
+                item_type=item_type,
+                import_greater_affixes=config.import_greater_affixes,
+            )
+            # Extract unique aspect and set info for charms
+            charm_unique_aspect = None
+            charm_set_name = None
+            if item_type == ItemType.Charm and resolved_item_id in mapping_data["items"]:
+                item_data = mapping_data["items"][resolved_item_id]
+                charm_unique_aspect, charm_set_name = match_charm_to_set_or_unique(item_data.get("name"))
+                if item_data.get("magicType") == 3 and "set" in item_data and not charm_set_name:
+                    charm_set_name = correct_name(item_data["set"])
+            if not seal_charm_affixes and not charm_unique_aspect and not charm_set_name:
+                LOGGER.warning(
+                    f"Skipping {resolved_item.get('name', '(could not determine item name)')} because it had no supported affixes, unique aspect, or set name."
+                )
+                continue
+            seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
+            seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
+            seal_charm_filters.append(
+                create_seal_charm_filter(
+                    affixes=seal_charm_affixes,
+                    require_gas=config.require_greater_affixes,
+                    model_type=seal_charm_model,
+                    unique_aspect=charm_unique_aspect,
+                    set_name=charm_set_name,
+                )
             )
             continue
 
@@ -172,7 +206,12 @@ def import_maxroll(config: ImportConfig):
 
     # Place all mythics in a single filter
     add_mythics_to_filters(mythic_names, finished_filters)
-    profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
+    profile = ProfileModel(
+        name="imported profile",
+        Affixes=sort_profile_filters(finished_filters),
+        Charms=sort_profile_filters(deduplicate_filters(charm_filters)),
+        Seals=sort_profile_filters(deduplicate_filters(seal_filters)),
+    )
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.aspect_upgrades = aspect_upgrade_filters
 
@@ -214,13 +253,15 @@ def _attribute_description_corrections(input_str: str) -> str:
 
 
 def _find_item_rarity(resolved_item_id, mapping_data) -> ItemRarity:
-    # magic/rare = 0, legendary = 1, unique = 2, mythic = 4
+    # magic/rare = 0, legendary = 1, unique = 2, set = 3, mythic = 4
     if resolved_item_id in mapping_data["items"]:
         rarity_id = mapping_data["items"][resolved_item_id]["magicType"]
         if rarity_id == 1:
             return ItemRarity.Legendary
         if rarity_id == 2:
             return ItemRarity.Unique
+        if rarity_id == 3:
+            return ItemRarity.Set
         if rarity_id == 4:
             return ItemRarity.Mythic
 
@@ -282,6 +323,8 @@ def _find_item_affixes(
                         attr_desc = _find_skill_rank_affix_description(
                             mapping_data=mapping_data, affix_key=affix_key, attribute=affix["attributes"][0]
                         )
+            if not attr_desc and affix.get("desc"):
+                attr_desc = affix["desc"]
             clean_desc = re.sub(r"\[.*?\]|[^a-zA-Z ]", "", attr_desc)
             clean_desc = clean_desc.replace("SecondSeconds", "seconds")
             if not clean_desc:
@@ -290,7 +333,12 @@ def _find_item_affixes(
                 )
                 continue
 
-            affix_obj = Affix(name=closest_match(clean_str(clean_desc), Dataloader().affix_dict))
+            combined_dict = Dataloader().affix_dict
+            if item_type == ItemType.HoradricSeal:
+                combined_dict = combined_dict | Dataloader().seal_affix_dict
+            elif item_type == ItemType.Charm:
+                combined_dict = combined_dict | Dataloader().charm_affix_dict
+            affix_obj = Affix(name=closest_match(clean_str(clean_desc), combined_dict))
             if import_greater_affixes and affix_id.get("greater", False):
                 affix_obj.type = AffixType.greater
             if affix_obj.name is not None:

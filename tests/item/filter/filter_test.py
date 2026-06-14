@@ -12,6 +12,8 @@ from src.item.filter import Filter, FilterResult
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.aspects import aspects
+from tests.item.filter.data.charms import charms
+from tests.item.filter.data.seals import seals
 from tests.item.filter.data.sigils import sigil_jalal, sigil_priority, sigils
 from tests.item.filter.data.tributes import tributes
 from tests.item.filter.data.uniques import global_uniques, simple_mythics, uniques_with_affixes
@@ -25,10 +27,12 @@ if typing.TYPE_CHECKING:
 def _create_mocked_filter(mocker: MockerFixture) -> Filter:
     filter_obj = Filter()
     # Filter is singleton so we need to reset the filters to be safe
-    filter_obj.affix_filters = {}
+    filter_obj.item_filters = {}
     filter_obj.aspect_upgrade_filters = {}
     filter_obj.paragon_filters = {}
     filter_obj.global_unique_filters = {}
+    filter_obj.seal_filters = {}
+    filter_obj.charm_filters = {}
     filter_obj.sigil_filters = {}
     filter_obj.tribute_filters = {}
     filter_obj.files_loaded = True
@@ -41,7 +45,7 @@ def _create_mocked_filter(mocker: MockerFixture) -> Filter:
 )
 def test_affixes(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.affix_filters = {filters.affix.name: filters.affix.affixes}
+    test_filter.item_filters = {filters.affix.name: filters.affix.affixes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
@@ -52,7 +56,7 @@ def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixtur
     test_filter = _create_mocked_filter(mocker)
     general_mock = mocker.patch.object(IniConfigLoader(), "_general")
     general_mock.keep_aspects = AspectFilterType.upgrade
-    mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
+    mocker.patch.object(test_filter, "_check_item_filters", return_value=FilterResult(keep=False, matched=[]))
     test_filter.aspect_upgrade_filters = {filters.aspects_filters.name: filters.aspects_filters.aspect_upgrades}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
@@ -103,6 +107,32 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
+@pytest.mark.parametrize(("_name", "result", "item"), natsorted(seals), ids=[name for name, _, _ in natsorted(seals)])
+def test_seals(_name: str, result: list[str], item: Item, mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.seal_filters = {filters.seal_charm.name: filters.seal_charm.seals}
+    matches = test_filter.should_keep(item).matched
+    assert natsorted([match.profile for match in matches]) == natsorted(result)
+    for match in matches:
+        if match.profile.startswith("seal_charm.Seals."):
+            assert match.matched_affixes
+
+
+@pytest.mark.parametrize(("_name", "result", "item"), natsorted(charms), ids=[name for name, _, _ in natsorted(charms)])
+def test_charms(_name: str, result: list[str], item: Item, mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.charm_filters = {filters.seal_charm.name: filters.seal_charm.charms}
+    matches = test_filter.should_keep(item).matched
+    assert natsorted([match.profile for match in matches]) == natsorted(result)
+    for match in matches:
+        if match.profile in {"seal_charm.Charms.basic_magic", "seal_charm.Charms.speed"}:
+            assert match.matched_affixes
+        if match.profile == "seal_charm.Charms.wanted_set":
+            assert match.set_match
+        if match.profile == "seal_charm.Charms.wanted_unique_aspect":
+            assert match.aspect_match
+
+
 @pytest.mark.parametrize(
     ("_name", "result", "item"),
     natsorted(uniques_with_affixes),
@@ -110,7 +140,7 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
 )
 def test_uniques_with_affixes(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.affix_filters = {filters.unique_affixes.name: filters.unique_affixes.affixes}
+    test_filter.item_filters = {filters.unique_affixes.name: filters.unique_affixes.affixes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 

@@ -135,7 +135,7 @@ class SigilWidget(Container):
         new_name = self.sigil_name_combo.currentText()
         self.old_name = self.sigil_name
         self.sigil_name = new_name
-        self.header.set_name(new_name)
+        self.header.set(new_name)
         reverse_dict = {v: k for k, v in Dataloader().affix_sigil_dict_all["dungeons"].items()}
         self.sigil.name = reverse_dict.get(new_name)
         if classic:
