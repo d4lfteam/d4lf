@@ -214,7 +214,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             seal_charm_filters.append({
                 filter_name: create_seal_charm_filter(
                     affixes=affixes,
-                    rarity=rarity,
                     require_gas=config.require_greater_affixes,
                     model_type=seal_charm_model,
                     unique_aspect=charm_unique_aspect,
@@ -324,7 +323,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
 
             seal_filters.append({
                 _unique_filter_name("HoradricSeal", seal_filters): create_seal_charm_filter(
-                    affixes=affixes, rarity=None, require_gas=False, model_type=SealFilterModel
+                    affixes=affixes, require_gas=False, model_type=SealFilterModel
                 )
             })
     except Exception:
@@ -373,7 +372,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 charm_filters.append({
                     _unique_filter_name("Charm", charm_filters): create_seal_charm_filter(
                         affixes=affixes,
-                        rarity=None,
                         require_gas=False,
                         model_type=CharmFilterModel,
                         unique_aspect=charm_unique_aspect,

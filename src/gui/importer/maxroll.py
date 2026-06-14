@@ -142,7 +142,6 @@ def import_maxroll(config: ImportConfig):
             seal_charm_filters.append({
                 filter_name: create_seal_charm_filter(
                     affixes=seal_charm_affixes,
-                    rarity=rarity,
                     require_gas=config.require_greater_affixes,
                     model_type=seal_charm_model,
                     unique_aspect=charm_unique_aspect,

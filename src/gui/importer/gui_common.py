@@ -201,20 +201,19 @@ def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool)
 
 def create_seal_charm_filter(
     affixes: list[Affix],
-    rarity,
     require_gas: bool,
     model_type: type[CharmFilterModel | SealFilterModel] = SealFilterModel,
     unique_aspect: str | None = None,
     set_name: str | None = None,
 ) -> CharmFilterModel | SealFilterModel:
-    kwargs = {"rarities": [rarity] if rarity is not None else []}
+    kwargs = {}
     if affixes:
         kwargs["affix_pool"] = [
             AffixFilterCountModel(
                 count=[
                     AffixFilterModel(name=affix.name, want_greater=affix.type == AffixType.greater) for affix in affixes
                 ],
-                min_count=min(3, len(affixes)),
+                min_count=1 if model_type is SealFilterModel else min(3, len(affixes)),
             )
         ]
     if model_type is CharmFilterModel:
@@ -309,7 +308,16 @@ def deduplicate_filters(filters: list[dict]) -> list[dict]:
     result: list[dict] = []
     used_names: list[dict] = []
     for base_name, model, count in groups:
-        key = f"{base_name}(x{count})" if count > 1 else _unique_filter_name(base_name, used_names)
+        if count > 1:
+            candidate = f"{base_name}(x{count})"
+            # Ensure uniqueness when multiple groups share the same count suffix
+            suffix = 2
+            while any(candidate == next(iter(existing)) for existing in used_names):
+                candidate = f"{base_name}{suffix}(x{count})"
+                suffix += 1
+            key = candidate
+        else:
+            key = _unique_filter_name(base_name, used_names)
         result.append({key: model})
         used_names.append({key: model})
     return result

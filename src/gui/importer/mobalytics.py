@@ -271,7 +271,6 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
             seal_charm_filters.append({
                 filter_name: create_seal_charm_filter(
                     affixes=affixes,
-                    rarity=None,
                     require_gas=config.require_greater_affixes,
                     model_type=seal_charm_model,
                     unique_aspect=charm_unique_aspect,
