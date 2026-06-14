@@ -24,7 +24,6 @@ from src.gui.importer.gui_common import (
     fix_offhand_type,
     fix_weapon_type,
     get_with_retry,
-    match_charm_to_set_or_unique,
     match_to_enum,
     retry_importer,
     save_as_profile,
@@ -43,7 +42,7 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://maxroll.gg/d4/build-guides/"
 PLANNER_API_BASE_URL = "https://planners.maxroll.gg/profiles/d4/"
-PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?376b600d"
+PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?95bc2915"
 PLANNER_BASE_URL = "https://maxroll.gg/d4/planner/"
 SCRIPT_XPATH = "//div[@id='root']/script"
 BUILD_SCRIPT_PREFIX = "window.__remixContext = "
@@ -115,6 +114,8 @@ def import_maxroll(config: ImportConfig):
             )
             continue
 
+        # TODO I don't think this code needs to be siloed, I think it can be mostly part of the normal flow so we're not repeating work. It'd just require some refactoring
+        # TODO I'd make that change after the profile editor rework is done and we're importing individual mythics again
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
             seal_charm_affixes = _find_item_affixes(
                 mapping_data=mapping_data,
@@ -123,14 +124,16 @@ def import_maxroll(config: ImportConfig):
                 import_greater_affixes=config.import_greater_affixes,
             )
             # Extract unique aspect and set info for charms
-            charm_unique_aspect = None
+            charm_or_seal_unique_aspect = None
             charm_set_name = None
-            if item_type == ItemType.Charm and resolved_item_id in mapping_data["items"]:
-                item_data = mapping_data["items"][resolved_item_id]
-                charm_unique_aspect, charm_set_name = match_charm_to_set_or_unique(item_data.get("name"))
-                if item_data.get("magicType") == 3 and "set" in item_data and not charm_set_name:
-                    charm_set_name = correct_name(item_data["set"])
-            if not seal_charm_affixes and not charm_unique_aspect and not charm_set_name:
+            if rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
+                charm_or_seal_unique_aspect = correct_name(
+                    _unique_name_special_handling(mapping_data["items"][resolved_item_id]["name"])
+                )
+            elif rarity == ItemRarity.Set:
+                set_key = mapping_data["items"][resolved_item_id]["set"]
+                charm_set_name = correct_name(mapping_data["itemSets"][set_key]["name"])
+            if not seal_charm_affixes and not charm_or_seal_unique_aspect and not charm_set_name:
                 LOGGER.warning(
                     f"Skipping {resolved_item.get('name', '(could not determine item name)')} because it had no supported affixes, unique aspect, or set name."
                 )
@@ -142,7 +145,7 @@ def import_maxroll(config: ImportConfig):
                     affixes=seal_charm_affixes,
                     require_gas=config.require_greater_affixes,
                     model_type=seal_charm_model,
-                    unique_aspect=charm_unique_aspect,
+                    unique_aspect=charm_or_seal_unique_aspect,
                     set_name=charm_set_name,
                 )
             )
@@ -190,7 +193,7 @@ def import_maxroll(config: ImportConfig):
                             import_greater_affixes=config.import_greater_affixes,
                         )
                     ],
-                    min_count=1 if rarity == ItemRarity.Unique else 3,
+                    minCount=1 if rarity == ItemRarity.Unique else 3,
                 )
             ]
             update_mingreateraffixcount(item_filter, config.require_greater_affixes)
@@ -286,11 +289,22 @@ def _find_item_affixes(
                     "GearAffix_DamageType_Greater",
                     "GearAffix_Resource_On_Kill",
                     "GearAffix_Resource_On_Kill_Warlock",
+                    "GearAffix_Resistance_Single",
                 ]:
                     if affix["attributes"][0]["formula"] in ["GearAffix_DamageType", "GearAffix_DamageType_Greater"]:
+                        param = str(affix["attributes"][0]["param"])
+                        if param in mapping_data["uiStrings"]["damageType"]:
+                            attr_desc = mapping_data["uiStrings"]["damageType"][param] + " Damage Multiplier"
+                        elif "desc" in affix:
+                            # These are seal affixes and we have to get the skill from the description
+                            pattern = r"\{c_important\}([^{}]+)\{/c\}\s*(.+)$"
+                            match = re.search(pattern, affix["desc"])
+                            if match:
+                                attr_desc = f"{match.group(1)} {match.group(2)}"
+                    elif affix["attributes"][0]["formula"] == "GearAffix_Resistance_Single":
                         attr_desc = (
                             mapping_data["uiStrings"]["damageType"][str(affix["attributes"][0]["param"])]
-                            + " Damage Multiplier"
+                            + " Resistance"
                         )
                     elif affix["attributes"][0]["formula"] == "GearAffix_Resource_Per_Second":
                         param = str(affix["attributes"][0]["param"])
@@ -323,8 +337,22 @@ def _find_item_affixes(
                         attr_desc = _find_skill_rank_affix_description(
                             mapping_data=mapping_data, affix_key=affix_key, attribute=affix["attributes"][0]
                         )
-            if not attr_desc and affix.get("desc"):
-                attr_desc = affix["desc"]
+
+                # Below is handling for seal affixes tied to a set. We attach the set to the front.
+                # If this ends up not working for some reason, a second option is to take the key
+                # like "Talisman_SealAffix_Set_Barbarian_05_AncientSkillRankBonus" and convert it to
+                # "Talisman_Barbarian_05" and then find that in the mapping data. That will also give set name.
+                if "Talisman" and "Set" in affix_key:
+                    pattern = r"\{c_set\}([^{}]+)\{/c\}"
+                    match = re.search(pattern, affix["desc"]) if "desc" in affix else None
+                    if match:
+                        attr_desc = match.group(1) + " " + attr_desc
+                    else:
+                        LOGGER.warning(
+                            f"We thought affix {attr_desc} was a seal-based affix activated by a set but we could not determine the set. The affix is skipped, please report a bug with a link to the build."
+                        )
+                        continue
+
             clean_desc = re.sub(r"\[.*?\]|[^a-zA-Z ]", "", attr_desc)
             clean_desc = clean_desc.replace("SecondSeconds", "seconds")
             if not clean_desc:
@@ -333,12 +361,12 @@ def _find_item_affixes(
                 )
                 continue
 
-            combined_dict = Dataloader().affix_dict
+            dict_to_use = Dataloader().affix_dict
             if item_type == ItemType.HoradricSeal:
-                combined_dict = combined_dict | Dataloader().seal_affix_dict
+                dict_to_use = Dataloader().seal_affix_dict
             elif item_type == ItemType.Charm:
-                combined_dict = combined_dict | Dataloader().charm_affix_dict
-            affix_obj = Affix(name=closest_match(clean_str(clean_desc), combined_dict))
+                dict_to_use = Dataloader().charm_affix_dict
+            affix_obj = Affix(name=closest_match(clean_str(clean_desc), dict_to_use))
             if import_greater_affixes and affix_id.get("greater", False):
                 affix_obj.type = AffixType.greater
             if affix_obj.name is not None:
@@ -413,26 +441,28 @@ def _find_legendary_aspect(mapping_data: dict, legendary_aspect: dict) -> str | 
 
 def _attr_desc_special_handling(affix_id: str) -> str:
     match affix_id:
-        case 1014505 | 2051010:
-            return "evade grants movement speed for second"
-        case 2568489:
-            return "hunger increased reputation from kill streaks"
-        case 2568491:
-            return "hunger increased experience from kill streaks"
-        case 2057810:
-            return "damage reduction from bleeding enemies"
-        case 2067844:
-            return "maximum poison resistance"
-        case 2037914:
-            return "subterfuge cooldown reduction"
-        case 2123788:
-            return "chance for core skills to hit twice"
-        case 2119054:
-            return "chance for basic skills to deal double damage"
-        case 2119058:
-            return "basic lucky hit chance"
-        case 2052125:
-            return "non-physical damage"
+        case 2609197:
+            return "charm slot"
+        # case 1014505 | 2051010:
+        #     return "evade grants movement speed for second"
+        # case 2568489:
+        #     return "hunger increased reputation from kill streaks"
+        # case 2568491:
+        #     return "hunger increased experience from kill streaks"
+        # case 2057810:
+        #     return "damage reduction from bleeding enemies"
+        # case 2067844:
+        #     return "maximum poison resistance"
+        # case 2037914:
+        #     return "subterfuge cooldown reduction"
+        # case 2123788:
+        #     return "chance for core skills to hit twice"
+        # case 2119054:
+        #     return "chance for basic skills to deal double damage"
+        # case 2119058:
+        #     return "basic lucky hit chance"
+        # case 2052125:
+        #     return "non-physical damage"
         case _:
             return ""
 
@@ -550,7 +580,7 @@ def _extract_active_guide_embed_tab_index(embed: lxml.html.HtmlElement) -> int |
 
 if __name__ == "__main__":
     src.logger.setup()
-    URLS = ["https://maxroll.gg/d4/planner/n51lwl0u#1"]
+    URLS = ["https://maxroll.gg/d4/planner/n51lwl0u#4"]
     for X in URLS:
         config = ImportConfig(
             url=X,

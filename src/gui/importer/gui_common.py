@@ -214,17 +214,15 @@ def create_seal_charm_filter(
                 count=[
                     AffixFilterModel(name=affix.name, want_greater=affix.type == AffixType.greater) for affix in affixes
                 ],
-                min_count=1 if model_type is SealFilterModel else min(3, len(affixes)),
+                minCount=1 if model_type is SealFilterModel else min(3, len(affixes)),
             )
         ]
     if model_type is CharmFilterModel:
-        seal_charm_filter = CharmFilterModel(
-            affix_pool=affix_pool,
-            unique_aspect=[AspectUniqueFilterModel(name=unique_aspect)] if unique_aspect else [],
-            set=[set_name] if set_name else [],
-        )
+        seal_charm_filter = CharmFilterModel(set=[set_name] if set_name else [])
     else:
-        seal_charm_filter = SealFilterModel(affix_pool=affix_pool)
+        seal_charm_filter = SealFilterModel()
+    seal_charm_filter.affix_pool = affix_pool
+    seal_charm_filter.unique_aspect = [AspectUniqueFilterModel(name=unique_aspect)] if unique_aspect else []
     if require_gas:
         seal_charm_filter.min_greater_affix_count = len([affix for affix in affixes if affix.type == AffixType.greater])
     return seal_charm_filter

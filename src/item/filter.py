@@ -284,20 +284,19 @@ class Filter:
                 # For charms we check the set or aspect
                 matched_aspect = False
                 matched_set = False
-                if isinstance(filter_spec, CharmFilterModel):
+
+                if not self._check_unique_aspects_for_item(seal_or_charm, filter_spec.unique_aspect):
+                    continue
+                if filter_spec.unique_aspect:
+                    matched_aspect = True
+
+                if isinstance(filter_spec, CharmFilterModel) and filter_spec.set:
                     # You can't have both a unique aspect and a set
-                    if filter_spec.unique_aspect:
-                        if not self._check_unique_aspects_for_item(seal_or_charm, filter_spec.unique_aspect):
-                            continue
-                        matched_aspect = True
-                    elif seal_or_charm.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
+                    if not seal_or_charm.set:  # This would mean there's no set but a set is expected
                         continue
-                    elif filter_spec.set:
-                        if not seal_or_charm.set:  # This would mean there's no set but a set is expected
-                            continue
-                        if seal_or_charm.set not in filter_spec.set:
-                            continue
-                        matched_set = True
+                    if seal_or_charm.set not in filter_spec.set:
+                        continue
+                    matched_set = True
 
                 LOGGER.info(
                     f"{seal_or_charm.original_name} -- Matched {profile_name}.{section_name}.{filter_name}: {[affix.name for affix in matched_affixes]}"

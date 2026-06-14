@@ -226,6 +226,7 @@ class _BaseSealOrCharmFilterModel(BaseModel):
     affix_pool: list[AffixFilterCountModel] = Field(default=[], alias="affixPool")
     min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
     rarities: list[ItemRarity] = []
+    unique_aspect: list[AspectUniqueFilterModel] = Field(default=[], alias="uniqueAspect")
 
     @field_validator("min_greater_affix_count")
     @classmethod
@@ -237,10 +238,17 @@ class _BaseSealOrCharmFilterModel(BaseModel):
     def parse_rarities(cls, data: str | list[str]) -> list[str]:
         return _parse_item_type_or_rarities(data)
 
+    @model_validator(mode="after")
+    def unique_aspects_must_be_unique(self) -> _BaseSealOrCharmFilterModel:
+        if len({aspect.name for aspect in self.unique_aspect}) != len(self.unique_aspect):
+            msg = "uniqueAspect names must be unique"
+            raise ValueError(msg)
+
+        return self
+
 
 class CharmFilterModel(_BaseSealOrCharmFilterModel):
     set: list[str] = Field(default=[], alias="set")
-    unique_aspect: list[AspectUniqueFilterModel] = Field(default=[], alias="uniqueAspect")
 
     @field_validator("set")
     @classmethod
@@ -249,10 +257,6 @@ class CharmFilterModel(_BaseSealOrCharmFilterModel):
 
     @model_validator(mode="after")
     def set_and_unique_aspects_must_be_unique(self) -> CharmFilterModel:
-        if len({aspect.name for aspect in self.unique_aspect}) != len(self.unique_aspect):
-            msg = "uniqueAspect names must be unique"
-            raise ValueError(msg)
-
         if len(set(self.set)) != len(self.set):
             msg = "set names must be unique"
             raise ValueError(msg)
