@@ -290,9 +290,7 @@ class Filter:
                         if not self._check_unique_aspects_for_item(seal_or_charm, filter_spec.unique_aspect):
                             continue
                         matched_aspect = True
-                    elif (
-                        seal_or_charm.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and not filter_spec.unique_aspect
-                    ):
+                    elif seal_or_charm.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
                         continue
                     elif filter_spec.set:
                         if not seal_or_charm.set:  # This would mean there's no set but a set is expected

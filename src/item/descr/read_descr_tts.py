@@ -53,7 +53,6 @@ _ASPECT_RE = re.compile(
 _FOR_SECONDS_RE = re.compile(r"for (?P<forsecondsvalue>\d+(?:\.\d+)?) Seconds")
 
 _REPLACE_COMPARE_RE = re.compile(r"\(.*\)")
-_GET_FIRST_NUMBER_RE = re.compile(r"\d+")
 
 _AFFIX_REPLACEMENTS = ["%", "+", ",", "[+]", "[x]", "per 5 Seconds"]
 _AFFIX_STOP_MARKERS = (

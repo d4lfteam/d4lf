@@ -16,7 +16,6 @@ from src.config.profile_models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
-    _unique_filter_name,
     add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
@@ -137,17 +136,16 @@ def import_maxroll(config: ImportConfig):
                 )
                 continue
             seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
-            filter_name = _unique_filter_name(item_type.name, seal_charm_filters)
             seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
-            seal_charm_filters.append({
-                filter_name: create_seal_charm_filter(
+            seal_charm_filters.append(
+                create_seal_charm_filter(
                     affixes=seal_charm_affixes,
                     require_gas=config.require_greater_affixes,
                     model_type=seal_charm_model,
                     unique_aspect=charm_unique_aspect,
                     set_name=charm_set_name,
                 )
-            })
+            )
             continue
 
         item_filter.item_type = [item_type]

@@ -1,10 +1,11 @@
-from src.config.profile_models import CharmFilterModel, ProfileModel
+from src.config.profile_models import CharmFilterModel, ItemFilterModel, ProfileModel
 from src.gui.importer.gui_common import (
     _to_yaml_str,
-    _unique_filter_name,
     build_default_profile_file_name,
     deduplicate_filters,
+    unique_filter_name,
 )
+from src.item.data.item_type import ItemType
 
 
 def test_build_default_profile_file_name_maxroll() -> None:
@@ -60,7 +61,7 @@ def test_build_default_profile_file_name_replaces_stale_season_marker_in_header(
 
 
 def test_unique_filter_name_adds_suffix_for_existing_filter_names() -> None:
-    filter_name = _unique_filter_name("Charm", [{"Charm": object()}, {"Charm2": object()}])
+    filter_name = unique_filter_name("Charm", [{"Charm": object()}, {"Charm2": object()}])
 
     assert filter_name == "Charm3"
 
@@ -79,10 +80,23 @@ def test_deduplicate_filters() -> None:
     f2 = CharmFilterModel(set=["tal_rashas_threefold_way"])
     f3 = CharmFilterModel(set=["applied_alchemy"])
 
-    filters = [{"Charm": f1}, {"Charm": f2}, {"Charm": f3}]
+    filters = [f1, f2, f3]
 
     deduped = deduplicate_filters(filters)
     assert len(deduped) == 2
     assert "Charm(x2)" in deduped[0]
     assert deduped[0]["Charm(x2)"] == f1
     assert "Charm" in deduped[1] or "Charm2" in deduped[1]
+
+
+def test_deduplicate_filters_supports_item_filters() -> None:
+    f1 = ItemFilterModel(item_type=[ItemType.Ring])
+    f2 = ItemFilterModel(item_type=[ItemType.Ring])
+    f3 = ItemFilterModel(item_type=[ItemType.Amulet])
+
+    deduped = deduplicate_filters([f1, f2, f3])
+
+    assert len(deduped) == 2
+    assert "Ring(x2)" in deduped[0]
+    assert deduped[0]["Ring(x2)"] == f1
+    assert "Amulet" in deduped[1]

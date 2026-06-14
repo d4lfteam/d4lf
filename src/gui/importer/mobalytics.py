@@ -24,7 +24,6 @@ from src.config.profile_models import (
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
-    _unique_filter_name,
     add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
@@ -37,6 +36,7 @@ from src.gui.importer.gui_common import (
     retry_importer,
     save_as_profile,
     sort_profile_filters,
+    unique_filter_name,
     update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
@@ -135,28 +135,13 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         LOGGER.error(msg := "No items found")
         raise MobalyticsError(msg)
 
-    # Detect set name from charms to assist in seal affix matching
-    guessed_set_name = None
-    for item in items:
-        entity_type = jsonpath.findall(".gameEntity.type", item)[0]
-        if entity_type == "charms":
-            title_result = jsonpath.findall(".gameEntity.entity.title", item) or jsonpath.findall(
-                ".gameEntity.title", item
-            )
-            item_name = str(title_result[0]) if title_result else ""
-            icon_result = jsonpath.findall(".gameEntity.iconUrl", item)
-            icon_url = icon_result[0] if icon_result else None
-            _, set_name = match_charm_to_set_or_unique(item_name, icon_url)
-            if set_name:
-                guessed_set_name = set_name
-                break
-
     finished_filters = []
     charm_filters = []
     seal_filters = []
     mythic_names = []
     aspect_upgrade_filters = []
-    for item in items:
+    guessed_set_name = None
+    for item in sorted(items, key=lambda item: jsonpath.findall(".gameEntity.type", item)[0] != "charms"):
         item_filter = ItemFilterModel()
         entity_type = jsonpath.findall(".gameEntity.type", item)[0]
         mythic_result = jsonpath.findall(".gameEntity.entity.mythic", item)
@@ -164,17 +149,16 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         if entity_type not in ["aspects", "uniqueItems", "charms", "seals", "items"]:
             continue
         title_result = jsonpath.findall(".gameEntity.entity.title", item) or jsonpath.findall(".gameEntity.title", item)
-        if not title_result:
+        item_name = str(title_result[0]).strip() if title_result else ""
+        if not item_name:
             slot_result = jsonpath.findall(".gameSlotSlug", item)
             LOGGER.warning(
                 f"Skipping {slot_result[0] if slot_result else '(unknown slot)'} ({entity_type}) because it has no title."
             )
             continue
-        if not (item_name := str(title_result[0])):
-            LOGGER.error(msg := "No item name found")
-            raise MobalyticsError(msg)
-        if not (slot_type := str(jsonpath.findall(".gameSlotSlug", item)[0])):
-            LOGGER.error(msg := "No slot type found")
+        slot_result = jsonpath.findall(".gameSlotSlug", item)
+        if not slot_result or not (slot_type := str(slot_result[0]).strip()):
+            LOGGER.error(msg := f"No slot type found for {item_name}")
             raise MobalyticsError(msg)
 
         raw_affixes = (
@@ -256,27 +240,25 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
 
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
             seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
-            filter_name = _unique_filter_name(item_type.name, seal_charm_filters)
             seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
             # Extract unique aspect and set info for charms
             charm_unique_aspect = None
             charm_set_name = None
             if item_type == ItemType.Charm:
-                icon_result = jsonpath.findall(".gameEntity.iconUrl", item)
-                icon_url = icon_result[0] if icon_result else None
-                charm_unique_aspect, charm_set_name = match_charm_to_set_or_unique(item_name, icon_url)
+                charm_unique_aspect, charm_set_name = match_charm_to_set_or_unique(item_name)
             if not affixes and not charm_unique_aspect and not charm_set_name:
                 LOGGER.warning(f"Skipping {item_name} because it had no supported affixes, unique aspect, or set name.")
                 continue
-            seal_charm_filters.append({
-                filter_name: create_seal_charm_filter(
-                    affixes=affixes,
-                    require_gas=config.require_greater_affixes,
-                    model_type=seal_charm_model,
-                    unique_aspect=charm_unique_aspect,
-                    set_name=charm_set_name,
-                )
-            })
+            seal_charm_filter = create_seal_charm_filter(
+                affixes=affixes,
+                require_gas=config.require_greater_affixes,
+                model_type=seal_charm_model,
+                unique_aspect=charm_unique_aspect,
+                set_name=charm_set_name,
+            )
+            seal_charm_filters.append(seal_charm_filter)
+            if isinstance(seal_charm_filter, CharmFilterModel) and not guessed_set_name and seal_charm_filter.set:
+                guessed_set_name = seal_charm_filter.set[0]
             continue
 
         if not is_mythic:
@@ -293,7 +275,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
                 AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
             ]
         filter_name_template = item_filter.item_type[0].name if item_type else slot_type.replace(" ", "")
-        filter_name = _unique_filter_name(filter_name_template, finished_filters)
+        filter_name = unique_filter_name(filter_name_template, finished_filters)
         finished_filters.append({filter_name: item_filter})
 
     # Place all mythics in a single filter

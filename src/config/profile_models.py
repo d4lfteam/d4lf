@@ -239,7 +239,6 @@ class _BaseSealOrCharmFilterModel(BaseModel):
 
 
 class CharmFilterModel(_BaseSealOrCharmFilterModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
     set: list[str] = Field(default=[], alias="set")
     unique_aspect: list[AspectUniqueFilterModel] = Field(default=[], alias="uniqueAspect")
 
