@@ -36,6 +36,7 @@ if TYPE_CHECKING:
 
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
 
+
 LOGGER = logging.getLogger(__name__)
 
 D = TypeVar("D", bound=WebDriver | WebElement)
@@ -248,8 +249,9 @@ def match_charm_to_set_or_unique(charm_name: str) -> tuple[str | None, str | Non
         return name_clean, None
 
     # 2. Try to match the set name from the clean name
-    if name_clean in dataloader.set_list:
-        return None, name_clean
+    for set_name in sorted(dataloader.set_list, key=len, reverse=True):
+        if set_name in name_clean:
+            return None, set_name
 
     return None, None
 

@@ -3,6 +3,7 @@ from src.gui.importer.gui_common import (
     _to_yaml_str,
     build_default_profile_file_name,
     deduplicate_filters,
+    match_charm_to_set_or_unique,
     unique_filter_name,
 )
 from src.item.data.item_type import ItemType
@@ -100,3 +101,13 @@ def test_deduplicate_filters_supports_item_filters() -> None:
     assert "Ring(x2)" in deduped[0]
     assert deduped[0]["Ring(x2)"] == f1
     assert "Amulet" in deduped[1]
+
+
+def test_match_charm_to_set_or_unique() -> None:
+    unique, set_name = match_charm_to_set_or_unique("Berú of Balazan's Bite")
+    assert unique is None
+    assert set_name == "balazans_bite"
+
+    unique, set_name = match_charm_to_set_or_unique("Protean Heart")
+    assert unique == "protean_heart"
+    assert set_name is None
