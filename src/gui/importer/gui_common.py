@@ -298,13 +298,17 @@ def add_to_profiles(build_name):
 
 # Built in to_yaml_str does not preserve the order of the attributes of the model, which is important for uniques
 def _to_yaml_str(profile: ProfileModel, exclude_defaults: bool, exclude: set[str]) -> str:
-    str_val = profile.model_dump_json(by_alias=False, exclude_defaults=exclude_defaults, exclude=exclude)
+    str_val = profile.model_dump_json(
+        by_alias=False, exclude_defaults=exclude_defaults, exclude_none=True, exclude=exclude
+    )
     yaml = YAML()
     yaml.default_flow_style = None  # Back to original
     dict_val = yaml.load(str_val)
+    if "paragon" in dict_val:
+        dict_val["Paragon"] = dict_val.pop("paragon")
     _sort_profile_sections(dict_val)
     _rm_style_info(dict_val)
-    _use_block_style(dict_val.get("aspect_upgrades"))
+    _use_block_style(dict_val)
     stream = StringIO()
     yaml.dump(dict_val, stream)
     stream.seek(0)
@@ -312,13 +316,23 @@ def _to_yaml_str(profile: ProfileModel, exclude_defaults: bool, exclude: set[str
 
 
 def _sort_profile_sections(d):
-    if isinstance(d, dict) and isinstance(d.get("aspect_upgrades"), list):
-        d["aspect_upgrades"].sort(key=str.casefold)
+    if not isinstance(d, dict):
+        return
+
+    for key in ("aspect_upgrades", "AspectUpgrades"):
+        if isinstance(d.get(key), list):
+            d[key].sort(key=str.casefold)
+            break
 
 
 def _use_block_style(d):
-    if hasattr(d, "fa"):
-        d.fa.set_block_style()
+    if not isinstance(d, dict):
+        return
+
+    for key in ("aspect_upgrades", "AspectUpgrades"):
+        if hasattr(d.get(key), "fa"):
+            d[key].fa.set_block_style()
+            break
 
 
 def _rm_style_info(d):
