@@ -414,7 +414,7 @@ class ParagonPayloadModel(BaseModel):
 
     @model_validator(mode="after")
     def paragon_boards_list_must_not_be_empty(self) -> ParagonPayloadModel:
-        if not self.paragon_boards_list:
+        if not self.paragon_boards_list or any(not step for step in self.paragon_boards_list):
             msg = "ParagonBoardsList must not be empty"
             raise ValueError(msg)
         return self
@@ -479,4 +479,4 @@ class ProfileModel(BaseModel):
     def serialize_paragon(self, paragon: ParagonPayloadModel | None) -> object:
         if paragon is None:
             return None
-        return paragon.model_dump(mode="python", by_alias=True)
+        return paragon.model_dump(mode="python", by_alias=True, exclude_none=True, exclude_defaults=True)

@@ -860,6 +860,10 @@ class TestParagonModels:
         with pytest.raises(ValidationError, match="ParagonBoardsList must not be empty"):
             ParagonPayloadModel.model_validate({"Name": "Build Name", "ParagonBoardsList": []})
 
+    def test_empty_step_in_payload_board_list_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="ParagonBoardsList must not be empty"):
+            ParagonPayloadModel.model_validate({"Name": "Build Name", "ParagonBoardsList": [[]]})
+
     def test_payload_requires_name(self) -> None:
         with pytest.raises(ValidationError):
             ParagonPayloadModel.model_validate({"ParagonBoardsList": [self._board_data()]})
@@ -933,3 +937,12 @@ class TestParagonModels:
         assert exported["Paragon"]["ParagonBoardsList"][0][0]["Name"] == "Starting Board"
         assert exported["Paragon"]["ParagonBoardsList"][0][0]["Rotation"] == "90°"
         assert len(exported["Paragon"]["ParagonBoardsList"][0][0]["Nodes"]) == 441
+
+    def test_serialize_paragon_excludes_null_metadata(self) -> None:
+        profile = ProfileModel(name="test", Paragon={"Name": "Build Name", "ParagonBoardsList": [self._board_data()]})
+
+        exported = json.loads(profile.model_dump_json(by_alias=True))
+        paragon = exported["Paragon"]
+        assert "Source" not in paragon
+        assert "GeneratedAt" not in paragon
+        assert "Generator" not in paragon

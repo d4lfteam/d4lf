@@ -299,11 +299,13 @@ def add_to_profiles(build_name):
 # Built in to_yaml_str does not preserve the order of the attributes of the model, which is important for uniques
 def _to_yaml_str(profile: ProfileModel, exclude_defaults: bool, exclude: set[str]) -> str:
     str_val = profile.model_dump_json(
-        by_alias=True, exclude_defaults=exclude_defaults, exclude_none=True, exclude=exclude
+        by_alias=False, exclude_defaults=exclude_defaults, exclude_none=True, exclude=exclude
     )
     yaml = YAML()
     yaml.default_flow_style = None  # Back to original
     dict_val = yaml.load(str_val)
+    if "paragon" in dict_val:
+        dict_val["Paragon"] = dict_val.pop("paragon")
     _sort_profile_sections(dict_val)
     _rm_style_info(dict_val)
     _use_block_style(dict_val)

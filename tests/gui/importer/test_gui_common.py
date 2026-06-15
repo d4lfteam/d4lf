@@ -59,8 +59,8 @@ def test_to_yaml_str_sorts_aspect_upgrades_and_uses_block_style(mock_ini_loader)
 
     yaml_str = _to_yaml_str(profile, exclude_defaults=True, exclude={"name", "Sigils"})
 
-    assert "AspectUpgrades:\n- accelerating\n- snowveiled\n" in yaml_str
-    assert "AspectUpgrades: [" not in yaml_str
+    assert "aspect_upgrades:\n- accelerating\n- snowveiled\n" in yaml_str
+    assert "aspect_upgrades: [" not in yaml_str
 
 
 def test_to_yaml_str_preserves_paragon_aliases(mock_ini_loader) -> None:
