@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import sys
 import typing
 
 import pytest
 from natsort import natsorted
 
+if sys.platform == "darwin":
+    pytest.skip("Windows-only filter test module", allow_module_level=True)
+
 from src.config.loader import IniConfigLoader
-from src.config.profile_models import SigilPriority
+from src.config.profile_models import ParagonPayloadModel, ProfileModel, SigilPriority
 from src.config.settings_models import AspectFilterType
+from src.gui.importer.gui_common import save_as_profile
 from src.item.filter import Filter, FilterResult
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
@@ -151,3 +156,25 @@ def test_mythic_always_kept(_name: str, result: bool, item: Item, mocker: Mocker
     test_filter = _create_mocked_filter(mocker)
     test_filter.global_unique_filters = {filters.always_keep_mythics.name: filters.always_keep_mythics.global_uniques}
     assert test_filter.should_keep(item).keep == result
+
+
+def test_filter_loads_typed_paragon_payload(tmp_path, mock_ini_loader: IniConfigLoader, mocker: MockerFixture) -> None:
+    mock_ini_loader._user_dir = tmp_path
+    mock_ini_loader.general.profiles = ["typed_paragon"]
+
+    profile = ProfileModel(
+        name="typed_paragon",
+        Paragon={
+            "Name": "Build Name",
+            "ParagonBoardsList": [
+                [{"Name": "Starting Board", "Glyph": "glyph_name", "Rotation": 0, "Nodes": [False] * 441}]
+            ],
+        },
+    )
+    save_as_profile(file_name="typed_paragon", profile=profile, url="https://example.invalid")
+
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.files_loaded = False
+    test_filter.load_files()
+
+    assert isinstance(test_filter.get_paragon_filters()["typed_paragon"], ParagonPayloadModel)

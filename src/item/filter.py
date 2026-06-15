@@ -21,6 +21,7 @@ from src.config.profile_models import (
     DynamicItemFilterModel,
     DynamicSealFilterModel,
     GlobalUniqueModel,
+    ParagonPayloadModel,
     ProfileModel,
     SigilConditionModel,
     SigilFilterModel,
@@ -70,7 +71,7 @@ class _UniqueKeyLoader(yaml.SafeLoader):
 class Filter:
     item_filters = {}
     aspect_upgrade_filters = {}
-    paragon_filters = {}
+    paragon_filters: dict[str, ParagonPayloadModel] = {}
     global_unique_filters = {}
     seal_filters = {}
     charm_filters = {}
@@ -564,7 +565,8 @@ class Filter:
         self.files_loaded = True
         self.item_filters: dict[str, list[DynamicItemFilterModel]] = {}
         self.aspect_upgrade_filters: dict[str, list[str]] = {}
-        self.paragon_filters: dict[str, object] = {}
+
+        self.paragon_filters: dict[str, ParagonPayloadModel] = {}
         self.seal_filters: dict[str, list[DynamicSealFilterModel]] = {}
         self.charm_filters: dict[str, list[DynamicCharmFilterModel]] = {}
         self.sigil_filters: dict[str, SigilFilterModel] = {}
@@ -651,7 +653,7 @@ class Filter:
             self.last_loaded = time.time()
             self.last_profile_list = IniConfigLoader().general.profiles.copy()
 
-    def get_paragon_filters(self) -> dict[str, object]:
+    def get_paragon_filters(self) -> dict[str, ParagonPayloadModel]:
         """Return the loaded Paragon payloads, reloading profiles when needed."""
         if not self.files_loaded or self._did_files_change():
             self.load_files()

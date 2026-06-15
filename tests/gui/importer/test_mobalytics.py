@@ -4,6 +4,7 @@ import typing
 
 import pytest
 
+from src.config.profile_models import ParagonPayloadModel
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.mobalytics import (
@@ -11,7 +12,7 @@ from src.gui.importer.mobalytics import (
     _log_mobalytics_page_diagnostics,
     import_mobalytics,
 )
-from src.gui.importer.paragon_export import extract_mobalytics_paragon_steps
+from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_mobalytics_paragon_steps
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -50,6 +51,20 @@ def test_extract_mobalytics_paragon_steps_normalizes_warlock_starting_board():
     assert board["Name"] == "warlock-starting-board"
     assert board["Nodes"].count(True) == 1
     assert board["Nodes"][node_index] is True
+
+
+def test_build_paragon_profile_payload_returns_typed_model():
+    payload = build_paragon_profile_payload(
+        build_name="Build Name",
+        source_url="https://example.invalid",
+        paragon_boards_list=[
+            [{"Name": "Starting Board", "Glyph": "glyph_name", "Rotation": 90, "Nodes": [False] * 441}]
+        ],
+    )
+
+    assert isinstance(payload, ParagonPayloadModel)
+    assert payload.name == "Build Name"
+    assert payload.paragon_boards_list[0][0].rotation == "90°"
 
 
 @pytest.mark.parametrize(

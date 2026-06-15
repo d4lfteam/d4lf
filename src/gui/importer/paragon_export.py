@@ -7,6 +7,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from src import __version__
+from src.config.profile_models import ParagonPayloadModel
 from src.gui.importer.gui_common import PLAYER_CLASSES
 
 try:
@@ -315,18 +316,18 @@ def _maxroll_glyph_slug(glyph_id: str, board_id: str) -> str:
 
 def build_paragon_profile_payload(
     build_name: str, source_url: str, paragon_boards_list: list[list[dict[str, Any]]]
-) -> dict[str, Any]:
+) -> ParagonPayloadModel:
     """Build the Paragon payload intended to be embedded into a profile YAML.
 
     The structure matches the existing JSON export payload (without the outer list wrapper).
     """
-    return {
-        "Name": build_name,
-        "Source": source_url,
-        "GeneratedAt": datetime.datetime.now(tz=datetime.UTC).strftime("%Y-%m-%d %H:%M:%S UTC"),
-        "Generator": f"d4lf v{__version__}",
-        "ParagonBoardsList": paragon_boards_list,
-    }
+    return ParagonPayloadModel(
+        Name=build_name,
+        Source=source_url,
+        GeneratedAt=datetime.datetime.now(tz=datetime.UTC).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        Generator=f"d4lf v{__version__}",
+        ParagonBoardsList=paragon_boards_list,
+    )
 
 
 #
