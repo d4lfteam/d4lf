@@ -5,8 +5,10 @@ import lxml.html
 import pytest
 
 from src.dataloader import Dataloader
-from src.gui.importer.d4builds import _extract_build_metadata, _extract_d4builds_season_number, import_d4builds
+from src.gui.importer import d4builds as d4builds_module
+from src.gui.importer import paragon_export as paragon_export_module
 from src.gui.importer.importer_config import ImportConfig
+from src.gui.importer.paragon_export import build_paragon_profile_payload
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -51,7 +53,7 @@ def test_extract_build_metadata_from_planner_header() -> None:
         </div>
     """)
 
-    assert _extract_build_metadata(data) == (
+    assert d4builds_module._extract_build_metadata(data) == (
         "Necromancer",
         "Rob's Golem Minion Necro (S4) Pit 142+",
         "4",
@@ -79,7 +81,12 @@ def test_extract_build_metadata_prefers_description_for_guides() -> None:
         </div>
     """)
 
-    assert _extract_build_metadata(data) == ("Paladin", "Rob's Cpt. America (S12)", "12", "Pit Push (Glasscannon)")
+    assert d4builds_module._extract_build_metadata(data) == (
+        "Paladin",
+        "Rob's Cpt. America (S12)",
+        "12",
+        "Pit Push (Glasscannon)",
+    )
 
 
 def test_extract_d4builds_season_number_from_gear_dropdown() -> None:
@@ -100,7 +107,62 @@ def test_extract_d4builds_season_number_from_gear_dropdown() -> None:
         </div>
     """)
 
-    assert _extract_d4builds_season_number(data) == "12"
+    assert d4builds_module._extract_d4builds_season_number(data) == "12"
+
+
+def test_parse_d4builds_paragon_boards_produces_valid_typed_payload_input() -> None:
+    class _FakeTextNode:
+        def __init__(self, text: str):
+            self._text = text
+
+        def get_attribute(self, name: str) -> str:
+            return self._text if name == "innerText" else ""
+
+    class _FakeTile:
+        def __init__(self, class_name: str):
+            self._class_name = class_name
+
+        def get_attribute(self, name: str) -> str:
+            return self._class_name if name == "class" else ""
+
+    class _FakeBoardElement:
+        def __init__(self):
+            self._attrs = {"data-board-id": "Paragon_Barb_00"}
+
+        def find_element(self, by, value):
+            if value == "paragon__board__name":
+                return _FakeTextNode("Starting Board")
+            msg = f"unexpected selector: {value}"
+            raise AssertionError(msg)
+
+        def find_elements(self, by, value):
+            if value == "paragon__board__name__glyph":
+                return [_FakeTextNode("Glyph Name")]
+            if value == "paragon__board__tile":
+                return [_FakeTile("paragon__board__tile r2 c10 active enabled")]
+            msg = f"unexpected selector: {value}"
+            raise AssertionError(msg)
+
+        def get_attribute(self, name: str) -> str:
+            return "transform: rotate(90deg);" if name == "style" else ""
+
+    class _FakeDriver:
+        def execute_script(self, script, board_elem):
+            return board_elem._attrs
+
+        def find_elements(self, by, value):
+            if value == "paragon__board":
+                return [_FakeBoardElement()]
+            msg = f"unexpected selector: {value}"
+            raise AssertionError(msg)
+
+    boards = paragon_export_module._parse_d4builds_paragon_boards(_FakeDriver(), class_slug="barbarian")
+    payload = build_paragon_profile_payload("Build Name", "https://example.invalid", boards)
+
+    board = payload.paragon_boards_list[0][0]
+    assert board.name == "barbarian-paragon-barb-00"
+    assert board.rotation == "90°"
+    assert board.nodes.count(True) == 1
 
 
 @pytest.mark.parametrize("url", URLS)
@@ -117,4 +179,4 @@ def test_import_d4builds(url: str, mock_ini_loader: MockerFixture, mocker: Mocke
         require_greater_affixes=True,
         custom_file_name=None,
     )
-    import_d4builds(config=config)
+    d4builds_module.import_d4builds(config=config)

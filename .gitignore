@@ -8,12 +8,14 @@
 *info_*.png
 *info_log_parsed.txt
 .DS_Store
+.agents
 .codex
 .coverage
 .idea/
 .pytest_cache/
 .venv
 .vs/
+/skills-lock.json
 /tts/saapi
 /tts/x64
 __pycache__/
