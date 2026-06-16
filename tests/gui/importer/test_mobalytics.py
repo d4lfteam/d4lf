@@ -29,8 +29,6 @@ URLS = [
     "https://mobalytics.gg/diablo-4/profile/screamheart/builds/15x-thrash-out-of-date",
     # This one has an item type for the weapon
     "https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
-    # This has two rogue offhand weapons
-    "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
 ]
 
 
