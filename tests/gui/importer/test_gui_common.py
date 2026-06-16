@@ -111,8 +111,8 @@ def test_match_charm_to_set_or_unique() -> None:
     unique, set_name = match_charm_to_set_or_unique("Protean Heart")
     assert unique == "protean_heart"
     assert set_name is None
-    
-    
+
+
 def test_to_yaml_str_preserves_paragon_aliases(mock_ini_loader) -> None:
     profile = ProfileModel(
         name="test",

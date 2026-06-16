@@ -722,7 +722,7 @@ def string_list_value(data, label):
 
 
 def generate_uniques(d4data_dir, language):
-    items_to_ignore = ["halo", "pact_amulet", "wilted_potential"]
+    items_to_ignore = ["halo", "pact_amulet", "wilted_potential", "mythic_unique_horadric_seal"]
 
     print(f"Gen Uniques for {language}")
     unique_dict = {}
@@ -737,12 +737,16 @@ def generate_uniques(d4data_dir, language):
         num_inherents = 0
         with Path(core_unique_file).open(encoding="utf-8") as unique_item_file:
             unique_item_data = json.load(unique_item_file)
-            if "arForcedAffixes" not in unique_item_data or not unique_item_data["arForcedAffixes"]:
+            item_type = (
+                unique_item_data.get("snoItemType", {}).get("name", "") if unique_item_data.get("snoItemType") else ""
+            )
+            if item_type != "HoradricSeal" and (
+                "arForcedAffixes" not in unique_item_data or not unique_item_data["arForcedAffixes"]
+            ):
                 continue
-            item_type = unique_item_data["snoItemType"]["name"]
-            inherent_affixes = unique_item_data["arInherentAffixes"]
+            inherent_affixes = unique_item_data.get("arInherentAffixes", [])
 
-        if item_type not in GEAR_TYPES and item_type != "FocusBookOffHand":
+        if item_type not in GEAR_TYPES and item_type not in ("FocusBookOffHand", "HoradricSeal"):
             continue
 
         # Some items, like Mortacrux, will list one inherent and then break it into two in the affix file.
