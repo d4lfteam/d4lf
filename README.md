@@ -12,6 +12,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Filter items in inventory and stash
 - Filter by item type, item power and greater affix count
 - Filter by affix and their values, with per-affix greater affix requirements
+- Filter affixes and sigils by item rarity (e.g. keep only rare craft bases, not the equivalent legendary)
 - Filter uniques by their affix and aspect values
 - Filter sigils by blacklisting and whitelisting locations and affixes
 - Filter tributes by name or rarity
@@ -165,7 +166,7 @@ If you would like for the fast vision mode box to appear somewhere else, you can
 
 (Documentation still in progress)
 
-The Profile Editor allows you to edit your profiles. It is still in beta, but all functionality except Sigils should work at this time.
+The Profile Editor allows you to edit your profiles. It is still in beta. The Sigils tab supports global affix rules (blacklist an affix on every sigil without picking a dungeon) and the sigil rarity gate, alongside an affix rarity picker on the Affixes tab.
 
 ## How to filter / Profiles
 
@@ -212,6 +213,9 @@ has a name and can filter for any combination of the following:
 
 - `itemType`: The name of the type or a list of multiple types.
   See [assets/lang/enUS/item_types.json](assets/lang/enUS/item_types.json)
+- `rarity`: A single rarity or a list of rarities the rule should match. An empty/absent value matches all rarities. Values
+  are case-insensitive. See [Filtering on rarity](#filtering-on-rarity) for details and the list of rarities
+  in [rarity.py](src/item/data/rarity.py)
 - `minPower`: Minimum item power
 - `minGreaterAffixCount`: Minimum number of greater affixes expected on the overall item. See [Greater Affix Filtering](#greater-affix-filtering) for more information on filtering GAs.
 - `affixPool`: A list of multiple different rulesets to filter for. Each ruleset must be fulfilled or the item is
@@ -334,6 +338,47 @@ Affixes:
 
 Affix names are lower case and spaces are replaced by underscore. You can find the full list of names
 in [assets/lang/enUS/affixes.json](assets/lang/enUS/affixes.json).
+
+### Filtering on rarity
+
+You can restrict an affix rule to one or more item rarities using the `rarity` key. This is useful for crafting: you can
+keep a common/magic/rare base that matches a rule while ignoring the equivalent legendary, which you would not craft on.
+
+- A rule with no `rarity` set matches all rarities, so existing rules behave exactly as before.
+- `rarity` accepts a single value (`rarity: rare`) or a list (`rarity: [common, magic, rare]`).
+- Values are case-insensitive (`Rare` and `rare` both load). An invalid value is rejected on startup with a clear error.
+- The rarity gate is combined with `itemType` and `minPower` as an AND, so "rare helms with these affixes" is expressible.
+- Rarity only narrows the affix-matching path. Legendary aspect / codex upgrade, GlobalUniques and the always-keep-mythics
+  behavior are unchanged and still keep items regardless of this gate.
+
+The valid rarities are listed in [rarity.py](src/item/data/rarity.py).
+
+<details><summary>Config Examples</summary>
+
+```yaml
+Affixes:
+  # Only keep RARE chest armor with these affixes. A legendary with the same affixes is NOT kept by this rule.
+  - RareCraftBase:
+      itemType: chest armor
+      rarity: rare
+      affixPool:
+        - count:
+            - { name: dexterity }
+            - { name: maximum_life }
+            - { name: total_armor }
+          minCount: 2
+
+  # Keep common, magic or rare boots as craft candidates
+  - CraftBoots:
+      itemType: boots
+      rarity: [common, magic, rare]
+      affixPool:
+        - count:
+            - { name: movement_speed }
+          minCount: 1
+```
+
+</details>
 
 ### Filtering on percent of affix instead of value
 
@@ -576,6 +621,24 @@ Sigils:
 ```
 
 </details>
+
+You can also gate all sigils by rarity using the top-level `rarity` key. Diablo 4 does not expose a rarity on sigils, so
+it is derived from the sigil's affixes via the rarities map in [assets/lang/enUS/sigils.json](assets/lang/enUS/sigils.json).
+
+- An empty/absent `rarity` keeps all sigil rarities (the gate is opt-in).
+- `rarity` accepts a single value or a list and is case-insensitive, same as the affix `rarity` key.
+- The gate is applied as an AND before blacklist/whitelist: a sigil must pass rarity AND survive blacklist/whitelist to be kept.
+- A sigil whose rarity cannot be resolved from the map is dropped when a `rarity` filter is active (the unresolved lookup
+  is logged at debug so gaps in the map can be diagnosed).
+
+```yaml
+# Only keep rare sigils, and among those discard armor_breakers / resistance_breakers
+Sigils:
+  rarity: rare
+  blacklist:
+    - armor_breakers
+    - resistance_breakers
+```
 
 Sigil affixes and location names are lower case and spaces are replaced by underscore. You can find the full list of
 names in [assets/lang/enUS/sigils.json](assets/lang/enUS/sigils.json).

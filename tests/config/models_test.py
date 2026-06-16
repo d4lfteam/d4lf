@@ -581,6 +581,79 @@ class TestTributeFilterModel:
         assert ItemRarity.Legendary in model.rarities
 
 
+class TestTributeFilterModelRarity:
+    """Test rarity key unification on TributeFilterModel (Slice 01)."""
+
+    def test_rarity_key_loads(self) -> None:
+        """New 'rarity' key (singular) is accepted."""
+        model = TributeFilterModel.model_validate({"rarity": ["legendary"]})
+        assert model.rarities == [ItemRarity.Legendary]
+
+    def test_legacy_rarities_key_loads(self) -> None:
+        """Legacy 'rarities' key still works for back-compat."""
+        model = TributeFilterModel.model_validate({"rarities": ["legendary"]})
+        assert model.rarities == [ItemRarity.Legendary]
+
+    def test_serialization_alias_is_rarity(self) -> None:
+        """model_dump(by_alias=True) uses 'rarity' as the key, not 'rarities'."""
+        model = TributeFilterModel.model_validate({"rarity": ["legendary"]})
+        dumped = model.model_dump(by_alias=True)
+        assert "rarity" in dumped
+        assert "rarities" not in dumped
+
+    def test_serialization_alias_json(self) -> None:
+        """model_dump_json(by_alias=True) uses 'rarity' as the key."""
+        model = TributeFilterModel.model_validate({"rarity": ["legendary"]})
+        exported = json.loads(model.model_dump_json(by_alias=True))
+        assert "rarity" in exported
+        assert "rarities" not in exported
+
+    def test_bare_string_lowercase(self) -> None:
+        """Bare lowercase rarity string normalizes to list of ItemRarity."""
+        model = TributeFilterModel.model_validate("legendary")
+        assert model.rarities == [ItemRarity.Legendary]
+
+    def test_bare_string_uppercase(self) -> None:
+        """Bare mixed-case rarity string is case-insensitively parsed."""
+        model = TributeFilterModel.model_validate("Legendary")
+        assert model.rarities == [ItemRarity.Legendary]
+
+    def test_rarity_list_normalizes(self) -> None:
+        """List of rarity strings (mixed case) all normalize correctly."""
+        model = TributeFilterModel.model_validate({"rarity": ["Rare", "LEGENDARY", "unique"]})
+        assert ItemRarity.Rare in model.rarities
+        assert ItemRarity.Legendary in model.rarities
+        assert ItemRarity.Unique in model.rarities
+
+    def test_case_insensitive_rare(self) -> None:
+        """'Rare' and 'rare' both parse to ItemRarity.Rare."""
+        m1 = TributeFilterModel.model_validate({"rarity": ["Rare"]})
+        m2 = TributeFilterModel.model_validate({"rarity": ["rare"]})
+        assert m1.rarities == [ItemRarity.Rare]
+        assert m2.rarities == [ItemRarity.Rare]
+
+    def test_invalid_rarity_raises(self) -> None:
+        """An unrecognised rarity value raises ValidationError."""
+        with pytest.raises(ValidationError):
+            TributeFilterModel.model_validate({"rarity": ["notararity"]})
+
+    def test_empty_rarity_field_defaults_to_empty_list(self) -> None:
+        """Absent rarity field defaults to empty list."""
+        model = TributeFilterModel.model_validate({"name": "harmony"})
+        assert model.rarities == []
+
+    def test_keyword_construction_with_rarities(self) -> None:
+        """TributeFilterModel(rarities=[...]) still works (populate_by_name)."""
+        model = TributeFilterModel(rarities=[ItemRarity.Legendary])
+        assert model.rarities == [ItemRarity.Legendary]
+
+    def test_parse_data_returns_rarities_key_still_works(self) -> None:
+        """parse_data returns {'rarities': [...]}, which flows through _normalize_rarities."""
+        model = TributeFilterModel.model_validate(["Legendary", "Rare"])
+        assert ItemRarity.Legendary in model.rarities
+        assert ItemRarity.Rare in model.rarities
+
+
 class TestSigilConditionModel:
     """Test SigilConditionModel."""
 
@@ -946,3 +1019,52 @@ class TestParagonModels:
         assert "Source" not in paragon
         assert "GeneratedAt" not in paragon
         assert "Generator" not in paragon
+
+
+class TestItemFilterModelRarity:
+    """Test rarity field on ItemFilterModel (Slice 03)."""
+
+    def test_rarity_parses_from_single_string(self) -> None:
+        """Single string under 'rarity' key is accepted."""
+        model = ItemFilterModel.model_validate({"rarity": "rare"})
+        assert model.rarities == [ItemRarity.Rare]
+
+    def test_rarity_parses_from_list(self) -> None:
+        """List of strings under 'rarity' key is accepted."""
+        model = ItemFilterModel.model_validate({"rarity": ["rare", "legendary"]})
+        assert ItemRarity.Rare in model.rarities
+        assert ItemRarity.Legendary in model.rarities
+
+    def test_rarity_is_case_insensitive(self) -> None:
+        """Mixed-case rarity values are normalised."""
+        model = ItemFilterModel.model_validate({"rarity": ["Rare", "LEGENDARY", "unique"]})
+        assert ItemRarity.Rare in model.rarities
+        assert ItemRarity.Legendary in model.rarities
+        assert ItemRarity.Unique in model.rarities
+
+    def test_invalid_rarity_raises(self) -> None:
+        """An unrecognised rarity value raises ValidationError."""
+        with pytest.raises(ValidationError):
+            ItemFilterModel.model_validate({"rarity": ["notararity"]})
+
+    def test_absent_rarity_defaults_to_empty_list(self) -> None:
+        """Absent 'rarity' field defaults to empty list."""
+        model = ItemFilterModel()
+        assert model.rarities == []
+
+    def test_empty_rarity_list_defaults_to_empty(self) -> None:
+        """Explicit empty list stays empty."""
+        model = ItemFilterModel.model_validate({"rarity": []})
+        assert model.rarities == []
+
+    def test_keyword_construction_with_rarities(self) -> None:
+        """ItemFilterModel(rarities=[...]) works via populate_by_name."""
+        model = ItemFilterModel(rarities=[ItemRarity.Rare])
+        assert model.rarities == [ItemRarity.Rare]
+
+    def test_serialization_alias_is_rarity(self) -> None:
+        """model_dump(by_alias=True) emits 'rarity', not 'rarities'."""
+        model = ItemFilterModel(rarities=[ItemRarity.Legendary])
+        dumped = model.model_dump(by_alias=True)
+        assert "rarity" in dumped
+        assert "rarities" not in dumped

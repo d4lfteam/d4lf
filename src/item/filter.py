@@ -25,6 +25,7 @@ from src.config.profile_models import (
     TributeFilterModel,
 )
 from src.config.settings_models import AspectFilterType, CosmeticFilterType, UnfilteredUniquesType
+from src.dataloader import Dataloader
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity
@@ -95,6 +96,9 @@ class Filter:
                 filter_spec = filter_item.root[filter_name]
                 # check item type
                 if not self._match_item_type(expected_item_types=filter_spec.item_type, item_type=item.item_type):
+                    continue
+                # check item rarity
+                if filter_spec.rarities and item.rarity not in filter_spec.rarities:
                     continue
                 # check item power
                 if not self._match_item_power(min_power=filter_spec.min_power, item_power=item.power):
@@ -196,6 +200,14 @@ class Filter:
         res.matched.append(MatchedFilter("Cosmetics"))
         return res
 
+    def _get_sigil_rarity(self, sigil_affixes) -> ItemRarity | None:
+        rarity_map = Dataloader().affix_sigil_dict_all["rarities"]
+        for affix in sigil_affixes:
+            if affix.name in rarity_map:
+                return ItemRarity(rarity_map[affix.name].lower())
+        LOGGER.debug(f"Could not resolve sigil rarity from affixes: {[a.name for a in sigil_affixes]}")
+        return None
+
     def _check_sigil(self, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
         if not self.sigil_filters.items():
@@ -203,6 +215,10 @@ class Filter:
             res.keep = True
             res.matched.append(MatchedFilter("Sigils not filtered"))
         for profile_name, profile_filter in self.sigil_filters.items():
+            if profile_filter.rarities:
+                sigil_rarity = self._get_sigil_rarity(item.affixes + item.inherent)
+                if sigil_rarity is None or sigil_rarity not in profile_filter.rarities:
+                    continue  # fail-closed; debug logged in _get_sigil_rarity
             blacklist_empty = not profile_filter.blacklist
             is_in_blacklist = self._match_affixes_sigils(
                 expected_affixes=profile_filter.blacklist,
@@ -540,7 +556,7 @@ class Filter:
                 if data.aspect_upgrades:
                     self.aspect_upgrade_filters[data.name] = data.aspect_upgrades
                     sections.append(ASPECT_UPGRADES_LABEL)
-                if data.sigils and (data.sigils.blacklist or data.sigils.whitelist):
+                if data.sigils and (data.sigils.blacklist or data.sigils.whitelist or data.sigils.rarities):
                     self.sigil_filters[data.name] = data.sigils
                     sections.append("Sigils")
                 if data.tributes:
