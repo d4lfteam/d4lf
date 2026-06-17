@@ -5,13 +5,12 @@ requires = ["hatchling"]
 [dependency-groups]
 dev = [
     "pyinstaller",
+    "ruff",
     "pytest",
     "pytest-cov",
-    "pytest-env",
     "pytest-mock",
     "pytest-pythonpath",
-    "pytest-xdist",
-    "typing-extensions"
+    "pytest-xdist"
 ]
 
 [project]
@@ -19,7 +18,6 @@ dependencies = [
     "beautifultable",
     "colorama",
     "httpx",
-    "jsonpath",
     "keyboard",
     "lxml",
     "mouse",
@@ -31,7 +29,6 @@ dependencies = [
     "psutil",
     "pydantic",
     "pydantic-numpy",
-    "pydantic-yaml",
     "pyqt6",
     "python-jsonpath",
     "pytweening",
@@ -39,11 +36,8 @@ dependencies = [
     "pyyaml",
     "rapidfuzz",
     "ruamel-yaml",
-    "ruff",
     "selenium",
-    "seleniumbase",
-    "tk",
-    "webdriver-manager"
+    "seleniumbase"
 ]
 dynamic = ["version"]
 name = "d4lf"

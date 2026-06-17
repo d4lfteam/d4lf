@@ -1,5 +1,9 @@
+import pytest
+
 from src.config.profile_models import ProfileModel
 from src.gui.importer.gui_common import _to_yaml_str, build_default_profile_file_name
+
+pytestmark = pytest.mark.usefixtures("isolate_uc_driver_dir")
 
 
 def test_build_default_profile_file_name_maxroll() -> None:

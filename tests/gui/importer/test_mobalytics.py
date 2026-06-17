@@ -14,6 +14,8 @@ from src.gui.importer.mobalytics import (
 )
 from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_mobalytics_paragon_steps
 
+pytestmark = pytest.mark.usefixtures("isolate_uc_driver_dir")
+
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"

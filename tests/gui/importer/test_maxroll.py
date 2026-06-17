@@ -9,6 +9,8 @@ from src.gui.importer.maxroll import _find_item_affixes, _find_item_type, _resol
 from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_maxroll_paragon_steps
 from src.item.data.item_type import ItemType
 
+pytestmark = pytest.mark.usefixtures("isolate_uc_driver_dir")
+
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
