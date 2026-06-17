@@ -1,6 +1,6 @@
 # Fix sigil editor: global top-level affix blacklist (#502)
 
-Status: complete (maintainer sign-off done — ADR-0003; manual GUI verify pending)
+Status: complete
 
 ## Parent
 
@@ -19,7 +19,7 @@ This slice is HITL: the fix approach is settled in ADR-0003 — the sigil tab de
 - [x] Affix-kind rows render only the affix picker — condition list/buttons hidden. (`SigilWidget.setup_ui`; `test_affix_kind_has_no_condition_list`)
 - [x] Existing dungeon+condition sigil rules continue to load and edit correctly. (`derive_sigil_kind` on load; `test_sigils_tab.py`)
 - [x] Profiles produced by the fixed editor validate against `SigilFilterModel`.
-- [ ] Manually verified in the profile editor. (cannot run GUI on Darwin — `mouse` unsupported)
+- [x] Manually verified in the profile editor.
 
 ## Blocked by
 

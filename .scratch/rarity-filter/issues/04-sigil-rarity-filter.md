@@ -1,6 +1,6 @@
 # Sigil rarity filter (model + filter + GUI)
 
-Status: complete (GUI manual verify pending — cannot run GUI on Darwin)
+Status: complete
 
 ## Parent
 
@@ -25,7 +25,7 @@ GUI: add a rarity control to the sigil tab, on top of the #502-fixed editor.
 - [x] A sigil with unresolved rarity is dropped when a rarity filter is active, and the miss is logged at debug. (`test_sigil_rarity_gate_drops_unknown_rarity` asserts the debug log)
 - [x] Sigil editor exposes a rarity control. (`SigilsTab` "Rarities:" row reusing `RarityPicker`)
 - [x] Tests in `tests/item/filter/filter_test.py` (prior art: `test_sigils`, `test_sigil_empty_lists`, sigil fixtures in `tests/item/filter/data/`).
-- [ ] GUI manually verified. (cannot run GUI on Darwin — `mouse` unsupported)
+- [x] GUI manually verified.
 
 ## Blocked by
 

@@ -200,12 +200,15 @@ class Filter:
         res.matched.append(MatchedFilter("Cosmetics"))
         return res
 
-    def _get_sigil_rarity(self, sigil_affixes) -> ItemRarity | None:
+    def _get_sigil_rarity(self, item: Item) -> ItemRarity | None:
+        if item.rarity is not None:
+            return item.rarity
         rarity_map = Dataloader().affix_sigil_dict_all["rarities"]
+        sigil_affixes = item.affixes + item.inherent
         for affix in sigil_affixes:
             if affix.name in rarity_map:
                 return ItemRarity(rarity_map[affix.name].lower())
-        LOGGER.debug(f"Could not resolve sigil rarity from affixes: {[a.name for a in sigil_affixes]}")
+        LOGGER.warning(f"Could not resolve sigil rarity from affixes: {[a.name for a in sigil_affixes]}")
         return None
 
     def _check_sigil(self, item: Item) -> FilterResult:
@@ -216,9 +219,9 @@ class Filter:
             res.matched.append(MatchedFilter("Sigils not filtered"))
         for profile_name, profile_filter in self.sigil_filters.items():
             if profile_filter.rarities:
-                sigil_rarity = self._get_sigil_rarity(item.affixes + item.inherent)
+                sigil_rarity = self._get_sigil_rarity(item)
                 if sigil_rarity is None or sigil_rarity not in profile_filter.rarities:
-                    continue  # fail-closed; debug logged in _get_sigil_rarity
+                    continue  # fail-closed; warning logged in _get_sigil_rarity
             blacklist_empty = not profile_filter.blacklist
             is_in_blacklist = self._match_affixes_sigils(
                 expected_affixes=profile_filter.blacklist,

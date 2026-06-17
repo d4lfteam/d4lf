@@ -341,15 +341,10 @@ in [assets/lang/enUS/affixes.json](assets/lang/enUS/affixes.json).
 
 ### Filtering on rarity
 
-You can restrict an affix rule to one or more item rarities using the `rarity` key. This is useful for crafting: you can
-keep a common/magic/rare base that matches a rule while ignoring the equivalent legendary, which you would not craft on.
+Use `rarity` to restrict an affix rule to specific item rarities.
 
-- A rule with no `rarity` set matches all rarities, so existing rules behave exactly as before.
-- `rarity` accepts a single value (`rarity: rare`) or a list (`rarity: [common, magic, rare]`).
-- Values are case-insensitive (`Rare` and `rare` both load). An invalid value is rejected on startup with a clear error.
-- The rarity gate is combined with `itemType` and `minPower` as an AND, so "rare helms with these affixes" is expressible.
-- Rarity only narrows the affix-matching path. Legendary aspect / codex upgrade, GlobalUniques and the always-keep-mythics
-  behavior are unchanged and still keep items regardless of this gate.
+- If `rarity` is omitted, the rule matches all rarities.
+- `rarity` accepts one value (`rarity: rare`) or a list (`rarity: [common, magic, rare]`).
 
 The valid rarities are listed in [rarity.py](src/item/data/rarity.py).
 
@@ -622,14 +617,12 @@ Sigils:
 
 </details>
 
-You can also gate all sigils by rarity using the top-level `rarity` key. Diablo 4 does not expose a rarity on sigils, so
-it is derived from the sigil's affixes via the rarities map in [assets/lang/enUS/sigils.json](assets/lang/enUS/sigils.json).
+You can gate sigils by rarity with top-level `rarity`. Sigil rarity is derived from sigil affixes using
+[assets/lang/enUS/sigils.json](assets/lang/enUS/sigils.json).
 
-- An empty/absent `rarity` keeps all sigil rarities (the gate is opt-in).
-- `rarity` accepts a single value or a list and is case-insensitive, same as the affix `rarity` key.
-- The gate is applied as an AND before blacklist/whitelist: a sigil must pass rarity AND survive blacklist/whitelist to be kept.
-- A sigil whose rarity cannot be resolved from the map is dropped when a `rarity` filter is active (the unresolved lookup
-  is logged at debug so gaps in the map can be diagnosed).
+- If `rarity` is omitted, all sigil rarities pass.
+- The rarity gate is applied before blacklist/whitelist.
+- If rarity cannot be resolved and a rarity gate is active, the sigil is dropped.
 
 ```yaml
 # Only keep rare sigils, and among those discard armor_breakers / resistance_breakers

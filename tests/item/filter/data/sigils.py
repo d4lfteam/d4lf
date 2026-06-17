@@ -86,23 +86,26 @@ sigil_priority = TestSigil(
 # Rarity-derivation fixtures
 # "amethyst_reserve" maps to "Rare" in sigils.json rarities map
 sigil_derived_rare = TestSigil(
+    rarity=ItemRarity.Rare,
     affixes=[Affix(name="amethyst_reserve"), Affix(name="shadow_damage", value=2.0)],
     inherent=[Affix(name="jalals_vigil")],
 )
 
 # "astral_prophecy" maps to "Legendary" in sigils.json rarities map
 sigil_derived_legendary = TestSigil(
+    rarity=ItemRarity.Legendary,
     affixes=[Affix(name="astral_prophecy"), Affix(name="shadow_damage", value=2.0)],
     inherent=[Affix(name="jalals_vigil")],
 )
 
 # Unknown rarity: no affix in the rarities map
 sigil_unknown_rarity = TestSigil(
-    affixes=[Affix(name="shadow_damage", value=2.0)], inherent=[Affix(name="jalals_vigil")]
+    rarity=None, affixes=[Affix(name="shadow_damage", value=2.0)], inherent=[Affix(name="jalals_vigil")]
 )
 
 # Rare sigil that is also on the blacklist (used for AND-gate test)
 sigil_rare_blacklisted = TestSigil(
+    rarity=ItemRarity.Rare,
     affixes=[Affix(name="amethyst_reserve"), Affix(name="reduce_cooldowns_on_kill")],
     inherent=[Affix(name="jalals_vigil")],
 )

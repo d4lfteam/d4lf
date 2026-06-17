@@ -299,7 +299,7 @@ class CreateSigil(QDialog):
         self.blacklist_sigils = blacklist_sigils
 
         self.setWindowTitle("Create Sigil")
-        self.setFixedSize(300, 180)
+        self.setMinimumSize(420, 220)
 
         self.main_layout = QVBoxLayout()
         self.form_layout = QFormLayout()
@@ -667,7 +667,7 @@ class RarityPicker(QDialog):
             group_layout.addWidget(checkbox)
         layout.addWidget(group_box)
 
-        note_label = QLabel("If no rarities are selected, all rarities will be evaluated for this filter.")
+        note_label = QLabel("If no rarities are selected, all rarities will be kept for this filter.")
         note_label.setWordWrap(True)
         layout.addWidget(note_label)
 

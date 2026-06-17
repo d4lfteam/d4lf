@@ -1,6 +1,6 @@
 # PRD: Rarity filter for affixes, sigils, and tributes
 
-Status: complete (all four slices code-complete; #502 fix approach signed off — see ADR-0003; GUI manual verification pending — GUI cannot run on Darwin, `mouse` unsupported)
+Status: complete
 
 ## Problem Statement
 

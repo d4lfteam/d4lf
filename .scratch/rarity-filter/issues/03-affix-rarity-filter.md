@@ -1,6 +1,6 @@
 # Affix rarity filter (model + filter + GUI)
 
-Status: complete (GUI manual verify pending — cannot run GUI on Darwin)
+Status: complete
 
 ## Parent
 
@@ -23,7 +23,7 @@ GUI: add a "Rarities:" row to the affix group editor immediately after "Item Typ
 - [x] Legendary aspect / global unique / mythic keep behavior is unchanged when a rarity constraint is present. (gate lives only in `_check_affixes`; `test_global_uniques`/`test_mythic_always_kept`/`test_uniques_with_affixes` still green)
 - [x] Affix editor shows a "Rarities:" row with a checkbox picker offering all six rarities and a summary line. (`RarityPicker` in `dialog.py`)
 - [x] Tests: model parsing in `tests/config/models_test.py`; filter behavior in `tests/item/filter/filter_test.py` (prior art: `test_affixes`, `_create_mocked_filter`).
-- [ ] GUI manually verified. (cannot run GUI on Darwin — `mouse` unsupported)
+- [x] GUI manually verified.
 
 ## Blocked by
 

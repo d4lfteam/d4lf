@@ -92,29 +92,28 @@ class SigilWidget(Container):
         form_layout.addRow("Affix:" if self.kind == "affix" else "Dungeon:", self.sigil_name_combo)
 
         layout.addLayout(form_layout)
-        if self.kind != "affix":
-            comparison_label = QLabel("Condition")
-            title_layout.addSpacing(100)
-            title_layout.addWidget(comparison_label)
-            self.condition_list = QListWidget()
-            self.condition_list.setMinimumHeight(50)
-            self.condition_list.setAlternatingRowColors(True)
-            for condition in self.sigil.condition:
-                if not condition:
-                    continue
-                self.add_condition_to_list(Dataloader().affix_sigil_dict[condition])
+        comparison_label = QLabel("Condition")
+        title_layout.addSpacing(100)
+        title_layout.addWidget(comparison_label)
+        self.condition_list = QListWidget()
+        self.condition_list.setMinimumHeight(50)
+        self.condition_list.setAlternatingRowColors(True)
+        for condition in self.sigil.condition:
+            if not condition:
+                continue
+            self.add_condition_to_list(Dataloader().affix_sigil_dict[condition])
 
-            condition_btn_layout = QHBoxLayout()
-            add_condition_btn = QPushButton("Add Condition")
-            add_condition_btn.clicked.connect(self.add_condition)
-            condition_btn_layout.addWidget(add_condition_btn)
-            remove_condition_btn = QPushButton("Remove Condition")
-            remove_condition_btn.clicked.connect(self.remove_selected)
-            condition_btn_layout.addWidget(remove_condition_btn)
+        condition_btn_layout = QHBoxLayout()
+        add_condition_btn = QPushButton("Add Condition")
+        add_condition_btn.clicked.connect(self.add_condition)
+        condition_btn_layout.addWidget(add_condition_btn)
+        remove_condition_btn = QPushButton("Remove Condition")
+        remove_condition_btn.clicked.connect(self.remove_selected)
+        condition_btn_layout.addWidget(remove_condition_btn)
 
-            layout.addLayout(condition_btn_layout)
-            layout.addLayout(title_layout)
-            layout.addWidget(self.condition_list)
+        layout.addLayout(condition_btn_layout)
+        layout.addLayout(title_layout)
+        layout.addWidget(self.condition_list)
         widget.setLayout(layout)
         container_layout.addWidget(widget)
 

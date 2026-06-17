@@ -46,10 +46,10 @@ def test_dungeon_blacklist_loads_as_dungeon_kind(qapp, mock_ini_loader):
     assert widget.kind == "dungeon"
 
 
-def test_affix_kind_has_no_condition_list(qapp, mock_ini_loader):
+def test_affix_kind_has_condition_list(qapp, mock_ini_loader):
     tab = _loaded_tab(_first_affix_key())
     widget = tab.blacklist_layout.itemAt(0).widget()
-    assert not hasattr(widget, "condition_list")
+    assert hasattr(widget, "condition_list")
 
 
 def test_dungeon_kind_has_condition_list(qapp, mock_ini_loader):
