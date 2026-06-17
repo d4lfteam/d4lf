@@ -5,11 +5,15 @@ import logging
 import logging.handlers
 import sys
 import threading
+from typing import TYPE_CHECKING
 
 import colorama
 
 from src import __version__
 from src.config import BASE_DIR
+
+if TYPE_CHECKING:
+    from collections.abc import Container
 
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -70,6 +74,23 @@ def create_formatter(colored=False):
     if colored:
         return ColoredFormatter(fmt)
     return logging.Formatter(fmt)
+
+
+def apply_log_level(log_level: str, *, skip_handler_names: Container[str] = ()) -> None:
+    """Apply a new log level to the root logger and its handlers at runtime.
+
+    Args:
+        log_level: The new level name (case-insensitive), e.g. "DEBUG" or "INFO".
+        skip_handler_names: Names of handlers to leave untouched (e.g. the activity
+            log handler, which is pinned to INFO to avoid dashboard clutter).
+    """
+    level = log_level.upper()
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+    for handler in root_logger.handlers:
+        if getattr(handler, "name", "") in skip_handler_names:
+            continue
+        handler.setLevel(level)
 
 
 def setup(log_level: str = "DEBUG", *, enable_stdout: bool = True) -> None:

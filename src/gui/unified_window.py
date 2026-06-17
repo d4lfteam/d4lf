@@ -24,13 +24,14 @@ from src import __version__, tts
 from src.autoupdater import notify_if_update
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
+from src.config.reload_groups import LOG_LEVEL_SETTING_KEYS, has_any_changed
 from src.gui.importer_window import ImporterWindow
 from src.gui.models.activity_log_widget import ActivityLogWidget
 from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.settings_window import ConfigWindow
 from src.gui.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.item.filter import Filter
-from src.logger import ThreadNameFilter, create_formatter
+from src.logger import ThreadNameFilter, apply_log_level, create_formatter
 from src.logger import setup as setup_logging
 from src.main import check_for_proper_tts_configuration
 from src.overlay import Overlay
@@ -230,6 +231,17 @@ class UnifiedMainWindow(QMainWindow):
         root_logger.addHandler(self.console_handler)
         root_logger.addHandler(self.activity_handler)
         root_logger.setLevel(self._config.advanced_options.log_lvl.value.upper())
+
+        # Apply log level changes live, independently of the backend's wait-for-D4 loop.
+        self._config.register_change_listener(self._on_config_changed_log_level)
+
+    def _on_config_changed_log_level(self, changed_keys) -> None:
+        if not has_any_changed(changed_keys, LOG_LEVEL_SETTING_KEYS):
+            return
+        new_level = self._config.advanced_options.log_lvl.value.upper()
+        # Keep the activity log handler pinned to INFO to avoid dashboard clutter.
+        apply_log_level(new_level, skip_handler_names={"QT_ACTIVITY"})
+        LOGGER.info("Updated log level to %s", new_level)
 
     def _setup_ui(self):
         self.setWindowTitle(f"D4LF - Diablo 4 Loot Filter v{__version__}")
