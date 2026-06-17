@@ -342,7 +342,7 @@ def _find_item_affixes(
                 # If this ends up not working for some reason, a second option is to take the key
                 # like "Talisman_SealAffix_Set_Barbarian_05_AncientSkillRankBonus" and convert it to
                 # "Talisman_Barbarian_05" and then find that in the mapping data. That will also give set name.
-                if "Talisman" and "Set" in affix_key:
+                if "Talisman" in affix_key and "Set" in affix_key:
                     pattern = r"\{c_set\}([^{}]+)\{/c\}"
                     match = re.search(pattern, affix["desc"]) if "desc" in affix else None
                     if match:
