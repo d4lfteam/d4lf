@@ -413,6 +413,8 @@ def _find_skill_rank_label_from_affix_key(affix_key: str) -> str:
         return "all"
     if match := SKILL_RANK_AFFIX_KEY_REGEX.search(affix_key):
         label = match.group("label")
+        if label == "Bludgeoning":
+            return "combat"
         label = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", label)
         label = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", label)
         return " ".join(label.split())
