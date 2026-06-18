@@ -8,11 +8,14 @@ from src.config.profile_models import ParagonPayloadModel
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.mobalytics import (
+    _convert_raw_to_affixes,
     _extract_mobalytics_preloaded_state,
+    _guess_mobalytics_charm_set_name,
     _log_mobalytics_page_diagnostics,
     import_mobalytics,
 )
 from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_mobalytics_paragon_steps
+from src.item.data.item_type import ItemType
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -98,6 +101,31 @@ def test_log_mobalytics_page_diagnostics_reports_loaded_page_shape(caplog: pytes
     assert "title='Access denied'" in caplog.text
     assert "script_count=1" in caplog.text
     assert "self.__next_f, captcha" in caplog.text
+
+
+def test_guess_mobalytics_charm_set_name_reads_charm_titles() -> None:
+    items = [
+        {"gameEntity": {"type": "items", "entity": {"title": "Regular Item"}}},
+        {"gameEntity": {"type": "charms", "entity": {"title": "Balazan's Bite"}}},
+    ]
+
+    assert _guess_mobalytics_charm_set_name(items) == "balazans_bite"
+
+
+def test_convert_raw_to_affixes_uses_guessed_charm_set_for_seal_affixes() -> None:
+    affixes = _convert_raw_to_affixes(
+        raw_stats=[{"id": "maximum-resolve"}], item_type=ItemType.HoradricSeal, guessed_set_name="arms_of_arreat"
+    )
+
+    assert [affix.name for affix in affixes] == ["arms_of_arreat_maximum_resolve"]
+
+
+def test_convert_raw_to_affixes_keeps_generic_seal_match_with_guessed_set() -> None:
+    affixes = _convert_raw_to_affixes(
+        raw_stats=[{"id": "cooldown-reduction"}], item_type=ItemType.HoradricSeal, guessed_set_name="arms_of_arreat"
+    )
+
+    assert [affix.name for affix in affixes] == ["cooldown_reduction"]
 
 
 @pytest.mark.parametrize("url", URLS)
