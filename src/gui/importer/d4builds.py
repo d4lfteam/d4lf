@@ -4,6 +4,9 @@ import time
 from typing import TYPE_CHECKING
 
 import lxml.html
+import rapidfuzz
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
@@ -72,6 +75,16 @@ PAPERDOLL_XPATH = "//*[contains(@class, 'builder__gear__items')]"
 TEMPERING_ICON_XPATH = ".//*[contains(@src, 'tempering_02.png')]"
 SANCTIFIED_ICON_XPATH = ".//*[contains(@src, 'sanctified_icon.png')]"
 UNIQUE_ICON_XPATH = ".//*[contains(@src, '/Uniques/')]"
+ACTIVE_SEAL_CSS = ".builder__seal.active"
+ACTIVE_CHARM_CSS = ".builder__charm.active"
+SEAL_TOOLTIP_CSS = "[data-tippy-root] .seal__tooltip"
+CHARM_TOOLTIP_CSS = "[data-tippy-root] .charm__tooltip"
+SEAL_TOOLTIP_VALUE_XPATH = ".//*[contains(@class, 'seal__tooltip__value__text')]"
+CHARM_TOOLTIP_NAME_XPATH = ".//*[contains(@class, 'charm__tooltip__name')]"
+CHARM_TOOLTIP_VALUE_XPATH = (
+    ".//*[contains(@class, 'charm__tooltip__values')]//*[contains(@class, 'charm__tooltip__value')]"
+)
+CHARM_TOOLTIP_SET_NAME_XPATH = ".//*[contains(@class, 'charm__tooltip__set__name')]"
 
 
 class D4BuildsError(Exception):
@@ -100,8 +113,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         raise D4BuildsError(msg)
     slot_to_unique_name_map = _get_item_slots(data=data)
     finished_filters = []
-    charm_filters = []
-    seal_filters = []
+    charm_filters, seal_filters = _extract_d4builds_seal_charm_filters(driver=driver, config=config)
     mythic_names = []
     aspect_upgrade_filters = _get_legendary_aspects(data=data)
     for item in items[0]:
@@ -126,6 +138,10 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         rarity = None
         affixes = []
         inherents = []
+        if is_seal:
+            item_type = ItemType.HoradricSeal
+        elif is_charm:
+            item_type = ItemType.Charm
 
         if slot_to_unique_name_map[slot]:
             unique_name, rarity = slot_to_unique_name_map[slot]
@@ -279,7 +295,182 @@ def _corrections(input_str: str) -> str:
             return "armor"
     if "ranks to" in input_str or "ranks of" in input_str or "ranks" in input_str:
         return input_str.replace("ranks to", "to").replace("ranks of", "to").replace("ranks", "to")
+    if "charm slot" in input_str:
+        return "charm slot"
     return input_str
+
+
+def _extract_d4builds_seal_charm_filters(
+    driver: ChromiumDriver, config: ImportConfig
+) -> tuple[list[CharmFilterModel], list[SealFilterModel]]:
+    charm_filters = []
+    seal_filters = []
+    set_names = []
+
+    for charm_element in driver.find_elements(By.CSS_SELECTOR, ACTIVE_CHARM_CSS):
+        tooltip_html = _hover_and_get_tooltip_html(driver=driver, element=charm_element, tooltip_css=CHARM_TOOLTIP_CSS)
+        charm_filter, set_name = _create_charm_filter_from_tooltip_html(
+            tooltip_html=tooltip_html, require_gas=config.require_greater_affixes
+        )
+        if charm_filter is not None:
+            charm_filters.append(charm_filter)
+        if set_name and set_name not in set_names:
+            set_names.append(set_name)
+
+    if len(set_names) > 1:
+        LOGGER.warning(
+            "Found multiple charm sets in D4Builds build (%s); using %s for set-specific seal affixes.",
+            ", ".join(set_names),
+            set_names[0],
+        )
+    guessed_set_name = set_names[0] if set_names else None
+
+    for seal_element in driver.find_elements(By.CSS_SELECTOR, ACTIVE_SEAL_CSS):
+        tooltip_html = _hover_and_get_tooltip_html(driver=driver, element=seal_element, tooltip_css=SEAL_TOOLTIP_CSS)
+        seal_filter = _create_seal_filter_from_tooltip_html(
+            tooltip_html=tooltip_html, require_gas=config.require_greater_affixes, guessed_set_name=guessed_set_name
+        )
+        if seal_filter is not None:
+            seal_filters.append(seal_filter)
+
+    return charm_filters, seal_filters
+
+
+def _hover_and_get_tooltip_html(driver: ChromiumDriver, element, tooltip_css: str) -> str:
+    driver.execute_script("document.querySelectorAll('[data-tippy-root]').forEach((node) => node.remove());")
+    ActionChains(driver).move_to_element(element).perform()
+    driver.execute_script(
+        "arguments[0].dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));"
+        "arguments[0].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));",
+        element,
+    )
+    try:
+        tooltip = WebDriverWait(driver, 2).until(ec.presence_of_element_located((By.CSS_SELECTOR, tooltip_css)))
+    except TimeoutException:
+        LOGGER.warning("Unable to read D4Builds tooltip for selector %s.", tooltip_css)
+        return ""
+    return str(tooltip.get_attribute("outerHTML") or "")
+
+
+def _create_seal_filter_from_tooltip_html(
+    tooltip_html: str, require_gas: bool, guessed_set_name: str | None = None
+) -> SealFilterModel | None:
+    affixes = _affixes_from_tooltip_values(
+        texts=_tooltip_texts(tooltip_html=tooltip_html, value_xpath=SEAL_TOOLTIP_VALUE_XPATH),
+        item_type=ItemType.HoradricSeal,
+        guessed_set_name=guessed_set_name,
+    )
+    if not affixes:
+        return None
+    return create_seal_charm_filter(affixes=affixes, require_gas=require_gas, model_type=SealFilterModel)
+
+
+def _create_charm_filter_from_tooltip_html(
+    tooltip_html: str, require_gas: bool
+) -> tuple[CharmFilterModel | None, str | None]:
+    tooltip = _tooltip_element(tooltip_html)
+    if tooltip is None:
+        return None, None
+
+    name = _first_text(tooltip=tooltip, xpath=CHARM_TOOLTIP_NAME_XPATH)
+    set_name = correct_name(_first_text(tooltip=tooltip, xpath=CHARM_TOOLTIP_SET_NAME_XPATH))
+    charm_unique_aspect = None
+    if not set_name:
+        charm_unique_aspect, set_name = match_charm_to_set_or_unique(name)
+
+    affixes = _affixes_from_tooltip_values(
+        texts=_texts_from_nodes(tooltip.xpath(CHARM_TOOLTIP_VALUE_XPATH)), item_type=ItemType.Charm
+    )
+    if not affixes and not charm_unique_aspect and not set_name:
+        return None, None
+
+    return (
+        create_seal_charm_filter(
+            affixes=affixes,
+            require_gas=require_gas,
+            model_type=CharmFilterModel,
+            unique_aspect=charm_unique_aspect,
+            set_name=set_name,
+        ),
+        set_name,
+    )
+
+
+def _affixes_from_tooltip_values(
+    texts: list[str], item_type: ItemType, guessed_set_name: str | None = None
+) -> list[Affix]:
+    affixes = []
+    for text in texts:
+        affix_name = _match_d4builds_tooltip_affix(text=text, item_type=item_type, guessed_set_name=guessed_set_name)
+        if affix_name is None:
+            LOGGER.error(f"Couldn't match D4Builds seal/charm tooltip affix {text=}")
+            continue
+        affixes.append(Affix(name=affix_name))
+    return affixes
+
+
+def _match_d4builds_tooltip_affix(text: str, item_type: ItemType, guessed_set_name: str | None = None) -> str | None:
+    stat_clean = clean_str(_corrections(input_str=text))
+    combined_dict = Dataloader().affix_dict
+    if item_type == ItemType.HoradricSeal:
+        combined_dict = combined_dict | Dataloader().seal_affix_dict
+    elif item_type == ItemType.Charm:
+        combined_dict = combined_dict | Dataloader().charm_affix_dict
+
+    if (
+        item_type == ItemType.HoradricSeal
+        and guessed_set_name
+        and (
+            matched_name := _match_d4builds_set_aware_seal_affix(
+                stat_clean=stat_clean, combined_dict=combined_dict, guessed_set_name=guessed_set_name
+            )
+        )
+    ):
+        return matched_name
+
+    return closest_match(stat_clean, combined_dict)
+
+
+def _match_d4builds_set_aware_seal_affix(
+    stat_clean: str, combined_dict: dict[str, str], guessed_set_name: str
+) -> str | None:
+    best_global_key = closest_match(stat_clean, combined_dict)
+    if best_global_key and best_global_key != "damage":
+        global_display = combined_dict[best_global_key]
+        if rapidfuzz.distance.Levenshtein.distance(stat_clean, global_display) <= 2:
+            is_set_specific = any(best_global_key.startswith(f"{set_name}_") for set_name in Dataloader().set_list)
+            if not is_set_specific:
+                return best_global_key
+
+    set_keys = {k: v for k, v in Dataloader().seal_affix_dict.items() if k.startswith(f"{guessed_set_name}_")}
+    if not set_keys:
+        return None
+    potential_match = closest_match(stat_clean, set_keys)
+    if not potential_match:
+        return None
+    display_name = Dataloader().seal_affix_dict[potential_match]
+    if rapidfuzz.fuzz.token_set_ratio(stat_clean, display_name) >= 50:
+        return potential_match
+    return None
+
+
+def _tooltip_texts(tooltip_html: str, value_xpath: str) -> list[str]:
+    tooltip = _tooltip_element(tooltip_html)
+    return [] if tooltip is None else _texts_from_nodes(tooltip.xpath(value_xpath))
+
+
+def _tooltip_element(tooltip_html: str) -> lxml.html.HtmlElement | None:
+    if not tooltip_html:
+        return None
+    return lxml.html.fromstring(tooltip_html)
+
+
+def _texts_from_nodes(nodes: list[lxml.html.HtmlElement]) -> list[str]:
+    return [text for node in nodes if (text := " ".join(node.text_content().split()))]
+
+
+def _first_text(tooltip: lxml.html.HtmlElement, xpath: str) -> str:
+    return _texts_from_nodes(tooltip.xpath(xpath))[0] if tooltip.xpath(xpath) else ""
 
 
 def _extract_build_metadata(data: lxml.html.HtmlElement) -> tuple[str, str, str, str]:

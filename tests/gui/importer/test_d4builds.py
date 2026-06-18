@@ -9,6 +9,7 @@ from src.gui.importer import d4builds as d4builds_module
 from src.gui.importer import paragon_export as paragon_export_module
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.paragon_export import build_paragon_profile_payload
+from src.item.data.item_type import ItemType
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -108,6 +109,71 @@ def test_extract_d4builds_season_number_from_gear_dropdown() -> None:
     """)
 
     assert d4builds_module._extract_d4builds_season_number(data) == "12"
+
+
+def test_create_seal_filter_from_tooltip_html_matches_tooltip_values() -> None:
+    tooltip_html = """
+        <div class="seal__tooltip">
+            <h2 class="seal__tooltip__name">Seal</h2>
+            <ul class="seal__tooltip__values">
+                <li class="seal__tooltip__value seal__tooltip__value--base">
+                    <span class="seal__tooltip__value__text">Critical Strike Damage</span>
+                </li>
+                <li class="seal__tooltip__value">
+                    <span class="seal__tooltip__value__text">Attack Speed</span>
+                </li>
+                <li class="seal__tooltip__value">
+                    <span class="seal__tooltip__value__text">+1 Unique Charm Slot</span>
+                </li>
+            </ul>
+        </div>
+    """
+
+    seal_filter = d4builds_module._create_seal_filter_from_tooltip_html(tooltip_html=tooltip_html, require_gas=False)
+
+    assert [affix.name for affix in seal_filter.affix_pool[0].count] == [
+        "critical_strike_damage",
+        "attack_speed",
+        "charm_slot",
+    ]
+
+
+def test_create_charm_filter_from_tooltip_html_reads_set_name_and_affixes() -> None:
+    tooltip_html = """
+        <div class="charm__tooltip">
+            <h2 class="charm__tooltip__name">Fer of the Crucible</h2>
+            <ul class="charm__tooltip__values">
+                <li class="charm__tooltip__value">Maximum Resource</li>
+            </ul>
+            <div class="charm__tooltip__set">
+                <div class="charm__tooltip__set__name">Berserker's Crucible</div>
+            </div>
+        </div>
+    """
+
+    charm_filter, set_name = d4builds_module._create_charm_filter_from_tooltip_html(
+        tooltip_html=tooltip_html, require_gas=False
+    )
+
+    assert set_name == "berserkers_crucible"
+    assert charm_filter.set == ["berserkers_crucible"]
+    assert [affix.name for affix in charm_filter.affix_pool[0].count] == ["maximum_resource"]
+
+
+def test_match_d4builds_tooltip_affix_uses_guessed_charm_set_for_seal_affixes() -> None:
+    affix_name = d4builds_module._match_d4builds_tooltip_affix(
+        text="Maximum Resolve", item_type=ItemType.HoradricSeal, guessed_set_name="arms_of_arreat"
+    )
+
+    assert affix_name == "arms_of_arreat_maximum_resolve"
+
+
+def test_match_d4builds_tooltip_affix_keeps_generic_seal_match_with_guessed_set() -> None:
+    affix_name = d4builds_module._match_d4builds_tooltip_affix(
+        text="Cooldown Reduction", item_type=ItemType.HoradricSeal, guessed_set_name="arms_of_arreat"
+    )
+
+    assert affix_name == "cooldown_reduction"
 
 
 def test_parse_d4builds_paragon_boards_produces_valid_typed_payload_input() -> None:
