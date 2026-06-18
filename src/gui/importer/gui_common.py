@@ -246,6 +246,10 @@ def match_charm_to_set_or_unique(charm_name: str) -> tuple[str | None, str | Non
     if name_clean in dataloader.aspect_unique_dict:
         return name_clean, None
 
+    # Check if the name matches a known set directly (if already normalized)
+    if name_clean in dataloader.set_list:
+        return None, name_clean
+
     # 2. Try to match the set name from the clean name
     for set_name in sorted(dataloader.set_list, key=len, reverse=True):
         if set_name in name_clean:

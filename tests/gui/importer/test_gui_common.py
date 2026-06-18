@@ -108,6 +108,11 @@ def test_match_charm_to_set_or_unique() -> None:
     assert unique is None
     assert set_name == "balazans_bite"
 
+    # Test already normalized set name
+    unique, set_name = match_charm_to_set_or_unique("balazans_bite")
+    assert unique is None
+    assert set_name == "balazans_bite"
+
     unique, set_name = match_charm_to_set_or_unique("Protean Heart")
     assert unique == "protean_heart"
     assert set_name is None
