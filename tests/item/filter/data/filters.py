@@ -200,16 +200,22 @@ affix = ProfileModel(
     ],
 )
 
-always_keep_mythics = ProfileModel(name="keep_mythics", global_uniques=[GlobalUniqueModel(min_power=900)])
+always_keep_mythics = ProfileModel(
+    name="keep_mythics",
+    global_uniques=[
+        GlobalUniqueModel(affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name="maximum_life")])])
+    ],
+)
 
 aspects_filters = ProfileModel(name="aspect_profile", aspect_upgrades=["accelerating", "aggressive"])
 
 global_unique = ProfileModel(
     name="test",
     global_uniques=[
-        GlobalUniqueModel(min_power=900),
-        GlobalUniqueModel(min_greater_affix_count=2),
-        GlobalUniqueModel(min_percent_of_aspect=80, profile_alias="good_stuff"),
+        GlobalUniqueModel(
+            affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name="maximum_life", value=1000)])],
+            profile_alias="high_life",
+        )
     ],
 )
 

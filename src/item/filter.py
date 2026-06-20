@@ -270,27 +270,11 @@ class Filter:
             return FilterResult(keep, [])
         for profile_name, profile_filter in self.global_unique_filters.items():
             for filter_item in profile_filter:
-                # check item power
-                if not self._match_item_power(min_power=filter_item.min_power, item_power=item.power):
-                    continue
-                # check greater affixes - Checks total item-level GAs
-                if not self._match_greater_affix_count(
-                    expected_min_count=filter_item.min_greater_affix_count, item_affixes=item.affixes
-                ):
-                    continue
-                # check aspect is in percent range
-                if not self._match_item_roll_is_in_percent_range(
-                    expected_percent=filter_item.min_percent_of_aspect, item_aspect_or_affix=item.aspect
-                ):
-                    continue
-
                 # Check affixes
                 matched_affixes = []
                 if filter_item.affix_pool:
                     success, matched_affixes = self._match_affixes_count(
-                        expected_affixes=filter_item.affix_pool,
-                        item_affixes=non_tempered_affixes,
-                        min_greater_affix_count=filter_item.min_greater_affix_count,
+                        expected_affixes=filter_item.affix_pool, item_affixes=non_tempered_affixes
                     )
                     if not success:
                         continue
@@ -299,9 +283,7 @@ class Filter:
                 matched_inherents = []
                 if filter_item.inherent_pool:
                     success, matched_inherents = self._match_affixes_count(
-                        expected_affixes=filter_item.inherent_pool,
-                        item_affixes=item.inherent,
-                        min_greater_affix_count=filter_item.min_greater_affix_count,
+                        expected_affixes=filter_item.inherent_pool, item_affixes=item.inherent
                     )
                     if not success:
                         continue
@@ -341,21 +323,10 @@ class Filter:
         for count_group in expected_affixes:
             group_res = []
 
-            # Track required matches
-            required_names = [a.name for a in count_group.count if getattr(a, "required", False)]
-            matched_required_names = set()
-
-            # Do the normal affix matching first
             for affix in count_group.count:
                 matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
                 if matched_item_affix is not None and self._match_item_aspect_or_affix(affix, matched_item_affix):
                     group_res.append(matched_item_affix)
-                    if getattr(affix, "required", False):
-                        matched_required_names.add(affix.name)
-
-            # Check if all required affixes matched
-            if len(matched_required_names) < len(required_names):
-                return False, []
 
             # Check minCount and maxCount
             if not (count_group.min_count <= len(group_res) <= count_group.max_count):

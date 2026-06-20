@@ -255,8 +255,6 @@ def _affix_summary(pool: AffixFilterCountModel) -> str:
     names = []
     for a in pool.count:
         name = Dataloader().affix_dict.get(a.name, a.name)
-        if getattr(a, "required", False):
-            name = f'<span style="color: #ef4444;">[REQ]</span> {name}'
         if a.want_greater:
             name += " (GA)"
         names.append(name)
@@ -265,8 +263,6 @@ def _affix_summary(pool: AffixFilterCountModel) -> str:
 
 def _affix_card_summary(model: AffixFilterModel) -> str:
     name = Dataloader().affix_dict.get(model.name, model.name)
-    if getattr(model, "required", False):
-        name = f"[REQ] {name}"
     if model.want_greater:
         name += " (GA)"
     return name
@@ -559,12 +555,9 @@ class AffixEditDialog(QDialog):
         form.addRow("Affix:", self.name_combo)
 
         options_layout = QHBoxLayout()
-        self.required_checkbox = CheckmarkCheckBox("Required")
-        self.required_checkbox.setChecked(getattr(model, "required", False))
         self.greater_checkbox = CheckmarkCheckBox("GA")
         self.greater_checkbox.setChecked(model.want_greater)
         self.greater_checkbox.setProperty("greaterCheckbox", True)  # noqa: FBT003
-        options_layout.addWidget(self.required_checkbox)
         options_layout.addWidget(self.greater_checkbox)
         options_layout.addStretch()
         form.addRow("Options:", options_layout)
@@ -594,7 +587,6 @@ class AffixEditDialog(QDialog):
         if affix_id:
             self.model.name = affix_id
 
-        self.model.required = self.required_checkbox.isChecked()
         self.model.want_greater = self.greater_checkbox.isChecked()
 
         mode = self.mode_combo.currentText()
@@ -734,7 +726,6 @@ class AffixGroupEditor(QWidget):
         self.settings = QSettings("d4lf", "profile_editor")
         self.affix_column_widgets = []
         self.affix_pool_layouts = []
-        self.affix_footers = []
         self.dynamic_filter = dynamic_filter
         for item_name, config in dynamic_filter.root.items():
             self.item_name = item_name
@@ -1012,12 +1003,11 @@ class AffixGroupEditor(QWidget):
         # Only provide a remove callback for additional pools (index > 0)
         is_additional = self.config.affix_pool.index(pool_model) > 0
         remove_cb = (lambda: self.remove_affix_pool_column(pool_model)) if is_additional else None
-        col_widget, inner_layout, footer = self._create_col_helper("Affix Pool", add_cb, pool_model, remove_cb)
+        col_widget, inner_layout, _ = self._create_col_helper("Affix Pool", add_cb, pool_model, remove_cb)
         self.columns_layout.addWidget(col_widget)
 
         self.affix_column_widgets.append(col_widget)
         self.affix_pool_layouts.append(inner_layout)
-        self.affix_footers.append(footer)
 
     def add_additional_affix_pool_column(self):
         new_pool = AffixFilterCountModel(count=[], min_count=1)
@@ -1037,7 +1027,6 @@ class AffixGroupEditor(QWidget):
 
             widget = self.affix_column_widgets.pop(idx)
             self.affix_pool_layouts.pop(idx)
-            self.affix_footers.pop(idx)
 
             widget.setParent(None)
             widget.deleteLater()
@@ -1143,20 +1132,6 @@ class AffixGroupEditor(QWidget):
         else:
             self.greater_count_label.setText(f"({count} greater affixes marked)")
 
-        # Update affix pool footers
-        for footer, model in zip(self.affix_footers, self.config.affix_pool, strict=False):
-            self._update_footer_constraints(footer, model)
-
-    def _update_footer_constraints(self, footer, model):
-        if footer and model:
-            min_spin = footer.property("min_spin")
-            if min_spin:
-                min_allowed = sum(1 for a in model.count if getattr(a, "required", False))
-                min_spin.set_minimum(min_allowed)
-                if model.min_count < min_allowed:
-                    model.min_count = min_allowed
-                    min_spin.set_value(min_allowed)
-
     def convert_all_to_min_percent_of_affix(self, percent: int):
         for affix_widget in self.iter_affix_widgets():
             affix_widget.set_min_percent(percent, convert_mode=True)
@@ -1217,9 +1192,6 @@ class UniqueAspectWidget(QWidget):
             # Check for Item Types in AffixGroupEditor (Affixes Tab)
             if hasattr(curr, "config") and hasattr(curr.config, "item_type"):
                 allowed_types = curr.config.item_type
-            # Check for Item Types in UniqueWidget (Global Uniques Tab)
-            if hasattr(curr, "unique_model") and hasattr(curr.unique_model, "item_type"):
-                allowed_types = curr.unique_model.item_type
             curr = curr.parent()
 
         dialog = UniqueAspectDialog(self, self.unique_aspect, char_class, allowed_types)
@@ -1373,10 +1345,7 @@ class AffixSummaryWidget(QWidget):
         if self.model.want_greater:
             name += " (GA)"
 
-        if getattr(self.model, "required", False):
-            self.summary_label.setText(f'<span style="color: #ef4444;">[REQ]</span> {name}')
-        else:
-            self.summary_label.setText(name)
+        self.summary_label.setText(name)
 
         if self.model.min_percent_of_affix:
             self.threshold_label.setText(f"{self.model.min_percent_of_affix}%")
@@ -1481,7 +1450,6 @@ class AffixWidget(QWidget):
 
         self.create_affix_name_combobox()
         self.create_greater_checkbox()
-        self.create_required_checkbox()
         self.create_mode_combobox()
         self.create_value_input()
 
@@ -1494,7 +1462,6 @@ class AffixWidget(QWidget):
         # Bottom row: Options and Values
         bottom_hbox = QHBoxLayout()
         bottom_hbox.setSpacing(10)
-        bottom_hbox.addWidget(self.required_checkbox)
         bottom_hbox.addWidget(self.greater_checkbox)
         bottom_hbox.addStretch()
         bottom_hbox.addWidget(self.mode_combo)
@@ -1515,15 +1482,6 @@ class AffixWidget(QWidget):
         if self.affix.name in affix_dict:
             self.name_combo.setCurrentText(affix_dict[self.affix.name])
         self.name_combo.currentTextChanged.connect(self.update_name)
-
-    def create_required_checkbox(self):
-        self.required_checkbox = CheckmarkCheckBox("Required")
-        self.required_checkbox.setChecked(getattr(self.affix, "required", False))
-        self.required_checkbox.setFixedWidth(85)
-        self.required_checkbox.stateChanged.connect(self.update_required)
-
-    def update_required(self):
-        self.affix.required = self.required_checkbox.isChecked()
 
     def create_greater_checkbox(self):
         self.greater_checkbox = CheckmarkCheckBox("GA")

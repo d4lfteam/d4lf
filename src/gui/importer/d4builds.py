@@ -152,7 +152,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 affix_obj.type = AffixType.greater
             affixes.append(affix_obj)
 
-        if not affixes:
+        if not affixes and rarity != ItemRarity.Mythic:
             continue
 
         item_type = (
@@ -212,9 +212,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     if config.export_paragon:
         steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
         if steps:
-            profile.paragon = build_paragon_profile_payload(
-                build_name=build_name, source_url=url, paragon_boards_list=steps
-            )
+            profile.paragon = build_paragon_profile_payload(build_name=build_name, paragon_boards_list=steps)
         else:
             LOGGER.warning("Paragon export enabled, but no paragon data was found on this D4Builds page.")
 

@@ -46,6 +46,21 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
+class _RefreshLogHandler(logging.Handler):
+    def __init__(self, thread_name: str):
+        super().__init__(level=logging.WARNING)
+        self.thread_name = thread_name
+        self.records: list[logging.LogRecord] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if record.threadName != self.thread_name:
+            return
+        self.records.append(record)
+
+    def messages(self) -> list[str]:
+        return [self.format(record) for record in self.records]
+
+
 class ActivityLogWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -421,15 +436,34 @@ class ActivityLogWidget(QWidget):
         elif "d4builds" in url:
             fn = import_d4builds
 
-        worker = _Worker(name=f"refresh-{name}", fn=fn, config=importer_config)
-        finish_callback = functools.partial(self._on_refresh_finished, name, old_model)
+        worker_name = f"refresh-{name}"
+        refresh_log_handler = _RefreshLogHandler(thread_name=worker_name)
+        refresh_log_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+        importer_logger = logging.getLogger("src.gui.importer")
+        importer_logger.addHandler(refresh_log_handler)
+
+        worker = _Worker(name=worker_name, fn=fn, config=importer_config)
+        finish_callback = functools.partial(
+            self._on_refresh_finished, name, old_model, importer_logger, refresh_log_handler
+        )
         worker.signals.finished.connect(finish_callback)
 
         THREADPOOL.start(worker)
         QMessageBox.information(self, "Refresh Profile", f"Refreshing '{name}' in the background...")
 
-    def _on_refresh_finished(self, name: str, old_model: ProfileModel):
+    def _on_refresh_finished(
+        self,
+        name: str,
+        old_model: ProfileModel,
+        importer_logger: logging.Logger | None = None,
+        refresh_log_handler: _RefreshLogHandler | None = None,
+    ):
         """Merge user-protected sections back into the refreshed profile."""
+        if importer_logger and refresh_log_handler:
+            importer_logger.removeHandler(refresh_log_handler)
+
+        refresh_messages = refresh_log_handler.messages() if refresh_log_handler else []
+        merge_messages = []
         profiles_dir = self._config.user_dir / "profiles"
         p_path = next(
             (profiles_dir / f"{name}{ext}" for ext in [".yaml", ".yml"] if (profiles_dir / f"{name}{ext}").exists()),
@@ -451,8 +485,30 @@ class ActivityLogWidget(QWidget):
                 LOGGER.info(f"Refreshed profile '{name}' and restored manual rules.")
             except Exception:
                 LOGGER.exception(f"Failed to merge manual rules into refreshed profile '{name}'")
+                merge_messages.append("ERROR: Refreshed profile was imported, but manual rules could not be restored.")
+        else:
+            merge_messages.append("ERROR: Refreshed profile file was not found after import.")
 
         self.refresh_profiles()
+        self._show_refresh_messages(name, refresh_messages + merge_messages)
+
+    def _show_refresh_messages(self, name: str, messages: list[str]) -> None:
+        if not messages:
+            return
+
+        max_visible_messages = 8
+        visible_messages = messages[:max_visible_messages]
+        if len(messages) > max_visible_messages:
+            visible_messages.append(
+                f"... and {len(messages) - max_visible_messages} more. Check the log file for details."
+            )
+
+        details = "\n".join(f"- {message}" for message in visible_messages)
+        text = f"Refresh for '{name}' completed with warnings or errors:\n\n{details}"
+        if any(message.startswith(("ERROR:", "CRITICAL:")) for message in messages):
+            QMessageBox.critical(self, "Refresh Profile", text)
+        else:
+            QMessageBox.warning(self, "Refresh Profile", text)
 
     def _get_profile_summary(self, path: Path) -> str:
         """Peeks into the YAML using ProfileModel to build a summary tooltip."""

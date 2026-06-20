@@ -8,6 +8,7 @@ from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.mobalytics import (
     _extract_mobalytics_preloaded_state,
+    _is_mythic_unique_item,
     _log_mobalytics_page_diagnostics,
     import_mobalytics,
 )
@@ -68,6 +69,24 @@ def test_extract_mobalytics_preloaded_state_accepts_assignment_variants(script_t
 
 def test_extract_mobalytics_preloaded_state_ignores_unrelated_script():
     assert _extract_mobalytics_preloaded_state("console.log('ready');") is None
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        {"gameEntity": {"entity": {"rarity": "Mythic"}}},
+        {"gameEntity": {"entity": {"tags": ["mythic-unique"]}}},
+        {"gameEntity": {"entity": {"cssClass": "item-card mythic"}}},
+    ],
+)
+def test_is_mythic_unique_item_detects_mythic_metadata(item: dict):
+    assert _is_mythic_unique_item(item)
+
+
+def test_is_mythic_unique_item_ignores_regular_unique_metadata():
+    item = {"gameEntity": {"type": "uniqueItems", "entity": {"title": "Penitent Greaves"}}}
+
+    assert not _is_mythic_unique_item(item)
 
 
 def test_log_mobalytics_page_diagnostics_reports_loaded_page_shape(caplog: pytest.LogCaptureFixture):

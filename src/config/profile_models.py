@@ -48,7 +48,6 @@ class AffixAspectFilterModel(BaseModel):
 class AffixFilterModel(AffixAspectFilterModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     want_greater: bool = False
-    required: bool = False
     min_percent_of_affix: int = Field(default=0, alias="minPercentOfAffix")
 
     @field_validator("name")
@@ -96,9 +95,6 @@ class AffixFilterCountModel(BaseModel):
             self.model_fields_set.remove("min_count")
             self.model_fields_set.remove("max_count")
 
-        req_count = sum(1 for a in self.count if a.required)
-        self.min_count = max(self.min_count, req_count)
-
         if self.min_count > self.max_count:
             msg = "minCount must be smaller than maxCount"
             raise ValueError(msg)
@@ -139,36 +135,9 @@ class AspectUniqueFilterModel(AffixAspectFilterModel):
 class GlobalUniqueModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     profile_alias: str = Field(default="", alias="profileAlias")
-    min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
-    min_percent_of_aspect: int = Field(default=0, alias="minPercentOfAspect")
-    min_power: int = Field(default=0, alias="minPower")
-    item_type: list[ItemType] = Field(default=[], alias="itemType")
     affix_pool: list[AffixFilterCountModel] = Field(default=[], alias="affixPool")
     inherent_pool: list[AffixFilterCountModel] = Field(default=[], alias="inherentPool")
     unique_aspect: list[AspectUniqueFilterModel] = Field(default=[], alias="uniqueAspect")
-
-    @field_validator("min_power")
-    @classmethod
-    def check_min_power(cls, v: int) -> int:
-        return check_greater_than_zero(v)
-
-    @field_validator("min_greater_affix_count")
-    @classmethod
-    def count_validator(cls, v: int) -> int:
-        if not 0 <= v <= 4:
-            msg = "must be in [0, 4]"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("min_percent_of_aspect")
-    @classmethod
-    def percent_validator(cls, v: int) -> int:
-        return validate_percent(v)
-
-    @field_validator("item_type", mode="before")
-    @classmethod
-    def parse_item_type(cls, data: str | list[str]) -> list[str]:
-        return _parse_item_type_or_rarities(data)
 
     @field_validator("unique_aspect", mode="before")
     @classmethod
@@ -184,8 +153,6 @@ class GlobalUniqueModel(BaseModel):
         if len({aspect.name for aspect in self.unique_aspect}) != len(self.unique_aspect):
             msg = "uniqueAspect names must be unique"
             raise ValueError(msg)
-        if not self.affix_pool:
-            self.affix_pool = [AffixFilterCountModel(count=[], min_count=0)]
         return self
 
 
@@ -230,8 +197,6 @@ class ItemFilterModel(BaseModel):
         if len({aspect.name for aspect in self.unique_aspect}) != len(self.unique_aspect):
             msg = "uniqueAspect names must be unique"
             raise ValueError(msg)
-        if not self.affix_pool:
-            self.affix_pool = [AffixFilterCountModel(count=[], min_count=0)]
         return self
 
 

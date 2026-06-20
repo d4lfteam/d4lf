@@ -4,6 +4,8 @@ requires = ["hatchling"]
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.6.0",
+    "prek>=0.4.5",
     "pyinstaller",
     "pytest",
     "pytest-cov",

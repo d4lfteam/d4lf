@@ -1,7 +1,8 @@
 import contextlib
 import copy
+from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, pyqtSignal
+from PyQt6.QtCore import QSignalBlocker, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QDialog,
     QFrame,
@@ -26,21 +27,18 @@ from src.config.profile_models import (
     GlobalUniqueModel,
 )
 from src.dataloader import Dataloader
-from src.gui.importer.gui_common import MAX_POWER
-from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
-from src.gui.models.dialog import DeleteItem, IgnoreScrollWheelSpinBox
+from src.gui.models.dialog import DeleteItem
 from src.gui.profile_editor.affixes_tab import (
     AffixSummaryWidget,
-    CharacterSpinBox,
-    ItemTypePicker,
     UniqueAspectWidget,
     _create_column_footer,
     _create_column_header,
-    _item_type_summary,
 )
-from src.item.data.item_type import ItemType, is_armor, is_jewelry, is_weapon
 
 UNIQUES_TABNAME = "GlobalRules"
+
+if TYPE_CHECKING:
+    from src.item.data.item_type import ItemType
 
 
 class UniqueWidget(QWidget):
@@ -48,15 +46,10 @@ class UniqueWidget(QWidget):
 
     def __init__(self, unique_model: GlobalUniqueModel, parent=None):
         super().__init__(parent)
-        self.settings = QSettings("d4lf", "profile_editor")
         self.unique_model = unique_model
         self.affix_column_widgets = []
         self.affix_pool_layouts = []
-        self.affix_footers = []
         self.inherent_footer = None
-        self.item_types = [
-            item for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)
-        ]
         self.setup_ui()
 
     def setup_ui(self):
@@ -109,7 +102,7 @@ class UniqueWidget(QWidget):
 
         footer = None
         if pool_model is not None:
-            footer = _create_column_footer(pool_model, self.update_greater_count_label)
+            footer = _create_column_footer(pool_model, lambda: None)
             footer.setStyleSheet(
                 "background-color: #1a1a1a; border: 1px solid #2d2d2d; border-left: none; border-top: none;"
             )
@@ -125,12 +118,11 @@ class UniqueWidget(QWidget):
         is_additional = self.unique_model.affix_pool.index(pool_model) > 0
         remove_cb = (lambda: self.remove_affix_pool_column(pool_model)) if is_additional else None
 
-        col_widget, inner_layout, footer = self._create_col_helper("Affix Pool", add_cb, pool_model, remove_cb)
+        col_widget, inner_layout, _ = self._create_col_helper("Affix Pool", add_cb, pool_model, remove_cb)
         self.columns_layout.addWidget(col_widget)
 
         self.affix_column_widgets.append(col_widget)
         self.affix_pool_layouts.append(inner_layout)
-        self.affix_footers.append(footer)
 
     def add_additional_affix_pool_column(self):
         new_pool = AffixFilterCountModel(count=[], min_count=1)
@@ -150,11 +142,9 @@ class UniqueWidget(QWidget):
 
             widget = self.affix_column_widgets.pop(idx)
             self.affix_pool_layouts.pop(idx)
-            self.affix_footers.pop(idx)
 
             widget.setParent(None)
             widget.deleteLater()
-            self.update_greater_count_label()
 
     def init_aspects(self):
         for aspect in self.unique_model.unique_aspect:
@@ -169,7 +159,6 @@ class UniqueWidget(QWidget):
         layout = self.affix_pool_layouts[pool_idx]
         widget = AffixSummaryWidget(model)
         widget.delete_requested.connect(lambda: self.remove_affix_item_widget(widget, pool_idx))
-        widget.config_changed.connect(self.update_greater_count_label)
         layout.addWidget(widget)
         return widget
 
@@ -181,7 +170,6 @@ class UniqueWidget(QWidget):
             pool.count.pop(idx)
             widget.setParent(None)
             widget.deleteLater()
-            self.update_greater_count_label()
 
     def create_general_groupbox(self):
         self.general_groupbox = QGroupBox()
@@ -211,13 +199,19 @@ class UniqueWidget(QWidget):
 
         top_row.addSpacing(30)
 
-        top_row.addWidget(QLabel("Minimum Power:"))
-        self.min_power = IgnoreScrollWheelSpinBox()
-        self.min_power.setRange(0, MAX_POWER)
-        self.min_power.setValue(self.unique_model.min_power)
-        self.min_power.setFixedWidth(80)
-        self.min_power.valueChanged.connect(self.update_min_power)
-        top_row.addWidget(self.min_power)
+        add_pool_btn = QPushButton("Add Additional Affix Pool")
+        add_pool_btn.setFixedWidth(180)
+        add_pool_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #06201b;
+                border: 1px solid #064e3b;
+                color: #22c55e;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #064e3b; color: white; }
+        """)
+        add_pool_btn.clicked.connect(self.add_additional_affix_pool_column)
+        top_row.addWidget(add_pool_btn)
 
         top_row.addStretch()
 
@@ -236,70 +230,7 @@ class UniqueWidget(QWidget):
         top_row.addWidget(duplicate_btn)
         main_vbox.addLayout(top_row)
 
-        # Item Types (Slots)
-        slots_row = QHBoxLayout()
-        slots_row.addWidget(QLabel("Target Slots:"))
-        self.item_type_line_edit = QLineEdit()
-        self.item_type_line_edit.setReadOnly(True)
-        self.refresh_item_type_summary()
-        slots_row.addWidget(self.item_type_line_edit)
-        edit_item_types_btn = QPushButton("Select Slots")
-        edit_item_types_btn.setMaximumWidth(100)
-        edit_item_types_btn.clicked.connect(self.edit_item_types)
-        slots_row.addWidget(edit_item_types_btn)
-        main_vbox.addLayout(slots_row)
-
-        # Min Greater Affixes with Auto Sync
-        ga_row = QHBoxLayout()
-        ga_row.addWidget(QLabel("Min Greater Affixes:"))
-        self.min_greater = CharacterSpinBox()
-        self.min_greater.set_range(0, 4)
-        self.min_greater.set_value(self.unique_model.min_greater_affix_count)
-        self.min_greater.setFixedWidth(100)
-        self.min_greater.value_changed.connect(self.update_min_greater_affix_from_spin)
-
-        self.auto_sync_checkbox = CheckmarkCheckBox("Auto Sync")
-        self.auto_sync_checkbox.setStyleSheet("background: transparent;")
-        self.auto_sync_checkbox.setChecked(
-            self.settings.value(f"auto_sync_ga_global_{self.unique_model.profile_alias}", defaultValue=False, type=bool)
-        )
-        self.auto_sync_checkbox.stateChanged.connect(self.toggle_auto_sync)
-
-        self.greater_count_label = QLabel()
-        self.greater_count_label.setProperty("greaterCountLabel", True)  # noqa: FBT003
-        self._refresh_widget_style(self.greater_count_label)
-
-        ga_row.addWidget(self.min_greater)
-        ga_row.addWidget(self.auto_sync_checkbox)
-        ga_row.addWidget(self.greater_count_label)
-        ga_row.addStretch()
-
-        add_pool_btn = QPushButton("Add Additional Affix Pool")
-        add_pool_btn.setFixedWidth(180)
-        add_pool_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #06201b;
-                border: 1px solid #064e3b;
-                color: #22c55e;
-                border-radius: 4px;
-            }
-            QPushButton:hover { background-color: #064e3b; color: white; }
-        """)
-        add_pool_btn.clicked.connect(self.add_additional_affix_pool_column)
-        ga_row.addWidget(add_pool_btn)
-
-        if self.auto_sync_checkbox.isChecked():
-            self.min_greater.setProperty("autoSyncSpin", True)  # noqa: FBT003
-            self._refresh_widget_style(self.min_greater)
-
-        main_vbox.addLayout(ga_row)
-
-        self.min_greater.setEnabled(not self.auto_sync_checkbox.isChecked())
         self.content_layout.addWidget(self.general_groupbox)
-
-    def _refresh_widget_style(self, widget):
-        widget.style().unpolish(widget)
-        widget.style().polish(widget)
 
     def _on_duplicate_clicked(self):
         self.duplicate_requested.emit(self.unique_model)
@@ -351,61 +282,6 @@ class UniqueWidget(QWidget):
         if widget.open_config_dialog() == QDialog.DialogCode.Rejected:
             self.remove_affix_item_widget(widget)
 
-    def toggle_auto_sync(self):
-        is_auto = self.auto_sync_checkbox.isChecked()
-        self.settings.setValue(f"auto_sync_ga_global_{self.unique_model.profile_alias}", is_auto)
-
-        self.min_greater.setEnabled(not is_auto)
-        if is_auto:
-            self.min_greater.setProperty("autoSyncSpin", True)  # noqa: FBT003
-        else:
-            self.min_greater.setProperty("autoSyncSpin", False)  # noqa: FBT003
-        self._refresh_widget_style(self.min_greater)
-
-        if is_auto:
-            self.update_greater_count_label()
-
-    def update_greater_count_label(self):
-        count = 0
-        # Count in affix pools
-        for pool in self.unique_model.affix_pool:
-            for affix in pool.count:
-                if getattr(affix, "want_greater", False):
-                    count += 1
-
-        if count == 0:
-            self.greater_count_label.setText("(no greater affixes marked)")
-        elif count == 1:
-            self.greater_count_label.setText("(1 greater affix marked)")
-        else:
-            self.greater_count_label.setText(f"({count} greater affixes marked)")
-            if self.auto_sync_checkbox.isChecked():
-                with QSignalBlocker(self.min_greater):
-                    self.min_greater.set_value(count)
-
-        # Update affix pool footers
-        for footer, model in zip(self.affix_footers, self.unique_model.affix_pool, strict=False):
-            self._update_footer_constraints(footer, model)
-
-    def _update_footer_constraints(self, footer, model):
-        if footer and model:
-            min_spin = footer.property("min_spin")
-            if min_spin:
-                min_allowed = sum(1 for a in model.count if getattr(a, "required", False))
-                min_spin.set_minimum(min_allowed)
-                if model.min_count < min_allowed:
-                    model.min_count = min_allowed
-                    min_spin.set_value(min_allowed)
-
-    def refresh_item_type_summary(self):
-        self.item_type_line_edit.setText(_item_type_summary(self.unique_model.item_type))
-
-    def edit_item_types(self):
-        picker = ItemTypePicker(self, self.item_types, self.unique_model.item_type)
-        if picker.exec() == QDialog.DialogCode.Accepted:
-            self.unique_model.item_type = picker.get_selected_item_types()
-            self.refresh_item_type_summary()
-
     def update_profile_alias(self, value: str):
         self.unique_model.profile_alias = value.strip()
         self.update_parent_tab_text()
@@ -418,22 +294,11 @@ class UniqueWidget(QWidget):
                 break
             p = p.parent()
 
-    def update_min_power(self):
-        self.unique_model.min_power = self.min_power.value()
-
-    def update_min_greater_affix(self):
-        self.unique_model.min_greater_affix_count = self.min_greater.value()
-
-    def update_min_greater_affix_from_spin(self, value: int):
-        self.unique_model.min_greater_affix_count = value
-
 
 class UniquesTab(QWidget):
     def __init__(self, unique_model_list: list[GlobalUniqueModel], parent=None):
         super().__init__(parent)
         self.unique_model_list = unique_model_list
-        self._current_slot_name = ""
-        self._current_slot_item_types = []
         self.loaded = False
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
@@ -533,8 +398,6 @@ class UniquesTab(QWidget):
         """Show only tabs that match the provided item types."""
         if not hasattr(self, "tab_widget"):
             return
-        self._current_slot_name = slot_name
-        self._current_slot_item_types = item_types
 
         with QSignalBlocker(self.tab_widget):
             if slot_name is None:  # Global Rules view
@@ -593,11 +456,9 @@ class UniquesTab(QWidget):
 
                 model = self.unique_model_list[i]
                 alias = model.profile_alias.lower().replace(" ", "").replace("-", "")
-                rule_types = getattr(model, "item_type", [])
-                type_match = not item_types or not rule_types or any(t in rule_types for t in item_types)
 
                 if has_exact_match:
-                    visible = type_match and (
+                    visible = (
                         alias == slot_match_name
                         or (slot_match_name and slot_match_name in alias)
                         or (alias and alias in slot_match_name)
@@ -614,7 +475,7 @@ class UniquesTab(QWidget):
                         or (is_main_hand and alias == "weapon")
                     )
                 else:
-                    visible = type_match
+                    visible = True
 
                 if visible:
                     self._ensure_tab_instantiated(i)
@@ -707,7 +568,6 @@ class UniquesTab(QWidget):
             self.tab_widget.setTabText(i, model.profile_alias or f"Rule {i}")
 
     def add_item_type(self):
-        item_types = self._current_slot_item_types or []
         plus_idx = -1
         for i in range(self.tab_widget.count()):
             if self.tab_widget.tabText(i) == "+":
@@ -719,7 +579,7 @@ class UniquesTab(QWidget):
             self.tab_widget.setCurrentIndex(plus_idx - 1)
 
         alias = f"New Rule {self.tab_widget.count()}"
-        unique_model = GlobalUniqueModel(item_type=item_types, profileAlias=alias)
+        unique_model = GlobalUniqueModel(profileAlias=alias)
         group = UniqueWidget(unique_model)
         group.duplicate_requested.connect(self.duplicate_rule_tab)
         self.tab_widget.insertTab(plus_idx, group, alias)

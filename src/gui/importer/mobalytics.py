@@ -146,6 +146,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         raw_inherents = [x for x in raw_inherents if x is not None]
 
         is_unique = entity_type == "uniqueItems"
+        is_mythic = is_unique and _is_mythic_unique_item(item)
         if is_unique:
             try:
                 item_filter.unique_aspect = [AspectUniqueFilterModel(name=item_name)]
@@ -156,7 +157,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         if legendary_aspect:
             aspect_upgrade_filters.append(legendary_aspect)
 
-        if not raw_affixes and not raw_inherents:
+        if not raw_affixes and not raw_inherents and not is_mythic:
             LOGGER.warning(f"Skipping {slot_type} because it had no stats provided.")
             continue
 
@@ -202,15 +203,16 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         affixes = _convert_raw_to_affixes(raw_affixes, config.import_greater_affixes)
         inherents = _convert_raw_to_affixes(raw_inherents)
 
-        item_filter.affix_pool = [
-            AffixFilterCountModel(
-                count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
-                min_count=1 if is_unique else 3,
-            )
-        ]
-        update_mingreateraffixcount(item_filter, config.require_greater_affixes)
+        if not is_mythic:
+            item_filter.affix_pool = [
+                AffixFilterCountModel(
+                    count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
+                    min_count=1 if is_unique else 3,
+                )
+            ]
+            update_mingreateraffixcount(item_filter, config.require_greater_affixes)
         item_filter.min_power = 100
-        if inherents:
+        if inherents and not is_mythic:
             item_filter.inherent_pool = [
                 AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
             ]
@@ -241,9 +243,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     if config.export_paragon:
         steps = extract_mobalytics_paragon_steps(paragon_data if isinstance(paragon_data, dict) else {})
         if steps:
-            profile.paragon = build_paragon_profile_payload(
-                build_name=build_name, source_url=url, paragon_boards_list=steps
-            )
+            profile.paragon = build_paragon_profile_payload(build_name=build_name, paragon_boards_list=steps)
         else:
             LOGGER.warning("Paragon export enabled, but no paragon data was found for this Mobalytics variant.")
 
@@ -315,6 +315,21 @@ def _extract_mobalytics_season_number(full_script_data_json: dict) -> str:
     else:
         season_number = ""
     return season_number
+
+
+def _is_mythic_unique_item(item: dict) -> bool:
+    return _contains_mythic_marker(item)
+
+
+def _contains_mythic_marker(value: object) -> bool:
+    if isinstance(value, str):
+        normalized = value.replace("_", " ").replace("-", " ")
+        return re.search(r"\bmythic\b", normalized, flags=re.IGNORECASE) is not None
+    if isinstance(value, dict):
+        return any(_contains_mythic_marker(child) for child in value.values())
+    if isinstance(value, list):
+        return any(_contains_mythic_marker(child) for child in value)
+    return False
 
 
 def _get_legendary_aspect(name: str) -> str:

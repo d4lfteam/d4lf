@@ -260,7 +260,23 @@ class ProfileTab(QWidget):
                 self.settings.setValue("last_opened_profile", filename_without_extension)
 
             except ValidationError as e:
-                if "minGreaterAffixCount" in str(e):
+                error_text = str(e)
+                if "GlobalUniques" in error_text and any(
+                    field in error_text
+                    for field in ("minGreaterAffixCount", "minPercentOfAspect", "minPower", "itemType")
+                ):
+                    QMessageBox.critical(
+                        self,
+                        "Profile Validation Failed",
+                        (
+                            f"PROFILE VALIDATION FAILED: {self.file_path}\n\n"
+                            "GlobalUniques no longer supports itemType, minPower, minGreaterAffixCount, "
+                            "or minPercentOfAspect.\n\n"
+                            "Use regular Affixes rules for item type, power, and item-level greater affix filters. "
+                            "Use GlobalUniques affix pools, inherent pools, and unique aspect entries for unique rules."
+                        ),
+                    )
+                elif "minGreaterAffixCount" in error_text:
                     error_text = (
                         f"PROFILE VALIDATION FAILED: {self.file_path}\n\n"
                         "You are using an old, outdated field that must be removed from your profile.\n\n"

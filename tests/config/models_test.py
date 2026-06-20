@@ -129,6 +129,11 @@ class TestAffixFilterModel:
         with pytest.raises(ValidationError, match="affix .* does not exist"):
             AffixFilterModel(name="invalid_affix_name_123")
 
+    def test_required_field_fails(self) -> None:
+        """Test that required is not supported on affix filters."""
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            AffixFilterModel(name="critical_strike_damage", required=True)
+
     def test_camelcase_input(self) -> None:
         """Test loading with camelCase (legacy format)."""
         model = AffixFilterModel(name="critical_strike_damage", minPercentOfAffix=80, want_greater=True)
@@ -266,94 +271,69 @@ class TestGlobalUniqueModel:
 
     def test_camelcase_input(self) -> None:
         """Test loading with camelCase."""
-        model = GlobalUniqueModel(
-            profileAlias="test_profile", minGreaterAffixCount=2, minPercentOfAspect=80, minPower=850
-        )
+        model = GlobalUniqueModel(profileAlias="test_profile")
         assert model.profile_alias == "test_profile"
-        assert model.min_greater_affix_count == 2
-        assert model.min_percent_of_aspect == 80
-        assert model.min_power == 850
+        assert model.affix_pool == []
 
     def test_snake_case_input(self) -> None:
         """Test loading with snake_case."""
-        model = GlobalUniqueModel(
-            profile_alias="another_profile", min_greater_affix_count=3, min_percent_of_aspect=75, min_power=900
-        )
+        model = GlobalUniqueModel(profile_alias="another_profile")
         assert model.profile_alias == "another_profile"
-        assert model.min_greater_affix_count == 3
-        assert model.min_percent_of_aspect == 75
-        assert model.min_power == 900
-
-    def test_mixed_naming(self) -> None:
-        """Test mixing both naming conventions."""
-        model = GlobalUniqueModel(
-            profileAlias="mixed",  # camelCase
-            min_greater_affix_count=1,  # snake_case
-            minPercentOfAspect=70,  # camelCase
-            min_power=800,  # snake_case
-        )
-        assert model.profile_alias == "mixed"
-        assert model.min_greater_affix_count == 1
-        assert model.min_percent_of_aspect == 70
-        assert model.min_power == 800
+        assert model.affix_pool == []
 
     def test_export_snake_case(self) -> None:
         """Test export with by_alias=False."""
-        model = GlobalUniqueModel(
-            profile_alias="test", min_greater_affix_count=2, min_percent_of_aspect=85, min_power=875
-        )
+        model = GlobalUniqueModel(profile_alias="test")
         exported = json.loads(model.model_dump_json(by_alias=False))
         assert exported["profile_alias"] == "test"
-        assert exported["min_greater_affix_count"] == 2
-        assert exported["min_percent_of_aspect"] == 85
-        assert exported["min_power"] == 875
+        assert "min_greater_affix_count" not in exported
+        assert "min_percent_of_aspect" not in exported
+        assert "min_power" not in exported
+        assert "item_type" not in exported
 
     def test_export_camelcase(self) -> None:
         """Test export with by_alias=True."""
-        model = GlobalUniqueModel(
-            profile_alias="test", min_greater_affix_count=2, min_percent_of_aspect=85, min_power=875
-        )
+        model = GlobalUniqueModel(profile_alias="test")
         exported = json.loads(model.model_dump_json(by_alias=True))
         assert exported["profileAlias"] == "test"
-        assert exported["minGreaterAffixCount"] == 2
-        assert exported["minPercentOfAspect"] == 85
-        assert exported["minPower"] == 875
+        assert "minGreaterAffixCount" not in exported
+        assert "minPercentOfAspect" not in exported
+        assert "minPower" not in exported
+        assert "itemType" not in exported
 
-    def test_validators_camelcase(self) -> None:
-        """Test validators with camelCase input."""
-        # Test min_greater_affix_count > 4
-        with pytest.raises(ValidationError, match="must be in \\[0, 4\\]"):
-            GlobalUniqueModel(minGreaterAffixCount=5)
-
-        # Test min_percent_of_aspect > 100
-        with pytest.raises(ValidationError, match="must be less than or equal to 100"):
-            GlobalUniqueModel(minPercentOfAspect=150)
-
-    def test_validators_snake_case(self) -> None:
-        """Test validators with snake_case input."""
-        # Test min_greater_affix_count > 4
-        with pytest.raises(ValidationError, match="must be in \\[0, 4\\]"):
-            GlobalUniqueModel(min_greater_affix_count=5)
-
-        # Test min_percent_of_aspect > 100
-        with pytest.raises(ValidationError, match="must be less than or equal to 100"):
-            GlobalUniqueModel(min_percent_of_aspect=150)
+    @pytest.mark.parametrize(
+        "field_name",
+        [
+            "minGreaterAffixCount",
+            "min_greater_affix_count",
+            "minPercentOfAspect",
+            "min_percent_of_aspect",
+            "minPower",
+            "min_power",
+            "itemType",
+            "item_type",
+        ],
+    )
+    def test_unsupported_fields_fail(self, field_name: str) -> None:
+        """Test that removed top-level filters are not supported on global unique rules."""
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            GlobalUniqueModel(**{field_name: 1})
 
 
 class TestItemFilterModel:
     """Test ItemFilterModel with both naming conventions."""
 
     def test_min_greater_affix_in_range(self) -> None:
-        """Test min_greater_affix validation for GlobalUniqueModel."""
+        """Test min_greater_affix validation."""
         # Valid values 0-4
         for value in [0, 1, 2, 3, 4]:
-            model = GlobalUniqueModel(min_greater_affix_count=value)
+            model = ItemFilterModel(min_greater_affix_count=value)
             assert model.min_greater_affix_count == value
 
     def test_min_greater_affix_out_of_range_fails(self) -> None:
         """Test that min_greater_affix outside [0,4] fails."""
         with pytest.raises(ValidationError, match="must be in \\[0, 4\\]"):
-            GlobalUniqueModel(min_greater_affix_count=5)
+            ItemFilterModel(min_greater_affix_count=5)
 
     def test_item_type_parse_string(self) -> None:
         """Test item_type parsing from string."""
@@ -373,9 +353,9 @@ class TestItemFilterModel:
         assert len(model.item_type) == 2
 
     def test_min_greater_affix_negative_fails(self) -> None:
-        """Test that negative min_greater_affix fails (line 180-183) for GlobalUniqueModel."""
+        """Test that negative min_greater_affix fails."""
         with pytest.raises(ValidationError, match="must be in \\[0, 4\\]"):
-            GlobalUniqueModel(min_greater_affix_count=-1)
+            ItemFilterModel(min_greater_affix_count=-1)
 
     def test_camelcase_input(self) -> None:
         """Test loading with camelCase."""
@@ -478,22 +458,21 @@ class TestEdgeCases:
 
     def test_zero_values(self) -> None:
         """Test zero values are handled correctly."""
-        model = GlobalUniqueModel(min_greater_affix_count=0, min_percent_of_aspect=0, min_power=0)
+        model = ItemFilterModel(min_greater_affix_count=0, min_power=0)
         assert model.min_greater_affix_count == 0
-        assert model.min_percent_of_aspect == 0
         assert model.min_power == 0
 
     def test_boundary_values(self) -> None:
         """Test boundary values."""
         # Maximum valid values
-        model = GlobalUniqueModel(
+        model = ItemFilterModel(
             min_greater_affix_count=4,  # max is 4
-            min_percent_of_aspect=100,  # max is 100
             min_power=1,  # must be > 0
         )
+        aspect_model = AspectUniqueFilterModel(name="ancients_oath", min_percent_of_aspect=100)
         assert model.min_greater_affix_count == 4
-        assert model.min_percent_of_aspect == 100
         assert model.min_power == 1
+        assert aspect_model.min_percent_of_aspect == 100
 
     def test_populate_by_name_enables_both(self) -> None:
         """Test that populate_by_name=True is configured correctly."""
@@ -509,11 +488,11 @@ class TestEdgeCases:
 
     def test_field_order_independence(self) -> None:
         """Test that field order doesn't matter with mixed naming."""
-        model1 = GlobalUniqueModel(
+        model1 = ItemFilterModel(
             min_power=800,  # snake_case first
             minGreaterAffixCount=2,  # camelCase second
         )
-        model2 = GlobalUniqueModel(
+        model2 = ItemFilterModel(
             minGreaterAffixCount=2,  # camelCase first
             min_power=800,  # snake_case second
         )
@@ -666,7 +645,7 @@ class TestProfileModel:
             name="test_profile",
             Affixes=[],
             AspectUpgrades=[],
-            GlobalUniques=[GlobalUniqueModel(minPower=800)],
+            GlobalUniques=[GlobalUniqueModel(profileAlias="power_test")],
             Sigils={"blacklist": [], "whitelist": [], "priority": "blacklist"},
             Tributes=[],
             Paragon=None,
@@ -675,7 +654,7 @@ class TestProfileModel:
         assert model.affixes == []
         assert model.aspect_upgrades == []
         assert len(model.global_uniques) == 1
-        assert model.global_uniques[0].min_power == 800
+        assert model.global_uniques[0].profile_alias == "power_test"
 
     def test_snake_case_input(self) -> None:
         """Test loading with snake_case (new format)."""
@@ -683,7 +662,7 @@ class TestProfileModel:
             name="test_profile",
             affixes=[],
             aspect_upgrades=[],
-            global_uniques=[GlobalUniqueModel(min_power=900)],
+            global_uniques=[GlobalUniqueModel(profile_alias="power_test")],
             sigils={"blacklist": [], "whitelist": [], "priority": "blacklist"},
             tributes=[],
             paragon=None,
@@ -692,7 +671,7 @@ class TestProfileModel:
         assert model.affixes == []
         assert model.aspect_upgrades == []
         assert len(model.global_uniques) == 1
-        assert model.global_uniques[0].min_power == 900
+        assert model.global_uniques[0].profile_alias == "power_test"
 
     def test_mixed_naming(self) -> None:
         """Test mixing both naming conventions."""
@@ -700,7 +679,7 @@ class TestProfileModel:
             name="mixed_profile",
             Affixes=[],  # camelCase
             aspect_upgrades=[],  # snake_case
-            GlobalUniques=[GlobalUniqueModel(minPower=850)],  # camelCase
+            GlobalUniques=[GlobalUniqueModel(profileAlias="mixed")],  # camelCase
             sigils={"blacklist": [], "whitelist": [], "priority": "blacklist"},  # snake_case
         )
         assert model.name == "mixed_profile"
@@ -740,7 +719,7 @@ class TestProfileModel:
 
     def test_export_snake_case(self) -> None:
         """Test export with by_alias=False produces snake_case."""
-        model = ProfileModel(name="test", global_uniques=[GlobalUniqueModel(min_power=800)])
+        model = ProfileModel(name="test", global_uniques=[GlobalUniqueModel(profile_alias="test_rule")])
         exported = json.loads(model.model_dump_json(by_alias=False))
 
         # Check top-level fields are snake_case
@@ -752,17 +731,17 @@ class TestProfileModel:
         assert "paragon" in exported
 
         # Check nested fields are also snake_case
-        assert "min_power" in exported["global_uniques"][0]
+        assert "profile_alias" in exported["global_uniques"][0]
 
         # Ensure camelCase is NOT present
         assert "Affixes" not in exported
         assert "AspectUpgrades" not in exported
         assert "GlobalUniques" not in exported
-        assert "minPower" not in exported["global_uniques"][0]
+        assert "profileAlias" not in exported["global_uniques"][0]
 
     def test_export_camelcase(self) -> None:
         """Test export with by_alias=True produces camelCase."""
-        model = ProfileModel(name="test", global_uniques=[GlobalUniqueModel(min_power=800)])
+        model = ProfileModel(name="test", global_uniques=[GlobalUniqueModel(profile_alias="test_rule")])
         exported = json.loads(model.model_dump_json(by_alias=True))
 
         # Check top-level fields are camelCase
@@ -774,13 +753,13 @@ class TestProfileModel:
         assert "Paragon" in exported
 
         # Check nested fields are also camelCase
-        assert "minPower" in exported["GlobalUniques"][0]
+        assert "profileAlias" in exported["GlobalUniques"][0]
 
         # Ensure snake_case is NOT present
         assert "affixes" not in exported
         assert "aspect_upgrades" not in exported
         assert "global_uniques" not in exported
-        assert "min_power" not in exported["GlobalUniques"][0]
+        assert "profile_alias" not in exported["GlobalUniques"][0]
 
     def test_defaults(self) -> None:
         """Test default values work with both naming styles."""
@@ -797,16 +776,16 @@ class TestProfileModel:
 
     def test_dict_construction_camelcase(self) -> None:
         """Test constructing from dict with camelCase keys."""
-        data: dict[str, Any] = {"name": "dict_test", "GlobalUniques": [{"minPower": 800}]}
+        data: dict[str, Any] = {"name": "dict_test", "GlobalUniques": [{"profileAlias": "dict_rule"}]}
         model = ProfileModel(**data)
         assert model.name == "dict_test"
         assert len(model.global_uniques) == 1
-        assert model.global_uniques[0].min_power == 800
+        assert model.global_uniques[0].profile_alias == "dict_rule"
 
     def test_dict_construction_snake_case(self) -> None:
         """Test constructing from dict with snake_case keys."""
-        data: dict[str, Any] = {"name": "dict_test", "global_uniques": [{"min_power": 900}]}
+        data: dict[str, Any] = {"name": "dict_test", "global_uniques": [{"profile_alias": "dict_rule"}]}
         model = ProfileModel(**data)
         assert model.name == "dict_test"
         assert len(model.global_uniques) == 1
-        assert model.global_uniques[0].min_power == 900
+        assert model.global_uniques[0].profile_alias == "dict_rule"

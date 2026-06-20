@@ -30,13 +30,13 @@ simple_mythics = [
 
 global_uniques = [
     (
-        "item power too low",
+        "does not match affix pool",
         [],
         TestUnique(power=800, aspect=Aspect(name="penitent_greaves", value=10, min_value=9, max_value=100)),
     ),
     (
-        "has greater affixes",
-        ["test.lidless_wall"],
+        "matches affix pool",
+        ["high_life.lidless_wall"],
         TestUnique(
             aspect=Aspect(name="lidless_wall", value=22, min_value=20, max_value=300),
             affixes=[
@@ -49,8 +49,8 @@ global_uniques = [
         ),
     ),
     (
-        "percent of affix is good",
-        ["good_stuff.black_river"],
+        "does not match aspect percent alone",
+        [],
         TestUnique(aspect=Aspect(name="black_river", value=128, min_value=1, max_value=130), power=800),
     ),
 ]
