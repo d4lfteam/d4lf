@@ -44,7 +44,7 @@ LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
 PROFILE_GUIDE_BASE_URL = f"{BUILD_GUIDE_BASE_URL}profile"
 SCRIPT_XPATH = "//script"
-BUILD_SCRIPT_ASSIGNMENT = re.compile(r"window\.__PRELOADED_STATE__\s*=\s*")
+BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
 PAGE_DIAGNOSTIC_MARKERS = (
     "__PRELOADED_STATE__",
     "__NEXT_DATA__",
@@ -66,7 +66,7 @@ class MobalyticsError(Exception):
     pass
 
 
-@retry_importer(inject_webdriver=True, uc=True)
+@retry_importer(inject_webdriver=True)
 def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     url = config.url.strip().replace("\n", "")
     if BUILD_GUIDE_BASE_URL not in url:
@@ -77,7 +77,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         return
     url = _fix_input_url(url=url)
     LOGGER.info(f"Loading {url}")
-    _open_mobalytics_url(driver=driver, url=url)
+    driver.get(url)
     wait = WebDriverWait(driver, 10)
     wait.until(ec.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
     variant_id = url.split(",")[1].split("#")[0] if "activeVariantId" in url else None
@@ -87,15 +87,15 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
     full_script_data_json = None
     for script in scripts_elem:
-        full_script_data_json = _extract_mobalytics_preloaded_state(script.text_content())
-        if full_script_data_json is not None:
+        if script.text and script.text.strip().startswith(BUILD_SCRIPT_PREFIX):
+            full_script_data_json = json.loads(script.text.strip().replace(BUILD_SCRIPT_PREFIX, "")[:-1])
             break
 
     if not full_script_data_json:
         _log_mobalytics_page_diagnostics(driver=driver, page_source=page_source, script_count=len(scripts_elem))
         LOGGER.error(
             msg
-            := "No script containing build data was found. This means Mobalytics has changed how they present data, please submit a bung."
+            := "No script containing build data was found. This means Mobalytics has changed how they present data, please submit a bug."
         )
         raise MobalyticsError(msg)
 
@@ -273,25 +273,6 @@ def _fix_input_url(url: str) -> str:
     return unquote(url)
 
 
-def _open_mobalytics_url(driver: ChromiumDriver, url: str) -> None:
-    if hasattr(driver, "uc_open_with_reconnect"):
-        driver.uc_open_with_reconnect(url, reconnect_time=4)
-        return
-    driver.get(url)
-
-
-def _extract_mobalytics_preloaded_state(script_text: str) -> dict | None:
-    match = BUILD_SCRIPT_ASSIGNMENT.search(script_text)
-    if match is None:
-        return None
-    script_json = script_text[match.end() :].strip()
-    try:
-        data, _ = json.JSONDecoder().raw_decode(script_json)
-    except json.JSONDecodeError:
-        return None
-    return data if isinstance(data, dict) else None
-
-
 def _log_mobalytics_page_diagnostics(driver: ChromiumDriver, page_source: str, script_count: int) -> None:
     page_source_casefold = page_source.casefold()
     matched_markers = [marker for marker in PAGE_DIAGNOSTIC_MARKERS if marker.casefold() in page_source_casefold]
@@ -377,7 +358,8 @@ if __name__ == "__main__":
         # # This has two rogue offhand weapons
         # "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
         # Season 13 testing
-        "https://mobalytics.gg/diablo-4/builds/barbarian-ancients-leap-endgame"
+        # "https://mobalytics.gg/diablo-4/builds/barbarian-ancients-leap-endgame"
+        "https://mobalytics.gg/diablo-4/builds/sorcerer-ball-lightning"
     ]
     for X in URLS:
         config = ImportConfig(
