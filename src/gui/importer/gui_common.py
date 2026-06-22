@@ -31,9 +31,7 @@ LOGGER = logging.getLogger(__name__)
 
 D = TypeVar("D", bound=WebDriver | WebElement)
 T = TypeVar("T")
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-}
+HEADERS = {"User-Agent": "Diablo 4 Loot Filter - Profile Importer"}
 
 # UI Theme Colors
 TRANSPARENT_KEY = "#ff00ff"
