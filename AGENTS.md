@@ -221,3 +221,17 @@ All UI coordinates in `src/config/data.py` are defined at **3840×2160** (UHD) a
 - User data directory: `~/.d4lf/` (profiles, params.ini, logs).
 - Version is defined in `src/__init__.py` as `__version__`.
 - Existing comments should be kept in place unless the code they relate to is removed
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked as local markdown files under `.scratch/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage labels use the default canonical strings. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This repo uses a single-context domain docs layout. See `docs/agents/domain.md`.

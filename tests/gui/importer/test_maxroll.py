@@ -6,6 +6,7 @@ import pytest
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.maxroll import _find_item_affixes, _find_item_type, _resolve_visible_profile_index, import_maxroll
+from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_maxroll_paragon_steps
 from src.item.data.item_type import ItemType
 
 if typing.TYPE_CHECKING:
@@ -112,3 +113,17 @@ def test_find_item_affixes_resolves_skill_rank_category_from_related_description
     affixes = _find_item_affixes(mapping_data=mapping_data, item_affixes=[{"nid": 1}], item_type=ItemType.Amulet)
 
     assert [affix.name for affix in affixes] == ["to_ultimate_skills"]
+
+
+def test_extract_maxroll_paragon_steps_preserves_board_and_glyph_ids() -> None:
+    steps = extract_maxroll_paragon_steps({
+        "paragon": {
+            "steps": [{"data": [{"id": "Paragon_Barb_00", "glyph": "Glyph_01", "rotation": 0, "nodes": {"0": True}}]}]
+        }
+    })
+
+    payload = build_paragon_profile_payload("Build Name", "https://example.invalid", steps)
+
+    board = payload.paragon_boards_list[0][0]
+    assert board.board_id == "Paragon_Barb_00"
+    assert board.glyph_id == "Glyph_01"

@@ -47,6 +47,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
+    from src.config.profile_models import ParagonBoardModel
+
 LOGGER = logging.getLogger(__name__)
 
 OverlaySettingT = TypeVar("OverlaySettingT", int, str, bool)
@@ -304,15 +306,6 @@ def _clamp_int(v: int | None, lo: int, hi: int, default: int) -> int:
         return default
 
 
-def _iter_paragon_payloads(paragon: object) -> list[dict[str, Any]]:
-    """Normalize Paragon data so the rest of the loader can iterate one shape."""
-    if isinstance(paragon, dict):
-        return [paragon]
-    if isinstance(paragon, list):
-        return [payload for payload in paragon if isinstance(payload, dict)]
-    return []
-
-
 def _format_build_display_name(raw_name: object) -> str:
     """Convert stored build/profile names into a cleaner title-card label."""
     text = str(raw_name or "").strip()
@@ -373,26 +366,14 @@ def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]
     paragon_filters = Filter().get_paragon_filters()
 
     builds: list[dict[str, Any]] = []
-    for pname, paragon_payload in paragon_filters.items():
-        # A profile can contain one or many Paragon payloads, and each payload can
-        # contain multiple step states. The overlay shows each step as its own
-        # selectable build entry.
-        for payload in _iter_paragon_payloads(paragon_payload):
-            payload_steps = payload.get("ParagonBoardsList", [])
-            if payload_steps and isinstance(payload_steps, list) and isinstance(payload_steps[0], list):
-                steps = [step for step in payload_steps if isinstance(step, list) and step]
-            elif isinstance(payload_steps, list) and payload_steps:
-                # Older/smaller payloads may store only one board-state list instead
-                # of a list-of-steps. Wrap that shape so the overlay can iterate one way.
-                steps = [payload_steps]
-            else:
-                steps = []
-            bname = payload.get("Name") or payload.get("name") or "Unknown Build"
-            # Newest step first keeps the build selector aligned with the latest
-            # imported planner state while still exposing earlier progression steps.
-            for idx in range(len(steps) - 1, -1, -1):
-                sname = f"{bname} - Step {idx + 1}" if len(steps) > 1 else bname
-                builds.append({"name": sname, "boards": steps[idx], "profile": pname})
+    for pname, payload in paragon_filters.items():
+        steps = payload.paragon_boards_list
+        bname = payload.name or "Unknown Build"
+        # Newest step first keeps the build selector aligned with the latest
+        # imported planner state while still exposing earlier progression steps.
+        for idx in range(len(steps) - 1, -1, -1):
+            sname = f"{bname} - Step {idx + 1}" if len(steps) > 1 else bname
+            builds.append({"name": sname, "boards": steps[idx], "profile": pname})
     return builds
 
 
@@ -411,6 +392,30 @@ def parse_rotation(rot_str: str) -> int:
 def nodes_to_grid(nodes: list[int] | list[bool]) -> list[list[bool]]:
     """Convert the flat 21x21 node list into a 2D boolean grid."""
     return [[bool(nodes[y * GRID + x]) for x in range(GRID)] for y in range(GRID)]
+
+
+def format_board_display_text(board: ParagonBoardModel) -> str:
+    """Build the readable label shown for a Paragon board card."""
+    raw_name = str(board.name or "?")
+    name_parts = raw_name.split("-", 1)
+    class_slug = (name_parts[0] if name_parts else raw_name).strip().lower()
+    board_slug = (name_parts[1] if len(name_parts) > 1 else raw_name).strip()
+    class_name = {class_name: class_name.title() for class_name in PLAYER_CLASSES}.get(
+        class_slug, class_slug.title() if class_slug else "?"
+    )
+
+    glyph_name = "No Glyph"
+    if board.glyph:
+        glyph_parts = str(board.glyph).strip().split("-", 1)
+        glyph_slug = (
+            glyph_parts[1]
+            if len(glyph_parts) > 1 and glyph_parts[0].strip().lower() == class_slug
+            else str(board.glyph).strip()
+        )
+        glyph_name = re.sub(r"[-_]+", " ", glyph_slug).strip().title() if glyph_slug else "No Glyph"
+
+    readable_board = board_slug.replace("-", " ").strip().title() if board_slug else "?"
+    return f"{class_name} - {readable_board} - {glyph_name} - {parse_rotation(board.rotation)}°"
 
 
 # =============================================================================
@@ -1429,19 +1434,7 @@ class ParagonOverlay(tk.Toplevel):
         acc = self._accent_frame_color()
 
         for idx, bd in enumerate(self.boards):
-            # Build a readable line that includes class, board name, glyph, and
-            # rotation so the user can identify each board without opening it.
-            rn, rg = str(bd.get("Name", "?") or "?"), bd.get("Glyph")
-            np = rn.split("-", 1)
-            cs, bs = ((np[0] if np else rn).strip().lower(), (np[1] if len(np) > 1 else rn).strip())
-            cn = {c: c.title() for c in PLAYER_CLASSES}.get(cs, cs.title() if cs else "?")
-            gn = "No Glyph"
-            if rg:
-                gp = str(rg).strip().split("-", 1)
-                g = gp[1] if len(gp) > 1 and gp[0].strip().lower() == cs else str(rg).strip()
-                gn = g.replace("-", " ").strip().title() if g else "No Glyph"
-
-            txt = f"{cn} - {bs.replace('-', ' ').strip().title() if bs else '?'} - {gn} - {parse_rotation(str(bd.get('Rotation', '0')))}°"
+            txt = format_board_display_text(bd)
             sel = idx == self.selected_board_idx
             bg, fg = (SELECT_BG, GOLD) if sel else (CARD_BG, TEXT)
 
@@ -1690,7 +1683,7 @@ class ParagonOverlay(tk.Toplevel):
     def redraw(self) -> None:
         """Redraw the entire transparent grid overlay for the selected board."""
         self.canvas.delete("all")
-        if not self.boards or len(n := self.boards[self.selected_board_idx].get("Nodes") or []) != NODES_LEN:
+        if not self.boards or len(n := self.boards[self.selected_board_idx].nodes) != NODES_LEN:
             return
 
         grid, acc = nodes_to_grid(n), self._accent_frame_color()
