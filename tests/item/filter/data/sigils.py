@@ -74,6 +74,16 @@ sigils = [
             inherent=[Affix(name="iron_hold")],
         ),
     ),
+    ("mythic_matches_profile", ["test"], TestSigil(rarity=ItemRarity.Mythic, inherent=[Affix(name="jalals_vigil")])),
+    (
+        "mythic_fallback",
+        ["Mythic Sigil"],
+        TestSigil(
+            rarity=ItemRarity.Mythic,
+            affixes=[Affix(name="extra_shrines"), Affix(name="monster_attack_speed", value=25.0)],
+            inherent=[Affix(name="astral_prophecy")],
+        ),
+    ),
 ]
 
 sigil_jalal = TestSigil(inherent=[Affix(name="jalals_vigil")])

@@ -26,6 +26,7 @@ from tests.item.filter.data.sigils import (
     sigil_derived_legendary,
     sigil_derived_rare,
     sigil_jalal,
+    sigil_mythic_fallback,
     sigil_priority,
     sigil_rare_blacklisted,
     sigil_unknown_rarity,
@@ -108,6 +109,12 @@ def test_sigil_priority(mocker: MockerFixture):
     assert test_filter.should_keep(sigil_priority).matched == []
     test_filter.sigil_filters[next(iter(test_filter.sigil_filters))].priority = SigilPriority.whitelist
     assert test_filter.should_keep(sigil_priority).matched[0].profile == filters.sigil_priority.name
+
+
+def test_mythic_sigil_always_kept(mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.sigil_filters = {filters.sigil.name: filters.sigil.sigils}
+    assert test_filter.should_keep(sigil_mythic_fallback).matched[0].profile == "Mythic Sigil"
 
 
 @pytest.mark.parametrize(

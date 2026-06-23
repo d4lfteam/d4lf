@@ -254,6 +254,11 @@ class Filter:
             LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Sigils")
             res.keep = True
             res.matched.append(MatchedFilter(f"{profile_name}"))
+
+        if item.rarity == ItemRarity.Mythic and not res.keep:
+            LOGGER.info(f"{item.original_name} -- Matched mythic sigil, always kept")
+            res.keep = True
+            res.matched.append(MatchedFilter("Mythic Sigil"))
         return res
 
     def _check_tribute(self, item: Item) -> FilterResult:
