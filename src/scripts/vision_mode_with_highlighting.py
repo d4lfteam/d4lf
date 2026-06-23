@@ -375,6 +375,8 @@ class VisionModeWithHighlighting:
                                 item_descr_with_loc = item_descr
                             else:
                                 item_descr_with_loc = src.item.descr.read_descr_tts.read_descr_mixed(cropped_descr)
+                            if item_descr_with_loc is None:  # Item was likely mid-transition
+                                continue
                             res = Filter().should_keep(item_descr_with_loc)
                             match = res.keep
 
@@ -398,7 +400,9 @@ class VisionModeWithHighlighting:
         except CancellationRequestedError:
             pass
         except Exception:
-            LOGGER.exception("Error in vision mode. Please create a bug report")
+            LOGGER.exception(
+                "Error in vision mode. If an item was mid-transition this is harmless; if it repeats, please create a bug report."
+            )
         finally:
             self.evaluate_item_thread = None
 
