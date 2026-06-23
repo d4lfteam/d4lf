@@ -1,4 +1,4 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSettings, QSize, Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -297,9 +297,11 @@ class CreateSigil(QDialog):
 
         self.whitelist_sigils = whitelist_sigils
         self.blacklist_sigils = blacklist_sigils
+        self.settings = QSettings("d4lf", "profile_editor")
 
         self.setWindowTitle("Create Sigil")
         self.setMinimumSize(420, 220)
+        self.resize(self.settings.value("create_sigil_size", QSize(420, 220)))
 
         self.main_layout = QVBoxLayout()
         self.form_layout = QFormLayout()
@@ -356,6 +358,10 @@ class CreateSigil(QDialog):
         type_name = self.type_input.currentText()
         kind = self.kind_input.currentText()
         return sigil_name, type_name, kind
+
+    def closeEvent(self, event):  # noqa: N802
+        self.settings.setValue("create_sigil_size", self.size())
+        event.accept()
 
 
 class RemoveSigil(QDialog):

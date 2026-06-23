@@ -263,11 +263,6 @@ class Filter:
             res.keep = True
             res.matched.append(MatchedFilter("Tributes not filtered"))
 
-        if item.rarity == ItemRarity.Mythic:
-            LOGGER.info(f"{item.original_name} -- Matched mythic tribute, always kept")
-            res.keep = True
-            res.matched.append(MatchedFilter("Mythic Tribute"))
-
         for profile_name, profile_filter in self.tribute_filters.items():
             for filter_item in profile_filter:
                 if filter_item.name and not item.name.startswith(filter_item.name):
@@ -279,6 +274,11 @@ class Filter:
                 LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Tributes")
                 res.keep = True
                 res.matched.append(MatchedFilter(f"{profile_name}"))
+
+        if item.rarity == ItemRarity.Mythic and not res.keep:
+            LOGGER.info(f"{item.original_name} -- Matched mythic tribute, always kept")
+            res.keep = True
+            res.matched.append(MatchedFilter("Mythic Tribute"))
         return res
 
     def _check_global_unique_filter(self, item: Item) -> FilterResult:
