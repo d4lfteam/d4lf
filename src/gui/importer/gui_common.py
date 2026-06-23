@@ -127,9 +127,7 @@ def format_number_as_short_string(n: int) -> str:
 
 
 def get_class_name(input_str: str) -> str:
-    input_str = input_str.strip().lower()
-    if not input_str:
-        return "Unknown"
+    input_str = input_str.lower()
     for class_name in PLAYER_CLASSES:
         if class_name in input_str:
             return class_name.title()

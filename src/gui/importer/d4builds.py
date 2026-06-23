@@ -156,11 +156,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 )
 
         is_weapon = "weapon" in slot.lower()
-        combined_dict = Dataloader().affix_dict
-        if is_seal:
-            combined_dict = combined_dict | Dataloader().seal_affix_dict
-        elif is_charm:
-            combined_dict = combined_dict | Dataloader().charm_affix_dict
+        affix_dict = _d4builds_affix_dict(item_type=item_type)
         for stat in stats:
             if stat.xpath(TEMPERING_ICON_XPATH) or stat.xpath(SANCTIFIED_ICON_XPATH):
                 continue
@@ -182,7 +178,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                     substring in affix_name.lower() for substring in ["focus", "offhand", "shield", "totem"]
                 ):  # special line indicating the item type
                     continue
-            affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=affix_name)), combined_dict))
+            affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=affix_name)), affix_dict))
             if affix_obj.name is None:
                 LOGGER.error(f"Couldn't match {affix_name=}")
                 continue
@@ -300,6 +296,14 @@ def _corrections(input_str: str) -> str:
     return input_str
 
 
+def _d4builds_affix_dict(item_type: ItemType | None) -> dict[str, str]:
+    if item_type == ItemType.HoradricSeal:
+        return Dataloader().seal_affix_dict
+    if item_type == ItemType.Charm:
+        return Dataloader().charm_affix_dict
+    return Dataloader().affix_dict
+
+
 def _extract_d4builds_seal_charm_filters(
     driver: ChromiumDriver, config: ImportConfig
 ) -> tuple[list[CharmFilterModel], list[SealFilterModel]]:
@@ -411,32 +415,28 @@ def _affixes_from_tooltip_values(
 
 def _match_d4builds_tooltip_affix(text: str, item_type: ItemType, guessed_set_name: str | None = None) -> str | None:
     stat_clean = clean_str(_corrections(input_str=text))
-    combined_dict = Dataloader().affix_dict
-    if item_type == ItemType.HoradricSeal:
-        combined_dict = combined_dict | Dataloader().seal_affix_dict
-    elif item_type == ItemType.Charm:
-        combined_dict = combined_dict | Dataloader().charm_affix_dict
+    affix_dict = _d4builds_affix_dict(item_type=item_type)
 
     if (
         item_type == ItemType.HoradricSeal
         and guessed_set_name
         and (
             matched_name := _match_d4builds_set_aware_seal_affix(
-                stat_clean=stat_clean, combined_dict=combined_dict, guessed_set_name=guessed_set_name
+                stat_clean=stat_clean, affix_dict=affix_dict, guessed_set_name=guessed_set_name
             )
         )
     ):
         return matched_name
 
-    return closest_match(stat_clean, combined_dict)
+    return closest_match(stat_clean, affix_dict)
 
 
 def _match_d4builds_set_aware_seal_affix(
-    stat_clean: str, combined_dict: dict[str, str], guessed_set_name: str
+    stat_clean: str, affix_dict: dict[str, str], guessed_set_name: str
 ) -> str | None:
-    best_global_key = closest_match(stat_clean, combined_dict)
+    best_global_key = closest_match(stat_clean, affix_dict)
     if best_global_key and best_global_key != "damage":
-        global_display = combined_dict[best_global_key]
+        global_display = affix_dict[best_global_key]
         if rapidfuzz.distance.Levenshtein.distance(stat_clean, global_display) <= 2:
             is_set_specific = any(best_global_key.startswith(f"{set_name}_") for set_name in Dataloader().set_list)
             if not is_set_specific:
