@@ -186,7 +186,7 @@ items = [
             name="uldurs_cave",
             original_name="ULDURS CAVE NIGHTMARE SIGIL",
             power=None,
-            rarity=ItemRarity.Common,
+            rarity=ItemRarity.Rare,
             seasonal_attribute=SeasonalAttribute.bloodied,
         ),
     ),

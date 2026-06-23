@@ -9,6 +9,12 @@ class TestSigil(Item):
         super().__init__(rarity=rarity, item_type=item_type, **kwargs)
 
 
+sigil_mythic_fallback = TestSigil(
+    rarity=ItemRarity.Mythic,
+    affixes=[Affix(name="extra_shrines"), Affix(name="monster_attack_speed", value=25.0)],
+    inherent=[Affix(name="astral_prophecy")],
+)
+
 sigils = [
     (
         "affix in blacklist",
@@ -74,6 +80,8 @@ sigils = [
             inherent=[Affix(name="iron_hold")],
         ),
     ),
+    ("mythic_matches_profile", ["test"], TestSigil(rarity=ItemRarity.Mythic, inherent=[Affix(name="jalals_vigil")])),
+    ("mythic_fallback", ["Mythic Sigil"], sigil_mythic_fallback),
 ]
 
 sigil_jalal = TestSigil(inherent=[Affix(name="jalals_vigil")])
@@ -81,4 +89,31 @@ sigil_jalal = TestSigil(inherent=[Affix(name="jalals_vigil")])
 sigil_priority = TestSigil(
     affixes=[Affix(name="shadow_damage", value=2.0), Affix(name="reduce_cooldowns_on_kill")],
     inherent=[Affix(name="iron_hold")],
+)
+
+# Rarity-derivation fixtures
+# "amethyst_reserve" maps to "Rare" in sigils.json rarities map
+sigil_derived_rare = TestSigil(
+    rarity=ItemRarity.Rare,
+    affixes=[Affix(name="amethyst_reserve"), Affix(name="shadow_damage", value=2.0)],
+    inherent=[Affix(name="jalals_vigil")],
+)
+
+# "astral_prophecy" maps to "Legendary" in sigils.json rarities map
+sigil_derived_legendary = TestSigil(
+    rarity=ItemRarity.Legendary,
+    affixes=[Affix(name="astral_prophecy"), Affix(name="shadow_damage", value=2.0)],
+    inherent=[Affix(name="jalals_vigil")],
+)
+
+# Unknown rarity: no affix in the rarities map
+sigil_unknown_rarity = TestSigil(
+    rarity=None, affixes=[Affix(name="shadow_damage", value=2.0)], inherent=[Affix(name="jalals_vigil")]
+)
+
+# Rare sigil that is also on the blacklist (used for AND-gate test)
+sigil_rare_blacklisted = TestSigil(
+    rarity=ItemRarity.Rare,
+    affixes=[Affix(name="amethyst_reserve"), Affix(name="reduce_cooldowns_on_kill")],
+    inherent=[Affix(name="jalals_vigil")],
 )

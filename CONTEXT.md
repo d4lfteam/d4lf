@@ -13,3 +13,12 @@ The stored Paragon overlay data attached to a profile. It represents one importe
 ### Paragon progression step
 
 One board-state snapshot within a Paragon payload. Each step contains the boards and active nodes for a point in the imported build's progression.
+
+### Item rarity
+
+The quality tier of a droppable object: common, magic, rare, legendary, unique, or mythic. The canonical values are lowercase. For sigils the rarity is not provided by the game and is instead derived from the object's affixes.
+
+### Rarity filter
+
+A filter constraint listing the rarities a rule should match. An empty list matches all rarities. Spelled `rarity` (singular) in profiles; `rarities` is accepted only as a back-compat alias on tributes.
+_Avoid_: `rarities` as the canonical key.

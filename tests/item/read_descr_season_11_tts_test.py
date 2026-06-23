@@ -351,7 +351,7 @@ items = [
             item_type=ItemType.Sigil,
             name="mercys_reach",
             power=None,
-            rarity=ItemRarity.Common,
+            rarity=ItemRarity.Legendary,
         ),
     ),
     # Whether or not all resist is considered an inherent changes

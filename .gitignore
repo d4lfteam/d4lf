@@ -13,6 +13,7 @@
 .coverage
 .idea/
 .pytest_cache/
+.scratch
 .venv
 .vs/
 /skills-lock.json
