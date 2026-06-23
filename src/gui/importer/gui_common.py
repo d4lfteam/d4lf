@@ -31,9 +31,7 @@ LOGGER = logging.getLogger(__name__)
 
 D = TypeVar("D", bound=WebDriver | WebElement)
 T = TypeVar("T")
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-}
+HEADERS = {"User-Agent": "Diablo 4 Loot Filter - Profile Importer"}
 
 # UI Theme Colors
 TRANSPARENT_KEY = "#ff00ff"
@@ -349,21 +347,23 @@ def _rm_style_info(d):
 
 def setup_webdriver(uc: bool = False) -> ChromiumDriver:
     if uc:
-        return Driver(uc=uc, headless2=True)
+        return Driver(uc=uc, headless2=True, agent=HEADERS["User-Agent"])
     match IniConfigLoader().general.browser:
         case BrowserType.edge:
             options = webdriver.EdgeOptions()
             options.add_argument("--headless=new")
             options.add_argument("log-level=3")
+            options.add_argument(f"--user-agent={HEADERS['User-Agent']}")
             driver = webdriver.Edge(options=options)
         case BrowserType.chrome:
             options = webdriver.ChromeOptions()
             options.add_argument("--headless=new")
             options.add_argument("log-level=3")
+            options.add_argument(f"--user-agent={HEADERS['User-Agent']}")
             driver = webdriver.Chrome(options=options)
         case BrowserType.firefox:
             options = webdriver.FirefoxOptions()
             options.add_argument("--headless")
-            options.add_argument("log-level=3")
+            options.set_preference("general.useragent.override", HEADERS["User-Agent"])
             driver = webdriver.Firefox(options=options)
     return driver  # It must be one of the 3 browsers due to ini validation
