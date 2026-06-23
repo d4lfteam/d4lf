@@ -9,6 +9,12 @@ class TestSigil(Item):
         super().__init__(rarity=rarity, item_type=item_type, **kwargs)
 
 
+sigil_mythic_fallback = TestSigil(
+    rarity=ItemRarity.Mythic,
+    affixes=[Affix(name="extra_shrines"), Affix(name="monster_attack_speed", value=25.0)],
+    inherent=[Affix(name="astral_prophecy")],
+)
+
 sigils = [
     (
         "affix in blacklist",
@@ -75,15 +81,7 @@ sigils = [
         ),
     ),
     ("mythic_matches_profile", ["test"], TestSigil(rarity=ItemRarity.Mythic, inherent=[Affix(name="jalals_vigil")])),
-    (
-        "mythic_fallback",
-        ["Mythic Sigil"],
-        TestSigil(
-            rarity=ItemRarity.Mythic,
-            affixes=[Affix(name="extra_shrines"), Affix(name="monster_attack_speed", value=25.0)],
-            inherent=[Affix(name="astral_prophecy")],
-        ),
-    ),
+    ("mythic_fallback", ["Mythic Sigil"], sigil_mythic_fallback),
 ]
 
 sigil_jalal = TestSigil(inherent=[Affix(name="jalals_vigil")])
