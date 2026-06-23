@@ -31,7 +31,6 @@ from src.gui.importer.gui_common import (
     deduplicate_filters,
     fix_offhand_type,
     fix_weapon_type,
-    match_charm_to_set_or_unique,
     match_to_enum,
     retry_importer,
     save_as_profile,
@@ -140,7 +139,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     seal_filters = []
     mythic_names = []
     aspect_upgrade_filters = []
-    guessed_set_name = _guess_mobalytics_charm_set_name(items)
+    guessed_set_name = None
     for item in sorted(items, key=lambda item: jsonpath.findall(".gameEntity.type", item)[0] != "charms"):
         item_filter = ItemFilterModel()
         entity_type = jsonpath.findall(".gameEntity.type", item)[0]
@@ -245,7 +244,9 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
             charm_unique_aspect = None
             charm_set_name = None
             if item_type == ItemType.Charm:
-                charm_unique_aspect, charm_set_name = match_charm_to_set_or_unique(item_name)
+                normalized_item_name = correct_name(item_name)
+                if normalized_item_name in Dataloader().aspect_unique_dict:
+                    charm_unique_aspect = normalized_item_name
             if not affixes and not charm_unique_aspect and not charm_set_name:
                 LOGGER.warning(f"Skipping {item_name} because it had no supported affixes, unique aspect, or set name.")
                 continue
@@ -319,27 +320,6 @@ def _corrections(input_str: str) -> str:
         case "max life":
             return "maximum life"
     return input_str
-
-
-def _guess_mobalytics_charm_set_name(items: list[dict]) -> str | None:
-    set_names = []
-    for item in items:
-        entity_type_result = jsonpath.findall(".gameEntity.type", item)
-        if not entity_type_result or entity_type_result[0] != "charms":
-            continue
-        title_result = jsonpath.findall(".gameEntity.entity.title", item) or jsonpath.findall(".gameEntity.title", item)
-        item_name = str(title_result[0]).strip() if title_result else ""
-        _, set_name = match_charm_to_set_or_unique(item_name)
-        if set_name and set_name not in set_names:
-            set_names.append(set_name)
-
-    if len(set_names) > 1:
-        LOGGER.warning(
-            "Found multiple charm sets in Mobalytics build (%s); using %s for set-specific seal affixes.",
-            ", ".join(set_names),
-            set_names[0],
-        )
-    return set_names[0] if set_names else None
 
 
 def _fix_input_url(url: str) -> str:

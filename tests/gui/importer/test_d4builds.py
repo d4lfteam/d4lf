@@ -160,6 +160,25 @@ def test_create_charm_filter_from_tooltip_html_reads_set_name_and_affixes() -> N
     assert [affix.name for affix in charm_filter.affix_pool[0].count] == ["maximum_resource"]
 
 
+def test_create_charm_filter_from_tooltip_html_does_not_guess_set_from_title() -> None:
+    tooltip_html = """
+        <div class="charm__tooltip">
+            <h2 class="charm__tooltip__name">Fer of Balazan's Bite</h2>
+            <ul class="charm__tooltip__values">
+                <li class="charm__tooltip__value">Maximum Resource</li>
+            </ul>
+        </div>
+    """
+
+    charm_filter, set_name = d4builds_module._create_charm_filter_from_tooltip_html(
+        tooltip_html=tooltip_html, require_gas=False
+    )
+
+    assert set_name is None
+    assert charm_filter.set == []
+    assert [affix.name for affix in charm_filter.affix_pool[0].count] == ["maximum_resource"]
+
+
 def test_match_d4builds_tooltip_affix_uses_guessed_charm_set_for_seal_affixes() -> None:
     affix_name = d4builds_module._match_d4builds_tooltip_affix(
         text="Maximum Resolve", item_type=ItemType.HoradricSeal, guessed_set_name="arms_of_arreat"

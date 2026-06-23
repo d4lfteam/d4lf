@@ -31,7 +31,6 @@ from src.gui.importer.gui_common import (
     fix_offhand_type,
     fix_weapon_type,
     get_class_name,
-    match_charm_to_set_or_unique,
     match_to_enum,
     retry_importer,
     save_as_profile,
@@ -215,7 +214,8 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             charm_set_name = None
             if item_type == ItemType.Charm and slot_to_unique_name_map.get(slot):
                 unique_name, unique_rarity = slot_to_unique_name_map[slot]
-                charm_unique_aspect, charm_set_name = match_charm_to_set_or_unique(unique_name)
+                if unique_rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
+                    charm_unique_aspect = correct_name(unique_name)
             if not affixes and not charm_unique_aspect and not charm_set_name:
                 continue
             seal_charm_filters.append(
@@ -376,11 +376,8 @@ def _create_charm_filter_from_tooltip_html(
     if tooltip is None:
         return None, None
 
-    name = _first_text(tooltip=tooltip, xpath=CHARM_TOOLTIP_NAME_XPATH)
-    set_name = correct_name(_first_text(tooltip=tooltip, xpath=CHARM_TOOLTIP_SET_NAME_XPATH))
+    set_name = correct_name(_first_text(tooltip=tooltip, xpath=CHARM_TOOLTIP_SET_NAME_XPATH)) or None
     charm_unique_aspect = None
-    if not set_name:
-        charm_unique_aspect, set_name = match_charm_to_set_or_unique(name)
 
     affixes = _affixes_from_tooltip_values(
         texts=_texts_from_nodes(tooltip.xpath(CHARM_TOOLTIP_VALUE_XPATH)), item_type=ItemType.Charm

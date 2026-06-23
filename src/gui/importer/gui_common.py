@@ -224,36 +224,6 @@ def create_seal_charm_filter(
     return seal_charm_filter
 
 
-def match_charm_to_set_or_unique(charm_name: str) -> tuple[str | None, str | None]:
-    if not charm_name:
-        return None, None
-
-    from src.dataloader import Dataloader  # noqa: PLC0415
-    from src.scripts import correct_name  # noqa: PLC0415
-
-    # 1. Clean the charm name and normalize it
-    name_clean = correct_name(charm_name)
-    if not name_clean:
-        return None, None
-
-    dataloader = Dataloader()
-
-    # Check if the name matches a known unique charm (like "endurant_faith")
-    if name_clean in dataloader.aspect_unique_dict:
-        return name_clean, None
-
-    # Check if the name matches a known set directly (if already normalized)
-    if name_clean in dataloader.set_list:
-        return None, name_clean
-
-    # 2. Try to match the set name from the clean name
-    for set_name in sorted(dataloader.set_list, key=len, reverse=True):
-        if set_name in name_clean:
-            return None, set_name
-
-    return None, None
-
-
 def unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
     filter_name = filter_name_template
     i = 2
