@@ -337,29 +337,15 @@ def _convert_raw_to_affixes(raw_stats: list[dict], import_greater_affixes=False)
 if __name__ == "__main__":
     src.logger.setup()
 
-    from selenium import webdriver
+    from src.gui.importer.gui_common import setup_webdriver
 
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument("log-level=3")
-    driver = webdriver.Chrome(options=options)
+    driver = setup_webdriver()
 
     URLS = [
-        # # No frills and no uniques
-        # "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb",
-        # # Is a variant of the one above
-        # "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb?ws-ngf5-1=activeVariantId%2C7a9c6d51-18e9-4090-a804-7b73ff00879d",
-        # # This one has no variants at all, just to make sure that works too
-        # "https://mobalytics.gg/diablo-4/profile/screamheart/builds/15x-thrash-out-of-date",
-        # # This one has an item type for the weapon
-        # "https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
-        # # This has a necro offhand
-        # "https://mobalytics.gg/diablo-4/builds/necromancer-kripp-golem-summoner",
-        # # This has two rogue offhand weapons
-        # "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
-        # Season 13 testing
-        # "https://mobalytics.gg/diablo-4/builds/barbarian-ancients-leap-endgame"
-        "https://mobalytics.gg/diablo-4/builds/sorcerer-ball-lightning"
+        "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb",
+        "https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
+        "https://mobalytics.gg/diablo-4/builds/barbarian-ancients-leap-endgame",
+        "https://mobalytics.gg/diablo-4/builds/sorcerer-ball-lightning",
     ]
     for X in URLS:
         config = ImportConfig(
