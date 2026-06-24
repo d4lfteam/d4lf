@@ -1,9 +1,10 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSettings, QSize, Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QCompleter,
     QDialog,
+    QDialogButtonBox,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -279,31 +280,50 @@ class DeleteAffixPool(QDialog):
         return [checkbox.text() for checkbox in self.checkbox_list if checkbox.isChecked()]
 
 
+def sigil_name_dict_for_kind(kind: str) -> dict[str, str]:
+    all_dict = Dataloader().affix_sigil_dict_all
+    if kind == "affix":
+        return {**all_dict["minor"], **all_dict["major"], **all_dict["positive"]}
+    return all_dict["dungeons"]
+
+
+def derive_sigil_kind(name: str) -> str:
+    return "dungeon" if name in Dataloader().affix_sigil_dict_all["dungeons"] else "affix"
+
+
 class CreateSigil(QDialog):
     def __init__(self, whitelist_sigils: list[str], blacklist_sigils: list[str], parent=None):
         super().__init__(parent)
 
         self.whitelist_sigils = whitelist_sigils
         self.blacklist_sigils = blacklist_sigils
+        self.settings = QSettings("d4lf", "profile_editor")
 
         self.setWindowTitle("Create Sigil")
-        self.setFixedSize(300, 150)
+        self.setMinimumSize(420, 220)
+        self.resize(self.settings.value("create_sigil_size", QSize(420, 220)))
 
         self.main_layout = QVBoxLayout()
         self.form_layout = QFormLayout()
 
-        self.name_label = QLabel("Dungeon:")
+        self.kind_label = QLabel("Kind:")
+        self.kind_input = IgnoreScrollWheelComboBox()
+        self.kind_input.addItems(["dungeon", "affix"])
+        self.kind_input.currentTextChanged.connect(self._populate_names)
+
+        self.name_label = QLabel("Name:")
         self.name_input = IgnoreScrollWheelComboBox()
         self.name_input.setEditable(True)
         self.name_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.name_input.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.name_input.addItems(sorted(Dataloader().affix_sigil_dict_all["dungeons"].values()))
+        self._populate_names()
         self.type_label = QLabel("Type: ")
         self.type_input = IgnoreScrollWheelComboBox()
         self.type_input.setEditable(True)
         self.type_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.type_input.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.type_input.addItems(["whitelist", "blacklist"])
+        self.form_layout.addRow(self.kind_label, self.kind_input)
         self.form_layout.addRow(self.name_label, self.name_input)
         self.form_layout.addRow(self.type_label, self.type_input)
         self.buttonLayout = QHBoxLayout()
@@ -329,10 +349,19 @@ class CreateSigil(QDialog):
             return
         super().accept()
 
+    def _populate_names(self):
+        self.name_input.clear()
+        self.name_input.addItems(sorted(sigil_name_dict_for_kind(self.kind_input.currentText()).values()))
+
     def get_value(self):
         sigil_name = self.name_input.currentText()
         type_name = self.type_input.currentText()
-        return sigil_name, type_name
+        kind = self.kind_input.currentText()
+        return sigil_name, type_name, kind
+
+    def closeEvent(self, event):  # noqa: N802
+        self.settings.setValue("create_sigil_size", self.size())
+        event.accept()
 
 
 class RemoveSigil(QDialog):
@@ -617,3 +646,47 @@ class CreateUnique(QDialog):
 
     def get_value(self):
         return [checkbox.text() for checkbox in self.checkbox_list if checkbox.isChecked()]
+
+
+def rarity_summary(rarities: list[ItemRarity]) -> str:
+    if not rarities:
+        return "All rarities"
+    return ", ".join(r.value for r in rarities)
+
+
+class RarityPicker(QDialog):
+    def __init__(self, parent: QWidget, selected_rarities: list[ItemRarity]):
+        super().__init__(parent)
+        self.setWindowTitle("Select Rarities")
+        self.checkboxes: dict[ItemRarity, QCheckBox] = {}
+
+        selected_rarity_set = set(selected_rarities)
+
+        layout = QVBoxLayout(self)
+
+        group_box = QGroupBox("Rarities")
+        group_layout = QVBoxLayout(group_box)
+        for rarity in ItemRarity:
+            checkbox = QCheckBox(rarity.value)
+            checkbox.setChecked(rarity in selected_rarity_set)
+            self.checkboxes[rarity] = checkbox
+            group_layout.addWidget(checkbox)
+        layout.addWidget(group_box)
+
+        note_label = QLabel("If no rarities are selected, all rarities will be kept for this filter.")
+        note_label.setWordWrap(True)
+        layout.addWidget(note_label)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        clear_button = button_box.addButton("Clear", QDialogButtonBox.ButtonRole.ResetRole)
+        clear_button.clicked.connect(self.clear_selection)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+    def clear_selection(self):
+        for checkbox in self.checkboxes.values():
+            checkbox.setChecked(False)
+
+    def get_selected_rarities(self) -> list[ItemRarity]:
+        return [rarity for rarity, checkbox in self.checkboxes.items() if checkbox.isChecked()]

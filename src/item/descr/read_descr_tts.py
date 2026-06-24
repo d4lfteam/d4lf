@@ -236,6 +236,13 @@ def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
         affix.type = AffixType.normal
         item.affixes.append(affix)
 
+    rarity_map = Dataloader().affix_sigil_dict_all["rarities"]
+    item.rarity = next(
+        (ItemRarity(rarity_map[affix.name].lower()) for affix in item.affixes if affix.name in rarity_map), None
+    )
+    if item.rarity is None:
+        LOGGER.warning(f"Could not resolve sigil rarity from affixes: {[affix.name for affix in item.affixes]}")
+
     return item
 
 
@@ -248,9 +255,9 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
             return None
         if "bloodied" in tts_item[1].lower():
             item.seasonal_attribute = SeasonalAttribute.bloodied
-        return _update_item_object(item, rarity=ItemRarity.Common, item_type=ItemType.Sigil)
+        return _update_item_object(item, item_type=ItemType.Sigil)
     if tts_item[0].startswith(ItemIdentifiers.ESCALATION_SIGIL.value):
-        return _update_item_object(item, rarity=ItemRarity.Common, item_type=ItemType.EscalationSigil)
+        return _update_item_object(item, item_type=ItemType.EscalationSigil)
     if ItemIdentifiers.TRIBUTE.value in tts_item[0]:
         item.item_type = ItemType.Tribute
         search_string_split = tts_item[1].split(" ")

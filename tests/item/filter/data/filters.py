@@ -297,6 +297,23 @@ seal_charm = ProfileModel(
     ],
 )
 
+# Rarity gate: only Rare sigils pass
+sigil_rarity_rare_only = ProfileModel(name="rarity_rare_only", sigils=SigilFilterModel(rarities=[ItemRarity.Rare]))
+
+# Rarity gate + blacklist: Rare sigils pass UNLESS blacklisted
+sigil_rarity_rare_with_blacklist = ProfileModel(
+    name="rarity_with_blacklist",
+    sigils=SigilFilterModel(
+        rarities=[ItemRarity.Rare], blacklist=[SigilConditionModel(name="reduce_cooldowns_on_kill")]
+    ),
+)
+
+# Rarity gate + whitelist: a whitelisted sigil is still dropped when its rarity fails the gate
+sigil_rarity_rare_with_whitelist = ProfileModel(
+    name="rarity_with_whitelist",
+    sigils=SigilFilterModel(rarities=[ItemRarity.Rare], whitelist=[SigilConditionModel(name="jalals_vigil")]),
+)
+
 # noinspection PyTypeChecker
 unique_affixes = ProfileModel(
     name="test",
@@ -378,5 +395,35 @@ tributes = ProfileModel(
         TributeFilterModel(name="tribute_of_andariel"),
         TributeFilterModel(name="harmony"),
         TributeFilterModel(rarities=[ItemRarity.Legendary, ItemRarity.Unique]),
+    ],
+)
+
+# noinspection PyTypeChecker
+affix_rarity = ProfileModel(
+    name="rarity_test",
+    affixes=[
+        {
+            "RareOnly": ItemFilterModel(
+                item_type=[ItemType.Boots],
+                rarities=[ItemRarity.Rare],
+                affix_pool=[
+                    AffixFilterCountModel(
+                        count=[AffixFilterModel(name="movement_speed"), AffixFilterModel(name="cold_resistance")],
+                        min_count=1,
+                    )
+                ],
+            )
+        },
+        {
+            "AnyRarity": ItemFilterModel(
+                item_type=[ItemType.Boots],
+                affix_pool=[
+                    AffixFilterCountModel(
+                        count=[AffixFilterModel(name="movement_speed"), AffixFilterModel(name="cold_resistance")],
+                        min_count=1,
+                    )
+                ],
+            )
+        },
     ],
 )

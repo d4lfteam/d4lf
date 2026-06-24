@@ -23,6 +23,7 @@ WINDOWS_ONLY_MODULES = [
     "char_inventory_test.py",
     "chest_test.py",
     "paragon_overlay_test.py",
+    "test_sigils_tab.py",
 ]
 
 

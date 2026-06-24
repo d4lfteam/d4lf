@@ -5,7 +5,16 @@ import logging
 import re
 import sys
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel, field_serializer, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    RootModel,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from src.config.helper import check_greater_than_zero, validate_greater_affix_count, validate_percent
 from src.item.data.item_type import ItemType  # noqa: TC001
@@ -33,6 +42,11 @@ def _validate_set_name(name: str | None, field_name: str) -> str | None:
         msg = f"{field_name} {name} does not exist"
         raise ValueError(msg)
     return name
+
+
+def _normalize_rarities(data: str | list[str]) -> list[str]:
+    values = [data] if isinstance(data, str) else data
+    return [v.lower() if isinstance(v, str) else v for v in values]
 
 
 class AffixAspectFilterModel(BaseModel):
@@ -185,6 +199,7 @@ class ItemFilterModel(BaseModel):
     item_type: list[ItemType] = Field(default=[], alias="itemType")
     min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
     min_power: int = Field(default=0, alias="minPower")
+    rarities: list[ItemRarity] = Field(default=[], validation_alias="rarity", serialization_alias="rarity")
     unique_aspect: list[AspectUniqueFilterModel] = Field(default=[], alias="uniqueAspect")
 
     @field_validator("min_power")
@@ -201,6 +216,11 @@ class ItemFilterModel(BaseModel):
     @classmethod
     def parse_item_type(cls, data: str | list[str]) -> list[str]:
         return _parse_item_type_or_rarities(data)
+
+    @field_validator("rarities", mode="before")
+    @classmethod
+    def parse_rarities(cls, data: str | list[str]) -> list[str]:
+        return _normalize_rarities(data)
 
     @field_validator("unique_aspect", mode="before")
     @classmethod
@@ -226,7 +246,7 @@ class _BaseSealOrCharmFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     affix_pool: list[AffixFilterCountModel] = Field(default=[], alias="affixPool")
     min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
-    rarities: list[ItemRarity] = []
+    rarities: list[ItemRarity] = Field(default=[], validation_alias="rarity", serialization_alias="rarity")
     unique_aspect: list[AspectUniqueFilterModel] = Field(default=[], alias="uniqueAspect")
 
     @field_validator("min_greater_affix_count")
@@ -237,7 +257,7 @@ class _BaseSealOrCharmFilterModel(BaseModel):
     @field_validator("rarities", mode="before")
     @classmethod
     def parse_rarities(cls, data: str | list[str]) -> list[str]:
-        return _parse_item_type_or_rarities(data)
+        return _normalize_rarities(data)
 
     @model_validator(mode="after")
     def unique_aspects_must_be_unique(self) -> _BaseSealOrCharmFilterModel:
@@ -322,10 +342,16 @@ class SigilConditionModel(BaseModel):
 
 
 class SigilFilterModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
     blacklist: list[SigilConditionModel] = []
     priority: SigilPriority = SigilPriority.blacklist
+    rarities: list[ItemRarity] = Field(default=[], validation_alias="rarity", serialization_alias="rarity")
     whitelist: list[SigilConditionModel] = []
+
+    @field_validator("rarities", mode="before")
+    @classmethod
+    def parse_rarities(cls, data: str | list[str]) -> list[str]:
+        return _normalize_rarities(data)
 
     @model_validator(mode="after")
     def data_integrity(self) -> SigilFilterModel:
@@ -337,9 +363,11 @@ class SigilFilterModel(BaseModel):
 
 
 class TributeFilterModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
     name: str = None
-    rarities: list[ItemRarity] = []
+    rarities: list[ItemRarity] = Field(
+        default=[], validation_alias=AliasChoices("rarity", "rarities"), serialization_alias="rarity"
+    )
 
     @field_validator("name")
     @classmethod
@@ -382,7 +410,7 @@ class TributeFilterModel(BaseModel):
     @field_validator("rarities", mode="before")
     @classmethod
     def parse_rarities(cls, data: str | list[str]) -> list[str]:
-        return _parse_item_type_or_rarities(data)
+        return _normalize_rarities(data)
 
 
 class ParagonBoardModel(BaseModel):
