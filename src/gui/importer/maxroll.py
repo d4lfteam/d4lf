@@ -18,6 +18,7 @@ from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_mythics_to_filters,
     add_to_profiles,
+    affix_dict_for_item_type,
     build_default_profile_file_name,
     create_seal_charm_filter,
     deduplicate_filters,
@@ -361,12 +362,8 @@ def _find_item_affixes(
                 )
                 continue
 
-            dict_to_use = Dataloader().affix_dict
-            if item_type == ItemType.HoradricSeal:
-                dict_to_use = Dataloader().seal_affix_dict
-            elif item_type == ItemType.Charm:
-                dict_to_use = Dataloader().charm_affix_dict
-            affix_obj = Affix(name=closest_match(clean_str(clean_desc), dict_to_use))
+            affix_dict = affix_dict_for_item_type(item_type=item_type)
+            affix_obj = Affix(name=closest_match(clean_str(clean_desc), affix_dict))
             if import_greater_affixes and affix_id.get("greater", False):
                 affix_obj.type = AffixType.greater
             if affix_obj.name is not None:

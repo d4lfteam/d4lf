@@ -1,6 +1,8 @@
 from src.config.profile_models import CharmFilterModel, ItemFilterModel, ProfileModel
+from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     _to_yaml_str,
+    affix_dict_for_item_type,
     build_default_profile_file_name,
     deduplicate_filters,
     unique_filter_name,
@@ -64,6 +66,13 @@ def test_unique_filter_name_adds_suffix_for_existing_filter_names() -> None:
     filter_name = unique_filter_name("Charm", [{"Charm": object()}, {"Charm2": object()}])
 
     assert filter_name == "Charm3"
+
+
+def test_affix_dict_for_item_type_uses_context_specific_dict() -> None:
+    assert affix_dict_for_item_type(ItemType.Charm) is Dataloader().charm_affix_dict
+    assert affix_dict_for_item_type(ItemType.HoradricSeal) is Dataloader().seal_affix_dict
+    assert affix_dict_for_item_type(ItemType.Ring) is Dataloader().affix_dict
+    assert affix_dict_for_item_type(None) is Dataloader().affix_dict
 
 
 def test_to_yaml_str_sorts_aspect_upgrades_and_uses_block_style(mock_ini_loader) -> None:

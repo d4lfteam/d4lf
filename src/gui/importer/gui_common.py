@@ -28,6 +28,7 @@ from src.config.profile_models import (
     SealFilterModel,
 )
 from src.config.settings_models import BrowserType
+from src.dataloader import Dataloader
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
 
@@ -194,6 +195,14 @@ def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool)
         item_filter.min_greater_affix_count = num_greater
     else:
         item_filter.min_greater_affix_count = 0
+
+
+def affix_dict_for_item_type(item_type: ItemType | None) -> dict[str, str]:
+    if item_type == ItemType.HoradricSeal:
+        return Dataloader().seal_affix_dict
+    if item_type == ItemType.Charm:
+        return Dataloader().charm_affix_dict
+    return Dataloader().affix_dict
 
 
 def create_seal_charm_filter(

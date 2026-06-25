@@ -25,6 +25,7 @@ from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_mythics_to_filters,
     add_to_profiles,
+    affix_dict_for_item_type,
     build_default_profile_file_name,
     create_seal_charm_filter,
     deduplicate_filters,
@@ -155,7 +156,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 )
 
         is_weapon = "weapon" in slot.lower()
-        affix_dict = _d4builds_affix_dict(item_type=item_type)
+        affix_dict = affix_dict_for_item_type(item_type=item_type)
         for stat in stats:
             if stat.xpath(TEMPERING_ICON_XPATH) or stat.xpath(SANCTIFIED_ICON_XPATH):
                 continue
@@ -209,14 +210,13 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
             seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
             seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
-            # Extract unique aspect and set info for charms
+            # Extract unique aspect info for charms
             charm_unique_aspect = None
-            charm_set_name = None
             if item_type == ItemType.Charm and slot_to_unique_name_map.get(slot):
                 unique_name, unique_rarity = slot_to_unique_name_map[slot]
                 if unique_rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
                     charm_unique_aspect = correct_name(unique_name)
-            if not affixes and not charm_unique_aspect and not charm_set_name:
+            if not affixes and not charm_unique_aspect:
                 continue
             seal_charm_filters.append(
                 create_seal_charm_filter(
@@ -224,7 +224,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                     require_gas=config.require_greater_affixes,
                     model_type=seal_charm_model,
                     unique_aspect=charm_unique_aspect,
-                    set_name=charm_set_name,
                 )
             )
             continue
@@ -294,14 +293,6 @@ def _corrections(input_str: str) -> str:
     if "charm slot" in input_str:
         return "charm slot"
     return input_str
-
-
-def _d4builds_affix_dict(item_type: ItemType | None) -> dict[str, str]:
-    if item_type == ItemType.HoradricSeal:
-        return Dataloader().seal_affix_dict
-    if item_type == ItemType.Charm:
-        return Dataloader().charm_affix_dict
-    return Dataloader().affix_dict
 
 
 def _extract_d4builds_seal_charm_filters(
@@ -412,7 +403,7 @@ def _affixes_from_tooltip_values(
 
 def _match_d4builds_tooltip_affix(text: str, item_type: ItemType, guessed_set_name: str | None = None) -> str | None:
     stat_clean = clean_str(_corrections(input_str=text))
-    affix_dict = _d4builds_affix_dict(item_type=item_type)
+    affix_dict = affix_dict_for_item_type(item_type=item_type)
 
     if (
         item_type == ItemType.HoradricSeal

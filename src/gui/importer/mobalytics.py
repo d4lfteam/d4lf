@@ -26,6 +26,7 @@ from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_mythics_to_filters,
     add_to_profiles,
+    affix_dict_for_item_type,
     build_default_profile_file_name,
     create_seal_charm_filter,
     deduplicate_filters,
@@ -378,11 +379,7 @@ def _convert_raw_to_affixes(
     guessed_set_name: str | None = None,
 ) -> list[Affix]:
     result = []
-    combined_dict = Dataloader().affix_dict
-    if item_type == ItemType.HoradricSeal:
-        combined_dict = combined_dict | Dataloader().seal_affix_dict
-    elif item_type == ItemType.Charm:
-        combined_dict = combined_dict | Dataloader().charm_affix_dict
+    affix_dict = affix_dict_for_item_type(item_type=item_type)
     for stat in raw_stats:
         if stat:
             stat_id = stat["id"]
@@ -409,10 +406,10 @@ def _convert_raw_to_affixes(
             matched_name = None
             if item_type == ItemType.HoradricSeal and guessed_set_name:
                 # First check if the stat is a generic affix with an exact or very close match
-                best_global_key = closest_match(stat_clean, combined_dict)
+                best_global_key = closest_match(stat_clean, affix_dict)
                 is_exact_generic = False
                 if best_global_key and best_global_key != "damage":
-                    global_display = combined_dict[best_global_key]
+                    global_display = affix_dict[best_global_key]
                     if rapidfuzz.distance.Levenshtein.distance(stat_clean, global_display) <= 2:
                         # Ensure it's not a set-specific affix of another set
                         is_set_specific = False
@@ -434,7 +431,7 @@ def _convert_raw_to_affixes(
                         if rapidfuzz.fuzz.token_set_ratio(stat_clean, display_name) >= 50:
                             matched_name = potential_match
             if matched_name is None:
-                matched_name = closest_match(stat_clean, combined_dict)
+                matched_name = closest_match(stat_clean, affix_dict)
 
             affix_obj = Affix(name=matched_name)
             if affix_obj.name is None:

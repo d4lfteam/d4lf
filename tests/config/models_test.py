@@ -29,6 +29,7 @@ from src.config.profile_models import (
     ParagonBoardModel,
     ParagonPayloadModel,
     ProfileModel,
+    SealFilterModel,
     SigilConditionModel,
     SigilFilterModel,
     TributeFilterModel,
@@ -455,6 +456,18 @@ class TestItemFilterModel:
         model = ItemFilterModel(unique_aspect=None)
         assert model.unique_aspect == []
 
+    def test_affix_pool_rejects_charm_only_affix(self) -> None:
+        affix_name = "bonus_kill_experience"
+
+        with pytest.raises(ValidationError, match=f"affixPool affix {affix_name} does not exist"):
+            ItemFilterModel(affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name=affix_name)])])
+
+    def test_inherent_pool_rejects_seal_only_affix(self) -> None:
+        affix_name = "adept_action_damage_reduction_while_moving"
+
+        with pytest.raises(ValidationError, match=f"inherentPool affix {affix_name} does not exist"):
+            ItemFilterModel(inherent_pool=[AffixFilterCountModel(count=[AffixFilterModel(name=affix_name)])])
+
 
 class TestEdgeCases:
     """Test edge cases and special scenarios."""
@@ -621,6 +634,34 @@ class TestCharmFilterModel:
             CharmFilterModel(
                 set=["Sescherons Fury"], uniqueAspect=[AspectUniqueFilterModel(name="tuskhelm_of_joritz_the_mighty")]
             )
+
+    def test_affix_pool_accepts_charm_only_affix(self) -> None:
+        affix_name = "bonus_kill_experience"
+
+        model = CharmFilterModel(affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name=affix_name)])])
+
+        assert model.affix_pool[0].count[0].name == affix_name
+
+    def test_affix_pool_rejects_seal_only_affix(self) -> None:
+        affix_name = "adept_action_damage_reduction_while_moving"
+
+        with pytest.raises(ValidationError, match=f"affixPool affix {affix_name} does not exist"):
+            CharmFilterModel(affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name=affix_name)])])
+
+
+class TestSealFilterModel:
+    def test_affix_pool_accepts_seal_only_affix(self) -> None:
+        affix_name = "adept_action_damage_reduction_while_moving"
+
+        model = SealFilterModel(affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name=affix_name)])])
+
+        assert model.affix_pool[0].count[0].name == affix_name
+
+    def test_affix_pool_rejects_charm_only_affix(self) -> None:
+        affix_name = "bonus_kill_experience"
+
+        with pytest.raises(ValidationError, match=f"affixPool affix {affix_name} does not exist"):
+            SealFilterModel(affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name=affix_name)])])
 
 
 class TestTributeFilterModelRarity:

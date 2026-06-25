@@ -4,6 +4,7 @@ import enum
 import logging
 import re
 import sys
+from typing import ClassVar
 
 from pydantic import (
     AliasChoices,
@@ -138,6 +139,17 @@ class AffixFilterCountModel(BaseModel):
         return self
 
 
+def _validate_affix_pool_names(
+    affix_pool: list[AffixFilterCountModel], valid_affixes: dict[str, str], field_name: str
+) -> None:
+    invalid_affix_names = sorted({
+        affix.name for affix_group in affix_pool for affix in affix_group.count if affix.name not in valid_affixes
+    })
+    if invalid_affix_names:
+        msg = f"{field_name} affix {', '.join(invalid_affix_names)} does not exist"
+        raise ValueError(msg)
+
+
 class AspectUniqueFilterModel(AffixAspectFilterModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     min_percent_of_aspect: int = Field(default=0, alias="minPercentOfAspect")
@@ -238,12 +250,23 @@ class ItemFilterModel(BaseModel):
             raise ValueError(msg)
         return self
 
+    @model_validator(mode="after")
+    def affix_names_must_match_item_pool(self) -> ItemFilterModel:
+        # This on module level would be a circular import, so we do it lazy for now
+        from src.dataloader import Dataloader  # noqa: PLC0415
+
+        affix_dict = Dataloader().affix_dict
+        _validate_affix_pool_names(self.affix_pool, affix_dict, "affixPool")
+        _validate_affix_pool_names(self.inherent_pool, affix_dict, "inherentPool")
+        return self
+
 
 DynamicItemFilterModel = RootModel[dict[str, ItemFilterModel]]
 
 
 class _BaseSealOrCharmFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    affix_dict_name: ClassVar[str] = ""
     affix_pool: list[AffixFilterCountModel] = Field(default=[], alias="affixPool")
     min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
     rarities: list[ItemRarity] = Field(default=[], validation_alias="rarity", serialization_alias="rarity")
@@ -267,8 +290,19 @@ class _BaseSealOrCharmFilterModel(BaseModel):
 
         return self
 
+    @model_validator(mode="after")
+    def affix_names_must_match_pool(self) -> _BaseSealOrCharmFilterModel:
+        # This on module level would be a circular import, so we do it lazy for now
+        from src.dataloader import Dataloader  # noqa: PLC0415
+
+        if self.affix_dict_name:
+            _validate_affix_pool_names(self.affix_pool, getattr(Dataloader(), self.affix_dict_name), "affixPool")
+
+        return self
+
 
 class CharmFilterModel(_BaseSealOrCharmFilterModel):
+    affix_dict_name: ClassVar[str] = "charm_affix_dict"
     set: list[str] = Field(default=[], alias="set")
 
     @field_validator("set")
@@ -290,7 +324,7 @@ class CharmFilterModel(_BaseSealOrCharmFilterModel):
 
 
 class SealFilterModel(_BaseSealOrCharmFilterModel):
-    pass
+    affix_dict_name: ClassVar[str] = "seal_affix_dict"
 
 
 DynamicCharmFilterModel = RootModel[dict[str, CharmFilterModel]]
