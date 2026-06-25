@@ -54,9 +54,20 @@ def main():
 
     table = BeautifulTable()
     table.set_style(BeautifulTable.STYLE_BOX_ROUNDED)
-    # ... rows added here as before ...
+    adv = IniConfigLoader().advanced_options
+    table.rows.append([adv.run_vision_mode, "Run/Stop Vision Mode"])
+    table.rows.append([adv.info_overlay, "Info Panel Overlay"])
+    table.rows.append([adv.toggle_paragon_overlay, "Toggle Paragon Overlay"])
 
-    table.rows.append([IniConfigLoader().advanced_options.exit_key, "Exit"])
+    if not adv.vision_mode_only:
+        table.rows.append([adv.run_filter, "Run/Stop Auto Filter (no match = junk)"])
+        table.rows.append([adv.run_filter_drop, "Run/Stop Auto Filter (no match = drop)"])
+        table.rows.append([adv.run_filter_force_refresh, "Force Run/Stop Filter, Resetting Item Status"])
+        table.rows.append([adv.force_refresh_only, "Reset Item Statuses Without A Filter After"])
+        table.rows.append([adv.move_to_inv, "Move Items From Chest To Inventory"])
+        table.rows.append([adv.move_to_chest, "Move Items From Inventory To Chest"])
+
+    table.rows.append([adv.exit_key, "Exit"])
     table.columns.header = ["hotkey", "action"]
     for line in str(table).split("\n"):
         LOGGER.info(line)
@@ -222,6 +233,7 @@ if __name__ == "__main__":
             enable_stdout=running_from_source,
             technical=adv.technical_log_info,
             timestamp=adv.log_timestamp,
+            buffer_startup=True,
         )
 
         app = QApplication(sys.argv)

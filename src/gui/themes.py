@@ -243,7 +243,8 @@ QLabel#key-badge {
     font-family: 'Consolas', 'Monospace';
 }
 
-QPlainTextEdit#log-viewer {
+QPlainTextEdit#log-viewer,
+QTextEdit#log-viewer {
     background-color: #121212;
     color: #e0e0e0;
     border: 1px solid #333;
@@ -537,7 +538,8 @@ QLabel#key-badge {
     font-family: 'Consolas', 'Monospace';
 }
 
-QPlainTextEdit#log-viewer {
+QPlainTextEdit#log-viewer,
+QTextEdit#log-viewer {
     background-color: #ffffff;
     color: #1f1f1f;
     border: 1px solid #c3c3c3;

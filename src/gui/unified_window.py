@@ -29,7 +29,7 @@ from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.settings_window import ConfigWindow
 from src.gui.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.item.filter import Filter
-from src.logger import apply_log_level, create_formatter
+from src.logger import apply_log_level, consume_startup_log_records, create_formatter
 from src.logger import setup as setup_logging
 from src.main import check_for_proper_tts_configuration
 from src.overlay import Overlay
@@ -131,6 +131,7 @@ class UnifiedMainWindow(QMainWindow):
                 enable_stdout=running_from_source,
                 technical=adv.technical_log_info,
                 timestamp=adv.log_timestamp,
+                buffer_startup=True,
             )
 
         for h in list(root_logger.handlers):
@@ -182,6 +183,8 @@ class UnifiedMainWindow(QMainWindow):
         self.console_handler.log_signal.connect(self.console_output.append_ansi_text)
         self.console_handler.log_signal.connect(self.activity_tab.log_viewer.append_ansi_text)
 
+        self.emit_startup_direct_to_console()
+        self._emit_startup_logs()
         self._emit_deferred_config_cleanup_logs(self._config)
 
     def _setup_tab_corner_widgets(self):
@@ -284,6 +287,13 @@ class UnifiedMainWindow(QMainWindow):
             if record.levelno >= self.console_handler.level:
                 self.console_handler.handle(record)
 
+    def _emit_startup_logs(self):
+        for record in consume_startup_log_records():
+            if not logging.getLogger(record.name).isEnabledFor(record.levelno):
+                continue
+            if record.levelno >= self.console_handler.level:
+                self.console_handler.handle(record)
+
     def open_import_dialog(self):
         win = self._show_singleton_modal("importer", ImporterWindow)
         win.import_completed.connect(self.activity_tab.refresh_profiles, Qt.ConnectionType.UniqueConnection)
@@ -380,8 +390,8 @@ class UnifiedMainWindow(QMainWindow):
             "D4LF - Diablo 4 Loot Filter\n"
             "═══════════════════════════════════════════════════════════════════════════════"
         )
-        self.console_output.appendPlainText(banner)
-        self.console_output.appendPlainText("")
+        self.console_output.append_ansi_text(banner)
+        self.console_output.append_ansi_text("")
 
     def apply_theme(self):
         theme_name = IniConfigLoader().general.theme

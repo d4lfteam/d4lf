@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import logging
 import re
+from html import escape
 from typing import TYPE_CHECKING
 
 import yaml
@@ -16,10 +17,10 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
-    QPlainTextEdit,
     QPushButton,
     QScrollArea,
     QSplitter,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -37,7 +38,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-class ANSIConsoleWidget(QPlainTextEdit):
+class ANSIConsoleWidget(QTextEdit):
     ANSI_PATTERN = re.compile(r"\x1b\[(\d+)(;\d+)*m")
     ANSI_COLORS = {
         "30": "#000000",
@@ -64,35 +65,36 @@ class ANSIConsoleWidget(QPlainTextEdit):
         self.setStyleSheet("background-color: black; color: white; font-family: Consolas, monospace; font-size: 12px;")
 
     def append_ansi_text(self, text: str):
-        self.appendHtml(self._ansi_to_html(text))
+        self.append(self._ansi_to_html(text))
         self.moveCursor(QTextCursor.MoveOperation.End)
 
     def _ansi_to_html(self, text: str) -> str:
-        html = ""
+        html_parts = []
         last_end = 0
-        current_color = None
+        span_open = False
 
         for match in self.ANSI_PATTERN.finditer(text):
             start, end = match.span()
-            html += text[last_end:start].replace("<", "&lt;").replace(">", "&gt;")
+            html_parts.append(escape(text[last_end:start]).replace("\n", "<br>"))
 
             codes = match.group(0)[2:-1].split(";")
             for code in codes:
                 if code in self.ANSI_COLORS:
-                    current_color = self.ANSI_COLORS[code]
+                    if span_open:
+                        html_parts.append("</span>")
+                    html_parts.append(f'<span style="color:{self.ANSI_COLORS[code]}">')
+                    span_open = True
                 elif code == "0":
-                    current_color = None
+                    if span_open:
+                        html_parts.append("</span>")
+                        span_open = False
 
-            if current_color:
-                html += f'<span style="color:{current_color}">'
-            else:
-                html += "</span>"
             last_end = end
 
-        html += text[last_end:].replace("<", "&lt;").replace(">", "&gt;")
-        if current_color:
-            html += "</span>"
-        return html
+        html_parts.append(escape(text[last_end:]).replace("\n", "<br>"))
+        if span_open:
+            html_parts.append("</span>")
+        return "".join(html_parts)
 
 
 class QtConsoleHandler(logging.Handler, QObject):

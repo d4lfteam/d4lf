@@ -2,7 +2,8 @@ import logging
 
 import pytest
 
-from src.logger import apply_log_level, create_formatter
+import src.logger as logger_module
+from src.logger import apply_log_level, consume_startup_log_records, create_formatter
 
 
 @pytest.fixture
@@ -86,3 +87,18 @@ def test_timestamp_gui_log_formatter_restores_timestamp():
 
     assert formatted.endswith(" | item marked junk")
     assert formatted != "item marked junk"
+
+
+def test_startup_log_buffer_captures_and_consumes_records(isolated_root_logger):
+    logger_module._startup_buffer_handler = None
+    logger_module._startup_log_records.clear()
+    logger_module._enable_startup_buffer(isolated_root_logger)
+
+    logging.getLogger("d4lf.test").warning("startup warning")
+
+    records = consume_startup_log_records()
+
+    assert [record.getMessage() for record in records] == ["startup warning"]
+    assert logger_module._startup_buffer_handler is None
+    assert all(getattr(handler, "name", "") != "D4LF_STARTUP_BUFFER" for handler in isolated_root_logger.handlers)
+    assert consume_startup_log_records() == []

@@ -25,6 +25,13 @@ LOGGER = logging.getLogger(__name__)
 LOG_DIR = BASE_DIR / "logs"
 
 _setup_called = False
+_startup_buffer_handler: logging.Handler | None = None
+_startup_log_records: list[logging.LogRecord] = []
+
+
+class _StartupBufferHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        _startup_log_records.append(record)
 
 
 class ColoredFormatter(logging.Formatter):
@@ -67,10 +74,7 @@ def create_formatter(colored: bool = False, technical: bool = False, timestamp: 
 
 
 def apply_log_level(
-    log_level: str,
-    *,
-    skip_handler_names: Container[str] = (),
-    formatter: logging.Formatter | None = None,
+    log_level: str, *, skip_handler_names: Container[str] = (), formatter: logging.Formatter | None = None
 ) -> None:
     """Apply a new log level to the root logger and its handlers at runtime.
 
@@ -91,12 +95,19 @@ def apply_log_level(
 
 
 def setup(
-    log_level: str = "DEBUG", *, enable_stdout: bool = True, technical: bool = False, timestamp: bool = False
+    log_level: str = "DEBUG",
+    *,
+    enable_stdout: bool = True,
+    technical: bool = False,
+    timestamp: bool = False,
+    buffer_startup: bool = False,
 ) -> None:
     LOG_DIR.mkdir(exist_ok=True)
 
     logger = logging.getLogger()
     threading.excepthook = _log_unhandled_exceptions
+    if buffer_startup:
+        _enable_startup_buffer(logger)
 
     # File handler: Always DEBUG level and always includes technical info
     log_timestamp = datetime.datetime.now(tz=datetime.UTC).strftime("%Y_%m_%d_%H_%M_%S")
@@ -126,6 +137,27 @@ def setup(
 
     # Clean up old log files
     clean_up_old_log_files()
+
+
+def _enable_startup_buffer(logger: logging.Logger) -> None:
+    global _startup_buffer_handler
+    if _startup_buffer_handler is not None:
+        return
+    _startup_buffer_handler = _StartupBufferHandler()
+    _startup_buffer_handler.set_name("D4LF_STARTUP_BUFFER")
+    _startup_buffer_handler.setLevel(logging.DEBUG)
+    logger.addHandler(_startup_buffer_handler)
+
+
+def consume_startup_log_records() -> list[logging.LogRecord]:
+    global _startup_buffer_handler
+    logger = logging.getLogger()
+    if _startup_buffer_handler is not None:
+        logger.removeHandler(_startup_buffer_handler)
+        _startup_buffer_handler = None
+    records = _startup_log_records.copy()
+    _startup_log_records.clear()
+    return records
 
 
 def clean_up_old_log_files():
