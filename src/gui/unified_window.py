@@ -22,13 +22,14 @@ from src import __version__, tts
 from src.autoupdater import notify_if_update
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
+from src.config.reload_groups import LOG_LEVEL_SETTING_KEYS, has_any_changed
 from src.gui.importer_window import ImporterWindow
 from src.gui.models.activity_log_widget import ActivityLogWidget, ANSIConsoleWidget, QtConsoleHandler
 from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.settings_window import ConfigWindow
 from src.gui.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.item.filter import Filter
-from src.logger import create_formatter
+from src.logger import apply_log_level, create_formatter
 from src.logger import setup as setup_logging
 from src.main import check_for_proper_tts_configuration
 from src.overlay import Overlay
@@ -148,6 +149,20 @@ class UnifiedMainWindow(QMainWindow):
         root_logger.addHandler(self.console_handler)
         # Root is always DEBUG; the handlers above (Console/QT) filter based on user settings
         root_logger.setLevel(logging.DEBUG)
+
+        # Apply log level changes live, independently of the backend's wait-for-D4 loop.
+        self._config.register_change_listener(self._on_config_changed_log_level)
+
+    def _on_config_changed_log_level(self, changed_keys) -> None:
+        if not has_any_changed(changed_keys, LOG_LEVEL_SETTING_KEYS):
+            return
+        adv = self._config.advanced_options
+        new_level = adv.log_lvl.value.upper()
+        formatter = create_formatter(colored=True, technical=adv.technical_log_info, timestamp=adv.log_timestamp)
+        apply_log_level(new_level, skip_handler_names={"D4LF_FILE"}, formatter=formatter)
+        LOGGER.info(
+            "Updated log settings (Level: %s, Tech: %s, TS: %s)", new_level, adv.technical_log_info, adv.log_timestamp
+        )
 
     def _setup_ui(self):
         self.setWindowTitle(f"D4LF - Diablo 4 Loot Filter v{__version__}")

@@ -45,6 +45,8 @@ from src.gui.models.dialog import (
     MinGreaterDialog,
     MinPercentDialog,
     MinPowerDialog,
+    RarityPicker,
+    rarity_summary,
 )
 from src.item.data.item_type import ItemType, is_armor, is_jewelry, is_weapon
 
@@ -164,6 +166,21 @@ class AffixGroupEditor(QWidget):
         item_type_layout.addWidget(edit_item_types_btn)
         item_type_layout.addStretch()
         general_form.addRow("Item Types:", item_type_layout)
+
+        self.rarity_line_edit = QLineEdit()
+        self.rarity_line_edit.setReadOnly(True)
+        self.rarity_line_edit.setMinimumWidth(360)
+        self.rarity_line_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.refresh_rarity_summary()
+
+        rarity_layout = QHBoxLayout()
+        rarity_layout.addWidget(self.rarity_line_edit)
+        edit_rarities_btn = QPushButton("...")
+        edit_rarities_btn.setMaximumWidth(40)
+        edit_rarities_btn.clicked.connect(self.edit_rarities)
+        rarity_layout.addWidget(edit_rarities_btn)
+        rarity_layout.addStretch()
+        general_form.addRow("Rarities:", rarity_layout)
 
         self.min_power = IgnoreScrollWheelSpinBox()
         self.min_power.setMaximum(MAX_POWER)
@@ -433,6 +450,15 @@ class AffixGroupEditor(QWidget):
         if item_type_picker.exec() == QDialog.DialogCode.Accepted:
             self.config.item_type = item_type_picker.get_selected_item_types()
             self.refresh_item_type_summary()
+
+    def refresh_rarity_summary(self):
+        self.rarity_line_edit.setText(rarity_summary(self.config.rarities))
+
+    def edit_rarities(self):
+        rarity_picker = RarityPicker(self, self.config.rarities)
+        if rarity_picker.exec() == QDialog.DialogCode.Accepted:
+            self.config.rarities = rarity_picker.get_selected_rarities()
+            self.refresh_rarity_summary()
 
     def update_min_power(self):
         self.config.min_power = self.min_power.value()

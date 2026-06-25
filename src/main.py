@@ -184,11 +184,21 @@ def hide_console():
 if __name__ == "__main__":
     adv = IniConfigLoader().advanced_options
     if len(sys.argv) > 1 and sys.argv[1] == "--autoupdate":
-        src.logger.setup(log_level=adv.log_lvl.value, enable_stdout=True, technical=True, timestamp=True)
+        src.logger.setup(
+            log_level=adv.log_lvl.value,
+            enable_stdout=True,
+            technical=adv.technical_log_info,
+            timestamp=adv.log_timestamp,
+        )
         start_auto_update()
 
     elif len(sys.argv) > 1 and sys.argv[1] == "--autoupdatepost":
-        src.logger.setup(log_level=adv.log_lvl.value, enable_stdout=True, technical=True, timestamp=True)
+        src.logger.setup(
+            log_level=adv.log_lvl.value,
+            enable_stdout=True,
+            technical=adv.technical_log_info,
+            timestamp=adv.log_timestamp,
+        )
         start_auto_update(postprocess=True)
 
     elif len(sys.argv) > 1 and sys.argv[1] == "--consoleonly":

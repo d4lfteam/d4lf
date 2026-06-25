@@ -131,15 +131,18 @@ class AdvancedOptionsModel(_IniBaseModel):
         json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level", CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     log_timestamp: bool = Field(
-        default=True,
-        description="Include timestamps in the log messages.",
-        title="Log Timestamps",
+        default=False,
+        description="Include timestamps in Dashboard and Full Logs messages. Log files always include timestamps.",
+        title="Show Timestamps In Logs",
         json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level", CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     technical_log_info: bool = Field(
         default=False,
-        description="Include technical information (thread, module, line number) in the logs.",
-        title="Technical Log Info",
+        description=(
+            "Include technical information (thread, level, logger name, line number) in Dashboard and Full Logs "
+            "messages. Log files always include this information."
+        ),
+        title="Show Technical Information In Logs",
         json_schema_extra={LIVE_RELOAD_GROUP_KEY: "log_level", CATEGORY_KEY: SettingsCategory.ADVANCED},
     )
     move_to_chest: str = Field(

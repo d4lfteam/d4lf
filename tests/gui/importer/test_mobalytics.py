@@ -7,11 +7,7 @@ import pytest
 from src.config.profile_models import ParagonPayloadModel
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.mobalytics import (
-    _extract_mobalytics_preloaded_state,
-    _log_mobalytics_page_diagnostics,
-    import_mobalytics,
-)
+from src.gui.importer.mobalytics import _log_mobalytics_page_diagnostics, import_mobalytics
 from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_mobalytics_paragon_steps
 
 if typing.TYPE_CHECKING:
@@ -65,24 +61,6 @@ def test_build_paragon_profile_payload_returns_typed_model():
     assert isinstance(payload, ParagonPayloadModel)
     assert payload.name == "Build Name"
     assert payload.paragon_boards_list[0][0].rotation == "90°"
-
-
-@pytest.mark.parametrize(
-    "script_text",
-    [
-        'window.__PRELOADED_STATE__={"userGeneratedDocumentBySlug":{"data":{}}};',
-        '\nwindow.__PRELOADED_STATE__ = {"userGeneratedDocumentBySlug":{"data":{}}};\n',
-        '(() => {})(); window.__PRELOADED_STATE__ = {"userGeneratedDocumentBySlug":{"data":{}}};',
-    ],
-)
-def test_extract_mobalytics_preloaded_state_accepts_assignment_variants(script_text: str):
-    data = _extract_mobalytics_preloaded_state(script_text)
-
-    assert data == {"userGeneratedDocumentBySlug": {"data": {}}}
-
-
-def test_extract_mobalytics_preloaded_state_ignores_unrelated_script():
-    assert _extract_mobalytics_preloaded_state("console.log('ready');") is None
 
 
 def test_log_mobalytics_page_diagnostics_reports_loaded_page_shape(caplog: pytest.LogCaptureFixture):

@@ -54,7 +54,7 @@ class ANSIConsoleWidget(QPlainTextEdit):
         "93": "#FFFF55",
         "94": "#5555FF",
         "95": "#FF55FF",
-        "96": "#55FFFF",
+        "96": "#AAFFFF",
         "97": "#FFFFFF",
     }
 

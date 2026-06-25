@@ -14,21 +14,20 @@ if TYPE_CHECKING:
 if sys.platform != "darwin":
     import keyboard
 
-import src.logger
 import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
 import src.tts
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
-from src.config.settings_models import (
-    IS_HOTKEY_KEY,
-    LIVE_RELOAD_GROUP_KEY,
-    AdvancedOptionsModel,
-    GeneralModel,
-    ItemRefreshType,
-    VisionModeType,
+from src.config.reload_groups import (
+    HOTKEY_SETTING_KEYS,
+    LANGUAGE_SETTING_KEYS,
+    MANUAL_RESTART_SETTING_KEYS,
+    VISION_MODE_TYPE_SETTING_KEY,
+    has_any_changed,
 )
+from src.config.settings_models import ItemRefreshType, VisionModeType
 from src.dataloader import Dataloader
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
 from src.paragon_overlay import request_close as request_close_paragon
@@ -47,43 +46,6 @@ LOGGER = logging.getLogger(__name__)
 LOCK = threading.Lock()
 
 
-def _setting_key(section: str, field_name: str) -> str:
-    return f"{section}.{field_name}"
-
-
-def _field_metadata(model_class: type[Any], field_name: str) -> dict[str, Any]:
-    return model_class.model_fields[field_name].json_schema_extra or {}
-
-
-def _collect_reload_group_keys(section: str, model_class: type[Any], group_name: str) -> set[str]:
-    return {
-        _setting_key(section, field_name)
-        for field_name in model_class.model_fields
-        if _field_metadata(model_class, field_name).get(LIVE_RELOAD_GROUP_KEY) == group_name
-    }
-
-
-def _collect_hotkey_setting_keys() -> set[str]:
-    hotkey_keys = {
-        _setting_key("advanced_options", field_name)
-        for field_name in AdvancedOptionsModel.model_fields
-        if _field_metadata(AdvancedOptionsModel, field_name).get(IS_HOTKEY_KEY) == "True"
-    }
-    hotkey_keys.update(_collect_reload_group_keys("advanced_options", AdvancedOptionsModel, "hotkeys"))
-    return hotkey_keys
-
-
-def _has_any_changed(changed_keys: AbstractSet[str], relevant_keys: set[str]) -> bool:
-    return any(key in changed_keys for key in relevant_keys)
-
-
-HOTKEY_SETTING_KEYS = _collect_hotkey_setting_keys()
-LANGUAGE_SETTING_KEYS = _collect_reload_group_keys("general", GeneralModel, "language")
-LOG_LEVEL_SETTING_KEYS = _collect_reload_group_keys("advanced_options", AdvancedOptionsModel, "log_level")
-MANUAL_RESTART_SETTING_KEYS = _collect_reload_group_keys("general", GeneralModel, "restart_app")
-VISION_MODE_TYPE_SETTING_KEY = _setting_key("general", "vision_mode_type")
-
-
 class ScriptHandler:
     def __init__(self):
         self.loot_interaction_thread = None
@@ -98,7 +60,6 @@ class ScriptHandler:
         self._config = IniConfigLoader()
         self._win_spec = WindowSpec(self._config.advanced_options.process_name)
         self._language = self._config.general.language
-        self._log_level = self._config.advanced_options.log_lvl.value.upper()
         self.vision_mode = self._create_vision_mode(self._config.general.vision_mode_type)
 
         # Initialize Info Overlay hooks and subscriptions
@@ -120,15 +81,13 @@ class ScriptHandler:
     def _on_config_changed(self, changed_keys: AbstractSet[str]) -> None:
         """Apply relevant settings after a config change event."""
         with self._runtime_config_lock:
-            if _has_any_changed(changed_keys, LOG_LEVEL_SETTING_KEYS):
-                self._refresh_logging_level(self._config)
-            if _has_any_changed(changed_keys, HOTKEY_SETTING_KEYS):
+            if has_any_changed(changed_keys, HOTKEY_SETTING_KEYS):
                 self._refresh_hotkeys(self._config)
-            if _has_any_changed(changed_keys, LANGUAGE_SETTING_KEYS):
+            if has_any_changed(changed_keys, LANGUAGE_SETTING_KEYS):
                 self._refresh_language_assets(self._config)
             if VISION_MODE_TYPE_SETTING_KEY in changed_keys:
                 self._notify_manual_restart_required("vision mode changes")
-            elif _has_any_changed(changed_keys, MANUAL_RESTART_SETTING_KEYS):
+            elif has_any_changed(changed_keys, MANUAL_RESTART_SETTING_KEYS):
                 self._notify_manual_restart_required("settings changes")
 
     def _hotkey_signature(self, config: IniConfigLoader) -> tuple[str | bool, ...]:
@@ -166,29 +125,6 @@ class ScriptHandler:
         Dataloader().load_data()
         self._language = config.general.language
         LOGGER.info("Reloaded language assets for %s", self._language)
-
-    def _refresh_logging_level(self, config: IniConfigLoader) -> None:
-        adv = config.advanced_options
-        lvl = adv.log_lvl.value.upper()
-
-        root = logging.getLogger()
-        # File handler is always DEBUG; console and Qt handlers follow user settings.
-        for h in root.handlers:
-            if getattr(h, "name", "") == "D4LF_FILE":
-                continue
-            h.setLevel(lvl)
-            h.setFormatter(
-                src.logger.create_formatter(
-                    colored=("CONSOLE" in str(h.name) or "QT" in str(h.name)),
-                    technical=adv.technical_log_info,
-                    timestamp=adv.log_timestamp,
-                )
-            )
-
-        self._log_level = lvl
-        LOGGER.info(
-            "Updated log settings (Level: %s, Tech: %s, TS: %s)", lvl, adv.technical_log_info, adv.log_timestamp
-        )
 
     def _notify_manual_restart_required(self, reason: str) -> None:
         if self._manual_restart_warning:
