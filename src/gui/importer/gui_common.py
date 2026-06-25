@@ -20,6 +20,7 @@ from src import __version__
 from src.config.loader import IniConfigLoader
 from src.config.profile_models import AspectUniqueFilterModel, ItemFilterModel, ProfileModel
 from src.config.settings_models import BrowserType
+from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart
 from src.item.data.item_type import ItemType
 
 if TYPE_CHECKING:
@@ -133,22 +134,32 @@ def normalize_profile_file_name(file_name: str) -> str:
 
 
 def build_default_profile_file_name(
-    source_name: str, class_name: str = "", season_number: str = "", build_header: str = "", variant_name: str = ""
+    source_name: str,
+    class_name: str = "",
+    season_number: str = "",
+    build_header: str = "",
+    variant_name: str = "",
+    filename_parts: tuple[FilenamePart | str, ...] = DEFAULT_FILENAME_PARTS,
 ) -> str:
+    selected_parts = {FilenamePart(part) for part in filename_parts}
     normalized_source_name = _normalize_profile_name_part(source_name) or "imported"
     clean_title = _clean_build_header(normalized_source_name, build_header, season_number)
     normalized_class_name = _normalize_profile_name_part(class_name) or "unknown"
     normalized_variant_name = _normalize_profile_name_part(variant_name)
     season_match = re.search(r"\d+", str(season_number))
     normalized_season_name = f"s{season_match.group(0)}" if season_match else ""
-    file_name_parts = [normalized_source_name, normalized_class_name]
-    if normalized_season_name:
+    file_name_parts = []
+    if FilenamePart.SOURCE in selected_parts:
+        file_name_parts.append(normalized_source_name)
+    if FilenamePart.SEASON in selected_parts and normalized_season_name:
         file_name_parts.append(normalized_season_name)
-    if clean_title:
+    if FilenamePart.CLASS in selected_parts:
+        file_name_parts.append(normalized_class_name)
+    if FilenamePart.BUILD_TITLE in selected_parts and clean_title:
         file_name_parts.append(clean_title)
-    if normalized_variant_name:
+    if FilenamePart.VARIANT in selected_parts and normalized_variant_name:
         file_name_parts.append(normalized_variant_name)
-    return normalize_profile_file_name("_".join(file_name_parts))
+    return normalize_profile_file_name("_".join(file_name_parts)) or "imported"
 
 
 def _clean_build_header(source_name: str, build_header: str, season_number: str = "") -> str:

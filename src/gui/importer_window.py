@@ -4,13 +4,14 @@ import threading
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, Qt, QThreadPool, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMenu,
     QPushButton,
     QTextEdit,
     QVBoxLayout,
@@ -19,7 +20,7 @@ from PyQt6.QtWidgets import (
 
 from src.config.loader import IniConfigLoader
 from src.gui.importer.d4builds import import_d4builds
-from src.gui.importer.importer_config import ImportConfig
+from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart, ImportConfig
 from src.gui.importer.maxroll import import_maxroll
 from src.gui.importer.mobalytics import import_mobalytics
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
@@ -30,6 +31,14 @@ ICON_PATH = BASE_DIR / "assets" / "logo.png"
 
 LOGGER = logging.getLogger(__name__)
 THREADPOOL = QThreadPool()
+FILENAME_PART_LABELS = {
+    FilenamePart.SOURCE: "Source",
+    FilenamePart.SEASON: "Season",
+    FilenamePart.CLASS: "Class",
+    FilenamePart.BUILD_TITLE: "Build title",
+    FilenamePart.VARIANT: "Variant",
+}
+GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP = "Select at least one filename part or enter a custom file name."
 
 
 class ImporterWindow(QMainWindow):
@@ -47,6 +56,7 @@ class ImporterWindow(QMainWindow):
 
         # Settings for persistent window geometry
         self.settings = QSettings("d4lf", "ImporterWindow")
+        self.is_generating = False
 
         self.setWindowTitle("Profile Importer - Maxroll / D4Builds / Mobalytics")
         self.setMinimumSize(700, 600)
@@ -68,8 +78,12 @@ class ImporterWindow(QMainWindow):
         url_label = QLabel("URL:")
         url_hbox.addWidget(url_label)
         self.input_box = QLineEdit()
-        self.input_box.textChanged.connect(self._handle_text_changed)
+        self.input_box.textChanged.connect(self._update_generate_button_state)
         url_hbox.addWidget(self.input_box)
+        self.generate_button = QPushButton("Generate")
+        self.generate_button.setEnabled(False)
+        self.generate_button.clicked.connect(self._generate_button_click)
+        url_hbox.addWidget(self.generate_button)
         layout.addLayout(url_hbox)
 
         # Filename input
@@ -78,8 +92,28 @@ class ImporterWindow(QMainWindow):
         filename_hbox.addWidget(filename_label)
         self.filename_input_box = QLineEdit()
         self.filename_input_box.setPlaceholderText("Leave blank for default filename")
+        self.filename_input_box.textChanged.connect(self._update_generate_button_state)
         filename_hbox.addWidget(self.filename_input_box)
+        self.filename_parts_button = QPushButton("Filename parts...")
+        self.filename_parts_menu = QMenu(self.filename_parts_button)
+        self.filename_part_actions: dict[FilenamePart, QAction] = {}
+        for filename_part in DEFAULT_FILENAME_PARTS:
+            action = QAction(FILENAME_PART_LABELS[filename_part], self.filename_parts_menu)
+            action.setCheckable(True)
+            action.setChecked(self._filename_part_setting(filename_part))
+            action.toggled.connect(
+                lambda checked, part=filename_part: self._handle_filename_part_toggled(part, checked)
+            )
+            self.filename_parts_menu.addAction(action)
+            self.filename_part_actions[filename_part] = action
+        self.filename_parts_button.setMenu(self.filename_parts_menu)
+        filename_hbox.addWidget(self.filename_parts_button)
         layout.addLayout(filename_hbox)
+
+        self.filename_parts_summary_label = QLabel()
+        layout.addWidget(self.filename_parts_summary_label)
+        self._update_filename_parts_summary()
+        self._update_generate_button_state()
 
         # Checkboxes
         self.import_aspect_upgrades_checkbox = self._generate_checkbox(
@@ -144,14 +178,6 @@ class ImporterWindow(QMainWindow):
 
         layout.addLayout(checkbox_grid)
 
-        # Generate button
-        button_hbox = QHBoxLayout()
-        self.generate_button = QPushButton("Generate")
-        self.generate_button.setEnabled(False)
-        self.generate_button.clicked.connect(self._generate_button_click)
-        button_hbox.addWidget(self.generate_button)
-        layout.addLayout(button_hbox)
-
         # Log output
         log_label = QLabel("Log:")
         layout.addWidget(log_label)
@@ -207,13 +233,42 @@ class ImporterWindow(QMainWindow):
         checkbox.stateChanged.connect(lambda: save_setting_change(settings_value, checkbox.isChecked()))
         return checkbox
 
-    def _handle_text_changed(self, text):
-        """Enable/disable generate button based on input."""
-        self.generate_button.setEnabled(bool(text.strip()))
+    def _filename_part_setting(self, filename_part: FilenamePart) -> bool:
+        value = self.settings.value(self._filename_part_setting_key(filename_part), "true")
+        return value is True or str(value).casefold() == "true"
+
+    def _handle_filename_part_toggled(self, filename_part: FilenamePart, checked: bool):
+        self.settings.setValue(self._filename_part_setting_key(filename_part), checked)
+        self._update_filename_parts_summary()
+        self._update_generate_button_state()
+
+    def _selected_filename_parts(self) -> tuple[FilenamePart, ...]:
+        return tuple(part for part in DEFAULT_FILENAME_PARTS if self.filename_part_actions[part].isChecked())
+
+    def _update_filename_parts_summary(self):
+        selected_labels = [FILENAME_PART_LABELS[part] for part in self._selected_filename_parts()]
+        summary = " + ".join(selected_labels) if selected_labels else "none"
+        self.filename_parts_summary_label.setText(f"Filename parts: {summary}")
+
+    def _update_generate_button_state(self):
+        if self.is_generating:
+            self.generate_button.setEnabled(False)
+            return
+        url_ready = bool(self.input_box.text().strip())
+        filename_ready = bool(self.filename_input_box.text().strip()) or bool(self._selected_filename_parts())
+        self.generate_button.setEnabled(url_ready and filename_ready)
+        if url_ready and not filename_ready:
+            self.generate_button.setToolTip(GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP)
+        elif not url_ready:
+            self.generate_button.setToolTip("Enter a URL to generate a profile.")
+        else:
+            self.generate_button.setToolTip("")
 
     def _generate_button_click(self):
+        """Handle generate button click."""
+        if not self.generate_button.isEnabled():
+            return
         self.log_output.clear()
-        """Handle generate button click"""
         url = self.input_box.text().strip()
         custom_filename = self.filename_input_box.text()
         if custom_filename:
@@ -228,6 +283,7 @@ class ImporterWindow(QMainWindow):
             self.require_all_gas_checkbox.isChecked(),
             self.export_paragon_checkbox.isChecked(),
             custom_filename,
+            self._selected_filename_parts(),
         )
 
         if "maxroll" in url:
@@ -238,16 +294,22 @@ class ImporterWindow(QMainWindow):
             worker = _Worker(name="mobalytics", fn=import_mobalytics, config=importer_config)
 
         worker.signals.finished.connect(self._on_worker_finished)
+        self.is_generating = True
         self.generate_button.setEnabled(False)
         self.generate_button.setText("Generating...")
         THREADPOOL.start(worker)
 
     def _on_worker_finished(self):
         """Handle worker completion."""
-        self.generate_button.setEnabled(True)
+        self.is_generating = False
         self.generate_button.setText("Generate")
         self.filename_input_box.clear()
+        self._update_generate_button_state()
         self.import_completed.emit()
+
+    @staticmethod
+    def _filename_part_setting_key(filename_part: FilenamePart) -> str:
+        return f"filename_part_{filename_part.value}"
 
     def closeEvent(self, event):  # noqa: N802
         """Cleanup when window closes and save geometry."""
