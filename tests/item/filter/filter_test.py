@@ -11,9 +11,9 @@ if sys.platform == "darwin":
     pytest.skip("Windows-only filter test module", allow_module_level=True)
 
 from src.config.loader import IniConfigLoader
+from src.config.profile_document import ProfileDocumentStore
 from src.config.profile_models import ParagonPayloadModel, ProfileModel, SigilPriority
 from src.config.settings_models import AspectFilterType
-from src.gui.importer.gui_common import save_as_profile
 from src.item.data.affix import Affix
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
@@ -290,7 +290,9 @@ def test_filter_loads_typed_paragon_payload(tmp_path, mock_ini_loader: IniConfig
             ],
         },
     )
-    save_as_profile(file_name="typed_paragon", profile=profile, url="https://example.invalid")
+    ProfileDocumentStore.default().save_new(
+        file_name="typed_paragon", profile=profile, source="https://example.invalid"
+    )
 
     test_filter = _create_mocked_filter(mocker)
     test_filter.files_loaded = False
