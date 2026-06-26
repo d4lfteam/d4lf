@@ -509,92 +509,129 @@ def _is_cosmetic_upgrade(tts_section: list[str]):
     return any("unlocks new look on salvage" in line.lower() for line in tts_section)
 
 
+class _TtsItemParser:
+    def __init__(
+        self, tts_section: list[str], *, img_item_descr: np.ndarray | None = None, attach_locations: bool = False
+    ):
+        self.tts_section = tts_section
+        self.img_item_descr = img_item_descr
+        self.attach_locations = attach_locations
+        self.item: Item | None = None
+
+    def parse(self) -> Item | None:
+        if not self.tts_section:
+            return None
+        if (item := _create_base_item_from_tts(self.tts_section)) is None:
+            return None
+        self.item = item
+
+        if self.attach_locations and is_sigil(item.item_type):
+            return item
+        if is_sigil(item.item_type):
+            return _add_sigil_affixes_from_tts(self.tts_section, item)
+        if item.item_type == ItemType.Cosmetic and not self.attach_locations:
+            item.cosmetic_upgrade = True
+            return item
+        if self._should_return_without_affixes():
+            return item
+        if not self._is_supported_equipment():
+            return None
+        if not self.attach_locations and item.rarity == ItemRarity.Mythic and item.is_in_shop:
+            return None
+
+        if self.attach_locations:
+            return self._parse_with_locations()
+
+        self._validate_unique()
+        self._add_upgrade_flags()
+        return _add_affixes_from_tts(self.tts_section, item)
+
+    def _should_return_without_affixes(self) -> bool:
+        if self.item is None:
+            msg = "TTS parser item has not been initialized"
+            raise RuntimeError(msg)
+        terminal_item_types = [ItemType.Material, ItemType.Tribute]
+        if self.attach_locations:
+            terminal_item_types.extend([ItemType.Cache, ItemType.LairBossKey])
+        else:
+            terminal_item_types.extend([ItemType.Cache, ItemType.LairBossKey])
+            if self.item.seasonal_attribute == SeasonalAttribute.sanctified:
+                return True
+        return any([
+            is_consumable(self.item.item_type),
+            is_non_sigil_mapping(self.item.item_type),
+            is_socketable(self.item.item_type),
+            self.item.item_type in terminal_item_types,
+        ])
+
+    def _is_supported_equipment(self) -> bool:
+        if self.item is None:
+            msg = "TTS parser item has not been initialized"
+            raise RuntimeError(msg)
+        return any([
+            is_armor(self.item.item_type),
+            is_jewelry(self.item.item_type),
+            is_weapon(self.item.item_type),
+            is_seal_or_charm(self.item.item_type),
+        ])
+
+    def _parse_with_locations(self) -> Item | None:
+        if self.item is None:
+            msg = "TTS parser item has not been initialized"
+            raise RuntimeError(msg)
+        if (sep_short_match := find_seperator_short(self.img_item_descr)) is None:
+            LOGGER.warning("Could not detect item_seperator_short.")
+            screenshot("failed_seperator_short", img=self.img_item_descr)
+            return None
+
+        TP.submit(find_seperators_long, self.img_item_descr, sep_short_match)
+        aspect_bullet_future = (
+            TP.submit(find_aspect_bullet, self.img_item_descr, sep_short_match)
+            if self.item.rarity in [ItemRarity.Legendary, ItemRarity.Unique, ItemRarity.Mythic]
+            else None
+        )
+        affix_bullets = find_affix_bullets(self.img_item_descr, sep_short_match)
+
+        self._validate_unique()
+        self._add_upgrade_flags()
+        aspect_bullet = aspect_bullet_future.result() if aspect_bullet_future else None
+        return _add_affixes_from_tts_mixed(
+            self.tts_section, self.item, affix_bullets, self.img_item_descr, aspect_bullet=aspect_bullet
+        )
+
+    def _validate_unique(self) -> None:
+        if self.item is None:
+            msg = "TTS parser item has not been initialized"
+            raise RuntimeError(msg)
+        if self.item.rarity == ItemRarity.Unique and self.item.name not in Dataloader().aspect_unique_dict:
+            msg = (
+                f"Unrecognized unique {self.item.name}. This most likely means the name of it reported "
+                f"from Diablo 4 is wrong. Please report a bug with this message."
+            )
+            if not self.attach_locations:
+                msg = f"{msg} TTS: {self.tts_section}"
+            raise IndexError(msg)
+        if (
+            not self.attach_locations
+            and self.item.rarity == ItemRarity.Mythic
+            and self.item.name not in Dataloader().aspect_unique_dict
+        ):
+            msg = f"Unrecognized unique {self.item.name}. This most likely means the name of it reported from Diablo 4 is wrong. Please report a bug with this message. TTS: {self.tts_section}"
+            raise IndexError(msg)
+
+    def _add_upgrade_flags(self) -> None:
+        if self.item is None:
+            msg = "TTS parser item has not been initialized"
+            raise RuntimeError(msg)
+        self.item.codex_upgrade = _is_codex_upgrade(self.tts_section)
+        self.item.cosmetic_upgrade = _is_cosmetic_upgrade(self.tts_section)
+
+
 def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
     tts_section = copy.copy(src.tts.LAST_ITEM)
-    if not tts_section:
-        return None
-    if (item := _create_base_item_from_tts(tts_section)) is None:
-        return None
-    if any([
-        is_consumable(item.item_type),
-        is_non_sigil_mapping(item.item_type),
-        is_sigil(item.item_type),
-        is_socketable(item.item_type),
-        item.item_type in [ItemType.Material, ItemType.Tribute],
-    ]):
-        return item
-    if all([
-        not is_armor(item.item_type),
-        not is_jewelry(item.item_type),
-        not is_weapon(item.item_type),
-        not is_seal_or_charm(item.item_type),
-    ]):
-        return None
-
-    if (sep_short_match := find_seperator_short(img_item_descr)) is None:
-        LOGGER.warning("Could not detect item_seperator_short.")
-        screenshot("failed_seperator_short", img=img_item_descr)
-        return None
-    futures = {
-        "sep_long": TP.submit(find_seperators_long, img_item_descr, sep_short_match),
-        "aspect_bullet": (
-            TP.submit(find_aspect_bullet, img_item_descr, sep_short_match)
-            if item.rarity in [ItemRarity.Legendary, ItemRarity.Unique, ItemRarity.Mythic]
-            else None
-        ),
-    }
-
-    affix_bullets = find_affix_bullets(img_item_descr, sep_short_match)
-
-    if item.rarity == ItemRarity.Unique and item.name not in Dataloader().aspect_unique_dict:
-        msg = (
-            f"Unrecognized unique {item.name}. This most likely means the name of it reported "
-            f"from Diablo 4 is wrong. Please report a bug with this message."
-        )
-        raise IndexError(msg)
-
-    item.codex_upgrade = _is_codex_upgrade(tts_section)
-    item.cosmetic_upgrade = _is_cosmetic_upgrade(tts_section)
-    aspect_bullet = futures["aspect_bullet"].result() if futures["aspect_bullet"] else None
-    return _add_affixes_from_tts_mixed(tts_section, item, affix_bullets, img_item_descr, aspect_bullet=aspect_bullet)
+    return _TtsItemParser(tts_section, img_item_descr=img_item_descr, attach_locations=True).parse()
 
 
 def read_descr() -> Item | None:
     tts_section = copy.copy(src.tts.LAST_ITEM)
-    if not tts_section:
-        return None
-    if (item := _create_base_item_from_tts(tts_section)) is None:
-        return None
-    if is_sigil(item.item_type):
-        return _add_sigil_affixes_from_tts(tts_section, item)
-    if item.item_type == ItemType.Cosmetic:
-        item.cosmetic_upgrade = True
-        return item
-
-    if any([
-        is_consumable(item.item_type),
-        is_non_sigil_mapping(item.item_type),
-        is_socketable(item.item_type),
-        item.item_type in [ItemType.Material, ItemType.Tribute, ItemType.Cache, ItemType.LairBossKey],
-        item.seasonal_attribute == SeasonalAttribute.sanctified,
-    ]):
-        return item
-
-    if all([
-        not is_armor(item.item_type),
-        not is_jewelry(item.item_type),
-        not is_weapon(item.item_type),
-        not is_seal_or_charm(item.item_type),
-    ]):
-        return None
-
-    if item.rarity == ItemRarity.Mythic and item.is_in_shop:
-        return None
-
-    if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and item.name not in Dataloader().aspect_unique_dict:
-        msg = f"Unrecognized unique {item.name}. This most likely means the name of it reported from Diablo 4 is wrong. Please report a bug with this message. TTS: {tts_section}"
-        raise IndexError(msg)
-
-    item.codex_upgrade = _is_codex_upgrade(tts_section)
-    item.cosmetic_upgrade = _is_cosmetic_upgrade(tts_section)
-    return _add_affixes_from_tts(tts_section, item)
+    return _TtsItemParser(tts_section).parse()
