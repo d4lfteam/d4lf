@@ -50,38 +50,27 @@ def main():
     else:
         notify_if_update()
 
-    # --- OG D4LF STYLE HEADER (printed before other runtime logs) ---
-    print(f"============ D4 Loot Filter {__version__} ============")
+    LOGGER.info("============ D4 Loot Filter %s ============", __version__)
 
     table = BeautifulTable()
     table.set_style(BeautifulTable.STYLE_BOX_ROUNDED)
-    table.rows.append([IniConfigLoader().advanced_options.run_vision_mode, "Run/Stop Vision Mode"])
-    table.rows.append([IniConfigLoader().advanced_options.info_overlay, "Info Panel Overlay"])
-    table.rows.append([IniConfigLoader().advanced_options.toggle_paragon_overlay, "Toggle Paragon Overlay"])
+    adv = IniConfigLoader().advanced_options
+    table.rows.append([adv.run_vision_mode, "Run/Stop Vision Mode"])
+    table.rows.append([adv.info_overlay, "Info Panel Overlay"])
+    table.rows.append([adv.toggle_paragon_overlay, "Toggle Paragon Overlay"])
 
-    if not IniConfigLoader().advanced_options.vision_mode_only:
-        table.rows.append([IniConfigLoader().advanced_options.run_filter, "Run/Stop Auto Filter (no match = junk)"])
-        table.rows.append([
-            IniConfigLoader().advanced_options.run_filter_drop,
-            "Run/Stop Auto Filter (no match = drop)",
-        ])
-        table.rows.append([
-            IniConfigLoader().advanced_options.run_filter_force_refresh,
-            "Force Run/Stop Filter, Resetting Item Status",
-        ])
-        table.rows.append([
-            IniConfigLoader().advanced_options.force_refresh_only,
-            "Reset Item Statuses Without A Filter After",
-        ])
-        table.rows.append([IniConfigLoader().advanced_options.move_to_inv, "Move Items From Chest To Inventory"])
-        table.rows.append([IniConfigLoader().advanced_options.move_to_chest, "Move Items From Inventory To Chest"])
+    if not adv.vision_mode_only:
+        table.rows.append([adv.run_filter, "Run/Stop Auto Filter (no match = junk)"])
+        table.rows.append([adv.run_filter_drop, "Run/Stop Auto Filter (no match = drop)"])
+        table.rows.append([adv.run_filter_force_refresh, "Force Run/Stop Filter, Resetting Item Status"])
+        table.rows.append([adv.force_refresh_only, "Reset Item Statuses Without A Filter After"])
+        table.rows.append([adv.move_to_inv, "Move Items From Chest To Inventory"])
+        table.rows.append([adv.move_to_chest, "Move Items From Inventory To Chest"])
 
-    table.rows.append([IniConfigLoader().advanced_options.exit_key, "Exit"])
+    table.rows.append([adv.exit_key, "Exit"])
     table.columns.header = ["hotkey", "action"]
-
-    print(table)
-    print()  # blank line, just like OG D4LF
-    # --- END HEADER ---
+    for line in str(table).split("\n"):
+        LOGGER.info(line)
 
     if IniConfigLoader().advanced_options.vision_mode_only:
         LOGGER.info("Vision mode only is enabled. All functionality that clicks the screen is disabled.")
@@ -204,17 +193,33 @@ def hide_console():
 
 
 if __name__ == "__main__":
+    adv = IniConfigLoader().advanced_options
     if len(sys.argv) > 1 and sys.argv[1] == "--autoupdate":
-        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=True)
+        src.logger.setup(
+            log_level=adv.log_lvl.value,
+            enable_stdout=True,
+            technical=adv.technical_log_info,
+            timestamp=adv.log_timestamp,
+        )
         start_auto_update()
 
     elif len(sys.argv) > 1 and sys.argv[1] == "--autoupdatepost":
-        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=True)
+        src.logger.setup(
+            log_level=adv.log_lvl.value,
+            enable_stdout=True,
+            technical=adv.technical_log_info,
+            timestamp=adv.log_timestamp,
+        )
         start_auto_update(postprocess=True)
 
     elif len(sys.argv) > 1 and sys.argv[1] == "--consoleonly":
         # Console-only mode: keep console visible
-        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=True)
+        src.logger.setup(
+            log_level=adv.log_lvl.value,
+            enable_stdout=True,
+            technical=adv.technical_log_info,
+            timestamp=adv.log_timestamp,
+        )
         main()
 
     else:
@@ -223,7 +228,13 @@ if __name__ == "__main__":
         if not running_from_source:
             hide_console()
         os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
-        src.logger.setup(log_level=IniConfigLoader().advanced_options.log_lvl.value, enable_stdout=running_from_source)
+        src.logger.setup(
+            log_level=adv.log_lvl.value,
+            enable_stdout=running_from_source,
+            technical=adv.technical_log_info,
+            timestamp=adv.log_timestamp,
+            buffer_startup=True,
+        )
 
         app = QApplication(sys.argv)
         app.setWindowIcon(QIcon(str(ICON_PATH)))

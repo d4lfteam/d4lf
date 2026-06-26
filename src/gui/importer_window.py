@@ -261,7 +261,7 @@ class ImporterWindow(QMainWindow):
         logging.getLogger("src.gui.importer.mobalytics").removeHandler(self.log_handler)
         logging.getLogger("src.gui.importer.maxroll").removeHandler(self.log_handler)
         logging.getLogger("src.gui.importer.d4builds").removeHandler(self.log_handler)
-        logging.getLogger("src.gui.importer.common").removeHandler(self.log_handler)
+        logging.getLogger("src.gui.importer.gui_common").removeHandler(self.log_handler)
         event.accept()
 
 

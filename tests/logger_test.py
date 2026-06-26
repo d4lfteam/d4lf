@@ -2,7 +2,8 @@ import logging
 
 import pytest
 
-from src.logger import apply_log_level
+import src.logger as logger_module
+from src.logger import apply_log_level, consume_startup_log_records, create_formatter
 
 
 @pytest.fixture
@@ -57,3 +58,47 @@ def test_apply_log_level_is_case_insensitive(isolated_root_logger):
     apply_log_level("info")
 
     assert handler.level == logging.INFO
+
+
+def _record() -> logging.LogRecord:
+    return logging.LogRecord(
+        name="src.item.filter",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=556,
+        msg="item marked junk",
+        args=(),
+        exc_info=None,
+    )
+
+
+def test_default_gui_log_formatter_hides_technical_information_and_timestamp():
+    assert create_formatter(technical=False, timestamp=False).format(_record()) == "item marked junk"
+
+
+def test_technical_gui_log_formatter_restores_technical_information():
+    formatted = create_formatter(technical=True, timestamp=False).format(_record())
+
+    assert formatted.endswith(" | INFO | src.item.filter:556 | item marked junk")
+
+
+def test_timestamp_gui_log_formatter_restores_timestamp():
+    formatted = create_formatter(technical=False, timestamp=True).format(_record())
+
+    assert formatted.endswith(" | item marked junk")
+    assert formatted != "item marked junk"
+
+
+def test_startup_log_buffer_captures_and_consumes_records(isolated_root_logger):
+    logger_module._startup_buffer_handler = None
+    logger_module._startup_log_records.clear()
+    logger_module._enable_startup_buffer(isolated_root_logger)
+
+    logging.getLogger("d4lf.test").warning("startup warning")
+
+    records = consume_startup_log_records()
+
+    assert [record.getMessage() for record in records] == ["startup warning"]
+    assert logger_module._startup_buffer_handler is None
+    assert all(getattr(handler, "name", "") != "D4LF_STARTUP_BUFFER" for handler in isolated_root_logger.handlers)
+    assert consume_startup_log_records() == []

@@ -7,7 +7,11 @@ from src.config.reload_groups import (
 
 
 def test_log_level_setting_keys_resolves_to_log_lvl_field():
-    assert {"advanced_options.log_lvl"} == LOG_LEVEL_SETTING_KEYS
+    assert {
+        "advanced_options.log_lvl",
+        "advanced_options.log_timestamp",
+        "advanced_options.technical_log_info",
+    } == LOG_LEVEL_SETTING_KEYS
 
 
 def test_vision_mode_type_setting_key():
