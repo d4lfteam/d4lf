@@ -633,7 +633,7 @@ class Filter:
                 self.global_unique_filters[data.name] = data.global_uniques
                 sections.append("GlobalUniques")
             if data.paragon:
-                self.paragon_filters[data.name] = data.paragon
+                self.paragon_filters[profile_path.stem] = data.paragon
                 sections.append("Paragon")
 
             info_str += " ".join(sections)
