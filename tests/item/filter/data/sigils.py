@@ -11,7 +11,7 @@ class TestSigil(Item):
 
 sigil_mythic_fallback = TestSigil(
     rarity=ItemRarity.Mythic,
-    affixes=[Affix(name="extra_shrines"), Affix(name="monster_attack_speed", value=25.0)],
+    affixes=[Affix(name="mythic_prankster"), Affix(name="monster_attack_speed", value=25.0)],
     inherent=[Affix(name="astral_prophecy")],
 )
 

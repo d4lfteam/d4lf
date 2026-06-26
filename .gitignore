@@ -25,6 +25,7 @@ build/
 coverage.xml
 d4lf_*
 dist/
+downloaded_files/
 generated/
 htmlcov/
 logs/

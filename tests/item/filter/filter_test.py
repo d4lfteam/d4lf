@@ -184,7 +184,7 @@ def test_sigil_rarity_gate_drops_non_matching_rarity(mocker: MockerFixture):
 
 def test_sigil_rarity_gate_drops_unknown_rarity(mocker: MockerFixture, caplog):
     """A sigil whose rarity cannot be derived is dropped when the gate is active (fail-closed)."""
-    with caplog.at_level(logging.DEBUG, logger="src.item.filter"):
+    with caplog.at_level(logging.DEBUG, logger="src.item.sigil_rules"):
         test_filter = _create_mocked_filter(mocker)
         test_filter.sigil_filters = {filters.sigil_rarity_rare_only.name: filters.sigil_rarity_rare_only.sigils}
         result = test_filter.should_keep(sigil_unknown_rarity)

@@ -31,6 +31,7 @@ from src.dataloader import Dataloader
 from src.gui.importer.gui_common import MAX_POWER
 from src.gui.settings_tab import IgnoreScrollWheelComboBox
 from src.item.data.item_type import ItemType
+from src.item.sigil_rules import SIGIL_RULE_TARGET_TYPES, SigilRules
 
 
 class IgnoreScrollWheelSpinBox(QSpinBox):
@@ -280,17 +281,6 @@ class DeleteAffixPool(QDialog):
         return [checkbox.text() for checkbox in self.checkbox_list if checkbox.isChecked()]
 
 
-def sigil_name_dict_for_kind(kind: str) -> dict[str, str]:
-    all_dict = Dataloader().affix_sigil_dict_all
-    if kind == "affix":
-        return {**all_dict["minor"], **all_dict["major"], **all_dict["positive"]}
-    return all_dict["dungeons"]
-
-
-def derive_sigil_kind(name: str) -> str:
-    return "dungeon" if name in Dataloader().affix_sigil_dict_all["dungeons"] else "affix"
-
-
 class CreateSigil(QDialog):
     def __init__(self, whitelist_sigils: list[str], blacklist_sigils: list[str], parent=None):
         super().__init__(parent)
@@ -308,7 +298,7 @@ class CreateSigil(QDialog):
 
         self.kind_label = QLabel("Kind:")
         self.kind_input = IgnoreScrollWheelComboBox()
-        self.kind_input.addItems(["dungeon", "affix"])
+        self.kind_input.addItems(SIGIL_RULE_TARGET_TYPES)
         self.kind_input.currentTextChanged.connect(self._populate_names)
 
         self.name_label = QLabel("Name:")
@@ -351,7 +341,8 @@ class CreateSigil(QDialog):
 
     def _populate_names(self):
         self.name_input.clear()
-        self.name_input.addItems(sorted(sigil_name_dict_for_kind(self.kind_input.currentText()).values()))
+        targets = SigilRules.default().targets(self.kind_input.currentText())
+        self.name_input.addItems([target.display for target in targets])
 
     def get_value(self):
         sigil_name = self.name_input.currentText()
