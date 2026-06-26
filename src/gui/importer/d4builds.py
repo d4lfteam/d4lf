@@ -113,7 +113,11 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         raise D4BuildsError(msg)
     slot_to_unique_name_map = _get_item_slots(data=data)
     finished_filters = []
-    charm_filters, seal_filters = _extract_d4builds_seal_charm_filters(driver=driver, config=config)
+    charm_filters, seal_filters = _extract_d4builds_seal_charm_filters(
+        driver=driver,
+        config=config,
+        charm_unique_aspects=_get_charm_unique_aspects(slot_to_unique_name_map=slot_to_unique_name_map),
+    )
     mythic_names = []
     aspect_upgrade_filters = _get_legendary_aspects(data=data)
     for item in items[0]:
@@ -143,7 +147,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         elif is_charm:
             item_type = ItemType.Charm
 
-        if slot_to_unique_name_map[slot]:
+        if slot_to_unique_name_map[slot] and item_type not in [ItemType.HoradricSeal, ItemType.Charm]:
             unique_name, rarity = slot_to_unique_name_map[slot]
             if rarity == ItemRarity.Mythic:
                 mythic_names.append(unique_name)
@@ -208,24 +212,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             item_filter.item_type = [item_type]
 
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
-            seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
-            seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
-            # Extract unique aspect info for charms
-            charm_unique_aspect = None
-            if item_type == ItemType.Charm and slot_to_unique_name_map.get(slot):
-                unique_name, unique_rarity = slot_to_unique_name_map[slot]
-                if unique_rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
-                    charm_unique_aspect = correct_name(unique_name)
-            if not affixes and not charm_unique_aspect:
-                continue
-            seal_charm_filters.append(
-                create_seal_charm_filter(
-                    affixes=affixes,
-                    require_gas=config.require_greater_affixes,
-                    model_type=seal_charm_model,
-                    unique_aspect=charm_unique_aspect,
-                )
-            )
             continue
 
         # We don't bother importing affixes for mythics
@@ -296,16 +282,22 @@ def _corrections(input_str: str) -> str:
 
 
 def _extract_d4builds_seal_charm_filters(
-    driver: ChromiumDriver, config: ImportConfig
+    driver: ChromiumDriver, config: ImportConfig, charm_unique_aspects: list[str | None] | None = None
 ) -> tuple[list[CharmFilterModel], list[SealFilterModel]]:
     charm_filters = []
     seal_filters = []
     set_names = []
 
-    for charm_element in driver.find_elements(By.CSS_SELECTOR, ACTIVE_CHARM_CSS):
+    for charm_index, charm_element in enumerate(driver.find_elements(By.CSS_SELECTOR, ACTIVE_CHARM_CSS)):
         tooltip_html = _hover_and_get_tooltip_html(driver=driver, element=charm_element, tooltip_css=CHARM_TOOLTIP_CSS)
         charm_filter, set_name = _create_charm_filter_from_tooltip_html(
-            tooltip_html=tooltip_html, require_gas=config.require_greater_affixes
+            tooltip_html=tooltip_html,
+            require_gas=config.require_greater_affixes,
+            unique_aspect=(
+                charm_unique_aspects[charm_index]
+                if charm_unique_aspects is not None and charm_index < len(charm_unique_aspects)
+                else None
+            ),
         )
         if charm_filter is not None:
             charm_filters.append(charm_filter)
@@ -361,19 +353,17 @@ def _create_seal_filter_from_tooltip_html(
 
 
 def _create_charm_filter_from_tooltip_html(
-    tooltip_html: str, require_gas: bool
+    tooltip_html: str, require_gas: bool, unique_aspect: str | None = None
 ) -> tuple[CharmFilterModel | None, str | None]:
     tooltip = _tooltip_element(tooltip_html)
     if tooltip is None:
         return None, None
 
     set_name = correct_name(_first_text(tooltip=tooltip, xpath=CHARM_TOOLTIP_SET_NAME_XPATH)) or None
-    charm_unique_aspect = None
-
     affixes = _affixes_from_tooltip_values(
         texts=_texts_from_nodes(tooltip.xpath(CHARM_TOOLTIP_VALUE_XPATH)), item_type=ItemType.Charm
     )
-    if not affixes and not charm_unique_aspect and not set_name:
+    if not affixes and not unique_aspect and not set_name:
         return None, None
 
     return (
@@ -381,7 +371,7 @@ def _create_charm_filter_from_tooltip_html(
             affixes=affixes,
             require_gas=require_gas,
             model_type=CharmFilterModel,
-            unique_aspect=charm_unique_aspect,
+            unique_aspect=unique_aspect,
             set_name=set_name,
         ),
         set_name,
@@ -516,6 +506,20 @@ def _get_item_slots(data: lxml.html.HtmlElement) -> dict[str, tuple[str, ItemRar
             else:
                 result[slot] = None
     return result
+
+
+def _get_charm_unique_aspects(slot_to_unique_name_map: dict[str, tuple[str, ItemRarity] | None]) -> list[str | None]:
+    charm_unique_aspects = []
+    for slot, unique_item in slot_to_unique_name_map.items():
+        if "charm" not in slot.lower():
+            continue
+        charm_unique_aspect = None
+        if unique_item is not None:
+            unique_name, unique_rarity = unique_item
+            if unique_rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
+                charm_unique_aspect = correct_name(unique_name)
+        charm_unique_aspects.append(charm_unique_aspect)
+    return charm_unique_aspects
 
 
 def _get_legendary_aspects(data: lxml.html.HtmlElement) -> list[str]:

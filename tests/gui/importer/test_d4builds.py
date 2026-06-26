@@ -10,6 +10,7 @@ from src.gui.importer import paragon_export as paragon_export_module
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.paragon_export import build_paragon_profile_payload
 from src.item.data.item_type import ItemType
+from src.item.data.rarity import ItemRarity
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -177,6 +178,33 @@ def test_create_charm_filter_from_tooltip_html_does_not_guess_set_from_title() -
     assert set_name is None
     assert charm_filter.set == []
     assert [affix.name for affix in charm_filter.affix_pool[0].count] == ["maximum_resource"]
+
+
+def test_create_charm_filter_from_tooltip_html_reads_unique_aspect() -> None:
+    tooltip_html = """
+        <div class="charm__tooltip">
+            <h2 class="charm__tooltip__name">Fer of Fractured Winterglass</h2>
+        </div>
+    """
+
+    charm_filter, set_name = d4builds_module._create_charm_filter_from_tooltip_html(
+        tooltip_html=tooltip_html, require_gas=False, unique_aspect="fractured_winterglass"
+    )
+
+    assert set_name is None
+    assert charm_filter.affix_pool == []
+    assert [unique_aspect.name for unique_aspect in charm_filter.unique_aspect] == ["fractured_winterglass"]
+
+
+def test_get_charm_unique_aspects_keeps_charm_slot_order() -> None:
+    charm_unique_aspects = d4builds_module._get_charm_unique_aspects({
+        "Helm": ("Harlequin Crest", ItemRarity.Mythic),
+        "Charm 1": ("Fractured Winterglass", ItemRarity.Unique),
+        "Charm 2": None,
+        "Ring": None,
+    })
+
+    assert charm_unique_aspects == ["fractured_winterglass", None]
 
 
 def test_match_d4builds_tooltip_affix_uses_guessed_charm_set_for_seal_affixes() -> None:

@@ -42,7 +42,7 @@ from src.gui.importer.gui_common import (
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_mobalytics_paragon_steps
 from src.item.data.affix import Affix, AffixType
-from src.item.data.item_type import WEAPON_TYPES, ItemType, is_weapon
+from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
 
@@ -383,24 +383,6 @@ def _convert_raw_to_affixes(
     for stat in raw_stats:
         if stat:
             stat_id = stat["id"]
-
-            # Map database IDs to standard game affix names
-            # Element/vulnerable/critical damage multiplier stats are additive (non-multiplier) on non-weapons.
-            # Vulnerable and elemental damage stats are also additive on weapons, but critical strike damage is multiplier.
-            is_wpn = (
-                item_type is not None
-                and is_weapon(item_type)
-                and item_type not in [ItemType.Focus, ItemType.OffHandTotem]
-            )
-            if stat_id == "critical-strike-damage-multiplier":
-                if not is_wpn:
-                    stat_id = "critical-strike-damage"
-            elif stat_id == "all-damage-multiplier":
-                pass
-            elif stat_id.endswith("-damage-multiplier"):
-                # Vulnerable, elemental, physical, etc. are always additive in-game affixes
-                base_stat = stat_id[:-18]  # strip "-damage-multiplier"
-                stat_id = f"{base_stat}-damage"
 
             stat_clean = clean_str(_corrections(input_str=stat_id.replace("-", " ")))
             matched_name = None
