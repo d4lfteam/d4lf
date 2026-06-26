@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import datetime
 import logging
+import re
+from html import escape
 from typing import TYPE_CHECKING
 
 import yaml
-from PyQt6.QtCore import QMimeData, Qt
-from PyQt6.QtGui import QDrag
+from PyQt6.QtCore import QMimeData, QObject, Qt, pyqtSignal
+from PyQt6.QtGui import QDrag, QTextCursor
 from PyQt6.QtWidgets import (
     QFrame,
     QGraphicsOpacityEffect,
@@ -15,10 +17,10 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
-    QPlainTextEdit,
     QPushButton,
     QScrollArea,
     QSplitter,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -34,6 +36,77 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
+
+
+class ANSIConsoleWidget(QTextEdit):
+    ANSI_PATTERN = re.compile(r"\x1b\[(\d+)(;\d+)*m")
+    ANSI_COLORS = {
+        "30": "#000000",
+        "31": "#AA0000",
+        "32": "#00AA00",
+        "33": "#AA5500",
+        "34": "#0000AA",
+        "35": "#AA00AA",
+        "36": "#00AAAA",
+        "37": "#AAAAAA",
+        "90": "#555555",
+        "91": "#FF5555",
+        "92": "#55FF55",
+        "93": "#FFFF55",
+        "94": "#5555FF",
+        "95": "#FF55FF",
+        "96": "#AAFFFF",
+        "97": "#FFFFFF",
+    }
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setReadOnly(True)
+        self.setStyleSheet("background-color: black; color: white; font-family: Consolas, monospace; font-size: 12px;")
+
+    def append_ansi_text(self, text: str):
+        self.append(self._ansi_to_html(text))
+        self.moveCursor(QTextCursor.MoveOperation.End)
+
+    def _ansi_to_html(self, text: str) -> str:
+        html_parts = []
+        last_end = 0
+        span_open = False
+
+        for match in self.ANSI_PATTERN.finditer(text):
+            start, end = match.span()
+            html_parts.append(escape(text[last_end:start]).replace("\n", "<br>"))
+
+            codes = match.group(0)[2:-1].split(";")
+            for code in codes:
+                if code in self.ANSI_COLORS:
+                    if span_open:
+                        html_parts.append("</span>")
+                    html_parts.append(f'<span style="color:{self.ANSI_COLORS[code]}">')
+                    span_open = True
+                elif code == "0":
+                    if span_open:
+                        html_parts.append("</span>")
+                        span_open = False
+
+            last_end = end
+
+        html_parts.append(escape(text[last_end:]).replace("\n", "<br>"))
+        if span_open:
+            html_parts.append("</span>")
+        return "".join(html_parts)
+
+
+class QtConsoleHandler(logging.Handler, QObject):
+    log_signal = pyqtSignal(str)
+
+    def __init__(self):
+        logging.Handler.__init__(self)
+        QObject.__init__(self)
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.log_signal.emit(msg)
 
 
 class ActivityLogWidget(QWidget):
@@ -133,7 +206,7 @@ class ActivityLogWidget(QWidget):
         self.splitter.addWidget(top_content_container)
 
         # === BOTTOM: MINI LOG PREVIEW ===
-        self.log_viewer = QPlainTextEdit()
+        self.log_viewer = ANSIConsoleWidget()
         self.log_viewer.setReadOnly(True)
         self.log_viewer.setObjectName("log-viewer")
         self.splitter.addWidget(self.log_viewer)
