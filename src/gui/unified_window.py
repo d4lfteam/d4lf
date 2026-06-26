@@ -1,19 +1,17 @@
 import logging
-import re
 import sys
 import time
 from contextlib import suppress
 from pathlib import Path
 
 from PyQt6.QtCore import QEvent, QObject, QPoint, QSettings, QSize, Qt, QThread, QTimer, QUrl, pyqtSignal
-from PyQt6.QtGui import QDesktopServices, QIcon, QTextCursor
+from PyQt6.QtGui import QDesktopServices, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QMenu,
-    QPlainTextEdit,
     QPushButton,
     QSystemTrayIcon,
     QTabWidget,
@@ -26,12 +24,12 @@ from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.reload_groups import LOG_LEVEL_SETTING_KEYS, has_any_changed
 from src.gui.importer_window import ImporterWindow
-from src.gui.models.activity_log_widget import ActivityLogWidget
+from src.gui.models.activity_log_widget import ActivityLogWidget, ANSIConsoleWidget, QtConsoleHandler
 from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.settings_window import ConfigWindow
 from src.gui.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.item.filter import Filter
-from src.logger import ThreadNameFilter, apply_log_level, create_formatter
+from src.logger import apply_log_level, consume_startup_log_records, create_formatter
 from src.logger import setup as setup_logging
 from src.main import check_for_proper_tts_configuration
 from src.overlay import Overlay
@@ -67,88 +65,6 @@ DISCORD_ICON = get_asset_path("Discord.png")
 GITHUB_ICON = get_asset_path("Github.png")
 
 LOGGER = logging.getLogger(__name__)
-
-
-class ANSIConsoleWidget(QPlainTextEdit):
-    ANSI_PATTERN = re.compile(r"\x1b\[(\d+)(;\d+)*m")
-    ANSI_COLORS = {
-        "30": "#000000",
-        "31": "#AA0000",
-        "32": "#00AA00",
-        "33": "#AA5500",
-        "34": "#0000AA",
-        "35": "#AA00AA",
-        "36": "#00AAAA",
-        "37": "#AAAAAA",
-        "90": "#555555",
-        "91": "#FF5555",
-        "92": "#55FF55",
-        "93": "#FFFF55",
-        "94": "#5555FF",
-        "95": "#FF55FF",
-        "96": "#55FFFF",
-        "97": "#FFFFFF",
-    }
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setReadOnly(True)
-        self.setStyleSheet("background-color: black; color: white; font-family: Consolas, monospace; font-size: 12px;")
-
-    def append_ansi_text(self, text: str):
-        self.appendHtml(self._ansi_to_html(text))
-        self.moveCursor(QTextCursor.MoveOperation.End)
-
-    def _ansi_to_html(self, text: str) -> str:
-        html = ""
-        last_end = 0
-        current_color = None
-
-        for match in self.ANSI_PATTERN.finditer(text):
-            start, end = match.span()
-            html += text[last_end:start].replace("<", "&lt;").replace(">", "&gt;")
-
-            codes = match.group(0)[2:-1].split(";")
-            for code in codes:
-                if code in self.ANSI_COLORS:
-                    current_color = self.ANSI_COLORS[code]
-                elif code == "0":
-                    current_color = None
-
-            if current_color:
-                html += f'<span style="color:{current_color}">'
-            else:
-                html += "</span>"
-            last_end = end
-
-        html += text[last_end:].replace("<", "&lt;").replace(">", "&gt;")
-        if current_color:
-            html += "</span>"
-        return html
-
-
-class QtConsoleHandler(logging.Handler, QObject):
-    log_signal = pyqtSignal(str)
-
-    def __init__(self):
-        logging.Handler.__init__(self)
-        QObject.__init__(self)
-
-    def emit(self, record):
-        msg = self.format(record)
-        self.log_signal.emit(msg)
-
-
-class QtActivityHandler(logging.Handler, QObject):
-    log_signal = pyqtSignal(str)
-
-    def __init__(self):
-        logging.Handler.__init__(self)
-        QObject.__init__(self)
-
-    def emit(self, record):
-        msg = self.format(record)
-        self.log_signal.emit(msg)
 
 
 class BackendWorker(QObject):
@@ -207,30 +123,33 @@ class UnifiedMainWindow(QMainWindow):
     def _setup_logging(self):
         running_from_source = not getattr(sys, "frozen", False)
         root_logger = logging.getLogger()
+        adv = self._config.advanced_options
+
         if not any(getattr(h, "name", "") == "D4LF_FILE" for h in root_logger.handlers):
-            setup_logging(log_level=self._config.advanced_options.log_lvl.value, enable_stdout=running_from_source)
+            setup_logging(
+                log_level=adv.log_lvl.value,
+                enable_stdout=running_from_source,
+                technical=adv.technical_log_info,
+                timestamp=adv.log_timestamp,
+                buffer_startup=True,
+            )
 
         for h in list(root_logger.handlers):
             if getattr(h, "name", "") == "D4LF_FILE":
                 continue  # Keep file logging
-            if running_from_source and isinstance(h, logging.StreamHandler) and h.stream.name == "<stdout>":
-                continue  # Keep stdout handler for IDE terminal
             root_logger.removeHandler(h)
 
+        # Single unified Qt handler for both Dashboard and Full Logs
         self.console_handler = QtConsoleHandler()
         self.console_handler.name = "QT_CONSOLE"
-        self.console_handler.setFormatter(create_formatter(colored=True))
-        self.console_handler.setLevel(self._config.advanced_options.log_lvl.value.upper())
-        self.console_handler.addFilter(ThreadNameFilter())
-
-        self.activity_handler = QtActivityHandler()
-        self.activity_handler.name = "QT_ACTIVITY"
-        self.activity_handler.setFormatter(logging.Formatter("%(message)s"))
-        self.activity_handler.setLevel(logging.INFO)
+        self.console_handler.setFormatter(
+            create_formatter(colored=True, technical=adv.technical_log_info, timestamp=adv.log_timestamp)
+        )
+        self.console_handler.setLevel(adv.log_lvl.value.upper())
 
         root_logger.addHandler(self.console_handler)
-        root_logger.addHandler(self.activity_handler)
-        root_logger.setLevel(self._config.advanced_options.log_lvl.value.upper())
+        # Root is always DEBUG; the handlers above (Console/QT) filter based on user settings
+        root_logger.setLevel(logging.DEBUG)
 
         # Apply log level changes live, independently of the backend's wait-for-D4 loop.
         self._config.register_change_listener(self._on_config_changed_log_level)
@@ -238,10 +157,13 @@ class UnifiedMainWindow(QMainWindow):
     def _on_config_changed_log_level(self, changed_keys) -> None:
         if not has_any_changed(changed_keys, LOG_LEVEL_SETTING_KEYS):
             return
-        new_level = self._config.advanced_options.log_lvl.value.upper()
-        # Keep the activity log handler pinned to INFO to avoid dashboard clutter.
-        apply_log_level(new_level, skip_handler_names={"QT_ACTIVITY"})
-        LOGGER.info("Updated log level to %s", new_level)
+        adv = self._config.advanced_options
+        new_level = adv.log_lvl.value.upper()
+        formatter = create_formatter(colored=True, technical=adv.technical_log_info, timestamp=adv.log_timestamp)
+        apply_log_level(new_level, skip_handler_names={"D4LF_FILE"}, formatter=formatter)
+        LOGGER.info(
+            "Updated log settings (Level: %s, Tech: %s, TS: %s)", new_level, adv.technical_log_info, adv.log_timestamp
+        )
 
     def _setup_ui(self):
         self.setWindowTitle(f"D4LF - Diablo 4 Loot Filter v{__version__}")
@@ -257,10 +179,12 @@ class UnifiedMainWindow(QMainWindow):
         self.tabs.addTab(self.console_output, "Full Logs")
         self._setup_tab_corner_widgets()
 
+        # Both tabs receive the same unified stream
         self.console_handler.log_signal.connect(self.console_output.append_ansi_text)
-        self.activity_handler.log_signal.connect(self.activity_tab.log_viewer.appendPlainText)
+        self.console_handler.log_signal.connect(self.activity_tab.log_viewer.append_ansi_text)
 
         self.emit_startup_direct_to_console()
+        self._emit_startup_logs()
         self._emit_deferred_config_cleanup_logs(self._config)
 
     def _setup_tab_corner_widgets(self):
@@ -362,8 +286,13 @@ class UnifiedMainWindow(QMainWindow):
                 continue
             if record.levelno >= self.console_handler.level:
                 self.console_handler.handle(record)
-            if record.levelno >= self.activity_handler.level:
-                self.activity_handler.handle(record)
+
+    def _emit_startup_logs(self):
+        for record in consume_startup_log_records():
+            if not logging.getLogger(record.name).isEnabledFor(record.levelno):
+                continue
+            if record.levelno >= self.console_handler.level:
+                self.console_handler.handle(record)
 
     def open_import_dialog(self):
         win = self._show_singleton_modal("importer", ImporterWindow)
@@ -450,7 +379,6 @@ class UnifiedMainWindow(QMainWindow):
         root_logger = logging.getLogger()
         with suppress(Exception):
             root_logger.removeHandler(self.console_handler)
-            root_logger.removeHandler(self.activity_handler)
         with suppress(Exception):
             logging._handlerList.clear()
 
@@ -462,8 +390,8 @@ class UnifiedMainWindow(QMainWindow):
             "D4LF - Diablo 4 Loot Filter\n"
             "═══════════════════════════════════════════════════════════════════════════════"
         )
-        self.console_output.appendPlainText(banner)
-        self.console_output.appendPlainText("")
+        self.console_output.append_ansi_text(banner)
+        self.console_output.append_ansi_text("")
 
     def apply_theme(self):
         theme_name = IniConfigLoader().general.theme
