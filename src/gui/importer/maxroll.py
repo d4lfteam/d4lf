@@ -146,7 +146,7 @@ def import_maxroll(config: ImportConfig):
                     affixes=seal_charm_affixes,
                     require_gas=config.require_greater_affixes,
                     model_type=seal_charm_model,
-                    unique_aspect=charm_or_seal_unique_aspect,
+                    unique_name=charm_or_seal_unique_aspect,
                     set_name=charm_set_name,
                 )
             )
