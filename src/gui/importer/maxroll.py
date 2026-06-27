@@ -183,36 +183,32 @@ def import_maxroll(config: ImportConfig):
 
         # Standard item handling. For mythics we don't import affixes
         if rarity != ItemRarity.Mythic:
+            affixes = sorted(
+                _find_item_affixes(
+                    mapping_data=mapping_data,
+                    item_affixes=resolved_item["explicits"],
+                    item_type=item_type,
+                    import_greater_affixes=config.import_greater_affixes,
+                ),
+                key=lambda affix: (affix.name, affix.type.value),
+            )
             item_filter.affix_pool = [
                 AffixFilterCountModel(
-                    count=[
-                        AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater)
-                        for x in _find_item_affixes(
-                            mapping_data=mapping_data,
-                            item_affixes=resolved_item["explicits"],
-                            item_type=item_type,
-                            import_greater_affixes=config.import_greater_affixes,
-                        )
-                    ],
+                    count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
                     minCount=1 if rarity == ItemRarity.Unique else 3,
                 )
             ]
             update_mingreateraffixcount(item_filter, config.require_greater_affixes)
 
         item_filter.min_power = 100
-        filter_name = item_filter.item_type[0].name
-        i = 2
-        while any(filter_name == next(iter(x)) for x in finished_filters):
-            filter_name = f"{item_filter.item_type[0].name}{i}"
-            i += 1
-
-        finished_filters.append({filter_name: item_filter})
+        finished_filters.append(item_filter)
 
     # Place all mythics in a single filter
-    add_mythics_to_filters(mythic_names, finished_filters)
+    affix_filters = deduplicate_filters(finished_filters)
+    add_mythics_to_filters(mythic_names, affix_filters)
     profile = ProfileModel(
         name="imported profile",
-        Affixes=sort_profile_filters(finished_filters),
+        Affixes=sort_profile_filters(affix_filters),
         Charms=sort_profile_filters(deduplicate_filters(charm_filters)),
         Seals=sort_profile_filters(deduplicate_filters(seal_filters)),
     )

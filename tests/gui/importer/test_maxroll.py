@@ -1,3 +1,4 @@
+import json
 import os
 import typing
 
@@ -5,7 +6,13 @@ import pytest
 
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.maxroll import _find_item_affixes, _find_item_type, _resolve_visible_profile_index, import_maxroll
+from src.gui.importer.maxroll import (
+    PLANNER_API_DATA_URL,
+    _find_item_affixes,
+    _find_item_type,
+    _resolve_visible_profile_index,
+    import_maxroll,
+)
 from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_maxroll_paragon_steps
 from src.item.data.item_type import ItemType
 
@@ -24,6 +31,15 @@ URLS = [
     "https://maxroll.gg/d4/build-guides/shield-of-retribution-paladin-guide",
     "https://maxroll.gg/d4/build-guides/touch-of-death-spiritborn-guide",
 ]
+
+
+class _MaxrollResponse:
+    def __init__(self, json_data: dict | None = None, text: str = "") -> None:
+        self._json_data = json_data or {}
+        self.text = text
+
+    def json(self) -> dict:
+        return self._json_data
 
 
 @pytest.mark.parametrize("url", URLS)
@@ -113,6 +129,84 @@ def test_find_item_affixes_resolves_skill_rank_category_from_related_description
     affixes = _find_item_affixes(mapping_data=mapping_data, item_affixes=[{"nid": 1}], item_type=ItemType.Amulet)
 
     assert [affix.name for affix in affixes] == ["to_ultimate_skills"]
+
+
+def test_import_maxroll_deduplicates_identical_rings_with_swapped_affix_order(
+    mock_ini_loader, mocker: MockerFixture
+) -> None:
+    captured_profile = {}
+    build_data = {
+        "activeProfile": 0,
+        "items": {
+            "1": {
+                "id": "vulpines-aspect-ring",
+                "explicits": [{"nid": 1}, {"nid": 2}, {"nid": 3}],
+                "legendaryPower": {},
+            },
+            "2": {
+                "id": "archdruids-aspect-ring",
+                "explicits": [{"nid": 3}, {"nid": 1}, {"nid": 2}],
+                "legendaryPower": {},
+            },
+        },
+        "profiles": [{"name": "Endgame", "items": {"ring-1": 1, "ring-2": 2}, "paragon": {"steps": []}}],
+    }
+    planner_response = _MaxrollResponse({
+        "class": "Druid",
+        "name": "Pulverize Druid",
+        "season": "14",
+        "data": json.dumps(build_data),
+    })
+    mapping_response = _MaxrollResponse({
+        "attributeDescriptions": {
+            "Maximum_Life": "Maximum Life",
+            "Critical_Strike_Chance": "Critical Strike Chance",
+            "Attack_Speed": "Attack Speed",
+        },
+        "attributes": {
+            "101": {"name": "Maximum_Life"},
+            "102": {"name": "Critical_Strike_Chance"},
+            "103": {"name": "Attack_Speed"},
+        },
+        "affixes": {
+            "Gear_Maximum_Life": {"id": 1, "magicType": 0, "attributes": [{"id": 101}]},
+            "Gear_Critical_Strike_Chance": {"id": 2, "magicType": 0, "attributes": [{"id": 102}]},
+            "Gear_Attack_Speed": {"id": 3, "magicType": 0, "attributes": [{"id": 103}]},
+        },
+        "items": {
+            "vulpines-aspect-ring": {"magicType": 1, "name": "Vulpine's Aspect", "type": "Ring"},
+            "archdruids-aspect-ring": {"magicType": 1, "name": "Archdruid's Aspect", "type": "Ring"},
+        },
+        "skills": {},
+        "uiStrings": {},
+    })
+
+    def fake_get_with_retry(url: str, custom_headers: dict[str, str] | None = None) -> _MaxrollResponse:
+        if url == PLANNER_API_DATA_URL:
+            return mapping_response
+        return planner_response
+
+    def fake_save_as_profile(file_name, profile, url):
+        captured_profile["profile"] = profile
+        return file_name
+
+    mocker.patch("src.gui.importer.maxroll.get_with_retry", side_effect=fake_get_with_retry)
+    mocker.patch("src.gui.importer.maxroll.save_as_profile", side_effect=fake_save_as_profile)
+
+    import_maxroll(
+        config=ImportConfig(
+            url="https://maxroll.gg/d4/planner/pulverize-druid#1",
+            import_aspect_upgrades=False,
+            add_to_profiles=False,
+            import_greater_affixes=False,
+            require_greater_affixes=False,
+            custom_file_name="test",
+        )
+    )
+
+    profile = captured_profile["profile"]
+    assert len(profile.affixes) == 1
+    assert next(iter(profile.affixes[0].root)) == "Ring(x2)"
 
 
 def test_extract_maxroll_paragon_steps_preserves_board_and_glyph_ids() -> None:
