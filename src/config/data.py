@@ -56,11 +56,13 @@ POSITIONS = (
             (3126, 1066),  # Bottom (Locked in screenshot)
             (2865, 915),  # Bottom-Left
             (2861, 622),  # Top-Left
+            # Seal slot
+            (3134, 778),
         ],
         window_dimensions=(3840, 2160),
     ),
     UiRoiModel(
-        rel_descr_search_left=np.array([-900, 0, 150, 1760]),
+        rel_descr_search_left=np.array([-920, 0, 150, 1760]),
         rel_descr_search_right=np.array([60, 0, 120, 1760]),
         rel_fav_flag=np.array([8, 6, 16, 20]),
         slots_8x1=np.array([1166, 165, 125, 1462]),
