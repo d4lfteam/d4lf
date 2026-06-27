@@ -36,7 +36,6 @@ from src.gui.importer.gui_common import (
     retry_importer,
     save_as_profile,
     sort_profile_filters,
-    unique_filter_name,
     update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
@@ -52,6 +51,7 @@ BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
 PROFILE_GUIDE_BASE_URL = f"{BUILD_GUIDE_BASE_URL}profile"
 SCRIPT_XPATH = "//script"
 BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
+CHARM_ICON_SET_SLUG_REGEX = re.compile(r"/charms/(?P<slug>[^/?#]+?)(?:\.[^/.?#]+)?(?:[?#]|$)")
 PAGE_DIAGNOSTIC_MARKERS = (
     "__PRELOADED_STATE__",
     "__NEXT_DATA__",
@@ -248,6 +248,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
                 normalized_item_name = correct_name(item_name)
                 if normalized_item_name in Dataloader().aspect_unique_dict:
                     charm_unique_aspect = normalized_item_name
+                charm_set_name = _extract_mobalytics_charm_set_name(item)
             if not affixes and not charm_unique_aspect and not charm_set_name:
                 LOGGER.warning(f"Skipping {item_name} because it had no supported affixes, unique aspect, or set name.")
                 continue
@@ -264,6 +265,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
             continue
 
         if not is_mythic:
+            affixes = sorted(affixes, key=lambda affix: (affix.name, affix.type.value))
             item_filter.affix_pool = [
                 AffixFilterCountModel(
                     count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
@@ -273,18 +275,18 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
             update_mingreateraffixcount(item_filter, config.require_greater_affixes)
         item_filter.min_power = 100
         if inherents and not is_mythic:
+            inherents = sorted(inherents, key=lambda affix: (affix.name, affix.type.value))
             item_filter.inherent_pool = [
                 AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
             ]
-        filter_name_template = item_filter.item_type[0].name if item_type else slot_type.replace(" ", "")
-        filter_name = unique_filter_name(filter_name_template, finished_filters)
-        finished_filters.append({filter_name: item_filter})
+        finished_filters.append(item_filter)
 
     # Place all mythics in a single filter
-    add_mythics_to_filters(mythic_names, finished_filters)
+    affix_filters = deduplicate_filters(finished_filters)
+    add_mythics_to_filters(mythic_names, affix_filters)
     profile = ProfileModel(
         name="imported profile",
-        Affixes=sort_profile_filters(finished_filters),
+        Affixes=sort_profile_filters(affix_filters),
         Charms=sort_profile_filters(deduplicate_filters(charm_filters)),
         Seals=sort_profile_filters(deduplicate_filters(seal_filters)),
     )
@@ -370,6 +372,27 @@ def _get_legendary_aspect(name: str) -> str:
         else:
             return aspect_name
     return ""
+
+
+def _extract_mobalytics_charm_set_name(item: dict) -> str | None:
+    icon_url = (jsonpath.findall(".gameEntity.iconUrl", item) or [""])[0]
+    match = CHARM_ICON_SET_SLUG_REGEX.search(str(icon_url))
+    if not match:
+        return None
+
+    set_candidate = correct_name(match.group("slug").replace("-", " "))
+    if set_candidate in Dataloader().set_list:
+        return set_candidate
+
+    compact_candidate = set_candidate.replace("_", "").replace("-", "")
+    return next(
+        (
+            set_name
+            for set_name in Dataloader().set_list
+            if set_name.replace("_", "").replace("-", "") == compact_candidate
+        ),
+        None,
+    )
 
 
 def _convert_raw_to_affixes(
