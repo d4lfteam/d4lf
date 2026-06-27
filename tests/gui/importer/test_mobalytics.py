@@ -153,18 +153,25 @@ def test_convert_raw_to_affixes_keeps_generic_seal_match_with_guessed_set() -> N
 
 
 @pytest.mark.parametrize(
-    ("icon_url", "expected_set_name"),
+    ("title", "icon_url", "expected_set_name"),
     [
         (
+            "Fer of the Den Mother",
             "https://cdn.mobalytics.gg/assets/diablo-4/images/charms/might-of-the-den-mother.png",
             "might_of_the_den_mother",
         ),
-        ("https://cdn.mobalytics.gg/assets/diablo-4/images/charms/bul-kathos-pride.png", "bul-kathos_pride"),
-        ("https://cdn.mobalytics.gg/assets/diablo-4/images/charms/unique-charm.png", None),
+        (
+            "Fer of Bul-Kathos' Pride",
+            "https://cdn.mobalytics.gg/assets/diablo-4/images/charms/bul-kathos-pride.png",
+            "bul-kathos_pride",
+        ),
+        ("Arreat's Bearing", "https://cdn.mobalytics.gg/assets/diablo-4/images/charms/unique-charm.png", None),
     ],
 )
-def test_extract_mobalytics_charm_set_name_from_icon_url(icon_url: str, expected_set_name: str | None) -> None:
-    item = _mobalytics_slot(slot="season-12-charm-1", entity_type="charms", title="Charm", icon_url=icon_url)
+def test_extract_mobalytics_charm_set_name_from_icon_url(
+    title: str, icon_url: str, expected_set_name: str | None
+) -> None:
+    item = _mobalytics_slot(slot="season-12-charm-1", entity_type="charms", title=title, icon_url=icon_url)
 
     assert _extract_mobalytics_charm_set_name(item) == expected_set_name
 
@@ -194,8 +201,10 @@ def test_import_mobalytics_imports_set_charm_and_deduplicates_identical_rings(
     charm_icon_url = "https://cdn.mobalytics.gg/assets/diablo-4/images/charms/might-of-the-den-mother.png"
     driver = _MobalyticsImportDriver(
         page_source=_mobalytics_page_source([
-            _mobalytics_slot(slot="ring-1", entity_type="items", title="Ring", modifiers=ring_1_modifiers),
-            _mobalytics_slot(slot="ring-2", entity_type="items", title="Ring", modifiers=ring_2_modifiers),
+            _mobalytics_slot(slot="ring-1", entity_type="items", title="Vulpine's Aspect", modifiers=ring_1_modifiers),
+            _mobalytics_slot(
+                slot="ring-2", entity_type="items", title="Archdruid's Aspect", modifiers=ring_2_modifiers
+            ),
             _mobalytics_slot(
                 slot="season-12-charm-1", entity_type="charms", title="Fer of the Den Mother", icon_url=charm_icon_url
             ),
