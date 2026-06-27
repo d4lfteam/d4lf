@@ -14,6 +14,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Filter by affix and their values, with per-affix greater affix requirements
 - Filter affixes and sigils by item rarity (e.g. keep only rare craft bases, not the equivalent legendary)
 - Filter uniques by their affix and aspect values
+- Filter Horadric Seals and Charms by affixes, rarity, charm set, or unique charm
 - Filter sigils by blacklisting and whitelisting locations and affixes
 - Filter tributes by name or rarity
 - Quickly move items from your stash or inventory
@@ -117,6 +118,10 @@ It contains navigation buttons to get to the Profile Importer, Settings, and Pro
 (Documentation in progress)
 
 Import profiles from the following popular build sites: Maxroll, Mobalytics, D4Builds.
+
+Imported profiles include normal item filters, Horadric Seals, and Charms when that data is available from the build
+site. Duplicate item filters from the same import are merged, so two identical rings become one filter such as
+`Ring(x2)`.
 
 The importer should be fairly self-documented. Hover over any option for more information on that option.
 
@@ -523,6 +528,59 @@ Affixes:
         - { name: strength } # If strength on the item was greater and the top two were not, this would not be matched
         - { name: fire_resistance }
       minCount: 3
+```
+
+</details>
+
+### Seals and Charms
+
+Horadric Seals and Charms are defined by the top-level keys `Seals` and `Charms`. If no Seal or Charm filter is
+provided, all items of that type will be kept.
+
+Both sections support:
+
+- `rarity`: A single rarity or a list of rarities the rule should match.
+- `minGreaterAffixCount`: Minimum number of greater affixes expected on the Seal or Charm.
+- `affixPool`: The same rule structure used by item affix filters, but matched against Seal or Charm affixes.
+- `uniqueAspect`: For unique or mythic Charms.
+
+`Charms` additionally support:
+
+- `set`: One or more charm set names. A Charm with any listed set will match.
+
+Seal affix names are listed in [assets/lang/enUS/seals_affixes.json](assets/lang/enUS/seals_affixes.json). Charm affix
+names are listed in [assets/lang/enUS/charms_affixes.json](assets/lang/enUS/charms_affixes.json). Charm set names are
+listed in [assets/lang/enUS/sets.json](assets/lang/enUS/sets.json). Unique Charm names use the same
+[uniques.json](assets/lang/enUS/uniques.json) list as other unique filters.
+
+<details><summary>Config Examples</summary>
+
+```yaml
+Seals:
+  # Keep seals with either cooldown_reduction or a charm slot.
+  - UtilitySeal:
+      affixPool:
+        - count:
+            - { name: cooldown_reduction }
+            - { name: charm_slot }
+          minCount: 1
+
+Charms:
+  # Keep any charm from the Might of the Den Mother set.
+  - DenMotherSet:
+      set: [might_of_the_den_mother]
+
+  # Keep Arreat's Bearing.
+  - ArreatsBearing:
+      uniqueAspect:
+        - name: arreats_bearing
+
+  # Keep rare charms with maximum_life.
+  - RareLifeCharm:
+      rarity: rare
+      affixPool:
+        - count:
+            - { name: maximum_life }
 ```
 
 </details>
