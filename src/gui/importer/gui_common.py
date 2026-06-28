@@ -247,7 +247,7 @@ def deduplicate_filters(
 ) -> list[dict[str, ItemFilterModel | CharmFilterModel | SealFilterModel]]:
     """Merge identical filters, naming duplicates with an (xN) count suffix.
 
-    Filters are compared by their Pydantic model data, with affix pool order normalized.
+    Filters are compared by their Pydantic model data.
     Identical filters are collapsed into a single entry. When N > 1, the key is rewritten as ``BaseType(xN)``
     (e.g. ``Charm(x3)``); single-occurrence filters keep their original key unchanged.
     """
@@ -256,10 +256,9 @@ def deduplicate_filters(
 
     groups: list[tuple[str, ItemFilterModel | CharmFilterModel | SealFilterModel, int]] = []
     for filter_spec in filters:
-        filter_key = _deduplicate_filter_key(filter_spec)
         merged = False
         for idx, (base_name, existing_model, count) in enumerate(groups):
-            if filter_key == _deduplicate_filter_key(existing_model):
+            if filter_spec == existing_model:
                 groups[idx] = (base_name, existing_model, count + 1)
                 merged = True
                 break
@@ -286,31 +285,6 @@ def deduplicate_filters(
         result.append({key: model})
         used_names.append({key: model})
     return result
-
-
-def _deduplicate_filter_key(filter_spec: ItemFilterModel | CharmFilterModel | SealFilterModel):
-    filter_data = filter_spec.model_dump(mode="json")
-    for pool_name in ("affix_pool", "inherent_pool"):
-        if pool_name in filter_data:
-            filter_data[pool_name] = _normalize_affix_pool_for_deduplication(filter_data[pool_name])
-    return filter_spec.__class__.__name__, _freeze_for_deduplication(filter_data)
-
-
-def _normalize_affix_pool_for_deduplication(affix_pool):
-    normalized_pool = []
-    for count_group in affix_pool:
-        normalized_group = dict(count_group)
-        normalized_group["count"] = sorted(count_group.get("count", []), key=_freeze_for_deduplication)
-        normalized_pool.append(normalized_group)
-    return sorted(normalized_pool, key=_freeze_for_deduplication)
-
-
-def _freeze_for_deduplication(value):
-    if isinstance(value, dict):
-        return tuple(sorted((key, _freeze_for_deduplication(child_value)) for key, child_value in value.items()))
-    if isinstance(value, list):
-        return tuple(_freeze_for_deduplication(child_value) for child_value in value)
-    return type(value).__name__, value
 
 
 def add_mythics_to_filters(mythic_names, finished_filters):
