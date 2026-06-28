@@ -14,15 +14,17 @@ DATALOADER_LOCK = threading.Lock()
 
 class Dataloader:
     affix_dict = {}
+    charm_affix_dict = {}
+    seal_affix_dict = {}
     affix_sigil_dict = {}
     affix_sigil_dict_all = {}
     aspect_list = []
     aspect_unique_dict = {}
     bad_tts_uniques = {}
-    error_map = {}
     filter_after_keyword = []
     filter_words = []
     item_types_dict = {}
+    set_list = []
     tooltips = {}
     tribute_dict = {}
 
@@ -44,6 +46,16 @@ class Dataloader:
         ) as f:
             self.affix_dict: dict = json.load(f)
 
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/seals_affixes.json").open(
+            encoding="utf-8"
+        ) as f:
+            self.seal_affix_dict: dict = json.load(f)
+
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/charms_affixes.json").open(
+            encoding="utf-8"
+        ) as f:
+            self.charm_affix_dict: dict = json.load(f)
+
         with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/aspects.json").open(
             encoding="utf-8"
         ) as f:
@@ -53,7 +65,6 @@ class Dataloader:
             encoding="utf-8"
         ) as f:
             data = json.load(f)
-            self.error_map = data["error_map"]
             self.filter_after_keyword = data["filter_after_keyword"]
             self.filter_words = data["filter_words"]
             self.bad_tts_uniques = data["bad_tts_uniques"]
@@ -95,3 +106,8 @@ class Dataloader:
             encoding="utf-8"
         ) as f:
             self.aspect_unique_dict = json.load(f)
+
+        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/sets.json").open(
+            encoding="utf-8"
+        ) as f:
+            self.set_list = json.load(f)

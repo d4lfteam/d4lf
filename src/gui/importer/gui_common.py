@@ -18,14 +18,25 @@ from seleniumbase import Driver
 
 from src import __version__
 from src.config.loader import IniConfigLoader
-from src.config.profile_models import AspectUniqueFilterModel, ItemFilterModel, ProfileModel
+from src.config.profile_models import (
+    AffixFilterCountModel,
+    AffixFilterModel,
+    AspectUniqueFilterModel,
+    CharmFilterModel,
+    ItemFilterModel,
+    ProfileModel,
+    SealFilterModel,
+)
 from src.config.settings_models import BrowserType
+from src.dataloader import Dataloader
+from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -184,6 +195,96 @@ def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool)
         item_filter.min_greater_affix_count = num_greater
     else:
         item_filter.min_greater_affix_count = 0
+
+
+def affix_dict_for_item_type(item_type: ItemType | None) -> dict[str, str]:
+    if item_type == ItemType.HoradricSeal:
+        return Dataloader().seal_affix_dict
+    if item_type == ItemType.Charm:
+        return Dataloader().charm_affix_dict
+    return Dataloader().affix_dict
+
+
+def create_seal_charm_filter(
+    affixes: list[Affix],
+    require_gas: bool,
+    model_type: type[CharmFilterModel | SealFilterModel] = SealFilterModel,
+    unique_name: str | None = None,
+    set_name: str | None = None,
+) -> CharmFilterModel | SealFilterModel:
+    affix_pool = []
+    if affixes:
+        affix_pool = [
+            AffixFilterCountModel(
+                count=[
+                    AffixFilterModel(name=affix.name, want_greater=affix.type == AffixType.greater) for affix in affixes
+                ],
+                minCount=1,
+            )
+        ]
+    if model_type is CharmFilterModel:
+        seal_charm_filter = CharmFilterModel(set=[set_name] if set_name else [])
+    else:
+        seal_charm_filter = SealFilterModel()
+    seal_charm_filter.affix_pool = affix_pool
+    seal_charm_filter.unique_aspect = [AspectUniqueFilterModel(name=unique_name)] if unique_name else []
+    if require_gas:
+        seal_charm_filter.min_greater_affix_count = len([affix for affix in affixes if affix.type == AffixType.greater])
+    return seal_charm_filter
+
+
+def unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
+    filter_name = filter_name_template
+    i = 2
+    while any(filter_name == next(iter(existing_filter)) for existing_filter in filters):
+        filter_name = f"{filter_name_template}{i}"
+        i += 1
+    return filter_name
+
+
+def deduplicate_filters(
+    filters: list[ItemFilterModel | CharmFilterModel | SealFilterModel],
+) -> list[dict[str, ItemFilterModel | CharmFilterModel | SealFilterModel]]:
+    """Merge identical filters, naming duplicates with an (xN) count suffix.
+
+    Filters are compared by their Pydantic model data.
+    Identical filters are collapsed into a single entry. When N > 1, the key is rewritten as ``BaseType(xN)``
+    (e.g. ``Charm(x3)``); single-occurrence filters keep their original key unchanged.
+    """
+    if not filters:
+        return []
+
+    groups: list[tuple[str, ItemFilterModel | CharmFilterModel | SealFilterModel, int]] = []
+    for filter_spec in filters:
+        merged = False
+        for idx, (base_name, existing_model, count) in enumerate(groups):
+            if filter_spec == existing_model:
+                groups[idx] = (base_name, existing_model, count + 1)
+                merged = True
+                break
+        if not merged:
+            if isinstance(filter_spec, ItemFilterModel):
+                base_name = filter_spec.item_type[0].name if filter_spec.item_type else "Item"
+            else:
+                base_name = "Charm" if isinstance(filter_spec, CharmFilterModel) else "HoradricSeal"
+            groups.append((base_name, filter_spec, 1))
+
+    result: list[dict[str, ItemFilterModel | CharmFilterModel | SealFilterModel]] = []
+    used_names: list[dict[str, ItemFilterModel | CharmFilterModel | SealFilterModel]] = []
+    for base_name, model, count in groups:
+        if count > 1:
+            candidate = f"{base_name}(x{count})"
+            # Ensure uniqueness when multiple groups share the same count suffix
+            suffix = 2
+            while any(candidate == next(iter(existing)) for existing in used_names):
+                candidate = f"{base_name}{suffix}(x{count})"
+                suffix += 1
+            key = candidate
+        else:
+            key = unique_filter_name(base_name, used_names)
+        result.append({key: model})
+        used_names.append({key: model})
+    return result
 
 
 def add_mythics_to_filters(mythic_names, finished_filters):

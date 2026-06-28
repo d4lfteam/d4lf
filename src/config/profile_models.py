@@ -16,9 +16,10 @@ from pydantic import (
     model_validator,
 )
 
-from src.config.helper import check_greater_than_zero, validate_percent
+from src.config.helper import check_greater_than_zero, validate_greater_affix_count, validate_percent
 from src.item.data.item_type import ItemType  # noqa: TC001
 from src.item.data.rarity import ItemRarity
+from src.scripts import correct_name
 
 MODULE_LOGGER = logging.getLogger(__name__)
 
@@ -27,6 +28,20 @@ def _parse_item_type_or_rarities(data: str | list[str]) -> list[str]:
     if isinstance(data, str):
         return [data]
     return data
+
+
+def _validate_set_name(name: str | None, field_name: str) -> str | None:
+    if not name:
+        return None
+
+    # This on module level would be a circular import, so we do it lazy for now
+    from src.dataloader import Dataloader  # noqa: PLC0415
+
+    name = correct_name(name)
+    if name not in Dataloader().set_list:
+        msg = f"{field_name} {name} does not exist"
+        raise ValueError(msg)
+    return name
 
 
 def _normalize_rarities(data: str | list[str]) -> list[str]:
@@ -62,8 +77,8 @@ class AffixAspectFilterModel(BaseModel):
 
 class AffixFilterModel(AffixAspectFilterModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
-    want_greater: bool = False
     min_percent_of_affix: int = Field(default=0, alias="minPercentOfAffix")
+    want_greater: bool = False
 
     @field_validator("name")
     @classmethod
@@ -71,7 +86,11 @@ class AffixFilterModel(AffixAspectFilterModel):
         # This on module level would be a circular import, so we do it lazy for now
         from src.dataloader import Dataloader  # noqa: PLC0415
 
-        if name not in Dataloader().affix_dict:
+        if (
+            name not in Dataloader().affix_dict
+            and name not in Dataloader().charm_affix_dict
+            and name not in Dataloader().seal_affix_dict
+        ):
             msg = f"affix {name} does not exist"
             raise ValueError(msg)
         return name
@@ -86,6 +105,7 @@ class AffixFilterModel(AffixAspectFilterModel):
         if self.value and self.min_percent_of_affix:
             msg = "value and minPercentOfAffix cannot both be set"
             raise ValueError(msg)
+
         return self
 
 
@@ -116,6 +136,17 @@ class AffixFilterCountModel(BaseModel):
             msg = "count must not be empty"
             raise ValueError(msg)
         return self
+
+
+def _validate_affix_pool_names(
+    affix_pool: list[AffixFilterCountModel], valid_affixes: dict[str, str], field_name: str
+) -> None:
+    invalid_affix_names = sorted({
+        affix.name for affix_group in affix_pool for affix in affix_group.count if affix.name not in valid_affixes
+    })
+    if invalid_affix_names:
+        msg = f"{field_name} affix {', '.join(invalid_affix_names)} does not exist"
+        raise ValueError(msg)
 
 
 class AspectUniqueFilterModel(AffixAspectFilterModel):
@@ -164,10 +195,7 @@ class GlobalUniqueModel(BaseModel):
     @field_validator("min_greater_affix_count")
     @classmethod
     def count_validator(cls, v: int) -> int:
-        if not 0 <= v <= 4:
-            msg = "must be in [0, 4]"
-            raise ValueError(msg)
-        return v
+        return validate_greater_affix_count(v)
 
     @field_validator("min_percent_of_aspect")
     @classmethod
@@ -193,10 +221,7 @@ class ItemFilterModel(BaseModel):
     @field_validator("min_greater_affix_count")
     @classmethod
     def min_greater_affix_in_range(cls, v: int) -> int:
-        if not 0 <= v <= 4:
-            msg = "must be in [0, 4]"
-            raise ValueError(msg)
-        return v
+        return validate_greater_affix_count(v)
 
     @field_validator("item_type", mode="before")
     @classmethod
@@ -224,8 +249,87 @@ class ItemFilterModel(BaseModel):
             raise ValueError(msg)
         return self
 
+    @model_validator(mode="after")
+    def affix_names_must_match_item_pool(self) -> ItemFilterModel:
+        # This on module level would be a circular import, so we do it lazy for now
+        from src.dataloader import Dataloader  # noqa: PLC0415
+
+        affix_dict = Dataloader().affix_dict
+        _validate_affix_pool_names(self.affix_pool, affix_dict, "affixPool")
+        _validate_affix_pool_names(self.inherent_pool, affix_dict, "inherentPool")
+        return self
+
 
 DynamicItemFilterModel = RootModel[dict[str, ItemFilterModel]]
+
+
+class _BaseSealOrCharmFilterModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    affix_pool: list[AffixFilterCountModel] = Field(default=[], alias="affixPool")
+    min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
+    rarities: list[ItemRarity] = Field(default=[], validation_alias="rarity", serialization_alias="rarity")
+    unique_aspect: list[AspectUniqueFilterModel] = Field(default=[], alias="uniqueAspect")
+
+    @field_validator("min_greater_affix_count")
+    @classmethod
+    def min_greater_affix_in_range(cls, v: int) -> int:
+        return validate_greater_affix_count(v)
+
+    @field_validator("rarities", mode="before")
+    @classmethod
+    def parse_rarities(cls, data: str | list[str]) -> list[str]:
+        return _normalize_rarities(data)
+
+    @model_validator(mode="after")
+    def unique_aspects_must_be_unique(self) -> _BaseSealOrCharmFilterModel:
+        if len({aspect.name for aspect in self.unique_aspect}) != len(self.unique_aspect):
+            msg = "uniqueAspect names must be unique"
+            raise ValueError(msg)
+
+        return self
+
+
+class CharmFilterModel(_BaseSealOrCharmFilterModel):
+    set: list[str] = Field(default=[], alias="set")
+
+    @field_validator("set")
+    @classmethod
+    def set_must_exist(cls, sets: list[str]) -> list[str]:
+        return [_validate_set_name(name, "set") for name in sets]
+
+    @model_validator(mode="after")
+    def set_and_unique_aspects_must_be_unique(self) -> CharmFilterModel:
+        if len(set(self.set)) != len(self.set):
+            msg = "set names must be unique"
+            raise ValueError(msg)
+
+        if self.set and self.unique_aspect:
+            msg = "can't define both set and unique aspect"
+            raise ValueError(msg)
+
+        return self
+
+    @model_validator(mode="after")
+    def affix_names_must_match_charm_pool(self) -> CharmFilterModel:
+        # This on module level would be a circular import, so we do it lazy for now
+        from src.dataloader import Dataloader  # noqa: PLC0415
+
+        _validate_affix_pool_names(self.affix_pool, Dataloader().charm_affix_dict, "affixPool")
+        return self
+
+
+class SealFilterModel(_BaseSealOrCharmFilterModel):
+    @model_validator(mode="after")
+    def affix_names_must_match_seal_pool(self) -> SealFilterModel:
+        # This on module level would be a circular import, so we do it lazy for now
+        from src.dataloader import Dataloader  # noqa: PLC0415
+
+        _validate_affix_pool_names(self.affix_pool, Dataloader().seal_affix_dict, "affixPool")
+        return self
+
+
+DynamicCharmFilterModel = RootModel[dict[str, CharmFilterModel]]
+DynamicSealFilterModel = RootModel[dict[str, SealFilterModel]]
 
 
 class SigilPriority(enum.StrEnum):
@@ -453,8 +557,10 @@ class ProfileModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     affixes: list[DynamicItemFilterModel] = Field(default=[], alias="Affixes")
     aspect_upgrades: list[str] = Field(default=[], alias="AspectUpgrades")
+    charms: list[DynamicCharmFilterModel] = Field(default=[], alias="Charms")
     global_uniques: list[GlobalUniqueModel] = Field(default=[], alias="GlobalUniques")
     name: str
+    seals: list[DynamicSealFilterModel] = Field(default=[], alias="Seals")
     sigils: SigilFilterModel = Field(
         default=SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist), alias="Sigils"
     )

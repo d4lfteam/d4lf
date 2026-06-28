@@ -170,6 +170,8 @@ def create_match_text(matches: list[MatchedFilter]):
         match_list = [f"  - {ma.name}" for ma in match.matched_affixes]
         if match.aspect_match:
             match_list.append("  - Aspect")
+        if match.set_match:
+            match_list.append("  - Set")
         result.append(f"{match.profile}\n" + "\n".join(match_list))
 
     return result
