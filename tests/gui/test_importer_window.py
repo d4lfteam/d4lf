@@ -49,7 +49,7 @@ def test_filename_part_selector_defaults_to_all_parts(qapp, importer_settings):
 
     assert window._selected_filename_parts() == DEFAULT_FILENAME_PARTS
     assert (
-        window.filename_parts_summary_label.text() == "Filename parts: Source + Season + Class + Build title + Variant"
+        window.filename_parts_summary_label.text() == "Default file name: Source_Season_Class_Build title_Variant.yaml"
     )
 
     window.close()
