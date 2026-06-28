@@ -94,7 +94,7 @@ class ImporterWindow(QMainWindow):
         self.filename_input_box.setPlaceholderText("Leave blank for default filename")
         self.filename_input_box.textChanged.connect(self._update_generate_button_state)
         filename_hbox.addWidget(self.filename_input_box)
-        self.filename_parts_button = QPushButton("Filename parts...")
+        self.filename_parts_button = QPushButton("Default filename includes...")
         self.filename_parts_menu = QMenu(self.filename_parts_button)
         self.filename_part_actions: dict[FilenamePart, QAction] = {}
         for filename_part in DEFAULT_FILENAME_PARTS:
@@ -247,8 +247,8 @@ class ImporterWindow(QMainWindow):
 
     def _update_filename_parts_summary(self):
         selected_labels = [FILENAME_PART_LABELS[part] for part in self._selected_filename_parts()]
-        summary = " + ".join(selected_labels) if selected_labels else "none"
-        self.filename_parts_summary_label.setText(f"Filename parts: {summary}")
+        summary = "_".join(selected_labels) + ".yaml" if selected_labels else "none"
+        self.filename_parts_summary_label.setText(f"Default file name: {summary}")
 
     def _update_generate_button_state(self):
         if self.is_generating:
