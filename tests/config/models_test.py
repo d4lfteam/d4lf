@@ -20,12 +20,16 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
+    CharmFilterModel,
+    DynamicCharmFilterModel,
+    DynamicSealFilterModel,
     GlobalUniqueModel,
     ItemFilterModel,
     ItemRarity,
     ParagonBoardModel,
     ParagonPayloadModel,
     ProfileModel,
+    SealFilterModel,
     SigilConditionModel,
     SigilFilterModel,
     TributeFilterModel,
@@ -452,6 +456,18 @@ class TestItemFilterModel:
         model = ItemFilterModel(unique_aspect=None)
         assert model.unique_aspect == []
 
+    def test_affix_pool_rejects_charm_only_affix(self) -> None:
+        affix_name = "bonus_kill_experience"
+
+        with pytest.raises(ValidationError, match=f"affixPool affix {affix_name} does not exist"):
+            ItemFilterModel(affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name=affix_name)])])
+
+    def test_inherent_pool_rejects_seal_only_affix(self) -> None:
+        affix_name = "adept_action_damage_reduction_while_moving"
+
+        with pytest.raises(ValidationError, match=f"inherentPool affix {affix_name} does not exist"):
+            ItemFilterModel(inherent_pool=[AffixFilterCountModel(count=[AffixFilterModel(name=affix_name)])])
+
 
 class TestEdgeCases:
     """Test edge cases and special scenarios."""
@@ -569,16 +585,83 @@ class TestTributeFilterModel:
 
     def test_rarities_parse_string(self) -> None:
         """Test rarities field parsing from string (line 315)."""
-        model = TributeFilterModel(rarities=ItemRarity.Legendary.value)
+        model = TributeFilterModel(rarities=[ItemRarity.Legendary])
         # Verify it's an ItemRarity enum
         assert ItemRarity.Legendary in model.rarities
 
     def test_rarities_parse_list(self) -> None:
         """Test rarities field parsing from list (line 315)."""
-        model = TributeFilterModel(rarities=[ItemRarity.Legendary.value])
+        model = TributeFilterModel(rarities=[ItemRarity.Legendary])
         assert len(model.rarities) == 1
         # Verify it's an ItemRarity enum
         assert ItemRarity.Legendary in model.rarities
+
+
+class TestCharmFilterModel:
+    def test_extra_fields_are_forbidden(self) -> None:
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            CharmFilterModel(unexpected=True)
+
+    def test_set_name_is_validated_and_normalized(self) -> None:
+        model = CharmFilterModel(set=["Breath of the Frozen Sea"])
+
+        assert model.set == ["breath_of_the_frozen_sea"]
+
+    def test_invalid_set_fails(self) -> None:
+        with pytest.raises(ValidationError, match="set invalid_set does not exist"):
+            CharmFilterModel(set=["invalid set"])
+
+    def test_unique_aspect_is_normalized(self) -> None:
+        model = CharmFilterModel(uniqueAspect=[AspectUniqueFilterModel(name="Fractured Winterglass")])
+
+        assert model.unique_aspect == [AspectUniqueFilterModel(name="fractured_winterglass")]
+
+    def test_duplicate_unique_aspects_fail(self) -> None:
+        with pytest.raises(ValidationError, match="uniqueAspect names must be unique"):
+            CharmFilterModel(
+                uniqueAspect=[
+                    AspectUniqueFilterModel(name="tuskhelm_of_joritz_the_mighty"),
+                    AspectUniqueFilterModel(name="Tuskhelm of Joritz the Mighty"),
+                ]
+            )
+
+    def test_duplicate_sets_fail(self) -> None:
+        with pytest.raises(ValidationError, match="set names must be unique"):
+            CharmFilterModel(set=["Sescherons Fury", "sescherons_fury"])
+
+    def test_set_and_unique_aspect_are_mutually_exclusive(self) -> None:
+        with pytest.raises(ValidationError, match="can't define both set and unique aspect"):
+            CharmFilterModel(
+                set=["Sescherons Fury"], uniqueAspect=[AspectUniqueFilterModel(name="tuskhelm_of_joritz_the_mighty")]
+            )
+
+    def test_affix_pool_accepts_charm_only_affix(self) -> None:
+        affix_name = "bonus_kill_experience"
+
+        model = CharmFilterModel(affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name=affix_name)])])
+
+        assert model.affix_pool[0].count[0].name == affix_name
+
+    def test_affix_pool_rejects_seal_only_affix(self) -> None:
+        affix_name = "adept_action_damage_reduction_while_moving"
+
+        with pytest.raises(ValidationError, match=f"affixPool affix {affix_name} does not exist"):
+            CharmFilterModel(affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name=affix_name)])])
+
+
+class TestSealFilterModel:
+    def test_affix_pool_accepts_seal_only_affix(self) -> None:
+        affix_name = "adept_action_damage_reduction_while_moving"
+
+        model = SealFilterModel(affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name=affix_name)])])
+
+        assert model.affix_pool[0].count[0].name == affix_name
+
+    def test_affix_pool_rejects_charm_only_affix(self) -> None:
+        affix_name = "bonus_kill_experience"
+
+        with pytest.raises(ValidationError, match=f"affixPool affix {affix_name} does not exist"):
+            SealFilterModel(affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name=affix_name)])])
 
 
 class TestTributeFilterModelRarity:
@@ -733,6 +816,8 @@ class TestProfileModel:
             GlobalUniques=[GlobalUniqueModel(minPower=800)],
             Sigils={"blacklist": [], "whitelist": [], "priority": "blacklist"},
             Tributes=[],
+            Seals=[{"Cooldown": {"affixPool": [{"count": ["cooldown_reduction"]}], "rarities": ["legendary"]}}],
+            Charms=[{"Life": {"affixPool": [{"count": ["maximum_life"]}], "rarities": ["rare"]}}],
             Paragon=None,
         )
         assert model.name == "test_profile"
@@ -740,6 +825,8 @@ class TestProfileModel:
         assert model.aspect_upgrades == []
         assert len(model.global_uniques) == 1
         assert model.global_uniques[0].min_power == 800
+        assert model.seals[0].root["Cooldown"].rarities == [ItemRarity.Legendary]
+        assert model.charms[0].root["Life"].rarities == [ItemRarity.Rare]
 
     def test_snake_case_input(self) -> None:
         """Test loading with snake_case (new format)."""
@@ -750,6 +837,8 @@ class TestProfileModel:
             global_uniques=[GlobalUniqueModel(min_power=900)],
             sigils={"blacklist": [], "whitelist": [], "priority": "blacklist"},
             tributes=[],
+            seals=[{"Cooldown": {"affix_pool": [{"count": ["cooldown_reduction"]}]}}],
+            charms=[{"Life": {"affix_pool": [{"count": ["maximum_life"]}]}}],
             paragon=None,
         )
         assert model.name == "test_profile"
@@ -757,6 +846,10 @@ class TestProfileModel:
         assert model.aspect_upgrades == []
         assert len(model.global_uniques) == 1
         assert model.global_uniques[0].min_power == 900
+        assert isinstance(model.seals[0], DynamicSealFilterModel)
+        assert isinstance(model.charms[0], DynamicCharmFilterModel)
+        assert model.seals[0].root["Cooldown"].affix_pool[0].count[0].name == "cooldown_reduction"
+        assert model.charms[0].root["Life"].affix_pool[0].count[0].name == "maximum_life"
 
     def test_mixed_naming(self) -> None:
         """Test mixing both naming conventions."""
@@ -811,6 +904,8 @@ class TestProfileModel:
         assert "affixes" in exported
         assert "aspect_upgrades" in exported
         assert "global_uniques" in exported
+        assert "seals" in exported
+        assert "charms" in exported
         assert "sigils" in exported
         assert "tributes" in exported
         assert "paragon" in exported
@@ -822,6 +917,8 @@ class TestProfileModel:
         assert "Affixes" not in exported
         assert "AspectUpgrades" not in exported
         assert "GlobalUniques" not in exported
+        assert "Seals" not in exported
+        assert "Charms" not in exported
         assert "minPower" not in exported["global_uniques"][0]
 
     def test_export_camelcase(self) -> None:
@@ -833,6 +930,8 @@ class TestProfileModel:
         assert "Affixes" in exported
         assert "AspectUpgrades" in exported
         assert "GlobalUniques" in exported
+        assert "Seals" in exported
+        assert "Charms" in exported
         assert "Sigils" in exported
         assert "Tributes" in exported
         assert "Paragon" in exported
@@ -844,6 +943,8 @@ class TestProfileModel:
         assert "affixes" not in exported
         assert "aspect_upgrades" not in exported
         assert "global_uniques" not in exported
+        assert "seals" not in exported
+        assert "charms" not in exported
         assert "min_power" not in exported["GlobalUniques"][0]
 
     def test_defaults(self) -> None:
@@ -854,6 +955,8 @@ class TestProfileModel:
         assert model.affixes == []
         assert model.aspect_upgrades == []
         assert model.global_uniques == []
+        assert model.seals == []
+        assert model.charms == []
         assert model.tributes == []
         assert model.paragon is None
         assert model.sigils.blacklist == []

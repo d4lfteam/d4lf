@@ -217,7 +217,10 @@ class VisionModeWithHighlighting:
         # show all info strings of the profiles
         text_y = h
         for match in reversed(should_keep_res.matched):
-            text_y = self.draw_text(self.canvas, match.profile, get_filter_colors().matched, text_y, 5, w // 2)
+            text = match.profile
+            if match.set_match:
+                text = text + " (incl. Set)"
+            text_y = self.draw_text(self.canvas, text, get_filter_colors().matched, text_y, 5, w // 2)
         # Show matched bullets
         if item_descr and len(should_keep_res.matched) > 0:
             bullet_width = self.thick * 3

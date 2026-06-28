@@ -22,6 +22,8 @@ from src.item.models import Item
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.aspects import aspects
+from tests.item.filter.data.charms import charms
+from tests.item.filter.data.seals import seals
 from tests.item.filter.data.sigils import (
     sigil_derived_legendary,
     sigil_derived_rare,
@@ -46,6 +48,8 @@ def _create_mocked_filter(mocker: MockerFixture) -> Filter:
     filter_obj.aspect_upgrade_filters = {}
     filter_obj.paragon_filters = {}
     filter_obj.global_unique_filters = {}
+    filter_obj.seal_filters = {}
+    filter_obj.charm_filters = {}
     filter_obj.sigil_filters = {}
     filter_obj.tribute_filters = {}
     filter_obj.files_loaded = True
@@ -124,6 +128,32 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
     test_filter = _create_mocked_filter(mocker)
     test_filter.tribute_filters = {filters.tributes.name: filters.tributes.tributes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
+
+
+@pytest.mark.parametrize(("_name", "result", "item"), natsorted(seals), ids=[name for name, _, _ in natsorted(seals)])
+def test_seals(_name: str, result: list[str], item: Item, mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.seal_filters = {filters.seal_charm.name: filters.seal_charm.seals}
+    matches = test_filter.should_keep(item).matched
+    assert natsorted([match.profile for match in matches]) == natsorted(result)
+    for match in matches:
+        if match.profile.startswith("seal_charm.Seals."):
+            assert match.matched_affixes
+
+
+@pytest.mark.parametrize(("_name", "result", "item"), natsorted(charms), ids=[name for name, _, _ in natsorted(charms)])
+def test_charms(_name: str, result: list[str], item: Item, mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.charm_filters = {filters.seal_charm.name: filters.seal_charm.charms}
+    matches = test_filter.should_keep(item).matched
+    assert natsorted([match.profile for match in matches]) == natsorted(result)
+    for match in matches:
+        if match.profile in {"seal_charm.Charms.basic_magic", "seal_charm.Charms.speed"}:
+            assert match.matched_affixes
+        if match.profile == "seal_charm.Charms.wanted_set":
+            assert match.set_match
+        if match.profile == "seal_charm.Charms.wanted_unique_aspect":
+            assert match.aspect_match
 
 
 @pytest.mark.parametrize(

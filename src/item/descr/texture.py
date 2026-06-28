@@ -94,11 +94,13 @@ def find_affix_bullets(img_item_descr: np.ndarray, sep_short_match: TemplateMatc
             "greater_affix_bullet_point_masterworked",
             "masterworking_affix_bullet",
             "masterworking_affix_bullet_2",
+            "seal_set_bullet_point",
         ]
         + affix_icons
         + rerolled_icons
         + tempered_icons
     )
+
     all_templates = [f"{x}_medium" for x in template_list] + template_list
     search_threshold = 0.80
     if ResManager().resolution[1] <= 1200:

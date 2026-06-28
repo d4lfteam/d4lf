@@ -8,9 +8,30 @@ If you want to add data to these files, do the following steps:
 1. Run [gen_data.py](/src/tools/gen_data.py). You provide the paths of the above two downloads. For example,
    you might run: `python gen_data.py C:\Users\you\code\d4data C:\Users\you\code\Diablo4Companion`
 
-If you do not see the new data you're expecting to see, you need to add it to the appropriate custom\_\* file. These files store any additional data that we were not able to find in d4data for any reason.
+If you do not see the new data you're expecting to see, you need to add it to the custom override file at [src/tools/data/custom_enUS.json](/src/tools/data/custom_enUS.json). This file stores any additional data that we were not able to find in d4data for any reason.
 
-You can find the custom files in [src/tools/data](/src/tools/data). For example, if you need to add a new aspect, you can add it to custom_aspects_enUS.json.
+The custom file is a single JSON object with sections named after the target file. For example:
+
+```json
+{
+    "affixes": { "mana_per_second": "mana per second" },
+    "charms_affixes": { "lucky_hit_up_to_a_chance_to_deal_holy_damage": "lucky hit up to a chance to deal holy damage" },
+    "seals_affixes": { "maximum_resolve": "maximum resolve" },
+    "aspects": ["aspect_of_inner_calm"],
+    "sigils": {
+        "dungeons": { "aldurwood": "aldurwood" },
+        "major": { "death_pulse": "death pulse" },
+        "positive": { "reduce_cooldowns_on_kill": "reduce cooldowns on kill" }
+    },
+    "uniques": { "harlequin_crest": { "num_inherents": 2 } },
+    "sets": ["arms_of_arreat"],
+    "tributes": { "tribute_of_radiance": "tribute of radiance" },
+    "item_types": { "HoradricSeal": "horadric seal" },
+    "tooltips": { "ItemPower": "item power" }
+}
+```
+
+Each section must match the structure of the target file it extends (list or object). Sections that are not present are silently skipped.
 
 The only exception is corrections.json, which can be modified directly. If you find a bad TTS name for a unique that is where you fix it.
 
