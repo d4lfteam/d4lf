@@ -1,4 +1,10 @@
-from src.config.profile_models import CharmFilterModel, ItemFilterModel, ProfileModel
+from src.config.profile_models import (
+    AffixFilterCountModel,
+    AffixFilterModel,
+    CharmFilterModel,
+    ItemFilterModel,
+    ProfileModel,
+)
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     _to_yaml_str,
@@ -109,6 +115,45 @@ def test_deduplicate_filters_supports_item_filters() -> None:
     assert "Ring(x2)" in deduped[0]
     assert deduped[0]["Ring(x2)"] == f1
     assert "Amulet" in deduped[1]
+
+
+def test_deduplicate_filters_ignores_affix_order() -> None:
+    f1 = ItemFilterModel(
+        affix_pool=[
+            AffixFilterCountModel(
+                count=[
+                    AffixFilterModel(name="critical_strike_chance"),
+                    AffixFilterModel(name="critical_strike_damage_multiplier"),
+                    AffixFilterModel(name="maximum_life"),
+                    AffixFilterModel(name="strength"),
+                ],
+                min_count=3,
+            )
+        ],
+        item_type=[ItemType.Ring],
+        min_power=100,
+    )
+    f2 = ItemFilterModel(
+        affix_pool=[
+            AffixFilterCountModel(
+                count=[
+                    AffixFilterModel(name="critical_strike_damage_multiplier"),
+                    AffixFilterModel(name="critical_strike_chance"),
+                    AffixFilterModel(name="maximum_life"),
+                    AffixFilterModel(name="strength"),
+                ],
+                min_count=3,
+            )
+        ],
+        item_type=[ItemType.Ring],
+        min_power=100,
+    )
+
+    deduped = deduplicate_filters([f1, f2])
+
+    assert len(deduped) == 1
+    assert "Ring(x2)" in deduped[0]
+    assert deduped[0]["Ring(x2)"] == f1
 
 
 def test_to_yaml_str_preserves_paragon_aliases(mock_ini_loader) -> None:
