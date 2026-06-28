@@ -7,6 +7,7 @@ from src.gui.importer.gui_common import (
     deduplicate_filters,
     unique_filter_name,
 )
+from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart, ImportConfig
 from src.item.data.item_type import ItemType
 
 
@@ -51,7 +52,7 @@ def test_build_default_profile_file_name_adds_season_and_strips_matching_header_
         variant_name="Pit Push (Glasscannon)",
     )
 
-    assert file_name == "d4builds_paladin_s12_robs_cpt_america_pit_push_glasscannon"
+    assert file_name == "d4builds_s12_paladin_robs_cpt_america_pit_push_glasscannon"
 
 
 def test_build_default_profile_file_name_replaces_stale_season_marker_in_header() -> None:
@@ -59,7 +60,59 @@ def test_build_default_profile_file_name_replaces_stale_season_marker_in_header(
         source_name="maxroll", class_name="Sorcerer", season_number="12", build_header="S11 Crackling Energy Sorc"
     )
 
-    assert file_name == "maxroll_sorcerer_s12_crackling_energy_sorc"
+    assert file_name == "maxroll_s12_sorcerer_crackling_energy_sorc"
+
+
+def test_build_default_profile_file_name_uses_selected_parts() -> None:
+    file_name = build_default_profile_file_name(
+        source_name="d4builds",
+        class_name="Barbarian",
+        season_number="12",
+        build_header="Bash Build - D4Builds",
+        variant_name="Pit Push",
+        filename_parts=(FilenamePart.SOURCE, FilenamePart.BUILD_TITLE),
+    )
+
+    assert file_name == "d4builds_bash_build"
+
+
+def test_build_default_profile_file_name_uses_unknown_for_selected_missing_class() -> None:
+    file_name = build_default_profile_file_name(source_name="", class_name="", filename_parts=(FilenamePart.CLASS,))
+
+    assert file_name == "unknown"
+
+
+def test_build_default_profile_file_name_falls_back_when_no_parts_selected() -> None:
+    file_name = build_default_profile_file_name(
+        source_name="d4builds", class_name="Barbarian", build_header="Bash Build", filename_parts=()
+    )
+
+    assert file_name == "imported"
+
+
+def test_import_config_defaults_to_all_filename_parts() -> None:
+    config = ImportConfig(
+        url="https://example.invalid",
+        import_aspect_upgrades=True,
+        add_to_profiles=False,
+        import_greater_affixes=True,
+        require_greater_affixes=False,
+    )
+
+    assert config.filename_parts == DEFAULT_FILENAME_PARTS
+
+
+def test_import_config_normalizes_filename_parts() -> None:
+    config = ImportConfig(
+        url="https://example.invalid",
+        import_aspect_upgrades=True,
+        add_to_profiles=False,
+        import_greater_affixes=True,
+        require_greater_affixes=False,
+        filename_parts=("source", "variant"),
+    )
+
+    assert config.filename_parts == (FilenamePart.SOURCE, FilenamePart.VARIANT)
 
 
 def test_unique_filter_name_adds_suffix_for_existing_filter_names() -> None:
