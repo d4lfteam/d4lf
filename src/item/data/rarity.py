@@ -7,4 +7,5 @@ class ItemRarity(Enum):
     Magic = "magic"
     Mythic = "mythic"
     Rare = "rare"
+    Set = "set"
     Unique = "unique"

@@ -6,6 +6,7 @@ from urllib.parse import unquote
 
 import jsonpath
 import lxml.html
+import rapidfuzz
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
@@ -16,14 +17,19 @@ from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
+    CharmFilterModel,
     ItemFilterModel,
     ProfileModel,
+    SealFilterModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     add_mythics_to_filters,
     add_to_profiles,
+    affix_dict_for_item_type,
     build_default_profile_file_name,
+    create_seal_charm_filter,
+    deduplicate_filters,
     fix_offhand_type,
     fix_weapon_type,
     match_to_enum,
@@ -45,6 +51,7 @@ BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
 PROFILE_GUIDE_BASE_URL = f"{BUILD_GUIDE_BASE_URL}profile"
 SCRIPT_XPATH = "//script"
 BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
+CHARM_ICON_SET_SLUG_REGEX = re.compile(r"/charms/(?P<slug>[^/?#]+?)(?:\.[^/.?#]+)?(?:[?#]|$)")
 PAGE_DIAGNOSTIC_MARKERS = (
     "__PRELOADED_STATE__",
     "__NEXT_DATA__",
@@ -127,24 +134,38 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     if not items:
         LOGGER.error(msg := "No items found")
         raise MobalyticsError(msg)
+
     finished_filters = []
+    charm_filters = []
+    seal_filters = []
     mythic_names = []
     aspect_upgrade_filters = []
-    for item in items:
+    guessed_set_name = None
+    for item in sorted(items, key=lambda item: jsonpath.findall(".gameEntity.type", item)[0] != "charms"):
         item_filter = ItemFilterModel()
         entity_type = jsonpath.findall(".gameEntity.type", item)[0]
         mythic_result = jsonpath.findall(".gameEntity.entity.mythic", item)
         is_mythic = mythic_result[0] if mythic_result else False
-        if entity_type not in ["aspects", "uniqueItems"]:
+        if entity_type not in ["aspects", "uniqueItems", "charms", "seals", "items"]:
             continue
-        if not (item_name := str(jsonpath.findall(".gameEntity.entity.title", item)[0])):
-            LOGGER.error(msg := "No item name found")
-            raise MobalyticsError(msg)
-        if not (slot_type := str(jsonpath.findall(".gameSlotSlug", item)[0])):
-            LOGGER.error(msg := "No slot type found")
+        title_result = jsonpath.findall(".gameEntity.entity.title", item) or jsonpath.findall(".gameEntity.title", item)
+        item_name = str(title_result[0]).strip() if title_result else ""
+        if not item_name:
+            slot_result = jsonpath.findall(".gameSlotSlug", item)
+            LOGGER.warning(
+                f"Skipping {slot_result[0] if slot_result else '(unknown slot)'} ({entity_type}) because it has no title."
+            )
+            continue
+        slot_result = jsonpath.findall(".gameSlotSlug", item)
+        if not slot_result or not (slot_type := str(slot_result[0]).strip()):
+            LOGGER.error(msg := f"No slot type found for {item_name}")
             raise MobalyticsError(msg)
 
-        raw_affixes = jsonpath.findall(".gameEntity.modifiers.gearStats[*]", item)
+        raw_affixes = (
+            jsonpath.findall(".gameEntity.modifiers.gearStats[*]", item)
+            + jsonpath.findall(".gameEntity.modifiers.sealStats[*]", item)
+            + jsonpath.findall(".gameEntity.modifiers.charmStats[*]", item)
+        )
         raw_inherents = jsonpath.findall(".gameEntity.modifiers.implicitStats[*]", item)
         raw_affixes = [x for x in raw_affixes if x is not None]
         raw_inherents = [x for x in raw_inherents if x is not None]
@@ -164,7 +185,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         if legendary_aspect:
             aspect_upgrade_filters.append(legendary_aspect)
 
-        if not raw_affixes and not raw_inherents:
+        if entity_type not in ["charms", "seals"] and not raw_affixes and not raw_inherents:
             LOGGER.warning(f"Skipping {slot_type} because it had no stats provided.")
             continue
 
@@ -190,11 +211,16 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         if not item_type and "offhand" in slot_type:
             item_type = fix_offhand_type("", class_name)
 
-        item_type = (
-            match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot_type))
-            if item_type is None
-            else item_type
-        )
+        if "seal" in slot_type.lower():
+            item_type = ItemType.HoradricSeal
+        elif "charm" in slot_type.lower():
+            item_type = ItemType.Charm
+        else:
+            item_type = (
+                match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot_type))
+                if item_type is None
+                else item_type
+            )
         if item_type is None:
             if is_weapon:
                 LOGGER.warning(
@@ -207,10 +233,39 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         else:
             item_filter.item_type = [item_type]
 
-        affixes = _convert_raw_to_affixes(raw_affixes, config.import_greater_affixes)
-        inherents = _convert_raw_to_affixes(raw_inherents)
+        affixes = _convert_raw_to_affixes(
+            raw_affixes, config.import_greater_affixes, item_type, guessed_set_name=guessed_set_name
+        )
+        inherents = _convert_raw_to_affixes(raw_inherents, item_type=item_type, guessed_set_name=guessed_set_name)
+
+        if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
+            seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
+            seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
+            # Extract unique aspect and set info for charms
+            charm_unique_aspect = None
+            charm_set_name = None
+            if item_type == ItemType.Charm:
+                normalized_item_name = correct_name(item_name)
+                if normalized_item_name in Dataloader().aspect_unique_dict:
+                    charm_unique_aspect = normalized_item_name
+                charm_set_name = _extract_mobalytics_charm_set_name(item)
+            if not affixes and not charm_unique_aspect and not charm_set_name:
+                LOGGER.warning(f"Skipping {item_name} because it had no supported affixes, unique aspect, or set name.")
+                continue
+            seal_charm_filter = create_seal_charm_filter(
+                affixes=affixes,
+                require_gas=config.require_greater_affixes,
+                model_type=seal_charm_model,
+                unique_name=charm_unique_aspect,
+                set_name=charm_set_name,
+            )
+            seal_charm_filters.append(seal_charm_filter)
+            if isinstance(seal_charm_filter, CharmFilterModel) and not guessed_set_name and seal_charm_filter.set:
+                guessed_set_name = seal_charm_filter.set[0]
+            continue
 
         if not is_mythic:
+            affixes = sorted(affixes, key=lambda affix: (affix.name, affix.type.value))
             item_filter.affix_pool = [
                 AffixFilterCountModel(
                     count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
@@ -220,20 +275,21 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
             update_mingreateraffixcount(item_filter, config.require_greater_affixes)
         item_filter.min_power = 100
         if inherents and not is_mythic:
+            inherents = sorted(inherents, key=lambda affix: (affix.name, affix.type.value))
             item_filter.inherent_pool = [
                 AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
             ]
-        filter_name_template = item_filter.item_type[0].name if item_type else slot_type.replace(" ", "")
-        filter_name = filter_name_template
-        i = 2
-        while any(filter_name == next(iter(x)) for x in finished_filters):
-            filter_name = f"{filter_name_template}{i}"
-            i += 1
-        finished_filters.append({filter_name: item_filter})
+        finished_filters.append(item_filter)
 
     # Place all mythics in a single filter
-    add_mythics_to_filters(mythic_names, finished_filters)
-    profile = ProfileModel(name="imported profile", Affixes=sort_profile_filters(finished_filters))
+    affix_filters = deduplicate_filters(finished_filters)
+    add_mythics_to_filters(mythic_names, affix_filters)
+    profile = ProfileModel(
+        name="imported profile",
+        Affixes=sort_profile_filters(affix_filters),
+        Charms=sort_profile_filters(deduplicate_filters(charm_filters)),
+        Seals=sort_profile_filters(deduplicate_filters(seal_filters)),
+    )
     if config.import_aspect_upgrades and aspect_upgrade_filters:
         profile.aspect_upgrades = aspect_upgrade_filters
 
@@ -319,13 +375,71 @@ def _get_legendary_aspect(name: str) -> str:
     return ""
 
 
-def _convert_raw_to_affixes(raw_stats: list[dict], import_greater_affixes=False) -> list[Affix]:
+def _extract_mobalytics_charm_set_name(item: dict) -> str | None:
+    icon_url = (jsonpath.findall(".gameEntity.iconUrl", item) or [""])[0]
+    match = CHARM_ICON_SET_SLUG_REGEX.search(str(icon_url))
+    if not match:
+        return None
+
+    set_candidate = correct_name(match.group("slug").replace("-", " "))
+    if set_candidate in Dataloader().set_list:
+        return set_candidate
+
+    compact_candidate = set_candidate.replace("_", "").replace("-", "")
+    return next(
+        (
+            set_name
+            for set_name in Dataloader().set_list
+            if set_name.replace("_", "").replace("-", "") == compact_candidate
+        ),
+        None,
+    )
+
+
+def _convert_raw_to_affixes(
+    raw_stats: list[dict],
+    import_greater_affixes=False,
+    item_type: ItemType | None = None,
+    guessed_set_name: str | None = None,
+) -> list[Affix]:
     result = []
+    affix_dict = affix_dict_for_item_type(item_type=item_type)
     for stat in raw_stats:
         if stat:
-            affix_obj = Affix(
-                name=closest_match(clean_str(_corrections(input_str=stat["id"])), Dataloader().affix_dict)
-            )
+            stat_id = stat["id"]
+
+            stat_clean = clean_str(_corrections(input_str=stat_id.replace("-", " ")))
+            matched_name = None
+            if item_type == ItemType.HoradricSeal and guessed_set_name:
+                # First check if the stat is a generic affix with an exact or very close match
+                best_global_key = closest_match(stat_clean, affix_dict)
+                is_exact_generic = False
+                if best_global_key and best_global_key != "damage":
+                    global_display = affix_dict[best_global_key]
+                    if rapidfuzz.distance.Levenshtein.distance(stat_clean, global_display) <= 2:
+                        # Ensure it's not a set-specific affix of another set
+                        is_set_specific = False
+                        for set_name in Dataloader().set_list:
+                            if best_global_key.startswith(set_name + "_"):
+                                is_set_specific = True
+                                break
+                        if not is_set_specific:
+                            is_exact_generic = True
+                            matched_name = best_global_key
+
+                if not is_exact_generic:
+                    set_keys = {
+                        k: v for k, v in Dataloader().seal_affix_dict.items() if k.startswith(guessed_set_name + "_")
+                    }
+                    potential_match = closest_match(stat_clean, set_keys)
+                    if potential_match:
+                        display_name = Dataloader().seal_affix_dict[potential_match]
+                        if rapidfuzz.fuzz.token_set_ratio(stat_clean, display_name) >= 50:
+                            matched_name = potential_match
+            if matched_name is None:
+                matched_name = closest_match(stat_clean, affix_dict)
+
+            affix_obj = Affix(name=matched_name)
             if affix_obj.name is None:
                 LOGGER.error(f"Couldn't match {stat=}")
                 continue

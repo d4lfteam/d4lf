@@ -20,6 +20,13 @@ def validate_percent(v: int) -> int:
     return v
 
 
+def validate_greater_affix_count(v: int) -> int:
+    if not 0 <= v <= 4:
+        msg = "must be in [0, 4]"
+        raise ValueError(msg)
+    return v
+
+
 def validate_hotkey(k: str) -> str:
     keyboard.parse_hotkey(k)
     return k
