@@ -89,7 +89,10 @@ class IniConfigLoader:
             if section not in self._parser:
                 continue
 
-            valid_keys = type(model).model_fields
+            valid_keys = getattr(type(model), "model_fields", None)
+            if valid_keys is None:
+                continue
+
             for key in list(self._parser[section]):
                 if key in valid_keys:
                     continue
