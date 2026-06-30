@@ -41,18 +41,8 @@ def test_for_item_derives_rarity_from_affixes():
     assert SigilRules.default().for_item(item).rarity == ItemRarity.Rare
 
 
-def test_for_item_uses_affixes_over_cached_rarity(caplog):
-    item = Item(rarity=ItemRarity.Magic, affixes=[Affix(name="amethyst_reserve")])
-
-    with caplog.at_level(logging.WARNING, logger="src.item.sigil_rules"):
-        sigil_item = SigilRules.default().for_item(item)
-
-    assert sigil_item.rarity == ItemRarity.Rare
-    assert any("Cached sigil rarity" in record.message for record in caplog.records)
-
-
-def test_for_item_unknown_rarity_logs_debug_and_ignores_cached_rarity(caplog):
-    item = Item(rarity=ItemRarity.Mythic, affixes=[Affix(name="shadow_damage")])
+def test_for_item_unknown_rarity_logs_debug(caplog):
+    item = Item(affixes=[Affix(name="shadow_damage")])
 
     with caplog.at_level(logging.DEBUG, logger="src.item.sigil_rules"):
         sigil_item = SigilRules.default().for_item(item)

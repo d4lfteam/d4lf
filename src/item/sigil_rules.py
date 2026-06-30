@@ -88,17 +88,9 @@ class SigilRules:
     def for_item(self, item: Item) -> SigilItem:
         affix_names = tuple(affix.name for affix in item.affixes + item.inherent)
         derived_rarity = self._derive_rarity(affix_names)
-        cached_rarity = item.rarity
 
         if derived_rarity is None:
             LOGGER.debug(f"Could not resolve sigil rarity from affixes: {list(affix_names)}")
-        elif cached_rarity is not None and cached_rarity != derived_rarity:
-            LOGGER.warning(
-                "Cached sigil rarity %s disagrees with affix-derived rarity %s for affixes: %s",
-                cached_rarity.value,
-                derived_rarity.value,
-                list(affix_names),
-            )
 
         return SigilItem(name=item.name, rarity=derived_rarity, affix_names=frozenset(affix_names))
 
