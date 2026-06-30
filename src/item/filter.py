@@ -18,16 +18,15 @@ from src.config.profile_models import (
     DynamicSealFilterModel,
     GlobalUniqueModel,
     ParagonPayloadModel,
-    SigilConditionModel,
     SigilFilterModel,
     SigilPriority,
     TributeFilterModel,
 )
 from src.config.settings_models import AspectFilterType, CosmeticFilterType, UnfilteredUniquesType
-from src.dataloader import Dataloader
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity
+from src.item.sigil_rules import SigilRules
 from src.scripts.common import ASPECT_UPGRADES_LABEL
 
 if TYPE_CHECKING:
@@ -195,41 +194,23 @@ class Filter:
         res.matched.append(MatchedFilter("Cosmetics"))
         return res
 
-    def _get_sigil_rarity(self, item: Item) -> ItemRarity | None:
-        if item.rarity is not None:
-            return item.rarity
-        rarity_map = Dataloader().affix_sigil_dict_all["rarities"]
-        sigil_affixes = item.affixes + item.inherent
-        for affix in sigil_affixes:
-            if affix.name in rarity_map:
-                return ItemRarity(rarity_map[affix.name].lower())
-        LOGGER.warning(f"Could not resolve sigil rarity from affixes: {[a.name for a in sigil_affixes]}")
-        return None
-
     def _check_sigil(self, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
+        sigil_item = SigilRules.default().for_item(item)
         if not self.sigil_filters.items():
             LOGGER.info(f"{item.original_name} -- Matched Sigils")
             res.keep = True
             res.matched.append(MatchedFilter("Sigils not filtered"))
         for profile_name, profile_filter in self.sigil_filters.items():
-            if profile_filter.rarities:
-                sigil_rarity = self._get_sigil_rarity(item)
-                if sigil_rarity is None or sigil_rarity not in profile_filter.rarities:
-                    continue  # fail-closed; warning logged in _get_sigil_rarity
+            if profile_filter.rarities and (
+                sigil_item.rarity is None or sigil_item.rarity not in profile_filter.rarities
+            ):
+                continue  # fail-closed; unknown rarity is logged in SigilRules
             blacklist_empty = not profile_filter.blacklist
-            is_in_blacklist = self._match_affixes_sigils(
-                expected_affixes=profile_filter.blacklist,
-                sigil_name=item.name,
-                sigil_affixes=item.affixes + item.inherent,
-            )
+            is_in_blacklist = any(sigil_item.matches(rule) for rule in profile_filter.blacklist)
             blacklist_ok = True if blacklist_empty else not is_in_blacklist
             whitelist_empty = not profile_filter.whitelist
-            is_in_whitelist = self._match_affixes_sigils(
-                expected_affixes=profile_filter.whitelist,
-                sigil_name=item.name,
-                sigil_affixes=item.affixes + item.inherent,
-            )
+            is_in_whitelist = any(sigil_item.matches(rule) for rule in profile_filter.whitelist)
             whitelist_ok = True if whitelist_empty else is_in_whitelist
 
             if (blacklist_empty and not whitelist_empty and not whitelist_ok) or (
@@ -250,7 +231,7 @@ class Filter:
             res.keep = True
             res.matched.append(MatchedFilter(f"{profile_name}"))
 
-        if item.rarity == ItemRarity.Mythic and not res.keep:
+        if sigil_item.rarity == ItemRarity.Mythic and not res.keep:
             LOGGER.info(f"{item.original_name} -- Matched mythic sigil, always kept")
             res.keep = True
             res.matched.append(MatchedFilter("Mythic Sigil"))
@@ -441,20 +422,6 @@ class Filter:
 
             result.extend(group_res)
         return result
-
-    @staticmethod
-    def _match_affixes_sigils(
-        expected_affixes: list[SigilConditionModel], sigil_name: str, sigil_affixes: list[Affix]
-    ) -> bool:
-        for expected_affix in expected_affixes:
-            if sigil_name != expected_affix.name and not [
-                affix for affix in sigil_affixes if affix.name == expected_affix.name
-            ]:
-                continue
-            if expected_affix.condition and not any(affix.name in expected_affix.condition for affix in sigil_affixes):
-                continue
-            return True
-        return False
 
     def _match_affixes_uniques(
         self, expected_affixes: list[AffixFilterModel], item_affixes: list[Affix], min_greater_affix_count: int = 0
