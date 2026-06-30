@@ -27,6 +27,7 @@ from src.item.descr import keep_letters_and_spaces
 from src.item.descr.text import find_number
 from src.item.descr.texture import find_affix_bullets, find_aspect_bullet, find_seperator_short, find_seperators_long
 from src.item.models import Item
+from src.item.sigil_rules import SigilRules
 from src.scripts import correct_name
 from src.tts import ItemIdentifiers
 from src.utils.window import screenshot
@@ -236,12 +237,7 @@ def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
         affix.type = AffixType.normal
         item.affixes.append(affix)
 
-    rarity_map = Dataloader().affix_sigil_dict_all["rarities"]
-    item.rarity = next(
-        (ItemRarity(rarity_map[affix.name].lower()) for affix in item.affixes if affix.name in rarity_map), None
-    )
-    if item.rarity is None:
-        LOGGER.warning(f"Could not resolve sigil rarity from affixes: {[affix.name for affix in item.affixes]}")
+    item.rarity = SigilRules.default().for_item(item).rarity
 
     return item
 
