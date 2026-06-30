@@ -233,6 +233,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         season_number=season_number,
         build_header=build_header,
         variant_name=variant_name,
+        filename_parts=config.filename_parts,
     )
 
     # Optionally embed Paragon data into the profile model before saving
