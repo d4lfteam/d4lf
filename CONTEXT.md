@@ -47,3 +47,12 @@ _Avoid_: Filename box, build name selector.
 
 A named alternative within an imported build. Use this term for source-specific labels such as subbuilds.
 _Avoid_: Subbuild.
+
+### Sigil rule
+
+A profile rule that matches sigils through a blacklist or whitelist.
+
+### Sigil rule target
+
+The dungeon or affix named by a sigil rule. A dungeon target scopes the rule to one sigil dungeon; an affix target applies across sigils that carry that affix.
+_Avoid_: sigil kind.
