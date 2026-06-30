@@ -9,10 +9,10 @@ from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QApplication
 
 from src.config.profile_models import SigilConditionModel, SigilFilterModel
-from src.dataloader import Dataloader
 from src.gui.models import dialog as dialog_module
 from src.gui.models.dialog import CreateSigil
 from src.gui.profile_editor.sigils_tab import SigilsTab, SigilWidget
+from src.item.sigil_rules import SigilRules
 
 
 @pytest.fixture(scope="module")
@@ -21,12 +21,11 @@ def qapp():
 
 
 def _first_affix_key() -> str:
-    data = Dataloader().affix_sigil_dict_all
-    return next(iter({**data["minor"], **data["major"], **data["positive"]}))
+    return SigilRules.default().targets("affix")[0].name
 
 
 def _first_dungeon_key() -> str:
-    return next(iter(Dataloader().affix_sigil_dict_all["dungeons"]))
+    return SigilRules.default().targets("dungeon")[0].name
 
 
 def _loaded_tab(name: str) -> SigilsTab:

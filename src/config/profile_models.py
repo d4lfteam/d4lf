@@ -366,10 +366,11 @@ class SigilConditionModel(BaseModel):
     @classmethod
     def name_must_exist(cls, names_in: str | list[str]) -> str | list[str]:
         # This on module level would be a circular import, so we do it lazy for now
-        from src.dataloader import Dataloader  # noqa: PLC0415
+        from src.item.sigil_rules import SigilRules  # noqa: PLC0415
 
         names = [names_in] if isinstance(names_in, str) else names_in
-        errors = [name for name in names if name not in Dataloader().affix_sigil_dict]
+        sigil_rules = SigilRules.default()
+        errors = [name for name in names if not sigil_rules.target(name).known]
         if errors:
             msg = f"The following affixes/dungeons do not exist: {errors}"
             raise ValueError(msg)
