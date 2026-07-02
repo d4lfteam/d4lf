@@ -118,6 +118,11 @@ def import_maxroll(config: ImportConfig):
         # TODO I don't think this code needs to be siloed, I think it can be mostly part of the normal flow so we're not repeating work. It'd just require some refactoring
         # TODO I'd make that change after the profile editor rework is done and we're importing individual mythics again
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
+            if "explicits" not in resolved_item:
+                LOGGER.warning(
+                    f"Maxroll is providing unreliable data for Seals/Charms, skipping a {item_type.value} for this build."
+                )
+                continue
             seal_charm_affixes = _find_item_affixes(
                 mapping_data=mapping_data,
                 item_affixes=resolved_item["explicits"],
@@ -582,7 +587,7 @@ def _extract_active_guide_embed_tab_index(embed: lxml.html.HtmlElement) -> int |
 
 if __name__ == "__main__":
     src.logger.setup()
-    URLS = ["https://maxroll.gg/d4/planner/n51lwl0u#4"]
+    URLS = ["https://maxroll.gg/d4/planner/7w8hr50y#4"]
     for X in URLS:
         config = ImportConfig(
             url=X,
