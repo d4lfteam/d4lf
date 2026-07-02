@@ -3,8 +3,8 @@ import logging
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QMessageBox, QTabWidget
 
+from src.config.profile_document import LoadedProfile, ProfileDocumentStore
 from src.config.profile_models import ProfileModel
-from src.gui.importer.gui_common import save_as_profile
 from src.gui.profile_editor.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.profile_editor.aspect_upgrades_tab import ASPECT_UPGRADES_TABNAME, AspectUpgradesTab
 from src.gui.profile_editor.charms_tab import CHARMS_TABNAME, CharmsTab
@@ -20,10 +20,11 @@ class ProfileEditor(QTabWidget):
     # Signal emitted when profile is saved (passes profile name)
     profile_saved = pyqtSignal(str)
 
-    def __init__(self, profile_model: ProfileModel, parent=None):
+    def __init__(self, loaded_profile: LoadedProfile, parent=None):
         super().__init__(parent)
 
-        self.profile_model = profile_model
+        self.loaded_profile = loaded_profile
+        self.profile_model = loaded_profile.profile
         # Create main tabs
         self.affixes_tab = AffixesTab(self.profile_model.affixes)
         self.charms_tab = CharmsTab(self.profile_model.charms)
@@ -86,25 +87,21 @@ class ProfileEditor(QTabWidget):
             model = ProfileModel.model_validate(self.profile_model)
             if model != self.profile_model:
                 if self.show_warning():
-                    save_as_profile(
-                        self.profile_model.name, self.profile_model, "custom", exclude={"name"}, backup_file=True
+                    saved = ProfileDocumentStore.default().save_existing(
+                        loaded=self.loaded_profile, profile=self.profile_model, source="custom", backup_original=True
                     )
                     # Emit signal for hot reload
                     self.profile_saved.emit(self.profile_model.name)
-                    QMessageBox.information(
-                        self, "Info", f"Profile saved successfully to {self.profile_model.name + '.yaml'}"
-                    )
+                    QMessageBox.information(self, "Info", f"Profile saved successfully to {saved.path.name}")
                 else:
                     QMessageBox.information(self, "Info", "Profile not saved.")
             else:
-                save_as_profile(
-                    self.profile_model.name, self.profile_model, "custom", exclude={"name"}, backup_file=True
+                saved = ProfileDocumentStore.default().save_existing(
+                    loaded=self.loaded_profile, profile=self.profile_model, source="custom", backup_original=True
                 )
                 # Emit signal for hot reload
                 self.profile_saved.emit(self.profile_model.name)
-                QMessageBox.information(
-                    self, "Info", f"Profile saved successfully to {self.profile_model.name + '.yaml'}"
-                )
+                QMessageBox.information(self, "Info", f"Profile saved successfully to {saved.path.name}")
         except Exception as e:
             LOGGER.exception("Failed to save profile")
             QMessageBox.critical(self, "Error", f"Failed to save profile: {e}")

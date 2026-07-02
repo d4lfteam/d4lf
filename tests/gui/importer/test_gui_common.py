@@ -1,7 +1,7 @@
+from src.config.profile_document import to_yaml_str
 from src.config.profile_models import CharmFilterModel, ItemFilterModel, ProfileModel
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
-    _to_yaml_str,
     affix_dict_for_item_type,
     build_default_profile_file_name,
     deduplicate_filters,
@@ -131,7 +131,7 @@ def test_affix_dict_for_item_type_uses_context_specific_dict() -> None:
 def test_to_yaml_str_sorts_aspect_upgrades_and_uses_block_style(mock_ini_loader) -> None:
     profile = ProfileModel(name="test", AspectUpgrades=["snowveiled", "accelerating"])
 
-    yaml_str = _to_yaml_str(profile, exclude_defaults=True, exclude={"name", "Sigils"})
+    yaml_str = to_yaml_str(profile, exclude_defaults=True, exclude={"name", "Sigils"})
 
     assert "aspect_upgrades:\n- accelerating\n- snowveiled\n" in yaml_str
     assert "aspect_upgrades: [" not in yaml_str
@@ -175,7 +175,7 @@ def test_to_yaml_str_preserves_paragon_aliases(mock_ini_loader) -> None:
         },
     )
 
-    yaml_str = _to_yaml_str(profile, exclude_defaults=True, exclude={"name", "Sigils"})
+    yaml_str = to_yaml_str(profile, exclude_defaults=True, exclude={"name", "Sigils"})
 
     assert "Paragon:" in yaml_str
     assert "ParagonBoardsList:" in yaml_str

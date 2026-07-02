@@ -6,7 +6,6 @@ import re
 from html import escape
 from typing import TYPE_CHECKING
 
-import yaml
 from PyQt6.QtCore import QMimeData, QObject, Qt, pyqtSignal
 from PyQt6.QtGui import QDrag, QTextCursor
 from PyQt6.QtWidgets import (
@@ -26,10 +25,9 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config.loader import IniConfigLoader
-from src.config.profile_models import ProfileModel
+from src.config.profile_document import ProfileDocumentError, ProfileDocumentStore
 from src.config.settings_models import IS_HOTKEY_KEY
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
-from src.item.filter import _UniqueKeyLoader
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
@@ -411,17 +409,11 @@ class ActivityLogWidget(QWidget):
                         LOGGER.exception(f"Failed to delete profile {name}")
 
     def _get_profile_summary(self, path: Path) -> str:
-        """Peeks into the YAML using ProfileModel to build a summary tooltip."""
+        """Build a summary tooltip from the profile document."""
         try:
             stat = path.stat()
             mtime = datetime.datetime.fromtimestamp(stat.st_mtime, tz=datetime.UTC).strftime("%Y-%m-%d %H:%M")
-            with path.open(encoding="utf-8") as f:
-                config = yaml.load(stream=f, Loader=_UniqueKeyLoader)
-            if not config or not isinstance(config, dict):
-                return f"Last Modified: {mtime}\n(Empty or invalid profile)"
-
-            # Convert to ProfileModel for robust, future-proof access
-            model = ProfileModel(name=path.stem, **config)
+            model = ProfileDocumentStore.default().load(path).profile
             summary = [f"Last Modified: {mtime}"]
 
             if model.affixes:
@@ -449,7 +441,7 @@ class ActivityLogWidget(QWidget):
                 summary.append("🔱 Paragon Overlay: Data Found")
 
             return "\n".join(summary)
-        except Exception:  # noqa: BLE001
+        except OSError, ProfileDocumentError:
             return f"Path: {path}\n(Could not parse profile details)"
 
     def _start_drag(self, event, row_widget: QWidget, handle: QWidget):

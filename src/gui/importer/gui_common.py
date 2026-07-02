@@ -1,14 +1,10 @@
-import datetime
 import functools
 import logging
-import pathlib
 import re
-import shutil
 import time
 from typing import TYPE_CHECKING, Literal, TypeVar
 
 import httpx
-from ruamel.yaml import YAML, StringIO
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -16,15 +12,14 @@ from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
 from seleniumbase import Driver
 
-from src import __version__
 from src.config.loader import IniConfigLoader
+from src.config.profile_document import normalize_profile_file_name
 from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
     CharmFilterModel,
     ItemFilterModel,
-    ProfileModel,
     SealFilterModel,
 )
 from src.config.settings_models import BrowserType
@@ -136,12 +131,6 @@ def get_class_name(input_str: str) -> str:
 
     LOGGER.error(f"Couldn't match class name {input_str=}")
     return "Unknown"
-
-
-def normalize_profile_file_name(file_name: str) -> str:
-    file_name = file_name.replace("'", "")
-    file_name = re.sub(r"\W", "_", file_name)
-    return re.sub(r"_+", "_", file_name).rstrip("_")
 
 
 def build_default_profile_file_name(
@@ -376,26 +365,6 @@ def retry_importer(func=None, inject_webdriver: bool = False, uc=False):
     return decorator_retry_importer if func is None else decorator_retry_importer(func)
 
 
-def save_as_profile(file_name: str, profile: ProfileModel, url: str, exclude=None, backup_file=False) -> str:
-    file_name = normalize_profile_file_name(file_name)
-    save_path = IniConfigLoader().user_dir / f"profiles/{file_name}.yaml"
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if save_path.exists() and backup_file:
-        backup_path = IniConfigLoader().user_dir / f"profiles/backups/{file_name}_original.yaml"
-        backup_path.parent.mkdir(parents=True, exist_ok=True)
-        if not backup_path.exists():  # If already backed up don't overwrite
-            shutil.copyfile(save_path, backup_path)
-
-    exclude = exclude or {"name", "Sigils"}
-    with pathlib.Path(save_path).open("w", encoding="utf-8") as file:
-        file.write(f"# {url}\n")
-        file.write(f"# {datetime.datetime.now(tz=datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')} (v{__version__})\n")
-        file.write(_to_yaml_str(profile, exclude_defaults=not IniConfigLoader().general.full_dump, exclude=exclude))
-    LOGGER.info(f"Created profile {save_path}")
-    return file_name
-
-
 def add_to_profiles(build_name):
     profiles = IniConfigLoader().general.profiles
     if build_name in profiles:
@@ -404,57 +373,6 @@ def add_to_profiles(build_name):
         profiles.append(build_name)
         IniConfigLoader().save_value("general", "profiles", ", ".join(profiles))
         LOGGER.info(f"Added {build_name} to active profiles configuration")
-
-
-# Built in to_yaml_str does not preserve the order of the attributes of the model, which is important for uniques
-def _to_yaml_str(profile: ProfileModel, exclude_defaults: bool, exclude: set[str]) -> str:
-    str_val = profile.model_dump_json(
-        by_alias=False, exclude_defaults=exclude_defaults, exclude_none=True, exclude=exclude
-    )
-    yaml = YAML()
-    yaml.default_flow_style = None  # Back to original
-    dict_val = yaml.load(str_val)
-    if "paragon" in dict_val:
-        dict_val["Paragon"] = dict_val.pop("paragon")
-    _sort_profile_sections(dict_val)
-    _rm_style_info(dict_val)
-    _use_block_style(dict_val)
-    stream = StringIO()
-    yaml.dump(dict_val, stream)
-    stream.seek(0)
-    return stream.read()
-
-
-def _sort_profile_sections(d):
-    if not isinstance(d, dict):
-        return
-
-    for key in ("aspect_upgrades", "AspectUpgrades"):
-        if isinstance(d.get(key), list):
-            d[key].sort(key=str.casefold)
-            break
-
-
-def _use_block_style(d):
-    if not isinstance(d, dict):
-        return
-
-    for key in ("aspect_upgrades", "AspectUpgrades"):
-        if hasattr(d.get(key), "fa"):
-            d[key].fa.set_block_style()
-            break
-
-
-def _rm_style_info(d):
-    if isinstance(d, dict):
-        d.fa._flow_style = None
-        for k, v in d.items():
-            _rm_style_info(k)
-            _rm_style_info(v)
-    elif isinstance(d, list):
-        d.fa._flow_style = None
-        for elem in d:
-            _rm_style_info(elem)
 
 
 def setup_webdriver(uc: bool = False) -> ChromiumDriver:
