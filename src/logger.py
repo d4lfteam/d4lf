@@ -23,6 +23,7 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 LOGGER = logging.getLogger(__name__)
 
 LOG_DIR = BASE_DIR / "logs"
+PERSISTENT_GUI_HANDLER_NAMES = frozenset({"D4LF_FILE", "D4LF_CONSOLE"})
 
 _setup_called = False
 _startup_buffer_handler: logging.Handler | None = None
@@ -92,6 +93,13 @@ def apply_log_level(
         handler.setLevel(level)
         if formatter is not None:
             handler.setFormatter(formatter)
+
+
+def remove_transient_gui_handlers(logger: logging.Logger) -> None:
+    for handler in list(logger.handlers):
+        if getattr(handler, "name", "") in PERSISTENT_GUI_HANDLER_NAMES:
+            continue
+        logger.removeHandler(handler)
 
 
 def setup(
