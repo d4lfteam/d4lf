@@ -29,7 +29,7 @@ from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.settings_window import ConfigWindow
 from src.gui.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.item.filter import Filter
-from src.logger import apply_log_level, consume_startup_log_records, create_formatter
+from src.logger import apply_log_level, consume_startup_log_records, create_formatter, remove_transient_gui_handlers
 from src.logger import setup as setup_logging
 from src.main import check_for_proper_tts_configuration
 from src.overlay import Overlay
@@ -134,10 +134,7 @@ class UnifiedMainWindow(QMainWindow):
                 buffer_startup=True,
             )
 
-        for h in list(root_logger.handlers):
-            if getattr(h, "name", "") == "D4LF_FILE":
-                continue  # Keep file logging
-            root_logger.removeHandler(h)
+        remove_transient_gui_handlers(root_logger)
 
         # Single unified Qt handler for both Dashboard and Full Logs
         self.console_handler = QtConsoleHandler()
