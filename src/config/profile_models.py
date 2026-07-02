@@ -268,6 +268,7 @@ class _BaseSealOrCharmFilterModel(BaseModel):
     affix_pool: list[AffixFilterCountModel] = Field(default=[], alias="affixPool")
     min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
     rarities: list[ItemRarity] = Field(default=[], validation_alias="rarity", serialization_alias="rarity")
+    set: list[str] = Field(default=[], alias="set")
     unique_aspect: list[AspectUniqueFilterModel] = Field(default=[], alias="uniqueAspect")
 
     @field_validator("min_greater_affix_count")
@@ -280,6 +281,11 @@ class _BaseSealOrCharmFilterModel(BaseModel):
     def parse_rarities(cls, data: str | list[str]) -> list[str]:
         return _normalize_rarities(data)
 
+    @field_validator("set")
+    @classmethod
+    def set_must_exist(cls, sets: list[str]) -> list[str]:
+        return [_validate_set_name(name, "set") for name in sets]
+
     @model_validator(mode="after")
     def unique_aspects_must_be_unique(self) -> _BaseSealOrCharmFilterModel:
         if len({aspect.name for aspect in self.unique_aspect}) != len(self.unique_aspect):
@@ -288,17 +294,8 @@ class _BaseSealOrCharmFilterModel(BaseModel):
 
         return self
 
-
-class CharmFilterModel(_BaseSealOrCharmFilterModel):
-    set: list[str] = Field(default=[], alias="set")
-
-    @field_validator("set")
-    @classmethod
-    def set_must_exist(cls, sets: list[str]) -> list[str]:
-        return [_validate_set_name(name, "set") for name in sets]
-
     @model_validator(mode="after")
-    def set_and_unique_aspects_must_be_unique(self) -> CharmFilterModel:
+    def set_and_unique_aspects_must_be_unique(self) -> _BaseSealOrCharmFilterModel:
         if len(set(self.set)) != len(self.set):
             msg = "set names must be unique"
             raise ValueError(msg)
@@ -309,6 +306,8 @@ class CharmFilterModel(_BaseSealOrCharmFilterModel):
 
         return self
 
+
+class CharmFilterModel(_BaseSealOrCharmFilterModel):
     @model_validator(mode="after")
     def affix_names_must_match_charm_pool(self) -> CharmFilterModel:
         # This on module level would be a circular import, so we do it lazy for now

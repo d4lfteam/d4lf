@@ -7,7 +7,9 @@ from src.config.profile_document import LoadedProfile, ProfileDocumentStore
 from src.config.profile_models import ProfileModel
 from src.gui.profile_editor.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.profile_editor.aspect_upgrades_tab import ASPECT_UPGRADES_TABNAME, AspectUpgradesTab
+from src.gui.profile_editor.charms_tab import CHARMS_TABNAME, CharmsTab
 from src.gui.profile_editor.global_uniques_tab import UNIQUES_TABNAME, UniquesTab
+from src.gui.profile_editor.seals_tab import SEALS_TABNAME, SealsTab
 from src.gui.profile_editor.sigils_tab import SIGILS_TABNAME, SigilsTab
 from src.gui.profile_editor.tributes_tab import TRIBUTES_TABNAME, TributesTab
 
@@ -25,6 +27,8 @@ class ProfileEditor(QTabWidget):
         self.profile_model = loaded_profile.profile
         # Create main tabs
         self.affixes_tab = AffixesTab(self.profile_model.affixes)
+        self.charms_tab = CharmsTab(self.profile_model.charms)
+        self.seals_tab = SealsTab(self.profile_model.seals)
         self.aspect_upgrades_tab = AspectUpgradesTab(self.profile_model.aspect_upgrades)
         self.sigils_tab = SigilsTab(self.profile_model.sigils)
         self.tributes_tab = TributesTab(self.profile_model.tributes)
@@ -33,6 +37,8 @@ class ProfileEditor(QTabWidget):
         self.currentChanged.connect(self.tab_changed)
         # Add tabs with icons
         self.addTab(self.affixes_tab, AFFIXES_TABNAME)
+        self.addTab(self.charms_tab, CHARMS_TABNAME)
+        self.addTab(self.seals_tab, SEALS_TABNAME)
         self.addTab(self.aspect_upgrades_tab, ASPECT_UPGRADES_TABNAME)
         self.addTab(self.sigils_tab, SIGILS_TABNAME)
         self.addTab(self.tributes_tab, TRIBUTES_TABNAME)
@@ -47,6 +53,10 @@ class ProfileEditor(QTabWidget):
     def tab_changed(self, index):
         if self.tabText(index) == AFFIXES_TABNAME:
             self.affixes_tab.load()
+        elif self.tabText(index) == CHARMS_TABNAME:
+            self.charms_tab.load()
+        elif self.tabText(index) == SEALS_TABNAME:
+            self.seals_tab.load()
         elif self.tabText(index) == ASPECT_UPGRADES_TABNAME:
             self.aspect_upgrades_tab.load()
         elif self.tabText(index) == SIGILS_TABNAME:

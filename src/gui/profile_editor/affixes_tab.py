@@ -78,6 +78,29 @@ def _affix_dict_for_widget(widget: QWidget) -> dict[str, str]:
     return Dataloader().affix_dict
 
 
+def get_set_and_base_for_key(key: str, set_list: list[str]) -> tuple[str | None, str]:
+    for s in sorted(set_list, key=len, reverse=True):
+        prefix = s + "_"
+        if key.startswith(prefix):
+            return s, key[len(prefix) :]
+    return None, key
+
+
+def get_affixes_for_set(affix_dict: dict[str, str], set_list: list[str], target_set: str | None) -> dict[str, str]:
+    res = {}
+    for k, v in affix_dict.items():
+        s, _ = get_set_and_base_for_key(k, set_list)
+        if s == target_set:
+            if s:
+                prefix = s.replace("_", " ") + " "
+                display = v
+                display = display.removeprefix(prefix)
+                res[k] = display
+            else:
+                res[k] = v
+    return res
+
+
 class ItemTypePicker(QDialog):
     def __init__(self, parent: QWidget, item_types: list[ItemType], selected_item_types: list[ItemType]):
         super().__init__(parent)
@@ -398,7 +421,7 @@ class AffixGroupEditor(QWidget):
             nb_count = self.inherent_pool_layout.count()
             container = Container(f"Count {nb_count}", color_background=True)
             container_layout = QVBoxLayout(container.content_widget)
-            widget = AffixPoolWidget(pool)
+            widget = AffixPoolWidget(pool, self)
             container_layout.addWidget(widget)
             self.inherent_pool_layout.addWidget(container)
             QTimer.singleShot(50, container.expand)
@@ -406,7 +429,7 @@ class AffixGroupEditor(QWidget):
             nb_count = self.affix_pool_layout.count()
             container = Container(f"Count {nb_count}", color_background=True)
             container_layout = QVBoxLayout(container.content_widget)
-            widget = AffixPoolWidget(pool)
+            widget = AffixPoolWidget(pool, self)
             container_layout.addWidget(widget)
             self.affix_pool_layout.addWidget(container)
             QTimer.singleShot(50, container.expand)
@@ -803,12 +826,28 @@ class AffixWidget(QWidget):
     def __init__(self, affix: AffixFilterModel, parent=None):
         super().__init__(parent)
         self.affix = affix
+        self.filtered_affixes: dict[str, str] = {}
         self.setup_ui()
+
+    def get_parent_config(self):
+        curr = self
+        while curr:
+            config = getattr(curr, "config", None)
+            if isinstance(config, (SealFilterModel, CharmFilterModel)):
+                return config
+            curr = curr.parent()
+        return None
 
     def setup_ui(self):
         layout = QHBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         layout.setSpacing(50)
+
+        is_seal_charm = self.get_parent_config() is not None
+
+        if is_seal_charm:
+            self.create_set_name_combobox()
+            layout.addWidget(self.set_combo)
 
         self.create_affix_name_combobox()
         self.create_greater_checkbox()
@@ -827,17 +866,55 @@ class AffixWidget(QWidget):
     def get_affix_dict(self):
         return _affix_dict_for_widget(self)
 
+    def create_set_name_combobox(self):
+        self.set_combo = IgnoreScrollWheelComboBox()
+        self.set_combo.setFixedWidth(200)
+        self.set_combo.addItems(["(None)"] + sorted(Dataloader().set_list))
+
+        curr_set, _ = get_set_and_base_for_key(self.affix.name, Dataloader().set_list)
+        if curr_set:
+            self.set_combo.setCurrentText(curr_set)
+        else:
+            self.set_combo.setCurrentText("(None)")
+
+        self.set_combo.currentTextChanged.connect(self.on_set_changed)
+
+    def on_set_changed(self):
+        self.populate_affix_combo()
+        if self.name_combo.count() > 0:
+            self.name_combo.setCurrentIndex(0)
+            self.update_name()
+
+    def populate_affix_combo(self):
+        _blocker = QSignalBlocker(self.name_combo)
+        self.name_combo.clear()
+
+        is_seal_charm = self.get_parent_config() is not None
+        affix_dict = self.get_affix_dict()
+
+        if is_seal_charm:
+            selected_set = self.set_combo.currentText()
+            target_set = None if selected_set == "(None)" else selected_set
+
+            self.filtered_affixes = get_affixes_for_set(affix_dict, Dataloader().set_list, target_set)
+            self.name_combo.addItems(sorted(self.filtered_affixes.values()))
+
+            curr_set, _ = get_set_and_base_for_key(self.affix.name, Dataloader().set_list)
+            if curr_set == target_set and self.affix.name in self.filtered_affixes:
+                self.name_combo.setCurrentText(self.filtered_affixes[self.affix.name])
+        else:
+            self.name_combo.addItems(sorted(affix_dict.values()))
+            if self.affix.name in affix_dict:
+                self.name_combo.setCurrentText(affix_dict[self.affix.name])
+
     def create_affix_name_combobox(self):
         self.name_combo = IgnoreScrollWheelComboBox()
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.name_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
-        affix_dict = self.get_affix_dict()
-        self.name_combo.addItems(sorted(affix_dict.values()))
         self.name_combo.setMaximumWidth(600)
-        if self.affix.name in affix_dict:
-            self.name_combo.setCurrentText(affix_dict[self.affix.name])
+        self.populate_affix_combo()
         # currentIndexChanged misses some editable-combobox keyboard flows.
         self.name_combo.currentTextChanged.connect(self.update_name)
 
@@ -857,7 +934,7 @@ class AffixWidget(QWidget):
     def update_parent_count_label(self):
         parent = self.parent()
         while parent:
-            if isinstance(parent, AffixGroupEditor):
+            if hasattr(parent, "update_greater_count_label") and hasattr(parent, "sync_min_greater_from_checkboxes"):
                 parent.update_greater_count_label()
                 parent.sync_min_greater_from_checkboxes()
                 break
@@ -879,12 +956,20 @@ class AffixWidget(QWidget):
 
     def update_name(self, current_text=None):
         """Update the model only when the editable combobox contains a valid affix."""
+        is_seal_charm = self.get_parent_config() is not None
         affix_dict = self.get_affix_dict()
-        reverse_dict = {v: k for k, v in affix_dict.items()}
-        affix_name = reverse_dict.get(current_text or self.name_combo.currentText())
-        if affix_name is None:
-            return
-        self.affix.name = affix_name
+        text = current_text or self.name_combo.currentText()
+
+        if is_seal_charm:
+            reverse_dict = {v: k for k, v in self.filtered_affixes.items()}
+            affix_name = reverse_dict.get(text)
+            if affix_name is not None:
+                self.affix.name = affix_name
+        else:
+            reverse_dict = {v: k for k, v in affix_dict.items()}
+            affix_name = reverse_dict.get(text)
+            if affix_name is not None:
+                self.affix.name = affix_name
 
     def refresh_value_input(self):
         if self.mode_combo.currentText() == AFFIX_PERCENT_MODE:

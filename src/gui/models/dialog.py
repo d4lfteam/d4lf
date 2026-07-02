@@ -22,9 +22,13 @@ from PyQt6.QtWidgets import (
 from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
+    CharmFilterModel,
+    DynamicCharmFilterModel,
     DynamicItemFilterModel,
+    DynamicSealFilterModel,
     ItemFilterModel,
     ItemRarity,
+    SealFilterModel,
     TributeFilterModel,
 )
 from src.dataloader import Dataloader
@@ -681,3 +685,106 @@ class RarityPicker(QDialog):
 
     def get_selected_rarities(self) -> list[ItemRarity]:
         return [rarity for rarity, checkbox in self.checkboxes.items() if checkbox.isChecked()]
+
+
+class CreateCharmOrSeal(QDialog):
+    """Dialog for creating a new named charm or seal filter."""
+
+    def __init__(self, item_list: list[str], is_charm: bool = True, parent=None):
+        super().__init__(parent)
+        self.is_charm = is_charm
+        label = "Charm" if is_charm else "Seal"
+        self.setWindowTitle(f"Create {label}")
+        self.setFixedSize(300, 150)
+
+        self.item_list = item_list
+
+        self.main_layout = QVBoxLayout()
+        self.form_layout = QFormLayout()
+
+        self.name_label = QLabel(f"{label} Name:")
+        self.name_input = QLineEdit()
+        self.form_layout.addRow(self.name_label, self.name_input)
+
+        self.buttonLayout = QHBoxLayout()
+        self.okButton = QPushButton("OK")
+        self.okButton.clicked.connect(self.accept)
+        self.cancelButton = QPushButton("Cancel")
+        self.cancelButton.clicked.connect(self.reject)
+        self.buttonLayout.addWidget(self.okButton)
+        self.buttonLayout.addWidget(self.cancelButton)
+
+        self.main_layout.addLayout(self.form_layout)
+        self.main_layout.addLayout(self.buttonLayout)
+        self.setLayout(self.main_layout)
+
+    def accept(self):
+        if not self.name_input.text():
+            QMessageBox.warning(self, "Warning", "Name cannot be empty")
+            return
+        if self.name_input.text() in self.item_list:
+            QMessageBox.warning(self, "Warning", "Name already exists")
+            return
+        super().accept()
+
+    def get_value(self):
+        item_name = self.name_input.text()
+        affix_dict = Dataloader().charm_affix_dict if self.is_charm else Dataloader().seal_affix_dict
+        default_affix = AffixFilterModel(name=next(iter(affix_dict.keys())), value=None)
+        default_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
+
+        if self.is_charm:
+            config = CharmFilterModel(affix_pool=[default_pool])
+            return DynamicCharmFilterModel(**{item_name: config})
+        config = SealFilterModel(affix_pool=[default_pool])
+        return DynamicSealFilterModel(**{item_name: config})
+
+
+class SetPicker(QDialog):
+    """Multi-select dialog for charm set names."""
+
+    def __init__(self, parent: QWidget, selected_sets: list[str]):
+        super().__init__(parent)
+        self.setWindowTitle("Select Sets")
+        self.checkboxes: dict[str, QCheckBox] = {}
+
+        selected_set = set(selected_sets)
+
+        layout = QVBoxLayout(self)
+
+        group_box = QGroupBox("Sets")
+        group_layout = QVBoxLayout(group_box)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        for set_name in sorted(Dataloader().set_list):
+            checkbox = QCheckBox(set_name)
+            checkbox.setChecked(set_name in selected_set)
+            self.checkboxes[set_name] = checkbox
+            content_layout.addWidget(checkbox)
+
+        scroll_area.setWidget(content_widget)
+        group_layout.addWidget(scroll_area)
+        layout.addWidget(group_box)
+
+        note_label = QLabel("Select which sets this charm filter should match.")
+        note_label.setWordWrap(True)
+        layout.addWidget(note_label)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        clear_button = button_box.addButton("Clear", QDialogButtonBox.ButtonRole.ResetRole)
+        clear_button.clicked.connect(self.clear_selection)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+    def clear_selection(self):
+        for checkbox in self.checkboxes.values():
+            checkbox.setChecked(False)
+
+    def get_selected_sets(self) -> list[str]:
+        return [set_name for set_name, checkbox in self.checkboxes.items() if checkbox.isChecked()]
