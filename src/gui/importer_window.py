@@ -222,9 +222,8 @@ class ImporterWindow(QMainWindow):
             "For d4builds you need to specify your browser in the Settings window"
         )
         instructions_text.setReadOnly(True)
-        font_metrics = instructions_text.fontMetrics()
-        text_height = font_metrics.height() * (instructions_text.document().lineCount() + 2)
-        instructions_text.setFixedHeight(text_height)
+        instructions_text.setMaximumHeight(200)
+        instructions_text.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         layout.addWidget(instructions_text)
 
     def _generate_checkbox(self, name, settings_value, desc, default_value="true") -> CheckmarkCheckBox:
