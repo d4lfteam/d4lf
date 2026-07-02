@@ -1,16 +1,12 @@
 import logging
 import pathlib
-import re
 import sys
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-import yaml
-from pydantic import ValidationError
-from yaml import MappingNode, MarkedYAMLError
-
 from src.config.loader import IniConfigLoader
+from src.config.profile_document import ProfileDocumentError, ProfileDocumentStore
 from src.config.profile_models import (
     AffixAspectFilterModel,
     AffixFilterCountModel,
@@ -22,7 +18,6 @@ from src.config.profile_models import (
     DynamicSealFilterModel,
     GlobalUniqueModel,
     ParagonPayloadModel,
-    ProfileModel,
     SigilFilterModel,
     SigilPriority,
     TributeFilterModel,
@@ -53,19 +48,6 @@ class MatchedFilter:
 class FilterResult:
     keep: bool
     matched: list[MatchedFilter]
-
-
-class _UniqueKeyLoader(yaml.SafeLoader):
-    def construct_mapping(self, node: MappingNode, deep=False):
-        mapping = set()
-        for key_node, _ in node.value:
-            if ":merge" in key_node.tag:
-                continue
-            key = self.construct_object(key_node, deep=deep)
-            if key in mapping:
-                raise MarkedYAMLError(problem=f"Duplicate {key!r} key found in YAML", problem_mark=key_node.start_mark)
-            mapping.add(key)
-        return super().construct_mapping(node, deep)
 
 
 class Filter:
@@ -588,59 +570,41 @@ class Filter:
                 continue
 
             self.all_file_paths.append(profile_path)
-            with pathlib.Path(profile_path).open(encoding="utf-8") as f:
-                try:
-                    config = yaml.load(stream=f, Loader=_UniqueKeyLoader)
-                except yaml.YAMLError as e:
-                    LOGGER.error(f"Error in the YAML file {profile_path}: {e}")
-                    continue
-                if config is None:
-                    LOGGER.error(f"Empty YAML file {profile_path}, please remove it")
-                    continue
+            try:
+                data = ProfileDocumentStore.default().load(profile_path).profile
+            except ProfileDocumentError as e:
+                LOGGER.error(str(e))
+                continue
 
-                info_str = f"Loading profile {profile_str}: "
-                try:
-                    data = ProfileModel(name=profile_str, **config)
-                except ValidationError as e:
-                    LOGGER.error(
-                        f"There were errors validating the profile at {profile_path}. This most likely means it is an old profile and the code has changed since it was created. The easiest solution is to delete the profile and import it again, or edit it manually using the errors below to guide you. The profile is skipped."
-                    )
-                    profile_errors = re.sub(
-                        r"For further information visit https://errors\.pydantic\.dev/\d+(\.\d+)+/v/value_error\s*",
-                        "",
-                        str(e),
-                    )
-                    LOGGER.error(f"Validation error in {profile_path}: {profile_errors}")
-                    continue
+            info_str = f"Loading profile {profile_str}: "
+            sections: list[str] = []
+            if data.affixes:
+                self.affix_filters[data.name] = data.affixes
+                sections.append("Affixes")
+            if data.aspect_upgrades:
+                self.aspect_upgrade_filters[data.name] = data.aspect_upgrades
+                sections.append(ASPECT_UPGRADES_LABEL)
+            if data.seals:
+                self.seal_filters[data.name] = data.seals
+                sections.append("Seals")
+            if data.charms:
+                self.charm_filters[data.name] = data.charms
+                sections.append("Charms")
+            if data.sigils and (data.sigils.blacklist or data.sigils.whitelist or data.sigils.rarities):
+                self.sigil_filters[data.name] = data.sigils
+                sections.append("Sigils")
+            if data.tributes:
+                self.tribute_filters[data.name] = data.tributes
+                sections.append("Tributes")
+            if data.global_uniques:
+                self.global_unique_filters[data.name] = data.global_uniques
+                sections.append("GlobalUniques")
+            if data.paragon:
+                self.paragon_filters[profile_path.stem] = data.paragon
+                sections.append("Paragon")
 
-                sections: list[str] = []
-                if data.affixes:
-                    self.affix_filters[data.name] = data.affixes
-                    sections.append("Affixes")
-                if data.aspect_upgrades:
-                    self.aspect_upgrade_filters[data.name] = data.aspect_upgrades
-                    sections.append(ASPECT_UPGRADES_LABEL)
-                if data.seals:
-                    self.seal_filters[data.name] = data.seals
-                    sections.append("Seals")
-                if data.charms:
-                    self.charm_filters[data.name] = data.charms
-                    sections.append("Charms")
-                if data.sigils and (data.sigils.blacklist or data.sigils.whitelist or data.sigils.rarities):
-                    self.sigil_filters[data.name] = data.sigils
-                    sections.append("Sigils")
-                if data.tributes:
-                    self.tribute_filters[data.name] = data.tributes
-                    sections.append("Tributes")
-                if data.global_uniques:
-                    self.global_unique_filters[data.name] = data.global_uniques
-                    sections.append("GlobalUniques")
-                if data.paragon:
-                    self.paragon_filters[data.name] = data.paragon
-                    sections.append("Paragon")
-
-                info_str += " ".join(sections)
-                LOGGER.info(info_str.rstrip())
+            info_str += " ".join(sections)
+            LOGGER.info(info_str.rstrip())
             self.last_loaded = time.time()
             self.last_profile_list = IniConfigLoader().general.profiles.copy()
 

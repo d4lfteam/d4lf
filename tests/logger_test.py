@@ -3,7 +3,7 @@ import logging
 import pytest
 
 import src.logger as logger_module
-from src.logger import apply_log_level, consume_startup_log_records, create_formatter
+from src.logger import apply_log_level, consume_startup_log_records, create_formatter, remove_transient_gui_handlers
 
 
 @pytest.fixture
@@ -58,6 +58,21 @@ def test_apply_log_level_is_case_insensitive(isolated_root_logger):
     apply_log_level("info")
 
     assert handler.level == logging.INFO
+
+
+def test_remove_transient_gui_handlers_keeps_file_and_console_output(isolated_root_logger):
+    file_handler = _make_handler("D4LF_FILE", logging.DEBUG)
+    console_handler = _make_handler("D4LF_CONSOLE", logging.INFO)
+    qt_handler = _make_handler("QT_CONSOLE", logging.INFO)
+    startup_buffer = _make_handler("D4LF_STARTUP_BUFFER", logging.DEBUG)
+    isolated_root_logger.addHandler(file_handler)
+    isolated_root_logger.addHandler(console_handler)
+    isolated_root_logger.addHandler(qt_handler)
+    isolated_root_logger.addHandler(startup_buffer)
+
+    remove_transient_gui_handlers(isolated_root_logger)
+
+    assert isolated_root_logger.handlers == [file_handler, console_handler]
 
 
 def _record() -> logging.LogRecord:

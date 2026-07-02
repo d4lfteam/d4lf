@@ -11,9 +11,10 @@ from pydantic import ValidationError
 
 import src.logger
 from src.config.loader import IniConfigLoader
+from src.config.profile_document import ProfileDocumentStore
 from src.config.profile_models import AffixFilterCountModel, AffixFilterModel, ItemFilterModel, ProfileModel
 from src.dataloader import Dataloader
-from src.gui.importer.gui_common import format_number_as_short_string, match_to_enum, retry_importer, save_as_profile
+from src.gui.importer.gui_common import format_number_as_short_string, match_to_enum, retry_importer
 from src.item.data.affix import Affix
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
@@ -115,10 +116,10 @@ def import_diablo_trade(url: str, max_listings: int, driver: seleniumbase.Driver
         raise DiabloTradeError(msg) from exc
 
     LOGGER.info(f"Saving profile with {len(profile.affixes)} filters")
-    save_as_profile(
+    ProfileDocumentStore.default().save_new(
         file_name=f"diablo_trade_{datetime.datetime.now(tz=datetime.UTC).strftime('%Y_%m_%d_%H_%M_%S')}",
         profile=profile,
-        url=url,
+        source=url,
     )
     LOGGER.info("Finished")
 

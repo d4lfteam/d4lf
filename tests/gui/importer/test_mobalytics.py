@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import typing
+from types import SimpleNamespace
 
 import pytest
 
@@ -211,11 +212,13 @@ def test_import_mobalytics_imports_set_charm_and_deduplicates_identical_rings(
         ])
     )
 
-    def fake_save_as_profile(file_name, profile, url):
+    def fake_save_new(*, file_name, profile, source):
         captured_profile["profile"] = profile
-        return file_name
+        return SimpleNamespace(file_name=file_name)
 
-    mocker.patch("src.gui.importer.mobalytics.save_as_profile", side_effect=fake_save_as_profile)
+    profile_store = mocker.Mock()
+    profile_store.save_new.side_effect = fake_save_new
+    mocker.patch("src.gui.importer.mobalytics.ProfileDocumentStore.default", return_value=profile_store)
 
     import_mobalytics(
         config=ImportConfig(

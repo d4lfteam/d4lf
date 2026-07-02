@@ -13,6 +13,7 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
+from src.config.profile_document import ProfileDocumentStore
 from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
@@ -34,7 +35,6 @@ from src.gui.importer.gui_common import (
     fix_weapon_type,
     match_to_enum,
     retry_importer,
-    save_as_profile,
     sort_profile_filters,
     update_mingreateraffixcount,
 )
@@ -311,7 +311,9 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         else:
             LOGGER.warning("Paragon export enabled, but no paragon data was found for this Mobalytics variant.")
 
-    corrected_file_name = save_as_profile(file_name=file_name, profile=profile, url=url)
+    corrected_file_name = (
+        ProfileDocumentStore.default().save_new(file_name=file_name, profile=profile, source=url).file_name
+    )
 
     if config.add_to_profiles:
         add_to_profiles(corrected_file_name)

@@ -2,8 +2,6 @@ import copy
 import logging
 import pathlib
 
-import yaml
-from pydantic import ValidationError
 from PyQt6.QtCore import QSettings, QSignalBlocker, Qt
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -19,10 +17,15 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config.loader import IniConfigLoader
+from src.config.profile_document import (
+    EmptyProfileError,
+    LoadedProfile,
+    ProfileDocumentStore,
+    ProfileValidationError,
+    ProfileYamlError,
+)
 from src.dataloader import Dataloader
-from src.gui.importer.gui_common import ProfileModel
 from src.gui.profile_editor.profile_editor import ProfileEditor
-from src.item.filter import _UniqueKeyLoader
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,6 +40,7 @@ class ProfileTab(QWidget):
         self.root = None
         self.current_profile_name = ""
         self.file_path = None
+        self.loaded_profile: LoadedProfile | None = None
         self.profile_paths = {}
         self.active_profiles = []
         self.inactive_profiles = []
@@ -119,7 +123,7 @@ class ProfileTab(QWidget):
         if self.load_yaml():
             if self.model_editor:
                 self.scrollable_layout.removeWidget(self.model_editor)
-            self.model_editor = ProfileEditor(self.root)
+            self.model_editor = ProfileEditor(self.loaded_profile)
             self.scrollable_layout.addWidget(self.model_editor)
             self.current_profile_name = profile_name
             self.set_current_profile_combo(profile_name)
@@ -203,7 +207,7 @@ class ProfileTab(QWidget):
 
     def create_profile_editor(self):
         if not self.profile_editor_created and self.root:
-            self.model_editor = ProfileEditor(self.root)
+            self.model_editor = ProfileEditor(self.loaded_profile)
             self.scrollable_layout.addWidget(self.model_editor)
             self.profile_editor_created = True
             LOGGER.info(f"Profile {self.root.name} loaded into profile editor.")
@@ -212,57 +216,25 @@ class ProfileTab(QWidget):
         if not self.file_path:
             LOGGER.debug("No profile loaded, cannot refresh.")
             return False
-        filename = pathlib.Path(self.file_path).name  # Get the filename from the full path
-        filename_without_extension = filename.rsplit(".", 1)[0]  # Remove the extension
-        profile_str = filename_without_extension.replace("_", " ")  # Replace underscores with spaces
         self.root = None
-        with pathlib.Path(self.file_path).open(encoding="utf-8") as f:
-            try:
-                config = yaml.load(stream=f, Loader=_UniqueKeyLoader)
-            except yaml.YAMLError as e:
-                LOGGER.error(f"Error in the YAML file {self.file_path}: {e}")
-                return False
-            if config is None:
-                LOGGER.error(f"Empty YAML file {self.file_path}, please remove it")
-                return False
-            try:
-                self.root = ProfileModel(name=profile_str, **config)
-                self.original_root = copy.deepcopy(self.root)
-                LOGGER.info(f"File {self.file_path} loaded.")
+        try:
+            self.loaded_profile = ProfileDocumentStore.default().load(pathlib.Path(self.file_path))
+        except ProfileYamlError as e:
+            LOGGER.error(str(e))
+            return False
+        except EmptyProfileError as e:
+            LOGGER.error(str(e))
+            return False
+        except ProfileValidationError as e:
+            if e.guidance:
+                QMessageBox.critical(self, "Profile Validation Failed", e.guidance)
+            else:
+                QMessageBox.critical(self, "Validation Error", str(e))
+            return False
 
-                # Save last opened profile
-                self.settings.setValue("last_opened_profile", filename_without_extension)
-
-            except ValidationError as e:
-                if "minGreaterAffixCount" in str(e):
-                    error_text = (
-                        f"PROFILE VALIDATION FAILED: {self.file_path}\n\n"
-                        "You are using an old, outdated field that must be removed from your profile.\n\n"
-                        "WRONG (old way - pool level):\n"
-                        "- Ring:\n"
-                        "    itemType: [ring]\n"
-                        "    minPower: 100\n"
-                        "    affixPool:\n"
-                        "    - count:\n"
-                        "      - {name: strength}\n"
-                        "      minCount: 2\n"
-                        "      minGreaterAffixCount: 1  ← DELETE THIS LINE\n\n"
-                        "CORRECT (new way - item level):\n"
-                        "- Ring:\n"
-                        "    itemType: [ring]\n"
-                        "    minPower: 100\n"
-                        "    minGreaterAffixCount: 1  ← PUT IT HERE INSTEAD\n"
-                        "    affixPool:\n"
-                        "    - count:\n"
-                        "      - {name: strength}\n"
-                        "      minCount: 2\n"
-                        "      # NO minGreaterAffixCount here anymore!\n\n"
-                        f"ACTION REQUIRED: Please make the above adjustments in:\n{self.file_path}"
-                    )
-                    QMessageBox.critical(self, "Profile Validation Failed", error_text)
-                else:
-                    QMessageBox.critical(self, "Validation Error", f"Validation error in {self.file_path}:\n\n{e}")
-                return False
+        self.root = self.loaded_profile.profile
+        self.original_root = copy.deepcopy(self.root)
+        self.settings.setValue("last_opened_profile", pathlib.Path(self.file_path).stem)
         return True
 
     def save_yaml(self):
@@ -278,6 +250,6 @@ class ProfileTab(QWidget):
         if not self.load_yaml():
             return
         self.scrollable_layout.removeWidget(self.model_editor)
-        self.model_editor = ProfileEditor(self.root)
+        self.model_editor = ProfileEditor(self.loaded_profile)
         self.scrollable_layout.addWidget(self.model_editor)
         LOGGER.info(f"Profile {self.root.name} refreshed.")
