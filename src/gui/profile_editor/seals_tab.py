@@ -36,7 +36,6 @@ from src.gui.models.dialog import (
     MinGreaterDialog,
     MinPercentDialog,
     RarityPicker,
-    SetPicker,
     rarity_summary,
 )
 from src.gui.profile_editor.affixes_tab import UNIQUE_ASPECTS_TITLE, AffixPoolWidget, AffixWidget, UniqueAspectWidget
@@ -44,12 +43,6 @@ from src.gui.profile_editor.affixes_tab import UNIQUE_ASPECTS_TITLE, AffixPoolWi
 LOGGER = logging.getLogger(__name__)
 
 SEALS_TABNAME = "Seals"
-
-
-def _set_summary(sets: list[str]) -> str:
-    if not sets:
-        return "No sets selected"
-    return ", ".join(sets)
 
 
 class SealGroupEditor(QWidget):
@@ -88,19 +81,6 @@ class SealGroupEditor(QWidget):
         rarity_layout.addWidget(edit_rarities_btn)
         rarity_layout.addStretch()
         general_form.addRow("Rarities:", rarity_layout)
-
-        # Set names
-        self.set_line_edit = _create_readonly_line_edit()
-        self.refresh_set_summary()
-
-        set_layout = QHBoxLayout()
-        set_layout.addWidget(self.set_line_edit)
-        edit_sets_btn = QPushButton("...")
-        edit_sets_btn.setMaximumWidth(40)
-        edit_sets_btn.clicked.connect(self.edit_sets)
-        set_layout.addWidget(edit_sets_btn)
-        set_layout.addStretch()
-        general_form.addRow("Sets:", set_layout)
 
         # Min Greater Affixes
         min_greater_layout = QHBoxLayout()
@@ -168,22 +148,6 @@ class SealGroupEditor(QWidget):
         self.setLayout(main_layout)
 
         QTimer.singleShot(100, self.affix_pool_container.expand)
-
-    # --- Sets ---
-
-    def refresh_set_summary(self):
-        self.set_line_edit.setText(_set_summary(self.config.set))
-
-    def edit_sets(self):
-        if self.config.unique_aspect:
-            QMessageBox.warning(
-                self, "Warning", "Cannot define both set and unique aspect. Remove unique aspects first."
-            )
-            return
-        set_picker = SetPicker(self, self.config.set)
-        if set_picker.exec() == QDialog.DialogCode.Accepted:
-            self.config.set = set_picker.get_selected_sets()
-            self.refresh_set_summary()
 
     # --- Unique Aspects ---
 
@@ -260,9 +224,6 @@ class SealGroupEditor(QWidget):
         self.unique_aspect_list.setItemWidget(item, widget)
 
     def add_unique_aspect(self):
-        if self.config.set:
-            QMessageBox.warning(self, "Warning", "Cannot define both set and unique aspect. Remove sets first.")
-            return
         existing_names = {unique_aspect.name for unique_aspect in self.config.unique_aspect}
         for aspect_name in Dataloader().aspect_unique_dict:
             if aspect_name in existing_names:
