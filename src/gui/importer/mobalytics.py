@@ -453,7 +453,6 @@ def _convert_raw_to_affixes(
 
 if __name__ == "__main__":
     src.logger.setup()
-
     from src.gui.importer.gui_common import setup_webdriver
 
     driver = setup_webdriver()

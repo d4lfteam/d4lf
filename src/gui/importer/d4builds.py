@@ -523,20 +523,16 @@ def _get_affix_name(stat: lxml.html.HtmlElement) -> str:
 
 if __name__ == "__main__":
     src.logger.setup()
+    from src.gui.importer.gui_common import setup_webdriver
+
+    driver = setup_webdriver()
+
     URLS = [
         "https://d4builds.gg/builds/whirlwind-barbarian-endgame/?var=4",
         "https://d4builds.gg/builds/dread-claws-warlock-endgame/?var=0",
         "https://d4builds.gg/builds/dance-of-knives-rogue-endgame/?var=0",
         "https://d4builds.gg/builds/blood-wave-necromancer-endgame/?var=0",
     ]
-
-    from selenium import webdriver
-
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument("log-level=3")
-    driver = webdriver.Chrome(options=options)
-
     for X in URLS:
         config = ImportConfig(
             url=X,

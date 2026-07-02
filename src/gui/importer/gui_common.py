@@ -53,8 +53,13 @@ SELECT_BG = "#1f1f1f"
 FS_GRID_COLOR = "#3f3f3f"
 
 PLAYER_CLASSES = ["barbarian", "druid", "necromancer", "rogue", "sorcerer", "spiritborn", "paladin", "warlock"]
-BUILD_SOURCES = ["d4builds", "maxroll", "mobalytics"]
-_SOURCE_TITLE_SUFFIXES = {"d4builds": ("D4Builds", "D4 Builds"), "maxroll": ("Maxroll",), "mobalytics": ("Mobalytics",)}
+BUILD_SOURCES = ["d4builds", "infinitybuilds", "maxroll", "mobalytics"]
+_SOURCE_TITLE_SUFFIXES = {
+    "d4builds": ("D4Builds", "D4 Builds"),
+    "infinitybuilds": ("InfinityBuilds", "Infinity Builds"),
+    "maxroll": ("Maxroll",),
+    "mobalytics": ("Mobalytics",),
+}
 MAX_POWER = 900
 
 
