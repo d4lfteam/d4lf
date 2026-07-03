@@ -1,7 +1,6 @@
-import logging
-
 from PyQt6.QtCore import QSettings, Qt, QTimer
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QFormLayout,
     QFrame,
@@ -40,8 +39,6 @@ from src.gui.models.dialog import (
     rarity_summary,
 )
 from src.gui.profile_editor.affixes_tab import UNIQUE_ASPECTS_TITLE, AffixPoolWidget, AffixWidget, UniqueAspectWidget
-
-LOGGER = logging.getLogger(__name__)
 
 CHARMS_TABNAME = "Charms"
 
@@ -119,7 +116,7 @@ class CharmGroupEditor(QWidget):
 
         self.auto_sync_checkbox = _create_auto_sync_checkbox()
         self.auto_sync_checkbox.setChecked(
-            self.settings.value(f"auto_sync_ga_{self.item_name}", defaultValue=False, type=bool)
+            self.settings.value(f"auto_sync_ga_charm_{self.item_name}", defaultValue=False, type=bool)
         )
         self.auto_sync_checkbox.stateChanged.connect(self.toggle_auto_sync)
 
@@ -244,7 +241,7 @@ class CharmGroupEditor(QWidget):
         return f"{UNIQUE_ASPECTS_TITLE} - {aspect_names}"
 
     def refresh_unique_aspects_title(self):
-        self.unique_aspect_container.header.set(self._unique_aspects_title())
+        self.unique_aspect_container.header.set_name(self._unique_aspects_title())
 
     def init_unique_aspects(self):
         for unique_aspect in self.config.unique_aspect:
@@ -301,7 +298,8 @@ class CharmGroupEditor(QWidget):
         QTimer.singleShot(50, container.expand)
 
     def add_affix_pool(self):
-        default_affix = AffixFilterModel(name=next(iter(Dataloader().charm_affix_dict.keys())), value=None)
+        default_affix_name = next(iter(Dataloader().charm_affix_dict.keys()), "")
+        default_affix = AffixFilterModel(name=default_affix_name, value=None)
         new_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
         self.config.affix_pool.append(new_pool)
         self.add_affix_pool_item(new_pool)
@@ -326,7 +324,7 @@ class CharmGroupEditor(QWidget):
         for i in range(layout_widget.count()):
             item = layout_widget.itemAt(i)
             if item and item.widget() is not None:
-                item.widget().header.set(f"Count {i}")
+                item.widget().header.set_name(f"Count {i}")
 
     # --- Rarities ---
 
@@ -344,9 +342,9 @@ class CharmGroupEditor(QWidget):
     def update_min_greater_affix(self):
         self.config.min_greater_affix_count = self.min_greater.value()
 
-    def toggle_auto_sync(self):
-        is_auto_sync = self.auto_sync_checkbox.isChecked()
-        self.settings.setValue(f"auto_sync_ga_{self.item_name}", is_auto_sync)
+    def toggle_auto_sync(self, state):
+        is_auto_sync = state == Qt.CheckState.Checked.value
+        self.settings.setValue(f"auto_sync_ga_charm_{self.item_name}", is_auto_sync)
         self.min_greater.setEnabled(not is_auto_sync)
 
         if is_auto_sync:
@@ -439,16 +437,21 @@ class CharmsTab(QWidget):
         self.toolbar.setMovable(False)
 
         self.item_names = []
+        normalized_models = []
         for charm_group in self.charms_model:
-            for item_name in charm_group.root:
+            for item_name, config in charm_group.root.items():
                 if item_name in self.item_names:
                     QMessageBox.warning(
                         self, "Warning", f"Charm name already exists, please rename {item_name} in the profile file."
                     )
                     continue
-                group = CharmGroupEditor(charm_group)
+                single_model = DynamicCharmFilterModel(**{item_name: config})
+                normalized_models.append(single_model)
+                group = CharmGroupEditor(single_model)
                 self.item_names.append(item_name)
                 self.tab_widget.addTab(group, item_name)
+        self.charms_model.clear()
+        self.charms_model.extend(normalized_models)
 
         add_item_button = QPushButton()
         add_item_button.setText("Create Charm")
@@ -529,8 +532,6 @@ def _create_readonly_line_edit():
 
 
 def _create_auto_sync_checkbox():
-    from PyQt6.QtWidgets import QCheckBox  # noqa: PLC0415
-
     checkbox = QCheckBox("Auto Sync")
     checkbox.setToolTip(
         "When checked: Min Greater Affixes automatically matches the number of affixes marked as 'want greater'\n"

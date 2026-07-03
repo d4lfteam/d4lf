@@ -1,7 +1,6 @@
-import logging
-
 from PyQt6.QtCore import QSettings, Qt, QTimer
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QFormLayout,
     QFrame,
@@ -39,8 +38,6 @@ from src.gui.models.dialog import (
     rarity_summary,
 )
 from src.gui.profile_editor.affixes_tab import UNIQUE_ASPECTS_TITLE, AffixPoolWidget, AffixWidget, UniqueAspectWidget
-
-LOGGER = logging.getLogger(__name__)
 
 SEALS_TABNAME = "Seals"
 
@@ -99,7 +96,7 @@ class SealGroupEditor(QWidget):
 
         self.auto_sync_checkbox = _create_auto_sync_checkbox()
         self.auto_sync_checkbox.setChecked(
-            self.settings.value(f"auto_sync_ga_{self.item_name}", defaultValue=False, type=bool)
+            self.settings.value(f"auto_sync_ga_seal_{self.item_name}", defaultValue=False, type=bool)
         )
         self.auto_sync_checkbox.stateChanged.connect(self.toggle_auto_sync)
 
@@ -208,7 +205,7 @@ class SealGroupEditor(QWidget):
         return f"{UNIQUE_ASPECTS_TITLE} - {aspect_names}"
 
     def refresh_unique_aspects_title(self):
-        self.unique_aspect_container.header.set(self._unique_aspects_title())
+        self.unique_aspect_container.header.set_name(self._unique_aspects_title())
 
     def init_unique_aspects(self):
         for unique_aspect in self.config.unique_aspect:
@@ -216,7 +213,8 @@ class SealGroupEditor(QWidget):
 
     def add_unique_aspect_item(self, unique_aspect: AspectUniqueFilterModel):
         item = QListWidgetItem()
-        widget = UniqueAspectWidget(unique_aspect)
+        allowed = sorted([k for k in Dataloader().aspect_unique_dict if k.startswith("seal_of")])
+        widget = UniqueAspectWidget(unique_aspect, allowed_aspects=allowed, parent=self)
         item_size = widget.sizeHint()
         item_size.setWidth(850)
         item.setSizeHint(item_size)
@@ -225,7 +223,8 @@ class SealGroupEditor(QWidget):
 
     def add_unique_aspect(self):
         existing_names = {unique_aspect.name for unique_aspect in self.config.unique_aspect}
-        for aspect_name in Dataloader().aspect_unique_dict:
+        allowed = [k for k in Dataloader().aspect_unique_dict if k.startswith("seal_of")]
+        for aspect_name in allowed:
             if aspect_name in existing_names:
                 continue
             new_unique_aspect = AspectUniqueFilterModel(name=aspect_name, value=None)
@@ -262,7 +261,8 @@ class SealGroupEditor(QWidget):
         QTimer.singleShot(50, container.expand)
 
     def add_affix_pool(self):
-        default_affix = AffixFilterModel(name=next(iter(Dataloader().seal_affix_dict.keys())), value=None)
+        default_affix_name = next(iter(Dataloader().seal_affix_dict.keys()), "")
+        default_affix = AffixFilterModel(name=default_affix_name, value=None)
         new_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
         self.config.affix_pool.append(new_pool)
         self.add_affix_pool_item(new_pool)
@@ -287,7 +287,7 @@ class SealGroupEditor(QWidget):
         for i in range(layout_widget.count()):
             item = layout_widget.itemAt(i)
             if item and item.widget() is not None:
-                item.widget().header.set(f"Count {i}")
+                item.widget().header.set_name(f"Count {i}")
 
     # --- Rarities ---
 
@@ -307,7 +307,7 @@ class SealGroupEditor(QWidget):
 
     def toggle_auto_sync(self):
         is_auto_sync = self.auto_sync_checkbox.isChecked()
-        self.settings.setValue(f"auto_sync_ga_{self.item_name}", is_auto_sync)
+        self.settings.setValue(f"auto_sync_ga_seal_{self.item_name}", is_auto_sync)
         self.min_greater.setEnabled(not is_auto_sync)
 
         if is_auto_sync:
@@ -400,16 +400,21 @@ class SealsTab(QWidget):
         self.toolbar.setMovable(False)
 
         self.item_names = []
+        normalized_models = []
         for seal_group in self.seals_model:
-            for item_name in seal_group.root:
+            for item_name, config in seal_group.root.items():
                 if item_name in self.item_names:
                     QMessageBox.warning(
                         self, "Warning", f"Seal name already exists, please rename {item_name} in the profile file."
                     )
                     continue
-                group = SealGroupEditor(seal_group)
+                single_model = DynamicSealFilterModel(**{item_name: config})
+                normalized_models.append(single_model)
+                group = SealGroupEditor(single_model)
                 self.item_names.append(item_name)
                 self.tab_widget.addTab(group, item_name)
+        self.seals_model.clear()
+        self.seals_model.extend(normalized_models)
 
         add_item_button = QPushButton()
         add_item_button.setText("Create Seal")
@@ -491,8 +496,6 @@ def _create_readonly_line_edit():
 
 
 def _create_auto_sync_checkbox():
-    from PyQt6.QtWidgets import QCheckBox  # noqa: PLC0415
-
     checkbox = QCheckBox("Auto Sync")
     checkbox.setToolTip(
         "When checked: Min Greater Affixes automatically matches the number of affixes marked as 'want greater'\n"

@@ -364,7 +364,7 @@ class AffixGroupEditor(QWidget):
         return f"{UNIQUE_ASPECTS_TITLE} - {aspect_names}"
 
     def refresh_unique_aspects_title(self):
-        self.unique_aspect_container.header.set(self._unique_aspects_title())
+        self.unique_aspect_container.header.set_name(self._unique_aspects_title())
 
     def init_unique_aspects(self):
         for unique_aspect in self.config.unique_aspect:
@@ -477,7 +477,7 @@ class AffixGroupEditor(QWidget):
         for i in range(layout_widget.count()):
             item = layout_widget.itemAt(i)
             if item and item.widget() is not None:
-                item.widget().header.set(f"Count {i}")
+                item.widget().header.set_name(f"Count {i}")
 
     def refresh_item_type_summary(self):
         self.item_type_line_edit.setText(_item_type_summary(self.config.item_type))
@@ -591,9 +591,10 @@ class AffixGroupEditor(QWidget):
 
 
 class UniqueAspectWidget(QWidget):
-    def __init__(self, unique_aspect: AspectUniqueFilterModel, parent=None):
+    def __init__(self, unique_aspect: AspectUniqueFilterModel, allowed_aspects: list[str] | None = None, parent=None):
         super().__init__(parent)
         self.unique_aspect = unique_aspect
+        self.allowed_aspects = allowed_aspects
         self.setup_ui()
 
     def setup_ui(self):
@@ -620,7 +621,10 @@ class UniqueAspectWidget(QWidget):
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.name_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
-        self.name_combo.addItems(sorted(Dataloader().aspect_unique_dict.keys()))
+        aspects = (
+            self.allowed_aspects if self.allowed_aspects is not None else sorted(Dataloader().aspect_unique_dict.keys())
+        )
+        self.name_combo.addItems(aspects)
         self.name_combo.setMaximumWidth(600)
         if self.unique_aspect.name in Dataloader().aspect_unique_dict:
             self.name_combo.setCurrentText(self.unique_aspect.name)
@@ -833,7 +837,7 @@ class AffixWidget(QWidget):
         curr = self
         while curr:
             config = getattr(curr, "config", None)
-            if isinstance(config, (SealFilterModel, CharmFilterModel)):
+            if isinstance(config, SealFilterModel):
                 return config
             curr = curr.parent()
         return None
@@ -869,13 +873,13 @@ class AffixWidget(QWidget):
     def create_set_name_combobox(self):
         self.set_combo = IgnoreScrollWheelComboBox()
         self.set_combo.setFixedWidth(200)
-        self.set_combo.addItems(["(None)"] + sorted(Dataloader().set_list))
+        self.set_combo.addItems(["(No Set Selected)"] + sorted(Dataloader().set_list))
 
         curr_set, _ = get_set_and_base_for_key(self.affix.name, Dataloader().set_list)
         if curr_set:
             self.set_combo.setCurrentText(curr_set)
         else:
-            self.set_combo.setCurrentText("(None)")
+            self.set_combo.setCurrentText("(No Set Selected)")
 
         self.set_combo.currentTextChanged.connect(self.on_set_changed)
 
@@ -894,7 +898,7 @@ class AffixWidget(QWidget):
 
         if is_seal_charm:
             selected_set = self.set_combo.currentText()
-            target_set = None if selected_set == "(None)" else selected_set
+            target_set = None if selected_set == "(No Set Selected)" else selected_set
 
             self.filtered_affixes = get_affixes_for_set(affix_dict, Dataloader().set_list, target_set)
             self.name_combo.addItems(sorted(self.filtered_affixes.values()))
@@ -902,6 +906,14 @@ class AffixWidget(QWidget):
             curr_set, _ = get_set_and_base_for_key(self.affix.name, Dataloader().set_list)
             if curr_set == target_set and self.affix.name in self.filtered_affixes:
                 self.name_combo.setCurrentText(self.filtered_affixes[self.affix.name])
+            else:
+                if self.filtered_affixes:
+                    first_text = min(self.filtered_affixes.values())
+                    self.name_combo.setCurrentText(first_text)
+                else:
+                    self.name_combo.setCurrentText("")
+                reverse_dict = {v: k for k, v in self.filtered_affixes.items()}
+                self.affix.name = reverse_dict.get(self.name_combo.currentText(), "")
         else:
             self.name_combo.addItems(sorted(affix_dict.values()))
             if self.affix.name in affix_dict:

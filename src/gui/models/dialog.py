@@ -730,7 +730,8 @@ class CreateCharmOrSeal(QDialog):
     def get_value(self):
         item_name = self.name_input.text()
         affix_dict = Dataloader().charm_affix_dict if self.is_charm else Dataloader().seal_affix_dict
-        default_affix = AffixFilterModel(name=next(iter(affix_dict.keys())), value=None)
+        default_affix_name = next(iter(affix_dict.keys()), "")
+        default_affix = AffixFilterModel(name=default_affix_name, value=None)
         default_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
 
         if self.is_charm:
