@@ -22,6 +22,7 @@ class Item:
     codex_upgrade: bool = False
     cosmetic_upgrade: bool = False
     inherent: list[Affix] = field(default_factory=list)
+    is_ancestral: bool = False
     is_in_shop: bool = False
     item_type: ItemType | None = None
     name: str | None = None
@@ -62,6 +63,8 @@ class Item:
         if self.rarity != other.rarity:
             # LOGGER.debug("Rarity not the same")
             res = False
+        if self.is_ancestral != other.is_ancestral:
+            res = False
         if self.is_in_shop != other.is_in_shop:
             res = False
         if self.seasonal_attribute != other.seasonal_attribute:
@@ -80,6 +83,7 @@ class ItemJSONEncoder(json.JSONEncoder):
                 "codex_upgrade": o.codex_upgrade,
                 "cosmetic_upgrade": o.cosmetic_upgrade,
                 "inherent": [affix.__dict__ for affix in o.inherent],
+                "is_ancestral": o.is_ancestral,
                 "item_type": o.item_type.value if o.item_type else None,
                 "name": o.name or None,
                 "power": o.power or None,
