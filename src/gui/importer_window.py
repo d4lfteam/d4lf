@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 from src.config.loader import IniConfigLoader
 from src.gui.importer.d4builds import import_d4builds
 from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart, ImportConfig
+from src.gui.importer.infinitybuilds import import_infinitybuilds
 from src.gui.importer.maxroll import import_maxroll
 from src.gui.importer.mobalytics import import_mobalytics
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
@@ -42,7 +43,7 @@ GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP = "Select at least one filename part or
 
 
 class ImporterWindow(QMainWindow):
-    """Standalone window for Maxroll/D4Builds/Mobalytics importer."""
+    """Standalone window for Maxroll/D4Builds/Mobalytics/InfinityBuilds importer."""
 
     import_completed = pyqtSignal()
 
@@ -58,7 +59,7 @@ class ImporterWindow(QMainWindow):
         self.settings = QSettings("d4lf", "ImporterWindow")
         self.is_generating = False
 
-        self.setWindowTitle("Profile Importer - Maxroll / D4Builds / Mobalytics")
+        self.setWindowTitle("Profile Importer - Maxroll / D4Builds / Mobalytics / InfinityBuilds")
         self.setMinimumSize(700, 600)
 
         # Restore window geometry
@@ -194,6 +195,7 @@ class ImporterWindow(QMainWindow):
             "src.gui.importer.mobalytics",
             "src.gui.importer.maxroll",
             "src.gui.importer.d4builds",
+            "src.gui.importer.infinitybuilds",
             "src.gui.importer.gui_common",
         ):
             logger = logging.getLogger(name)
@@ -213,14 +215,15 @@ class ImporterWindow(QMainWindow):
             "or\n"
             "https://d4builds.gg/builds/ef414fbd-81cd-49d1-9c8d-4938b278e2ee\n"
             "or\n"
-            "https://mobalytics.gg/diablo-4/builds/barbarian/bash\n\n"
+            "https://mobalytics.gg/diablo-4/builds/barbarian/bash\n"
+            "or\n"
+            "https://infinitybuilds.gg/en/builds/barbarian-fL8P6vVSqI\n\n"
             f"It will create a file based on the label of the build in the planner in: {IniConfigLoader().user_dir / 'profiles'}\n\n"
             "For d4builds you need to specify your browser in the Settings window"
         )
         instructions_text.setReadOnly(True)
-        font_metrics = instructions_text.fontMetrics()
-        text_height = font_metrics.height() * (instructions_text.document().lineCount() + 2)
-        instructions_text.setFixedHeight(text_height)
+        instructions_text.setMaximumHeight(200)
+        instructions_text.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         layout.addWidget(instructions_text)
 
     def _generate_checkbox(self, name, settings_value, desc, default_value="true") -> CheckmarkCheckBox:
@@ -290,6 +293,8 @@ class ImporterWindow(QMainWindow):
             worker = _Worker(name="maxroll", fn=import_maxroll, config=importer_config)
         elif "d4builds" in url:
             worker = _Worker(name="d4builds", fn=import_d4builds, config=importer_config)
+        elif "infinitybuilds" in url:
+            worker = _Worker(name="infinitybuilds", fn=import_infinitybuilds, config=importer_config)
         else:
             worker = _Worker(name="mobalytics", fn=import_mobalytics, config=importer_config)
 
@@ -323,6 +328,7 @@ class ImporterWindow(QMainWindow):
         logging.getLogger("src.gui.importer.mobalytics").removeHandler(self.log_handler)
         logging.getLogger("src.gui.importer.maxroll").removeHandler(self.log_handler)
         logging.getLogger("src.gui.importer.d4builds").removeHandler(self.log_handler)
+        logging.getLogger("src.gui.importer.infinitybuilds").removeHandler(self.log_handler)
         logging.getLogger("src.gui.importer.gui_common").removeHandler(self.log_handler)
         event.accept()
 
