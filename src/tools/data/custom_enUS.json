@@ -5,6 +5,8 @@
     "sigils": {
         "dungeons": {},
         "major": {},
-        "positive": {}
+        "positive": {
+            "ruptures": "ruptures close ruptures here to access the deathtoll chambers"
+        }
     }
 }

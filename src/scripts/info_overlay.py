@@ -21,6 +21,7 @@ from src.config.loader import IniConfigLoader
 from src.gui.importer.gui_common import ACCENT_BLUE, ACCENT_GOLD, ACCENT_GREEN, CARD_BG, MUTED, TEXT, TRANSPARENT_KEY
 from src.scripts.common import get_filter_colors
 from src.tts import Publisher
+from src.ui_thread import call_on_ui_thread, get_root
 from src.utils.custom_mouse import Mouse
 from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground
 
@@ -163,13 +164,16 @@ def _hover_experience_balance(info_config: dict[str, InfoSettingValue]):
 
 def request_close():
     with _OVERLAY_LOCK:
-        if _OVERLAY_INSTANCE is not None and _OVERLAY_INSTANCE.winfo_exists():
-            try:
-                # Ensure destruction happens on the Tk thread
-                _OVERLAY_INSTANCE.after(0, _OVERLAY_INSTANCE.destroy)
-            except RuntimeError, tk.TclError:
-                with suppress(AttributeError, RuntimeError, tk.TclError):
-                    _OVERLAY_INSTANCE.master.destroy()
+        overlay = _OVERLAY_INSTANCE
+    if overlay is None:
+        return
+    call_on_ui_thread(lambda: overlay.destroy() if overlay.winfo_exists() else None)
+
+
+def is_info_overlay_open() -> bool:
+    """Return True while the info overlay singleton is alive."""
+    with _OVERLAY_LOCK:
+        return _OVERLAY_INSTANCE is not None
 
 
 @singleton
@@ -413,10 +417,9 @@ class BossTimerOverlay(tk.Toplevel):
         self._session_stats.unsubscribe()
         self._menu_vars.clear()
 
-        # Stop the mainloop and destroy the root (master)
-        with suppress(tk.TclError, Exception):
-            self.master.quit()
-            self.master.destroy()
+        # The root is the shared UI thread's root, not ours to tear down —
+        # only destroy this Toplevel.
+        super().destroy()
 
         with _OVERLAY_LOCK:
             global _OVERLAY_INSTANCE
@@ -1632,16 +1635,21 @@ class BossTimerOverlay(tk.Toplevel):
             self._after_ids.append(aid)
 
 
-def run_boss_timer_overlay():
-    global _OVERLAY_INSTANCE
-    with _OVERLAY_LOCK:
-        if _OVERLAY_INSTANCE is not None:
-            LOGGER.warning("Info Panel overlay is already running.")
-            return
+def open_boss_timer_overlay() -> None:
+    """Show the info overlay as a Toplevel on the shared UI thread.
 
-    root = tk.Tk()
-    root.withdraw()
-    overlay = BossTimerOverlay(root)
-    with _OVERLAY_LOCK:
-        _OVERLAY_INSTANCE = overlay
-    root.mainloop()
+    Synchronous by construction: by the time this returns, the overlay is
+    either open (and `_OVERLAY_INSTANCE` set) or the open was skipped/failed
+    and it's not, so callers never have to guess.
+    """
+    global _OVERLAY_INSTANCE
+
+    def _open() -> None:
+        global _OVERLAY_INSTANCE
+        with _OVERLAY_LOCK:
+            if _OVERLAY_INSTANCE is not None:
+                LOGGER.warning("Info Panel overlay is already running.")
+                return
+            _OVERLAY_INSTANCE = BossTimerOverlay(get_root())
+
+    call_on_ui_thread(_open)

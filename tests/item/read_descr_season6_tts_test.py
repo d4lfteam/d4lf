@@ -134,6 +134,7 @@ items = [
             codex_upgrade=False,
             cosmetic_upgrade=False,
             inherent=[],
+            is_ancestral=True,
             item_type=ItemType.Helm,
             name="harlequin_crest",
             power=800,
