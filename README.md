@@ -101,7 +101,7 @@ as well. It is still recommended you open the GUI for any configurations managem
 
 Current functionality:
 
-- Import builds from maxroll/d4builds/mobalytics
+- Import builds from maxroll/d4builds/mobalytics/infinitybuilds
 - Complete management of your settings through the Settings window
 - A beta version of a manual profile editor/creator
 
@@ -117,7 +117,7 @@ It contains navigation buttons to get to the Profile Importer, Settings, and Pro
 
 (Documentation in progress)
 
-Import profiles from the following popular build sites: Maxroll, Mobalytics, D4Builds.
+Import profiles from the following popular build sites: Maxroll, Mobalytics, D4Builds, InfinityBuilds.
 
 The importer should be fairly self-documented. Hover over any option for more information on that option.
 
@@ -803,6 +803,7 @@ D4LF can import Paragon boards from supported build planners and show them in-ga
 
 - Overlays may not work in exclusive fullscreen; use **borderless windowed** if the overlay does not appear.
 - Planner websites can change over time. If an import/export stops working, please report a bug.
+- InfinityBuilds import doesn't support Paragon boards yet.
 
 ## Info Panel Overlay
 
