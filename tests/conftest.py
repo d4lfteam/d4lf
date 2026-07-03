@@ -10,7 +10,7 @@ if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
 
-# Skip Windows-only test modules on macOS
+# Skip Windows-only test modules on non-Windows platforms
 WINDOWS_ONLY_MODULES = [
     "read_descr_season6_tts_test.py",
     "read_descr_season8_tts_test.py",
@@ -22,14 +22,16 @@ WINDOWS_ONLY_MODULES = [
     "template_finder_test.py",
     "char_inventory_test.py",
     "chest_test.py",
+    "info_overlay_test.py",
     "paragon_overlay_test.py",
     "test_sigils_tab.py",
+    "ui_thread_test.py",
 ]
 
 
 def pytest_ignore_collect(collection_path, config):
-    """Ignore Windows-only test files on macOS during collection."""
-    if sys.platform == "darwin":
+    """Ignore Windows-only test files on non-Windows platforms during collection."""
+    if sys.platform != "win32":
         # Check if the file is in our Windows-only list
         if collection_path.name in WINDOWS_ONLY_MODULES:
             return True
