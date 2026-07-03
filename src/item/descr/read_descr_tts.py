@@ -345,9 +345,9 @@ def _get_affix_starting_location_from_tts_section(tts_section: list[str], item: 
     elif is_armor(item.item_type):
         start = _get_index_of_armor_dps_or_all_resist(tts_section, "armor")
     elif item.item_type == ItemType.HoradricSeal:
-        return 3
+        return 4
     elif item.item_type == ItemType.Charm:
-        return 2
+        return 3
     start += 1
 
     return start
