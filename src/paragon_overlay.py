@@ -1590,7 +1590,6 @@ class ParagonOverlay(tk.Toplevel):
             styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
             new_styles = styles | win32con.WS_EX_TRANSPARENT if enabled else styles & ~win32con.WS_EX_TRANSPARENT
             if new_styles != styles:
-                LOGGER.debug("Paragon overlay click-through changing to: %s", enabled)
                 win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, new_styles)
                 win32gui.SetWindowPos(
                     hwnd,
@@ -1629,18 +1628,6 @@ class ParagonOverlay(tk.Toplevel):
 
             over_panel = (rx <= px < rx + rw) and (ry <= py < ry + rh)
             target_enabled = not (over_panel or popup_active)
-            LOGGER.debug(
-                "Paragon overlay click-through debug: mouse=(%s, %s), root=(%s, %s), rw=%s, rh=%s, over_panel=%s, popup_active=%s, target_enabled=%s",
-                px,
-                py,
-                rx,
-                ry,
-                rw,
-                rh,
-                over_panel,
-                popup_active,
-                target_enabled,
-            )
             self._set_click_through(enabled=target_enabled)
         except (tk.TclError, AttributeError, ValueError, TypeError, win32gui.error) as e:
             LOGGER.debug("Failed to update click-through state: %s", e)
