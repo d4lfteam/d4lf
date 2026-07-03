@@ -237,7 +237,7 @@ def import_maxroll(config: ImportConfig):
 
     # Optionally embed Paragon data into the profile model before saving
     if config.export_paragon:
-        steps = extract_maxroll_paragon_steps(active_profile)
+        steps = extract_maxroll_paragon_steps(active_profile, mapping_data)
         if steps:
             profile.paragon = build_paragon_profile_payload(
                 build_name=build_name, source_url=url, paragon_boards_list=steps
