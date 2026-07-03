@@ -1,22 +1,21 @@
 import logging
-import threading
-import tkinter as tk
+
+from src.ui_thread import call_on_ui_thread, create_overlay_toplevel, get_root, join_ui_thread
 
 LOGGER = logging.getLogger(__name__)
-
-LOCK = threading.Lock()
 
 
 class Overlay:
     def __init__(self):
-        self.root = tk.Tk()
-        self.root.overrideredirect(boolean=True)
-        self.root.attributes("-topmost", 1)
-        self.root.attributes("-transparentcolor", "white")
-        self.root.attributes("-alpha", 1.0)
-        self.canvas = tk.Canvas(self.root, bg="white", highlightthickness=0)
-        self.canvas.pack(fill=tk.BOTH, expand=True)
-        self.canvas.config(height=self.root.winfo_screenheight(), width=self.root.winfo_screenwidth())
+        def _build_ui() -> None:
+            self.root, self.canvas = create_overlay_toplevel(get_root())
+            self.canvas.config(height=self.root.winfo_screenheight(), width=self.root.winfo_screenwidth())
+
+        # Widget creation must happen on the shared UI thread, not whichever
+        # thread constructs this (the BackendWorker QThread, or main() directly).
+        call_on_ui_thread(_build_ui)
 
     def run(self):
-        self.root.mainloop()
+        # The shared UI thread owns the one true mainloop now; block here so
+        # this caller's thread still tracks Tk's lifetime like it did before.
+        join_ui_thread()

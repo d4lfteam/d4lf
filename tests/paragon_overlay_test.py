@@ -4,7 +4,7 @@ import sys
 
 import pytest
 
-if sys.platform == "darwin":
+if sys.platform != "win32":
     pytest.skip("Windows-only overlay test", allow_module_level=True)
 
 from src.config.profile_models import ParagonPayloadModel

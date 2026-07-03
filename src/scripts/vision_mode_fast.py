@@ -14,6 +14,7 @@ from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter, MatchedFilter
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item
 from src.tts import Publisher
+from src.ui_thread import call_on_ui_thread, create_overlay_toplevel, get_root
 from src.utils.custom_mouse import Mouse
 from src.utils.window import screenshot
 
@@ -23,20 +24,20 @@ LOGGER = logging.getLogger(__name__)
 @singleton
 class VisionModeFast:
     def __init__(self):
-        self.root = tk.Tk()
-        self.root.overrideredirect(boolean=True)
-        self.root.attributes("-topmost", 1)
-        self.root.attributes("-transparentcolor", "white")
-        self.root.attributes("-alpha", 1.0)
-        self.canvas = tk.Canvas(self.root, bg="white", highlightthickness=0)
-        self.canvas.pack(fill=tk.BOTH, expand=True)
-        self.canvas.config(height=self.root.winfo_screenheight(), width=self.root.winfo_screenwidth())
-        self.textbox = tk.Text(self.root, bg="black", fg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0)
-        self.textbox.config(state=tk.DISABLED)
         self.clear_timer_id = None
         self.queue = queue.Queue()
-        self.draw_from_queue()
         self.is_running = False
+
+        def _build_ui() -> None:
+            self.root, self.canvas = create_overlay_toplevel(get_root())
+            self.canvas.config(height=self.root.winfo_screenheight(), width=self.root.winfo_screenwidth())
+            self.textbox = tk.Text(self.root, bg="black", fg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0)
+            self.textbox.config(state=tk.DISABLED)
+            self.draw_from_queue()
+
+        # Widget creation and every subsequent Tk call must happen on the
+        # shared UI thread, not whichever thread constructs this singleton.
+        call_on_ui_thread(_build_ui)
 
     def adjust_textbox_size(self):
         self.textbox.config(state=tk.NORMAL)
