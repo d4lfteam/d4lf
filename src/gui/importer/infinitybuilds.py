@@ -36,6 +36,12 @@ from src.gui.importer.gui_common import (
     update_mingreateraffixcount,
 )
 from src.gui.importer.importer_config import ImportConfig
+from src.gui.importer.paragon_export import (
+    InfinityBuildsParagonCatalog,
+    build_paragon_profile_payload,
+    extract_infinitybuilds_paragon_steps,
+    fetch_infinitybuilds_paragon_catalog,
+)
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
 from src.item.descr.text import clean_str, closest_match
@@ -51,6 +57,7 @@ TOOLS_API_BASE_URL = "https://tools.infinitybuilds.gg/api/games/diablo4/build-da
 SCRIPT_XPATH = "//script"
 NEXT_F_PUSH_REGEX = re.compile(r"^self\.__next_f\.push\(\[(?:\d+),(\".*\")\]\)\s*;?\s*$", re.DOTALL)
 ASPECT_UPGRADE_RARITIES = {"legendary"}
+CATALOG_ID_INSTANCE_PREFIX = re.compile(r"^(item|aspect)-\d+-")
 
 
 class InfinityBuildsError(Exception):
@@ -63,8 +70,6 @@ def import_infinitybuilds(config: ImportConfig, driver: ChromiumDriver = None):
     if BUILD_GUIDE_BASE_URL not in url:
         LOGGER.error("Invalid url, please use an infinitybuilds.gg build link")
         return
-    if config.export_paragon:
-        LOGGER.warning("Paragon import isn't supported for InfinityBuilds yet, skipping.")
     LOGGER.info(f"Loading {url}")
     driver.get(url)
     wait = WebDriverWait(driver, 15)
@@ -103,10 +108,28 @@ def import_infinitybuilds(config: ImportConfig, driver: ChromiumDriver = None):
     # Resolve all variants' gear in a single API call to avoid redundant round trips.
     resolved = _resolve_gear_data(class_name, [piece for variant in variants for piece in variant["gear"]])
 
+    paragon_catalog: InfinityBuildsParagonCatalog | None = None
+    if config.export_paragon:
+        try:
+            paragon_catalog = fetch_infinitybuilds_paragon_catalog()
+        except Exception:
+            LOGGER.warning(
+                "Could not fetch InfinityBuilds paragon catalog data, skipping paragon export.", exc_info=True
+            )
+
     saved_file_names = []
     for index, variant in enumerate(variants):
         variant_name = variant.get("name", "")
         profile = _build_profile_for_variant(gear=variant["gear"], resolved=resolved, config=config)
+
+        if paragon_catalog is not None:
+            steps = extract_infinitybuilds_paragon_steps(variant.get("paragon") or {}, paragon_catalog, class_name)
+            if steps:
+                profile.paragon = build_paragon_profile_payload(
+                    build_name=build_header or variant_name, source_url=url, paragon_boards_list=steps
+                )
+            else:
+                LOGGER.warning(f"Paragon export enabled, but no paragon data was found for variant {variant_name!r}.")
 
         file_name = config.custom_file_name or build_default_profile_file_name(
             source_name="infinitybuilds",
@@ -137,7 +160,7 @@ def _build_profile_for_variant(gear: list[dict], resolved: _ResolvedGearData, co
     mythic_names = []
     aspect_upgrade_filters = []
     for gear_piece in gear:
-        item_id = gear_piece.get("itemId")
+        item_id = _canonical_catalog_id(gear_piece.get("itemId"))
         item = resolved.items.get(item_id, {})
         item_name = item.get("label", "")
         if not item_name:
@@ -156,7 +179,7 @@ def _build_profile_for_variant(gear: list[dict], resolved: _ResolvedGearData, co
         if item_type is None:
             LOGGER.warning(f"Couldn't match item_type for slot {catalog_slot!r}. Please edit manually")
 
-        aspect_id = gear_piece.get("aspectId")
+        aspect_id = _canonical_catalog_id(gear_piece.get("aspectId"))
         aspect_name = resolved.aspects.get(aspect_id, {}).get("label") if aspect_id else None
         if aspect_name and rarity in ASPECT_UPGRADE_RARITIES and config.import_aspect_upgrades:
             normalized_aspect_name = _normalize_aspect_name(aspect_name)
@@ -291,9 +314,19 @@ class _ResolvedGearData:
     affixes: dict[str, dict]
 
 
+def _canonical_catalog_id(raw_id: str | None) -> str | None:
+    """Strip extra numeric value from catalog id.
+
+    Some build variants embed gear with an extra numeric instance id spliced into the item/aspect
+    which the catalog returned by the API doesn't have. Strip it before lookups.
+
+    """
+    return CATALOG_ID_INSTANCE_PREFIX.sub(r"\1-", raw_id) if raw_id else raw_id
+
+
 def _resolve_gear_data(class_name: str, gear: list[dict]) -> _ResolvedGearData:
-    item_ids = sorted({g["itemId"] for g in gear if g.get("itemId")})
-    aspect_ids = sorted({g["aspectId"] for g in gear if g.get("aspectId")})
+    item_ids = sorted({_canonical_catalog_id(g["itemId"]) for g in gear if g.get("itemId")})
+    aspect_ids = sorted({_canonical_catalog_id(g["aspectId"]) for g in gear if g.get("aspectId")})
     affix_ids = sorted({affix["affixId"] for g in gear for affix in (g.get("affixes") or []) if affix.get("affixId")})
 
     params = {"classId": class_name, "mode": "view", "shape": "2", "locale": "en"}
@@ -365,7 +398,7 @@ if __name__ == "__main__":
             add_to_profiles=False,
             import_greater_affixes=False,
             require_greater_affixes=False,
-            export_paragon=False,
+            export_paragon=True,
             custom_file_name=None,
         )
         import_infinitybuilds(run_config, driver)

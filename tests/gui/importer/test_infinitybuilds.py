@@ -17,6 +17,11 @@ from src.gui.importer.infinitybuilds import (
     _resolve_gear_data,
     import_infinitybuilds,
 )
+from src.gui.importer.paragon_export import (
+    InfinityBuildsParagonCatalog,
+    extract_infinitybuilds_paragon_steps,
+    fetch_infinitybuilds_paragon_catalog,
+)
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -301,6 +306,84 @@ def test_import_infinitybuilds_saves_one_profile_per_variant_and_resolves_gear_o
     assert profile_store.save_new.call_count == 2
     file_names = [call.kwargs["file_name"] for call in profile_store.save_new.call_args_list]
     assert file_names == ["test_1", "test_2"]
+
+
+def test_extract_infinitybuilds_paragon_steps_groups_boards_transforms_nodes_and_resolves_names() -> None:
+    paragon_data = {
+        "slots": [{"boardId": "paragon-board::paragon-barb-10", "rotation": 1}],
+        "glyphs": {"paragon-board::paragon-barb-00::136": "glyph::rare-016-dexterity-side"},
+        "activeNodes": [
+            "paragon-board::paragon-barb-00::10",
+            "paragon-board::paragon-barb-00::136",
+            "paragon-board::paragon-barb-10::5",
+        ],
+    }
+    catalog = InfinityBuildsParagonCatalog(
+        board_labels={"paragon-board::paragon-barb-00": "Start", "paragon-board::paragon-barb-10": "Force of Nature"},
+        glyph_labels={"glyph::rare-016-dexterity-side": "Exploit"},
+    )
+
+    steps = extract_infinitybuilds_paragon_steps(paragon_data, catalog, "barbarian")
+
+    assert len(steps) == 1
+    boards = steps[0]
+    assert [b["BoardId"] for b in boards] == ["paragon-board::paragon-barb-00", "paragon-board::paragon-barb-10"]
+
+    start_board = boards[0]
+    assert start_board["Name"] == "barbarian-start"
+    assert start_board["Rotation"] == "0°"
+    assert start_board["Glyph"] == "barbarian-exploit"
+    assert start_board["GlyphId"] == "glyph::rare-016-dexterity-side"
+    assert start_board["Nodes"].count(True) == 2
+    assert start_board["Nodes"][10] is True
+    assert start_board["Nodes"][136] is True
+
+    rotated_board = boards[1]
+    assert rotated_board["Name"] == "barbarian-force-of-nature"
+    assert rotated_board["Rotation"] == "90°"
+    assert not rotated_board["Glyph"]
+    assert rotated_board["GlyphId"] is None
+    # Raw location 5 (x=5, y=0) rotated 90 degrees lands at (xt=20, yt=5) -> flat index 125.
+    assert rotated_board["Nodes"].count(True) == 1
+    assert rotated_board["Nodes"][125] is True
+
+
+def test_extract_infinitybuilds_paragon_steps_falls_back_to_raw_id_slug_when_catalog_misses() -> None:
+    paragon_data = {"slots": [], "glyphs": {}, "activeNodes": ["paragon-board::paragon-unknown-99::0"]}
+    catalog = InfinityBuildsParagonCatalog(board_labels={}, glyph_labels={})
+
+    steps = extract_infinitybuilds_paragon_steps(paragon_data, catalog, "barbarian")
+
+    board = steps[0][0]
+    assert board["Name"] == "barbarian-paragon-board-paragon-unknown-99"
+    assert board["BoardId"] == "paragon-board::paragon-unknown-99"
+
+
+def test_extract_infinitybuilds_paragon_steps_returns_empty_when_no_active_nodes() -> None:
+    catalog = InfinityBuildsParagonCatalog(board_labels={}, glyph_labels={})
+
+    assert extract_infinitybuilds_paragon_steps({}, catalog, "barbarian") == []
+
+
+def test_fetch_infinitybuilds_paragon_catalog_builds_label_maps_from_both_datasets(mocker: MockerFixture) -> None:
+    boards_response = mocker.Mock()
+    boards_response.json.return_value = {
+        "paragon": {"boards": [{"id": "paragon-board::paragon-barb-00", "label": "Start"}]}
+    }
+    glyphs_response = mocker.Mock()
+    glyphs_response.json.return_value = {
+        "paragon": {"glyphs": [{"id": "glyph::rare-016-dexterity-side", "label": "Exploit"}]}
+    }
+    get_with_retry = mocker.patch(
+        "src.gui.importer.paragon_export.get_with_retry", side_effect=[boards_response, glyphs_response]
+    )
+
+    catalog = fetch_infinitybuilds_paragon_catalog()
+
+    assert get_with_retry.call_args_list[0][0][0].endswith("paragon-boards.json")
+    assert get_with_retry.call_args_list[1][0][0].endswith("glyphs.json")
+    assert catalog.board_labels == {"paragon-board::paragon-barb-00": "Start"}
+    assert catalog.glyph_labels == {"glyph::rare-016-dexterity-side": "Exploit"}
 
 
 @pytest.mark.parametrize("url", URLS)
