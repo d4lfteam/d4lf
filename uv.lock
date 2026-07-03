@@ -337,11 +337,11 @@ wheels = [
 
 [[package]]
 name = "filelock"
-version = "3.29.4"
+version = "3.29.5"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e6/dc/be6cbe99670cd6e4ad387123647cb08e0c32975e223f82551e914c5568a6/filelock-3.29.4.tar.gz", hash = "sha256:10cdb3656fc44541cdf30652a93fb10ec6b05325620eb316bd26893e4201538a", size = 63028, upload-time = "2026-06-13T16:12:00.744Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e3/ee/29c668c50888588c432a702f7c2e8ee8a0c9e5286028d91f170308d6b2e9/filelock-3.29.5.tar.gz", hash = "sha256:6e6034c57a00a020e767f2614a5539863f056de7e7991d6d1473aef7ff73f156", size = 68927, upload-time = "2026-07-03T03:50:31.818Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/37/a065dc3bd6e49423a6532c642ca7378d3f467b1ef44c2800c937af7f9739/filelock-3.29.4-py3-none-any.whl", hash = "sha256:dac1648087d5115554850d113e7dd8c83ab2d38e3435dde2d4f163847e57b767", size = 42757, upload-time = "2026-06-13T16:11:59.582Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/e3/f1fae3647d170919c2cf2a898e77e7d1a4e5c7cae0aed7bb4bd3f5ebff6f/filelock-3.29.5-py3-none-any.whl", hash = "sha256:8af830889ba3a0ffcefbd6c7d2af8a54012058103771f2e10848222f476a1693", size = 45073, upload-time = "2026-07-03T03:50:30.445Z" },
 ]
 
 [[package]]
@@ -566,7 +566,7 @@ version = "0.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyperclip" },
-    { name = "python3-xlib", marker = "sys_platform == 'linux'" },
+    { name = "python3-xlib" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/28/fa/b2ba8229b9381e8f6381c1dcae6f4159a7f72349e414ed19cfbbd1817173/MouseInfo-0.1.3.tar.gz", hash = "sha256:2c62fb8885062b8e520a3cce0a297c657adcc08c60952eb05bc8256ef6f7f6e7", size = 10850, upload-time = "2020-03-27T21:20:10.136Z" }
 
@@ -827,10 +827,10 @@ dependencies = [
     { name = "mouseinfo" },
     { name = "pygetwindow" },
     { name = "pymsgbox" },
-    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
-    { name = "pyobjc-framework-quartz", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-core", marker = "python_version < '0'" },
+    { name = "pyobjc-framework-quartz", marker = "python_version < '0'" },
     { name = "pyscreeze" },
-    { name = "python3-xlib", marker = "sys_platform == 'linux'" },
+    { name = "python3-xlib" },
     { name = "pytweening" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/65/ff/cdae0a8c2118a0de74b6cf4cbcdcaf8fd25857e6c3f205ce4b1794b27814/PyAutoGUI-0.9.54.tar.gz", hash = "sha256:dd1d29e8fd118941cb193f74df57e5c6ff8e9253b99c7b04f39cfc69f3ae04b2", size = 61236, upload-time = "2023-05-24T20:11:32.972Z" }
@@ -3798,15 +3798,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/46/c1/4b784495bb3169629
 
 [[package]]
 name = "pytest-rerunfailures"
-version = "16.3"
+version = "16.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "packaging" },
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4d/f0/74f8e685be7ecd1572c1256132f18fce3a665d7e07649a3f23b7eb2d3bec/pytest_rerunfailures-16.3.tar.gz", hash = "sha256:37c9b1231c8083e9f4e724f50f7a21241822f9516c15c700ebbf218d6452355c", size = 34148, upload-time = "2026-05-22T06:51:22.292Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/60/a90ca1cc6cffcb97b4260ed0ad2b7934b999d7c48abe4ea0840344862a3b/pytest_rerunfailures-16.4.tar.gz", hash = "sha256:8222d17c37eb7b9e4d6fc96a3c724ff4e1a5c97a5cc7cbb2c19e9282cfd21a11", size = 36635, upload-time = "2026-07-01T06:30:56.813Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f8/98/58a71d68d3126d7f6a6ed1944c37ec207a4ff3dc66cad3bed7b59d38df61/pytest_rerunfailures-16.3-py3-none-any.whl", hash = "sha256:6bdfb8ffb46c46072e6c16bdedee38b6c13eac620d9415ed5b63152cbf283170", size = 15396, upload-time = "2026-05-22T06:51:20.547Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/93/3cdcc4033444e822e01b573414b03fd37fd5533070c750477b8f5fa5224b/pytest_rerunfailures-16.4-py3-none-any.whl", hash = "sha256:f69b5beb39622c90d1e44bd945d826eff6db545dcf0b68f52b7e4ad15eaf6d6c", size = 16955, upload-time = "2026-07-01T06:30:55.333Z" },
 ]
 
 [[package]]
@@ -4053,7 +4053,7 @@ wheels = [
 
 [[package]]
 name = "seleniumbase"
-version = "4.50.4"
+version = "4.50.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -4117,9 +4117,9 @@ dependencies = [
     { name = "wheel" },
     { name = "wsproto" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cc/72/8da48291bb370e0536c14c0719462666a6861a0a5c9a74da62be9747968a/seleniumbase-4.50.4.tar.gz", hash = "sha256:dc3d8a6cd8a2eed301da839b36b1752fd821e2cd12f524fc730b0cdc7fb589d5", size = 667057, upload-time = "2026-07-01T02:13:02.379Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/84/fadfc7c543e3bed55acd7350ffc2e0a9f24bae37eb792732611eb8dc1cc2/seleniumbase-4.50.5.tar.gz", hash = "sha256:6a510cfd319c879745a5314eb9b253433b414beeaeb1b7f2e9fc0d05a93f9cd1", size = 667241, upload-time = "2026-07-03T14:34:24.662Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/bc/19ea35637193bb08da31bff0d568e5dbf1aa4c07ee011495e04a35ccf0b7/seleniumbase-4.50.4-py3-none-any.whl", hash = "sha256:dde4cb81ba96a3809928a640aad30605c6cccc7d07b3ae61a95de9b231443178", size = 672781, upload-time = "2026-07-01T02:12:59.738Z" },
+    { url = "https://files.pythonhosted.org/packages/10/df/ccf0aabfccbbd59141ddbe1f446056524c4b96cf5a7fa511e0859b4da580/seleniumbase-4.50.5-py3-none-any.whl", hash = "sha256:a78887c52e458402eaee07d3abc97a557f79c78c550fec4f864b8901458cc2c6", size = 672979, upload-time = "2026-07-03T14:34:21.262Z" },
 ]
 
 [[package]]

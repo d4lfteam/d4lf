@@ -376,7 +376,21 @@ class VisionModeWithHighlighting:
                                 # We won't highlight specific affixes for sigils. We'll see if people complain
                                 item_descr_with_loc = item_descr
                             else:
-                                item_descr_with_loc = src.item.descr.read_descr_tts.read_descr_mixed(cropped_descr)
+                                item_descr_with_loc = None
+                                for _ in range(3):
+                                    try:
+                                        item_descr_with_loc = src.item.descr.read_descr_tts.read_descr_mixed(
+                                            cropped_descr
+                                        )
+                                    except IndexError:
+                                        item_descr_with_loc = None
+                                    if item_descr_with_loc is not None:
+                                        break
+                                    # Bullet point template matching can miss on a single frame
+                                    # (extra tooltip lines on mythics/tempered items are especially prone to this).
+                                    # Re-grab and retry before giving up on this item entirely.
+                                    time.sleep(0.05)
+                                    _, _, cropped_descr, _ = find_descr(Cam().grab(), item_center)
                             if item_descr_with_loc is None:  # Item was likely mid-transition
                                 continue
                             res = Filter().should_keep(item_descr_with_loc)
