@@ -177,6 +177,8 @@ def _add_affixes_from_tts_mixed(
                 affix.type = AffixType.greater
             elif affix_bullets[i].name.startswith("rerolled"):
                 affix.type = AffixType.rerolled
+            elif affix_bullets[i].name.startswith("tempered_affix"):
+                affix.type = AffixType.tempered
             else:
                 affix.type = AffixType.normal
             item.affixes.append(affix)
@@ -296,6 +298,7 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         return item
     if "bloodied" in tts_item[1].lower():
         item.seasonal_attribute = SeasonalAttribute.bloodied
+    item.is_ancestral = "ancestral" in tts_item[1].lower()
 
     # Check lines 3-6 instead of just line 4 (handles variable name lengths and gives us flexibility to search for the sanctified marker)
     if any("sanctified" in tts_item[i].lower() for i in range(3, min(7, len(tts_item)))):
@@ -345,9 +348,13 @@ def _get_affix_starting_location_from_tts_section(tts_section: list[str], item: 
     elif is_armor(item.item_type):
         start = _get_index_of_armor_dps_or_all_resist(tts_section, "armor")
     elif item.item_type == ItemType.HoradricSeal:
-        return 4
+        index = _get_index_after_item_power(tts_section, fallback=4)
+        # Seals also report their max charm slot count right after Item Power; skip past it to reach the affixes.
+        if index < len(tts_section) and "charm slot" in tts_section[index].lower():
+            index += 1
+        return index
     elif item.item_type == ItemType.Charm:
-        return 3
+        return _get_index_after_item_power(tts_section, fallback=3)
     start += 1
 
     return start
@@ -359,6 +366,21 @@ def _get_index_of_armor_dps_or_all_resist(tts_section: list[str], indicator: str
             return i
 
     return 0
+
+
+def _get_index_after_item_power(tts_section: list[str], fallback: int) -> int:
+    """Get index after item power.
+
+    Seals/charms have no unique anchor text near their affixes (unlike "armor"/"all resist"/"damage per
+    second" for other item types), so we anchor on the "Item Power" line instead. This stays correct even
+    when Diablo inserts extra lines above it, e.g. an Armory loadout banner on equipped charms/seals.
+    """
+    for i, line in enumerate(tts_section):
+        if "item power" in line.lower():
+            return i + 1
+
+    LOGGER.warning(f"Could not find 'Item Power' line in TTS section, falling back to index {fallback}: {tts_section}")
+    return fallback
 
 
 def _get_affixes_from_tts_section(tts_section: list[str], start: int, length: int):

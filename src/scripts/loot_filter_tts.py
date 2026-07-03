@@ -107,9 +107,7 @@ def check_items(
                 elif IniConfigLoader().general.handle_uniques == UnfilteredUniquesType.favorite:
                     mark_as_favorite()
         elif not res.keep:
-            if IniConfigLoader().general.do_not_junk_ancestral_legendaries and any(
-                affix.type == AffixType.greater for affix in item_descr.affixes
-            ):
+            if IniConfigLoader().general.do_not_junk_ancestral_legendaries and item_descr.is_ancestral:
                 LOGGER.info("Skipping marking as junk because it is an ancestral legendary.")
             else:
                 _handle_no_match()
