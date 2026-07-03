@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import logging
 import re
@@ -8,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from src import __version__
 from src.config.profile_models import ParagonPayloadModel
-from src.gui.importer.gui_common import PLAYER_CLASSES
+from src.gui.importer.gui_common import PLAYER_CLASSES, get_with_retry
 
 try:
     from selenium.webdriver.common.by import By
@@ -362,14 +363,14 @@ def extract_maxroll_paragon_steps(active_profile: dict[str, Any]) -> list[list[d
                     loc = None
                 if loc is None:
                     continue
-                idx = _transform_maxroll_location(loc=loc, rotation=rotation)
+                idx = _transform_flat_index(loc=loc, rotation=rotation)
                 if 0 <= idx < NODES_LEN:
                     nodes_bool[idx] = True
 
             boards_out.append({
                 "Name": _maxroll_board_slug(board_id),
                 "Glyph": _maxroll_glyph_slug(glyph_id, board_id) if glyph_id else "",
-                "Rotation": _rotation_info_maxroll(rotation),
+                "Rotation": _rotation_info_quarter_turn(rotation),
                 "Nodes": nodes_bool,
                 "BoardId": board_id,
                 "GlyphId": glyph_id,
@@ -633,11 +634,112 @@ def extract_d4builds_paragon_steps(
 
 #
 # =============================================================================
+# INFINITYBUILDS EXPORT
+# =============================================================================
+
+INFINITYBUILDS_DATASETS_BASE_URL = "https://tools.infinitybuilds.gg/datasets/diablo4/en"
+
+
+@dataclasses.dataclass
+class InfinityBuildsParagonCatalog:
+    """Board/glyph id -> display label, resolved from InfinityBuilds' public datasets."""
+
+    board_labels: dict[str, str]
+    glyph_labels: dict[str, str]
+
+
+def fetch_infinitybuilds_paragon_catalog() -> InfinityBuildsParagonCatalog:
+    """Fetch the board and glyph label catalogs used to make InfinityBuilds' ids readable.
+
+    These are served pre-compressed as brotli under a `.br` extension (as seen in the site's own
+    network calls), but the same data is also available at a `.json` path with plain gzip, which
+    httpx already handles without needing an extra brotli dependency.
+    """
+    boards_response = get_with_retry(f"{INFINITYBUILDS_DATASETS_BASE_URL}/paragon-boards.json")
+    glyphs_response = get_with_retry(f"{INFINITYBUILDS_DATASETS_BASE_URL}/glyphs.json")
+    boards = boards_response.json().get("paragon", {}).get("boards", [])
+    glyphs = glyphs_response.json().get("paragon", {}).get("glyphs", [])
+    return InfinityBuildsParagonCatalog(
+        board_labels={b["id"]: b.get("label", "") for b in boards if b.get("id")},
+        glyph_labels={g["id"]: g.get("label", "") for g in glyphs if g.get("id")},
+    )
+
+
+def _infinitybuilds_named_slug(raw_id: str, label: str | None, class_slug: str) -> str:
+    """Slugify a catalog label, falling back to slugifying the raw id if it's unknown."""
+    name_slug = _slugify(label) if label else _slugify(raw_id)
+    return _prefix_with_class_slug(name_slug, class_slug)
+
+
+def extract_infinitybuilds_paragon_steps(
+    paragon_data: dict[str, Any], catalog: InfinityBuildsParagonCatalog, class_name: str
+) -> list[list[dict[str, Any]]]:
+    """Extract paragon boards from an InfinityBuilds build variant's embedded paragon data.
+
+    InfinityBuilds ships this directly as a `paragon` key alongside `gear`/`skills` in the same
+    React Flight payload the importer already parses, so no extra requests are needed to know
+    which nodes/glyphs/boards a build uses (only to resolve their display names, via `catalog`).
+    Node ids look like "paragon-board::<board-id>::<flat-index>", where <flat-index> is already
+    the same 0-based, row-major grid index (and slot rotation is already 0-3 quarter turns) that
+    Maxroll uses, so the shared transform applies unchanged.
+    """
+    class_slug = _class_slug_from_name(class_name)
+    active_nodes = paragon_data.get("activeNodes") or []
+    slots = paragon_data.get("slots") or []
+    glyphs = paragon_data.get("glyphs") or {}
+
+    rotation_by_board = {s["boardId"]: int(s.get("rotation", 0)) for s in slots if s.get("boardId")}
+
+    nodes_by_board: dict[str, list[int]] = {}
+    board_order: list[str] = []
+    for node_id in active_nodes:
+        board_id, _, index_str = node_id.rpartition("::")
+        if not board_id or not index_str.isdigit():
+            continue
+        if board_id not in nodes_by_board:
+            nodes_by_board[board_id] = []
+            board_order.append(board_id)
+        nodes_by_board[board_id].append(int(index_str))
+
+    # The board(s) not listed in `slots` are the entry/starting board (always unrotated); the rest
+    # follow their `slots` order/rotation, mirroring the gate-attachment chain shown in the planner.
+    ordered_board_ids = [b for b in board_order if b not in rotation_by_board] + [
+        s["boardId"] for s in slots if s.get("boardId") in nodes_by_board
+    ]
+
+    boards_out: list[dict[str, Any]] = []
+    for board_id in ordered_board_ids:
+        rotation = rotation_by_board.get(board_id, 0)
+        nodes_bool = [False] * NODES_LEN
+        for loc in nodes_by_board.get(board_id, []):
+            idx = _transform_flat_index(loc=loc, rotation=rotation)
+            if 0 <= idx < NODES_LEN:
+                nodes_bool[idx] = True
+
+        glyph_id = next((gid for node_id, gid in glyphs.items() if node_id.startswith(board_id + "::")), None)
+
+        boards_out.append({
+            "Name": _infinitybuilds_named_slug(board_id, catalog.board_labels.get(board_id), class_slug),
+            "Glyph": (
+                _infinitybuilds_named_slug(glyph_id, catalog.glyph_labels.get(glyph_id), class_slug) if glyph_id else ""
+            ),
+            "Rotation": _rotation_info_quarter_turn(rotation),
+            "Nodes": nodes_bool,
+            "BoardId": board_id,
+            "GlyphId": glyph_id,
+        })
+
+    return [boards_out] if boards_out else []
+
+
+#
+# =============================================================================
 # SHARED COORDINATE TRANSFORMS
 # =============================================================================
 
 
-def _rotation_info_maxroll(rot: int) -> str:
+def _rotation_info_quarter_turn(rot: int) -> str:
+    """Format a 0-3 quarter-turn rotation (Maxroll's and InfinityBuilds' native format)."""
     return {0: "0°", 1: "90°", 2: "180°", 3: "270°"}.get(rot, "?°")
 
 
@@ -646,10 +748,12 @@ def _rotation_info_degrees(rot: int) -> str:
     return {0: "0°", 90: "90°", 180: "180°", 270: "270°"}.get(rot, "?°")
 
 
-def _transform_maxroll_location(loc: int, rotation: int) -> int:
-    """Transform a 0-based location index from Maxroll into the Nodes[] index.
+def _transform_flat_index(loc: int, rotation: int) -> int:
+    """Transform a 0-based, row-major flat node index into the rotated Nodes[] index.
 
-    This follows the exact switch used in Diablo4Companion BuildsManagerMaxroll.
+    This follows the exact switch used in Diablo4Companion BuildsManagerMaxroll. Both Maxroll and
+    InfinityBuilds represent node positions and board rotation this same way (a flat 0-440 index
+    into the unrotated 21x21 grid, plus a 0-3 quarter-turn rotation), so this transform is shared.
     """
     x = loc % GRID
     y = loc // GRID
