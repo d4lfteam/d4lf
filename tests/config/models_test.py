@@ -36,6 +36,7 @@ from src.config.profile_models import (
 )
 from src.config.settings_models import GeneralModel
 from src.item.data.item_type import ItemType
+from src.paragon_transform import NODES_LEN
 from tests.config.data import sigils, uniques
 
 
@@ -986,7 +987,7 @@ class TestParagonModels:
             "Name": "Starting Board",
             "Glyph": "glyph_name",
             "Rotation": 90,
-            "Nodes": [False] * 441,
+            "Nodes": [False] * NODES_LEN,
             "BoardId": "Paragon_Barb_00",
             "GlyphId": "glyph_1",
         }
@@ -1017,16 +1018,16 @@ class TestParagonModels:
         with pytest.raises(ValidationError):
             ParagonBoardModel.model_validate(board_data)
 
-    def test_board_requires_exactly_441_nodes(self) -> None:
-        with pytest.raises(ValidationError, match="Nodes must contain exactly 441 values"):
-            ParagonBoardModel.model_validate(self._board_data(Nodes=[False] * 440))
+    def test_board_requires_exactly_shared_nodes_len(self) -> None:
+        with pytest.raises(ValidationError, match=f"Nodes must contain exactly {NODES_LEN} values"):
+            ParagonBoardModel.model_validate(self._board_data(Nodes=[False] * (NODES_LEN - 1)))
 
-        with pytest.raises(ValidationError, match="Nodes must contain exactly 441 values"):
-            ParagonBoardModel.model_validate(self._board_data(Nodes=[False] * 442))
+        with pytest.raises(ValidationError, match=f"Nodes must contain exactly {NODES_LEN} values"):
+            ParagonBoardModel.model_validate(self._board_data(Nodes=[False] * (NODES_LEN + 1)))
 
     def test_all_false_nodes_are_valid(self) -> None:
-        board = ParagonBoardModel.model_validate(self._board_data(Nodes=[False] * 441))
-        assert board.nodes == [False] * 441
+        board = ParagonBoardModel.model_validate(self._board_data(Nodes=[False] * NODES_LEN))
+        assert board.nodes == [False] * NODES_LEN
 
     def test_payload_direct_board_list_normalizes_to_one_step(self) -> None:
         payload = ParagonPayloadModel.model_validate({"Name": "Build Name", "ParagonBoardsList": [self._board_data()]})
@@ -1112,7 +1113,7 @@ class TestParagonModels:
         assert exported["Paragon"]["Name"] == "Build Name"
         assert exported["Paragon"]["ParagonBoardsList"][0][0]["Name"] == "Starting Board"
         assert exported["Paragon"]["ParagonBoardsList"][0][0]["Rotation"] == "90°"
-        assert len(exported["Paragon"]["ParagonBoardsList"][0][0]["Nodes"]) == 441
+        assert len(exported["Paragon"]["ParagonBoardsList"][0][0]["Nodes"]) == NODES_LEN
 
     def test_serialize_paragon_excludes_null_metadata(self) -> None:
         profile = ProfileModel(name="test", Paragon={"Name": "Build Name", "ParagonBoardsList": [self._board_data()]})

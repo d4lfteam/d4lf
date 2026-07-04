@@ -36,6 +36,7 @@ from src.gui.importer.gui_common import (
     TRANSPARENT_KEY,
 )
 from src.item.filter import Filter
+from src.paragon_transform import GRID, NODES_LEN, nodes_to_grid, parse_rotation
 from src.ui_thread import call_on_ui_thread, get_root, is_alive, post_to_ui_thread
 from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground
 
@@ -71,8 +72,6 @@ NODE_GREEN = ACCENT_GREEN
 NODE_BLUE = ACCENT_BLUE
 
 PANEL_W = 370
-GRID = 21
-NODES_LEN = GRID * GRID
 
 FS_PANEL_TITLE, FS_MODE_LABEL, FS_BUTTON, FS_BOARD_CARD = 13, 9, 12, 10
 FS_BUILDS_MENU, FS_SETTINGS_ICON, FS_SETTINGS_LABEL, FS_ZOOM_BTN, FS_HINT = (12, 13, 10, 15, 10)
@@ -298,23 +297,6 @@ def load_builds_from_path(preset_path: str | None = None) -> list[dict[str, Any]
             sname = f"{bname} - Step {idx + 1}" if len(steps) > 1 else bname
             builds.append({"name": sname, "boards": steps[idx], "profile": pname})
     return builds
-
-
-# =============================================================================
-# GRID DATA HELPERS
-# =============================================================================
-
-
-def parse_rotation(rot_str: str) -> int:
-    """Extract and sanitize the supported board rotation angle."""
-    m = re.search(r"(\d+)", rot_str or "")
-    deg = int(m.group(1)) % 360 if m else 0
-    return deg if deg in (0, 90, 180, 270) else 0
-
-
-def nodes_to_grid(nodes: list[int] | list[bool]) -> list[list[bool]]:
-    """Convert the flat 21x21 node list into a 2D boolean grid."""
-    return [[bool(nodes[y * GRID + x]) for x in range(GRID)] for y in range(GRID)]
 
 
 def format_board_display_text(board: ParagonBoardModel) -> str:
