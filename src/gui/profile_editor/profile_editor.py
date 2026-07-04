@@ -1,23 +1,22 @@
-import logging
+from __future__ import annotations
 
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QMessageBox, QTabWidget
+from typing import TYPE_CHECKING
 
-from src.config.profile_document import LoadedProfile, ProfileDocumentStore
-from src.config.profile_models import ProfileModel
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QTabWidget
+
 from src.gui.profile_editor.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.profile_editor.aspect_upgrades_tab import ASPECT_UPGRADES_TABNAME, AspectUpgradesTab
 from src.gui.profile_editor.global_uniques_tab import UNIQUES_TABNAME, UniquesTab
 from src.gui.profile_editor.sigils_tab import SIGILS_TABNAME, SigilsTab
 from src.gui.profile_editor.tributes_tab import TRIBUTES_TABNAME, TributesTab
 
-LOGGER = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from src.config.profile_document import LoadedProfile
+    from src.config.profile_models import ProfileModel
 
 
 class ProfileEditor(QTabWidget):
-    # Signal emitted when profile is saved (passes profile name)
-    profile_saved = pyqtSignal(str)
-
     def __init__(self, loaded_profile: LoadedProfile, parent=None):
         super().__init__(parent)
 
@@ -56,42 +55,5 @@ class ProfileEditor(QTabWidget):
         elif self.tabText(index) == UNIQUES_TABNAME:
             self.uniques_tab.load()
 
-    @staticmethod
-    def show_warning():
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Icon.Warning)
-        msg.setWindowTitle("Warning")
-
-        # Newline in message text
-        msg.setText("The profile model might not be valid. Do you still want to save your changes ?")
-
-        msg.setStandardButtons(QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard)
-
-        response = msg.exec()
-        return response == QMessageBox.StandardButton.Save
-
-    def save_all(self):
-        """Save all tabs' configurations."""
-        try:
-            # Validate
-            model = ProfileModel.model_validate(self.profile_model)
-            if model != self.profile_model:
-                if self.show_warning():
-                    saved = ProfileDocumentStore.default().save_existing(
-                        loaded=self.loaded_profile, profile=self.profile_model, source="custom", backup_original=True
-                    )
-                    # Emit signal for hot reload
-                    self.profile_saved.emit(self.profile_model.name)
-                    QMessageBox.information(self, "Info", f"Profile saved successfully to {saved.path.name}")
-                else:
-                    QMessageBox.information(self, "Info", "Profile not saved.")
-            else:
-                saved = ProfileDocumentStore.default().save_existing(
-                    loaded=self.loaded_profile, profile=self.profile_model, source="custom", backup_original=True
-                )
-                # Emit signal for hot reload
-                self.profile_saved.emit(self.profile_model.name)
-                QMessageBox.information(self, "Info", f"Profile saved successfully to {saved.path.name}")
-        except Exception as e:
-            LOGGER.exception("Failed to save profile")
-            QMessageBox.critical(self, "Error", f"Failed to save profile: {e}")
+    def get_current_model(self) -> ProfileModel:
+        return self.profile_model
