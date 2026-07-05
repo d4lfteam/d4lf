@@ -1,8 +1,8 @@
-import copy
-import logging
-import pathlib
+from __future__ import annotations
 
-from PyQt6.QtCore import QSettings, QSignalBlocker, Qt
+import logging
+
+from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
     QGroupBox,
@@ -16,13 +16,17 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.loader import IniConfigLoader
-from src.config.profile_document import (
-    EmptyProfileError,
-    LoadedProfile,
-    ProfileDocumentStore,
-    ProfileValidationError,
-    ProfileYamlError,
+from src.config.profile_document import LoadedProfile
+from src.config.profile_session import (
+    EmptyError,
+    Failed,
+    Loaded,
+    ProfileLastOpenedStore,
+    ProfileSession,
+    Saved,
+    ValidationDiffers,
+    ValidationError,
+    YamlError,
 )
 from src.dataloader import Dataloader
 from src.gui.profile_editor.profile_editor import ProfileEditor
@@ -33,9 +37,12 @@ PROFILE_TABNAME = "edit profile (beta)"
 
 
 class ProfileTab(QWidget):
+    profile_saved = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
         self.settings = QSettings("d4lf", "profile_editor")
+        self.session = ProfileSession(last_opened_store=_QSettingsLastOpenedStore(self.settings))
 
         self.root = None
         self.current_profile_name = ""
@@ -121,10 +128,7 @@ class ProfileTab(QWidget):
         previous_profile_name = self.current_profile_name
         self.file_path = self.profile_paths[profile_name]
         if self.load_yaml():
-            if self.model_editor:
-                self.scrollable_layout.removeWidget(self.model_editor)
-            self.model_editor = ProfileEditor(self.loaded_profile)
-            self.scrollable_layout.addWidget(self.model_editor)
+            self._set_model_editor(self.loaded_profile)
             self.current_profile_name = profile_name
             self.set_current_profile_combo(profile_name)
             LOGGER.info(f"Profile {self.root.name} loaded into profile editor.")
@@ -149,22 +153,10 @@ class ProfileTab(QWidget):
             self.profile_combo.setCurrentIndex(index)
 
     def populate_profile_dropdown(self):
-        custom_profile_path = IniConfigLoader().user_dir / "profiles"
-        custom_profile_path.mkdir(parents=True, exist_ok=True)
-        self.profile_paths = {
-            profile_file.stem: profile_file
-            for profile_file in custom_profile_path.iterdir()
-            if profile_file.is_file() and profile_file.suffix.lower() in {".yaml", ".yml"}
-        }
-
-        self.active_profiles = []
-        for profile_name in IniConfigLoader().general.profiles:
-            if profile_name in self.profile_paths and profile_name not in self.active_profiles:
-                self.active_profiles.append(profile_name)
-        self.inactive_profiles = sorted(
-            (profile_name for profile_name in self.profile_paths if profile_name not in self.active_profiles),
-            key=str.lower,
-        )
+        catalog = self.session.discover()
+        self.profile_paths = catalog.paths
+        self.active_profiles = catalog.active
+        self.inactive_profiles = catalog.inactive
 
         with QSignalBlocker(self.profile_combo):
             self.profile_combo.clear()
@@ -194,7 +186,7 @@ class ProfileTab(QWidget):
         return False
 
     def select_initial_profile(self):
-        last_opened = self.settings.value("last_opened_profile", None, type=str)
+        last_opened = self.session.last_opened_profile()
         if last_opened in self.profile_paths:
             self.load_selected_profile(last_opened)
             return
@@ -207,8 +199,7 @@ class ProfileTab(QWidget):
 
     def create_profile_editor(self):
         if not self.profile_editor_created and self.root:
-            self.model_editor = ProfileEditor(self.loaded_profile)
-            self.scrollable_layout.addWidget(self.model_editor)
+            self._set_model_editor(self.loaded_profile)
             self.profile_editor_created = True
             LOGGER.info(f"Profile {self.root.name} loaded into profile editor.")
 
@@ -217,39 +208,89 @@ class ProfileTab(QWidget):
             LOGGER.debug("No profile loaded, cannot refresh.")
             return False
         self.root = None
-        try:
-            self.loaded_profile = ProfileDocumentStore.default().load(pathlib.Path(self.file_path))
-        except ProfileYamlError as e:
-            LOGGER.error(str(e))
+        load_result = self.session.load(self.file_path.stem)
+        if isinstance(load_result, YamlError):
+            LOGGER.error(load_result.message)
             return False
-        except EmptyProfileError as e:
-            LOGGER.error(str(e))
+        if isinstance(load_result, EmptyError):
+            LOGGER.error(load_result.message)
             return False
-        except ProfileValidationError as e:
-            if e.guidance:
-                QMessageBox.critical(self, "Profile Validation Failed", e.guidance)
+        if isinstance(load_result, ValidationError):
+            if load_result.guidance:
+                QMessageBox.critical(self, "Profile Validation Failed", load_result.guidance)
             else:
-                QMessageBox.critical(self, "Validation Error", str(e))
+                QMessageBox.critical(self, "Validation Error", load_result.message)
+            return False
+        if not isinstance(load_result, Loaded):
             return False
 
+        self.loaded_profile = load_result.loaded_profile
         self.root = self.loaded_profile.profile
-        self.original_root = copy.deepcopy(self.root)
-        self.settings.setValue("last_opened_profile", pathlib.Path(self.file_path).stem)
         return True
 
     def save_yaml(self):
-        self.original_root = copy.deepcopy(self.root)
-        self.model_editor.save_all()
+        if self.model_editor is None:
+            return
+        save_result = self.session.save(self.model_editor.get_current_model())
+        if isinstance(save_result, Saved):
+            QMessageBox.information(self, "Info", f"Profile saved successfully to {save_result.saved.path.name}")
+            self.profile_saved.emit(self.model_editor.get_current_model().name)
+            self.root = self.model_editor.get_current_model()
+            return
+        if isinstance(save_result, ValidationDiffers):
+            save_coerced = QMessageBox.warning(
+                self,
+                "Warning",
+                "The profile model might not be valid. Do you still want to save your changes ?",
+                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard,
+            )
+            if save_coerced == QMessageBox.StandardButton.Save:
+                force_result = self.session.save(save_result.coerced_model, force=True)
+                if isinstance(force_result, Saved):
+                    QMessageBox.information(
+                        self, "Info", f"Profile saved successfully to {force_result.saved.path.name}"
+                    )
+                    self.loaded_profile = LoadedProfile(
+                        path=self.loaded_profile.path, name=self.loaded_profile.name, profile=save_result.coerced_model
+                    )
+                    self._set_model_editor(self.loaded_profile)
+                    self.root = save_result.coerced_model
+                    self.profile_saved.emit(save_result.coerced_model.name)
+                    return
+                if isinstance(force_result, Failed):
+                    QMessageBox.critical(self, "Error", f"Failed to save profile: {force_result.error}")
+                    return
+            else:
+                QMessageBox.information(self, "Info", "Profile not saved.")
+            return
+        if isinstance(save_result, Failed):
+            QMessageBox.critical(self, "Error", f"Failed to save profile: {save_result.error}")
 
     def check_close_save(self):
-        if self.root and self.original_root != self.root:
+        if self.root and self.model_editor and self.session.is_dirty(self.model_editor.get_current_model()):
             return self.confirm_discard_changes()
         return True
 
     def refresh(self):
         if not self.load_yaml():
             return
-        self.scrollable_layout.removeWidget(self.model_editor)
-        self.model_editor = ProfileEditor(self.loaded_profile)
-        self.scrollable_layout.addWidget(self.model_editor)
+        self._set_model_editor(self.loaded_profile)
         LOGGER.info(f"Profile {self.root.name} refreshed.")
+
+    def _set_model_editor(self, loaded_profile: LoadedProfile) -> None:
+        if self.model_editor:
+            self.scrollable_layout.removeWidget(self.model_editor)
+            self.model_editor.deleteLater()
+        self.model_editor = ProfileEditor(loaded_profile)
+        self.scrollable_layout.addWidget(self.model_editor)
+
+
+class _QSettingsLastOpenedStore(ProfileLastOpenedStore):
+    def __init__(self, settings: QSettings) -> None:
+        self._settings = settings
+
+    def get(self) -> str | None:
+        return self._settings.value("last_opened_profile", None, type=str)
+
+    def set(self, name: str) -> None:
+        self._settings.setValue("last_opened_profile", name)
