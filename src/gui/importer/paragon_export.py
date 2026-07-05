@@ -10,6 +10,14 @@ from typing import TYPE_CHECKING, Any
 from src import __version__
 from src.config.profile_models import ParagonPayloadModel
 from src.gui.importer.gui_common import PLAYER_CLASSES, get_with_retry
+from src.paragon_transform import NODES_LEN
+from src.paragon_transform import class_slug_from_name as _class_slug_from_name
+from src.paragon_transform import prefix_with_class_slug as _prefix_with_class_slug
+from src.paragon_transform import rotation_info_degrees as _rotation_info_degrees
+from src.paragon_transform import rotation_info_quarter_turn as _rotation_info_quarter_turn
+from src.paragon_transform import slugify as _slugify
+from src.paragon_transform import transform_flat_index as _transform_flat_index
+from src.paragon_transform import transform_xy as _transform_xy
 
 try:
     from selenium.webdriver.common.by import By
@@ -23,48 +31,7 @@ if TYPE_CHECKING:
     from selenium.webdriver.support.ui import WebDriverWait as SeleniumWebDriverWait
 
 
-#
-# =============================================================================
-# SHARED SLUG HELPERS
-# =============================================================================
-
-
-def _class_slug_from_name(class_name: str) -> str:
-    """Normalize a build class label into the shared export slug format."""
-    class_name = (class_name or "").strip().lower()
-    if not class_name or class_name == "unknown":
-        return ""
-    # Normalize planner-provided labels so all exporters use the same class prefix.
-    return re.sub(r"[^a-z0-9\-]", "", re.sub(r"[\s_]+", "-", class_name))
-
-
-def _prefix_with_class_slug(slug: str, class_slug: str) -> str:
-    """Prefix a slug with its class name once, matching the other exporters."""
-    if not slug:
-        return slug
-    if not class_slug:
-        return slug
-    if slug.startswith(class_slug + "-"):
-        return slug
-    return f"{class_slug}-{slug}"
-
-
 LOGGER = logging.getLogger(__name__)
-
-GRID = 21
-NODES_LEN = GRID * GRID
-
-#
-# =============================================================================
-# GENERAL EXPORT HELPERS
-# =============================================================================
-
-
-def _slugify(s: str) -> str:
-    """Collapse planner labels into stable lowercase slug tokens."""
-    s = (s or "").strip().lower()
-    s = re.sub(r"[^a-z0-9]+", "-", s)
-    return s.strip("-")
 
 
 def _maxroll_class_slug(board_id: str) -> str:
@@ -215,7 +182,7 @@ def extract_mobalytics_paragon_steps(paragon_data: dict[str, Any]) -> list[list[
             if x is None or y is None:
                 continue
 
-            idx = _transform_xy_common(x=x, y=y, rotation_deg=rotation, base="mobalytics")
+            idx = _transform_xy(x=x, y=y, rotation_deg=rotation, base="mobalytics")
             if 0 <= idx < NODES_LEN:
                 nodes_bool[idx] = True
 
@@ -311,7 +278,7 @@ def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[l
                 except ValueError:
                     rotate_int = 0
 
-        nodes = [False] * (21 * 21)
+        nodes = [False] * NODES_LEN
 
         try:
             tile_elems = board_elem.find_elements(By.CLASS_NAME, "paragon__board__tile")
@@ -331,29 +298,14 @@ def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[l
             r = int("".join(ch for ch in r_part if ch.isdigit()) or "0")
             c = int("".join(ch for ch in c_part if ch.isdigit()) or "0")
 
-            # Transform coordinates based on rotation (matching Diablo4Companion)
-            x = c
-            y = r
-            if rotate_int == 0:
-                x = x - 1
-                y = y - 1
-            elif rotate_int == 90:
-                x = 21 - r
-                y = c - 1
-            elif rotate_int == 180:
-                x = 21 - c
-                y = 21 - r
-            elif rotate_int == 270:
-                x = r - 1
-                y = 21 - c
-
-            if 0 <= x < 21 and 0 <= y < 21:
-                nodes[y * 21 + x] = True
+            idx = _transform_xy(x=c, y=r, rotation_deg=rotate_int, base="d4builds")
+            if 0 <= idx < NODES_LEN:
+                nodes[idx] = True
 
         boards_out.append({
             "Name": name_slug or "paragon-board",
             "Glyph": glyph_slug,
-            "Rotation": f"{rotate_int}°" if rotate_int in (0, 90, 180, 270) else "0°",
+            "Rotation": _rotation_info_degrees(rotate_int),
             "Nodes": nodes,
         })
 
@@ -511,88 +463,3 @@ def extract_infinitybuilds_paragon_steps(
         })
 
     return [boards_out] if boards_out else []
-
-
-#
-# =============================================================================
-# SHARED COORDINATE TRANSFORMS
-# =============================================================================
-
-
-def _rotation_info_quarter_turn(rot: int) -> str:
-    """Format a 0-3 quarter-turn rotation (Maxroll's and InfinityBuilds' native format)."""
-    return {0: "0°", 1: "90°", 2: "180°", 3: "270°"}.get(rot, "?°")
-
-
-def _rotation_info_degrees(rot: int) -> str:
-    rot = rot % 360
-    return {0: "0°", 90: "90°", 180: "180°", 270: "270°"}.get(rot, "?°")
-
-
-def _transform_flat_index(loc: int, rotation: int) -> int:
-    """Transform a 0-based, row-major flat node index into the rotated Nodes[] index.
-
-    This follows the exact switch used in Diablo4Companion BuildsManagerMaxroll. Both Maxroll and
-    InfinityBuilds represent node positions and board rotation this same way (a flat 0-440 index
-    into the unrotated 21x21 grid, plus a 0-3 quarter-turn rotation), so this transform is shared.
-    """
-    x = loc % GRID
-    y = loc // GRID
-    xt = x
-    yt = y
-
-    match rotation:
-        case 0:
-            return loc
-        case 1:
-            xt = GRID - y
-            yt = x
-            xt -= 1
-            return yt * GRID + xt
-        case 2:
-            xt = GRID - x
-            yt = GRID - y
-            xt -= 1
-            yt -= 1
-            return yt * GRID + xt
-        case 3:
-            xt = y
-            yt = GRID - x
-            yt -= 1
-            return yt * GRID + xt
-        case _:
-            return loc
-
-
-def _transform_xy_common(x: int, y: int, rotation_deg: int, base: str) -> int:
-    """Shared x/y to Nodes[] transform.
-
-    base:
-      - 'd4builds' uses 1-based r/c coordinates.
-      - 'mobalytics' uses 1-based x/y coordinates.
-
-    The formulas mirror Diablo4Companion's implementations for each source.
-    """
-    rotation_deg = rotation_deg % 360
-
-    xt = x
-    yt = y
-
-    if base in {"d4builds", "mobalytics"}:
-        # both sources provide 1-based coords in the '0°' case and need (x-1, y-1)
-        if rotation_deg in {0, 360}:
-            xt -= 1
-            yt -= 1
-        elif rotation_deg == 90:
-            xt = GRID - y
-            yt = x
-            yt -= 1
-        elif rotation_deg == 180:
-            xt = GRID - x
-            yt = GRID - y
-        elif rotation_deg == 270:
-            xt = y
-            yt = GRID - x
-            xt -= 1
-
-    return yt * GRID + xt

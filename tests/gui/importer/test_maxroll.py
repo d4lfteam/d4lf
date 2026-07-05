@@ -6,6 +6,7 @@ import pytest
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.maxroll import _find_item_affixes, _find_item_type, _resolve_visible_profile_index, import_maxroll
+from src.gui.importer.paragon_export import extract_maxroll_paragon_steps
 from src.item.data.item_type import ItemType
 
 if typing.TYPE_CHECKING:
@@ -112,3 +113,20 @@ def test_find_item_affixes_resolves_skill_rank_category_from_related_description
     affixes = _find_item_affixes(mapping_data=mapping_data, item_affixes=[{"nid": 1}], item_type=ItemType.Amulet)
 
     assert [affix.name for affix in affixes] == ["to_ultimate_skills"]
+
+
+@pytest.mark.parametrize(("rotation", "expected_index"), [(0, 5), (1, 125), (2, 435), (3, 315)])
+def test_extract_maxroll_paragon_steps_keeps_rotation_index_mapping(rotation: int, expected_index: int) -> None:
+    steps = extract_maxroll_paragon_steps(
+        active_profile={
+            "paragon": {
+                "steps": [{"data": [{"id": "Paragon_Barb_00", "glyph": "", "rotation": rotation, "nodes": {"5": 1}}]}]
+            }
+        },
+        mapping_data={"paragonBoards": {"Paragon_Barb_00": {"name": "Starting Board"}}, "paragonGlyphs": {}},
+    )
+
+    board = steps[0][0]
+    assert board["Rotation"] in {"0°", "90°", "180°", "270°"}
+    assert board["Nodes"].count(True) == 1
+    assert board["Nodes"][expected_index] is True
