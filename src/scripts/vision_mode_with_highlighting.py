@@ -26,6 +26,7 @@ from src.tts import Publisher
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
 from src.ui.vendor import Vendor
+from src.ui_thread import call_on_ui_thread, create_overlay_toplevel, get_root
 from src.utils.custom_mouse import Mouse
 from src.utils.image_operations import compare_histograms
 from src.utils.window import screenshot
@@ -44,13 +45,6 @@ class CancellationRequestedError(Exception):
 class VisionModeWithHighlighting:
     def __init__(self):
         super().__init__()
-        self.root = tk.Tk()
-        self.root.overrideredirect(boolean=True)
-        self.root.attributes("-topmost", 1)
-        self.root.attributes("-alpha", 1.0)
-        self.root.attributes("-transparentcolor", "white")
-        self.canvas = tk.Canvas(self.root, bg="white", highlightthickness=0)
-        self.canvas.pack(fill=tk.BOTH, expand=True)
         self.clear_when_item_not_selected_thread = None
         self.clear_when_item_not_selected_thread_cancel_event = None
         self.evaluate_item_thread = None
@@ -58,9 +52,17 @@ class VisionModeWithHighlighting:
         self.current_item = None
         self.is_cleared = True
         self.queue = queue.Queue()
-        self.draw_from_queue()
         self.is_running = False
-        self.root.geometry("0x0+0+0")
+
+        def _build_ui() -> None:
+            self.root, self.canvas = create_overlay_toplevel(get_root())
+            self.root.geometry("0x0+0+0")
+            self.draw_from_queue()
+
+        # Widget creation and every subsequent Tk call must happen on the
+        # shared UI thread, not whichever thread constructs this singleton.
+        call_on_ui_thread(_build_ui)
+
         self.thick = int(Cam().window_roi["height"] * 0.0047)
 
         inv = CharInventory()
@@ -374,7 +376,21 @@ class VisionModeWithHighlighting:
                                 # We won't highlight specific affixes for sigils. We'll see if people complain
                                 item_descr_with_loc = item_descr
                             else:
-                                item_descr_with_loc = src.item.descr.read_descr_tts.read_descr_mixed(cropped_descr)
+                                item_descr_with_loc = None
+                                for _ in range(3):
+                                    try:
+                                        item_descr_with_loc = src.item.descr.read_descr_tts.read_descr_mixed(
+                                            cropped_descr
+                                        )
+                                    except IndexError:
+                                        item_descr_with_loc = None
+                                    if item_descr_with_loc is not None:
+                                        break
+                                    # Bullet point template matching can miss on a single frame
+                                    # (extra tooltip lines on mythics/tempered items are especially prone to this).
+                                    # Re-grab and retry before giving up on this item entirely.
+                                    time.sleep(0.05)
+                                    _, _, cropped_descr, _ = find_descr(Cam().grab(), item_center)
                             if item_descr_with_loc is None:  # Item was likely mid-transition
                                 continue
                             res = Filter().should_keep(item_descr_with_loc)

@@ -33,7 +33,7 @@ from src.loot_mover import move_items_to_inventory, move_items_to_stash
 from src.paragon_overlay import request_close as request_close_paragon
 from src.paragon_overlay import run_paragon_overlay
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
-from src.scripts.info_overlay import _OVERLAY_LOCK, InventoryExpTracker, request_close, run_boss_timer_overlay
+from src.scripts.info_overlay import InventoryExpTracker, is_info_overlay_open, open_boss_timer_overlay, request_close
 from src.scripts.info_overlay import set_busy_checker as set_info_busy_checker
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
@@ -50,7 +50,6 @@ class ScriptHandler:
     def __init__(self):
         self.loot_interaction_thread = None
         self.paragon_overlay_thread: threading.Thread | None = None
-        self.info_overlay_thread: threading.Thread | None = None
         self._info_overlay_last_toggle_time = 0
         self.did_stop_scripts = False
         self._vision_mode_was_running_before_overlay = False
@@ -184,39 +183,24 @@ class ScriptHandler:
                 self.paragon_overlay_thread = None
 
     def toggle_info_overlay(self):
-        """Toggle the Info Panel overlay (thread-safe with debouncing)."""
+        """Toggle the Info Panel overlay (debounced; show/hide a widget on the shared UI thread)."""
         now = time.time()
         # Debounce to prevent rapid key-repeat triggers
         if now - self._info_overlay_last_toggle_time < 0.3:
             return
         self._info_overlay_last_toggle_time = now
 
-        thread_to_join = None
-        with _OVERLAY_LOCK:
-            if self.info_overlay_thread is not None and self.info_overlay_thread.is_alive():
-                LOGGER.info("Closing Info Panel overlay")
-                with suppress(Exception):
-                    request_close()
-                thread_to_join = self.info_overlay_thread
-                self.info_overlay_thread = None
-
-        if thread_to_join:
-            # Join without holding the lock to avoid deadlock with the exiting thread
-            thread_to_join.join(timeout=0.5)
+        if is_info_overlay_open():
+            LOGGER.info("Closing Info Panel overlay")
+            with suppress(Exception):
+                request_close()
             return
 
-        with _OVERLAY_LOCK:
-            LOGGER.info("Opening Info Panel overlay")
-            self.info_overlay_thread = threading.Thread(target=self._run_info_overlay, daemon=True)
-            self.info_overlay_thread.start()
-
-    def _run_info_overlay(self) -> None:
+        LOGGER.info("Opening Info Panel overlay")
         try:
-            run_boss_timer_overlay()
+            open_boss_timer_overlay()
         except Exception:
             LOGGER.exception("Info Panel overlay crashed")
-        finally:
-            self.info_overlay_thread = None
 
     def _clear_key_binds(self) -> None:
         if sys.platform == "darwin":

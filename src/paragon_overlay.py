@@ -7,7 +7,6 @@ import configparser
 import ctypes
 import io
 import logging
-import queue
 import re
 import sys
 import threading
@@ -37,6 +36,7 @@ from src.gui.importer.gui_common import (
     TRANSPARENT_KEY,
 )
 from src.item.filter import Filter
+from src.ui_thread import call_on_ui_thread, get_root, is_alive, post_to_ui_thread
 from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground
 
 if sys.platform == "win32":
@@ -54,89 +54,12 @@ LOGGER = logging.getLogger(__name__)
 OverlaySettingT = TypeVar("OverlaySettingT", int, str, bool)
 
 # =============================================================================
-# GLOBALS & UI THREAD HANDLING
+# GLOBALS
 # =============================================================================
 
 _CURRENT_OVERLAY: ParagonOverlay | None = None
 _CLOSE_REQUESTED = threading.Event()
 _OVERLAY_LOCK = threading.Lock()
-
-_UI_THREAD: threading.Thread | None = None
-_UI_QUEUE: queue.Queue[tuple[object, threading.Event | None, dict[str, object]]] = queue.Queue()
-_UI_ROOT: tk.Tk | None = None
-_UI_READY = threading.Event()
-
-
-def _tk_thread_main() -> None:
-    """Own the dedicated Tk root and execute queued UI work on that thread."""
-    global _UI_ROOT
-    # Create a hidden root window. The actual overlay is a Toplevel that is
-    # opened later, but Tk still needs one root that owns the event loop.
-    root = tk.Tk()
-    root.withdraw()
-    _UI_ROOT = root
-    _UI_READY.set()
-
-    def _pump_queue() -> None:
-        """Run all queued UI callbacks and reschedule the queue pump."""
-        while True:
-            try:
-                fn, done, box = _UI_QUEUE.get_nowait()
-            except queue.Empty:
-                break
-
-            try:
-                box["result"] = fn()  # type: ignore[operator]
-            except Exception as exc:
-                LOGGER.exception("Paragon overlay UI callback failed")
-                box["error"] = exc
-            finally:
-                if done:
-                    done.set()
-
-        root.after(25, _pump_queue)
-
-    root.after(0, _pump_queue)
-    root.mainloop()
-
-
-def _ensure_ui_thread() -> None:
-    """Start the shared Tk UI thread once and wait until it is ready."""
-    global _UI_THREAD
-    if _UI_THREAD and _UI_THREAD.is_alive():
-        return
-    _UI_READY.clear()
-    _UI_THREAD = threading.Thread(target=_tk_thread_main, name="paragon-overlay-ui", daemon=True)
-    _UI_THREAD.start()
-    if not _UI_READY.wait(timeout=5.0):
-        msg = "Tk UI thread failed to init"
-        raise RuntimeError(msg)
-
-
-def _call_on_ui_thread(fn: object) -> object:
-    """Execute a callback on the Tk thread and wait for its return value."""
-    _ensure_ui_thread()
-    done, box = threading.Event(), {}
-    _UI_QUEUE.put((fn, done, box))
-    done.wait()
-    exc = box.get("error")
-    if isinstance(exc, BaseException):
-        raise exc
-    return box.get("result")
-
-
-def _post_to_ui_thread(fn: object) -> None:
-    """Queue work on the Tk thread without blocking the caller."""
-    _ensure_ui_thread()
-    _UI_QUEUE.put((fn, None, {}))
-
-
-def _is_alive(w: tk.Misc | None, mapped: bool = False) -> bool:
-    """Helper to safely check if a widget exists (and optionally is mapped)."""
-    try:
-        return bool(w and w.winfo_exists() and (w.winfo_ismapped() if mapped else True))
-    except tk.TclError:
-        return False
 
 
 # =============================================================================
@@ -686,7 +609,7 @@ class ParagonOverlay(tk.Toplevel):
             _CLOSE_REQUESTED.clear()
             self.close()
             return
-        if _is_alive(self):
+        if is_alive(self):
             self.after(50, self._poll_close_request)
 
     def _poll_window_state(self) -> None:
@@ -696,8 +619,8 @@ class ParagonOverlay(tk.Toplevel):
             is_interacting = (
                 self._dragging_grid
                 or is_self_foreground()
-                or _is_alive(getattr(self, "_settings_popup", None), mapped=True)
-                or _is_alive(getattr(self, "_build_popup", None), mapped=True)
+                or is_alive(getattr(self, "_settings_popup", None), mapped=True)
+                or is_alive(getattr(self, "_build_popup", None), mapped=True)
             )
 
             is_fgrnd = is_window_foreground(self._win_spec) or is_interacting
@@ -728,11 +651,11 @@ class ParagonOverlay(tk.Toplevel):
         """Apply live overlay updates after runtime config changes."""
         if "general.colorblind_mode" not in changed_keys:
             return
-        _post_to_ui_thread(self._apply_live_colorblind_change)
+        post_to_ui_thread(self._apply_live_colorblind_change)
 
     def _apply_live_colorblind_change(self) -> None:
         """Refresh overlay colors on the Tk UI thread after a colorblind change."""
-        if not _is_alive(self):
+        if not is_alive(self):
             return
         self._apply_accent_frames(force=True)
         self.redraw()
@@ -807,19 +730,19 @@ class ParagonOverlay(tk.Toplevel):
         self._accent_frame_last, th = c, self._accent_frame_thickness()
 
         for w in (getattr(self, "card_title", None), getattr(self, "card_buttons", None)):
-            if _is_alive(w):
+            if is_alive(w):
                 with suppress(Exception):
                     w.configure(highlightthickness=th, highlightbackground=c, highlightcolor=c)
 
         bc = getattr(self, "board_container", None)
-        if _is_alive(bc):
+        if is_alive(bc):
             for child in bc.winfo_children():
                 if isinstance(child, tk.Frame):
                     with suppress(Exception):
                         child.configure(highlightthickness=th, highlightbackground=c, highlightcolor=c)
 
         for p in ("_settings_popup", "_build_popup"):
-            if _is_alive(getattr(self, p, None)):
+            if is_alive(getattr(self, p, None)):
                 getattr(self, p).configure(highlightthickness=th, highlightbackground=c, highlightcolor=c)
 
     def _reload_profiles(self) -> None:
@@ -876,7 +799,7 @@ class ParagonOverlay(tk.Toplevel):
     def _handle_global_click(self, e: tk.Event, attr_name: str, btn_widget: tk.Button, close_func: Callable) -> None:
         """Close a popup when the user clicks outside of it and its button."""
         popup = getattr(self, attr_name, None)
-        if not _is_alive(popup, mapped=True):
+        if not is_alive(popup, mapped=True):
             return
         w = None
         with suppress(Exception):
@@ -928,7 +851,7 @@ class ParagonOverlay(tk.Toplevel):
         self._close_build_dropdown()
 
         popup = getattr(self, popup_attr, None)
-        if _is_alive(popup, mapped=True):
+        if is_alive(popup, mapped=True):
             close_func()
             return
 
@@ -942,7 +865,7 @@ class ParagonOverlay(tk.Toplevel):
         if not hasattr(self, "_lock_img_cache"):
             self._warmup_settings_assets()
 
-        if not _is_alive(popup):
+        if not is_alive(popup):
             c = self._accent_frame_color()
             popup = tk.Frame(
                 self,
@@ -1017,11 +940,11 @@ class ParagonOverlay(tk.Toplevel):
 
         self._close_settings_dropdown()
         popup = getattr(self, "_build_popup", None)
-        if _is_alive(popup, mapped=True):
+        if is_alive(popup, mapped=True):
             self._close_build_dropdown()
             return
 
-        if not _is_alive(popup):
+        if not is_alive(popup):
             c = self._accent_frame_color()
             popup = tk.Toplevel(self)
             popup.withdraw()
@@ -1409,7 +1332,7 @@ class ParagonOverlay(tk.Toplevel):
         self._cfg.is_collapsed = not self._cfg.is_collapsed
         with suppress(Exception):
             self.lbl_mode.config(text="Compact View" if self._cfg.is_collapsed else "Full View")
-        if _is_alive(getattr(self, "btn_view_switch", None)):
+        if is_alive(getattr(self, "btn_view_switch", None)):
             self.btn_view_switch.config(text="⤢" if self._cfg.is_collapsed else "⤡")
         self.redraw()
         self._persist_state()
@@ -1506,9 +1429,9 @@ class ParagonOverlay(tk.Toplevel):
     def _warmup_settings_assets(self) -> None:
         """Pre-render lock icons so the settings popup opens without image lag."""
         self._warmup_after_id = None
-        if not _is_alive(self) or hasattr(self, "_lock_img_cache"):
+        if not is_alive(self) or hasattr(self, "_lock_img_cache"):
             return
-        if _is_alive(getattr(self, "_settings_popup", None), mapped=True):
+        if is_alive(getattr(self, "_settings_popup", None), mapped=True):
             self._warmup_after_id = self.after(400, self._warmup_settings_assets)
             return
 
@@ -1590,7 +1513,6 @@ class ParagonOverlay(tk.Toplevel):
             styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
             new_styles = styles | win32con.WS_EX_TRANSPARENT if enabled else styles & ~win32con.WS_EX_TRANSPARENT
             if new_styles != styles:
-                LOGGER.debug("Paragon overlay click-through changing to: %s", enabled)
                 win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, new_styles)
                 win32gui.SetWindowPos(
                     hwnd,
@@ -1623,31 +1545,19 @@ class ParagonOverlay(tk.Toplevel):
             rw = self._cfg.panel_w
             rh = self.winfo_height()
 
-            popup_active = _is_alive(getattr(self, "_settings_popup", None), mapped=True) or _is_alive(
+            popup_active = is_alive(getattr(self, "_settings_popup", None), mapped=True) or is_alive(
                 getattr(self, "_build_popup", None), mapped=True
             )
 
             over_panel = (rx <= px < rx + rw) and (ry <= py < ry + rh)
             target_enabled = not (over_panel or popup_active)
-            LOGGER.debug(
-                "Paragon overlay click-through debug: mouse=(%s, %s), root=(%s, %s), rw=%s, rh=%s, over_panel=%s, popup_active=%s, target_enabled=%s",
-                px,
-                py,
-                rx,
-                ry,
-                rw,
-                rh,
-                over_panel,
-                popup_active,
-                target_enabled,
-            )
             self._set_click_through(enabled=target_enabled)
         except (tk.TclError, AttributeError, ValueError, TypeError, win32gui.error) as e:
             LOGGER.debug("Failed to update click-through state: %s", e)
 
     def _poll_click_through(self) -> None:
         """Poll the click-through state frequently when window is viewable."""
-        if sys.platform == "win32" and _is_alive(self):
+        if sys.platform == "win32" and is_alive(self):
             self._update_click_through()
             self.after(100, self._poll_click_through)
 
@@ -1797,16 +1707,9 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
     closed = threading.Event()
 
     def _open_overlay() -> None:
-        # NOTE: This runs on the Tk UI thread.
-        # If the root was not initialized, unblock the caller to avoid deadlock.
-        root = _UI_ROOT
-        if root is None:
-            LOGGER.error("Paragon overlay: UI root not ready — aborting open")
-            closed.set()
-            return
-
+        # NOTE: This runs on the shared Tk UI thread.
         try:
-            overlay = ParagonOverlay(root, builds, on_close=closed.set)
+            overlay = ParagonOverlay(get_root(), builds, on_close=closed.set)
         except Exception:
             LOGGER.exception("Paragon overlay: failed to open")
             closed.set()
@@ -1817,7 +1720,7 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
             _CURRENT_OVERLAY = overlay
             _CLOSE_REQUESTED.clear()
 
-    _call_on_ui_thread(_open_overlay)
+    call_on_ui_thread(_open_overlay)
     # The caller owns a worker thread per overlay session and expects that thread
     # to stay alive until the overlay closes, so block here on the close signal.
     closed.wait()
@@ -1831,7 +1734,7 @@ def request_close(overlay: ParagonOverlay | None = None) -> None:
             return
         _CLOSE_REQUESTED.set()
     with suppress(Exception):
-        _post_to_ui_thread(lambda: t.close() if _is_alive(t) else None)
+        post_to_ui_thread(lambda: t.close() if is_alive(t) else None)
 
 
 if __name__ == "__main__":
