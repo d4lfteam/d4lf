@@ -112,12 +112,8 @@ class AffixFilterModel(AffixAspectFilterModel):
 class AffixFilterCountModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     count: list[AffixFilterModel] = []
-    max_count: int = Field(
-        default=sys.maxsize, validation_alias=AliasChoices("maxCount", "max_count"), serialization_alias="maxCount"
-    )
-    min_count: int = Field(
-        default=0, validation_alias=AliasChoices("minCount", "min_count"), serialization_alias="minCount"
-    )
+    max_count: int = Field(default=sys.maxsize, alias="maxCount")
+    min_count: int = Field(default=0, alias="minCount")
 
     @field_validator("min_count", "max_count")
     @classmethod

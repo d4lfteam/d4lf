@@ -294,9 +294,9 @@ class BaseGroupEditor(QWidget):
     # --- Rarities ---
 
     def edit_rarities(self):
-        dialog = RarityPicker(self.config.rarities, parent=self)
+        dialog = RarityPicker(self, self.config.rarities)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.config.rarities = dialog.get_value()
+            self.config.rarities = dialog.get_selected_rarities()
             self.refresh_rarity_summary()
 
     def refresh_rarity_summary(self):
