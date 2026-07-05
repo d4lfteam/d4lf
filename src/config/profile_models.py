@@ -19,6 +19,7 @@ from pydantic import (
 from src.config.helper import check_greater_than_zero, validate_greater_affix_count, validate_percent
 from src.item.data.item_type import ItemType  # noqa: TC001
 from src.item.data.rarity import ItemRarity
+from src.paragon_transform import NODES_LEN
 from src.scripts import correct_name
 
 MODULE_LOGGER = logging.getLogger(__name__)
@@ -44,8 +45,9 @@ def _validate_set_name(name: str | None, field_name: str) -> str | None:
     return name
 
 
-def _normalize_rarities(data: str | list[str]) -> list[str]:
+def _normalize_rarities(data: str | list[str] | list[ItemRarity]) -> list[str]:
     values = [data] if isinstance(data, str) else data
+    values = [v.value if isinstance(v, ItemRarity) else v for v in values]
     return [v.lower() if isinstance(v, str) else v for v in values]
 
 
@@ -400,7 +402,7 @@ class SigilFilterModel(BaseModel):
 
 class TributeFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
-    name: str = None
+    name: str | None = None
     rarities: list[ItemRarity] = Field(
         default=[], validation_alias=AliasChoices("rarity", "rarities"), serialization_alias="rarity"
     )
@@ -491,10 +493,10 @@ class ParagonBoardModel(BaseModel):
     @classmethod
     def validate_nodes(cls, nodes: object) -> list[object]:
         if not isinstance(nodes, list):
-            msg = "Nodes must be a list of 441 boolean-compatible values"
+            msg = f"Nodes must be a list of {NODES_LEN} boolean-compatible values"
             raise ValueError(msg)
-        if len(nodes) != 441:
-            msg = "Nodes must contain exactly 441 values"
+        if len(nodes) != NODES_LEN:
+            msg = f"Nodes must contain exactly {NODES_LEN} values"
             raise ValueError(msg)
         return nodes
 

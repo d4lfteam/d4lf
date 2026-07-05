@@ -266,6 +266,116 @@ def test_parse_d4builds_paragon_boards_produces_valid_typed_payload_input() -> N
     assert board.nodes.count(True) == 1
 
 
+@pytest.mark.parametrize(("rotation_deg", "expected_index"), [(0, 30), (90, 208), (180, 410), (270, 232)])
+def test_parse_d4builds_paragon_boards_keeps_supported_rotation_transform_behavior(
+    rotation_deg: int, expected_index: int
+) -> None:
+    class _FakeTextNode:
+        def __init__(self, text: str):
+            self._text = text
+
+        def get_attribute(self, name: str) -> str:
+            return self._text if name == "innerText" else ""
+
+    class _FakeTile:
+        def __init__(self, class_name: str):
+            self._class_name = class_name
+
+        def get_attribute(self, name: str) -> str:
+            return self._class_name if name == "class" else ""
+
+    class _FakeBoardElement:
+        def __init__(self):
+            self._attrs = {"data-board-id": "Paragon_Barb_00"}
+
+        def find_element(self, by, value):
+            if value == "paragon__board__name":
+                return _FakeTextNode("Starting Board")
+            msg = f"unexpected selector: {value}"
+            raise AssertionError(msg)
+
+        def find_elements(self, by, value):
+            if value == "paragon__board__name__glyph":
+                return []
+            if value == "paragon__board__tile":
+                return [_FakeTile("paragon__board__tile r2 c10 active enabled")]
+            msg = f"unexpected selector: {value}"
+            raise AssertionError(msg)
+
+        def get_attribute(self, name: str) -> str:
+            if name == "style":
+                return f"transform: rotate({rotation_deg}deg);"
+            return ""
+
+    class _FakeDriver:
+        def execute_script(self, script, board_elem):
+            return board_elem._attrs
+
+        def find_elements(self, by, value):
+            if value == "paragon__board":
+                return [_FakeBoardElement()]
+            msg = f"unexpected selector: {value}"
+            raise AssertionError(msg)
+
+    boards = paragon_export_module._parse_d4builds_paragon_boards(_FakeDriver(), class_slug="barbarian")
+    board = boards[0][0]
+
+    assert board["Rotation"] == f"{rotation_deg}°"
+    assert board["Nodes"].count(True) == 1
+    assert board["Nodes"][expected_index] is True
+
+
+def test_parse_d4builds_paragon_boards_uses_question_mark_fallback_for_unsupported_rotation() -> None:
+    class _FakeTextNode:
+        def __init__(self, text: str):
+            self._text = text
+
+        def get_attribute(self, name: str) -> str:
+            return self._text if name == "innerText" else ""
+
+    class _FakeTile:
+        def __init__(self, class_name: str):
+            self._class_name = class_name
+
+        def get_attribute(self, name: str) -> str:
+            return self._class_name if name == "class" else ""
+
+    class _FakeBoardElement:
+        def __init__(self):
+            self._attrs = {"data-board-id": "Paragon_Barb_00"}
+
+        def find_element(self, by, value):
+            if value == "paragon__board__name":
+                return _FakeTextNode("Starting Board")
+            msg = f"unexpected selector: {value}"
+            raise AssertionError(msg)
+
+        def find_elements(self, by, value):
+            if value == "paragon__board__name__glyph":
+                return []
+            if value == "paragon__board__tile":
+                return [_FakeTile("paragon__board__tile r2 c10 active enabled")]
+            msg = f"unexpected selector: {value}"
+            raise AssertionError(msg)
+
+        def get_attribute(self, name: str) -> str:
+            return "transform: rotate(45deg);" if name == "style" else ""
+
+    class _FakeDriver:
+        def execute_script(self, script, board_elem):
+            return board_elem._attrs
+
+        def find_elements(self, by, value):
+            if value == "paragon__board":
+                return [_FakeBoardElement()]
+            msg = f"unexpected selector: {value}"
+            raise AssertionError(msg)
+
+    boards = paragon_export_module._parse_d4builds_paragon_boards(_FakeDriver(), class_slug="barbarian")
+
+    assert boards[0][0]["Rotation"] == "?°"
+
+
 @pytest.mark.parametrize("url", URLS)
 @pytest.mark.selenium
 @pytest.mark.skipif(not IN_GITHUB_ACTIONS, reason="Importer tests are skipped if not run from Github Actions")

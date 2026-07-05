@@ -108,6 +108,19 @@ def test_extract_mobalytics_paragon_steps_normalizes_warlock_starting_board():
     assert board["Nodes"][node_index] is True
 
 
+@pytest.mark.parametrize(("rotation", "expected_index"), [(0, 283), (90, 217), (180, 157), (270, 223)])
+def test_extract_mobalytics_paragon_steps_keeps_rotation_index_mapping(rotation: int, expected_index: int) -> None:
+    steps = extract_mobalytics_paragon_steps({
+        "boards": [{"board": {"slug": "barbarian-starting-board"}, "glyph": {"slug": ""}, "rotation": rotation}],
+        "nodes": [{"slug": "barbarian-starting-board-x11-y14"}],
+    })
+
+    board = steps[0][0]
+    assert board["Rotation"] == f"{rotation}°"
+    assert board["Nodes"].count(True) == 1
+    assert board["Nodes"][expected_index] is True
+
+
 def test_build_paragon_profile_payload_returns_typed_model():
     payload = build_paragon_profile_payload(
         build_name="Build Name",
@@ -218,7 +231,7 @@ def test_import_mobalytics_imports_set_charm_and_deduplicates_identical_rings(
 
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = fake_save_new
-    mocker.patch("src.gui.importer.mobalytics.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
 
     import_mobalytics(
         config=ImportConfig(

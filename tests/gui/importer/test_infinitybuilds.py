@@ -225,7 +225,7 @@ def test_import_infinitybuilds_maps_gear_and_aspect_upgrades(mock_ini_loader, mo
 
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = fake_save_new
-    mocker.patch("src.gui.importer.infinitybuilds.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
 
     import_infinitybuilds(
         config=ImportConfig(
@@ -284,7 +284,7 @@ def test_import_infinitybuilds_saves_one_profile_per_variant_and_resolves_gear_o
 
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # noqa: ARG005
-    mocker.patch("src.gui.importer.infinitybuilds.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
 
     import_infinitybuilds(
         config=ImportConfig(
@@ -363,6 +363,25 @@ def test_extract_infinitybuilds_paragon_steps_returns_empty_when_no_active_nodes
     catalog = InfinityBuildsParagonCatalog(board_labels={}, glyph_labels={})
 
     assert extract_infinitybuilds_paragon_steps({}, catalog, "barbarian") == []
+
+
+@pytest.mark.parametrize(("rotation", "expected_index"), [(0, 5), (1, 125), (2, 435), (3, 315)])
+def test_extract_infinitybuilds_paragon_steps_keeps_rotation_index_mapping(rotation: int, expected_index: int) -> None:
+    paragon_data = {
+        "slots": [{"boardId": "paragon-board::paragon-barb-10", "rotation": rotation}],
+        "glyphs": {},
+        "activeNodes": ["paragon-board::paragon-barb-10::5"],
+    }
+    catalog = InfinityBuildsParagonCatalog(
+        board_labels={"paragon-board::paragon-barb-10": "Force of Nature"}, glyph_labels={}
+    )
+
+    steps = extract_infinitybuilds_paragon_steps(paragon_data, catalog, "barbarian")
+    board = steps[0][0]
+
+    assert board["Rotation"] in {"0°", "90°", "180°", "270°"}
+    assert board["Nodes"].count(True) == 1
+    assert board["Nodes"][expected_index] is True
 
 
 def test_fetch_infinitybuilds_paragon_catalog_builds_label_maps_from_both_datasets(mocker: MockerFixture) -> None:
