@@ -22,9 +22,13 @@ from PyQt6.QtWidgets import (
 from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
+    CharmFilterModel,
+    DynamicCharmFilterModel,
     DynamicItemFilterModel,
+    DynamicSealFilterModel,
     ItemFilterModel,
     ItemRarity,
+    SealFilterModel,
     TributeFilterModel,
 )
 from src.dataloader import Dataloader
@@ -180,7 +184,7 @@ class CreateItem(QDialog):
         item.item_type = [item_type]
         item.affix_pool = [
             AffixFilterCountModel(
-                count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())))], min_count=2
+                count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys()), ""))], min_count=2
             )
         ]
         item.min_power = 100
@@ -645,26 +649,51 @@ def rarity_summary(rarities: list[ItemRarity]) -> str:
     return ", ".join(r.value for r in rarities)
 
 
-class RarityPicker(QDialog):
-    def __init__(self, parent: QWidget, selected_rarities: list[ItemRarity]):
-        super().__init__(parent)
-        self.setWindowTitle("Select Rarities")
-        self.checkboxes: dict[ItemRarity, QCheckBox] = {}
+class CheckboxListDialog(QDialog):
+    """Generic multi-select checkbox dialog with an Ok/Cancel/Clear button row.
 
-        selected_rarity_set = set(selected_rarities)
+    Subclasses (or callers) supply the option list, current selection, and labels;
+    this base handles checkbox creation, layout, clearing, and selection retrieval.
+    """
+
+    def __init__(
+        self,
+        parent: QWidget,
+        window_title: str,
+        group_title: str,
+        options: list,
+        selected: list,
+        note_text: str,
+        option_text=str,
+    ):
+        super().__init__(parent)
+        self.setWindowTitle(window_title)
+        self.checkboxes: dict = {}
+
+        selected_set = set(selected)
 
         layout = QVBoxLayout(self)
 
-        group_box = QGroupBox("Rarities")
+        group_box = QGroupBox(group_title)
         group_layout = QVBoxLayout(group_box)
-        for rarity in ItemRarity:
-            checkbox = QCheckBox(rarity.value)
-            checkbox.setChecked(rarity in selected_rarity_set)
-            self.checkboxes[rarity] = checkbox
-            group_layout.addWidget(checkbox)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        for option in options:
+            checkbox = QCheckBox(option_text(option))
+            checkbox.setChecked(option in selected_set)
+            self.checkboxes[option] = checkbox
+            content_layout.addWidget(checkbox)
+
+        scroll_area.setWidget(content_widget)
+        group_layout.addWidget(scroll_area)
         layout.addWidget(group_box)
 
-        note_label = QLabel("If no rarities are selected, all rarities will be kept for this filter.")
+        note_label = QLabel(note_text)
         note_label.setWordWrap(True)
         layout.addWidget(note_label)
 
@@ -679,5 +708,92 @@ class RarityPicker(QDialog):
         for checkbox in self.checkboxes.values():
             checkbox.setChecked(False)
 
+    def get_selected(self) -> list:
+        return [option for option, checkbox in self.checkboxes.items() if checkbox.isChecked()]
+
+
+class RarityPicker(CheckboxListDialog):
+    def __init__(self, parent: QWidget, selected_rarities: list[ItemRarity]):
+        super().__init__(
+            parent,
+            window_title="Select Rarities",
+            group_title="Rarities",
+            options=list(ItemRarity),
+            selected=selected_rarities,
+            note_text="If no rarities are selected, all rarities will be kept for this filter.",
+            option_text=lambda rarity: rarity.value,
+        )
+
     def get_selected_rarities(self) -> list[ItemRarity]:
-        return [rarity for rarity, checkbox in self.checkboxes.items() if checkbox.isChecked()]
+        return self.get_selected()
+
+
+class CreateCharmOrSeal(QDialog):
+    """Dialog for creating a new named charm or seal filter."""
+
+    def __init__(self, item_list: list[str], is_charm: bool = True, parent=None):
+        super().__init__(parent)
+        self.is_charm = is_charm
+        label = "Charm" if is_charm else "Seal"
+        self.setWindowTitle(f"Create {label}")
+        self.setFixedSize(300, 150)
+
+        self.item_list = item_list
+
+        self.main_layout = QVBoxLayout()
+        self.form_layout = QFormLayout()
+
+        self.name_label = QLabel(f"{label} Name:")
+        self.name_input = QLineEdit()
+        self.form_layout.addRow(self.name_label, self.name_input)
+
+        self.buttonLayout = QHBoxLayout()
+        self.okButton = QPushButton("OK")
+        self.okButton.clicked.connect(self.accept)
+        self.cancelButton = QPushButton("Cancel")
+        self.cancelButton.clicked.connect(self.reject)
+        self.buttonLayout.addWidget(self.okButton)
+        self.buttonLayout.addWidget(self.cancelButton)
+
+        self.main_layout.addLayout(self.form_layout)
+        self.main_layout.addLayout(self.buttonLayout)
+        self.setLayout(self.main_layout)
+
+    def accept(self):
+        if not self.name_input.text():
+            QMessageBox.warning(self, "Warning", "Name cannot be empty")
+            return
+        if self.name_input.text() in self.item_list:
+            QMessageBox.warning(self, "Warning", "Name already exists")
+            return
+        super().accept()
+
+    def get_value(self):
+        item_name = self.name_input.text()
+        affix_dict = Dataloader().charm_affix_dict if self.is_charm else Dataloader().seal_affix_dict
+        default_affix_name = next(iter(affix_dict.keys()), "")
+        default_affix = AffixFilterModel(name=default_affix_name, value=None)
+        default_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
+
+        if self.is_charm:
+            config = CharmFilterModel(affix_pool=[default_pool])
+            return DynamicCharmFilterModel(**{item_name: config})
+        config = SealFilterModel(affix_pool=[default_pool])
+        return DynamicSealFilterModel(**{item_name: config})
+
+
+class SetPicker(CheckboxListDialog):
+    """Multi-select dialog for charm set names."""
+
+    def __init__(self, parent: QWidget, selected_sets: list[str]):
+        super().__init__(
+            parent,
+            window_title="Select Sets",
+            group_title="Sets",
+            options=sorted(Dataloader().set_list),
+            selected=selected_sets,
+            note_text="Select which sets this charm filter should match.",
+        )
+
+    def get_selected_sets(self) -> list[str]:
+        return self.get_selected()
