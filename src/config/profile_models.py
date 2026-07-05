@@ -45,8 +45,9 @@ def _validate_set_name(name: str | None, field_name: str) -> str | None:
     return name
 
 
-def _normalize_rarities(data: str | list[str]) -> list[str]:
+def _normalize_rarities(data: str | list[str] | list[ItemRarity]) -> list[str]:
     values = [data] if isinstance(data, str) else data
+    values = [v.value if isinstance(v, ItemRarity) else v for v in values]
     return [v.lower() if isinstance(v, str) else v for v in values]
 
 
@@ -401,7 +402,7 @@ class SigilFilterModel(BaseModel):
 
 class TributeFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
-    name: str = None
+    name: str | None = None
     rarities: list[ItemRarity] = Field(
         default=[], validation_alias=AliasChoices("rarity", "rarities"), serialization_alias="rarity"
     )
