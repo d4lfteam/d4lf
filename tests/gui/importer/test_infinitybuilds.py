@@ -365,6 +365,25 @@ def test_extract_infinitybuilds_paragon_steps_returns_empty_when_no_active_nodes
     assert extract_infinitybuilds_paragon_steps({}, catalog, "barbarian") == []
 
 
+@pytest.mark.parametrize(("rotation", "expected_index"), [(0, 5), (1, 125), (2, 435), (3, 315)])
+def test_extract_infinitybuilds_paragon_steps_keeps_rotation_index_mapping(rotation: int, expected_index: int) -> None:
+    paragon_data = {
+        "slots": [{"boardId": "paragon-board::paragon-barb-10", "rotation": rotation}],
+        "glyphs": {},
+        "activeNodes": ["paragon-board::paragon-barb-10::5"],
+    }
+    catalog = InfinityBuildsParagonCatalog(
+        board_labels={"paragon-board::paragon-barb-10": "Force of Nature"}, glyph_labels={}
+    )
+
+    steps = extract_infinitybuilds_paragon_steps(paragon_data, catalog, "barbarian")
+    board = steps[0][0]
+
+    assert board["Rotation"] in {"0°", "90°", "180°", "270°"}
+    assert board["Nodes"].count(True) == 1
+    assert board["Nodes"][expected_index] is True
+
+
 def test_fetch_infinitybuilds_paragon_catalog_builds_label_maps_from_both_datasets(mocker: MockerFixture) -> None:
     boards_response = mocker.Mock()
     boards_response.json.return_value = {
