@@ -29,7 +29,7 @@ class MockGroupEditor(QWidget):
 
 
 def test_affix_widget_parent_config(qapp, mock_ini_loader):
-    # Test that both SealFilterModel and CharmFilterModel are recognized as parent configs
+    # Test that only SealFilterModel is recognized as a parent seal config
     seal_config = SealFilterModel(affix_pool=[])
     charm_config = CharmFilterModel(affix_pool=[])
 
@@ -37,23 +37,23 @@ def test_affix_widget_parent_config(qapp, mock_ini_loader):
 
     parent_seal = MockGroupEditor(seal_config)
     widget_seal = AffixWidget(affix, parent=parent_seal)
-    assert widget_seal.get_parent_config() is seal_config
+    assert widget_seal.get_parent_seal_config() is seal_config
 
     parent_charm = MockGroupEditor(charm_config)
     widget_charm = AffixWidget(affix, parent=parent_charm)
-    assert widget_charm.get_parent_config() is charm_config
+    assert widget_charm.get_parent_seal_config() is None
 
 
 def test_affix_widget_clears_on_empty_filter(qapp, mock_ini_loader):
-    # Test that if name_combo has no items, update_name clears self.affix.name
-    affix = AffixFilterModel(name="movement_speed", value=None)
-    charm_config = CharmFilterModel(affix_pool=[])
+    # Test that if name_combo has no items, update_name clears self.affix.name (for seals)
+    affix = AffixFilterModel(name="adept_action_damage_reduction_while_moving", value=None)
+    seal_config = SealFilterModel(affix_pool=[])
 
-    parent = MockGroupEditor(charm_config)
+    parent = MockGroupEditor(seal_config)
     widget = AffixWidget(affix, parent=parent)
 
-    # Initially it should match movement_speed
-    assert widget.affix.name == "movement_speed"
+    # Initially it should match adept_action_damage_reduction_while_moving
+    assert widget.affix.name == "adept_action_damage_reduction_while_moving"
 
     # Set filtered_affixes to empty to simulate a set change filtering out all options
     widget.filtered_affixes = {}

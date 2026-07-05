@@ -829,11 +829,11 @@ class AffixWidget(QWidget):
         self.filtered_affixes: dict[str, str] = {}
         self.setup_ui()
 
-    def get_parent_config(self):
+    def get_parent_seal_config(self):
         curr = self
         while curr:
             config = getattr(curr, "config", None)
-            if isinstance(config, (SealFilterModel, CharmFilterModel)):
+            if isinstance(config, SealFilterModel):
                 return config
             curr = curr.parent()
         return None
@@ -843,9 +843,9 @@ class AffixWidget(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         layout.setSpacing(50)
 
-        is_seal_charm = self.get_parent_config() is not None
+        is_seal = self.get_parent_seal_config() is not None
 
-        if is_seal_charm:
+        if is_seal:
             self.create_set_name_combobox()
             layout.addWidget(self.set_combo)
 
@@ -889,10 +889,10 @@ class AffixWidget(QWidget):
         _blocker = QSignalBlocker(self.name_combo)
         self.name_combo.clear()
 
-        is_seal_charm = self.get_parent_config() is not None
+        is_seal = self.get_parent_seal_config() is not None
         affix_dict = self.get_affix_dict()
 
-        if is_seal_charm:
+        if is_seal:
             selected_set = self.set_combo.currentText()
             target_set = None if selected_set == "(No Set Selected)" else selected_set
 
@@ -964,11 +964,11 @@ class AffixWidget(QWidget):
 
     def update_name(self, current_text=None):
         """Update the model only when the editable combobox contains a valid affix."""
-        is_seal_charm = self.get_parent_config() is not None
+        is_seal = self.get_parent_seal_config() is not None
         affix_dict = self.get_affix_dict()
         text = current_text or self.name_combo.currentText()
 
-        if is_seal_charm:
+        if is_seal:
             reverse_dict = {v: k for k, v in self.filtered_affixes.items()}
             self.affix.name = reverse_dict.get(text, "")
         else:
