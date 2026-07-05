@@ -97,7 +97,6 @@ class ProfileDocumentStore:
         except ValidationError as exc:
             raise _profile_validation_error(profile_path, exc) from exc
 
-        LOGGER.info(f"File {profile_path} loaded.")
         return LoadedProfile(path=profile_path, name=profile_name, profile=profile)
 
     def save_existing(

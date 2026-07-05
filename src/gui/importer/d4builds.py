@@ -12,34 +12,28 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
-from src.config.profile_document import ProfileDocumentStore
 from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
     CharmFilterModel,
     ItemFilterModel,
-    ProfileModel,
     SealFilterModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
-    add_mythics_to_filters,
-    add_to_profiles,
     affix_dict_for_item_type,
-    build_default_profile_file_name,
     create_seal_charm_filter,
-    deduplicate_filters,
     fix_offhand_type,
     fix_weapon_type,
     get_class_name,
     match_to_enum,
     retry_importer,
-    sort_profile_filters,
     update_mingreateraffixcount,
 )
+from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_d4builds_paragon_steps
+from src.gui.importer.paragon_export import extract_d4builds_paragon_steps
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.data.rarity import ItemRarity
@@ -107,7 +101,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     )  # super hacky but I didn't find anything else. The page is not fully loaded when the above wait is done
     data = lxml.html.fromstring(driver.page_source)
     class_name, build_header, season_number, variant_name = _extract_build_metadata(data=data)
-    build_name = build_header or class_name
     if not (items := data.xpath(BUILD_OVERVIEW_XPATH)):
         LOGGER.error(msg := "No items found")
         raise D4BuildsError(msg)
@@ -214,45 +207,30 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 ]
         item_filter.min_power = 100
         finished_filters.append(item_filter)
-    # Place all mythics in a single filter
-    affix_filters = deduplicate_filters(finished_filters)
-    add_mythics_to_filters(mythic_names, affix_filters)
-
-    profile = ProfileModel(
-        name="imported profile",
-        Affixes=sort_profile_filters(affix_filters),
-        Charms=sort_profile_filters(deduplicate_filters(charm_filters)),
-        Seals=sort_profile_filters(deduplicate_filters(seal_filters)),
+    ImportPipeline.run(
+        adapter=StaticBuildGuideAdapter(
+            url=url,
+            build=ExtractedBuild(
+                source_name="d4builds",
+                class_name=class_name,
+                build_header=build_header,
+                season_number=season_number,
+                variants=[
+                    Variant(
+                        name=variant_name,
+                        affix_filters=finished_filters,
+                        charm_filters=charm_filters,
+                        seal_filters=seal_filters,
+                        aspect_upgrade_filters=aspect_upgrade_filters,
+                        mythic_names=mythic_names,
+                        paragon_steps=extract_d4builds_paragon_steps(driver, class_name=class_name),
+                        paragon_build_name=build_header or class_name,
+                    )
+                ],
+            ),
+        ),
+        config=config,
     )
-    if config.import_aspect_upgrades and aspect_upgrade_filters:
-        profile.aspect_upgrades = aspect_upgrade_filters
-
-    file_name = config.custom_file_name or build_default_profile_file_name(
-        source_name="d4builds",
-        class_name=class_name,
-        season_number=season_number,
-        build_header=build_header,
-        variant_name=variant_name,
-        filename_parts=config.filename_parts,
-    )
-
-    # Optionally embed Paragon data into the profile model before saving
-    if config.export_paragon:
-        steps = extract_d4builds_paragon_steps(driver, class_name=class_name)
-        if steps:
-            profile.paragon = build_paragon_profile_payload(
-                build_name=build_name, source_url=url, paragon_boards_list=steps
-            )
-        else:
-            LOGGER.warning("Paragon export enabled, but no paragon data was found on this D4Builds page.")
-
-    corrected_file_name = (
-        ProfileDocumentStore.default().save_new(file_name=file_name, profile=profile, source=url).file_name
-    )
-    if config.add_to_profiles:
-        add_to_profiles(corrected_file_name)
-
-    LOGGER.info("Finished")
 
 
 def _corrections(input_str: str) -> str:
