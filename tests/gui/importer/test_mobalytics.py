@@ -231,7 +231,7 @@ def test_import_mobalytics_imports_set_charm_and_deduplicates_identical_rings(
 
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = fake_save_new
-    mocker.patch("src.gui.importer.mobalytics.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
 
     import_mobalytics(
         config=ImportConfig(

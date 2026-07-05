@@ -40,6 +40,15 @@ FILENAME_PART_LABELS = {
     FilenamePart.VARIANT: "Variant",
 }
 GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP = "Select at least one filename part or enter a custom file name."
+IMPORTER_WINDOW_LOGGERS = (
+    "src.gui.importer.mobalytics",
+    "src.gui.importer.maxroll",
+    "src.gui.importer.d4builds",
+    "src.gui.importer.infinitybuilds",
+    "src.gui.importer.gui_common",
+    "src.gui.importer.import_pipeline",
+    "src.config.profile_document",
+)
 
 
 class ImporterWindow(QMainWindow):
@@ -191,13 +200,7 @@ class ImporterWindow(QMainWindow):
         self.log_handler = _GuiLogHandler(self.log_output)
 
         # Attach directly to each importer logger AND gui_common.py
-        for name in (
-            "src.gui.importer.mobalytics",
-            "src.gui.importer.maxroll",
-            "src.gui.importer.d4builds",
-            "src.gui.importer.infinitybuilds",
-            "src.gui.importer.gui_common",
-        ):
+        for name in IMPORTER_WINDOW_LOGGERS:
             logger = logging.getLogger(name)
             logger.setLevel(logging.DEBUG)
             logger.addHandler(self.log_handler)
@@ -325,11 +328,8 @@ class ImporterWindow(QMainWindow):
         self.settings.setValue("maximized", "true" if self.isMaximized() else "false")
 
         # Cleanup log handler
-        logging.getLogger("src.gui.importer.mobalytics").removeHandler(self.log_handler)
-        logging.getLogger("src.gui.importer.maxroll").removeHandler(self.log_handler)
-        logging.getLogger("src.gui.importer.d4builds").removeHandler(self.log_handler)
-        logging.getLogger("src.gui.importer.infinitybuilds").removeHandler(self.log_handler)
-        logging.getLogger("src.gui.importer.gui_common").removeHandler(self.log_handler)
+        for name in IMPORTER_WINDOW_LOGGERS:
+            logging.getLogger(name).removeHandler(self.log_handler)
         event.accept()
 
 

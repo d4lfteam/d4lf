@@ -11,34 +11,27 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
-from src.config.profile_document import ProfileDocumentStore
 from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
     CharmFilterModel,
     ItemFilterModel,
-    ProfileModel,
     SealFilterModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
-    add_mythics_to_filters,
-    add_to_profiles,
     affix_dict_for_item_type,
-    build_default_profile_file_name,
     create_seal_charm_filter,
-    deduplicate_filters,
     get_with_retry,
     match_to_enum,
     retry_importer,
-    sort_profile_filters,
     update_mingreateraffixcount,
 )
+from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.paragon_export import (
     InfinityBuildsParagonCatalog,
-    build_paragon_profile_payload,
     extract_infinitybuilds_paragon_steps,
     fetch_infinitybuilds_paragon_catalog,
 )
@@ -117,43 +110,32 @@ def import_infinitybuilds(config: ImportConfig, driver: ChromiumDriver = None):
                 "Could not fetch InfinityBuilds paragon catalog data, skipping paragon export.", exc_info=True
             )
 
-    saved_file_names = []
-    for index, variant in enumerate(variants):
-        variant_name = variant.get("name", "")
-        profile = _build_profile_for_variant(gear=variant["gear"], resolved=resolved, config=config)
-
+    extracted_variants = []
+    for variant in variants:
+        extracted_variant = _build_variant_for_gear(gear=variant["gear"], resolved=resolved, config=config)
+        extracted_variant.name = variant.get("name", "")
         if paragon_catalog is not None:
-            steps = extract_infinitybuilds_paragon_steps(variant.get("paragon") or {}, paragon_catalog, class_name)
-            if steps:
-                profile.paragon = build_paragon_profile_payload(
-                    build_name=build_header or variant_name, source_url=url, paragon_boards_list=steps
-                )
-            else:
-                LOGGER.warning(f"Paragon export enabled, but no paragon data was found for variant {variant_name!r}.")
+            extracted_variant.paragon_steps = extract_infinitybuilds_paragon_steps(
+                variant.get("paragon") or {}, paragon_catalog, class_name
+            )
+        extracted_variant.paragon_build_name = build_header or extracted_variant.name
+        extracted_variants.append(extracted_variant)
 
-        file_name = config.custom_file_name or build_default_profile_file_name(
-            source_name="infinitybuilds",
-            class_name=class_name,
-            build_header=build_header,
-            variant_name=variant_name,
-            filename_parts=config.filename_parts,
-        )
-        if config.custom_file_name and len(variants) > 1:
-            # A custom name can't distinguish variants on its own, so suffix it to avoid each variant's profile overwriting the previous one.
-            file_name = f"{file_name}_{index + 1}"
-
-        saved_file_names.append(
-            ProfileDocumentStore.default().save_new(file_name=file_name, profile=profile, source=url).file_name
-        )
-
-    if config.add_to_profiles:
-        for saved_file_name in saved_file_names:
-            add_to_profiles(saved_file_name)
-
-    LOGGER.info("Finished")
+    ImportPipeline.run(
+        adapter=StaticBuildGuideAdapter(
+            url=url,
+            build=ExtractedBuild(
+                source_name="infinitybuilds",
+                class_name=class_name,
+                build_header=build_header,
+                variants=extracted_variants,
+            ),
+        ),
+        config=config,
+    )
 
 
-def _build_profile_for_variant(gear: list[dict], resolved: _ResolvedGearData, config: ImportConfig) -> ProfileModel:
+def _build_variant_for_gear(gear: list[dict], resolved: _ResolvedGearData, config: ImportConfig) -> Variant:
     finished_filters = []
     charm_filters = []
     seal_filters = []
@@ -229,17 +211,13 @@ def _build_profile_for_variant(gear: list[dict], resolved: _ResolvedGearData, co
         item_filter.min_power = 100
         finished_filters.append(item_filter)
 
-    affix_filters = deduplicate_filters(finished_filters)
-    add_mythics_to_filters(mythic_names, affix_filters)
-    profile = ProfileModel(
-        name="imported profile",
-        Affixes=sort_profile_filters(affix_filters),
-        Charms=sort_profile_filters(deduplicate_filters(charm_filters)),
-        Seals=sort_profile_filters(deduplicate_filters(seal_filters)),
+    return Variant(
+        affix_filters=finished_filters,
+        charm_filters=charm_filters,
+        seal_filters=seal_filters,
+        aspect_upgrade_filters=aspect_upgrade_filters,
+        mythic_names=mythic_names,
     )
-    if config.import_aspect_upgrades and aspect_upgrade_filters:
-        profile.aspect_upgrades = aspect_upgrade_filters
-    return profile
 
 
 def _extract_build_title(raw_html_data: lxml.html.HtmlElement) -> str:

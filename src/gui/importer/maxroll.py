@@ -5,34 +5,28 @@ import re
 import lxml.html
 
 import src.logger
-from src.config.profile_document import ProfileDocumentStore
 from src.config.profile_models import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
     CharmFilterModel,
     ItemFilterModel,
-    ProfileModel,
     SealFilterModel,
 )
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
-    add_mythics_to_filters,
-    add_to_profiles,
     affix_dict_for_item_type,
-    build_default_profile_file_name,
     create_seal_charm_filter,
-    deduplicate_filters,
     fix_offhand_type,
     fix_weapon_type,
     get_with_retry,
     match_to_enum,
     retry_importer,
-    sort_profile_filters,
     update_mingreateraffixcount,
 )
+from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_maxroll_paragon_steps
+from src.gui.importer.paragon_export import extract_maxroll_paragon_steps
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
@@ -205,54 +199,34 @@ def import_maxroll(config: ImportConfig):
             update_mingreateraffixcount(item_filter, config.require_greater_affixes)
 
         item_filter.min_power = 100
-        filter_name = item_filter.item_type[0].name
-        i = 2
-        while any(filter_name == next(iter(x)) for x in finished_filters):
-            filter_name = f"{item_filter.item_type[0].name}{i}"
-            i += 1
+        # Match the other guide importers: let the shared pipeline deduplicate identical affix filters
+        # instead of preserving duplicates via incrementing name suffixes.
+        finished_filters.append(item_filter)
 
-        finished_filters.append({filter_name: item_filter})
-
-    # Place all mythics in a single filter
-    add_mythics_to_filters(mythic_names, finished_filters)
-    profile = ProfileModel(
-        name="imported profile",
-        Affixes=sort_profile_filters(finished_filters),
-        Charms=sort_profile_filters(deduplicate_filters(charm_filters)),
-        Seals=sort_profile_filters(deduplicate_filters(seal_filters)),
+    ImportPipeline.run(
+        adapter=StaticBuildGuideAdapter(
+            url=url,
+            build=ExtractedBuild(
+                source_name="maxroll",
+                class_name=all_data["class"],
+                build_header=build_header,
+                season_number=guide_season,
+                variants=[
+                    Variant(
+                        name=variant_name,
+                        affix_filters=finished_filters,
+                        charm_filters=charm_filters,
+                        seal_filters=seal_filters,
+                        aspect_upgrade_filters=aspect_upgrade_filters,
+                        mythic_names=mythic_names,
+                        paragon_steps=extract_maxroll_paragon_steps(active_profile, mapping_data),
+                        paragon_build_name=build_name,
+                    )
+                ],
+            ),
+        ),
+        config=config,
     )
-    if config.import_aspect_upgrades and aspect_upgrade_filters:
-        profile.aspect_upgrades = aspect_upgrade_filters
-
-    file_name = config.custom_file_name
-    if not file_name:
-        file_name = build_default_profile_file_name(
-            source_name="maxroll",
-            class_name=all_data["class"],
-            season_number=guide_season,
-            build_header=build_header,
-            variant_name=variant_name,
-            filename_parts=config.filename_parts,
-        )
-
-    # Optionally embed Paragon data into the profile model before saving
-    if config.export_paragon:
-        steps = extract_maxroll_paragon_steps(active_profile, mapping_data)
-        if steps:
-            profile.paragon = build_paragon_profile_payload(
-                build_name=build_name, source_url=url, paragon_boards_list=steps
-            )
-        else:
-            LOGGER.warning("Paragon export enabled, but no paragon steps were found in this Maxroll profile.")
-
-    corrected_file_name = (
-        ProfileDocumentStore.default().save_new(file_name=file_name, profile=profile, source=url).file_name
-    )
-
-    if config.add_to_profiles:
-        add_to_profiles(corrected_file_name)
-
-    LOGGER.info("Finished")
 
 
 def _attribute_description_corrections(input_str: str) -> str:
