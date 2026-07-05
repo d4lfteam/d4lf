@@ -1,4 +1,5 @@
 import sys
+import types
 import typing
 
 import pytest
@@ -8,6 +9,9 @@ from src.config.settings_models import BrowserType
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
+
+# Provide a cross-platform stub for the optional `mouse` dependency imported by GUI modules.
+sys.modules.setdefault("mouse", types.SimpleNamespace())
 
 
 # Skip Windows-only test modules on non-Windows platforms
