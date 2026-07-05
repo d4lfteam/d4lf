@@ -550,6 +550,62 @@ items = [
             set=None,
         ),
     ),
+    # Legendary seal equipped via Armory Loadout (banner line inserted right after Item Power)
+    (
+        [
+            "KEEN HORADRIC SEAL OF GLORY",
+            "Legendary Horadric Seal",
+            "850 Item Power",
+            "Armory Loadout",
+            "Unlocks 6 Charm Slots",
+            "+5.4% Attack Speed [5.0 - 8.0]%",
+            "Legacy of the Sightless:. +2 [2 - 3] Ultimate Skills",
+            "+1 Charm Slot",
+            "Requires Level 50. Lord of Hatred Item",
+            "Sell Value: 13,383,510 Gold",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(
+                    max_value=8.0,
+                    min_value=5.0,
+                    name="attack_speed",
+                    text="+5.4% Attack Speed [5.0 - 8.0]%",
+                    type=AffixType.normal,
+                    value=5.4,
+                ),
+                Affix(
+                    max_value=3.0,
+                    min_value=2.0,
+                    name="legacy_of_the_sightless_ultimate_skills",
+                    text="Legacy of the Sightless:. +2 [2 - 3] Ultimate Skills",
+                    type=AffixType.normal,
+                    value=2.0,
+                ),
+                Affix(
+                    max_value=None,
+                    min_value=None,
+                    name="charm_slot",
+                    text="+1 Charm Slot",
+                    type=AffixType.normal,
+                    value=1.0,
+                ),
+            ],
+            aspect=None,
+            codex_upgrade=False,
+            cosmetic_upgrade=False,
+            inherent=[],
+            is_in_shop=False,
+            item_type=ItemType.HoradricSeal,
+            name="keen_horadric_seal_of_glory",
+            original_name="KEEN HORADRIC SEAL OF GLORY",
+            power=850,
+            rarity=ItemRarity.Legendary,
+            seasonal_attribute=None,
+            set=None,
+        ),
+    ),
     # Magic charm
     (
         [
