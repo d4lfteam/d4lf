@@ -1,7 +1,5 @@
 # ![logo](assets/logo.png)
 
-## Note: D4LF will be updated for Season 13. However, there were a lot of itemization updates and it may take a few weeks for the new features to be complete. You can monitor progress and make suggestions in discord: https://discord.com/channels/1168807680295571456/1499898416572928115
-
 Filter items and sigils in your inventory based on affixes, aspects and thresholds of their values. For questions,
 feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6T) or use github issues.
 
@@ -238,7 +236,8 @@ has a name and can filter for any combination of the following:
 
 ```yaml
 Affixes:
-  # Search for chest armor and pants that are at least item level 725 and have at least 3 affixes of the affixPool
+  # Search for chest armor and pants that are at least item level 725
+  # and have at least 3 affixes of the affixPool
   - NiceArmor:
       itemType: [ chest armor, pants ]
       minPower: 725
@@ -251,10 +250,12 @@ Affixes:
             - { name: maximum_life, value: 700 }
           minCount: 3
 
-  # Search for chest armor that is at least item level 925 and have at least 3 affixes of the affixPool. At least 2 of the matched affixes must be greater affixes
+  # Search for chest armor that is at least item level 900 and have at least 3 affixes of the affixPool.
+  # The item must have 2 greater affixes, but note they do not need to be from the affixPool.
+  # See Greater Affix Filtering section for more information on filtering GAs
   - NiceArmor:
       itemType: chest armor
-      minPower: 925
+      minPower: 900
       affixPool:
         - count:
             - { name: dexterity }

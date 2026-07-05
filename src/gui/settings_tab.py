@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-from pydantic import BaseModel, ValidationError
-from pydantic_core import PydanticUndefined
+    from pydantic import BaseModel
+
 from PyQt6.QtCore import QCoreApplication, QSignalBlocker, Qt, QTimer
 from PyQt6.QtGui import QKeySequence
 from PyQt6.QtWidgets import (
@@ -36,7 +36,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.loader import IniConfigLoader
 from src.config.settings_models import (
     CATEGORY_KEY,
     CATEGORY_ORDER,
@@ -46,45 +45,9 @@ from src.config.settings_models import (
     SettingsCategory,
 )
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
+from src.gui.settings_store import SettingsStore
 
 CONFIG_TABNAME = "config"
-
-
-def _validate_and_save_changes(
-    model,
-    header,
-    key,
-    value,
-    method_to_reset_value: Callable | None = None,
-    post_save_callback: Callable[[], None] | None = None,
-):
-    current_value = getattr(model, key)
-    try:
-        validated_values = model.model_dump(mode="python")
-        validated_values[key] = value
-        type(model)(**validated_values)
-        IniConfigLoader().save_value(header, key, value)
-    except ValidationError as e:
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Icon.Critical)
-
-        message = f"There was an error setting {key} to {value}. See error below.\n\n"
-
-        # Only reset the widget if the field is NOT an enum
-        if method_to_reset_value and key != "theme":
-            message = message + "Your value has been reset to its previous version.\n\n"
-            method_to_reset_value(str(current_value))
-
-        message = message + str(e)
-        msg.setText(message)
-        msg.setWindowTitle("Error validating value")
-        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-        msg.exec()
-        return False
-
-    if post_save_callback and str(current_value) != str(value):
-        post_save_callback()
-    return True
 
 
 class ConfigTab(QWidget):
@@ -93,6 +56,7 @@ class ConfigTab(QWidget):
         super().__init__()
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.theme_changed_callback = theme_changed_callback
+        self._settings_store = SettingsStore()
         self.model_to_parameter_value_map = {}
         self._all_rows = []
         self._group_boxes = {}  # Store group boxes to move them during search
@@ -156,8 +120,7 @@ class ConfigTab(QWidget):
         self._initializing = False
 
     def _build_sections(self):
-        loader = IniConfigLoader()
-        models = [(loader.general, "general"), (loader.char, "char"), (loader.advanced_options, "advanced_options")]
+        models = self._settings_store.models_with_sections()
 
         # 1. Bucket settings by category using model metadata
         categories_map = {}
@@ -328,6 +291,38 @@ class ConfigTab(QWidget):
         if app := QCoreApplication.instance():
             app.quit()
 
+    def _save_setting_value(
+        self,
+        model,
+        section_header,
+        key,
+        value,
+        method_to_reset_value: Callable | None = None,
+        post_save_callback: Callable[[], None] | None = None,
+    ) -> bool:
+        result = self._settings_store.set_value(model, section_header, key, value)
+        if not result.success:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Icon.Critical)
+
+            message = f"There was an error setting {key} to {value}. See error below.\n\n"
+
+            # Only reset the widget if the field is NOT an enum
+            if method_to_reset_value and key != "theme":
+                message = message + "Your value has been reset to its previous version.\n\n"
+                method_to_reset_value(str(result.previous_value))
+
+            message = message + str(result.validation_error)
+            msg.setText(message)
+            msg.setWindowTitle("Error validating value")
+            msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+            msg.exec()
+            return False
+
+        if post_save_callback and str(result.previous_value) != str(value):
+            post_save_callback()
+        return True
+
     def _generate_params_section(self, model: BaseModel, section_readable_header: str, section_config_header: str):
         group_box = QGroupBox(section_readable_header.replace("&", "&&"))
         grid = QGridLayout(group_box)
@@ -345,12 +340,12 @@ class ConfigTab(QWidget):
     ):
         if config_key == "check_chest_tabs":
             parameter_value_widget = QChestTabWidget(
-                model, section_config_header, config_key, config_value, IniConfigLoader().general.max_stash_tabs
+                model, section_config_header, config_key, config_value, self._save_setting_value
             )
         elif config_key == "max_stash_tabs":
 
             def on_tabs_changed(val):
-                if _validate_and_save_changes(model, section_config_header, config_key, val):
+                if self._save_setting_value(model, section_config_header, config_key, val):
                     # Refresh the stash tabs widget to show the correct number of checkboxes
                     tabs_widget = self.model_to_parameter_value_map.get(f"{section_config_header}.check_chest_tabs")
                     if isinstance(tabs_widget, QChestTabWidget):
@@ -365,17 +360,19 @@ class ConfigTab(QWidget):
             }
 
             def on_move_changed(val_str):
-                _validate_and_save_changes(model, section_config_header, config_key, val_str)
+                self._save_setting_value(model, section_config_header, config_key, val_str)
 
             parameter_value_widget = MultiSegmentedControl(items_map, config_value, on_move_changed)
         elif is_hotkey:
-            parameter_value_widget = QHotkeyWidget(model, section_config_header, config_key, str(config_value))
+            parameter_value_widget = QHotkeyWidget(
+                model, section_config_header, config_key, str(config_value), self._save_setting_value
+            )
         elif isinstance(config_value, enum.StrEnum):
             enum_type = type(config_value)
             options = list(enum_type)
 
             def on_changed(new_text):
-                _validate_and_save_changes(
+                self._save_setting_value(
                     model,
                     section_config_header,
                     config_key,
@@ -404,7 +401,7 @@ class ConfigTab(QWidget):
             parameter_value_widget.setChecked(config_value)
 
             def on_bool_changed():
-                _validate_and_save_changes(
+                self._save_setting_value(
                     model,
                     section_config_header,
                     config_key,
@@ -422,14 +419,14 @@ class ConfigTab(QWidget):
             parameter_value_widget.setRange(0, 10000)
             parameter_value_widget.setValue(config_value)
             parameter_value_widget.valueChanged.connect(
-                lambda: _validate_and_save_changes(
+                lambda: self._save_setting_value(
                     model, section_config_header, config_key, parameter_value_widget.value()
                 )
             )
         else:
             parameter_value_widget = QLineEdit(str(config_value))
             parameter_value_widget.editingFinished.connect(
-                lambda: _validate_and_save_changes(
+                lambda: self._save_setting_value(
                     model,
                     section_config_header,
                     config_key,
@@ -441,9 +438,9 @@ class ConfigTab(QWidget):
         return parameter_value_widget
 
     def show_tab(self):
-        self._reset_values_for_model(IniConfigLoader().general, "general")
-        self._reset_values_for_model(IniConfigLoader().char, "char")
-        self._reset_values_for_model(IniConfigLoader().advanced_options, "advanced_options")
+        self._reset_values_for_model(self._settings_store.model_for_section("general"), "general")
+        self._reset_values_for_model(self._settings_store.model_for_section("char"), "char")
+        self._reset_values_for_model(self._settings_store.model_for_section("advanced_options"), "advanced_options")
 
     def reset_button_click(self):
         """Handle the reset button by offering tab-specific or global reset."""
@@ -479,7 +476,7 @@ class ConfigTab(QWidget):
             if msg.exec() != QMessageBox.StandardButton.Ok:
                 return
 
-        IniConfigLoader().load(clear=True)
+        self._settings_store.reset_all()
         self.show_tab()
 
     def _reset_current_category(self, category_name: str):
@@ -488,23 +485,25 @@ class ConfigTab(QWidget):
         if not target_gb:
             return
 
-        loader = IniConfigLoader()
+        widget_to_key_path = {widget: key_path for key_path, widget in self.model_to_parameter_value_map.items()}
+        category_settings = []
         for _, _, _, control, gb in self._all_rows:
             if gb != target_gb:
                 continue
 
-            # Find the internal key for this control
-            for key_path, widget in self.model_to_parameter_value_map.items():
-                if widget == control:
-                    section, key = key_path.split(".")
-                    model = getattr(loader, section)
+            key_path = widget_to_key_path.get(control)
+            if key_path is None:
+                continue
 
-                    field = type(model).model_fields[key]
-                    default_val = field.default if field.default is not PydanticUndefined else field.default_factory()
+            section, key = key_path.split(".")
+            category_settings.append((self._settings_store.model_for_section(section), section, key))
 
-                    loader.save_value(section, key, default_val)
-                    self._reset_values_for_model(model, section)
-                    break
+        if not category_settings:
+            return
+
+        changes = self._settings_store.reset_category(category_settings)
+        for section in {section for section, _, _ in changes}:
+            self._reset_values_for_model(self._settings_store.model_for_section(section), section)
 
     def _reset_values_for_model(self, model, section_config_header):
         for parameter in model:
@@ -629,11 +628,12 @@ class IgnoreScrollWheelComboBox(QComboBox):
 
 
 class QChestTabWidget(QWidget):
-    def __init__(self, model, section_header, config_key, chest_tab_config: list[int], max_chest_tabs):
+    def __init__(self, model, section_header, config_key, chest_tab_config: list[int], save_setting_value):
         super().__init__()
         self.model = model
         self.section_header = section_header
         self.config_key = config_key
+        self._save_setting_value = save_setting_value
         self.all_checkboxes: list[CheckmarkCheckBox] = []
         self.layout = QHBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -660,12 +660,13 @@ class QChestTabWidget(QWidget):
 
     def _save_changes_on_box_change(self, model, section_header, config_key):
         active_tabs = [check_box.text() for check_box in self.all_checkboxes if check_box.isChecked()]
-        _validate_and_save_changes(model, section_header, config_key, ",".join(active_tabs), self.reset_values)
+        self._save_setting_value(model, section_header, config_key, ",".join(active_tabs), self.reset_values)
 
 
 class QHotkeyWidget(QWidget):
-    def __init__(self, model, section_header, config_key, current_value):
+    def __init__(self, model, section_header, config_key, current_value, save_setting_value):
         super().__init__()
+        self._save_setting_value = save_setting_value
 
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -687,7 +688,7 @@ class QHotkeyWidget(QWidget):
         hotkey_dialog = HotkeyListenerDialog(self, current_value)
         if hotkey_dialog.exec():
             new_hotkey = hotkey_dialog.get_hotkey()
-            if new_hotkey and _validate_and_save_changes(model, section_header, config_key, new_hotkey):
+            if new_hotkey and self._save_setting_value(model, section_header, config_key, new_hotkey):
                 self.open_picker_button.setText(new_hotkey)
 
 
