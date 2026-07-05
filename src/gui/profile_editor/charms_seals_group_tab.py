@@ -14,8 +14,6 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QSpinBox,
-    QTabWidget,
-    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -32,13 +30,13 @@ from src.gui.models.collapsible_widget import Container
 from src.gui.models.dialog import (
     CreateCharmOrSeal,
     DeleteAffixPool,
-    DeleteItem,
     MinGreaterDialog,
     MinPercentDialog,
     RarityPicker,
     SetPicker,
     rarity_summary,
 )
+from src.gui.models.tab_group_widget import TabGroupWidget
 from src.gui.profile_editor.affixes_tab import UNIQUE_ASPECTS_TITLE, AffixPoolWidget, AffixWidget, UniqueAspectWidget
 
 CHARMS_TABNAME = "Charms"
@@ -59,9 +57,10 @@ class BaseGroupEditor(QWidget):
         self.is_charm = is_charm
         self.type_prefix = "charm" if is_charm else "seal"
         self.settings = QSettings("d4lf", "profile_editor")
-        for item_name, config in dynamic_filter.root.items():
-            self.item_name = item_name
-            self.config = config
+        if len(dynamic_filter.root) != 1:
+            msg = "BaseGroupEditor requires a single-key dynamic filter model."
+            raise ValueError(msg)
+        self.item_name, self.config = next(iter(dynamic_filter.root.items()))
 
         self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
 
@@ -401,9 +400,9 @@ class CharmGroupEditor(BaseGroupEditor):
         if self.config.unique_aspect:
             QMessageBox.warning(self, "Warning", "Cannot select sets when unique aspects are defined.")
             return
-        dialog = SetPicker(self.config.set, parent=self)
+        dialog = SetPicker(parent=self, selected_sets=self.config.set)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.config.set = dialog.get_value()
+            self.config.set = dialog.get_selected_sets()
             self.refresh_set_summary()
 
     def refresh_set_summary(self):
@@ -418,113 +417,66 @@ class SealGroupEditor(BaseGroupEditor):
         self.setup_ui()
 
 
-class BaseCharmsSealsTab(QWidget):
-    """Shared base class for Charms and Seals tabs to manage list of single-key models."""
+class BaseCharmsSealsTab(TabGroupWidget):
+    """Shared base class for Charms and Seals tabs to manage a list of single-key models."""
 
     def __init__(self, models: list, is_charm: bool, parent=None):
-        super().__init__(parent)
-        self.models = models
-        if is_charm:
-            self.charms_model = models
-        else:
-            self.seals_model = models
         self.is_charm = is_charm
         self.type_prefix = "charm" if is_charm else "seal"
         self.editor_class = CharmGroupEditor if is_charm else SealGroupEditor
-        self.loaded = False
+        super().__init__(models, parent)
 
-    def load(self):
-        if not self.loaded:
-            self.setup_ui()
-            self.loaded = True
-
-    def setup_ui(self):
-        """Populate the grid layout with existing groups."""
-        self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 20, 0, 20)
-
-        self.tab_widget = QTabWidget(self)
-        self.tab_widget.setTabsClosable(True)
-        self.tab_widget.tabCloseRequested.connect(self.close_tab)
-
-        self.toolbar = QToolBar(f"{self.type_prefix.capitalize()}sToolBar", self)
-        self.toolbar.setMinimumHeight(50)
-        self.toolbar.setContentsMargins(10, 10, 10, 10)
-        self.toolbar.setMovable(False)
-
-        self.item_names = []
+    def prepare_models(self):
+        """Split any multi-key dynamic models into single-key models, warning on duplicate names."""
+        model_cls = DynamicCharmFilterModel if self.is_charm else DynamicSealFilterModel
+        item_names: list[str] = []
         normalized_models = []
         for group in self.models:
             for item_name, config in group.root.items():
-                if item_name in self.item_names:
+                if item_name in item_names:
                     QMessageBox.warning(
                         self,
                         "Warning",
                         f"{self.type_prefix.capitalize()} name already exists, please rename {item_name} in the profile file.",
                     )
                     continue
-                model_cls = DynamicCharmFilterModel if self.is_charm else DynamicSealFilterModel
-                single_model = model_cls(**{item_name: config})
-                normalized_models.append(single_model)
-                group_editor = self.editor_class(single_model)
-                self.item_names.append(item_name)
-                self.tab_widget.addTab(group_editor, item_name)
+                item_names.append(item_name)
+                normalized_models.append(model_cls(**{item_name: config}))
         self.models.clear()
         self.models.extend(normalized_models)
 
-        add_item_button = QPushButton()
-        add_item_button.setText(f"Create {self.type_prefix.capitalize()}")
-        add_item_button.clicked.connect(self.add_item_type)
+    def toolbar_name(self) -> str:
+        return f"{self.type_prefix.capitalize()}sToolBar"
 
-        remove_item_button = QPushButton()
-        remove_item_button.setText(f"Remove {self.type_prefix.capitalize()}")
-        remove_item_button.clicked.connect(self.remove_item_type)
+    def create_editor(self, model):
+        return self.editor_class(model)
+
+    def tab_label(self, model, index: int) -> str:
+        return next(iter(model.root))
+
+    def create_model(self):
+        existing_names = [self.tab_widget.tabText(i) for i in range(self.tab_widget.count())]
+        dialog = CreateCharmOrSeal(existing_names, is_charm=self.is_charm, parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            return dialog.get_value()
+        return None
+
+    def add_button_text(self) -> str:
+        return f"Create {self.type_prefix.capitalize()}"
+
+    def remove_button_text(self) -> str:
+        return f"Remove {self.type_prefix.capitalize()}"
+
+    def toolbar_buttons(self) -> list[QPushButton]:
+        buttons = super().toolbar_buttons()
 
         set_all_min_greater_affix_button = QPushButton("Set All Min GAs (Excludes Auto Synced Items)")
-        convert_all_to_min_percent_button = QPushButton("Convert All To Min %")
         set_all_min_greater_affix_button.clicked.connect(self.set_all_min_greater_affix)
+        convert_all_to_min_percent_button = QPushButton("Convert All To Min %")
         convert_all_to_min_percent_button.clicked.connect(self.convert_all_to_min_percent_of_affix)
 
-        self.toolbar.addWidget(add_item_button)
-        self.toolbar.addWidget(remove_item_button)
-        self.toolbar.addWidget(set_all_min_greater_affix_button)
-        self.toolbar.addWidget(convert_all_to_min_percent_button)
-
-        self.main_layout.addWidget(self.toolbar)
-        self.main_layout.addWidget(self.tab_widget)
-
-    def add_item_type(self):
-        dialog = CreateCharmOrSeal(self.item_names, is_charm=self.is_charm, parent=self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            item = dialog.get_value()
-            for item_name in item.root:
-                group = self.editor_class(item)
-                self.item_names.append(item_name)
-                self.tab_widget.addTab(group, item_name)
-                self.models.append(item)
-            return
-
-    def close_tab(self, index):
-        item_name = self.item_names.pop(index)
-        self.tab_widget.removeTab(index)
-        for i, group in enumerate(self.models):
-            if item_name in group.root:
-                self.models.pop(i)
-                break
-
-    def remove_item_type(self):
-        dialog = DeleteItem(self.item_names, self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            item_names_to_delete = dialog.get_value()
-            for item_name in item_names_to_delete:
-                index = self.item_names.index(item_name)
-                self.item_names.remove(item_name)
-                self.tab_widget.removeTab(index)
-                for i, group in enumerate(self.models):
-                    if item_name in group.root:
-                        self.models.pop(i)
-                        break
-            return
+        buttons.extend([set_all_min_greater_affix_button, convert_all_to_min_percent_button])
+        return buttons
 
     def set_all_min_greater_affix(self):
         dialog = MinGreaterDialog(self)

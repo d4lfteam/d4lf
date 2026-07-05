@@ -649,26 +649,51 @@ def rarity_summary(rarities: list[ItemRarity]) -> str:
     return ", ".join(r.value for r in rarities)
 
 
-class RarityPicker(QDialog):
-    def __init__(self, parent: QWidget, selected_rarities: list[ItemRarity]):
-        super().__init__(parent)
-        self.setWindowTitle("Select Rarities")
-        self.checkboxes: dict[ItemRarity, QCheckBox] = {}
+class CheckboxListDialog(QDialog):
+    """Generic multi-select checkbox dialog with an Ok/Cancel/Clear button row.
 
-        selected_rarity_set = set(selected_rarities)
+    Subclasses (or callers) supply the option list, current selection, and labels;
+    this base handles checkbox creation, layout, clearing, and selection retrieval.
+    """
+
+    def __init__(
+        self,
+        parent: QWidget,
+        window_title: str,
+        group_title: str,
+        options: list,
+        selected: list,
+        note_text: str,
+        option_text=str,
+    ):
+        super().__init__(parent)
+        self.setWindowTitle(window_title)
+        self.checkboxes: dict = {}
+
+        selected_set = set(selected)
 
         layout = QVBoxLayout(self)
 
-        group_box = QGroupBox("Rarities")
+        group_box = QGroupBox(group_title)
         group_layout = QVBoxLayout(group_box)
-        for rarity in ItemRarity:
-            checkbox = QCheckBox(rarity.value)
-            checkbox.setChecked(rarity in selected_rarity_set)
-            self.checkboxes[rarity] = checkbox
-            group_layout.addWidget(checkbox)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        for option in options:
+            checkbox = QCheckBox(option_text(option))
+            checkbox.setChecked(option in selected_set)
+            self.checkboxes[option] = checkbox
+            content_layout.addWidget(checkbox)
+
+        scroll_area.setWidget(content_widget)
+        group_layout.addWidget(scroll_area)
         layout.addWidget(group_box)
 
-        note_label = QLabel("If no rarities are selected, all rarities will be kept for this filter.")
+        note_label = QLabel(note_text)
         note_label.setWordWrap(True)
         layout.addWidget(note_label)
 
@@ -683,8 +708,24 @@ class RarityPicker(QDialog):
         for checkbox in self.checkboxes.values():
             checkbox.setChecked(False)
 
+    def get_selected(self) -> list:
+        return [option for option, checkbox in self.checkboxes.items() if checkbox.isChecked()]
+
+
+class RarityPicker(CheckboxListDialog):
+    def __init__(self, parent: QWidget, selected_rarities: list[ItemRarity]):
+        super().__init__(
+            parent,
+            window_title="Select Rarities",
+            group_title="Rarities",
+            options=list(ItemRarity),
+            selected=selected_rarities,
+            note_text="If no rarities are selected, all rarities will be kept for this filter.",
+            option_text=lambda rarity: rarity.value,
+        )
+
     def get_selected_rarities(self) -> list[ItemRarity]:
-        return [rarity for rarity, checkbox in self.checkboxes.items() if checkbox.isChecked()]
+        return self.get_selected()
 
 
 class CreateCharmOrSeal(QDialog):
@@ -741,51 +782,18 @@ class CreateCharmOrSeal(QDialog):
         return DynamicSealFilterModel(**{item_name: config})
 
 
-class SetPicker(QDialog):
+class SetPicker(CheckboxListDialog):
     """Multi-select dialog for charm set names."""
 
     def __init__(self, parent: QWidget, selected_sets: list[str]):
-        super().__init__(parent)
-        self.setWindowTitle("Select Sets")
-        self.checkboxes: dict[str, QCheckBox] = {}
-
-        selected_set = set(selected_sets)
-
-        layout = QVBoxLayout(self)
-
-        group_box = QGroupBox("Sets")
-        group_layout = QVBoxLayout(group_box)
-
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        content_widget = QWidget()
-        content_layout = QVBoxLayout(content_widget)
-        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        for set_name in sorted(Dataloader().set_list):
-            checkbox = QCheckBox(set_name)
-            checkbox.setChecked(set_name in selected_set)
-            self.checkboxes[set_name] = checkbox
-            content_layout.addWidget(checkbox)
-
-        scroll_area.setWidget(content_widget)
-        group_layout.addWidget(scroll_area)
-        layout.addWidget(group_box)
-
-        note_label = QLabel("Select which sets this charm filter should match.")
-        note_label.setWordWrap(True)
-        layout.addWidget(note_label)
-
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        clear_button = button_box.addButton("Clear", QDialogButtonBox.ButtonRole.ResetRole)
-        clear_button.clicked.connect(self.clear_selection)
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
-
-    def clear_selection(self):
-        for checkbox in self.checkboxes.values():
-            checkbox.setChecked(False)
+        super().__init__(
+            parent,
+            window_title="Select Sets",
+            group_title="Sets",
+            options=sorted(Dataloader().set_list),
+            selected=selected_sets,
+            note_text="Select which sets this charm filter should match.",
+        )
 
     def get_selected_sets(self) -> list[str]:
-        return [set_name for set_name, checkbox in self.checkboxes.items() if checkbox.isChecked()]
+        return self.get_selected()

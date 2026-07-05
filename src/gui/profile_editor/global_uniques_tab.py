@@ -1,22 +1,10 @@
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QDialog,
-    QFormLayout,
-    QFrame,
-    QGroupBox,
-    QLineEdit,
-    QPushButton,
-    QScrollArea,
-    QTabWidget,
-    QToolBar,
-    QToolButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import QFormLayout, QFrame, QGroupBox, QLineEdit, QScrollArea, QToolButton, QVBoxLayout, QWidget
 
 from src.config.profile_models import GlobalUniqueModel
 from src.gui.importer.gui_common import MAX_POWER
-from src.gui.models.dialog import DeleteItem, IgnoreScrollWheelSpinBox
+from src.gui.models.dialog import IgnoreScrollWheelSpinBox
+from src.gui.models.tab_group_widget import TabGroupWidget
 
 UNIQUES_TABNAME = "GlobalUniques"
 
@@ -93,71 +81,34 @@ class UniqueWidget(QWidget):
         self.unique_model.min_percent_of_aspect = self.min_percent.value()
 
 
-class UniquesTab(QWidget):
+class UniquesTab(TabGroupWidget):
     def __init__(self, unique_model_list: list[GlobalUniqueModel], parent=None):
-        super().__init__(parent)
-        self.unique_model_list = unique_model_list
-        self.loaded = False
+        super().__init__(unique_model_list, parent)
 
-    def load(self):
-        if not self.loaded:
-            self.setup_ui()
-            self.loaded = True
+    def toolbar_name(self) -> str:
+        return "MyToolBar"
 
-    def setup_ui(self):
-        self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 20, 0, 20)
-        self.tab_widget = QTabWidget(self)
-        self.tab_widget.setTabsClosable(True)
-        self.tab_widget.tabCloseRequested.connect(self.close_tab)
+    def corner_widget(self) -> QToolButton:
+        add_button = QToolButton()
+        add_button.setText("+")
+        add_button.clicked.connect(self.add_item)
+        return add_button
 
-        self.add_button = QToolButton()
-        self.add_button.setText("+")
-        self.add_button.clicked.connect(self.add_item_type)
+    def create_editor(self, model: GlobalUniqueModel) -> UniqueWidget:
+        return UniqueWidget(model)
 
-        self.tab_widget.setCornerWidget(self.add_button)
-        self.toolbar = QToolBar("MyToolBar", self)
-        self.toolbar.setMinimumHeight(50)
-        self.toolbar.setContentsMargins(10, 10, 10, 10)
-        self.toolbar.setMovable(False)
-        for i, unique_model in enumerate(self.unique_model_list):
-            group = UniqueWidget(unique_model)
-            self.tab_widget.addTab(group, f"Unique Rule {i}")
+    def tab_label(self, model: GlobalUniqueModel, index: int) -> str:
+        return f"Unique Rule {index}"
 
-        add_item_button = QPushButton("Create Rule")
-        remove_item_button = QPushButton("Remove Rule")
-        add_item_button.clicked.connect(self.add_item_type)
-        remove_item_button.clicked.connect(self.remove_item_type)
-        self.toolbar.addWidget(add_item_button)
-        self.toolbar.addWidget(remove_item_button)
-        self.main_layout.addWidget(self.toolbar)
-        self.main_layout.addWidget(self.tab_widget)
+    def create_model(self) -> GlobalUniqueModel:
+        return GlobalUniqueModel()
 
-    def close_tab(self, index):
-        self.tab_widget.removeTab(index)
-        self.unique_model_list.pop(index)
-        self.rename_tabs()
+    def add_button_text(self) -> str:
+        return "Create Rule"
 
-    def remove_item_type(self):
-        dialog = DeleteItem([self.tab_widget.tabText(i) for i in range(self.tab_widget.count())], self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            item_names_to_delete = dialog.get_value()
-            to_delete_index = [
-                i for i in range(self.tab_widget.count()) if self.tab_widget.tabText(i) in item_names_to_delete
-            ]
-            to_delete_index.reverse()
-            for index in to_delete_index:
-                self.tab_widget.removeTab(index)
-                self.unique_model_list.pop(index)
-            self.rename_tabs()
-            return
+    def remove_button_text(self) -> str:
+        return "Remove Rule"
 
-    def rename_tabs(self):
+    def after_models_changed(self):
         for i in range(self.tab_widget.count()):
             self.tab_widget.setTabText(i, f"Unique Rule {i}")
-
-    def add_item_type(self):
-        unique_model = GlobalUniqueModel()
-        group = UniqueWidget(unique_model)
-        self.tab_widget.addTab(group, f"Unique Rule {self.tab_widget.count()}")
-        self.unique_model_list.append(unique_model)
