@@ -14,7 +14,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Filter uniques by their affix and aspect values
 - Filter seals and charms by affixes, rarity, charm set, or unique aspect
 - Filter sigils by blacklisting and whitelisting locations and affixes
-- Filter tributes by name or rarity
+- Filter tributes with name + rarity gates (AND semantics)
 - Quickly move items from your stash or inventory
 - Supported resolutions are all aspect ratios between 16:10 and 21:9
 - Info Panel Overlay for tracking world events and session statistics
@@ -86,9 +86,15 @@ The TTS dll (`saapi64.dll`) must be signed for Diablo 4 to pick it up. The `inst
 - Download the signtool needed to add a local signature to the dll
 - Runs the signtool and signs the dll
 
-If you prefer running it from a terminal, you can run `.\install_dll.cmd`.
+If you prefer running it from a terminal:
 
-For very advanced users that don't want to automatically download signtool.exe, you can run `.\install_dll.cmd -signtool_path "<full path to signtool.exe>"`
+- release zip: `.\install_dll.cmd`
+- source checkout: `.\tts\install_dll.cmd`
+
+For very advanced users that don't want to automatically download signtool.exe:
+
+- release zip: `.\install_dll.cmd -signtool_path "<full path to signtool.exe>"`
+- source checkout: `.\tts\install_dll.cmd -signtool_path "<full path to signtool.exe>"`
 
 ## GUI Overview
 
@@ -705,18 +711,19 @@ names in [assets/lang/enUS/sigils.json](assets/lang/enUS/sigils.json).
 
 ### Tributes
 
-Tributes are defined by the top-level key `Tributes`. It contains a list of either tribute names or rarities you want
-to keep. Any not in the list are not kept. If no Tribute filter is provided, all Tributes will be kept.
+Tributes are defined by the top-level key `Tributes` as a single object with `name` and `rarity` lists. These
+constraints are ANDed together (same semantics as affixes/sigils): when both lists are non-empty, a tribute must match
+both. An empty list means that dimension is unconstrained. If no Tribute filter is provided, all Tributes are kept.
 
 Mythic tributes are always kept no matter what.
 
 <details><summary>Config Examples</summary>
 
 ```yaml
-# Keeps tribute_of_mystique and all legendary and unique tributes
+# Keeps only tribute_of_mystique when it is legendary or unique
 Tributes:
-  - tribute_of_mystique
-  - [legendary, unique]
+  name: [tribute_of_mystique]
+  rarity: [legendary, unique]
 ```
 
 If you're exceptionally pressed for time, you can just put the name of the tribute without "tribute_of\_" at the beginning.
@@ -724,11 +731,13 @@ If you're exceptionally pressed for time, you can just put the name of the tribu
 ```yaml
 # Keeps Tribute of Mystique and Tribute of Ascendance (Resolute) and nothing else
 Tributes:
-  - mystique
-  - ascendance_resolute
+  name: [mystique, ascendance_resolute]
+  rarity: []
 ```
 
 </details>
+
+Legacy list-shaped `Tributes:` profiles are no longer supported and now fail validation with migration guidance.
 
 Tribute names are lower case and spaces are replaced by underscore. Parentheses are removed. Note that United and
 Resolute identifiers are part of the names in [assets/lang/enUS/tributes.json](assets/lang/enUS/tributes.json). You can find the list of item rarities
@@ -939,10 +948,10 @@ As a quick install guide, just run the following:
 
 ```bash
 uv run pip install pre-commit
-uv run pre-commit install
+uv run pre-commit install --hook-type pre-push
 ```
 
-Now every commit will automatically run our pre-commit checks.
+Now every push will automatically run our pre-commit checks.
 
 ### A note on use of AI for PRs
 

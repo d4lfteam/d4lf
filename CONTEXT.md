@@ -60,3 +60,8 @@ A profile rule that matches sigils through a blacklist or whitelist.
 
 The dungeon or affix named by a sigil rule. A dungeon target scopes the rule to one sigil dungeon; an affix target applies across sigils that carry that affix.
 _Avoid_: sigil kind.
+
+### Tribute filter
+
+A profile's single tribute-matching rule, spelled `Tributes` (singular concept, plural key for historical reasons) in profiles. It holds a `name` list (tribute names to keep) and a `rarity` list (rarities to keep). Both constraints AND together, consistent with affix and sigil filters: an empty list on either side means that dimension is unconstrained. A mythic tribute is always kept regardless of the filter.
+_Avoid_: Tribute rule (implies the old list-of-independent-rules shape).

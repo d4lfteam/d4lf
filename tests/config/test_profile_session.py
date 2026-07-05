@@ -119,6 +119,15 @@ def test_load_validation_error_without_guidance(tmp_path: Path) -> None:
     assert not result.guidance
 
 
+def test_load_validation_error_with_legacy_tributes_guidance(tmp_path: Path) -> None:
+    _write_profile(tmp_path, "legacy_tributes.yaml", "Tributes:\n- name: harmony\n- rarity: [legendary]\n")
+
+    result = _session(tmp_path, LastOpenedStore()).load("legacy_tributes")
+
+    assert isinstance(result, ValidationError)
+    assert "WRONG (old way - list of independent rules)" in result.guidance
+
+
 def test_save_returns_saved_and_writes_backup(tmp_path: Path) -> None:
     path = _write_profile(tmp_path, "alpha.yaml", "AspectUpgrades:\n- accelerating\n")
     session = _session(tmp_path, LastOpenedStore())

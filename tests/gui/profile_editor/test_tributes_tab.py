@@ -40,17 +40,17 @@ def test_add_tribute_adds_name_rule_with_expected_display_text(qapp, monkeypatch
     monkeypatch.setattr(
         "src.gui.profile_editor.tributes_tab.CreateTribute",
         lambda *_args, **_kwargs: _AcceptedDialog(
-            TributeFilterModel.model_construct(name="tribute_of_test", rarities=[])
+            TributeFilterModel.model_construct(name=["tribute_of_test"], rarities=[])
         ),
     )
 
-    tributes: list[TributeFilterModel] = []
+    tributes = TributeFilterModel()
     tab = TributesTab(tributes)
     tab.load()
 
     _button(tab, "Add Tribute").click()
 
-    assert len(tributes) == 1
+    assert tributes.name == ["tribute_of_test"]
     assert tab.list_widget.item(0).text() == "Tribute: Tribute Of Test"
 
 
@@ -58,14 +58,16 @@ def test_add_rarity_adds_rarity_rule_with_expected_display_text(qapp, monkeypatc
     monkeypatch.setattr("src.gui.profile_editor.tributes_tab.Dataloader", _FakeLoader)
     monkeypatch.setattr(
         "src.gui.profile_editor.tributes_tab.AddTributeRarity",
-        lambda *_args, **_kwargs: _AcceptedDialog(TributeFilterModel.model_construct(rarities=[ItemRarity.Rare])),
+        lambda *_args, **_kwargs: _AcceptedDialog(
+            TributeFilterModel.model_construct(name=[], rarities=[ItemRarity.Rare])
+        ),
     )
 
-    tributes: list[TributeFilterModel] = []
+    tributes = TributeFilterModel()
     tab = TributesTab(tributes)
     tab.load()
 
     _button(tab, "Add Rarity").click()
 
-    assert len(tributes) == 1
+    assert tributes.rarities == [ItemRarity.Rare]
     assert tab.list_widget.item(0).text() == "Rarities: Rare"

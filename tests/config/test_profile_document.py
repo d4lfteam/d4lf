@@ -91,3 +91,17 @@ def test_load_rejects_non_mapping_yaml_as_document_error(tmp_path: Path) -> None
 
     assert exc_info.value.code == "profile_validation_error"
     assert str(profile_path) in str(exc_info.value)
+
+
+def test_load_reports_legacy_tributes_shape_guidance_with_stable_code(tmp_path: Path) -> None:
+    profile_path = tmp_path / "profiles" / "legacy_tributes.yaml"
+    profile_path.parent.mkdir()
+    profile_path.write_text("Tributes:\n- name: harmony\n- rarity: [legendary]\n", encoding="utf-8")
+
+    with pytest.raises(ProfileValidationError) as exc_info:
+        ProfileDocumentStore(profiles_dir=tmp_path / "profiles", full_dump=False).load(profile_path)
+
+    assert exc_info.value.code == "tributes_legacy_list_shape"
+    assert "WRONG (old way - list of independent rules)" in exc_info.value.guidance
+    assert "CORRECT (new way - single object, AND semantics)" in exc_info.value.guidance
+    assert str(profile_path) in exc_info.value.guidance

@@ -11,8 +11,12 @@ class TestTribute(Item):
 tributes = [
     ("ok_1", ["tributes"], TestTribute(name="tribute_of_andariel", rarity=ItemRarity.Magic)),
     ("ok_2", ["tributes"], TestTribute(name="tribute_of_harmony", rarity=ItemRarity.Magic)),
-    ("rarity_matches", ["tributes"], TestTribute(name="tribute_of_ascendance_resolute", rarity=ItemRarity.Unique)),
-    ("mythic_matches_profile", ["tributes"], TestTribute(name="tribute_of_andariel", rarity=ItemRarity.Mythic)),
+    ("rarity_matches_name_does_not", [], TestTribute(name="tribute_of_ascendance_resolute", rarity=ItemRarity.Unique)),
+    (
+        "mythic_fails_gate_then_fallback",
+        ["Mythic Tribute"],
+        TestTribute(name="tribute_of_andariel", rarity=ItemRarity.Mythic),
+    ),
     ("mythic_fallback", ["Mythic Tribute"], TestTribute(name="tribute_of_fake", rarity=ItemRarity.Mythic)),
     ("not_in_list", [], TestTribute(name="tribute_of_fake")),
 ]

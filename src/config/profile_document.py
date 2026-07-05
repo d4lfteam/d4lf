@@ -159,6 +159,12 @@ def _profile_validation_error(profile_path: pathlib.Path, exc: ValidationError) 
             code="pool_min_greater_affix_count_legacy",
             guidance=_legacy_min_greater_affix_count_guidance(profile_path),
         )
+    if "legacy Tributes list shape is no longer supported" in str(exc):
+        return ProfileValidationError(
+            f"Profile validation failed: {profile_path}",
+            code="tributes_legacy_list_shape",
+            guidance=_legacy_tributes_list_shape_guidance(profile_path),
+        )
     return ProfileValidationError(f"Validation error in {profile_path}:\n\n{exc}")
 
 
@@ -186,6 +192,23 @@ def _legacy_min_greater_affix_count_guidance(profile_path: pathlib.Path) -> str:
         "      minCount: 2\n"
         "      # NO minGreaterAffixCount here anymore!\n\n"
         f"ACTION REQUIRED: Please make the above adjustments in:\n{profile_path}"
+    )
+
+
+def _legacy_tributes_list_shape_guidance(profile_path: pathlib.Path) -> str:
+    return (
+        f"PROFILE VALIDATION FAILED: {profile_path}\n\n"
+        "You are using an old Tributes format that is no longer supported.\n\n"
+        "WRONG (old way - list of independent rules):\n"
+        "Tributes:\n"
+        "- name: harmony\n"
+        "- rarity: [legendary]\n\n"
+        "CORRECT (new way - single object, AND semantics):\n"
+        "Tributes:\n"
+        "  name: [harmony]\n"
+        "  rarity: [legendary]\n\n"
+        "NOTE: name and rarity now AND together. Empty list means unconstrained.\n\n"
+        f"ACTION REQUIRED: Please update Tributes in:\n{profile_path}"
     )
 
 
