@@ -14,6 +14,10 @@ The stored Paragon overlay data attached to a profile. It represents one importe
 
 One board-state snapshot within a Paragon payload. Each step contains the boards and active nodes for a point in the imported build's progression.
 
+### Paragon board
+
+One node grid within a Paragon progression step, identified by a name and an optional glyph, with a rotation (0°/90°/180°/270°) applied before its active nodes are recorded.
+
 ### Item rarity
 
 The quality tier of a droppable object: common, magic, rare, legendary, unique, or mythic. The canonical values are lowercase. For sigils the rarity is not provided by the game and is instead derived from the object's affixes.
