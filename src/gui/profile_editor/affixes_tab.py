@@ -1,5 +1,3 @@
-import logging
-
 from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, QTimer
 from PyQt6.QtGui import QDoubleValidator, QIntValidator
 from PyQt6.QtWidgets import (
@@ -51,8 +49,6 @@ from src.gui.models.dialog import (
     rarity_summary,
 )
 from src.item.data.item_type import ItemType, is_armor, is_jewelry, is_weapon
-
-LOGGER = logging.getLogger(__name__)
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
@@ -436,7 +432,7 @@ class AffixGroupEditor(QWidget):
 
     def add_affix_pool(self):
         default_affix = AffixFilterModel(
-            name=next(iter(Dataloader().affix_dict.keys())),  # First valid affix name
+            name=next(iter(Dataloader().affix_dict.keys()), ""),  # First valid affix name
             value=None,
         )
 
@@ -446,7 +442,7 @@ class AffixGroupEditor(QWidget):
 
     def add_inherent_pool(self):
         default_affix = AffixFilterModel(
-            name=next(iter(Dataloader().affix_dict.keys())),  # First valid affix name
+            name=next(iter(Dataloader().affix_dict.keys()), ""),  # First valid affix name
             value=None,
         )
 
@@ -809,7 +805,7 @@ class AffixPoolWidget(QWidget):
 
     def add_affix(self):
         affix_dict = self.get_affix_dict()
-        new_affix = AffixFilterModel(name=next(iter(affix_dict.keys())), value=None)
+        new_affix = AffixFilterModel(name=next(iter(affix_dict.keys()), ""), value=None)
         self.pool.count.append(new_affix)
         self.add_affix_item(new_affix)
 
@@ -837,7 +833,7 @@ class AffixWidget(QWidget):
         curr = self
         while curr:
             config = getattr(curr, "config", None)
-            if isinstance(config, SealFilterModel):
+            if isinstance(config, (SealFilterModel, CharmFilterModel)):
                 return config
             curr = curr.parent()
         return None
@@ -974,14 +970,10 @@ class AffixWidget(QWidget):
 
         if is_seal_charm:
             reverse_dict = {v: k for k, v in self.filtered_affixes.items()}
-            affix_name = reverse_dict.get(text)
-            if affix_name is not None:
-                self.affix.name = affix_name
+            self.affix.name = reverse_dict.get(text, "")
         else:
             reverse_dict = {v: k for k, v in affix_dict.items()}
-            affix_name = reverse_dict.get(text)
-            if affix_name is not None:
-                self.affix.name = affix_name
+            self.affix.name = reverse_dict.get(text, "")
 
     def refresh_value_input(self):
         if self.mode_combo.currentText() == AFFIX_PERCENT_MODE:

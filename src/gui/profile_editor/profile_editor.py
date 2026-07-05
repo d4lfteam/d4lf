@@ -7,9 +7,8 @@ from src.config.profile_document import LoadedProfile, ProfileDocumentStore
 from src.config.profile_models import ProfileModel
 from src.gui.profile_editor.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.profile_editor.aspect_upgrades_tab import ASPECT_UPGRADES_TABNAME, AspectUpgradesTab
-from src.gui.profile_editor.charms_tab import CHARMS_TABNAME, CharmsTab
+from src.gui.profile_editor.charms_seals_group_tab import CHARMS_TABNAME, SEALS_TABNAME, CharmsTab, SealsTab
 from src.gui.profile_editor.global_uniques_tab import UNIQUES_TABNAME, UniquesTab
-from src.gui.profile_editor.seals_tab import SEALS_TABNAME, SealsTab
 from src.gui.profile_editor.sigils_tab import SIGILS_TABNAME, SigilsTab
 from src.gui.profile_editor.tributes_tab import TRIBUTES_TABNAME, TributesTab
 

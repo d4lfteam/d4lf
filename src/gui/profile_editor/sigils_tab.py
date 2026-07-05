@@ -114,8 +114,11 @@ class SigilWidget(Container):
         self.condition_list.setItemWidget(widget_item, widget)
 
     def add_condition(self):
-        self.add_condition_to_list(next(iter(Dataloader().affix_sigil_dict_all["minor"].values())))
-        self.sigil.condition.append(next(iter(Dataloader().affix_sigil_dict_all["minor"].keys())))
+        minor_dict = Dataloader().affix_sigil_dict_all.get("minor", {})
+        default_val = next(iter(minor_dict.values()), "")
+        default_key = next(iter(minor_dict.keys()), "")
+        self.add_condition_to_list(default_val)
+        self.sigil.condition.append(default_key)
 
     def remove_selected(self):
         for item in self.condition_list.selectedItems():

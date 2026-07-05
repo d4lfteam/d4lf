@@ -184,7 +184,7 @@ class CreateItem(QDialog):
         item.item_type = [item_type]
         item.affix_pool = [
             AffixFilterCountModel(
-                count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys())))], min_count=2
+                count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict.keys()), ""))], min_count=2
             )
         ]
         item.min_power = 100

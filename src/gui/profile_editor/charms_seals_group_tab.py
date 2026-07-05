@@ -25,6 +25,7 @@ from src.config.profile_models import (
     AffixFilterModel,
     AspectUniqueFilterModel,
     DynamicCharmFilterModel,
+    DynamicSealFilterModel,
 )
 from src.dataloader import Dataloader
 from src.gui.models.collapsible_widget import Container
@@ -41,6 +42,7 @@ from src.gui.models.dialog import (
 from src.gui.profile_editor.affixes_tab import UNIQUE_ASPECTS_TITLE, AffixPoolWidget, AffixWidget, UniqueAspectWidget
 
 CHARMS_TABNAME = "Charms"
+SEALS_TABNAME = "Seals"
 
 
 def _set_summary(sets: list[str]) -> str:
@@ -49,20 +51,22 @@ def _set_summary(sets: list[str]) -> str:
     return ", ".join(sets)
 
 
-class CharmGroupEditor(QWidget):
-    """Editor widget for a single named charm filter."""
+class BaseGroupEditor(QWidget):
+    """Shared base editor class for single-named filters (Charms and Seals)."""
 
-    def __init__(self, dynamic_filter: DynamicCharmFilterModel, parent=None):
+    def __init__(self, dynamic_filter, is_charm: bool, parent=None):
         super().__init__(parent)
+        self.is_charm = is_charm
+        self.type_prefix = "charm" if is_charm else "seal"
         self.settings = QSettings("d4lf", "profile_editor")
         for item_name, config in dynamic_filter.root.items():
             self.item_name = item_name
             self.config = config
 
         self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
-        self.setup_ui()
 
     def setup_ui(self):
+        """Build the common UI layout structure."""
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)
@@ -73,7 +77,31 @@ class CharmGroupEditor(QWidget):
 
         general_form = QFormLayout()
 
-        # Rarities
+        # Rarities (Common)
+        self.add_rarity_row(general_form)
+
+        # Custom fields (Subclass hook - e.g. Sets for Charms)
+        self.add_custom_general_fields(general_form)
+
+        # Min Greater Affixes & Auto Sync (Common)
+        self.add_min_greater_row(general_form)
+
+        self.content_layout.addLayout(general_form)
+        self.create_unique_aspect_container()
+
+        # Affix Pool container (Common)
+        self.add_affix_pool_section()
+
+        scroll_area.setWidget(content_widget)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(scroll_area)
+        self.setLayout(main_layout)
+
+        QTimer.singleShot(100, self.affix_pool_container.expand)
+
+    def add_rarity_row(self, general_form: QFormLayout):
+        """Add the rarity picker row to the form."""
         self.rarity_line_edit = _create_readonly_line_edit()
         self.refresh_rarity_summary()
 
@@ -86,20 +114,8 @@ class CharmGroupEditor(QWidget):
         rarity_layout.addStretch()
         general_form.addRow("Rarities:", rarity_layout)
 
-        # Set names (charm-specific)
-        self.set_line_edit = _create_readonly_line_edit()
-        self.refresh_set_summary()
-
-        set_layout = QHBoxLayout()
-        set_layout.addWidget(self.set_line_edit)
-        edit_sets_btn = QPushButton("...")
-        edit_sets_btn.setMaximumWidth(40)
-        edit_sets_btn.clicked.connect(self.edit_sets)
-        set_layout.addWidget(edit_sets_btn)
-        set_layout.addStretch()
-        general_form.addRow("Sets:", set_layout)
-
-        # Min Greater Affixes
+    def add_min_greater_row(self, general_form: QFormLayout):
+        """Add the Min Greater Affixes and Auto Sync controls to the form."""
         min_greater_layout = QHBoxLayout()
 
         self.min_greater = QSpinBox()
@@ -116,7 +132,7 @@ class CharmGroupEditor(QWidget):
 
         self.auto_sync_checkbox = _create_auto_sync_checkbox()
         self.auto_sync_checkbox.setChecked(
-            self.settings.value(f"auto_sync_ga_charm_{self.item_name}", defaultValue=False, type=bool)
+            self.settings.value(f"auto_sync_ga_{self.type_prefix}_{self.item_name}", defaultValue=False, type=bool)
         )
         self.auto_sync_checkbox.stateChanged.connect(self.toggle_auto_sync)
 
@@ -138,10 +154,8 @@ class CharmGroupEditor(QWidget):
 
         general_form.addRow("Min Greater Affixes:", min_greater_layout)
 
-        self.content_layout.addLayout(general_form)
-        self.create_unique_aspect_container()
-
-        # Affix Pool (no inherent pool for charms)
+    def add_affix_pool_section(self):
+        """Add the affix pool section to the layout."""
         pool_btn_layout = QHBoxLayout()
         add_affix_pool_btn = QPushButton("Add Affix Pool")
         add_affix_pool_btn.clicked.connect(self.add_affix_pool)
@@ -158,90 +172,40 @@ class CharmGroupEditor(QWidget):
         self.content_layout.addWidget(self.affix_pool_container)
         self.content_layout.addLayout(pool_btn_layout)
 
-        scroll_area.setWidget(content_widget)
-
-        main_layout = QVBoxLayout(self)
-        main_layout.addWidget(scroll_area)
-        self.setLayout(main_layout)
-
-        QTimer.singleShot(100, self.affix_pool_container.expand)
-
-    # --- Sets (charm-specific) ---
-
-    def refresh_set_summary(self):
-        self.set_line_edit.setText(_set_summary(self.config.set))
-
-    def edit_sets(self):
-        if self.config.unique_aspect:
-            QMessageBox.warning(
-                self, "Warning", "Cannot define both set and unique aspect. Remove unique aspects first."
-            )
-            return
-        set_picker = SetPicker(self, self.config.set)
-        if set_picker.exec() == QDialog.DialogCode.Accepted:
-            self.config.set = set_picker.get_selected_sets()
-            self.refresh_set_summary()
+    def add_custom_general_fields(self, general_form: QFormLayout):
+        """Stub method for subclasses to add their unique general fields."""
 
     # --- Unique Aspects ---
 
-    def create_unique_aspect_container(self):
-        self.unique_aspect_container = Container(self._unique_aspects_title())
-        self.unique_aspect_layout = QVBoxLayout(self.unique_aspect_container.content_widget)
-        self.unique_aspect_container.first_expansion.connect(self.init_unique_aspects)
-
-        layout = QVBoxLayout()
-        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        title_layout = QHBoxLayout()
-        title_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
-        aspect_label = QLabel("Aspect")
-        aspect_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
-        _refresh_widget_style(aspect_label)
-
-        mode_label = QLabel("Mode")
-        mode_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
-        _refresh_widget_style(mode_label)
-
-        value_label = QLabel("Threshold")
-        value_label.setProperty("affixHeaderLabel", True)  # noqa: FBT003
-        _refresh_widget_style(value_label)
-
-        title_layout.addSpacing(25)
-        title_layout.addWidget(aspect_label)
-        title_layout.addSpacing(440)
-        title_layout.addWidget(mode_label)
-        title_layout.addSpacing(85)
-        title_layout.addWidget(value_label)
-
-        self.unique_aspect_list = QListWidget()
-        self.unique_aspect_list.setFixedHeight(180)
-        self.unique_aspect_list.setAlternatingRowColors(True)
-        self.unique_aspect_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-        self.unique_aspect_list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-
-        unique_aspect_btn_layout = QHBoxLayout()
-        add_unique_aspect_btn = QPushButton("Add Unique Aspect")
-        add_unique_aspect_btn.clicked.connect(self.add_unique_aspect)
-        unique_aspect_btn_layout.addWidget(add_unique_aspect_btn)
-
-        remove_unique_aspect_btn = QPushButton("Remove Unique Aspect")
-        remove_unique_aspect_btn.clicked.connect(self.remove_selected_unique_aspects)
-        unique_aspect_btn_layout.addWidget(remove_unique_aspect_btn)
-
-        layout.addLayout(unique_aspect_btn_layout)
-        layout.addLayout(title_layout)
-        layout.addWidget(self.unique_aspect_list)
-
-        self.unique_aspect_layout.addLayout(layout)
-        self.content_layout.addWidget(self.unique_aspect_container)
-
-    def _unique_aspects_title(self):
+    def _unique_aspects_title(self) -> str:
         aspect_names = ", ".join(unique_aspect.name for unique_aspect in self.config.unique_aspect) or "None"
         return f"{UNIQUE_ASPECTS_TITLE} - {aspect_names}"
 
     def refresh_unique_aspects_title(self):
         self.unique_aspect_container.header.set_name(self._unique_aspects_title())
+
+    def create_unique_aspect_container(self):
+        container = Container(UNIQUE_ASPECTS_TITLE)
+        layout = QVBoxLayout(container.content_widget)
+
+        self.unique_aspect_list = QListWidget()
+        self.unique_aspect_list.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.unique_aspect_list.setMinimumHeight(150)
+        self.init_unique_aspects()
+
+        btn_layout = QHBoxLayout()
+        add_btn = QPushButton("Add Aspect")
+        add_btn.clicked.connect(self.add_unique_aspect)
+        remove_btn = QPushButton("Remove Aspect")
+        remove_btn.clicked.connect(self.remove_unique_aspect)
+        btn_layout.addWidget(add_btn)
+        btn_layout.addWidget(remove_btn)
+
+        layout.addWidget(self.unique_aspect_list)
+        layout.addLayout(btn_layout)
+
+        self.unique_aspect_container = container
+        self.content_layout.addWidget(container)
 
     def init_unique_aspects(self):
         for unique_aspect in self.config.unique_aspect:
@@ -249,7 +213,8 @@ class CharmGroupEditor(QWidget):
 
     def add_unique_aspect_item(self, unique_aspect: AspectUniqueFilterModel):
         item = QListWidgetItem()
-        widget = UniqueAspectWidget(unique_aspect)
+        allowed = sorted([k for k in Dataloader().aspect_unique_dict if k.startswith(f"{self.type_prefix}_of")])
+        widget = UniqueAspectWidget(unique_aspect, allowed_aspects=allowed, parent=self)
         item_size = widget.sizeHint()
         item_size.setWidth(850)
         item.setSizeHint(item_size)
@@ -257,25 +222,23 @@ class CharmGroupEditor(QWidget):
         self.unique_aspect_list.setItemWidget(item, widget)
 
     def add_unique_aspect(self):
-        if self.config.set:
-            QMessageBox.warning(self, "Warning", "Cannot define both set and unique aspect. Remove sets first.")
+        if self.is_charm and self.config.set:
+            QMessageBox.warning(self, "Warning", "Cannot add unique aspects when sets are selected.")
             return
         existing_names = {unique_aspect.name for unique_aspect in self.config.unique_aspect}
-        for aspect_name in Dataloader().aspect_unique_dict:
+        allowed = [k for k in Dataloader().aspect_unique_dict if k.startswith(f"{self.type_prefix}_of")]
+        for aspect_name in allowed:
             if aspect_name in existing_names:
                 continue
             new_unique_aspect = AspectUniqueFilterModel(name=aspect_name, value=None)
             self.config.unique_aspect.append(new_unique_aspect)
             self.add_unique_aspect_item(new_unique_aspect)
-            self.refresh_unique_aspects_title()
-            return
-        QMessageBox.information(self, "Info", "All unique aspects have already been added.")
+            break
+        self.refresh_unique_aspects_title()
 
-    def remove_selected_unique_aspects(self):
-        selected_rows = sorted(
-            (self.unique_aspect_list.row(item) for item in self.unique_aspect_list.selectedItems()), reverse=True
-        )
-        for row in selected_rows:
+    def remove_unique_aspect(self):
+        row = self.unique_aspect_list.currentRow()
+        if row != -1:
             self.unique_aspect_list.takeItem(row)
             del self.config.unique_aspect[row]
         self.refresh_unique_aspects_title()
@@ -298,7 +261,8 @@ class CharmGroupEditor(QWidget):
         QTimer.singleShot(50, container.expand)
 
     def add_affix_pool(self):
-        default_affix_name = next(iter(Dataloader().charm_affix_dict.keys()), "")
+        affix_dict = Dataloader().charm_affix_dict if self.is_charm else Dataloader().seal_affix_dict
+        default_affix_name = next(iter(affix_dict.keys()), "")
         default_affix = AffixFilterModel(name=default_affix_name, value=None)
         new_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
         self.config.affix_pool.append(new_pool)
@@ -318,9 +282,10 @@ class CharmGroupEditor(QWidget):
             for widget, index in to_delete_list:
                 widget.setParent(None)
                 self.config.affix_pool.pop(index)
-            self.reorganize_pool(layout_widget)
+            self.update_affix_pool_names(layout_widget)
+            QTimer.singleShot(50, self.update_greater_count_label)
 
-    def reorganize_pool(self, layout_widget: QVBoxLayout):
+    def update_affix_pool_names(self, layout_widget: QVBoxLayout):
         for i in range(layout_widget.count()):
             item = layout_widget.itemAt(i)
             if item and item.widget() is not None:
@@ -328,23 +293,23 @@ class CharmGroupEditor(QWidget):
 
     # --- Rarities ---
 
+    def edit_rarities(self):
+        dialog = RarityPicker(self.config.rarities, parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.config.rarities = dialog.get_value()
+            self.refresh_rarity_summary()
+
     def refresh_rarity_summary(self):
         self.rarity_line_edit.setText(rarity_summary(self.config.rarities))
 
-    def edit_rarities(self):
-        rarity_picker = RarityPicker(self, self.config.rarities)
-        if rarity_picker.exec() == QDialog.DialogCode.Accepted:
-            self.config.rarities = rarity_picker.get_selected_rarities()
-            self.refresh_rarity_summary()
-
-    # --- Greater Affix Auto-Sync ---
+    # --- Auto Sync minGreaterAffixCount ---
 
     def update_min_greater_affix(self):
         self.config.min_greater_affix_count = self.min_greater.value()
 
     def toggle_auto_sync(self, state):
         is_auto_sync = state == Qt.CheckState.Checked.value
-        self.settings.setValue(f"auto_sync_ga_charm_{self.item_name}", is_auto_sync)
+        self.settings.setValue(f"auto_sync_ga_{self.type_prefix}_{self.item_name}", is_auto_sync)
         self.min_greater.setEnabled(not is_auto_sync)
 
         if is_auto_sync:
@@ -388,7 +353,7 @@ class CharmGroupEditor(QWidget):
                 if isinstance(affix_widget, AffixWidget):
                     yield affix_widget
 
-    def count_want_greater_affixes(self):
+    def count_want_greater_affixes(self) -> int:
         want_greater_count = 0
         if not hasattr(self, "affix_pool_layout"):
             return 0
@@ -411,10 +376,61 @@ class CharmGroupEditor(QWidget):
             affix_widget.set_min_percent(percent, convert_mode=True)
 
 
-class CharmsTab(QWidget):
-    def __init__(self, charms_model: list[DynamicCharmFilterModel], parent=None):
+class CharmGroupEditor(BaseGroupEditor):
+    """Editor widget for a single named charm filter."""
+
+    def __init__(self, dynamic_filter: DynamicCharmFilterModel, parent=None):
+        super().__init__(dynamic_filter, is_charm=True, parent=parent)
+        self.setup_ui()
+
+    def add_custom_general_fields(self, general_form: QFormLayout):
+        """Add charm-specific set selection row."""
+        self.set_line_edit = _create_readonly_line_edit()
+        self.refresh_set_summary()
+
+        set_layout = QHBoxLayout()
+        set_layout.addWidget(self.set_line_edit)
+        edit_sets_btn = QPushButton("...")
+        edit_sets_btn.setMaximumWidth(40)
+        edit_sets_btn.clicked.connect(self.edit_sets)
+        set_layout.addWidget(edit_sets_btn)
+        set_layout.addStretch()
+        general_form.addRow("Sets:", set_layout)
+
+    def edit_sets(self):
+        if self.config.unique_aspect:
+            QMessageBox.warning(self, "Warning", "Cannot select sets when unique aspects are defined.")
+            return
+        dialog = SetPicker(self.config.set, parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.config.set = dialog.get_value()
+            self.refresh_set_summary()
+
+    def refresh_set_summary(self):
+        self.set_line_edit.setText(_set_summary(self.config.set))
+
+
+class SealGroupEditor(BaseGroupEditor):
+    """Editor widget for a single named seal filter."""
+
+    def __init__(self, dynamic_filter: DynamicSealFilterModel, parent=None):
+        super().__init__(dynamic_filter, is_charm=False, parent=parent)
+        self.setup_ui()
+
+
+class BaseCharmsSealsTab(QWidget):
+    """Shared base class for Charms and Seals tabs to manage list of single-key models."""
+
+    def __init__(self, models: list, is_charm: bool, parent=None):
         super().__init__(parent)
-        self.charms_model = charms_model
+        self.models = models
+        if is_charm:
+            self.charms_model = models
+        else:
+            self.seals_model = models
+        self.is_charm = is_charm
+        self.type_prefix = "charm" if is_charm else "seal"
+        self.editor_class = CharmGroupEditor if is_charm else SealGroupEditor
         self.loaded = False
 
     def load(self):
@@ -431,34 +447,37 @@ class CharmsTab(QWidget):
         self.tab_widget.setTabsClosable(True)
         self.tab_widget.tabCloseRequested.connect(self.close_tab)
 
-        self.toolbar = QToolBar("CharmsToolBar", self)
+        self.toolbar = QToolBar(f"{self.type_prefix.capitalize()}sToolBar", self)
         self.toolbar.setMinimumHeight(50)
         self.toolbar.setContentsMargins(10, 10, 10, 10)
         self.toolbar.setMovable(False)
 
         self.item_names = []
         normalized_models = []
-        for charm_group in self.charms_model:
-            for item_name, config in charm_group.root.items():
+        for group in self.models:
+            for item_name, config in group.root.items():
                 if item_name in self.item_names:
                     QMessageBox.warning(
-                        self, "Warning", f"Charm name already exists, please rename {item_name} in the profile file."
+                        self,
+                        "Warning",
+                        f"{self.type_prefix.capitalize()} name already exists, please rename {item_name} in the profile file.",
                     )
                     continue
-                single_model = DynamicCharmFilterModel(**{item_name: config})
+                model_cls = DynamicCharmFilterModel if self.is_charm else DynamicSealFilterModel
+                single_model = model_cls(**{item_name: config})
                 normalized_models.append(single_model)
-                group = CharmGroupEditor(single_model)
+                group_editor = self.editor_class(single_model)
                 self.item_names.append(item_name)
-                self.tab_widget.addTab(group, item_name)
-        self.charms_model.clear()
-        self.charms_model.extend(normalized_models)
+                self.tab_widget.addTab(group_editor, item_name)
+        self.models.clear()
+        self.models.extend(normalized_models)
 
         add_item_button = QPushButton()
-        add_item_button.setText("Create Charm")
+        add_item_button.setText(f"Create {self.type_prefix.capitalize()}")
         add_item_button.clicked.connect(self.add_item_type)
 
         remove_item_button = QPushButton()
-        remove_item_button.setText("Remove Charm")
+        remove_item_button.setText(f"Remove {self.type_prefix.capitalize()}")
         remove_item_button.clicked.connect(self.remove_item_type)
 
         set_all_min_greater_affix_button = QPushButton("Set All Min GAs (Excludes Auto Synced Items)")
@@ -475,20 +494,23 @@ class CharmsTab(QWidget):
         self.main_layout.addWidget(self.tab_widget)
 
     def add_item_type(self):
-        dialog = CreateCharmOrSeal(self.item_names, is_charm=True, parent=self)
+        dialog = CreateCharmOrSeal(self.item_names, is_charm=self.is_charm, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             item = dialog.get_value()
             for item_name in item.root:
-                group = CharmGroupEditor(item)
+                group = self.editor_class(item)
                 self.item_names.append(item_name)
                 self.tab_widget.addTab(group, item_name)
-                self.charms_model.append(item)
+                self.models.append(item)
             return
 
     def close_tab(self, index):
-        self.item_names.pop(index)
+        item_name = self.item_names.pop(index)
         self.tab_widget.removeTab(index)
-        self.charms_model.pop(index)
+        for i, group in enumerate(self.models):
+            if item_name in group.root:
+                self.models.pop(i)
+                break
 
     def remove_item_type(self):
         dialog = DeleteItem(self.item_names, self)
@@ -498,7 +520,10 @@ class CharmsTab(QWidget):
                 index = self.item_names.index(item_name)
                 self.item_names.remove(item_name)
                 self.tab_widget.removeTab(index)
-                self.charms_model.pop(index)
+                for i, group in enumerate(self.models):
+                    if item_name in group.root:
+                        self.models.pop(i)
+                        break
             return
 
     def set_all_min_greater_affix(self):
@@ -506,7 +531,7 @@ class CharmsTab(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             min_greater_affix = dialog.get_value()
             for i in range(self.tab_widget.count()):
-                tab: CharmGroupEditor = self.tab_widget.widget(i)
+                tab = self.tab_widget.widget(i)
                 if tab.auto_sync_checkbox.isChecked():
                     continue
                 tab.min_greater.setValue(min_greater_affix)
@@ -514,13 +539,23 @@ class CharmsTab(QWidget):
 
     def convert_all_to_min_percent_of_affix(self):
         current_tab = self.tab_widget.currentWidget()
-        if isinstance(current_tab, CharmGroupEditor):
+        if current_tab is not None:
             dialog = MinPercentDialog(self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 current_tab.convert_all_to_min_percent_of_affix(dialog.get_value())
 
 
-# --- Helpers ---
+class CharmsTab(BaseCharmsSealsTab):
+    def __init__(self, charms_model: list[DynamicCharmFilterModel], parent=None):
+        super().__init__(charms_model, is_charm=True, parent=parent)
+
+
+class SealsTab(BaseCharmsSealsTab):
+    def __init__(self, seals_model: list[DynamicSealFilterModel], parent=None):
+        super().__init__(seals_model, is_charm=False, parent=parent)
+
+
+# --- Common Helpers ---
 
 
 def _create_readonly_line_edit():
