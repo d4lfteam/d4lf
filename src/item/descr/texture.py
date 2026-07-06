@@ -110,8 +110,6 @@ def find_affix_bullets(img_item_descr: np.ndarray, sep_short_match: TemplateMatc
             "masterworking_affix_bullet_medium_1080p_special",
             "seal_set_bullet_point_1080p_special",
         ]
-        # At lower resolutions it starts reading text as bullet points. We'll see if this fixes it
-        search_threshold = 0.85
     return _find_bullets(
         img_item_descr=img_item_descr,
         sep_short_match=sep_short_match,
