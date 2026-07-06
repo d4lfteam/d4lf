@@ -23,10 +23,12 @@ from src.config.profile_models import (
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     affix_dict_for_item_type,
+    create_item_affix_pool,
     create_seal_charm_filter,
     fix_offhand_type,
     fix_weapon_type,
     get_class_name,
+    is_unique_like_rarity,
     match_to_enum,
     retry_importer,
     update_mingreateraffixcount,
@@ -107,7 +109,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
     slot_to_unique_name_map = _get_item_slots(data=data)
     finished_filters = []
     charm_filters, seal_filters = _extract_d4builds_seal_charm_filters(driver=driver, config=config)
-    mythic_names = []
     aspect_upgrade_filters = _get_legendary_aspects(data=data)
     for item in items[0]:
         item_filter = ItemFilterModel()
@@ -130,15 +131,13 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
 
         if slot_to_unique_name_map[slot]:
             unique_name, rarity = slot_to_unique_name_map[slot]
-            if rarity == ItemRarity.Mythic:
-                mythic_names.append(unique_name)
-                continue
             try:
                 item_filter.unique_aspect = [AspectUniqueFilterModel(name=unique_name)]
             except Exception:
                 LOGGER.exception(
                     f"Unexpected error adding unique aspect for {unique_name}, please report a bug and include a link to the build you were trying to import."
                 )
+        is_unique_like = is_unique_like_rarity(rarity)
 
         is_weapon = "weapon" in slot.lower()
         affix_dict = affix_dict_for_item_type(item_type=item_type)
@@ -177,7 +176,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
             else item_type
         )
 
-        if not affixes:
+        if not affixes and not item_filter.unique_aspect:
             continue
 
         if item_type is None:
@@ -192,14 +191,8 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         else:
             item_filter.item_type = [item_type]
 
-        # We don't bother importing affixes for mythics
-        if rarity != ItemRarity.Mythic:
-            item_filter.affix_pool = [
-                AffixFilterCountModel(
-                    count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
-                    minCount=1 if rarity == ItemRarity.Unique else 3,
-                )
-            ]
+        if affixes:
+            item_filter.affix_pool = create_item_affix_pool(affixes=affixes, unique_like=is_unique_like)
             update_mingreateraffixcount(item_filter, config.require_greater_affixes)
             if inherents:
                 item_filter.inherent_pool = [
@@ -222,7 +215,6 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                         charm_filters=charm_filters,
                         seal_filters=seal_filters,
                         aspect_upgrade_filters=aspect_upgrade_filters,
-                        mythic_names=mythic_names,
                         paragon_steps=extract_d4builds_paragon_steps(driver, class_name=class_name),
                         paragon_build_name=build_header or class_name,
                     )

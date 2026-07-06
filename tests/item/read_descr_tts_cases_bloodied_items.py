@@ -1,12 +1,8 @@
-import pytest
-
-import src.tts
 from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
 from src.item.data.seasonal_attribute import SeasonalAttribute
-from src.item.descr.read_descr_tts import read_descr
 from src.item.models import Item
 
 items = [
@@ -191,10 +187,3 @@ items = [
         ),
     ),
 ]
-
-
-@pytest.mark.parametrize(("input_item", "expected_item"), items)
-def test_items(input_item: list[str], expected_item: Item):
-    src.tts.LAST_ITEM = input_item
-    item = read_descr()
-    assert item == expected_item

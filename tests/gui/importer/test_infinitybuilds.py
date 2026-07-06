@@ -242,7 +242,7 @@ def test_import_infinitybuilds_maps_gear_and_aspect_upgrades(mock_ini_loader, mo
     profile = captured_profile["profile"]
     assert profile.aspect_upgrades == ["of_channeling"]
     filter_names = {next(iter(entry.root)) for entry in profile.affixes}
-    assert filter_names == {"ChestArmor", "Helm", "Mythics"}
+    assert filter_names == {"ChestArmor", "Helm", "Gloves"}
     helm_filter = next(entry.root["Helm"] for entry in profile.affixes if "Helm" in entry.root)
     assert helm_filter.unique_aspect[0].name == "tuskhelm_of_joritz_the_mighty"
     chest_filter = next(entry.root["ChestArmor"] for entry in profile.affixes if "ChestArmor" in entry.root)
@@ -250,9 +250,9 @@ def test_import_infinitybuilds_maps_gear_and_aspect_upgrades(mock_ini_loader, mo
     assert affix_names == {"strength", "maximum_life", "armor"}
     strength_affix = next(a for a in chest_filter.affix_pool[0].count if a.name == "strength")
     assert strength_affix.want_greater is True
-    mythic_filter = next((entry.root["Mythics"] for entry in profile.affixes if "Mythics" in entry.root), None)
-    assert mythic_filter is not None
-    assert mythic_filter.unique_aspect[0].name == "doombringer"
+    gloves_filter = next(entry.root["Gloves"] for entry in profile.affixes if "Gloves" in entry.root)
+    assert gloves_filter.unique_aspect[0].name == "doombringer"
+    assert gloves_filter.affix_pool == []
 
 
 def test_import_infinitybuilds_saves_one_profile_per_variant_and_resolves_gear_once(
