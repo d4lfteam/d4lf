@@ -1,8 +1,6 @@
-import sys
 import threading
 
-if sys.platform != "darwin":
-    import keyboard
+from src.utils.hotkeys import validate_hotkey as validate_hotkey_binding
 
 
 def check_greater_than_zero(v: int) -> int:
@@ -28,8 +26,7 @@ def validate_greater_affix_count(v: int) -> int:
 
 
 def validate_hotkey(k: str) -> str:
-    keyboard.parse_hotkey(k)
-    return k
+    return validate_hotkey_binding(k)
 
 
 def singleton(cls):

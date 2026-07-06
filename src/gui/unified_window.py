@@ -3,6 +3,7 @@ import sys
 import time
 from contextlib import suppress
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import QEvent, QObject, QPoint, QSettings, QSize, Qt, QThread, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import QDesktopServices, QIcon
@@ -18,9 +19,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src import __version__, tts
+from src import __version__
 from src.autoupdater import notify_if_update
-from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.reload_groups import LOG_LEVEL_SETTING_KEYS, has_any_changed
 from src.gui.importer_window import ImporterWindow
@@ -28,14 +28,23 @@ from src.gui.models.activity_log_widget import ActivityLogWidget, ANSIConsoleWid
 from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.settings_window import ConfigWindow
 from src.gui.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
-from src.item.filter import Filter
 from src.logger import apply_log_level, consume_startup_log_records, create_formatter, remove_transient_gui_handlers
 from src.logger import setup as setup_logging
-from src.main import check_for_proper_tts_configuration
-from src.overlay import Overlay
 from src.scripts.common import get_filter_colors
-from src.scripts.handler import ScriptHandler
-from src.utils.window import WindowSpec, start_detecting_window
+
+if TYPE_CHECKING:
+    from src.scripts.handler import ScriptHandler
+
+if sys.platform == "win32":
+    from src import tts as tts_module
+    from src.cam import Cam
+    from src.item.filter import Filter
+    from src.main import check_for_proper_tts_configuration
+    from src.overlay import Overlay
+    from src.scripts.handler import ScriptHandler
+    from src.utils.window import WindowSpec, start_detecting_window
+else:
+    tts_module = None
 
 BASE_DIR = (
     Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent.parent
@@ -72,6 +81,11 @@ class BackendWorker(QObject):
     script_handler: ScriptHandler | None = None
 
     def run(self):
+        if sys.platform != "win32":
+            LOGGER.info("GUI-only mode is active on non-Windows. Backend runtime is disabled.")
+            self.finished.emit()
+            return
+
         Filter().load_files()
 
         running_from_source = not getattr(sys, "frozen", False)
@@ -91,7 +105,7 @@ class BackendWorker(QObject):
         self.script_handler = ScriptHandler()
 
         check_for_proper_tts_configuration()
-        tts.start_connection()
+        tts_module.start_connection()
 
         overlay = Overlay()
         overlay.run()
@@ -192,10 +206,16 @@ class UnifiedMainWindow(QMainWindow):
         layout.setSpacing(15)
 
         # System Status Indicators
-        self.vision_indicator = QLabel("Vision Mode: STOPPED")
-        self.vision_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
-        self.tts_indicator = QLabel("TTS: Disconnected")
-        self.tts_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
+        if sys.platform == "win32":
+            self.vision_indicator = QLabel("Vision Mode: STOPPED")
+            self.vision_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
+            self.tts_indicator = QLabel("TTS: Disconnected")
+            self.tts_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
+        else:
+            self.vision_indicator = QLabel("Vision Mode: Disabled (GUI-only)")
+            self.vision_indicator.setStyleSheet("color: #b0b0b0; font-weight: bold; font-size: 10pt;")
+            self.tts_indicator = QLabel("TTS: Disabled (GUI-only)")
+            self.tts_indicator.setStyleSheet("color: #b0b0b0; font-weight: bold; font-size: 10pt;")
 
         layout.addWidget(self.vision_indicator)
         layout.addWidget(self.tts_indicator)
@@ -232,11 +252,15 @@ class UnifiedMainWindow(QMainWindow):
 
     def _refresh_dashboard_status(self):
         """Poll backend states and update the Dashboard labels."""
-        self.update_tts_status(tts.CONNECTED)
+        self.update_tts_status(tts_module.CONNECTED if tts_module is not None else None)
         if self.worker and self.worker.script_handler:
             self.update_vision_status(self.worker.script_handler.vision_mode.running())
 
-    def update_vision_status(self, is_running: bool):
+    def update_vision_status(self, is_running: bool | None):
+        if is_running is None:
+            self.vision_indicator.setText("Vision Mode: Disabled (GUI-only)")
+            self.vision_indicator.setStyleSheet("color: #b0b0b0; font-weight: bold; font-size: 10pt;")
+            return
         if is_running:
             self.vision_indicator.setText("Vision Mode: RUNNING")
             self.vision_indicator.setStyleSheet("color: #23fc5d; font-weight: bold; font-size: 10pt;")
@@ -244,7 +268,11 @@ class UnifiedMainWindow(QMainWindow):
             self.vision_indicator.setText("Vision Mode: STOPPED")
             self.vision_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
 
-    def update_tts_status(self, connected: bool):
+    def update_tts_status(self, connected: bool | None):
+        if connected is None:
+            self.tts_indicator.setText("TTS: Disabled (GUI-only)")
+            self.tts_indicator.setStyleSheet("color: #b0b0b0; font-weight: bold; font-size: 10pt;")
+            return
         if connected:
             self.tts_indicator.setText("TTS: Connected")
             self.tts_indicator.setStyleSheet("color: #23fc5d; font-weight: bold; font-size: 10pt;")
@@ -253,6 +281,13 @@ class UnifiedMainWindow(QMainWindow):
             self.tts_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
 
     def _init_backend(self):
+        if sys.platform != "win32":
+            self.thread = None
+            self.worker = None
+            self.update_vision_status(None)
+            self.update_tts_status(None)
+            return
+
         self.thread = QThread()
         self.worker = BackendWorker()
         self.worker.moveToThread(self.thread)

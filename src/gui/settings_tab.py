@@ -1,7 +1,4 @@
-from __future__ import annotations
-
 import enum
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -274,7 +271,7 @@ class ConfigTab(QWidget):
         command = [sys.executable, *sys.argv[1:]] if getattr(sys, "frozen", False) else [sys.executable, *sys.argv]
 
         creationflags = 0
-        if os.name == "nt":
+        if sys.platform == "win32":
             creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
 
         try:
@@ -733,12 +730,15 @@ class HotkeyListenerDialog(QDialog):  # type: ignore[misc]
             return
 
         modifiers = []
+        # On macOS, Qt reports Command as ControlModifier and Control as MetaModifier.
         if event.modifiers() & Qt.KeyboardModifier.ControlModifier or key == Qt.Key.Key_Control:
-            modifiers.append("ctrl")
+            modifiers.append("cmd" if sys.platform == "darwin" else "ctrl")
         if event.modifiers() & Qt.KeyboardModifier.ShiftModifier or key == Qt.Key.Key_Shift:
             modifiers.append("shift")
         if event.modifiers() & Qt.KeyboardModifier.AltModifier or key == Qt.Key.Key_Alt:
             modifiers.append("alt")
+        if event.modifiers() & Qt.KeyboardModifier.MetaModifier or key == Qt.Key.Key_Meta:
+            modifiers.append("ctrl" if sys.platform == "darwin" else "cmd")
 
         non_mod_key = ""
         if key not in (Qt.Key.Key_Control, Qt.Key.Key_Shift, Qt.Key.Key_Alt, Qt.Key.Key_Meta):

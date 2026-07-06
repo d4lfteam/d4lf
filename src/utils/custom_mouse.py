@@ -3,9 +3,13 @@ import math
 import random
 import time
 
-import mouse as _mouse
 import numpy as np
 import pytweening
+from pynput.mouse import Button, Controller
+
+_MOUSE = Controller()
+
+_BUTTONS: dict[str, Button] = {"left": Button.left, "right": Button.right, "middle": Button.middle}
 
 
 def is_numeric(val):
@@ -198,7 +202,7 @@ class Mouse:
         randomize: int | tuple[int, int] = 5,
         delay_factor: tuple[float, float] = (0.2, 0.3),
     ):
-        from_point = _mouse.get_position()
+        from_point = Mouse.get_position()
         dist = math.dist((x, y), from_point)
         offset_boundary_x = max(10, int(0.08 * dist))
         offset_boundary_y = max(10, int(0.08 * dist))
@@ -230,7 +234,8 @@ class Mouse:
         delta = duration / len(human_curve.points)
 
         for point in human_curve.points:
-            _mouse.move(point[0], point[1], duration=delta)
+            _MOUSE.position = (int(point[0]), int(point[1]))
+            time.sleep(delta)
         time.sleep(0.05)
 
     @staticmethod
@@ -240,8 +245,8 @@ class Mouse:
     @staticmethod
     def click(button):
         if button != "left" or Mouse._is_clicking_safe():
-            _mouse.click(button)
+            _MOUSE.click(_BUTTONS[button])
 
     @staticmethod
     def get_position():
-        return _mouse.get_position()
+        return _MOUSE.position
