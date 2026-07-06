@@ -26,6 +26,10 @@ class ProfileEditor(QTabWidget):
         self.profile_model = loaded_profile.profile
         if self.profile_model.tributes is None:
             self.profile_model.tributes = TributeFilterModel()
+        elif isinstance(self.profile_model.tributes, list):
+            self.profile_model.tributes = (
+                self.profile_model.tributes[0] if self.profile_model.tributes else TributeFilterModel()
+            )
         # Create main tabs
         self.affixes_tab = AffixesTab(self.profile_model.affixes)
         self.charms_tab = CharmsTab(self.profile_model.charms)

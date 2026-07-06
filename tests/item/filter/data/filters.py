@@ -396,6 +396,14 @@ tributes = ProfileModel(
     ),
 )
 
+tributes_list_rules = ProfileModel(
+    name="tributes_list_rules",
+    tributes=[
+        TributeFilterModel(name=["harmony"]),
+        TributeFilterModel(rarities=[ItemRarity.Legendary, ItemRarity.Unique]),
+    ],
+)
+
 # noinspection PyTypeChecker
 affix_rarity = ProfileModel(
     name="rarity_test",

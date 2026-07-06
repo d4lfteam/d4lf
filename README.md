@@ -86,16 +86,6 @@ The TTS dll (`saapi64.dll`) must be signed for Diablo 4 to pick it up. The `inst
 - Download the signtool needed to add a local signature to the dll
 - Runs the signtool and signs the dll
 
-If you prefer running it from a terminal:
-
-- release zip: `.\install_dll.cmd`
-- source checkout: `.\tts\install_dll.cmd`
-
-For very advanced users that don't want to automatically download signtool.exe:
-
-- release zip: `.\install_dll.cmd -signtool_path "<full path to signtool.exe>"`
-- source checkout: `.\tts\install_dll.cmd -signtool_path "<full path to signtool.exe>"`
-
 ## GUI Overview
 
 d4lf.exe is the one-stop shop for all operations, including running the D4LF process and any configuration changes.
@@ -711,33 +701,48 @@ names in [assets/lang/enUS/sigils.json](assets/lang/enUS/sigils.json).
 
 ### Tributes
 
-Tributes are defined by the top-level key `Tributes` as a single object with `name` and `rarity` lists. These
-constraints are ANDed together (same semantics as affixes/sigils): when both lists are non-empty, a tribute must match
-both. An empty list means that dimension is unconstrained. If no Tribute filter is provided, all Tributes are kept.
+Tributes are defined by the top-level key `Tributes` as either:
+
+- a single rule object with `name` and/or `rarity`
+- or a list of those rule objects
+
+An empty list in a rule means that dimension is unconstrained.
+If no Tribute filter is provided, all Tributes are kept.
 
 Mythic tributes are always kept no matter what.
 
 <details><summary>Config Examples</summary>
 
 ```yaml
-# Keeps only tribute_of_mystique when it is legendary or unique
+# Keeps only tribute_of_harmony
 Tributes:
-  name: [tribute_of_mystique]
-  rarity: [legendary, unique]
+  name: [tribute_of_harmony]
 ```
 
 If you're exceptionally pressed for time, you can just put the name of the tribute without "tribute_of\_" at the beginning.
 
 ```yaml
-# Keeps Tribute of Mystique and Tribute of Ascendance (Resolute) and nothing else
+# Keeps Tribute of Harmony and Tribute of Ascendance (Resolute)
 Tributes:
-  name: [mystique, ascendance_resolute]
-  rarity: []
+  name: [harmony, ascendance_resolute]
+```
+
+You can also filter by rarity. The valid rarities are listed in [rarity.py](src/item/data/rarity.py).
+
+```yaml
+# Keeps only legendary and unique tributes
+Tributes:
+  rarity: [legendary, unique]
+```
+
+```yaml
+# Keeps harmony tributes OR any legendary/unique tribute
+Tributes:
+  - name: [harmony]
+  - rarity: [legendary, unique]
 ```
 
 </details>
-
-Legacy list-shaped `Tributes:` profiles are no longer supported and now fail validation with migration guidance.
 
 Tribute names are lower case and spaces are replaced by underscore. Parentheses are removed. Note that United and
 Resolute identifiers are part of the names in [assets/lang/enUS/tributes.json](assets/lang/enUS/tributes.json). You can find the list of item rarities

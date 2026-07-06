@@ -435,8 +435,10 @@ class ActivityLogWidget(QWidget):
                 summary.append(f"💎 Global Uniques: {len(model.global_uniques)}")
             if model.sigils:
                 summary.append("📜 Sigils: Included")
-            if model.tributes is not None and (model.tributes.name or model.tributes.rarities):
-                summary.append("🏆 Tributes: Included")
+            if model.tributes is not None:
+                tribute_rules = model.tributes if isinstance(model.tributes, list) else [model.tributes]
+                if any(rule.name or rule.rarities for rule in tribute_rules):
+                    summary.append("🏆 Tributes: Included")
             if model.paragon:
                 summary.append("🔱 Paragon Overlay: Data Found")
 

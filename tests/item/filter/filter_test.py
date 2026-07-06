@@ -130,6 +130,19 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
+def test_tributes_list_shape_rules_or_together(mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.tribute_filters = {filters.tributes_list_rules.name: filters.tributes_list_rules.tributes}
+
+    harmony_magic = Item(name="tribute_of_harmony", rarity=ItemRarity.Magic, item_type=ItemType.Tribute)
+    unknown_unique = Item(name="tribute_of_unknown", rarity=ItemRarity.Unique, item_type=ItemType.Tribute)
+    unknown_magic = Item(name="tribute_of_unknown", rarity=ItemRarity.Magic, item_type=ItemType.Tribute)
+
+    assert [m.profile for m in test_filter.should_keep(harmony_magic).matched] == [filters.tributes_list_rules.name]
+    assert [m.profile for m in test_filter.should_keep(unknown_unique).matched] == [filters.tributes_list_rules.name]
+    assert test_filter.should_keep(unknown_magic).matched == []
+
+
 @pytest.mark.parametrize(("_name", "result", "item"), natsorted(seals), ids=[name for name, _, _ in natsorted(seals)])
 def test_seals(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)

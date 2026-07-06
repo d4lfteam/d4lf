@@ -558,7 +558,7 @@ class ProfileModel(BaseModel):
     sigils: SigilFilterModel = Field(
         default=SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist), alias="Sigils"
     )
-    tributes: TributeFilterModel | None = Field(default=None, alias="Tributes")
+    tributes: TributeFilterModel | list[TributeFilterModel] | None = Field(default=None, alias="Tributes")
     paragon: ParagonPayloadModel | None = Field(default=None, alias="Paragon")
 
     @model_validator(mode="before")
@@ -603,19 +603,6 @@ class ProfileModel(BaseModel):
             msg = "Paragon legacy list entries must be objects"
             raise ValueError(msg)
         return {**data, key: paragon[0]}
-
-    @model_validator(mode="before")
-    @classmethod
-    def reject_legacy_tributes_list_shape(cls, data: object) -> object:
-        if not isinstance(data, dict):
-            return data
-        key = "Tributes" if "Tributes" in data else "tributes" if "tributes" in data else None
-        if key is None:
-            return data
-        if isinstance(data[key], list):
-            msg = "legacy Tributes list shape is no longer supported"
-            raise ValueError(msg)
-        return data
 
     @field_serializer("paragon", when_used="json-unless-none")
     def serialize_paragon(self, paragon: ParagonPayloadModel | None) -> object:
