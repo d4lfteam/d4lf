@@ -117,11 +117,33 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
     return inherent_num, affixes_num
 
 
-def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
+def _compute_affix_layout(tts_section: list[str], item: Item) -> tuple[int, int, list[str], str | None]:
+    """Compute where affixes start/end and what (if any) aspect/set text follows them.
+
+    Returns (inherent_num, affixes_num, affixes, aspect_or_set_text).
+    """
     starting_index = _get_affix_starting_location_from_tts_section(tts_section, item)
     inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
     affixes = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
     aspect_or_set_text = _get_aspect_or_set_from_tts_section(tts_section, item, starting_index, len(affixes))
+    return inherent_num, affixes_num, affixes, aspect_or_set_text
+
+
+def _assign_aspect_or_set(item: Item, aspect_or_set_text: str | None) -> None:
+    if not aspect_or_set_text:
+        return
+    if item.rarity == ItemRarity.Mythic:
+        item.aspect = Aspect(name=item.name, text=aspect_or_set_text, value=find_number(aspect_or_set_text))
+    elif item.rarity == ItemRarity.Unique:
+        item.aspect = _get_aspect_from_text(aspect_or_set_text, item.name)
+    elif item.rarity == ItemRarity.Set:
+        item.set = aspect_or_set_text
+    else:
+        item.aspect = _get_aspect_from_name(aspect_or_set_text, item.name)
+
+
+def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
+    inherent_num, affixes_num, affixes, aspect_or_set_text = _compute_affix_layout(tts_section, item)
     for i, affix_text in enumerate(affixes):
         if i < inherent_num:
             affix = _get_affix_from_text(affix_text, item.item_type)
@@ -131,15 +153,7 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
             affix = _get_affix_from_text(affix_text, item.item_type)
             item.affixes.append(affix)
 
-    if aspect_or_set_text:
-        if item.rarity == ItemRarity.Mythic:
-            item.aspect = Aspect(name=item.name, text=aspect_or_set_text, value=find_number(aspect_or_set_text))
-        elif item.rarity == ItemRarity.Unique:
-            item.aspect = _get_aspect_from_text(aspect_or_set_text, item.name)
-        elif item.rarity == ItemRarity.Set:
-            item.set = aspect_or_set_text
-        else:
-            item.aspect = _get_aspect_from_name(aspect_or_set_text, item.name)
+    _assign_aspect_or_set(item, aspect_or_set_text)
     return item
 
 
@@ -150,10 +164,7 @@ def _add_affixes_from_tts_mixed(
     img_item_descr: np.ndarray,
     aspect_bullet: TemplateMatch | None,
 ) -> Item:
-    starting_index = _get_affix_starting_location_from_tts_section(tts_section, item)
-    inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
-    affixes = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
-    aspect_or_set_text = _get_aspect_or_set_from_tts_section(tts_section, item, starting_index, len(affixes))
+    inherent_num, affixes_num, affixes, aspect_or_set_text = _compute_affix_layout(tts_section, item)
 
     # A seal will always have one extra bullet that represents the number of slots
     if item.item_type == ItemType.HoradricSeal:
@@ -183,17 +194,9 @@ def _add_affixes_from_tts_mixed(
                 affix.type = AffixType.normal
             item.affixes.append(affix)
 
-    if aspect_or_set_text:
-        if item.rarity == ItemRarity.Mythic:
-            item.aspect = Aspect(name=item.name, text=aspect_or_set_text, value=find_number(aspect_or_set_text))
-        elif item.rarity == ItemRarity.Unique:
-            item.aspect = _get_aspect_from_text(aspect_or_set_text, item.name)
-        elif item.rarity == ItemRarity.Set:
-            item.set = aspect_or_set_text
-        else:
-            item.aspect = _get_aspect_from_name(aspect_or_set_text, item.name)
-        if item.aspect and aspect_bullet:
-            item.aspect.loc = aspect_bullet.center
+    _assign_aspect_or_set(item, aspect_or_set_text)
+    if item.aspect and aspect_bullet:
+        item.aspect.loc = aspect_bullet.center
     return item
 
 
@@ -349,15 +352,24 @@ def _get_affix_starting_location_from_tts_section(tts_section: list[str], item: 
         start = _get_index_of_armor_dps_or_all_resist(tts_section, "armor")
     elif item.item_type == ItemType.HoradricSeal:
         index = _get_index_after_item_power(tts_section, fallback=4)
+        index = _skip_armory_loadout_banner(tts_section, index)
         # Seals also report their max charm slot count right after Item Power; skip past it to reach the affixes.
         if index < len(tts_section) and "charm slot" in tts_section[index].lower():
             index += 1
         return index
     elif item.item_type == ItemType.Charm:
-        return _get_index_after_item_power(tts_section, fallback=3)
+        index = _get_index_after_item_power(tts_section, fallback=3)
+        return _skip_armory_loadout_banner(tts_section, index)
     start += 1
 
     return start
+
+
+def _skip_armory_loadout_banner(tts_section: list[str], index: int) -> int:
+    """Equipped seals/charms may show an "Armory Loadout" banner right after Item Power; skip past it."""
+    if index < len(tts_section) and "armory loadout" in tts_section[index].lower():
+        return index + 1
+    return index
 
 
 def _get_index_of_armor_dps_or_all_resist(tts_section: list[str], indicator: str) -> int:
@@ -415,9 +427,7 @@ def _get_set_from_text(set_text: str) -> str | None:
 def _get_affix_from_text(text: str, item_type: ItemType | None = None) -> Affix:
     result = Affix(text=text)
 
-    for x in _AFFIX_REPLACEMENTS:
-        text = text.replace(x, "")
-    text = _REPLACE_COMPARE_RE.sub("", text).strip()
+    text = _clean_value_text(text)
 
     # A semi-hacky way to handle "for X Seconds", which will get read as a GA if we do nothing
     for_seconds_matches = _FOR_SECONDS_RE.findall(text)
@@ -474,12 +484,17 @@ def _has_numbers(affix_text):
     return any(char.isdigit() for char in affix_text)
 
 
+def _clean_value_text(text: str) -> str:
+    """Strip the noise tokens (%, +, commas, comparison parentheses, etc.) that surround a numeric value."""
+    for x in _AFFIX_REPLACEMENTS:
+        text = text.replace(x, "")
+    return _REPLACE_COMPARE_RE.sub("", text).strip()
+
+
 # For unique aspects
 def _get_aspect_from_text(text: str, name: str) -> Aspect:
     result = Aspect(text=text, name=name)
-    for x in _AFFIX_REPLACEMENTS:
-        text = text.replace(x, "")
-    text = _REPLACE_COMPARE_RE.sub("", text).strip()
+    text = _clean_value_text(text)
 
     match = _ASPECT_RE.search(text)
     if match:  # No match means the aspect is text only, there are no values to filter on
@@ -564,39 +579,36 @@ class _TtsItemParser:
         self._add_upgrade_flags()
         return _add_affixes_from_tts(self.tts_section, item)
 
-    def _should_return_without_affixes(self) -> bool:
+    @property
+    def _current_item(self) -> Item:
         if self.item is None:
             msg = "TTS parser item has not been initialized"
             raise RuntimeError(msg)
-        terminal_item_types = [ItemType.Material, ItemType.Tribute]
-        if self.attach_locations:
-            terminal_item_types.extend([ItemType.Cache, ItemType.LairBossKey])
-        else:
-            terminal_item_types.extend([ItemType.Cache, ItemType.LairBossKey])
-            if self.item.seasonal_attribute == SeasonalAttribute.sanctified:
-                return True
+        return self.item
+
+    def _should_return_without_affixes(self) -> bool:
+        item = self._current_item
+        terminal_item_types = [ItemType.Material, ItemType.Tribute, ItemType.Cache, ItemType.LairBossKey]
+        if not self.attach_locations and item.seasonal_attribute == SeasonalAttribute.sanctified:
+            return True
         return any([
-            is_consumable(self.item.item_type),
-            is_non_sigil_mapping(self.item.item_type),
-            is_socketable(self.item.item_type),
-            self.item.item_type in terminal_item_types,
+            is_consumable(item.item_type),
+            is_non_sigil_mapping(item.item_type),
+            is_socketable(item.item_type),
+            item.item_type in terminal_item_types,
         ])
 
     def _is_supported_equipment(self) -> bool:
-        if self.item is None:
-            msg = "TTS parser item has not been initialized"
-            raise RuntimeError(msg)
+        item = self._current_item
         return any([
-            is_armor(self.item.item_type),
-            is_jewelry(self.item.item_type),
-            is_weapon(self.item.item_type),
-            is_seal_or_charm(self.item.item_type),
+            is_armor(item.item_type),
+            is_jewelry(item.item_type),
+            is_weapon(item.item_type),
+            is_seal_or_charm(item.item_type),
         ])
 
     def _parse_with_locations(self) -> Item | None:
-        if self.item is None:
-            msg = "TTS parser item has not been initialized"
-            raise RuntimeError(msg)
+        item = self._current_item
         if (sep_short_match := find_seperator_short(self.img_item_descr)) is None:
             LOGGER.warning("Could not detect item_seperator_short.")
             screenshot("failed_seperator_short", img=self.img_item_descr)
@@ -605,7 +617,7 @@ class _TtsItemParser:
         TP.submit(find_seperators_long, self.img_item_descr, sep_short_match)
         aspect_bullet_future = (
             TP.submit(find_aspect_bullet, self.img_item_descr, sep_short_match)
-            if self.item.rarity in [ItemRarity.Legendary, ItemRarity.Unique, ItemRarity.Mythic]
+            if item.rarity in [ItemRarity.Legendary, ItemRarity.Unique, ItemRarity.Mythic]
             else None
         )
         affix_bullets = find_affix_bullets(self.img_item_descr, sep_short_match)
@@ -614,16 +626,14 @@ class _TtsItemParser:
         self._add_upgrade_flags()
         aspect_bullet = aspect_bullet_future.result() if aspect_bullet_future else None
         return _add_affixes_from_tts_mixed(
-            self.tts_section, self.item, affix_bullets, self.img_item_descr, aspect_bullet=aspect_bullet
+            self.tts_section, item, affix_bullets, self.img_item_descr, aspect_bullet=aspect_bullet
         )
 
     def _validate_unique(self) -> None:
-        if self.item is None:
-            msg = "TTS parser item has not been initialized"
-            raise RuntimeError(msg)
-        if self.item.rarity == ItemRarity.Unique and self.item.name not in Dataloader().aspect_unique_dict:
+        item = self._current_item
+        if item.rarity == ItemRarity.Unique and item.name not in Dataloader().aspect_unique_dict:
             msg = (
-                f"Unrecognized unique {self.item.name}. This most likely means the name of it reported "
+                f"Unrecognized unique {item.name}. This most likely means the name of it reported "
                 f"from Diablo 4 is wrong. Please report a bug with this message."
             )
             if not self.attach_locations:
@@ -631,18 +641,16 @@ class _TtsItemParser:
             raise IndexError(msg)
         if (
             not self.attach_locations
-            and self.item.rarity == ItemRarity.Mythic
-            and self.item.name not in Dataloader().aspect_unique_dict
+            and item.rarity == ItemRarity.Mythic
+            and item.name not in Dataloader().aspect_unique_dict
         ):
-            msg = f"Unrecognized unique {self.item.name}. This most likely means the name of it reported from Diablo 4 is wrong. Please report a bug with this message. TTS: {self.tts_section}"
+            msg = f"Unrecognized unique {item.name}. This most likely means the name of it reported from Diablo 4 is wrong. Please report a bug with this message. TTS: {self.tts_section}"
             raise IndexError(msg)
 
     def _add_upgrade_flags(self) -> None:
-        if self.item is None:
-            msg = "TTS parser item has not been initialized"
-            raise RuntimeError(msg)
-        self.item.codex_upgrade = _is_codex_upgrade(self.tts_section)
-        self.item.cosmetic_upgrade = _is_cosmetic_upgrade(self.tts_section)
+        item = self._current_item
+        item.codex_upgrade = _is_codex_upgrade(self.tts_section)
+        item.cosmetic_upgrade = _is_cosmetic_upgrade(self.tts_section)
 
 
 def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
