@@ -27,6 +27,7 @@ from src.dataloader import Dataloader
 from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
+from src.item.data.rarity import ItemRarity
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -238,6 +239,25 @@ def create_seal_charm_filter(
     return seal_charm_filter
 
 
+def is_unique_like_rarity(rarity: ItemRarity | str | None) -> bool:
+    if isinstance(rarity, ItemRarity):
+        return rarity in (ItemRarity.Unique, ItemRarity.Mythic)
+    return str(rarity).strip().casefold() in {"unique", "mythic"}
+
+
+def create_item_affix_pool(affixes: list[Affix], unique_like: bool) -> list[AffixFilterCountModel]:
+    if not affixes:
+        return []
+    return [
+        AffixFilterCountModel(
+            count=[
+                AffixFilterModel(name=affix.name, want_greater=affix.type == AffixType.greater) for affix in affixes
+            ],
+            min_count=1 if unique_like else 3,
+        )
+    ]
+
+
 def unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
     filter_name = filter_name_template
     i = 2
@@ -290,14 +310,6 @@ def deduplicate_filters(
         result.append({key: model})
         used_names.append({key: model})
     return result
-
-
-def add_mythics_to_filters(mythic_names, finished_filters):
-    if mythic_names:
-        mythic_filter = ItemFilterModel()
-        for mythic_name in mythic_names:
-            mythic_filter.unique_aspect.append(AspectUniqueFilterModel(name=mythic_name))
-        finished_filters.append({"Mythics": mythic_filter})
 
 
 def sort_profile_filters(filters: list[dict[str, ItemFilterModel]]) -> list[dict[str, ItemFilterModel]]:
