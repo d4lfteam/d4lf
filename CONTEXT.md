@@ -60,3 +60,18 @@ A profile rule that matches sigils through a blacklist or whitelist.
 
 The dungeon or affix named by a sigil rule. A dungeon target scopes the rule to one sigil dungeon; an affix target applies across sigils that carry that affix.
 _Avoid_: sigil kind.
+
+### Vision mode fast
+
+A vision mode that evaluates the hovered item from TTS and displays a tooltip-level keep or junk result without marking individual affixes.
+_Avoid_: full tooltip level mode.
+
+### Vision mode with highlighting
+
+A vision mode that evaluates the hovered item from TTS and marks the matched affixes on the item tooltip.
+_Avoid_: highlighting mode, old vision mode.
+
+### Affix marker
+
+The on-screen marker drawn by vision mode with highlighting to indicate one matched affix on the item tooltip. The current marker is a square centered on the affix bullet.
+_Avoid_: affix highlight, row highlight.

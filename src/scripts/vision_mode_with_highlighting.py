@@ -19,6 +19,7 @@ from src.config.ui import ResManager
 from src.gui.importer.gui_common import DARK_GRAY_BG
 from src.item.data.item_type import is_sigil
 from src.item.data.seasonal_attribute import SeasonalAttribute
+from src.item.descr.geometry_locator import AffixMarkerLocator, AffixMarkerRequest, apply_marker_locations
 from src.item.filter import Filter, FilterResult
 from src.item.find_descr import find_descr
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item, reset_canvas
@@ -50,6 +51,7 @@ class VisionModeWithHighlighting:
         self.evaluate_item_thread = None
         self.evaluate_item_thread_cancel_event = None
         self.current_item = None
+        self.affix_marker_locator = AffixMarkerLocator()
         self.is_cleared = True
         self.queue = queue.Queue()
         self.is_running = False
@@ -371,29 +373,7 @@ class VisionModeWithHighlighting:
                         last_center = item_center
 
                         if item_descr == self.current_item:
-                            # We need to get the item_descr again but this time with affix locations
-                            if is_sigil(item_descr.item_type):
-                                # We won't highlight specific affixes for sigils. We'll see if people complain
-                                item_descr_with_loc = item_descr
-                            else:
-                                item_descr_with_loc = None
-                                for _ in range(3):
-                                    try:
-                                        item_descr_with_loc = src.item.descr.read_descr_tts.read_descr_mixed(
-                                            cropped_descr
-                                        )
-                                    except IndexError:
-                                        item_descr_with_loc = None
-                                    if item_descr_with_loc is not None:
-                                        break
-                                    # Bullet point template matching can miss on a single frame
-                                    # (extra tooltip lines on mythics/tempered items are especially prone to this).
-                                    # Re-grab and retry before giving up on this item entirely.
-                                    time.sleep(0.05)
-                                    _, _, cropped_descr, _ = find_descr(Cam().grab(), item_center)
-                            if item_descr_with_loc is None:  # Item was likely mid-transition
-                                continue
-                            res = Filter().should_keep(item_descr_with_loc)
+                            res = Filter().should_keep(item_descr)
                             match = res.keep
 
                             # Adapt colors based on config
@@ -403,7 +383,17 @@ class VisionModeWithHighlighting:
                                 ):
                                     self.request_codex_upgrade_box(item_descr, item_roi, res)
                                 else:
-                                    self.request_match_box(item_descr, item_roi, res, item_descr_with_loc)
+                                    if not is_sigil(item_descr.item_type):
+                                        locator_result = self.affix_marker_locator.locate(
+                                            AffixMarkerRequest(
+                                                tooltip_image=cropped_descr,
+                                                item=item_descr,
+                                                matched_affixes=res.matched[0].matched_affixes if res.matched else [],
+                                                aspect_matched=any(m.aspect_match for m in res.matched),
+                                            )
+                                        )
+                                        apply_marker_locations(item_descr, res, locator_result)
+                                    self.request_match_box(item_descr, item_roi, res, item_descr)
                             elif not match:
                                 self.request_no_match_box(item_descr, item_roi)
                 else:

@@ -30,7 +30,7 @@ def find_seperators_long(img_item_descr: np.ndarray, sep_short_match: TemplateMa
     return sorted(filtered_matches, key=lambda match: match.center[1])
 
 
-def find_seperator_short(img_item_descr: np.ndarray) -> TemplateMatch:
+def find_seperator_short(img_item_descr: np.ndarray, threshold: float = 0.62) -> TemplateMatch:
     refs = ["item_seperator_short_rare", "item_seperator_short_legendary", "item_seperator_short_mythic"]
     roi = [
         0,
@@ -39,11 +39,20 @@ def find_seperator_short(img_item_descr: np.ndarray) -> TemplateMatch:
         ResManager().offsets.find_seperator_short_offset_top,
     ]
     if not (
-        sep_short := search(refs, img_item_descr, 0.62, roi, use_grayscale=True, mode="all", do_multi_process=False)
+        sep_short := search(
+            refs, img_item_descr, threshold, roi, use_grayscale=True, mode="all", do_multi_process=False
+        )
     ).success:
         return None
     sorted_matches = sorted(sep_short.matches, key=lambda match: match.center[1])
     return sorted_matches[0]
+
+
+def find_bullets_for_templates(
+    img_item_descr: np.ndarray, sep_short_match: TemplateMatch, template_list: list[str], threshold: float = 0.80
+) -> list[TemplateMatch]:
+    """Search for bullet icons using an explicit template list instead of all possible bullet types."""
+    return _find_bullets(img_item_descr, sep_short_match, template_list, threshold, "all")
 
 
 def _filter_outliers(template_matches: list[TemplateMatch]) -> list[TemplateMatch]:

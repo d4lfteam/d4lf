@@ -15,7 +15,7 @@ PyYAML, configparser; pytest; Ruff; PyInstaller.
 
 ## Commands
 
-Run these just before finishing work and and make sure it passes.
+Run these when you think you are finished and make sure these pass.
 
 ```bash
 uv run prek run -a
