@@ -4,11 +4,15 @@ from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     affix_dict_for_item_type,
     build_default_profile_file_name,
+    create_item_affix_pool,
     deduplicate_filters,
+    is_unique_like_rarity,
     unique_filter_name,
 )
 from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart, ImportConfig
+from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
+from src.item.data.rarity import ItemRarity
 
 
 def test_build_default_profile_file_name_maxroll() -> None:
@@ -126,6 +130,29 @@ def test_affix_dict_for_item_type_uses_context_specific_dict() -> None:
     assert affix_dict_for_item_type(ItemType.HoradricSeal) is Dataloader().seal_affix_dict
     assert affix_dict_for_item_type(ItemType.Ring) is Dataloader().affix_dict
     assert affix_dict_for_item_type(None) is Dataloader().affix_dict
+
+
+def test_is_unique_like_rarity_handles_enum_and_string_values() -> None:
+    assert is_unique_like_rarity(ItemRarity.Unique) is True
+    assert is_unique_like_rarity(ItemRarity.Mythic) is True
+    assert is_unique_like_rarity("unique") is True
+    assert is_unique_like_rarity("mythic") is True
+    assert is_unique_like_rarity(ItemRarity.Legendary) is False
+    assert is_unique_like_rarity("legendary") is False
+    assert is_unique_like_rarity(None) is False
+
+
+def test_create_item_affix_pool_sets_expected_min_count_and_greater_flags() -> None:
+    affixes = [Affix(name="armor", type=AffixType.greater), Affix(name="maximum_life")]
+
+    unique_like_pool = create_item_affix_pool(affixes=affixes, unique_like=True)
+    non_unique_pool = create_item_affix_pool(affixes=affixes, unique_like=False)
+
+    assert unique_like_pool[0].min_count == 1
+    assert non_unique_pool[0].min_count == 3
+    assert [affix.name for affix in unique_like_pool[0].count] == ["armor", "maximum_life"]
+    assert unique_like_pool[0].count[0].want_greater is True
+    assert unique_like_pool[0].count[1].want_greater is False
 
 
 def test_to_yaml_str_sorts_aspect_upgrades_and_uses_block_style(mock_ini_loader) -> None:

@@ -1,11 +1,7 @@
-import pytest
-
-import src.tts
 from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
-from src.item.descr.read_descr_tts import read_descr
 from src.item.models import Item
 
 items = [
@@ -141,11 +137,72 @@ items = [
             rarity=ItemRarity.Mythic,
         ),
     ),
+    # Ensuring mythics are read with their own individual affixes, just like uniques
+    (
+        [
+            "BLOOD-MAD IDOL",
+            "Ancestral Mythic Unique Amulet",
+            "900 Item Power",
+            "230 All Resist (-7.4% Toughness)",
+            "+180 Willpower +[150 - 180]",
+            "+1,225 Armor [981 - 1,225]",
+            "+10.0% Attack Speed [8.0 - 10.0]%",
+            "x24% Shadow Damage Multiplier [14 - 24]%",
+            "You are always Berserking but take 200%[x] increased damage as Burning over 8 seconds. While Burning, Berserking grants an additional 195%[x] [156 - 195]% increased damage.",
+            "The relic was fashioned for the broken-hearted and the battle-mad, for those whose rage has nowhere left to dwell. - Notes from Sister Octavia on the Burnt Knights",
+            "Requires Level 70. Account Bound. Unique Equipped",
+            "Sell Value: 1 Gold",
+            "Tempers: 3/3",
+            "Right mouse button",
+        ],
+        Item(
+            affixes=[
+                Affix(
+                    max_value=180.0,
+                    min_value=150.0,
+                    name="willpower",
+                    text="+180 Willpower +[150 - 180]",
+                    type=AffixType.normal,
+                    value=180.0,
+                ),
+                Affix(
+                    max_value=1225.0,
+                    min_value=981.0,
+                    name="armor",
+                    text="+1,225 Armor [981 - 1,225]",
+                    type=AffixType.normal,
+                    value=1225.0,
+                ),
+                Affix(
+                    max_value=10.0,
+                    min_value=8.0,
+                    name="attack_speed",
+                    text="+10.0% Attack Speed [8.0 - 10.0]%",
+                    type=AffixType.normal,
+                    value=10.0,
+                ),
+                Affix(
+                    max_value=24.0,
+                    min_value=14.0,
+                    name="shadow_damage_multiplier",
+                    text="x24% Shadow Damage Multiplier [14 - 24]%",
+                    type=AffixType.normal,
+                    value=24.0,
+                ),
+            ],
+            aspect=Aspect(
+                name="blood-mad_idol",
+                text="You are always Berserking but take 200%[x] increased damage as Burning over 8 seconds. While Burning, Berserking grants an additional 195%[x] [156 - 195]% increased damage.",
+                value=200.0,
+            ),
+            codex_upgrade=False,
+            cosmetic_upgrade=False,
+            inherent=[],
+            is_ancestral=True,
+            item_type=ItemType.Amulet,
+            name="blood-mad_idol",
+            power=900,
+            rarity=ItemRarity.Mythic,
+        ),
+    ),
 ]
-
-
-@pytest.mark.parametrize(("input_item", "expected_item"), items)
-def test_items(input_item: list[str], expected_item: Item):
-    src.tts.LAST_ITEM = input_item
-    item = read_descr()
-    assert item == expected_item

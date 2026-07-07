@@ -294,7 +294,7 @@ Affixes:
         - name: penitent_greaves
           minPercentOfAspect: 50
 
-  # You can also search for multiple unique aspects at once. This is mostly used by the importers for mythics
+  # You can also search for multiple unique aspects at once, e.g. to keep several BiS uniques regardless of build
   # Keep all penitent greaves or gohrs_devastating_grips with 900 power
   - HighPowerUniques:
       minPower: 900

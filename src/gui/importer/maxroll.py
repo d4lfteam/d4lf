@@ -5,21 +5,16 @@ import re
 import lxml.html
 
 import src.logger
-from src.config.profile_models import (
-    AffixFilterCountModel,
-    AffixFilterModel,
-    AspectUniqueFilterModel,
-    CharmFilterModel,
-    ItemFilterModel,
-    SealFilterModel,
-)
+from src.config.profile_models import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     affix_dict_for_item_type,
+    create_item_affix_pool,
     create_seal_charm_filter,
     fix_offhand_type,
     fix_weapon_type,
     get_with_retry,
+    is_unique_like_rarity,
     match_to_enum,
     retry_importer,
     update_mingreateraffixcount,
@@ -92,11 +87,12 @@ def import_maxroll(config: ImportConfig):
     charm_filters = []
     seal_filters = []
     aspect_upgrade_filters = []
-    mythic_names = []
     for item_id in active_profile["items"].values():
         resolved_item = items[str(item_id)]
         resolved_item_id = resolved_item["id"]
+        item_name = mapping_data["items"][resolved_item_id]["name"]
         rarity = _find_item_rarity(resolved_item_id, mapping_data)
+        is_unique_like = is_unique_like_rarity(rarity)
 
         item_filter = ItemFilterModel()
         if (
@@ -110,7 +106,6 @@ def import_maxroll(config: ImportConfig):
             continue
 
         # TODO I don't think this code needs to be siloed, I think it can be mostly part of the normal flow so we're not repeating work. It'd just require some refactoring
-        # TODO I'd make that change after the profile editor rework is done and we're importing individual mythics again
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
             if "explicits" not in resolved_item:
                 LOGGER.warning(
@@ -126,10 +121,8 @@ def import_maxroll(config: ImportConfig):
             # Extract unique aspect and set info for charms
             charm_or_seal_unique_aspect = None
             charm_set_name = None
-            if rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
-                charm_or_seal_unique_aspect = correct_name(
-                    _unique_name_special_handling(mapping_data["items"][resolved_item_id]["name"])
-                )
+            if is_unique_like:
+                charm_or_seal_unique_aspect = correct_name(_unique_name_special_handling(item_name))
             elif rarity == ItemRarity.Set:
                 set_key = mapping_data["items"][resolved_item_id]["set"]
                 charm_set_name = correct_name(mapping_data["itemSets"][set_key]["name"])
@@ -167,36 +160,28 @@ def import_maxroll(config: ImportConfig):
                 else:
                     aspect_upgrade_filters.append(legendary_aspect)
 
-        # Unique aspect, if the item is a unique
-        if rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
-            unique_name = mapping_data["items"][resolved_item_id]["name"]
+        # Unique aspect, if the item is a unique or a mythic (mythics are functionally uniques, just purple)
+        if is_unique_like:
+            unique_name = item_name
             try:
                 unique_name = _unique_name_special_handling(unique_name)
-                # We handle mythics at the end
-                if rarity == ItemRarity.Mythic:
-                    mythic_names.append(unique_name)
-                    continue
                 item_filter.unique_aspect = [AspectUniqueFilterModel(name=unique_name)]
             except Exception:
                 LOGGER.exception(f"Unexpected error adding unique aspect for {unique_name}, please report a bug.")
 
-        # Standard item handling. For mythics we don't import affixes
-        if rarity != ItemRarity.Mythic:
-            item_filter.affix_pool = [
-                AffixFilterCountModel(
-                    count=[
-                        AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater)
-                        for x in _find_item_affixes(
-                            mapping_data=mapping_data,
-                            item_affixes=resolved_item["explicits"],
-                            item_type=item_type,
-                            import_greater_affixes=config.import_greater_affixes,
-                        )
-                    ],
-                    minCount=1 if rarity == ItemRarity.Unique else 3,
-                )
-            ]
+        # Standard item handling
+        affixes = _find_item_affixes(
+            mapping_data=mapping_data,
+            item_affixes=resolved_item["explicits"],
+            item_type=item_type,
+            import_greater_affixes=config.import_greater_affixes,
+        )
+        if affixes:
+            item_filter.affix_pool = create_item_affix_pool(affixes=affixes, unique_like=is_unique_like)
             update_mingreateraffixcount(item_filter, config.require_greater_affixes)
+        elif not item_filter.unique_aspect:
+            LOGGER.warning(f"Skipping {item_name} because it had no supported affixes or unique aspect.")
+            continue
 
         item_filter.min_power = 100
         # Match the other guide importers: let the shared pipeline deduplicate identical affix filters
@@ -218,7 +203,6 @@ def import_maxroll(config: ImportConfig):
                         charm_filters=charm_filters,
                         seal_filters=seal_filters,
                         aspect_upgrade_filters=aspect_upgrade_filters,
-                        mythic_names=mythic_names,
                         paragon_steps=extract_maxroll_paragon_steps(active_profile, mapping_data),
                         paragon_build_name=build_name,
                     )
