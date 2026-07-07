@@ -19,6 +19,7 @@ class _FakeOverlay(tk.Toplevel):
 
     def __init__(self, parent):
         super().__init__(parent)
+        self.withdraw()
         _FakeOverlay.instances_created += 1
 
     def destroy(self):
