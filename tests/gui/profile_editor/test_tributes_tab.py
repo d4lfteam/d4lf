@@ -7,6 +7,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PyQt6.QtWidgets import QApplication, QDialog, QPushButton
 
 from src.config.profile_models import ItemRarity, TributeFilterModel
+from src.gui.profile_editor.profile_editor import _to_editor_tribute_filter
 from src.gui.profile_editor.tributes_tab import TributesTab
 
 
@@ -20,6 +21,18 @@ class _AcceptedDialog(QDialog):
 
     def get_value(self) -> TributeFilterModel:
         return self._value
+
+
+class _AcceptedRarityPicker(QDialog):
+    def __init__(self, selected_rarities: list[ItemRarity]):
+        super().__init__()
+        self._selected_rarities = selected_rarities
+
+    def exec(self) -> int:
+        return QDialog.DialogCode.Accepted
+
+    def get_selected_rarities(self) -> list[ItemRarity]:
+        return self._selected_rarities
 
 
 class _FakeLoader:
@@ -54,20 +67,28 @@ def test_add_tribute_adds_name_rule_with_expected_display_text(qapp, monkeypatch
     assert tab.list_widget.item(0).text() == "Tribute: Tribute Of Test"
 
 
-def test_add_rarity_adds_rarity_rule_with_expected_display_text(qapp, monkeypatch):
+def test_edit_rarities_updates_summary_and_model(qapp, monkeypatch):
     monkeypatch.setattr("src.gui.profile_editor.tributes_tab.Dataloader", _FakeLoader)
     monkeypatch.setattr(
-        "src.gui.profile_editor.tributes_tab.AddTributeRarity",
-        lambda *_args, **_kwargs: _AcceptedDialog(
-            TributeFilterModel.model_construct(name=[], rarities=[ItemRarity.Rare])
-        ),
+        "src.gui.profile_editor.tributes_tab.RarityPicker",
+        lambda *_args, **_kwargs: _AcceptedRarityPicker([ItemRarity.Rare]),
     )
 
     tributes = TributeFilterModel()
     tab = TributesTab(tributes)
     tab.load()
 
-    _button(tab, "Add Rarity").click()
+    tab.edit_rarities()
 
     assert tributes.rarities == [ItemRarity.Rare]
-    assert tab.list_widget.item(0).text() == "Rarities: Rare"
+    assert tab.rarity_line_edit.text() == "rare"
+
+
+def test_to_editor_tribute_filter_merges_legacy_rarity_only_rules():
+    merged = _to_editor_tribute_filter([
+        TributeFilterModel.model_construct(name=[], rarities=[ItemRarity.Rare]),
+        TributeFilterModel.model_construct(name=[], rarities=[ItemRarity.Legendary]),
+        TributeFilterModel.model_construct(name=[], rarities=[ItemRarity.Mythic]),
+    ])
+
+    assert merged.rarities == [ItemRarity.Rare, ItemRarity.Legendary, ItemRarity.Mythic]

@@ -2,8 +2,10 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QDialog,
+    QFormLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QMessageBox,
     QPushButton,
@@ -11,13 +13,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.profile_models import ItemRarity, TributeFilterModel
+from src.config.profile_models import TributeFilterModel
 from src.dataloader import Dataloader
-from src.gui.models.dialog import AddTributeRarity, CreateTribute
+from src.gui.models.dialog import CreateTribute, RarityPicker, rarity_summary
 
 TRIBUTES_TABNAME = "Tributes"
 _TRIBUTE_PREFIX = "Tribute: "
-_RARITY_PREFIX = "Rarities: "
 
 
 class TributesTab(QWidget):
@@ -25,6 +26,7 @@ class TributesTab(QWidget):
         super().__init__(parent)
         self.tributes = tributes if tributes is not None else TributeFilterModel()
         self.list_widget = QListWidget()
+        self.rarity_line_edit = QLineEdit()
         self.loaded = False
 
     def load(self):
@@ -38,7 +40,7 @@ class TributesTab(QWidget):
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         label = QLabel(
-            "Add tribute names and tribute rarities you want to keep. Name and rarity constraints are ANDed together."
+            "Add tribute names and select rarities you want to keep. Leaving rarities empty keeps all rarities."
         )
         label.setWordWrap(True)
         main_layout.addWidget(label)
@@ -48,14 +50,23 @@ class TributesTab(QWidget):
         add_tribute_button.clicked.connect(self._add_tribute)
         button_layout.addWidget(add_tribute_button)
 
-        add_rarity_button = QPushButton("Add Rarity")
-        add_rarity_button.clicked.connect(self._add_rarity)
-        button_layout.addWidget(add_rarity_button)
-
         remove_button = QPushButton("Remove Selected")
         remove_button.clicked.connect(self.remove_selected)
         button_layout.addWidget(remove_button)
         main_layout.addLayout(button_layout)
+
+        self.rarity_line_edit.setReadOnly(True)
+        self.refresh_rarity_summary()
+        rarity_layout = QHBoxLayout()
+        rarity_layout.addWidget(self.rarity_line_edit)
+        edit_rarities_button = QPushButton("...")
+        edit_rarities_button.setMaximumWidth(40)
+        edit_rarities_button.clicked.connect(self.edit_rarities)
+        rarity_layout.addWidget(edit_rarities_button)
+        rarity_layout.addStretch()
+        rarity_form = QFormLayout()
+        rarity_form.addRow("Rarities:", rarity_layout)
+        main_layout.addLayout(rarity_form)
 
         self.list_widget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self._reload_list_widget()
@@ -67,8 +78,6 @@ class TributesTab(QWidget):
         for tribute_name in self.tributes.name:
             display_name = Dataloader().tribute_dict.get(tribute_name, tribute_name)
             self.list_widget.addItem(f"{_TRIBUTE_PREFIX}{display_name}")
-        for rarity in self.tributes.rarities:
-            self.list_widget.addItem(f"{_RARITY_PREFIX}{ItemRarity(rarity).name}")
 
     def _add_tribute(self):
         dialog = CreateTribute(self.tributes.name)
@@ -79,14 +88,14 @@ class TributesTab(QWidget):
                     self.tributes.name.append(tribute_name)
             self._reload_list_widget()
 
-    def _add_rarity(self):
-        dialog = AddTributeRarity(self.tributes.rarities)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            value = dialog.get_value()
-            for rarity in value.rarities:
-                if rarity not in self.tributes.rarities:
-                    self.tributes.rarities.append(rarity)
-            self._reload_list_widget()
+    def refresh_rarity_summary(self):
+        self.rarity_line_edit.setText(rarity_summary(self.tributes.rarities))
+
+    def edit_rarities(self):
+        picker = RarityPicker(self, self.tributes.rarities)
+        if picker.exec() == QDialog.DialogCode.Accepted:
+            self.tributes.rarities = picker.get_selected_rarities()
+            self.refresh_rarity_summary()
 
     def remove_selected(self):
         rows = sorted({self.list_widget.row(item) for item in self.list_widget.selectedItems()}, reverse=True)
@@ -102,11 +111,5 @@ class TributesTab(QWidget):
                 normalized_name = reverse_dict.get(selected_name, selected_name)
                 if normalized_name in self.tributes.name:
                     self.tributes.name.remove(normalized_name)
-            elif text.startswith(_RARITY_PREFIX):
-                selected_rarity = text.removeprefix(_RARITY_PREFIX)
-                if selected_rarity in ItemRarity.__members__:
-                    rarity = ItemRarity[selected_rarity]
-                    if rarity in self.tributes.rarities:
-                        self.tributes.rarities.remove(rarity)
 
         self._reload_list_widget()

@@ -18,18 +18,40 @@ if TYPE_CHECKING:
     from src.config.profile_models import ProfileModel
 
 
+def _to_editor_tribute_filter(tributes: TributeFilterModel | list[TributeFilterModel] | None) -> TributeFilterModel:
+    if tributes is None:
+        return TributeFilterModel()
+    if isinstance(tributes, TributeFilterModel):
+        return tributes
+    if not tributes:
+        return TributeFilterModel()
+
+    # The editor cannot represent list-of-rules OR logic; only merge legacy single-dimension rules safely.
+    has_name_rules = any(rule.name for rule in tributes)
+    has_rarity_rules = any(rule.rarities for rule in tributes)
+    has_mixed_rules = any(rule.name and rule.rarities for rule in tributes)
+    if has_mixed_rules or (has_name_rules and has_rarity_rules):
+        return tributes[0]
+
+    names: list[str] = []
+    rarities = []
+    for rule in tributes:
+        for name in rule.name:
+            if name not in names:
+                names.append(name)
+        for rarity in rule.rarities:
+            if rarity not in rarities:
+                rarities.append(rarity)
+    return TributeFilterModel(name=names, rarities=rarities)
+
+
 class ProfileEditor(QTabWidget):
     def __init__(self, loaded_profile: LoadedProfile, parent=None):
         super().__init__(parent)
 
         self.loaded_profile = loaded_profile
         self.profile_model = loaded_profile.profile
-        if self.profile_model.tributes is None:
-            self.profile_model.tributes = TributeFilterModel()
-        elif isinstance(self.profile_model.tributes, list):
-            self.profile_model.tributes = (
-                self.profile_model.tributes[0] if self.profile_model.tributes else TributeFilterModel()
-            )
+        self.profile_model.tributes = _to_editor_tribute_filter(self.profile_model.tributes)
         # Create main tabs
         self.affixes_tab = AffixesTab(self.profile_model.affixes)
         self.charms_tab = CharmsTab(self.profile_model.charms)
