@@ -11,19 +11,14 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
-from src.config.profile_models import (
-    AffixFilterCountModel,
-    AffixFilterModel,
-    AspectUniqueFilterModel,
-    CharmFilterModel,
-    ItemFilterModel,
-    SealFilterModel,
-)
+from src.config.profile_models import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     affix_dict_for_item_type,
+    create_item_affix_pool,
     create_seal_charm_filter,
     get_with_retry,
+    is_unique_like_rarity,
     match_to_enum,
     retry_importer,
     update_mingreateraffixcount,
@@ -139,7 +134,6 @@ def _build_variant_for_gear(gear: list[dict], resolved: _ResolvedGearData, confi
     finished_filters = []
     charm_filters = []
     seal_filters = []
-    mythic_names = []
     aspect_upgrade_filters = []
     for gear_piece in gear:
         item_id = _canonical_catalog_id(gear_piece.get("itemId"))
@@ -149,10 +143,7 @@ def _build_variant_for_gear(gear: list[dict], resolved: _ResolvedGearData, confi
             LOGGER.warning(f"Skipping {gear_piece.get('slot')} because no item name was resolved.")
             continue
         rarity = item.get("rarity", "")
-
-        if rarity == "mythic":
-            mythic_names.append(item_name)
-            continue
+        is_unique_like = is_unique_like_rarity(rarity)
 
         # Use the resolved catalog slot name (e.g. "Sword", "Ring", "Chest Armor") rather than the
         # build's internal slot key (e.g. "mainhand", "ring1", "chest") which doesn't map 1:1.
@@ -179,7 +170,7 @@ def _build_variant_for_gear(gear: list[dict], resolved: _ResolvedGearData, confi
         if item_type in (ItemType.HoradricSeal, ItemType.Charm):
             seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
             seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
-            unique_name = item_name if rarity == "unique" else None
+            unique_name = item_name if is_unique_like else None
             if not affixes and not unique_name:
                 LOGGER.warning(f"Skipping {item_name} because it had no supported affixes or unique aspect.")
                 continue
@@ -195,19 +186,15 @@ def _build_variant_for_gear(gear: list[dict], resolved: _ResolvedGearData, confi
 
         item_filter = ItemFilterModel()
         item_filter.item_type = [item_type] if item_type else []
-        if rarity == "unique":
+        if is_unique_like:
             item_filter.unique_aspect = [AspectUniqueFilterModel(name=item_name)]
-        if not affixes:
+        if not affixes and not item_filter.unique_aspect:
             LOGGER.warning(f"Skipping {gear_piece.get('slot')} because it had no supported affixes.")
             continue
-        affixes = sorted(affixes, key=lambda affix: (affix.name, affix.type.value))
-        item_filter.affix_pool = [
-            AffixFilterCountModel(
-                count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
-                min_count=1 if rarity == "unique" else 3,
-            )
-        ]
-        update_mingreateraffixcount(item_filter, config.require_greater_affixes)
+        if affixes:
+            affixes = sorted(affixes, key=lambda affix: (affix.name, affix.type.value))
+            item_filter.affix_pool = create_item_affix_pool(affixes=affixes, unique_like=is_unique_like)
+            update_mingreateraffixcount(item_filter, config.require_greater_affixes)
         item_filter.min_power = 100
         finished_filters.append(item_filter)
 
@@ -216,7 +203,6 @@ def _build_variant_for_gear(gear: list[dict], resolved: _ResolvedGearData, confi
         charm_filters=charm_filters,
         seal_filters=seal_filters,
         aspect_upgrade_filters=aspect_upgrade_filters,
-        mythic_names=mythic_names,
     )
 
 
