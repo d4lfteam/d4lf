@@ -1,5 +1,7 @@
+import json
 import os
 import typing
+from types import SimpleNamespace
 
 import pytest
 
@@ -73,6 +75,55 @@ def test_resolve_visible_profile_index_skips_hidden_profiles() -> None:
     ]
 
     assert _resolve_visible_profile_index(profiles=profiles, visible_profile_index=2) == 3
+
+
+def test_import_maxroll_keeps_mythic_item_without_affixes(mock_ini_loader, mocker: MockerFixture) -> None:
+    Dataloader()
+    planner_response = mocker.Mock()
+    planner_response.json.return_value = {
+        "season": "14",
+        "name": "Test Build",
+        "class": "Barbarian",
+        "data": json.dumps({
+            "profiles": [{"name": "Default", "items": {"helm": 1}}],
+            "items": {"1": {"id": "item-mythic-helm", "explicits": []}},
+        }),
+    }
+    mapping_response = mocker.Mock()
+    mapping_response.json.return_value = {
+        "items": {"item-mythic-helm": {"magicType": 4, "name": "Harlequin Crest", "type": "Helm"}},
+        "attributeDescriptions": {},
+        "affixes": {},
+        "skills": {},
+    }
+    mocker.patch("src.gui.importer.maxroll.get_with_retry", side_effect=[planner_response, mapping_response])
+
+    captured_profile = {}
+
+    def fake_save_new(*, file_name, profile, source):
+        captured_profile["profile"] = profile
+        return SimpleNamespace(file_name=file_name)
+
+    profile_store = mocker.Mock()
+    profile_store.save_new.side_effect = fake_save_new
+    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+
+    import_maxroll(
+        config=ImportConfig(
+            url="https://maxroll.gg/d4/planner/test-profile#1",
+            import_aspect_upgrades=False,
+            add_to_profiles=False,
+            import_greater_affixes=True,
+            require_greater_affixes=False,
+            custom_file_name="test",
+        )
+    )
+
+    profile = captured_profile["profile"]
+    assert {next(iter(entry.root)) for entry in profile.affixes} == {"Helm"}
+    helm_filter = next(entry.root["Helm"] for entry in profile.affixes if "Helm" in entry.root)
+    assert helm_filter.unique_aspect[0].name == "harlequin_crest"
+    assert helm_filter.affix_pool == []
 
 
 def test_find_item_affixes_resolves_skill_rank_category_from_affix_key() -> None:

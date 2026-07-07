@@ -24,6 +24,7 @@ from src.config.profile_models import (
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     affix_dict_for_item_type,
+    create_item_affix_pool,
     create_seal_charm_filter,
     fix_offhand_type,
     fix_weapon_type,
@@ -132,14 +133,11 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     finished_filters = []
     charm_filters = []
     seal_filters = []
-    mythic_names = []
     aspect_upgrade_filters = []
     guessed_set_name = None
     for item in sorted(items, key=lambda item: jsonpath.findall(".gameEntity.type", item)[0] != "charms"):
         item_filter = ItemFilterModel()
         entity_type = jsonpath.findall(".gameEntity.type", item)[0]
-        mythic_result = jsonpath.findall(".gameEntity.entity.mythic", item)
-        is_mythic = mythic_result[0] if mythic_result else False
         if entity_type not in ["aspects", "uniqueItems", "charms", "seals", "items"]:
             continue
         title_result = jsonpath.findall(".gameEntity.entity.title", item) or jsonpath.findall(".gameEntity.title", item)
@@ -167,10 +165,6 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         is_unique = entity_type == "uniqueItems"
         if is_unique:
             try:
-                # We handle mythics at the end
-                if is_mythic:
-                    mythic_names.append(item_name)
-                    continue
                 item_filter.unique_aspect = [AspectUniqueFilterModel(name=item_name)]
             except Exception:
                 LOGGER.exception(f"Unexpected error adding unique aspect for {item_name}, please report a bug.")
@@ -179,7 +173,12 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         if legendary_aspect:
             aspect_upgrade_filters.append(legendary_aspect)
 
-        if entity_type not in ["charms", "seals"] and not raw_affixes and not raw_inherents:
+        if (
+            entity_type not in ["charms", "seals"]
+            and not raw_affixes
+            and not raw_inherents
+            and not item_filter.unique_aspect
+        ):
             LOGGER.warning(f"Skipping {slot_type} because it had no stats provided.")
             continue
 
@@ -258,17 +257,12 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
                 guessed_set_name = seal_charm_filter.set[0]
             continue
 
-        if not is_mythic:
+        if affixes:
             affixes = sorted(affixes, key=lambda affix: (affix.name, affix.type.value))
-            item_filter.affix_pool = [
-                AffixFilterCountModel(
-                    count=[AffixFilterModel(name=x.name, want_greater=x.type == AffixType.greater) for x in affixes],
-                    min_count=1 if is_unique else 3,
-                )
-            ]
+            item_filter.affix_pool = create_item_affix_pool(affixes=affixes, unique_like=is_unique)
             update_mingreateraffixcount(item_filter, config.require_greater_affixes)
         item_filter.min_power = 100
-        if inherents and not is_mythic:
+        if inherents:
             inherents = sorted(inherents, key=lambda affix: (affix.name, affix.type.value))
             item_filter.inherent_pool = [
                 AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
@@ -290,7 +284,6 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
                         charm_filters=charm_filters,
                         seal_filters=seal_filters,
                         aspect_upgrade_filters=aspect_upgrade_filters,
-                        mythic_names=mythic_names,
                         paragon_steps=extract_mobalytics_paragon_steps(
                             paragon_data if isinstance(paragon_data, dict) else {}
                         ),

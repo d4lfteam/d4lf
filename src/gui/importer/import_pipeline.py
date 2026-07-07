@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, Protocol
 from src.config.profile_document import ProfileDocumentStore
 from src.config.profile_models import CharmFilterModel, ItemFilterModel, ProfileModel, SealFilterModel
 from src.gui.importer.gui_common import (
-    add_mythics_to_filters,
     add_to_profiles,
     build_default_profile_file_name,
     deduplicate_filters,
@@ -26,7 +25,6 @@ class Variant:
     charm_filters: list[CharmFilterModel] = dataclasses.field(default_factory=list)
     seal_filters: list[SealFilterModel] = dataclasses.field(default_factory=list)
     aspect_upgrade_filters: list[str] = dataclasses.field(default_factory=list)
-    mythic_names: list[str] = dataclasses.field(default_factory=list)
     paragon_steps: list[list[dict[str, Any]]] | None = None
     paragon_build_name: str = ""
 
@@ -63,7 +61,6 @@ class ImportPipeline:
 
         for index, variant in enumerate(build.variants):
             affix_filters = deduplicate_filters(list(variant.affix_filters))
-            add_mythics_to_filters(list(variant.mythic_names), affix_filters)
             profile = ProfileModel(
                 name="imported profile",
                 Affixes=sort_profile_filters(affix_filters),
