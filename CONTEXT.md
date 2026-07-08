@@ -63,5 +63,6 @@ _Avoid_: sigil kind.
 
 ### Tribute filter
 
-A profile's single tribute-matching rule, spelled `Tributes` (singular concept, plural key for historical reasons) in profiles. It holds a `name` list (tribute names to keep) and a `rarity` list (rarities to keep). Both constraints AND together, consistent with affix and sigil filters: an empty list on either side means that dimension is unconstrained. A mythic tribute is always kept regardless of the filter.
-_Avoid_: Tribute rule (implies the old list-of-independent-rules shape).
+A profile's tribute-matching configuration, spelled `Tributes` (plural key for historical reasons) in profiles. It is a single object with a `name` list (tribute names to keep) and a `rarity` list (rarities to keep).
+A tribute is kept if its name is in the `name` list **or** its rarity is in the `rarity` list — the two fields are independent OR gates, not AND constraints. Omitting a field means that dimension is not checked. An empty object keeps nothing.
+Legacy profiles that used a list of objects are silently migrated on load by merging all names and rarities into one object. A mythic tribute is always kept regardless of the filter.

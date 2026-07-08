@@ -759,11 +759,11 @@ class TestProfileModel:
         assert model.aspect_upgrades == []
         assert len(model.global_uniques) == 1
 
-    def test_tributes_list_shape_is_supported(self) -> None:
+    def test_tributes_list_shape_is_migrated_to_single_object(self) -> None:
         model = ProfileModel(name="tributes_profile", Tributes=[{"name": ["harmony"]}, {"rarity": ["legendary"]}])
-        assert isinstance(model.tributes, list)
-        assert model.tributes[0].name == ["tribute_of_harmony"]
-        assert model.tributes[1].rarities == [ItemRarity.Legendary]
+        assert isinstance(model.tributes, TributeFilterModel)
+        assert model.tributes.name == ["tribute_of_harmony"]
+        assert model.tributes.rarities == [ItemRarity.Legendary]
 
     def test_camelcase_top_level_fields(self) -> None:
         """Test that camelCase top-level fields work."""

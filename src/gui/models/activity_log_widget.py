@@ -436,9 +436,7 @@ class ActivityLogWidget(QWidget):
             if model.sigils:
                 summary.append("📜 Sigils: Included")
             if model.tributes:
-                tribute_rules = model.tributes if isinstance(model.tributes, list) else [model.tributes]
-                if any(rule.name or rule.rarities for rule in tribute_rules):
-                    summary.append("🏆 Tributes: Included")
+                summary.append("🏆 Tributes: Included")
             if model.paragon:
                 summary.append("🔱 Paragon Overlay: Data Found")
 

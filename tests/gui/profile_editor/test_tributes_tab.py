@@ -84,11 +84,10 @@ def test_edit_rarities_updates_summary_and_model(qapp, monkeypatch):
     assert tab.rarity_line_edit.text() == "rare"
 
 
-def test_to_editor_tribute_filter_merges_legacy_rarity_only_rules():
-    merged = _to_editor_tribute_filter([
-        TributeFilterModel.model_construct(name=[], rarities=[ItemRarity.Rare]),
-        TributeFilterModel.model_construct(name=[], rarities=[ItemRarity.Legendary]),
-        TributeFilterModel.model_construct(name=[], rarities=[ItemRarity.Mythic]),
-    ])
+def test_to_editor_tribute_filter_returns_empty_model_for_none():
+    assert _to_editor_tribute_filter(None) == TributeFilterModel()
 
-    assert merged.rarities == [ItemRarity.Rare, ItemRarity.Legendary, ItemRarity.Mythic]
+
+def test_to_editor_tribute_filter_returns_model_unchanged():
+    model = TributeFilterModel.model_construct(name=["tribute_of_harmony"], rarities=[ItemRarity.Rare])
+    assert _to_editor_tribute_filter(model) is model

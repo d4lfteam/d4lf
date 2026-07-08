@@ -558,8 +558,34 @@ class ProfileModel(BaseModel):
     sigils: SigilFilterModel = Field(
         default=SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist), alias="Sigils"
     )
-    tributes: TributeFilterModel | list[TributeFilterModel] | None = Field(default=None, alias="Tributes")
+    tributes: TributeFilterModel | None = Field(default=None, alias="Tributes")
     paragon: ParagonPayloadModel | None = Field(default=None, alias="Paragon")
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_list_tributes(cls, data: object) -> object:
+        """Merge legacy list-shaped Tributes into a single object."""
+        if not isinstance(data, dict):
+            return data
+        key = "Tributes" if "Tributes" in data else "tributes" if "tributes" in data else None
+        if key is None:
+            return data
+        tributes = data[key]
+        if not isinstance(tributes, list):
+            return data
+        names: list[str] = []
+        rarities: list[str] = []
+        for entry in tributes:
+            if isinstance(entry, dict):
+                raw_names = entry.get("name", [])
+                raw_rarities = entry.get("rarity", entry.get("rarities", []))
+                for n in [raw_names] if isinstance(raw_names, str) else raw_names:
+                    if n not in names:
+                        names.append(n)
+                for r in [raw_rarities] if isinstance(raw_rarities, str) else raw_rarities:
+                    if r not in rarities:
+                        rarities.append(r)
+        return {**data, key: {"name": names, "rarity": rarities} if names or rarities else {}}
 
     @model_validator(mode="before")
     def aspects_must_exist(self) -> ProfileModel:

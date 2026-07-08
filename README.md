@@ -14,7 +14,7 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Filter uniques by their affix and aspect values
 - Filter seals and charms by affixes, rarity, charm set, or unique aspect
 - Filter sigils by blacklisting and whitelisting locations and affixes
-- Filter tributes with name + rarity gates (AND semantics)
+- Filter tributes by name or rarity
 - Quickly move items from your stash or inventory
 - Supported resolutions are all aspect ratios between 16:10 and 21:9
 - Info Panel Overlay for tracking world events and session statistics
@@ -701,13 +701,9 @@ names in [assets/lang/enUS/sigils.json](assets/lang/enUS/sigils.json).
 
 ### Tributes
 
-Tributes are defined by the top-level key `Tributes` as either:
-
-- a single rule object with `name` and/or `rarity`
-- or a list of those rule objects
-
-An empty list in a rule means that dimension is unconstrained.
-If no Tribute filter is provided, all Tributes are kept.
+Tributes are defined by the top-level key `Tributes`. Use an object with `name` and/or `rarity` keys.
+A tribute is kept if its name is in the `name` list **or** its rarity is in the `rarity` list.
+Omitting a key means that dimension is not checked at all. If no `Tributes` filter is provided, all tributes are kept.
 
 Mythic tributes are always kept no matter what.
 
@@ -735,11 +731,13 @@ Tributes:
   rarity: [legendary, unique]
 ```
 
+When both keys are provided, a tribute is kept if it matches **either** the name list or the rarity list.
+
 ```yaml
-# Keeps harmony tributes OR any legendary/unique tribute
+# Keeps tribute_of_harmony AND all legendary/unique tributes
 Tributes:
-  - name: [harmony]
-  - rarity: [legendary, unique]
+  name: [harmony]
+  rarity: [legendary, unique]
 ```
 
 </details>

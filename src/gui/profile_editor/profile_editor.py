@@ -18,31 +18,8 @@ if TYPE_CHECKING:
     from src.config.profile_models import ProfileModel
 
 
-def _to_editor_tribute_filter(tributes: TributeFilterModel | list[TributeFilterModel] | None) -> TributeFilterModel:
-    if tributes is None:
-        return TributeFilterModel()
-    if isinstance(tributes, TributeFilterModel):
-        return tributes
-    if not tributes:
-        return TributeFilterModel()
-
-    # The editor cannot represent list-of-rules OR logic; only merge legacy single-dimension rules safely.
-    has_name_rules = any(rule.name for rule in tributes)
-    has_rarity_rules = any(rule.rarities for rule in tributes)
-    has_mixed_rules = any(rule.name and rule.rarities for rule in tributes)
-    if has_mixed_rules or (has_name_rules and has_rarity_rules):
-        return tributes[0]
-
-    names: list[str] = []
-    rarities = []
-    for rule in tributes:
-        for name in rule.name:
-            if name not in names:
-                names.append(name)
-        for rarity in rule.rarities:
-            if rarity not in rarities:
-                rarities.append(rarity)
-    return TributeFilterModel(name=names, rarities=rarities)
+def _to_editor_tribute_filter(tributes: TributeFilterModel | None) -> TributeFilterModel:
+    return tributes if tributes is not None else TributeFilterModel()
 
 
 class ProfileEditor(QTabWidget):
