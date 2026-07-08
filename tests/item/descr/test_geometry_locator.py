@@ -1,16 +1,28 @@
+from pathlib import Path
+
 import numpy as np
 
 from src.item.data.affix import Affix
-from src.item.data.aspect import Aspect
 from src.item.descr.geometry_locator import (
     AffixMarkerLocator,
     AffixMarkerRequest,
     LocatedMarker,
-    LocatorResult,
-    apply_marker_locations,
+    _affix_bullet_templates_for_item,
+    _aspect_bullet_templates_for_rarity,
+    _select_requested_markers,
 )
-from src.item.filter import FilterResult, MatchedFilter
 from src.item.models import Item
+
+TEMPLATE_DIR = Path(__file__).parents[3] / "assets" / "templates" / "item_descr"
+ASPECT_BULLET_PREFIXES = ("legendary_bullet_point", "mythic_bullet_point", "unique_bullet_point")
+
+
+def _available_bullet_template_refs() -> set[str]:
+    return {
+        template.stem
+        for template in TEMPLATE_DIR.glob("*.png")
+        if "bullet_point" in template.stem or "affix_bullet" in template.stem
+    }
 
 
 def test_locator_skips_template_matching_when_nothing_matched() -> None:
@@ -22,23 +34,34 @@ def test_locator_skips_template_matching_when_nothing_matched() -> None:
     assert result.markers == []
 
 
-def test_low_confidence_locator_result_does_not_attach_marker_locations() -> None:
+def test_locator_uses_all_available_affix_bullet_templates() -> None:
+    all_bullet_templates = _available_bullet_template_refs()
+    expected_affix_templates = {
+        template for template in all_bullet_templates if not template.startswith(ASPECT_BULLET_PREFIXES)
+    }
+
+    assert set(_affix_bullet_templates_for_item(Item(affixes=[Affix(name="life")]))) == expected_affix_templates
+
+
+def test_locator_uses_all_available_aspect_bullet_templates() -> None:
+    all_bullet_templates = _available_bullet_template_refs()
+    expected_aspect_templates = {
+        template for template in all_bullet_templates if template.startswith(ASPECT_BULLET_PREFIXES)
+    }
+
+    assert set(_aspect_bullet_templates_for_rarity(None)) == expected_aspect_templates
+
+
+def test_select_requested_markers_returns_locator_markers_without_mutating_item() -> None:
     matched_affix = Affix(name="life")
-    item = Item(affixes=[matched_affix], aspect=Aspect(name="rapid"))
-    filter_result = FilterResult(
-        keep=True, matched=[MatchedFilter(profile="profile.yml", matched_affixes=[matched_affix], aspect_match=True)]
-    )
-    locator_result = LocatorResult(
-        strategy="static",
-        tooltip_found=True,
-        markers=[LocatedMarker(kind="affix", index=0, center=(20, 30), confidence=0.4)],
-        confidence=0.4,
-        failure_reason="low confidence",
-        reliable=False,
+    item = Item(affixes=[matched_affix, Affix(name="armor")])
+    markers = [
+        LocatedMarker(kind="affix", index=0, center=(20, 30), confidence=0.9),
+        LocatedMarker(kind="affix", index=1, center=(20, 50), confidence=0.9),
+    ]
+
+    selected = _select_requested_markers(
+        AffixMarkerRequest(tooltip_image=None, item=item, matched_affixes=[matched_affix]), markers
     )
 
-    apply_marker_locations(item, filter_result, locator_result)
-
-    assert matched_affix.loc is None
-    assert item.aspect.loc is None
-    assert filter_result.keep
+    assert selected == [markers[0]]

@@ -43,3 +43,20 @@ def test_search_all_multiple_templates():
     result = src.template_finder.search([empty, slash], image, threshold=0.98, mode="all")
     matches = result.matches
     assert len(matches) == 4
+
+
+def test_search_all_stops_when_condition_is_met():
+    """Test all matches can stop early once callers have enough matches."""
+    image = cv2.imread("tests/assets/template_finder/stash_slots.png")
+    empty = cv2.imread("tests/assets/template_finder/stash_slot_empty.png")
+
+    result = src.template_finder.search(
+        empty,
+        image,
+        threshold=0.98,
+        mode="all",
+        do_multi_process=False,
+        stop_condition=lambda matches: len(matches) >= 2,
+    )
+
+    assert len(result.matches) == 2

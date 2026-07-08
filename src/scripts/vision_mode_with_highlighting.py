@@ -19,7 +19,7 @@ from src.config.ui import ResManager
 from src.gui.importer.gui_common import DARK_GRAY_BG
 from src.item.data.item_type import is_sigil
 from src.item.data.seasonal_attribute import SeasonalAttribute
-from src.item.descr.geometry_locator import AffixMarkerLocator, AffixMarkerRequest, apply_marker_locations
+from src.item.descr.geometry_locator import AffixMarkerLocator, AffixMarkerRequest, LocatorResult
 from src.item.filter import Filter, FilterResult
 from src.item.find_descr import find_descr
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item, reset_canvas
@@ -96,8 +96,8 @@ class VisionModeWithHighlighting:
         self.screen_off_x = Cam().window_roi["left"]
         self.screen_off_y = Cam().window_roi["top"]
 
-    def draw_rect(self, canvas: tk.Canvas, bullet_width, obj, off, color):
-        offset_loc = np.array(obj.loc) + off
+    def draw_rect(self, canvas: tk.Canvas, bullet_width, loc: tuple[int, int], off, color):
+        offset_loc = np.array(loc) + off
         x1 = int(offset_loc[0] - bullet_width / 2)
         y1 = int(offset_loc[1] - bullet_width / 2)
         x2 = int(offset_loc[0] + bullet_width / 2)
@@ -202,7 +202,6 @@ class VisionModeWithHighlighting:
     def draw_empty_outline(self, item_roi, color, text: str | None):
         reset_canvas(self.root, self.canvas)
 
-        # Make the canvas gray for "found the item"
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
         self.canvas.config(height=h, width=w)
         self.create_signal_rect(self.canvas, w, self.thick, color)
@@ -214,8 +213,11 @@ class VisionModeWithHighlighting:
         self.root.update_idletasks()
         self.root.update()
 
-    def draw_match_outline(self, item_roi, should_keep_res, item_descr):
+    def draw_match_outline(self, item_roi, should_keep_res, locator_result: LocatorResult | None):
+        reset_canvas(self.root, self.canvas)
+
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
+        self.canvas.config(height=h, width=w)
         self.create_signal_rect(self.canvas, w, self.thick, get_filter_colors().matched)
 
         # show all info strings of the profiles
@@ -226,26 +228,30 @@ class VisionModeWithHighlighting:
                 text = text + " (incl. Set)"
             text_y = self.draw_text(self.canvas, text, get_filter_colors().matched, text_y, 5, w // 2)
         # Show matched bullets
-        if item_descr and len(should_keep_res.matched) > 0:
+        if locator_result and locator_result.reliable and len(should_keep_res.matched) > 0:
             bullet_width = self.thick * 3
-            for affix in should_keep_res.matched[0].matched_affixes:
-                if affix.loc:
-                    self.draw_rect(self.canvas, bullet_width, affix, off, get_filter_colors().matched)
+            for marker in locator_result.markers:
+                self.draw_rect(self.canvas, bullet_width, marker.center, off, get_filter_colors().matched)
 
-            if item_descr.aspect and item_descr.aspect.loc and any(m.aspect_match for m in should_keep_res.matched):
-                self.draw_rect(self.canvas, bullet_width, item_descr.aspect, off, get_filter_colors().matched)
-
+        self.root.geometry(f"{w}x{h}+{x + self.screen_off_x}+{y + self.screen_off_y}")
         self.root.update_idletasks()
         self.root.update()
 
     def draw_no_match_outline(self, item_roi):
+        reset_canvas(self.root, self.canvas)
+
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
+        self.canvas.config(height=h, width=w)
         self.create_signal_rect(self.canvas, w, self.thick, get_filter_colors().no_match)
+        self.root.geometry(f"{w}x{h}+{x + self.screen_off_x}+{y + self.screen_off_y}")
         self.root.update_idletasks()
         self.root.update()
 
     def draw_codex_upgrade_outline(self, item_roi, should_keep_result: FilterResult):
+        reset_canvas(self.root, self.canvas)
+
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
+        self.canvas.config(height=h, width=w)
 
         self.create_signal_rect(self.canvas, w, self.thick, get_filter_colors().codex_upgrade)
 
@@ -260,6 +266,7 @@ class VisionModeWithHighlighting:
                     self.canvas, match.profile, get_filter_colors().codex_upgrade, text_y, 5, w // 2
                 )
 
+        self.root.geometry(f"{w}x{h}+{x + self.screen_off_x}+{y + self.screen_off_y}")
         self.root.update_idletasks()
         self.root.update()
 
@@ -343,7 +350,7 @@ class VisionModeWithHighlighting:
                         or (last_center is not None and last_center[1] != item_center[1])
                     ):
                         ignored_item = is_ignored_item(item_descr)
-                        # Make the canvas gray for "found the item" or blue for "ignored this item"
+                        # Make the canvas blue for ignored items. Other items wait for the final result.
                         if ignored_item:
                             if item_descr.seasonal_attribute == SeasonalAttribute.sanctified:
                                 self.request_empty_outline(
@@ -351,12 +358,9 @@ class VisionModeWithHighlighting:
                                 )
                             else:
                                 self.request_empty_outline(item_descr, item_roi, get_filter_colors().unhandled)
-                        else:
-                            self.request_empty_outline(item_descr, item_roi, get_filter_colors().processing)
 
-                        # Since we've now drawn something we kick off a thread to remove the drawing
-                        # if the item is unselected. It is also automatically removed if a different
-                        # TTS item comes in.
+                        # Remove any final drawing if the item is unselected. It is also automatically
+                        # removed if a different TTS item comes in.
                         self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
                         if not self.clear_when_item_not_selected_thread:
                             self.clear_when_item_not_selected_thread_cancel_event = threading.Event()
@@ -378,6 +382,7 @@ class VisionModeWithHighlighting:
 
                             # Adapt colors based on config
                             if match:
+                                locator_result = None
                                 if any(
                                     res_matched.profile.endswith(ASPECT_UPGRADES_LABEL) for res_matched in res.matched
                                 ):
@@ -392,8 +397,7 @@ class VisionModeWithHighlighting:
                                                 aspect_matched=any(m.aspect_match for m in res.matched),
                                             )
                                         )
-                                        apply_marker_locations(item_descr, res, locator_result)
-                                    self.request_match_box(item_descr, item_roi, res, item_descr)
+                                    self.request_match_box(item_descr, item_roi, res, locator_result)
                             elif not match:
                                 self.request_no_match_box(item_descr, item_roi)
                 else:
@@ -450,8 +454,8 @@ class VisionModeWithHighlighting:
     def request_empty_outline(self, item_descr, item_roi, color, text: str | None = None):
         self.queue.put(("empty", item_descr, item_roi, color, text))
 
-    def request_match_box(self, item_descr, item_roi, should_keep_res, item_descr_with_affix):
-        self.queue.put(("match", item_descr, item_roi, should_keep_res, item_descr_with_affix))
+    def request_match_box(self, item_descr, item_roi, should_keep_res, locator_result):
+        self.queue.put(("match", item_descr, item_roi, should_keep_res, locator_result))
 
     def request_no_match_box(self, item_descr, item_roi):
         self.queue.put(("no_match", item_descr, item_roi))

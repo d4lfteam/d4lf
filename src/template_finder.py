@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import logging
 import operator
 import threading
 import time
+from concurrent.futures import FIRST_COMPLETED, wait
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
@@ -14,7 +18,9 @@ from src.config.ui import ResManager
 from src.utils.image_operations import alpha_to_mask, color_filter, crop
 from src.utils.misc import run_until_condition
 from src.utils.roi_operations import get_center
-from src.utils.window import screenshot
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 LOGGER = logging.getLogger(__name__)
 
@@ -150,6 +156,8 @@ def _get_cv_result(
     if img.shape[0] == 0 or img.shape[1] == 0:
         return None, template.img_bgr, roi
     if take_debug_screenshot:
+        from src.utils.window import screenshot  # noqa: PLC0415
+
         screenshot("template_finder", img=img)
 
     # filter for desired color or make grayscale
@@ -184,6 +192,7 @@ def search(
     suppress_debug: bool = True,
     do_multi_process: bool = True,
     take_debug_screenshot: bool = False,
+    stop_condition: Callable[[list[TemplateMatch]], bool] | None = None,
 ) -> SearchResult:
     """Search for templates in an image.
 
@@ -196,12 +205,12 @@ def search(
     :param mode: search "first" match or "all" matches
     :param timeout: wait for the specified number of seconds before stopping search
     :param do_multi_process: flag if multi process should be used in case there are multiple refs
+    :param stop_condition: Optional predicate for ending an "all" search early once enough matches are collected.
     :return: SearchResult object containing success and matches
     """
     templates = _process_template_refs(ref)
     result = SearchResult()
     matches = []
-    future_list = []
     if isinstance(roi, str):
         try:
             roi = getattr(ResManager().roi, roi)
@@ -215,13 +224,15 @@ def search(
             LOGGER.error(f"Invalid color_match key: {color_match}")
             LOGGER.error(e)
 
+    stop_search = threading.Event()
+
     def _process_cv_result(template: Template, img: np.ndarray, take_debug_screenshot: bool = False) -> bool:
         new_match = False
         res, template_img, new_roi = _get_cv_result(
             template, img, roi, color_match, use_grayscale, take_debug_screenshot
         )
 
-        while True and not (matches and mode == "first") and res is not None:
+        while not stop_search.is_set() and not (matches and mode == "first") and res is not None:
             _, max_val, _, max_pos = cv2.minMaxLoc(res)
 
             if max_val >= threshold:
@@ -241,7 +252,8 @@ def search(
                 template_match.score = max_val
 
                 matches.append(template_match)
-                if mode == "first":
+                if mode == "first" or (stop_condition is not None and stop_condition(matches)):
+                    stop_search.set()
                     break
                 # Remove the matched region from the result
                 cv2.rectangle(
@@ -263,12 +275,24 @@ def search(
     while time_remains and not matches:
         img = Cam().grab() if inp_img is None else inp_img
         if do_multi_process:
-            for template in templates:
-                future = TP.submit(_process_cv_result, template, img, take_debug_screenshot)
-                future_list.append(future)
-
-                for i in future_list:
-                    _ = i.result()
+            future_list = [
+                TP.submit(_process_cv_result, template, img, take_debug_screenshot) for template in templates
+            ]
+            if mode == "first" or stop_condition is not None:
+                pending = set(future_list)
+                while (
+                    pending
+                    and not (matches and mode == "first")
+                    and not (stop_condition is not None and stop_condition(matches))
+                ):
+                    done, pending = wait(pending, return_when=FIRST_COMPLETED)
+                    for future in done:
+                        _ = future.result()
+                for future in pending:
+                    future.cancel()
+            else:
+                for future in future_list:
+                    _ = future.result()
         else:
             for template in templates:
                 res = _process_cv_result(template, img, take_debug_screenshot)

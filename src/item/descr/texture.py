@@ -25,10 +25,14 @@ def find_seperator_short(img_item_descr: np.ndarray, threshold: float = 0.62) ->
 
 
 def find_bullets_for_templates(
-    img_item_descr: np.ndarray, sep_short_match: TemplateMatch, template_list: list[str], threshold: float = 0.80
+    img_item_descr: np.ndarray,
+    sep_short_match: TemplateMatch,
+    template_list: list[str],
+    threshold: float = 0.80,
+    expected_count: int | None = None,
 ) -> list[TemplateMatch]:
     """Search for bullet icons using an explicit template list instead of all possible bullet types."""
-    return _find_bullets(img_item_descr, sep_short_match, template_list, threshold, "all")
+    return _find_bullets(img_item_descr, sep_short_match, template_list, threshold, "all", expected_count)
 
 
 def _filter_outliers(template_matches: list[TemplateMatch]) -> list[TemplateMatch]:
@@ -42,20 +46,9 @@ def _filter_outliers(template_matches: list[TemplateMatch]) -> list[TemplateMatc
     return [tm for tm in template_matches if abs(tm.center[0] - target_center_x) < 1.2 * tm.region[2]]
 
 
-def _find_bullets(
-    img_item_descr: np.ndarray, sep_short_match: TemplateMatch, template_list: list[str], threshold: float, mode: str
-) -> list[TemplateMatch]:
-    img_height = img_item_descr.shape[0]
-    roi_bullets = [0, sep_short_match.center[1], ResManager().offsets.find_bullet_points_width, img_height]
-    all_bullets = search(
-        ref=template_list, inp_img=img_item_descr, threshold=threshold, roi=roi_bullets, use_grayscale=True, mode=mode
-    )
-    if not all_bullets.success:
-        return []
-    all_bullets.matches = _filter_outliers(all_bullets.matches)
-    # go through the matches and filter out the ones that are too close to each other. only keep the one with higher probability
+def _dedupe_matches(template_matches: list[TemplateMatch]) -> list[TemplateMatch]:
     matches_dict = {}
-    for match in all_bullets.matches:
+    for match in template_matches:
         match_exists = False
         for center in matches_dict:
             if math.sqrt((center[0] - match.center[0]) ** 2 + (center[1] - match.center[1]) ** 2) <= 10:
@@ -65,5 +58,36 @@ def _find_bullets(
                 break
         if not match_exists:
             matches_dict[match.center] = match
-    filtered_matches = list(matches_dict.values())
+    return list(matches_dict.values())
+
+
+def _find_bullets(
+    img_item_descr: np.ndarray,
+    sep_short_match: TemplateMatch,
+    template_list: list[str],
+    threshold: float,
+    mode: str,
+    expected_count: int | None = None,
+) -> list[TemplateMatch]:
+    img_height = img_item_descr.shape[0]
+    roi_bullets = [0, sep_short_match.center[1], ResManager().offsets.find_bullet_points_width, img_height]
+
+    def has_expected_bullet_rows(matches: list[TemplateMatch]) -> bool:
+        if expected_count is None:
+            return False
+        return len(_dedupe_matches(_filter_outliers(matches))) >= expected_count
+
+    all_bullets = search(
+        ref=template_list,
+        inp_img=img_item_descr,
+        threshold=threshold,
+        roi=roi_bullets,
+        use_grayscale=True,
+        mode=mode,
+        stop_condition=has_expected_bullet_rows if expected_count is not None else None,
+    )
+    if not all_bullets.success:
+        return []
+    all_bullets.matches = _filter_outliers(all_bullets.matches)
+    filtered_matches = _dedupe_matches(all_bullets.matches)
     return sorted(filtered_matches, key=lambda match: match.center[1])
