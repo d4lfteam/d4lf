@@ -1,0 +1,72 @@
+default_install_hook_types = ["pre-push"]
+default_language_version = {python = "python3.14"}
+minimum_prek_version = "0.4.8"
+
+[[repos]]
+hooks = [{id = "uv-lock", priority = 4294967294}]
+repo = "https://github.com/astral-sh/uv-pre-commit"
+rev = "0.11.26"
+
+[[repos]]
+hooks = [
+    {id = "check-added-large-files", priority = 4294967295},
+    {id = "check-case-conflict", priority = 4294967295},
+    {id = "check-executables-have-shebangs", priority = 4294967295},
+    {id = "check-json", priority = 4294967295},
+    {id = "check-toml", priority = 4294967295},
+    {id = "check-yaml", priority = 4294967295},
+    {id = "end-of-file-fixer"},
+    {id = "fix-byte-order-marker", exclude = "^tts/sign_dll.ps1"},
+    {id = "trailing-whitespace"}
+]
+repo = "builtin"
+
+[[repos]]
+hooks = [{id = "mdformat", priority = 4294967294, additional_dependencies = ["mdformat-gfm"]}]
+repo = "https://github.com/executablebooks/mdformat"
+rev = "1.0.0"
+
+[[repos]]
+hooks = [
+    {id = "pretty-format-toml", priority = 4294967294, args = ["--autofix", "--indent", "4"], exclude = '^uv\.lock'},
+    {id = "pretty-format-yaml", priority = 4294967294, args = ["--autofix", "--preserve-quotes", "--offset", "2"]}
+]
+repo = "https://github.com/macisamuele/language-formatters-pre-commit-hooks"
+rev = "v2.16.0"
+
+[[repos]]
+hooks = [{id = "clang-format", priority = 4294967294, files = '\.(cpp|h)$'}]
+repo = "https://github.com/pre-commit/mirrors-clang-format"
+rev = "v22.1.5"
+
+[[repos]]
+hooks = [
+    {id = "check-ast", priority = 4294967295}
+]
+repo = "https://github.com/pre-commit/pre-commit-hooks"
+rev = "v6.0.0"
+
+[[repos]]
+hooks = [
+    {id = "check-ast", priority = 4294967295},
+    {id = "pretty-format-json", args = ["--autofix", "--indent=4", "--no-ensure-ascii"], priority = 4294967294},
+    {id = "trailing-whitespace"}
+]
+repo = "https://github.com/pre-commit/pre-commit-hooks"
+rev = "v6.0.0"
+
+[[repos]]
+hooks = [
+    {id = "ruff-format", priority = 4294967294},
+    {id = "ruff-check", priority = 4294967293, args = ["--fix"]}
+]
+repo = "https://github.com/astral-sh/ruff-pre-commit"
+rev = "v0.15.20"
+
+[[repos]]
+hooks = [
+    {id = "py-psscriptanalyzer", priority = 4294967295, args = ["--severity", "Error"]},
+    {id = "py-psscriptanalyzer-format", priority = 4294967294}
+]
+repo = "https://github.com/thetestlabs/py-psscriptanalyzer"
+rev = "v0.3.1"
