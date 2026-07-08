@@ -1,6 +1,7 @@
-# Mostly copied from: https://github.com/patrikoss/pyclick
+import ctypes
 import math
 import random
+import sys
 import time
 
 import numpy as np
@@ -10,6 +11,44 @@ from pynput.mouse import Button, Controller
 _MOUSE = Controller()
 
 _BUTTONS: dict[str, Button] = {"left": Button.left, "right": Button.right, "middle": Button.middle}
+
+# SendInput-based absolute mouse move so Diablo 4's DirectInput/Raw Input pipeline
+# detects the cursor travel (SetCursorPos alone is not seen by the game).
+if sys.platform == "win32":
+    from ctypes import wintypes
+
+    _MOUSEEVENTF_MOVE = 0x0001
+    _MOUSEEVENTF_ABSOLUTE = 0x8000
+
+    class _MOUSEINPUT(ctypes.Structure):
+        _fields_ = [
+            ("dx", wintypes.LONG),
+            ("dy", wintypes.LONG),
+            ("mouseData", wintypes.DWORD),
+            ("dwFlags", wintypes.DWORD),
+            ("time", wintypes.DWORD),
+            ("dwExtraInfo", ctypes.POINTER(ctypes.c_ulong)),
+        ]
+
+    class _INPUT(ctypes.Structure):
+        _fields_ = [("type", wintypes.DWORD), ("mi", _MOUSEINPUT)]
+
+    def _move_mouse_abs(x: int, y: int) -> None:
+        screen_w = ctypes.windll.user32.GetSystemMetrics(0)
+        screen_h = ctypes.windll.user32.GetSystemMetrics(1)
+        inp = _INPUT()
+        inp.type = 0  # INPUT_MOUSE
+        inp.mi.dx = int(x * 65535 / screen_w)
+        inp.mi.dy = int(y * 65535 / screen_h)
+        inp.mi.mouseData = 0
+        inp.mi.dwFlags = _MOUSEEVENTF_MOVE | _MOUSEEVENTF_ABSOLUTE
+        inp.mi.time = 0
+        ctypes.windll.user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(_INPUT))
+
+else:
+
+    def _move_mouse_abs(x: int, y: int) -> None:
+        _MOUSE.position = (x, y)
 
 
 def is_numeric(val):
@@ -234,7 +273,7 @@ class Mouse:
         delta = duration / len(human_curve.points)
 
         for point in human_curve.points:
-            _MOUSE.position = (int(point[0]), int(point[1]))
+            _move_mouse_abs(int(point[0]), int(point[1]))
             time.sleep(delta)
         time.sleep(0.05)
 
