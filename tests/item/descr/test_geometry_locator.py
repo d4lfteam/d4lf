@@ -4,12 +4,11 @@ import numpy as np
 
 from src.item.data.affix import Affix
 from src.item.descr.geometry_locator import (
-    AffixMarkerLocator,
-    AffixMarkerRequest,
+    _AFFIX_BULLET_TEMPLATE_REFS,
+    _ASPECT_BULLET_TEMPLATE_REFS,
     LocatedMarker,
-    _affix_bullet_templates_for_item,
-    _aspect_bullet_templates_for_rarity,
     _select_requested_markers,
+    locate_affix_markers,
 )
 from src.item.models import Item
 
@@ -26,9 +25,7 @@ def _available_bullet_template_refs() -> set[str]:
 
 
 def test_locator_skips_template_matching_when_nothing_matched() -> None:
-    result = AffixMarkerLocator().locate(
-        AffixMarkerRequest(tooltip_image=np.zeros((80, 40, 3), dtype=np.uint8), item=Item())
-    )
+    result = locate_affix_markers(tooltip_image=np.zeros((80, 40, 3), dtype=np.uint8), item=Item())
 
     assert result.reliable
     assert result.markers == []
@@ -40,7 +37,7 @@ def test_locator_uses_all_available_affix_bullet_templates() -> None:
         template for template in all_bullet_templates if not template.startswith(ASPECT_BULLET_PREFIXES)
     }
 
-    assert set(_affix_bullet_templates_for_item(Item(affixes=[Affix(name="life")]))) == expected_affix_templates
+    assert set(_AFFIX_BULLET_TEMPLATE_REFS) == expected_affix_templates
 
 
 def test_locator_uses_all_available_aspect_bullet_templates() -> None:
@@ -49,7 +46,7 @@ def test_locator_uses_all_available_aspect_bullet_templates() -> None:
         template for template in all_bullet_templates if template.startswith(ASPECT_BULLET_PREFIXES)
     }
 
-    assert set(_aspect_bullet_templates_for_rarity(None)) == expected_aspect_templates
+    assert set(_ASPECT_BULLET_TEMPLATE_REFS) == expected_aspect_templates
 
 
 def test_select_requested_markers_returns_locator_markers_without_mutating_item() -> None:
@@ -60,8 +57,6 @@ def test_select_requested_markers_returns_locator_markers_without_mutating_item(
         LocatedMarker(kind="affix", index=1, center=(20, 50), confidence=0.9),
     ]
 
-    selected = _select_requested_markers(
-        AffixMarkerRequest(tooltip_image=None, item=item, matched_affixes=[matched_affix]), markers
-    )
+    selected = _select_requested_markers(item, [matched_affix], False, markers)
 
     assert selected == [markers[0]]

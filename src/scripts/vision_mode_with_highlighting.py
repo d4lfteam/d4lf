@@ -19,7 +19,7 @@ from src.config.ui import ResManager
 from src.gui.importer.gui_common import DARK_GRAY_BG
 from src.item.data.item_type import is_sigil
 from src.item.data.seasonal_attribute import SeasonalAttribute
-from src.item.descr.geometry_locator import AffixMarkerLocator, AffixMarkerRequest, LocatorResult
+from src.item.descr.geometry_locator import LocatorResult, locate_affix_markers
 from src.item.filter import Filter, FilterResult
 from src.item.find_descr import find_descr
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item, reset_canvas
@@ -51,7 +51,6 @@ class VisionModeWithHighlighting:
         self.evaluate_item_thread = None
         self.evaluate_item_thread_cancel_event = None
         self.current_item = None
-        self.affix_marker_locator = AffixMarkerLocator()
         self.is_cleared = True
         self.queue = queue.Queue()
         self.is_running = False
@@ -389,13 +388,11 @@ class VisionModeWithHighlighting:
                                     self.request_codex_upgrade_box(item_descr, item_roi, res)
                                 else:
                                     if not is_sigil(item_descr.item_type):
-                                        locator_result = self.affix_marker_locator.locate(
-                                            AffixMarkerRequest(
-                                                tooltip_image=cropped_descr,
-                                                item=item_descr,
-                                                matched_affixes=res.matched[0].matched_affixes if res.matched else [],
-                                                aspect_matched=any(m.aspect_match for m in res.matched),
-                                            )
+                                        locator_result = locate_affix_markers(
+                                            tooltip_image=cropped_descr,
+                                            item=item_descr,
+                                            matched_affixes=res.matched[0].matched_affixes if res.matched else [],
+                                            aspect_matched=any(m.aspect_match for m in res.matched),
                                         )
                                     self.request_match_box(item_descr, item_roi, res, locator_result)
                             elif not match:

@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from src.item.data.item_type import ItemType
@@ -9,7 +7,6 @@ if TYPE_CHECKING:
     import numpy as np
 
     from src.item.data.affix import Affix
-    from src.item.data.rarity import ItemRarity
     from src.item.models import Item
 
 _AFFIX_BULLET_TEMPLATE_REFS = [
@@ -63,15 +60,6 @@ _BULLET_MATCH_THRESHOLD = 0.72
 
 
 @dataclass(frozen=True)
-class AffixMarkerRequest:
-    tooltip_image: np.ndarray | None
-    item: Item
-    matched_affixes: list[Affix] = field(default_factory=list)
-    aspect_matched: bool = False
-    minimum_confidence: float = _BULLET_MATCH_THRESHOLD
-
-
-@dataclass(frozen=True)
 class LocatedMarker:
     kind: str
     index: int
@@ -81,133 +69,97 @@ class LocatedMarker:
 
 @dataclass(frozen=True)
 class LocatorResult:
-    strategy: str
-    tooltip_found: bool
     markers: list[LocatedMarker]
-    confidence: float
-    failure_reason: str | None
     reliable: bool
 
 
-class AffixMarkerLocator:
-    def locate(self, request: AffixMarkerRequest) -> LocatorResult:
-        if not request.matched_affixes and not request.aspect_matched:
-            return LocatorResult(
-                strategy="none",
-                tooltip_found=request.tooltip_image is not None,
-                markers=[],
-                confidence=1.0,
-                failure_reason=None,
-                reliable=True,
-            )
+def locate_affix_markers(
+    *,
+    tooltip_image: np.ndarray | None,
+    item: Item,
+    matched_affixes: list[Affix] | None = None,
+    aspect_matched: bool = False,
+) -> LocatorResult:
+    matched_affixes = matched_affixes or []
+    if not matched_affixes and not aspect_matched:
+        return LocatorResult(markers=[], reliable=True)
 
-        result = _locate_tts_guided_template(request)
-        reliable = result.tooltip_found and result.confidence >= request.minimum_confidence
-        markers = _select_requested_markers(request, result.markers) if reliable else []
-        if reliable and _has_requested_markers(request, markers):
-            return LocatorResult(
-                strategy=result.strategy,
-                tooltip_found=result.tooltip_found,
-                markers=markers,
-                confidence=result.confidence,
-                failure_reason=None,
-                reliable=True,
-            )
+    all_markers = _locate_tts_guided_template(tooltip_image, item, matched_affixes, aspect_matched)
+    if all_markers is None:
+        return LocatorResult(markers=[], reliable=False)
 
-        return LocatorResult(
-            strategy=result.strategy,
-            tooltip_found=result.tooltip_found,
-            markers=[],
-            confidence=result.confidence,
-            failure_reason=result.failure_reason or "No reliable marker coordinates found",
-            reliable=False,
-        )
+    markers = _select_requested_markers(item, matched_affixes, aspect_matched, all_markers)
+    reliable = _has_requested_markers(matched_affixes, aspect_matched, markers) and all(
+        marker.confidence >= _BULLET_MATCH_THRESHOLD for marker in markers
+    )
+    return LocatorResult(markers=markers if reliable else [], reliable=reliable)
 
 
-def _affix_bullet_templates_for_item(_item: Item) -> list[str]:
-    return _AFFIX_BULLET_TEMPLATE_REFS.copy()
-
-
-def _aspect_bullet_templates_for_rarity(_rarity: ItemRarity | None) -> list[str]:
-    return _ASPECT_BULLET_TEMPLATE_REFS.copy()
-
-
-def _locate_tts_guided_template(request: AffixMarkerRequest) -> LocatorResult:
+def _locate_tts_guided_template(
+    tooltip_image: np.ndarray | None, item: Item, matched_affixes: list[Affix], aspect_matched: bool
+) -> list[LocatedMarker] | None:
     # Keep texture imports lazy so non-vision tests do not import Windows-only screenshot dependencies.
     from src.item.descr.texture import find_bullets_for_templates, find_seperator_short  # noqa: PLC0415
 
-    strategy = "tts-guided-template"
-    image = request.tooltip_image
-    if image is None:
-        return _strategy_failure(strategy, tooltip_found=False, reason="Tooltip image is unavailable")
+    if tooltip_image is None:
+        return None
 
-    sep_short_match = find_seperator_short(image, threshold=_SEPARATOR_MATCH_THRESHOLD)
+    sep_short_match = find_seperator_short(tooltip_image, threshold=_SEPARATOR_MATCH_THRESHOLD)
     if sep_short_match is None:
-        return _strategy_failure(strategy, tooltip_found=False, reason="Short separator not found")
+        return None
 
     markers = []
-    if request.matched_affixes:
-        affix_template_list = _affix_bullet_templates_for_item(request.item)
+    if matched_affixes:
         affix_bullets = find_bullets_for_templates(
-            image,
+            tooltip_image,
             sep_short_match,
-            affix_template_list,
+            _AFFIX_BULLET_TEMPLATE_REFS,
             threshold=_BULLET_MATCH_THRESHOLD,
-            expected_count=len(request.item.inherent) + len(request.item.affixes),
+            expected_count=len(item.inherent) + len(item.affixes),
         )
 
-        if request.item.item_type == ItemType.HoradricSeal and affix_bullets:
+        if item.item_type == ItemType.HoradricSeal and affix_bullets:
             affix_bullets = affix_bullets[1:]
 
-        expected_affix_rows = len(request.item.inherent) + len(request.item.affixes)
+        expected_affix_rows = len(item.inherent) + len(item.affixes)
         if len(affix_bullets) < expected_affix_rows:
-            return _strategy_failure(
-                strategy,
-                tooltip_found=True,
-                reason=f"Found {len(affix_bullets)} affix bullets for {expected_affix_rows} TTS affix rows",
-            )
+            return None
 
         markers.extend(
             LocatedMarker(kind="affix", index=index, center=match.center, confidence=match.score)
             for index, match in enumerate(affix_bullets[:expected_affix_rows])
         )
-
-    if request.aspect_matched and request.item.aspect is not None:
-        aspect_template_list = _aspect_bullet_templates_for_rarity(request.item.rarity)
+    if aspect_matched and item.aspect is not None:
         aspect_bullets = find_bullets_for_templates(
-            image, sep_short_match, aspect_template_list, threshold=_BULLET_MATCH_THRESHOLD, expected_count=1
+            tooltip_image,
+            sep_short_match,
+            _ASPECT_BULLET_TEMPLATE_REFS,
+            threshold=_BULLET_MATCH_THRESHOLD,
+            expected_count=1,
         )
         if aspect_bullets:
             best = max(aspect_bullets, key=lambda m: m.score)
             markers.append(LocatedMarker(kind="aspect", index=0, center=best.center, confidence=best.score))
 
-    confidence = min((m.confidence for m in markers), default=0.0)
-    return LocatorResult(
-        strategy=strategy,
-        tooltip_found=True,
-        markers=markers,
-        confidence=confidence,
-        failure_reason=None,
-        reliable=True,
-    )
+    return markers
 
 
-def _select_requested_markers(request: AffixMarkerRequest, markers: list[LocatedMarker]) -> list[LocatedMarker]:
+def _select_requested_markers(
+    item: Item, matched_affixes: list[Affix], aspect_matched: bool, markers: list[LocatedMarker]
+) -> list[LocatedMarker]:
     requested_affix_rows = {
-        row_index
-        for affix in request.matched_affixes
-        if (row_index := _affix_row_index(request.item, affix)) is not None
+        row_index for affix in matched_affixes if (row_index := _affix_row_index(item, affix)) is not None
     }
     selected = [marker for marker in markers if marker.kind == "affix" and marker.index in requested_affix_rows]
-    if request.aspect_matched:
+    if aspect_matched:
         selected.extend(marker for marker in markers if marker.kind == "aspect" and marker.index == 0)
     return selected
 
 
-def _has_requested_markers(request: AffixMarkerRequest, markers: list[LocatedMarker]) -> bool:
+def _has_requested_markers(matched_affixes: list[Affix], aspect_matched: bool, markers: list[LocatedMarker]) -> bool:
     affix_marker_count = sum(1 for marker in markers if marker.kind == "affix")
     has_aspect_marker = any(marker.kind == "aspect" for marker in markers)
-    return affix_marker_count == len(request.matched_affixes) and (not request.aspect_matched or has_aspect_marker)
+    return affix_marker_count == len(matched_affixes) and (not aspect_matched or has_aspect_marker)
 
 
 def _affix_row_index(item: Item, affix: Affix) -> int | None:
@@ -218,14 +170,3 @@ def _affix_row_index(item: Item, affix: Affix) -> int | None:
         if item_affix == affix:
             return index
     return None
-
-
-def _strategy_failure(strategy: str, tooltip_found: bool, reason: str) -> LocatorResult:
-    return LocatorResult(
-        strategy=strategy,
-        tooltip_found=tooltip_found,
-        markers=[],
-        confidence=0.0,
-        failure_reason=reason,
-        reliable=False,
-    )

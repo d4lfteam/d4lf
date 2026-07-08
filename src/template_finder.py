@@ -1,11 +1,9 @@
-from __future__ import annotations
-
 import logging
 import operator
 import threading
 import time
 from concurrent.futures import FIRST_COMPLETED, wait
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import cv2
@@ -25,6 +23,8 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 TEMPLATES_LOCK = threading.Lock()
+TemplateRef = str | np.ndarray
+TemplateRefs = TemplateRef | list[TemplateRef]
 
 
 @dataclass
@@ -47,18 +47,14 @@ class TemplateMatch:
 
 @dataclass
 class SearchResult:
-    matches: list[TemplateMatch] = None
+    matches: list[TemplateMatch] = field(default_factory=list)
     success: bool = False
-
-    def __post_init__(self):
-        if self.matches is None:
-            self.matches = []
 
 
 @dataclass
 class SearchArgs:
     _search_args = None
-    ref: str | np.ndarray | list[str]
+    ref: TemplateRefs
     inp_img: np.ndarray | None = None
     threshold: float = 0.68
     roi: list[float] | str | None = None
@@ -119,7 +115,7 @@ class SearchArgs:
         return change
 
 
-def _process_template_refs(ref: str | np.ndarray | list[str]) -> list[Template]:
+def _process_template_refs(ref: TemplateRefs) -> list[Template]:
     templates = []
     if not isinstance(ref, list):
         ref = [ref]
@@ -145,7 +141,7 @@ def _get_cv_result(
     color_match: list[float] | None = None,
     use_grayscale: bool = False,
     take_debug_screenshot: bool = False,
-) -> list[np.ndarray]:
+) -> tuple[np.ndarray | None, np.ndarray, np.ndarray]:
     # crop image to roi
     if roi is None:
         # if no roi is provided roi = full inp_img
@@ -181,7 +177,7 @@ def _get_cv_result(
 
 
 def search(
-    ref: str | np.ndarray | list[str],
+    ref: TemplateRefs,
     inp_img: np.ndarray | None = None,
     threshold: float = 0.68,
     roi: list[float] | str | None = None,
@@ -226,13 +222,16 @@ def search(
 
     stop_search = threading.Event()
 
+    def should_stop() -> bool:
+        return bool((matches and mode == "first") or (stop_condition is not None and stop_condition(matches)))
+
     def _process_cv_result(template: Template, img: np.ndarray, take_debug_screenshot: bool = False) -> bool:
         new_match = False
         res, template_img, new_roi = _get_cv_result(
             template, img, roi, color_match, use_grayscale, take_debug_screenshot
         )
 
-        while not stop_search.is_set() and not (matches and mode == "first") and res is not None:
+        while not stop_search.is_set() and not should_stop() and res is not None:
             _, max_val, _, max_pos = cv2.minMaxLoc(res)
 
             if max_val >= threshold:
@@ -252,7 +251,7 @@ def search(
                 template_match.score = max_val
 
                 matches.append(template_match)
-                if mode == "first" or (stop_condition is not None and stop_condition(matches)):
+                if should_stop():
                     stop_search.set()
                     break
                 # Remove the matched region from the result
@@ -280,11 +279,7 @@ def search(
             ]
             if mode == "first" or stop_condition is not None:
                 pending = set(future_list)
-                while (
-                    pending
-                    and not (matches and mode == "first")
-                    and not (stop_condition is not None and stop_condition(matches))
-                ):
+                while pending and not should_stop():
                     done, pending = wait(pending, return_when=FIRST_COMPLETED)
                     for future in done:
                         _ = future.result()
@@ -296,7 +291,7 @@ def search(
         else:
             for template in templates:
                 res = _process_cv_result(template, img, take_debug_screenshot)
-                if mode == "first" and res:
+                if stop_search.is_set() or (mode == "first" and res):
                     break
 
         time_remains = time.time() - start < timeout
