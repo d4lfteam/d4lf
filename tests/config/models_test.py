@@ -530,72 +530,38 @@ class TestEdgeCases:
 
 
 class TestTributeFilterModel:
-    """Test TributeFilterModel with both naming conventions."""
+    """Test TributeFilterModel list semantics and normalization."""
 
-    def test_camelcase_name(self) -> None:
-        """Test tribute with camelCase name."""
-        model = TributeFilterModel(name="harmony")
-        assert model.name == "tribute_of_harmony"
-
-    def test_name_with_prefix(self) -> None:
-        """Test tribute with full name prefix."""
-        model = TributeFilterModel(name="tribute_of_harmony")
-        assert model.name == "tribute_of_harmony"
-
-    def test_empty_name_validation(self) -> None:
-        """Test empty name passes validation (line 281)."""
-        # Empty name is allowed
-        model = TributeFilterModel(name="")
-        assert not model.name
-
-    def test_parse_dict(self) -> None:
-        """Test parsing from dict (line 224 for SigilConditionModel, 298 for TributeFilterModel)."""
+    def test_name_single_value_normalizes_to_list(self) -> None:
         model = TributeFilterModel.model_validate({"name": "harmony"})
-        assert model.name == "tribute_of_harmony"
+        assert model.name == ["tribute_of_harmony"]
 
-    def test_parse_from_string_rarity(self) -> None:
-        """Test parsing a rarity string (line 302)."""
-        # Test with valid rarity string
-        for rarity in ItemRarity:
-            model = TributeFilterModel.model_validate(rarity.value)
-            # Rarities are ItemRarity enum values
-            assert rarity in model.rarities
+    def test_name_list_normalizes_entries(self) -> None:
+        model = TributeFilterModel.model_validate({"name": ["harmony", "tribute_of_andariel"]})
+        assert model.name == ["tribute_of_harmony", "tribute_of_andariel"]
 
-    def test_parse_from_string_name(self) -> None:
-        """Test parsing a tribute name string."""
-        model = TributeFilterModel.model_validate("harmony")
-        assert model.name == "tribute_of_harmony"
+    def test_rarity_alias_loads(self) -> None:
+        model = TributeFilterModel.model_validate({"rarity": ["legendary"]})
+        assert model.rarities == [ItemRarity.Legendary]
 
-    def test_parse_from_list(self) -> None:
-        """Test parsing from list (line 308)."""
-        # List parses as rarities
-        model = TributeFilterModel.model_validate([ItemRarity.Legendary.value, ItemRarity.Unique.value])
-        assert len(model.rarities) == 2
-        # Verify they are ItemRarity enums
-        assert all(isinstance(r, ItemRarity) for r in model.rarities)
+    def test_legacy_rarities_alias_still_loads(self) -> None:
+        model = TributeFilterModel.model_validate({"rarities": ["legendary"]})
+        assert model.rarities == [ItemRarity.Legendary]
 
-    def test_parse_empty_list_fails(self) -> None:
-        """Test that empty list fails."""
-        with pytest.raises(ValidationError, match="list cannot be empty"):
-            TributeFilterModel.model_validate([])
+    def test_serialization_alias_uses_rarity(self) -> None:
+        model = TributeFilterModel.model_validate({"rarity": ["legendary"]})
+        dumped = model.model_dump(by_alias=True)
+        assert "rarity" in dumped
+        assert "rarities" not in dumped
 
     def test_invalid_tribute_name_fails(self) -> None:
-        """Test that invalid tribute name fails."""
         with pytest.raises(ValidationError, match="No tribute named"):
-            TributeFilterModel(name="invalid_tribute_123")
+            TributeFilterModel(name=["invalid_tribute_123"])
 
-    def test_rarities_parse_string(self) -> None:
-        """Test rarities field parsing from string (line 315)."""
-        model = TributeFilterModel(rarities=[ItemRarity.Legendary])
-        # Verify it's an ItemRarity enum
-        assert ItemRarity.Legendary in model.rarities
-
-    def test_rarities_parse_list(self) -> None:
-        """Test rarities field parsing from list (line 315)."""
-        model = TributeFilterModel(rarities=[ItemRarity.Legendary])
-        assert len(model.rarities) == 1
-        # Verify it's an ItemRarity enum
-        assert ItemRarity.Legendary in model.rarities
+    def test_default_is_empty_lists(self) -> None:
+        model = TributeFilterModel()
+        assert model.name == []
+        assert model.rarities == []
 
 
 class TestCharmFilterModel:
@@ -663,79 +629,6 @@ class TestSealFilterModel:
 
         with pytest.raises(ValidationError, match=f"affixPool affix {affix_name} does not exist"):
             SealFilterModel(affix_pool=[AffixFilterCountModel(count=[AffixFilterModel(name=affix_name)])])
-
-
-class TestTributeFilterModelRarity:
-    """Test rarity key unification on TributeFilterModel (Slice 01)."""
-
-    def test_rarity_key_loads(self) -> None:
-        """New 'rarity' key (singular) is accepted."""
-        model = TributeFilterModel.model_validate({"rarity": ["legendary"]})
-        assert model.rarities == [ItemRarity.Legendary]
-
-    def test_legacy_rarities_key_loads(self) -> None:
-        """Legacy 'rarities' key still works for back-compat."""
-        model = TributeFilterModel.model_validate({"rarities": ["legendary"]})
-        assert model.rarities == [ItemRarity.Legendary]
-
-    def test_serialization_alias_is_rarity(self) -> None:
-        """model_dump(by_alias=True) uses 'rarity' as the key, not 'rarities'."""
-        model = TributeFilterModel.model_validate({"rarity": ["legendary"]})
-        dumped = model.model_dump(by_alias=True)
-        assert "rarity" in dumped
-        assert "rarities" not in dumped
-
-    def test_serialization_alias_json(self) -> None:
-        """model_dump_json(by_alias=True) uses 'rarity' as the key."""
-        model = TributeFilterModel.model_validate({"rarity": ["legendary"]})
-        exported = json.loads(model.model_dump_json(by_alias=True))
-        assert "rarity" in exported
-        assert "rarities" not in exported
-
-    def test_bare_string_lowercase(self) -> None:
-        """Bare lowercase rarity string normalizes to list of ItemRarity."""
-        model = TributeFilterModel.model_validate("legendary")
-        assert model.rarities == [ItemRarity.Legendary]
-
-    def test_bare_string_uppercase(self) -> None:
-        """Bare mixed-case rarity string is case-insensitively parsed."""
-        model = TributeFilterModel.model_validate("Legendary")
-        assert model.rarities == [ItemRarity.Legendary]
-
-    def test_rarity_list_normalizes(self) -> None:
-        """List of rarity strings (mixed case) all normalize correctly."""
-        model = TributeFilterModel.model_validate({"rarity": ["Rare", "LEGENDARY", "unique"]})
-        assert ItemRarity.Rare in model.rarities
-        assert ItemRarity.Legendary in model.rarities
-        assert ItemRarity.Unique in model.rarities
-
-    def test_case_insensitive_rare(self) -> None:
-        """'Rare' and 'rare' both parse to ItemRarity.Rare."""
-        m1 = TributeFilterModel.model_validate({"rarity": ["Rare"]})
-        m2 = TributeFilterModel.model_validate({"rarity": ["rare"]})
-        assert m1.rarities == [ItemRarity.Rare]
-        assert m2.rarities == [ItemRarity.Rare]
-
-    def test_invalid_rarity_raises(self) -> None:
-        """An unrecognised rarity value raises ValidationError."""
-        with pytest.raises(ValidationError):
-            TributeFilterModel.model_validate({"rarity": ["notararity"]})
-
-    def test_empty_rarity_field_defaults_to_empty_list(self) -> None:
-        """Absent rarity field defaults to empty list."""
-        model = TributeFilterModel.model_validate({"name": "harmony"})
-        assert model.rarities == []
-
-    def test_keyword_construction_with_rarities(self) -> None:
-        """TributeFilterModel(rarities=[...]) still works (populate_by_name)."""
-        model = TributeFilterModel(rarities=[ItemRarity.Legendary])
-        assert model.rarities == [ItemRarity.Legendary]
-
-    def test_parse_data_returns_rarities_key_still_works(self) -> None:
-        """parse_data returns {'rarities': [...]}, which flows through _normalize_rarities."""
-        model = TributeFilterModel.model_validate(["Legendary", "Rare"])
-        assert ItemRarity.Legendary in model.rarities
-        assert ItemRarity.Rare in model.rarities
 
 
 class TestSigilConditionModel:
@@ -816,7 +709,7 @@ class TestProfileModel:
             AspectUpgrades=[],
             GlobalUniques=[GlobalUniqueModel(minPower=800)],
             Sigils={"blacklist": [], "whitelist": [], "priority": "blacklist"},
-            Tributes=[],
+            Tributes={},
             Seals=[{"Cooldown": {"affixPool": [{"count": ["cooldown_reduction"]}], "rarities": ["legendary"]}}],
             Charms=[{"Life": {"affixPool": [{"count": ["maximum_life"]}], "rarities": ["rare"]}}],
             Paragon=None,
@@ -837,7 +730,7 @@ class TestProfileModel:
             aspect_upgrades=[],
             global_uniques=[GlobalUniqueModel(min_power=900)],
             sigils={"blacklist": [], "whitelist": [], "priority": "blacklist"},
-            tributes=[],
+            tributes={},
             seals=[{"Cooldown": {"affix_pool": [{"count": ["cooldown_reduction"]}]}}],
             charms=[{"Life": {"affix_pool": [{"count": ["maximum_life"]}]}}],
             paragon=None,
@@ -866,6 +759,12 @@ class TestProfileModel:
         assert model.aspect_upgrades == []
         assert len(model.global_uniques) == 1
 
+    def test_tributes_list_shape_is_migrated_to_single_object(self) -> None:
+        model = ProfileModel(name="tributes_profile", Tributes=[{"name": ["harmony"]}, {"rarity": ["legendary"]}])
+        assert isinstance(model.tributes, TributeFilterModel)
+        assert model.tributes.name == ["tribute_of_harmony"]
+        assert model.tributes.rarities == [ItemRarity.Legendary]
+
     def test_camelcase_top_level_fields(self) -> None:
         """Test that camelCase top-level fields work."""
         profile = ProfileModel(
@@ -874,7 +773,7 @@ class TestProfileModel:
             AspectUpgrades=["accelerating"],
             GlobalUniques=[],
             Sigils={"blacklist": [], "whitelist": [], "priority": "blacklist"},
-            Tributes=[],
+            Tributes={},
         )
         assert profile.affixes == []
         assert profile.aspect_upgrades == ["accelerating"]
@@ -958,7 +857,7 @@ class TestProfileModel:
         assert model.global_uniques == []
         assert model.seals == []
         assert model.charms == []
-        assert model.tributes == []
+        assert model.tributes is None
         assert model.paragon is None
         assert model.sigils.blacklist == []
         assert model.sigils.whitelist == []

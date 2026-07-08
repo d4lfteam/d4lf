@@ -391,11 +391,7 @@ unique_affixes = ProfileModel(
 
 tributes = ProfileModel(
     name="tributes",
-    tributes=[
-        TributeFilterModel(name="tribute_of_andariel"),
-        TributeFilterModel(name="harmony"),
-        TributeFilterModel(rarities=[ItemRarity.Legendary, ItemRarity.Unique]),
-    ],
+    tributes=TributeFilterModel(name=["tribute_of_andariel", "harmony"], rarities=[ItemRarity.Legendary]),
 )
 
 # noinspection PyTypeChecker
