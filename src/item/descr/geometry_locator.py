@@ -100,6 +100,7 @@ def _affix_bullet_templates_for_item(item: Item) -> list[str]:
     base: list[str] = []
 
     # Greater affix and masterworking bullets: only when TTS confirms greater affixes are present.
+    # TTS can identify greater affixes from their value format in the spoken text.
     if AffixType.greater in affix_types:
         base += [
             "greater_affix_bullet_point_1",
@@ -115,13 +116,11 @@ def _affix_bullet_templates_for_item(item: Item) -> list[str]:
     # Normal affix bullets are always needed.
     base += [f"affix_bullet_point_{x}" for x in range(1, 3)]
 
-    # Rerolled bullets: only when TTS reports at least one rerolled affix.
-    if AffixType.rerolled in affix_types:
-        base += [f"rerolled_bullet_point_{x}" for x in range(1, 3)]
-
-    # Tempered bullets: only when TTS reports at least one tempered affix.
-    if AffixType.tempered in affix_types:
-        base += [f"tempered_affix_bullet_point_{x}" for x in range(1, 7)]
+    # Rerolled and tempered bullets are always included: TTS cannot report these affix types
+    # (they are only determinable from the bullet icon itself), so we must always search for them
+    # to correctly count and position all affix rows.
+    base += [f"rerolled_bullet_point_{x}" for x in range(1, 3)]
+    base += [f"tempered_affix_bullet_point_{x}" for x in range(1, 7)]
 
     templates = [f"{t}_medium" for t in base] + base
 
