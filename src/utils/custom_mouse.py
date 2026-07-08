@@ -242,10 +242,6 @@ class Mouse:
         delay_factor: tuple[float, float] = (0.2, 0.3),
     ):
         from_point = Mouse.get_position()
-        dist = math.dist((x, y), from_point)
-        offset_boundary_x = max(10, int(0.08 * dist))
-        offset_boundary_y = max(10, int(0.08 * dist))
-        target_points = min(6, max(3, int(0.004 * dist)))
         if not absolute:
             x = from_point[0] + x
             y = from_point[1] + y
@@ -261,6 +257,10 @@ class Mouse:
                 x = int(x) + random.randrange(-randomize[0], +randomize[0])
                 y = int(y) + random.randrange(-randomize[1], +randomize[1])
 
+        dist = math.dist((x, y), from_point)
+        offset_boundary_x = max(10, int(0.08 * dist))
+        offset_boundary_y = max(10, int(0.08 * dist))
+        target_points = min(80, max(12, int(0.05 * dist)))
         human_curve = HumanCurve(
             from_point,
             (x, y),

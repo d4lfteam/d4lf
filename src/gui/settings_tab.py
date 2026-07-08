@@ -43,6 +43,7 @@ from src.config.settings_models import (
 )
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
 from src.gui.settings_store import SettingsStore
+from src.utils.hotkeys import validate_hotkey
 
 CONFIG_TABNAME = "config"
 
@@ -751,8 +752,12 @@ class HotkeyListenerDialog(QDialog):  # type: ignore[misc]
 
         parts = modifiers + ([non_mod_key] if non_mod_key else [])
         self.hotkey = "+".join(list(dict.fromkeys(parts)))
+        try:
+            self.hotkey = validate_hotkey(self.hotkey)
+            self.save_button.setEnabled(True)
+        except ValueError:
+            self.save_button.setEnabled(False)
         self.hotkey_label.setText(self.hotkey)
-        self.save_button.setEnabled(True)
 
     def get_hotkey(self):
         return self.hotkey
