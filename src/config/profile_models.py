@@ -51,6 +51,31 @@ def _normalize_rarities(data: str | list[str] | list[ItemRarity]) -> list[str]:
     return [v.lower() if isinstance(v, str) else v for v in values]
 
 
+def _normalize_tribute_names(data: str | list[str] | None) -> list[str]:
+    if data is None:
+        return []
+    values = [data] if isinstance(data, str) else data
+
+    # This on module level would be a circular import, so we do it lazy for now
+    from src.dataloader import Dataloader  # noqa: PLC0415
+
+    tribute_dict = Dataloader().tribute_dict
+    normalized_names: list[str] = []
+    for name in values:
+        if not name:
+            continue
+        name_with_tribute = f"tribute_of_{name}"
+        if name in tribute_dict:
+            normalized_names.append(name)
+            continue
+        if name_with_tribute in tribute_dict:
+            normalized_names.append(name_with_tribute)
+            continue
+        msg = f"No tribute named {name} or {name_with_tribute} exists"
+        raise ValueError(msg)
+    return normalized_names
+
+
 class AffixAspectFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str
@@ -402,48 +427,15 @@ class SigilFilterModel(BaseModel):
 
 class TributeFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
-    name: str | None = None
+    name: list[str] = []
     rarities: list[ItemRarity] = Field(
         default=[], validation_alias=AliasChoices("rarity", "rarities"), serialization_alias="rarity"
     )
 
-    @field_validator("name")
+    @field_validator("name", mode="before")
     @classmethod
-    def name_must_exist(cls, name: str) -> str:
-        # This on module level would be a circular import, so we do it lazy for now
-        from src.dataloader import Dataloader  # noqa: PLC0415
-
-        if not name:
-            return name
-
-        tribute_dict = Dataloader().tribute_dict
-        # Allow people to shorthand and leave off "tribute_of_"
-        name_with_tribute = "tribute_of_" + name
-        if name not in tribute_dict and name_with_tribute not in tribute_dict:
-            msg = f"No tribute named {name} or {name_with_tribute} exists"
-            raise ValueError(msg)
-
-        if name_with_tribute in tribute_dict:
-            name = name_with_tribute
-
-        return name
-
-    @model_validator(mode="before")
-    @classmethod
-    def parse_data(cls, data: str | list[str] | dict[str, str | list[str]]) -> dict[str, str | list[str]]:
-        if isinstance(data, dict):
-            return data
-        if isinstance(data, str):
-            if any(rarity.value.lower() == data.lower() for rarity in ItemRarity):
-                return {"rarities": [data]}
-            return {"name": data}
-        if isinstance(data, list):
-            if not data:
-                msg = "list cannot be empty"
-                raise ValueError(msg)
-            return {"rarities": data}
-        msg = "must be str or list"
-        raise ValueError(msg)
+    def parse_names(cls, data: str | list[str] | None) -> list[str]:
+        return _normalize_tribute_names(data)
 
     @field_validator("rarities", mode="before")
     @classmethod
@@ -566,8 +558,34 @@ class ProfileModel(BaseModel):
     sigils: SigilFilterModel = Field(
         default=SigilFilterModel(blacklist=[], whitelist=[], priority=SigilPriority.blacklist), alias="Sigils"
     )
-    tributes: list[TributeFilterModel] = Field(default=[], alias="Tributes")
+    tributes: TributeFilterModel | None = Field(default=None, alias="Tributes")
     paragon: ParagonPayloadModel | None = Field(default=None, alias="Paragon")
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_list_tributes(cls, data: object) -> object:
+        """Merge legacy list-shaped Tributes into a single object."""
+        if not isinstance(data, dict):
+            return data
+        key = "Tributes" if "Tributes" in data else "tributes" if "tributes" in data else None
+        if key is None:
+            return data
+        tributes = data[key]
+        if not isinstance(tributes, list):
+            return data
+        names: list[str] = []
+        rarities: list[str] = []
+        for entry in tributes:
+            if isinstance(entry, dict):
+                raw_names = entry.get("name", [])
+                raw_rarities = entry.get("rarity", entry.get("rarities", []))
+                for n in [raw_names] if isinstance(raw_names, str) else raw_names:
+                    if n not in names:
+                        names.append(n)
+                for r in [raw_rarities] if isinstance(raw_rarities, str) else raw_rarities:
+                    if r not in rarities:
+                        rarities.append(r)
+        return {**data, key: {"name": names, "rarity": rarities} if names or rarities else {}}
 
     @model_validator(mode="before")
     def aspects_must_exist(self) -> ProfileModel:

@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from src.config.profile_document import ProfileDocumentStore, ProfileValidationError
-from src.config.profile_models import ProfileModel
+from src.config.profile_models import ProfileModel, TributeFilterModel
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -91,3 +91,15 @@ def test_load_rejects_non_mapping_yaml_as_document_error(tmp_path: Path) -> None
 
     assert exc_info.value.code == "profile_validation_error"
     assert str(profile_path) in str(exc_info.value)
+
+
+def test_load_migrates_list_shaped_tributes_to_single_object(tmp_path: Path) -> None:
+    profile_path = tmp_path / "profiles" / "tributes_list.yaml"
+    profile_path.parent.mkdir()
+    profile_path.write_text("Tributes:\n- name: harmony\n- rarity: [legendary]\n", encoding="utf-8")
+
+    loaded = ProfileDocumentStore(profiles_dir=tmp_path / "profiles", full_dump=False).load(profile_path)
+
+    assert isinstance(loaded.profile.tributes, TributeFilterModel)
+    assert loaded.profile.tributes.name == ["tribute_of_harmony"]
+    assert loaded.profile.tributes.rarities[0].value == "legendary"
