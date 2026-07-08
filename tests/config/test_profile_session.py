@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from src.config.loader import IniConfigLoader
 from src.config.profile_document import ProfileDocumentStore
+from src.config.profile_models import TributeFilterModel
 from src.config.profile_session import (
     EmptyError,
     Failed,
@@ -117,6 +118,15 @@ def test_load_validation_error_without_guidance(tmp_path: Path) -> None:
 
     assert isinstance(result, ValidationError)
     assert not result.guidance
+
+
+def test_load_migrates_list_shaped_tributes_to_single_object(tmp_path: Path) -> None:
+    _write_profile(tmp_path, "legacy_tributes.yaml", "Tributes:\n- name: harmony\n- rarity: [legendary]\n")
+
+    result = _session(tmp_path, LastOpenedStore()).load("legacy_tributes")
+
+    assert isinstance(result, Loaded)
+    assert isinstance(result.loaded_profile.profile.tributes, TributeFilterModel)
 
 
 def test_save_returns_saved_and_writes_backup(tmp_path: Path) -> None:

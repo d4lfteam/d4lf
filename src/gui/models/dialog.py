@@ -457,7 +457,7 @@ class CreateTribute(QDialog):
     def get_value(self):
         reverse_dict = {v: k for k, v in Dataloader().tribute_dict.items()}
         tribute_name = reverse_dict.get(self.name_input.currentText())
-        return TributeFilterModel(name=tribute_name, rarities=[])
+        return TributeFilterModel(name=[tribute_name], rarities=[])
 
 
 class AddTributeRarity(QDialog):
@@ -508,7 +508,7 @@ class AddTributeRarity(QDialog):
 
     def get_value(self):
         rarity = ItemRarity[self.rarity_input.currentText()]
-        return TributeFilterModel(rarities=[rarity])
+        return TributeFilterModel(name=[], rarities=[rarity])
 
 
 class RemoveTribute(QDialog):

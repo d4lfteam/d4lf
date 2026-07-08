@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QTabWidget
 
+from src.config.profile_models import TributeFilterModel
 from src.gui.profile_editor.affixes_tab import AFFIXES_TABNAME, AffixesTab
 from src.gui.profile_editor.aspect_upgrades_tab import ASPECT_UPGRADES_TABNAME, AspectUpgradesTab
 from src.gui.profile_editor.charms_seals_group_tab import CHARMS_TABNAME, SEALS_TABNAME, CharmsTab, SealsTab
@@ -17,12 +18,17 @@ if TYPE_CHECKING:
     from src.config.profile_models import ProfileModel
 
 
+def _to_editor_tribute_filter(tributes: TributeFilterModel | None) -> TributeFilterModel:
+    return tributes if tributes is not None else TributeFilterModel()
+
+
 class ProfileEditor(QTabWidget):
     def __init__(self, loaded_profile: LoadedProfile, parent=None):
         super().__init__(parent)
 
         self.loaded_profile = loaded_profile
         self.profile_model = loaded_profile.profile
+        self.profile_model.tributes = _to_editor_tribute_filter(self.profile_model.tributes)
         # Create main tabs
         self.affixes_tab = AffixesTab(self.profile_model.affixes)
         self.charms_tab = CharmsTab(self.profile_model.charms)
