@@ -6,7 +6,7 @@ from natsort import natsorted
 
 from src.config.loader import IniConfigLoader
 from src.config.profile_document import ProfileDocumentStore
-from src.config.profile_models import ParagonPayloadModel, ProfileModel, SigilPriority
+from src.config.profile_models import ParagonPayloadModel, ProfileModel, SigilPriority, TributeFilterModel
 from src.config.settings_models import AspectFilterType
 from src.item.data.affix import Affix
 from src.item.data.item_type import ItemType
@@ -122,6 +122,55 @@ def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixtu
     test_filter = _create_mocked_filter(mocker)
     test_filter.tribute_filters = {filters.tributes.name: filters.tributes.tributes}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
+
+
+def test_tribute_name_only_filter_ignores_rarity(mocker: MockerFixture):
+    """name-only filter: kept when name matches, regardless of rarity."""
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.tribute_filters = {"p": TributeFilterModel(name=["tribute_of_harmony"])}
+
+    assert test_filter.should_keep(
+        Item(name="tribute_of_harmony", rarity=ItemRarity.Magic, item_type=ItemType.Tribute)
+    ).keep
+    assert test_filter.should_keep(
+        Item(name="tribute_of_harmony", rarity=ItemRarity.Legendary, item_type=ItemType.Tribute)
+    ).keep
+    assert not test_filter.should_keep(
+        Item(name="tribute_of_fake", rarity=ItemRarity.Legendary, item_type=ItemType.Tribute)
+    ).keep
+
+
+def test_tribute_rarity_only_filter_ignores_name(mocker: MockerFixture):
+    """rarity-only filter: kept when rarity matches, regardless of name."""
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.tribute_filters = {"p": TributeFilterModel(rarities=[ItemRarity.Legendary])}
+
+    assert test_filter.should_keep(
+        Item(name="tribute_of_harmony", rarity=ItemRarity.Legendary, item_type=ItemType.Tribute)
+    ).keep
+    assert test_filter.should_keep(
+        Item(name="tribute_of_fake", rarity=ItemRarity.Legendary, item_type=ItemType.Tribute)
+    ).keep
+    assert not test_filter.should_keep(
+        Item(name="tribute_of_harmony", rarity=ItemRarity.Magic, item_type=ItemType.Tribute)
+    ).keep
+
+
+def test_tribute_empty_filter_keeps_nothing(mocker: MockerFixture):
+    """Tributes: {} — filter key present but no constraints: keep nothing (except mythics)."""
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.tribute_filters = {"p": TributeFilterModel()}
+
+    assert not test_filter.should_keep(
+        Item(name="tribute_of_harmony", rarity=ItemRarity.Magic, item_type=ItemType.Tribute)
+    ).keep
+    assert not test_filter.should_keep(
+        Item(name="tribute_of_harmony", rarity=ItemRarity.Legendary, item_type=ItemType.Tribute)
+    ).keep
+    # mythic fallback still applies
+    assert test_filter.should_keep(
+        Item(name="tribute_of_harmony", rarity=ItemRarity.Mythic, item_type=ItemType.Tribute)
+    ).keep
 
 
 @pytest.mark.parametrize(("_name", "result", "item"), natsorted(seals), ids=[name for name, _, _ in natsorted(seals)])

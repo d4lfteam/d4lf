@@ -317,17 +317,16 @@ class Filter:
             res.keep = True
             res.matched.append(MatchedFilter("Tributes not filtered"))
 
-        for profile_name, profile_filter in self.tribute_filters.items():
-            for filter_item in profile_filter:
-                if filter_item.name and not item.name.startswith(filter_item.name):
-                    continue
+        for profile_name, filter_item in self.tribute_filters.items():
+            name_match = bool(filter_item.name) and any(item.name.startswith(name) for name in filter_item.name)
+            rarity_match = bool(filter_item.rarities) and item.rarity in filter_item.rarities
 
-                if filter_item.rarities and item.rarity not in filter_item.rarities:
-                    continue
+            if not name_match and not rarity_match:
+                continue
 
-                LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Tributes")
-                res.keep = True
-                res.matched.append(MatchedFilter(f"{profile_name}"))
+            LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Tributes")
+            res.keep = True
+            res.matched.append(MatchedFilter(f"{profile_name}"))
 
         if item.rarity == ItemRarity.Mythic and not res.keep:
             LOGGER.info(f"{item.original_name} -- Matched mythic tribute, always kept")
@@ -543,7 +542,7 @@ class Filter:
         self.seal_filters: dict[str, list[DynamicSealFilterModel]] = {}
         self.charm_filters: dict[str, list[DynamicCharmFilterModel]] = {}
         self.sigil_filters: dict[str, SigilFilterModel] = {}
-        self.tribute_filters: dict[str, list[TributeFilterModel]] = {}
+        self.tribute_filters: dict[str, TributeFilterModel] = {}
         self.global_unique_filters: dict[str, list[GlobalUniqueModel]] = {}
         profiles: list[str] = IniConfigLoader().general.profiles
 
@@ -593,7 +592,7 @@ class Filter:
             if data.sigils and (data.sigils.blacklist or data.sigils.whitelist or data.sigils.rarities):
                 self.sigil_filters[data.name] = data.sigils
                 sections.append("Sigils")
-            if data.tributes:
+            if data.tributes is not None:
                 self.tribute_filters[data.name] = data.tributes
                 sections.append("Tributes")
             if data.global_uniques:

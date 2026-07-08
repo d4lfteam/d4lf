@@ -86,10 +86,6 @@ The TTS dll (`saapi64.dll`) must be signed for Diablo 4 to pick it up. The `inst
 - Download the signtool needed to add a local signature to the dll
 - Runs the signtool and signs the dll
 
-If you prefer running it from a terminal, you can run `.\install_dll.cmd`.
-
-For very advanced users that don't want to automatically download signtool.exe, you can run `.\install_dll.cmd -signtool_path "<full path to signtool.exe>"`
-
 ## GUI Overview
 
 d4lf.exe is the one-stop shop for all operations, including running the D4LF process and any configuration changes.
@@ -705,27 +701,43 @@ names in [assets/lang/enUS/sigils.json](assets/lang/enUS/sigils.json).
 
 ### Tributes
 
-Tributes are defined by the top-level key `Tributes`. It contains a list of either tribute names or rarities you want
-to keep. Any not in the list are not kept. If no Tribute filter is provided, all Tributes will be kept.
+Tributes are defined by the top-level key `Tributes`. Use an object with `name` and/or `rarity` keys.
+A tribute is kept if its name is in the `name` list **or** its rarity is in the `rarity` list.
+Omitting a key means that dimension is not checked at all. If no `Tributes` filter is provided, all tributes are kept.
 
 Mythic tributes are always kept no matter what.
 
 <details><summary>Config Examples</summary>
 
 ```yaml
-# Keeps tribute_of_mystique and all legendary and unique tributes
+# Keeps only tribute_of_harmony
 Tributes:
-  - tribute_of_mystique
-  - [legendary, unique]
+  name: [tribute_of_harmony]
 ```
 
 If you're exceptionally pressed for time, you can just put the name of the tribute without "tribute_of\_" at the beginning.
 
 ```yaml
-# Keeps Tribute of Mystique and Tribute of Ascendance (Resolute) and nothing else
+# Keeps Tribute of Harmony and Tribute of Ascendance (Resolute)
 Tributes:
-  - mystique
-  - ascendance_resolute
+  name: [harmony, ascendance_resolute]
+```
+
+You can also filter by rarity. The valid rarities are listed in [rarity.py](src/item/data/rarity.py).
+
+```yaml
+# Keeps only legendary and unique tributes
+Tributes:
+  rarity: [legendary, unique]
+```
+
+When both keys are provided, a tribute is kept if it matches **either** the name list or the rarity list.
+
+```yaml
+# Keeps tribute_of_harmony AND all legendary/unique tributes
+Tributes:
+  name: [harmony]
+  rarity: [legendary, unique]
 ```
 
 </details>
@@ -949,10 +961,10 @@ As a quick install guide, just run the following:
 
 ```bash
 uv run pip install pre-commit
-uv run pre-commit install
+uv run pre-commit install --hook-type pre-push
 ```
 
-Now every commit will automatically run our pre-commit checks.
+Now every push will automatically run our pre-commit checks.
 
 ### A note on use of AI for PRs
 
