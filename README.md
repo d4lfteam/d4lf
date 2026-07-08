@@ -915,34 +915,19 @@ This StackOverflow provides a good outline on the proper process for keeping you
 
 ### Formatting & Linting
 
-Just use prek. If it's your first setup, you will need to install the NuGet package provider. Open Windows Powershell and run::
-
-```
-Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser
-```
+Just use [prek](https://prek.j178.dev/).
 
 Then run:
-
-```bash
-prek install
-```
-
-Otherwise just run:
 
 ```bash
 prek run -a
 ```
 
-Pre-commit is configured for D4LF and can automatically run prek before you push any changes. You can see extended setup instructions here: https://pre-commit.com/
-
-As a quick install guide, just run the following:
+To automatically run prek before every push, you can install it as a git hook with:
 
 ```bash
-uv run pip install pre-commit
-uv run pre-commit install
+prek install
 ```
-
-Now every commit will automatically run our pre-commit checks.
 
 ### A note on use of AI for PRs
 
