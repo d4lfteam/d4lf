@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from pynput import keyboard
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Hashable
 
 _VALID_KEY_NAMES = {name for name in dir(keyboard.Key) if not name.startswith("_")}
 _MODIFIER_KEYS = {"ctrl", "shift", "alt", "cmd"}
@@ -118,30 +118,53 @@ def send(hotkey: str) -> None:
 class _GlobalHotkeyRegistry:
     def __init__(self) -> None:
         self._lock = threading.RLock()
-        self._listener: keyboard.GlobalHotKeys | None = None
+        self._listener: keyboard.Listener | None = None
         self._next_handle = 1
         self._handle_to_hotkey: dict[int, str] = {}
         self._callbacks: dict[str, dict[int, Callable[[], None]]] = defaultdict(dict)
+        self._hotkey_keys: dict[str, frozenset[Hashable]] = {}
+        self._pressed_keys: set[Hashable] = set()
+        self._active_hotkeys: set[str] = set()
 
-    def _build_listener_map(self) -> dict[str, Callable[[], None]]:
-        listener_map: dict[str, Callable[[], None]] = {}
-        for hotkey in self._callbacks:
-            listener_map[hotkey] = lambda hk=hotkey: self._dispatch(hk)
-        return listener_map
+    def _canonicalize_event_key(self, key):
+        if self._listener is None:
+            return key
+        return self._listener.canonical(key)
 
-    def _dispatch(self, hotkey: str) -> None:
+    def _on_press(self, key) -> None:
+        callbacks: list[Callable[[], None]] = []
         with self._lock:
-            callbacks = list(self._callbacks.get(hotkey, {}).values())
+            canonical_key = self._canonicalize_event_key(key)
+            if canonical_key in self._pressed_keys:
+                return
+
+            self._pressed_keys.add(canonical_key)
+            pressed_keys = frozenset(self._pressed_keys)
+            for hotkey, hotkey_keys in self._hotkey_keys.items():
+                if hotkey_keys == pressed_keys and hotkey not in self._active_hotkeys:
+                    self._active_hotkeys.add(hotkey)
+                    callbacks.extend(self._callbacks.get(hotkey, {}).values())
+
         for callback in callbacks:
             callback()
+
+    def _on_release(self, key) -> None:
+        with self._lock:
+            canonical_key = self._canonicalize_event_key(key)
+            self._pressed_keys.discard(canonical_key)
+            self._active_hotkeys = {
+                hotkey for hotkey in self._active_hotkeys if canonical_key not in self._hotkey_keys[hotkey]
+            }
 
     def _restart_listener(self) -> None:
         if self._listener is not None:
             self._listener.stop()
             self._listener = None
+        self._pressed_keys.clear()
+        self._active_hotkeys.clear()
         if not self._callbacks:
             return
-        self._listener = keyboard.GlobalHotKeys(self._build_listener_map())
+        self._listener = keyboard.Listener(on_press=self._on_press, on_release=self._on_release)
         self._listener.start()
 
     def add_hotkey(self, hotkey: str, callback: Callable[[], None]) -> int:
@@ -151,6 +174,7 @@ class _GlobalHotkeyRegistry:
             self._next_handle += 1
             self._handle_to_hotkey[handle] = normalized
             self._callbacks[normalized][handle] = callback
+            self._hotkey_keys[normalized] = frozenset(keyboard.HotKey.parse(normalized))
             self._restart_listener()
             return handle
 
@@ -163,6 +187,7 @@ class _GlobalHotkeyRegistry:
             callbacks.pop(handle, None)
             if not callbacks:
                 self._callbacks.pop(hotkey, None)
+                self._hotkey_keys.pop(hotkey, None)
             self._restart_listener()
 
 
