@@ -30,15 +30,16 @@ from src.scripts import correct_name
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
+
 BUILD_GUIDE_BASE_URL = "https://maxroll.gg/d4/build-guides/"
+BUILD_SCRIPT_PREFIX = "window.__remixContext = "
 PLANNER_API_BASE_URL = "https://planners.maxroll.gg/profiles/d4/"
-PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?95bc2915"
+PLANNER_API_DATA_URL = "https://assets-ng.maxroll.gg/d4-tools/game/data.min.json?39e88625"
+PLANNER_API_REGEX = re.compile(r'(https://maxroll\.gg/d4/planner/[^"|\\]*)')
 PLANNER_BASE_URL = "https://maxroll.gg/d4/planner/"
 SCRIPT_XPATH = "//div[@id='root']/script"
-BUILD_SCRIPT_PREFIX = "window.__remixContext = "
-PLANNER_API_REGEX = re.compile(r'(https://maxroll\.gg/d4/planner/[^"|\\]*)')
-SKILL_RANK_BONUS_FORMULAS = {"GearAffix_SkillRankBonus", "GearAffix_SkillRankBonus_1to2"}
 SKILL_RANK_AFFIX_KEY_REGEX = re.compile(r"(?:_Category_|_Special_)(?P<label>[A-Za-z0-9]+)")
+SKILL_RANK_BONUS_FORMULAS = {"GearAffix_SkillRankBonus", "GearAffix_SkillRankBonus_1to2"}
 SKILL_RANK_DESC_LABEL_REGEX = re.compile(r"\{c_important\}([^{}]+)\{/c\}\s+Skills")
 
 
@@ -250,7 +251,12 @@ def _find_item_affixes(
                 break
             attr_desc = _attr_desc_special_handling(affix["id"])
             if not attr_desc:
-                if "formula" in affix["attributes"][0] and affix["attributes"][0]["formula"] in [
+                attribute = affix["attributes"][0]
+                formula = attribute.get("formula")
+                if formula and formula.startswith("SancAffix_"):
+                    LOGGER.info("Skipping Sanctification affix")
+                    break
+                if formula in [
                     "GearAffix_Resource_Per_Second",
                     "GearAffix_DamageType",
                     "GearAffix_DamageType_Greater",
@@ -258,8 +264,8 @@ def _find_item_affixes(
                     "GearAffix_Resource_On_Kill_Warlock",
                     "GearAffix_Resistance_Single",
                 ]:
-                    if affix["attributes"][0]["formula"] in ["GearAffix_DamageType", "GearAffix_DamageType_Greater"]:
-                        param = str(affix["attributes"][0]["param"])
+                    if formula in ["GearAffix_DamageType", "GearAffix_DamageType_Greater"]:
+                        param = str(attribute["param"])
                         if param in mapping_data["uiStrings"]["damageType"]:
                             attr_desc = mapping_data["uiStrings"]["damageType"][param] + " Damage Multiplier"
                         elif "desc" in affix:
@@ -268,23 +274,15 @@ def _find_item_affixes(
                             match = re.search(pattern, affix["desc"])
                             if match:
                                 attr_desc = f"{match.group(1)} {match.group(2)}"
-                    elif affix["attributes"][0]["formula"] == "GearAffix_Resistance_Single":
-                        attr_desc = (
-                            mapping_data["uiStrings"]["damageType"][str(affix["attributes"][0]["param"])]
-                            + " Resistance"
-                        )
-                    elif affix["attributes"][0]["formula"] == "GearAffix_Resource_Per_Second":
-                        param = str(affix["attributes"][0]["param"])
+                    elif formula == "GearAffix_Resistance_Single":
+                        attr_desc = mapping_data["uiStrings"]["damageType"][str(attribute["param"])] + " Resistance"
+                    elif formula == "GearAffix_Resource_Per_Second":
+                        param = str(attribute["param"])
                         attr_desc = mapping_data["uiStrings"]["resourceType"][param] + " Regeneration"
-                    elif affix["attributes"][0]["formula"] in [
-                        "GearAffix_Resource_On_Kill",
-                        "GearAffix_Resource_On_Kill_Warlock",
-                    ]:
-                        attr_desc = (
-                            mapping_data["uiStrings"]["resourceType"][str(affix["attributes"][0]["param"])] + " On Kill"
-                        )
-                elif "param" not in affix["attributes"][0]:
-                    attr_id = affix["attributes"][0]["id"]
+                    elif formula in ["GearAffix_Resource_On_Kill", "GearAffix_Resource_On_Kill_Warlock"]:
+                        attr_desc = mapping_data["uiStrings"]["resourceType"][str(attribute["param"])] + " On Kill"
+                elif "param" not in attribute:
+                    attr_id = attribute["id"]
                     attr_obj = mapping_data["attributes"][str(attr_id)]
                     attr_desc = mapping_data["attributeDescriptions"].get(
                         _attribute_description_corrections(attr_obj["name"])
@@ -295,14 +293,14 @@ def _find_item_affixes(
                         )
                         continue
                 else:  # must be + to talent or skill
-                    attr_param = affix["attributes"][0]["param"]
+                    attr_param = attribute["param"]
                     for skill_data in mapping_data["skills"].values():
                         if skill_data["id"] == attr_param:
                             attr_desc = f"to {skill_data['name']}"
                             break
                     else:
                         attr_desc = _find_skill_rank_affix_description(
-                            mapping_data=mapping_data, affix_key=affix_key, attribute=affix["attributes"][0]
+                            mapping_data=mapping_data, affix_key=affix_key, attribute=attribute
                         )
 
                 # Below is handling for seal affixes tied to a set. We attach the set to the front.
@@ -545,7 +543,7 @@ def _extract_active_guide_embed_tab_index(embed: lxml.html.HtmlElement) -> int |
 
 if __name__ == "__main__":
     src.logger.setup()
-    URLS = ["https://maxroll.gg/d4/planner/7w8hr50y#4"]
+    URLS = ["https://maxroll.gg/d4/planner/y4aa0i0w#3"]
     for X in URLS:
         config = ImportConfig(
             url=X,
