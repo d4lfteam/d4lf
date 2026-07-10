@@ -254,7 +254,7 @@ def _find_item_affixes(
                 attribute = affix["attributes"][0]
                 formula = attribute.get("formula")
                 if formula and formula.startswith("SancAffix_"):
-                    LOGGER.info("Skipping Sanctification affix")
+                    LOGGER.info(f"Skipping Transfiguration affix for item type '{item_type.value}'")
                     break
                 if formula in [
                     "GearAffix_Resource_Per_Second",
