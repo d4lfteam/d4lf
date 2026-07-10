@@ -174,7 +174,7 @@ def test_find_item_affixes_resolves_skill_rank_category_from_related_description
         ("X2_Transfiguration_AttackSpeed", {"id": 221, "formula": "SancAffix_10%"}),
     ],
 )
-def test_find_item_affixes_skips_sanctification_affixes(affix_key, attribute, caplog) -> None:
+def test_find_item_affixes_skips_transfiguration_affixes(affix_key, attribute, caplog) -> None:
     Dataloader()
     mapping_data = {"affixes": {affix_key: {"id": 1, "magicType": 0, "attributes": [attribute]}}, "skills": {}}
 
@@ -182,7 +182,7 @@ def test_find_item_affixes_skips_sanctification_affixes(affix_key, attribute, ca
         affixes = _find_item_affixes(mapping_data=mapping_data, item_affixes=[{"nid": 1}], item_type=ItemType.Helm)
 
     assert affixes == []
-    assert "Skipping Sanctification affix" in caplog.messages
+    assert "Skipping Transfiguration affix" in caplog.messages[0]
 
 
 @pytest.mark.parametrize(("rotation", "expected_index"), [(0, 5), (1, 125), (2, 435), (3, 315)])
