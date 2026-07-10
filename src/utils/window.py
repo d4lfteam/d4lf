@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 import cv2
 import psutil
+from pywintypes import error as win32_error
 from win32gui import ClientToScreen, EnumWindows, GetClientRect, GetWindowText
 from win32process import GetWindowThreadProcessId
 
@@ -53,14 +54,17 @@ def get_window_spec_id(window_spec: WindowSpec) -> int | None:
 
 
 def _get_window_name_from_id(hwnd: int) -> str:
-    return GetWindowText(hwnd)
+    try:
+        return GetWindowText(hwnd)
+    except win32_error, OSError:
+        return ""
 
 
 def _get_process_from_window_name(hwnd: int) -> str:
     try:
         pid = GetWindowThreadProcessId(hwnd)[1]
         return psutil.Process(pid).name().lower()
-    except psutil.Error, OSError, ValueError:
+    except psutil.Error, win32_error, OSError, ValueError:
         return ""
 
 
@@ -83,10 +87,15 @@ def detect_window(window_spec: WindowSpec):
 def find_and_set_window_position(window_spec: WindowSpec):
     hwnd = get_window_spec_id(window_spec)
     if hwnd is not None:
-        pos = GetClientRect(hwnd)
-        top_left = ClientToScreen(hwnd, (pos[0], pos[1]))
-        if pos[2] > 0 and pos[3] > 0:
-            Cam().update_window_pos(top_left[0], top_left[1], pos[2], pos[3])
+        try:
+            pos = GetClientRect(hwnd)
+            top_left = ClientToScreen(hwnd, (pos[0], pos[1]))
+            if pos[2] > 0 and pos[3] > 0:
+                Cam().update_window_pos(top_left[0], top_left[1], pos[2], pos[3])
+        except win32_error, OSError:
+            Cam().reset_window_position()
+    else:
+        Cam().reset_window_position()
     time.sleep(1)
 
 
