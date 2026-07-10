@@ -921,6 +921,16 @@ uv sync
 uv run python -m src.main
 ```
 
+#### Non-Windows development mode (macOS/Linux)
+
+You can run the GUI on macOS/Linux for development:
+
+```bash
+uv run python -m src.main
+```
+
+On non-Windows platforms, D4LF now starts in **GUI-only mode** automatically. This allows you to use the GUI and edit settings/profiles, but Windows runtime features are disabled (TTS pipe connection, Diablo window detection, overlays/hotkeys/automation that require Windows APIs).
+
 If you receive an error about missing Visual Studio code, follow the link it provides. Install Visual Studio Build Tools 2022 with the defaults selected and also select "MSVC VS 2022 C++ ..." and "Windows 11 SDK ...". Restart your terminal and try again.
 
 This StackOverflow provides a good outline on the proper process for keeping your main branch up to date and submitting PRs: https://stackoverflow.com/questions/20956154/whats-the-workflow-to-contribute-to-an-open-source-project-using-git-pull-reque

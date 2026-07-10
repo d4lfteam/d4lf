@@ -1,7 +1,5 @@
 """Paragon overlay (tkinter)."""
 
-from __future__ import annotations
-
 import base64
 import configparser
 import ctypes
@@ -43,6 +41,9 @@ from src.utils.window import WindowSpec, is_self_foreground, is_window_foregroun
 if sys.platform == "win32":
     import win32con
     import win32gui
+else:
+    win32con = None  # type: ignore[assignment]
+    win32gui = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -394,6 +395,7 @@ class ParagonOverlay(tk.Toplevel):
         self._cam = Cam()
         self._res = ResManager()
         self._win_spec = WindowSpec(self._config_loader.advanced_options.process_name)
+        self._supports_click_through = win32con is not None and win32gui is not None
         self.builds = list(builds)
 
         # Restore the previously selected build by its persisted identity first.
@@ -443,7 +445,7 @@ class ParagonOverlay(tk.Toplevel):
         self._warmup_after_id = self.after(600, self._warmup_settings_assets)
         self.after(self._cfg.poll_ms, self._poll_window_state)
         self.after(50, self._poll_close_request)
-        if sys.platform == "win32":
+        if self._supports_click_through:
             self.after(100, self._poll_click_through)
 
     def _apply_dpi_scaling(self) -> None:
@@ -661,7 +663,7 @@ class ParagonOverlay(tk.Toplevel):
         """Enable or disable all grid movement and zoom controls."""
         self._cfg.grid_locked = not self._cfg.grid_locked
         self._persist_state()
-        if sys.platform == "win32":
+        if self._supports_click_through:
             self._update_click_through()
 
     def _toggle_gold_frames(self) -> None:
@@ -1488,8 +1490,6 @@ class ParagonOverlay(tk.Toplevel):
         Args:
             enabled: True to enable click-through, False to disable it.
         """
-        if sys.platform != "win32":
-            return
         try:
             hwnd = win32gui.GetAncestor(int(self.winfo_id()), win32con.GA_ROOT)
             styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
@@ -1505,14 +1505,11 @@ class ParagonOverlay(tk.Toplevel):
                     0,
                     win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOZORDER | win32con.SWP_FRAMECHANGED,
                 )
-        except tk.TclError, AttributeError, win32gui.error:
+        except tk.TclError, AttributeError, TypeError, ValueError, win32gui.error:
             LOGGER.debug("Failed to set click through style", exc_info=True)
 
     def _update_click_through(self) -> None:
         """Update click-through style depending on grid lock and mouse position."""
-        if sys.platform != "win32":
-            return
-
         try:
             if not self._cfg.grid_locked:
                 self._set_click_through(enabled=False)
@@ -1539,7 +1536,7 @@ class ParagonOverlay(tk.Toplevel):
 
     def _poll_click_through(self) -> None:
         """Poll the click-through state frequently when window is viewable."""
-        if sys.platform == "win32" and is_alive(self):
+        if self._supports_click_through and is_alive(self):
             self._update_click_through()
             self.after(100, self._poll_click_through)
 

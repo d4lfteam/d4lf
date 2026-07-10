@@ -5,7 +5,7 @@ minimum_prek_version = "0.4.8"
 [[repos]]
 hooks = [{id = "uv-lock", priority = 4294967294}]
 repo = "https://github.com/astral-sh/uv-pre-commit"
-rev = "0.11.26"
+rev = "0.11.28"
 
 [[repos]]
 hooks = [
@@ -61,7 +61,7 @@ hooks = [
     {id = "ruff-check", priority = 4294967293, args = ["--fix"]}
 ]
 repo = "https://github.com/astral-sh/ruff-pre-commit"
-rev = "v0.15.20"
+rev = "v0.15.21"
 
 [[repos]]
 hooks = [

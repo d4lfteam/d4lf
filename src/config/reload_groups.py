@@ -5,8 +5,6 @@ the flat ``section.field`` keys emitted by config change events, so multiple par
 the app (the script handler, the main window) can react to the same setting changes.
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 from src.config.settings_models import IS_HOTKEY_KEY, LIVE_RELOAD_GROUP_KEY, AdvancedOptionsModel, GeneralModel
