@@ -1,14 +1,8 @@
-from __future__ import annotations
-
 import logging
-import sys
 import typing
 
 import pytest
 from natsort import natsorted
-
-if sys.platform != "win32":
-    pytest.skip("Windows-only filter test module", allow_module_level=True)
 
 from src.config.loader import IniConfigLoader
 from src.config.profile_document import ProfileDocumentStore

@@ -1,7 +1,4 @@
-from __future__ import annotations
-
 import logging
-import sys
 import threading
 import time
 from contextlib import suppress
@@ -10,9 +7,6 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Set as AbstractSet
-
-if sys.platform != "darwin":
-    import keyboard
 
 import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
@@ -37,6 +31,7 @@ from src.scripts.info_overlay import InventoryExpTracker, is_info_overlay_open, 
 from src.scripts.info_overlay import set_busy_checker as set_info_busy_checker
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
+from src.utils import hotkeys
 from src.utils.custom_mouse import Mouse
 from src.utils.process_handler import kill_thread, safe_exit
 from src.utils.window import WindowSpec, is_window_foreground, screenshot
@@ -106,9 +101,6 @@ class ScriptHandler:
         )
 
     def _refresh_hotkeys(self, config: IniConfigLoader) -> None:
-        if sys.platform == "darwin":
-            return
-
         current_signature = self._hotkey_signature(config)
         if getattr(self, "_current_hotkey_signature", None) == current_signature:
             return
@@ -203,26 +195,19 @@ class ScriptHandler:
             LOGGER.exception("Info Panel overlay crashed")
 
     def _clear_key_binds(self) -> None:
-        if sys.platform == "darwin":
-            return
-
         while self._hotkey_handles:
             handle = self._hotkey_handles.pop()
             with suppress(KeyError, ValueError):
-                keyboard.remove_hotkey(handle)
+                hotkeys.remove_hotkey(handle)
 
     def _register_hotkey(self, hotkey: str, callback: Callable[[], None], check_focus: bool = True) -> None:
         def wrapped_callback():
             if not check_focus or is_window_foreground(self._win_spec):
                 callback()
 
-        self._hotkey_handles.append(keyboard.add_hotkey(hotkey, wrapped_callback))
+        self._hotkey_handles.append(hotkeys.add_hotkey(hotkey, wrapped_callback))
 
     def setup_key_binds(self):
-        if sys.platform == "darwin":
-            LOGGER.info("Global hotkeys are disabled on macOS")
-            return
-
         config = self._config
         advanced_options = config.advanced_options
         self._register_hotkey(advanced_options.run_vision_mode, lambda: self.run_vision_mode())
