@@ -7,8 +7,11 @@ from typing import TYPE_CHECKING, Literal, TypeVar
 import httpx
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 from seleniumbase import Driver
 
@@ -26,7 +29,7 @@ from src.config.settings_models import BrowserType
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart
 from src.item.data.affix import Affix, AffixType
-from src.item.data.item_type import ItemType
+from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.data.rarity import ItemRarity
 
 if TYPE_CHECKING:
@@ -258,6 +261,11 @@ def create_item_affix_pool(affixes: list[Affix], unique_like: bool) -> list[Affi
     ]
 
 
+def weapon_slot_name_hint(item_filter: ItemFilterModel, slot: str) -> str | None:
+    """Name hint for `deduplicate_filters`, kept only while the weapon's item_type is still unresolved."""
+    return slot if item_filter.item_type == WEAPON_TYPES else None
+
+
 def unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
     filter_name = filter_name_template
     i = 2
@@ -268,19 +276,23 @@ def unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
 
 
 def deduplicate_filters(
-    filters: list[ItemFilterModel | CharmFilterModel | SealFilterModel],
+    filters: list[ItemFilterModel | CharmFilterModel | SealFilterModel], name_hints: list[str | None] | None = None
 ) -> list[dict[str, ItemFilterModel | CharmFilterModel | SealFilterModel]]:
     """Merge identical filters, naming duplicates with an (xN) count suffix.
 
     Filters are compared by their Pydantic model data.
     Identical filters are collapsed into a single entry. When N > 1, the key is rewritten as ``BaseType(xN)``
     (e.g. ``Charm(x3)``); single-occurrence filters keep their original key unchanged.
+
+    ``name_hints``, if given, must be the same length as ``filters``. For an ``ItemFilterModel`` whose
+    item_type couldn't be narrowed down (it still holds the full ``WEAPON_TYPES`` list), the matching hint
+    is used as the base name instead of defaulting to the first weapon type ("Axe").
     """
     if not filters:
         return []
 
     groups: list[tuple[str, ItemFilterModel | CharmFilterModel | SealFilterModel, int]] = []
-    for filter_spec in filters:
+    for i, filter_spec in enumerate(filters):
         merged = False
         for idx, (base_name, existing_model, count) in enumerate(groups):
             if filter_spec == existing_model:
@@ -289,7 +301,11 @@ def deduplicate_filters(
                 break
         if not merged:
             if isinstance(filter_spec, ItemFilterModel):
-                base_name = filter_spec.item_type[0].name if filter_spec.item_type else "Item"
+                hint = name_hints[i] if name_hints else None
+                if hint and filter_spec.item_type == WEAPON_TYPES:
+                    base_name = hint
+                else:
+                    base_name = filter_spec.item_type[0].name if filter_spec.item_type else "Item"
             else:
                 base_name = "Charm" if isinstance(filter_spec, CharmFilterModel) else "HoradricSeal"
             groups.append((base_name, filter_spec, 1))
@@ -358,6 +374,30 @@ def match_to_enum(enum_class, target_string: str, check_keys: bool = False):
         if check_keys and enum_member.name.casefold().replace(" ", "").replace("-", "") == target_string:
             return enum_member
     return None
+
+
+def hover_and_get_tooltip_html(
+    driver: ChromiumDriver, element: WebElement, tooltip_css: str, warn_on_timeout: bool = True
+) -> str:
+    """Hover an element and return the outerHTML of the tippy tooltip it reveals, if any.
+
+    Build guide sites render some data (e.g. a unique/mythic weapon's item type) only inside a
+    hover tooltip rather than in any static markup, so this is the only way to read it.
+    """
+    driver.execute_script("document.querySelectorAll('[data-tippy-root]').forEach((node) => node.remove());")
+    ActionChains(driver).move_to_element(element).perform()
+    driver.execute_script(
+        "arguments[0].dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));"
+        "arguments[0].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));",
+        element,
+    )
+    try:
+        tooltip = WebDriverWait(driver, 2).until(ec.presence_of_element_located((By.CSS_SELECTOR, tooltip_css)))
+    except TimeoutException:
+        if warn_on_timeout:
+            LOGGER.warning("Unable to read tooltip for selector %s.", tooltip_css)
+        return ""
+    return str(tooltip.get_attribute("outerHTML") or "")
 
 
 def retry_importer(func=None, inject_webdriver: bool = False, uc=False):
