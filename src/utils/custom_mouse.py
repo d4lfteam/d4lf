@@ -1,11 +1,54 @@
-# Mostly copied from: https://github.com/patrikoss/pyclick
+import ctypes
 import math
 import random
+import sys
 import time
 
-import mouse as _mouse
 import numpy as np
 import pytweening
+from pynput.mouse import Button, Controller
+
+_MOUSE = Controller()
+
+_BUTTONS: dict[str, Button] = {"left": Button.left, "right": Button.right, "middle": Button.middle}
+
+# SendInput-based absolute mouse move so Diablo 4's DirectInput/Raw Input pipeline
+# detects the cursor travel (SetCursorPos alone is not seen by the game).
+if sys.platform == "win32":
+    from ctypes import wintypes
+
+    _MOUSEEVENTF_MOVE = 0x0001
+    _MOUSEEVENTF_ABSOLUTE = 0x8000
+
+    class _MOUSEINPUT(ctypes.Structure):
+        _fields_ = [
+            ("dx", wintypes.LONG),
+            ("dy", wintypes.LONG),
+            ("mouseData", wintypes.DWORD),
+            ("dwFlags", wintypes.DWORD),
+            ("time", wintypes.DWORD),
+            ("dwExtraInfo", ctypes.POINTER(ctypes.c_ulong)),
+        ]
+
+    class _INPUT(ctypes.Structure):
+        _fields_ = [("type", wintypes.DWORD), ("mi", _MOUSEINPUT)]
+
+    def _move_mouse_abs(x: int, y: int) -> None:
+        screen_w = ctypes.windll.user32.GetSystemMetrics(0)
+        screen_h = ctypes.windll.user32.GetSystemMetrics(1)
+        inp = _INPUT()
+        inp.type = 0  # INPUT_MOUSE
+        inp.mi.dx = int(x * 65535 / screen_w)
+        inp.mi.dy = int(y * 65535 / screen_h)
+        inp.mi.mouseData = 0
+        inp.mi.dwFlags = _MOUSEEVENTF_MOVE | _MOUSEEVENTF_ABSOLUTE
+        inp.mi.time = 0
+        ctypes.windll.user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(_INPUT))
+
+else:
+
+    def _move_mouse_abs(x: int, y: int) -> None:
+        _MOUSE.position = (x, y)
 
 
 def is_numeric(val):
@@ -198,11 +241,7 @@ class Mouse:
         randomize: int | tuple[int, int] = 5,
         delay_factor: tuple[float, float] = (0.2, 0.3),
     ):
-        from_point = _mouse.get_position()
-        dist = math.dist((x, y), from_point)
-        offset_boundary_x = max(10, int(0.08 * dist))
-        offset_boundary_y = max(10, int(0.08 * dist))
-        target_points = min(6, max(3, int(0.004 * dist)))
+        from_point = Mouse.get_position()
         if not absolute:
             x = from_point[0] + x
             y = from_point[1] + y
@@ -218,6 +257,10 @@ class Mouse:
                 x = int(x) + random.randrange(-randomize[0], +randomize[0])
                 y = int(y) + random.randrange(-randomize[1], +randomize[1])
 
+        dist = math.dist((x, y), from_point)
+        offset_boundary_x = max(10, int(0.08 * dist))
+        offset_boundary_y = max(10, int(0.08 * dist))
+        target_points = min(80, max(12, int(0.05 * dist)))
         human_curve = HumanCurve(
             from_point,
             (x, y),
@@ -230,7 +273,8 @@ class Mouse:
         delta = duration / len(human_curve.points)
 
         for point in human_curve.points:
-            _mouse.move(point[0], point[1], duration=delta)
+            _move_mouse_abs(int(point[0]), int(point[1]))
+            time.sleep(delta)
         time.sleep(0.05)
 
     @staticmethod
@@ -240,8 +284,8 @@ class Mouse:
     @staticmethod
     def click(button):
         if button != "left" or Mouse._is_clicking_safe():
-            _mouse.click(button)
+            _MOUSE.click(_BUTTONS[button])
 
     @staticmethod
     def get_position():
-        return _mouse.get_position()
+        return _MOUSE.position
