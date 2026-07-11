@@ -1,5 +1,4 @@
 import sys
-import types
 import typing
 
 import pytest
@@ -10,27 +9,8 @@ from src.config.settings_models import BrowserType
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
-# Provide a cross-platform stub for the optional `mouse` dependency imported by GUI modules.
-sys.modules.setdefault("mouse", types.SimpleNamespace())
-
-
 # Skip Windows-only test modules on non-Windows platforms
-WINDOWS_ONLY_MODULES = [
-    "read_descr_season6_tts_test.py",
-    "read_descr_season8_tts_test.py",
-    "read_descr_season_11_tts_test.py",
-    "read_descr_season_12_tts_test.py",
-    "read_descr_season_13_tts_test.py",
-    "read_descr_tts_test.py",
-    "filter_test.py",
-    "template_finder_test.py",
-    "char_inventory_test.py",
-    "chest_test.py",
-    "info_overlay_test.py",
-    "paragon_overlay_test.py",
-    "test_sigils_tab.py",
-    "ui_thread_test.py",
-]
+WINDOWS_ONLY_MODULES = ["info_overlay_test.py", "paragon_overlay_test.py", "test_sigils_tab.py", "ui_thread_test.py"]
 
 
 def pytest_ignore_collect(collection_path, config):

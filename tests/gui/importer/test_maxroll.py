@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import typing
 from types import SimpleNamespace
@@ -164,6 +165,24 @@ def test_find_item_affixes_resolves_skill_rank_category_from_related_description
     affixes = _find_item_affixes(mapping_data=mapping_data, item_affixes=[{"nid": 1}], item_type=ItemType.Amulet)
 
     assert [affix.name for affix in affixes] == ["to_ultimate_skills"]
+
+
+@pytest.mark.parametrize(
+    ("affix_key", "attribute"),
+    [
+        ("X2_Transfiguration_DamageTypePercent_Fire", {"id": 255, "param": 1, "formula": "SancAffix_10%"}),
+        ("X2_Transfiguration_AttackSpeed", {"id": 221, "formula": "SancAffix_10%"}),
+    ],
+)
+def test_find_item_affixes_skips_transfiguration_affixes(affix_key, attribute, caplog) -> None:
+    Dataloader()
+    mapping_data = {"affixes": {affix_key: {"id": 1, "magicType": 0, "attributes": [attribute]}}, "skills": {}}
+
+    with caplog.at_level(logging.INFO):
+        affixes = _find_item_affixes(mapping_data=mapping_data, item_affixes=[{"nid": 1}], item_type=ItemType.Helm)
+
+    assert affixes == []
+    assert "Skipping Transfiguration affix" in caplog.messages[0]
 
 
 @pytest.mark.parametrize(("rotation", "expected_index"), [(0, 5), (1, 125), (2, 435), (3, 315)])

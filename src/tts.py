@@ -5,11 +5,13 @@ import re
 import sys
 import threading
 
-import pywintypes
-import win32file
-import win32pipe
-
+from src import tts_backend_noop
 from src.config.helper import singleton
+
+if sys.platform == "win32":
+    from src import tts_backend_windows as _backend
+else:
+    _backend = tts_backend_noop
 
 CONNECTED = False
 LAST_ITEM = []
@@ -80,65 +82,17 @@ class Publisher:
             self._info_subscribers.discard(subscriber)
 
 
-def create_pipe():
-    try:
-        return win32pipe.CreateNamedPipe(
-            r"\\.\pipe\d4lf",
-            win32pipe.PIPE_ACCESS_DUPLEX,
-            win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_READMODE_MESSAGE | win32pipe.PIPE_WAIT,
-            1,
-            65536,
-            65536,
-            0,
-            None,
-        )
-    except pywintypes.error as e:
-        if e.args[0] == 231:  # ERROR_PIPE_BUSY
-            LOGGER.error("")
-            LOGGER.error("=" * 80)
-            LOGGER.error("D4LF IS ALREADY RUNNING")
-            LOGGER.error("=" * 80)
-            LOGGER.error("")
-            LOGGER.error("You already have D4LF running in another window.")
-            LOGGER.error("Please close your windows and re-launch.")
-            LOGGER.error("")
-            LOGGER.error("=" * 80)
+def _set_connected(value: bool) -> None:
+    global CONNECTED
+    CONNECTED = value
 
-            sys.exit(1)
-        else:
-            raise  # Re-raise other errors
+
+def create_pipe():
+    return _backend.create_pipe(LOGGER)
 
 
 def read_pipe() -> None:
-    while True:
-        handle = create_pipe()
-        LOGGER.debug("Waiting for TTS client to connect")
-
-        win32pipe.ConnectNamedPipe(handle, None)
-        LOGGER.info("TTS client connected")
-        global CONNECTED
-        CONNECTED = True
-
-        while True:
-            try:
-                # Block until data is available (assumes PIPE_WAIT)
-                win32file.ReadFile(handle, 0, None)
-                # Query message size
-                _, _, message_size = win32pipe.PeekNamedPipe(handle, 0)
-                # Read message
-                _, data = win32file.ReadFile(handle, message_size, None)
-                data = data.decode().replace("\x00", "")
-                if not data:
-                    continue
-                if "DISCONNECTED" in data:
-                    break
-                _DATA_QUEUE.put(data)
-            except Exception:
-                LOGGER.exception("Error while reading data")
-
-        win32file.CloseHandle(handle)
-        LOGGER.info("TTS client disconnected")
-        CONNECTED = False
+    _backend.read_pipe(create_pipe, _DATA_QUEUE, LOGGER, _set_connected)
 
 
 def find_item_start(data: list[str]) -> int | None:
@@ -172,6 +126,4 @@ def fix_data(data: str) -> str:
 
 
 def start_connection() -> None:
-    LOGGER.info("Starting TTS listener. Hover over an item or button to perform the TTS connection.")
-    threading.Thread(target=Publisher().find_item, daemon=True).start()
-    threading.Thread(target=read_pipe, daemon=True).start()
+    _backend.start_connection(Publisher().find_item, read_pipe, LOGGER)

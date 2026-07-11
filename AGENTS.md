@@ -43,7 +43,7 @@ Item flow:
 
 ### Issue tracker
 
-Issues are tracked as local markdown files under `.scratch/` in this repository (no external issue tracker). See `docs/agents/issue-tracker.md`.
+Issues are tracked as local markdown files under `.scratch/` in this repository. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

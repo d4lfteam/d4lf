@@ -13,21 +13,24 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication
 
 import src.logger
-from src import __version__, tts
+from src import __version__
 from src.autoupdater import notify_if_update, start_auto_update
-from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.settings_models import VisionModeType
-from src.item.filter import Filter
 from src.logger import LOG_DIR
-from src.overlay import Overlay
-from src.scripts.common import SETUP_INSTRUCTIONS_URL
-from src.scripts.handler import ScriptHandler
-from src.utils.window import WindowSpec, start_detecting_window
+
+if sys.platform == "win32":
+    from src import tts
+    from src.cam import Cam
+    from src.item.filter import Filter
+    from src.overlay import Overlay
+    from src.scripts.handler import ScriptHandler
+    from src.utils.window import WindowSpec, start_detecting_window
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 
 ICON_PATH = BASE_DIR / "assets" / "logo.png"
+SETUP_INSTRUCTIONS_URL = "https://github.com/d4lfteam/d4lf/blob/main/README.md#how-to-setup"
 
 LOGGER = logging.getLogger(__name__)
 
@@ -40,6 +43,10 @@ if sys.platform == "win32":
 
 
 def main():
+    if sys.platform != "win32":
+        LOGGER.info("Running in GUI-only mode on non-Windows. Runtime backend (TTS/automation) is disabled.")
+        return
+
     for dir_name in [LOG_DIR / "screenshots", IniConfigLoader().user_dir, IniConfigLoader().user_dir / "profiles"]:
         Path(dir_name).mkdir(exist_ok=True, parents=True)
 
@@ -95,6 +102,10 @@ def main():
 
 
 def check_for_proper_tts_configuration():
+    if sys.platform != "win32":
+        LOGGER.debug("Skipping TTS configuration checks on non-Windows.")
+        return
+
     # Check that the dll has been installed and is signed
     d4_process_found = False
     tts_dll = None
