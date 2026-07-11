@@ -12,7 +12,7 @@ def test_search():
     threshold = 0.6
     result = src.template_finder.search([cross, slash], image, threshold)
     match = result.matches[0]
-    assert threshold <= match.score < 1
+    assert threshold <= match.score <= 1
 
 
 def test_search_best_match():

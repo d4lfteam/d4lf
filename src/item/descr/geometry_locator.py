@@ -55,8 +55,8 @@ _ASPECT_BULLET_TEMPLATE_REFS = [
     "unique_bullet_point",
     "unique_bullet_point_medium",
 ]
-_SEPARATOR_MATCH_THRESHOLD = 0.55
-_BULLET_MATCH_THRESHOLD = 0.72
+_SEPARATOR_MATCH_THRESHOLD = 0.6
+_BULLET_MATCH_THRESHOLD = 0.8
 
 
 @dataclass(frozen=True)
