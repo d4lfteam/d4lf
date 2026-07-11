@@ -1,7 +1,4 @@
-from __future__ import annotations
-
 import logging
-import sys
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -11,13 +8,11 @@ from src.item.data.seasonal_attribute import SeasonalAttribute
 if TYPE_CHECKING:
     from tkinter import Canvas
 
-if sys.platform != "darwin":
-    import keyboard
-
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.gui.importer.gui_common import ACCENT_BLUE, DARK_GRAY_BG
 from src.item.data.item_type import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
+from src.utils import hotkeys
 from src.utils.custom_mouse import Mouse
 
 try:
@@ -79,15 +74,15 @@ ASPECT_UPGRADES_LABEL = "AspectUpgrades"
 
 
 def mark_as_junk():
-    keyboard.send("space")
+    hotkeys.send("space")
     time.sleep(0.13)
 
 
 def mark_as_favorite():
     LOGGER.info("Mark as favorite")
-    keyboard.send("space")
+    hotkeys.send("space")
     time.sleep(0.17)
-    keyboard.send("space")
+    hotkeys.send("space")
     time.sleep(0.13)
 
 
@@ -103,12 +98,12 @@ def reset_item_status(occupied, inv):
     for item_slot in occupied:
         if item_slot.is_fav:
             inv.hover_item_with_delay(item_slot)
-            keyboard.send("space")
+            hotkeys.send("space")
         if item_slot.is_junk:
             inv.hover_item_with_delay(item_slot)
-            keyboard.send("space")
+            hotkeys.send("space")
             time.sleep(0.15)
-            keyboard.send("space")
+            hotkeys.send("space")
         time.sleep(0.15)
 
     if occupied:
@@ -117,13 +112,11 @@ def reset_item_status(occupied, inv):
 
 def drop_item_from_inventory() -> None:
     """Drop the currently-hovered inventory item (Ctrl + Left Click in-game)."""
-    if keyboard is None:
-        return
-    keyboard.press("ctrl")
+    hotkeys.press("ctrl")
     time.sleep(0.03)
     Mouse.click("left")
     time.sleep(0.03)
-    keyboard.release("ctrl")
+    hotkeys.release("ctrl")
     time.sleep(0.10)
 
 

@@ -1,30 +1,25 @@
-import ctypes
 import logging
-import os
 import pathlib
 import sys
-import threading
-import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING
 
 import cv2
-import psutil
-from pywintypes import error as win32_error
-from win32gui import ClientToScreen, EnumWindows, GetClientRect, GetWindowText
-from win32process import GetWindowThreadProcessId
 
 from src.cam import Cam
 from src.logger import LOG_DIR
+from src.utils import window_backend_noop
 
 if TYPE_CHECKING:
     import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
-DETECTION_WINDOW_FLAG = True
-DETECT_WINDOW_THREAD = None
+if sys.platform == "win32":
+    from src.utils import window_backend_windows as _backend
+else:
+    _backend = window_backend_noop
 
 
 @dataclass
@@ -32,109 +27,40 @@ class WindowSpec:
     process_name: str
 
     def match(self, hwnd: int, check_window_name: bool = True) -> bool:
-        window_name_ok = not check_window_name or "diablo" in _get_window_name_from_id(hwnd).lower()
-        return _get_process_from_window_name(hwnd).casefold() == self.process_name.casefold() and window_name_ok
-
-
-def _list_active_window_ids() -> list[int]:
-    window_list = []
-    EnumWindows(lambda win, list_of_win: list_of_win.append(win), window_list)
-    return window_list
+        window_name_ok = not check_window_name or "diablo" in _backend.get_window_name_from_id(hwnd).lower()
+        return _backend.get_process_from_window_name(hwnd).casefold() == self.process_name.casefold() and window_name_ok
 
 
 def get_window_spec_id(window_spec: WindowSpec) -> int | None:
-    for hwnd in _list_active_window_ids():
-        if window_spec.match(hwnd):
-            return hwnd
-    # If no process was found with "diablo" in the window name, search without that restriction
-    for hwnd in _list_active_window_ids():
-        if window_spec.match(hwnd, check_window_name=False):
-            return hwnd
-    return None
-
-
-def _get_window_name_from_id(hwnd: int) -> str:
-    try:
-        return GetWindowText(hwnd)
-    except win32_error, OSError:
-        return ""
-
-
-def _get_process_from_window_name(hwnd: int) -> str:
-    try:
-        pid = GetWindowThreadProcessId(hwnd)[1]
-        return psutil.Process(pid).name().lower()
-    except psutil.Error, win32_error, OSError, ValueError:
-        return ""
+    return _backend.get_window_spec_id(window_spec)
 
 
 def start_detecting_window(window_spec: WindowSpec):
-    global DETECTION_WINDOW_FLAG, DETECT_WINDOW_THREAD
-    if DETECT_WINDOW_THREAD is None:
-        LOGGER.info(f"Using WinAPI to search for window: {window_spec.process_name}")
-        DETECTION_WINDOW_FLAG = True
-        DETECT_WINDOW_THREAD = threading.Thread(target=detect_window, args=(window_spec,), daemon=True)
-        DETECT_WINDOW_THREAD.start()
+    _backend.start_detecting_window(window_spec)
 
 
 def detect_window(window_spec: WindowSpec):
-    global DETECTION_WINDOW_FLAG
-    while DETECTION_WINDOW_FLAG:
-        find_and_set_window_position(window_spec)
-    LOGGER.debug("Detect window thread stopped")
+    _backend.detect_window(window_spec)
 
 
 def find_and_set_window_position(window_spec: WindowSpec):
-    hwnd = get_window_spec_id(window_spec)
-    if hwnd is not None:
-        try:
-            pos = GetClientRect(hwnd)
-            top_left = ClientToScreen(hwnd, (pos[0], pos[1]))
-            if pos[2] > 0 and pos[3] > 0:
-                Cam().update_window_pos(top_left[0], top_left[1], pos[2], pos[3])
-        except win32_error, OSError:
-            Cam().reset_window_position()
-    else:
-        Cam().reset_window_position()
-    time.sleep(1)
+    _backend.find_and_set_window_position(window_spec)
 
 
 def stop_detecting_window():
-    global DETECTION_WINDOW_FLAG, DETECT_WINDOW_THREAD
-    DETECTION_WINDOW_FLAG = False
-    if DETECT_WINDOW_THREAD:
-        DETECT_WINDOW_THREAD.join()
-    DETECT_WINDOW_THREAD = None
+    _backend.stop_detecting_window()
 
 
 def move_window_to_foreground(window_spec: WindowSpec):
-    hwnd = get_window_spec_id(window_spec)
-    if hwnd is not None:
-        ctypes.windll.user32.ShowWindow(hwnd, 5)
-        ctypes.windll.user32.SetForegroundWindow(hwnd)
+    _backend.move_window_to_foreground(window_spec)
 
 
 def is_window_foreground(window_spec: WindowSpec) -> bool:
-    hwnd = get_window_spec_id(window_spec)
-    if hwnd is not None:
-        active_window_handle = ctypes.windll.user32.GetForegroundWindow()
-        return active_window_handle == hwnd
-    return False
+    return _backend.is_window_foreground(window_spec)
 
 
 def is_self_foreground() -> bool:
-    """Check if the current process's window is in the foreground."""
-    if sys.platform != "win32":
-        return False
-    try:
-        fg_win = ctypes.windll.user32.GetForegroundWindow()
-        if not fg_win:
-            return False
-        lpdw_pid = ctypes.c_ulong()
-        ctypes.windll.user32.GetWindowThreadProcessId(fg_win, ctypes.byref(lpdw_pid))
-        return lpdw_pid.value == os.getpid()
-    except AttributeError, OSError:
-        return False
+    return _backend.is_self_foreground()
 
 
 def screenshot(

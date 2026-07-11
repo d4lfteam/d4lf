@@ -66,3 +66,14 @@ _Avoid_: sigil kind.
 A profile's tribute-matching configuration, spelled `Tributes` (plural key for historical reasons) in profiles. It is a single object with a `name` list (tribute names to keep) and a `rarity` list (rarities to keep).
 A tribute is kept if its name is in the `name` list **or** its rarity is in the `rarity` list — the two fields are independent OR gates, not AND constraints. Omitting a field means that dimension is not checked. An empty object keeps nothing.
 Legacy profiles that used a list of objects are silently migrated on load by merging all names and rarities into one object. A mythic tribute is always kept regardless of the filter.
+
+### Human-like pointer movement
+
+Automated cursor movement that resembles manual user movement through gradual travel rather than instant repositioning.
+_Avoid_: Teleporting.
+
+### Hotkey binding
+
+A user-configured keyboard shortcut stored in a stable, human-readable vocabulary such as `ctrl+shift+f11`, independent of the operating system or input backend.
+It must include at least one non-modifier key; on macOS, `cmd` and `ctrl` identify distinct physical modifiers.
+_Avoid_: Backend key spec.

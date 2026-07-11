@@ -27,15 +27,20 @@ def window_module(monkeypatch):
     monkeypatch.setitem(sys.modules, "pywintypes", pywintypes)
     monkeypatch.setitem(sys.modules, "src.cam", cam)
     monkeypatch.delitem(sys.modules, "src.utils.window", raising=False)
+    monkeypatch.delitem(sys.modules, "src.utils.window_backend_windows", raising=False)
 
-    yield importlib.import_module("src.utils.window")
+    window = importlib.import_module("src.utils.window")
+    window._backend = importlib.import_module("src.utils.window_backend_windows")
+    yield window
     monkeypatch.delitem(sys.modules, "src.utils.window", raising=False)
+    monkeypatch.delitem(sys.modules, "src.utils.window_backend_windows", raising=False)
 
 
 def test_skips_window_with_invalid_pid_when_finding_process(window_module, mocker):
-    mocker.patch.object(window_module, "_list_active_window_ids", return_value=[1, 2])
-    mocker.patch.object(window_module, "GetWindowThreadProcessId", side_effect=[(0, -12865840), (0, 42)])
-    process = mocker.patch.object(window_module.psutil, "Process")
+    backend = window_module._backend
+    mocker.patch.object(backend, "list_active_window_ids", return_value=[1, 2])
+    mocker.patch.object(backend, "GetWindowThreadProcessId", side_effect=[(0, -12865840), (0, 42)])
+    process = mocker.patch.object(backend.psutil, "Process")
     diablo_process = mocker.Mock()
     diablo_process.name.return_value = "Diablo IV.exe"
     process.side_effect = [ValueError("pid must be a positive integer"), diablo_process]
@@ -46,10 +51,11 @@ def test_skips_window_with_invalid_pid_when_finding_process(window_module, mocke
 
 
 def test_resets_window_position_when_diablo_window_closes(window_module, mocker):
+    backend = window_module._backend
     camera = mocker.Mock()
-    mocker.patch.object(window_module, "Cam", return_value=camera)
-    mocker.patch.object(window_module, "get_window_spec_id", return_value=None)
-    mocker.patch.object(window_module.time, "sleep")
+    mocker.patch.object(backend, "Cam", return_value=camera)
+    mocker.patch.object(backend, "get_window_spec_id", return_value=None)
+    mocker.patch.object(backend.time, "sleep")
 
     window_module.find_and_set_window_position(window_module.WindowSpec("Diablo IV.exe"))
 
@@ -57,11 +63,12 @@ def test_resets_window_position_when_diablo_window_closes(window_module, mocker)
 
 
 def test_resets_window_position_when_diablo_window_closes_during_geometry_lookup(window_module, mocker):
+    backend = window_module._backend
     camera = mocker.Mock()
-    mocker.patch.object(window_module, "Cam", return_value=camera)
-    mocker.patch.object(window_module, "get_window_spec_id", return_value=1)
-    mocker.patch.object(window_module, "GetClientRect", side_effect=OSError("invalid window handle"))
-    mocker.patch.object(window_module.time, "sleep")
+    mocker.patch.object(backend, "Cam", return_value=camera)
+    mocker.patch.object(backend, "get_window_spec_id", return_value=1)
+    mocker.patch.object(backend, "GetClientRect", side_effect=OSError("invalid window handle"))
+    mocker.patch.object(backend.time, "sleep")
 
     window_module.find_and_set_window_position(window_module.WindowSpec("Diablo IV.exe"))
 
