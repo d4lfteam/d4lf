@@ -7,7 +7,7 @@ from urllib.parse import unquote
 import jsonpath
 import lxml.html
 import rapidfuzz
-from selenium.common.exceptions import WebDriverException
+from selenium.common.exceptions import NoSuchElementException, WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
@@ -28,9 +28,11 @@ from src.gui.importer.gui_common import (
     create_seal_charm_filter,
     fix_offhand_type,
     fix_weapon_type,
+    hover_and_get_tooltip_html,
     match_to_enum,
     retry_importer,
     update_mingreateraffixcount,
+    weapon_slot_name_hint,
 )
 from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.gui.importer.importer_config import ImportConfig
@@ -42,9 +44,8 @@ from src.scripts import correct_name
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
+
 BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
-PROFILE_GUIDE_BASE_URL = f"{BUILD_GUIDE_BASE_URL}profile"
-SCRIPT_XPATH = "//script"
 BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
 CHARM_ICON_SET_SLUG_REGEX = re.compile(r"/charms/(?P<slug>[^/?#]+?)(?:\.[^/.?#]+)?(?:[?#]|$)")
 PAGE_DIAGNOSTIC_MARKERS = (
@@ -59,9 +60,13 @@ PAGE_DIAGNOSTIC_MARKERS = (
     "forbidden",
     "just a moment",
 )
+PROFILE_GUIDE_BASE_URL = f"{BUILD_GUIDE_BASE_URL}profile"
+SCRIPT_XPATH = "//script"
+ITEM_TOOLTIP_CSS = "[data-tippy-root]"
 
 if TYPE_CHECKING:
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
+    from selenium.webdriver.remote.webelement import WebElement
 
 
 class MobalyticsError(Exception):
@@ -130,7 +135,8 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         LOGGER.error(msg := "No items found")
         raise MobalyticsError(msg)
 
-    finished_filters = []
+    finished_filters: list[ItemFilterModel] = []
+    finished_filter_name_hints: list[str | None] = []
     charm_filters = []
     seal_filters = []
     aspect_upgrade_filters = []
@@ -152,7 +158,6 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         if not slot_result or not (slot_type := str(slot_result[0]).strip()):
             LOGGER.error(msg := f"No slot type found for {item_name}")
             raise MobalyticsError(msg)
-
         raw_affixes = (
             jsonpath.findall(".gameEntity.modifiers.gearStats[*]", item)
             + jsonpath.findall(".gameEntity.modifiers.sealStats[*]", item)
@@ -214,6 +219,8 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
                 if item_type is None
                 else item_type
             )
+        if item_type is None and is_weapon:
+            item_type = _get_weapon_type_from_slot_tooltip(driver=driver, slot_type=slot_type)
         if item_type is None:
             if is_weapon:
                 LOGGER.warning(
@@ -268,6 +275,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
                 AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
             ]
         finished_filters.append(item_filter)
+        finished_filter_name_hints.append(weapon_slot_name_hint(item_filter, _humanize_mobalytics_slot(slot_type)))
 
     ImportPipeline.run(
         adapter=StaticBuildGuideAdapter(
@@ -281,6 +289,7 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
                     Variant(
                         name=variant_name,
                         affix_filters=finished_filters,
+                        affix_filter_name_hints=finished_filter_name_hints,
                         charm_filters=charm_filters,
                         seal_filters=seal_filters,
                         aspect_upgrade_filters=aspect_upgrade_filters,
@@ -337,6 +346,45 @@ def _extract_mobalytics_season_number(full_script_data_json: dict) -> str:
     else:
         season_number = ""
     return season_number
+
+
+def _humanize_mobalytics_slot(slot_type: str) -> str:
+    """Turn a gameSlotSlug into the human-readable label mobalytics itself shows (e.g. "dual-wield-weapon-1" -> "Dual wield weapon 1")."""
+    return slot_type.replace("-", " ").capitalize()
+
+
+def _get_weapon_slot_trigger(driver: ChromiumDriver, slot_type: str) -> WebElement | None:
+    """Find the hoverable element for a weapon slot, keyed off its human-readable title.
+
+    Mobalytics markup uses hashed, non-semantic class names, so slots are instead located by the
+    `title` attribute mobalytics derives from the item's gameSlotSlug.
+    """
+    slot_title = _humanize_mobalytics_slot(slot_type)
+    try:
+        return driver.find_element(By.XPATH, f"//span[@title='{slot_title}']/ancestor::div[@data-tippy-delegate-id][1]")
+    except NoSuchElementException:
+        return None
+
+
+def _get_weapon_type_from_slot_tooltip(driver: ChromiumDriver, slot_type: str) -> ItemType | None:
+    """Hover a weapon's paperdoll icon to read its type from the tooltip.
+
+    Mobalytics only reveals a weapon's type this way for unique/mythic items; generic legendary
+    weapons (aspect only) show a tooltip with no type info, so this returns None for those.
+    """
+    trigger = _get_weapon_slot_trigger(driver=driver, slot_type=slot_type)
+    if trigger is None:
+        return None
+    tooltip_html = hover_and_get_tooltip_html(
+        driver=driver, element=trigger, tooltip_css=ITEM_TOOLTIP_CSS, warn_on_timeout=False
+    )
+    if not tooltip_html:
+        return None
+    tooltip = lxml.html.fromstring(tooltip_html)
+    type_nodes = tooltip.xpath("(.//p)[2]")
+    if not type_nodes:
+        return None
+    return fix_weapon_type(input_str=" ".join(type_nodes[0].text_content().split()))
 
 
 def _get_legendary_aspect(name: str) -> str:
@@ -432,12 +480,7 @@ if __name__ == "__main__":
 
     driver = setup_webdriver()
 
-    URLS = [
-        "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb",
-        "https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
-        "https://mobalytics.gg/diablo-4/builds/barbarian-ancients-leap-endgame",
-        "https://mobalytics.gg/diablo-4/builds/sorcerer-ball-lightning",
-    ]
+    URLS = ["https://mobalytics.gg/diablo-4/builds/auradin-holy-light-aura-paladin"]
     for X in URLS:
         config = ImportConfig(
             url=X,

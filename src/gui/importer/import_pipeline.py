@@ -22,6 +22,7 @@ LOGGER = logging.getLogger(__name__)
 class Variant:
     name: str = ""
     affix_filters: list[ItemFilterModel] = dataclasses.field(default_factory=list)
+    affix_filter_name_hints: list[str | None] = dataclasses.field(default_factory=list)
     charm_filters: list[CharmFilterModel] = dataclasses.field(default_factory=list)
     seal_filters: list[SealFilterModel] = dataclasses.field(default_factory=list)
     aspect_upgrade_filters: list[str] = dataclasses.field(default_factory=list)
@@ -60,7 +61,9 @@ class ImportPipeline:
         saved_file_names = []
 
         for index, variant in enumerate(build.variants):
-            affix_filters = deduplicate_filters(list(variant.affix_filters))
+            affix_filters = deduplicate_filters(
+                list(variant.affix_filters), name_hints=variant.affix_filter_name_hints or None
+            )
             profile = ProfileModel(
                 name="imported profile",
                 Affixes=sort_profile_filters(affix_filters),
