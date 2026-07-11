@@ -1,5 +1,6 @@
 import os
 import typing
+from types import SimpleNamespace
 
 import lxml.html
 import pytest
@@ -193,6 +194,102 @@ def test_create_charm_filter_from_tooltip_html_reads_unique_aspect() -> None:
     assert not set_name
     assert charm_filter.affix_pool == []
     assert [unique_aspect.name for unique_aspect in charm_filter.unique_aspect] == ["fractured_winterglass"]
+
+
+def test_weapon_type_from_unique_tooltip_html_reads_bow() -> None:
+    tooltip_html = """
+        <div class="unique__tooltip unique__tooltip--mythic">
+            <h2 class="unique__tooltip__name">Eaglehorn</h2>
+            <div class="unique__tooltip__slot unique__tooltip__slot--mythic">Mythic Unique Bow</div>
+        </div>
+    """
+
+    assert d4builds_module._weapon_type_from_unique_tooltip_html(tooltip_html) == ItemType.Bow
+
+
+def test_weapon_type_from_unique_tooltip_html_reads_one_handed_dagger() -> None:
+    tooltip_html = """
+        <div class="unique__tooltip">
+            <h2 class="unique__tooltip__name">Etna's Lost Dagger</h2>
+            <div class="unique__tooltip__slot">Unique 1h Dagger</div>
+        </div>
+    """
+
+    assert d4builds_module._weapon_type_from_unique_tooltip_html(tooltip_html) == ItemType.Dagger
+
+
+def test_weapon_type_from_unique_tooltip_html_returns_none_for_aspect_tooltip() -> None:
+    """Generic legendary weapons (aspect only, no unique) show a codex tooltip with no type info."""
+    tooltip_html = """
+        <div class="codex__tooltip">
+            <div class="codex__tooltip__header">
+                <div class="codex__tooltip__name">Aspect of Imitated Imbuement</div>
+            </div>
+        </div>
+    """
+
+    assert d4builds_module._weapon_type_from_unique_tooltip_html(tooltip_html) is None
+
+
+def test_weapon_type_from_unique_tooltip_html_returns_none_for_empty_html() -> None:
+    assert d4builds_module._weapon_type_from_unique_tooltip_html("") is None
+
+
+class _FakePaperdollItem:
+    def __init__(self, slot_text: str, icon: object):
+        self._slot_text = slot_text
+        self._icon = icon
+
+    def find_elements(self, by, value):
+        if value == d4builds_module.PAPERDOLL_ITEM_SLOT_CSS:
+            return [SimpleNamespace(text=self._slot_text)]
+        if value == d4builds_module.PAPERDOLL_GEAR_ICON_CSS:
+            return [self._icon]
+        msg = f"unexpected selector: {value}"
+        raise AssertionError(msg)
+
+
+def test_get_weapon_paperdoll_icons_maps_slot_to_icon_without_hovering(mocker: MockerFixture) -> None:
+    bow_icon, dagger_icon = object(), object()
+    items = [_FakePaperdollItem("Ranged Weapon", bow_icon), _FakePaperdollItem("Dual-Wield Weapon 1", dagger_icon)]
+
+    class _FakeDriver:
+        def find_elements(self, by, value):
+            assert value == d4builds_module.PAPERDOLL_WEAPON_ITEM_CSS
+            return items
+
+    hover_spy = mocker.patch.object(d4builds_module, "hover_and_get_tooltip_html")
+
+    result = d4builds_module._get_weapon_paperdoll_icons(driver=_FakeDriver())
+
+    assert result == {"Ranged Weapon": bow_icon, "Dual-Wield Weapon 1": dagger_icon}
+    hover_spy.assert_not_called()
+
+
+def test_get_weapon_paperdoll_icons_renames_2h_weapon_slot() -> None:
+    staff_icon = object()
+
+    class _FakeDriver:
+        def find_elements(self, by, value):
+            assert value == d4builds_module.PAPERDOLL_WEAPON_ITEM_CSS
+            return [_FakePaperdollItem("2H Weapon", staff_icon)]
+
+    result = d4builds_module._get_weapon_paperdoll_icons(driver=_FakeDriver())
+
+    assert result == {"Weapon": staff_icon}
+
+
+def test_get_weapon_type_from_paperdoll_tooltip_hovers_given_icon(mocker: MockerFixture) -> None:
+    icon = object()
+    mocker.patch.object(
+        d4builds_module,
+        "hover_and_get_tooltip_html",
+        return_value='<div class="unique__tooltip"><div class="unique__tooltip__slot">Mythic Unique Bow</div></div>',
+    )
+
+    result = d4builds_module._get_weapon_type_from_paperdoll_tooltip(driver=mocker.Mock(), icon=icon)
+
+    assert result == ItemType.Bow
 
 
 def test_match_d4builds_tooltip_affix_uses_guessed_charm_set_for_seal_affixes() -> None:

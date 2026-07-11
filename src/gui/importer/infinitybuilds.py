@@ -40,6 +40,7 @@ if TYPE_CHECKING:
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
+
 BUILD_GUIDE_BASE_URL = "https://infinitybuilds.gg/"
 TOOLS_API_BASE_URL = "https://tools.infinitybuilds.gg/api/games/diablo4/build-data"
 SCRIPT_XPATH = "//script"

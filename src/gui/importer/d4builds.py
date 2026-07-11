@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING
 
 import lxml.html
 import rapidfuzz
-from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
@@ -28,10 +26,12 @@ from src.gui.importer.gui_common import (
     fix_offhand_type,
     fix_weapon_type,
     get_class_name,
+    hover_and_get_tooltip_html,
     is_unique_like_rarity,
     match_to_enum,
     retry_importer,
     update_mingreateraffixcount,
+    weapon_slot_name_hint,
 )
 from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.gui.importer.importer_config import ImportConfig
@@ -44,43 +44,47 @@ from src.scripts import correct_name
 
 if TYPE_CHECKING:
     from selenium.webdriver.chromium.webdriver import ChromiumDriver
+    from selenium.webdriver.remote.webelement import WebElement
 
 LOGGER = logging.getLogger(__name__)
+LOGGER.propagate = True
 
+ACTIVE_CHARM_CSS = ".builder__charm.active"
+ACTIVE_SEAL_CSS = ".builder__seal.active"
 BASE_URL = "https://d4builds.gg/builds"
-BUILD_OVERVIEW_XPATH = "//*[@class='builder__stats__list']"
-CLASS_XPATH = "//*[contains(@class, 'builder__header__name')]"
 BUILD_DESCRIPTION_XPATH = "//*[contains(@class, 'builder__header__description')]"
 BUILD_HEADER_INPUT_XPATH = "//*[contains(@class, 'builder__header__input')]"
-VARIANT_INPUT_XPATH = "//*[contains(@class, 'builder__variant__input')]"
-SEASON_DROPDOWN_XPATH = (
-    "//*[contains(@class, 'builder__gear')]/*[contains(@class, 'builder__dropdown__wrapper')]"
-    "//*[contains(@class, 'dropdown__button') and starts-with(normalize-space(), 'Season ')]"
+BUILD_OVERVIEW_XPATH = "//*[@class='builder__stats__list']"
+CHARM_TOOLTIP_CSS = "[data-tippy-root] .charm__tooltip"
+CHARM_TOOLTIP_SET_NAME_XPATH = ".//*[contains(@class, 'charm__tooltip__set__name')]"
+CHARM_TOOLTIP_UNIQUE_XPATH = ".//*[contains(@class, 'charm__tooltip__name--unique')]"
+CHARM_TOOLTIP_VALUE_XPATH = (
+    ".//*[contains(@class, 'charm__tooltip__values')]//*[contains(@class, 'charm__tooltip__value')]"
 )
+CLASS_XPATH = "//*[contains(@class, 'builder__header__name')]"
+GA_XPATH = ".//*[contains(@class, 'greater__affix__button--filled')]"
 ITEM_GROUP_XPATH = ".//*[contains(@class, 'builder__stats__group')]"
 ITEM_SLOT_XPATH = ".//*[contains(@class, 'builder__stats__slot')]"
 ITEM_STATS_XPATH = ".//*[contains(@class, 'dropdown__button__wrapper')]"
-GA_XPATH = ".//*[contains(@class, 'greater__affix__button--filled')]"
+PAPERDOLL_GEAR_ICON_CSS = ".builder__gear__icon"
+PAPERDOLL_ITEM_SLOT_CSS = ".builder__gear__slot"
 PAPERDOLL_ITEM_SLOT_XPATH = ".//*[contains(@class, 'builder__gear__slot')]"
 PAPERDOLL_ITEM_UNIQUE_NAME_XPATH = ".//*[contains(@class, 'builder__gear__name--')]"
 PAPERDOLL_ITEM_XPATH = ".//*[contains(@class, 'builder__gear__item') and not(contains(@class, 'disabled'))]"
 PAPERDOLL_LEGENDARY_ASPECT_XPATH = (
     "//*[@class='builder__gear__name' and not(contains(@class, 'builder__gear__name--'))]"
 )
+PAPERDOLL_WEAPON_ITEM_CSS = ".builder__gear__item.weapon:not(.disabled)"
 PAPERDOLL_XPATH = "//*[contains(@class, 'builder__gear__items')]"
-TEMPERING_ICON_XPATH = ".//*[contains(@src, 'tempering_02.png')]"
 SANCTIFIED_ICON_XPATH = ".//*[contains(@src, 'sanctified_icon.png')]"
-UNIQUE_ICON_XPATH = ".//*[contains(@src, '/Uniques/')]"
-ACTIVE_SEAL_CSS = ".builder__seal.active"
-ACTIVE_CHARM_CSS = ".builder__charm.active"
 SEAL_TOOLTIP_CSS = "[data-tippy-root] .seal__tooltip"
-CHARM_TOOLTIP_CSS = "[data-tippy-root] .charm__tooltip"
 SEAL_TOOLTIP_VALUE_XPATH = ".//*[contains(@class, 'seal__tooltip__value__text')]"
-CHARM_TOOLTIP_UNIQUE_XPATH = ".//*[contains(@class, 'charm__tooltip__name--unique')]"
-CHARM_TOOLTIP_VALUE_XPATH = (
-    ".//*[contains(@class, 'charm__tooltip__values')]//*[contains(@class, 'charm__tooltip__value')]"
-)
-CHARM_TOOLTIP_SET_NAME_XPATH = ".//*[contains(@class, 'charm__tooltip__set__name')]"
+SEASON_DROPDOWN_XPATH = "//*[contains(@class, 'builder__gear')]/*[contains(@class, 'builder__dropdown__wrapper')]//*[contains(@class, 'dropdown__button') and starts-with(normalize-space(), 'Season ')]"
+TEMPERING_ICON_XPATH = ".//*[contains(@src, 'tempering_02.png')]"
+UNIQUE_ICON_XPATH = ".//*[contains(@src, '/Uniques/')]"
+UNIQUE_TOOLTIP_CSS = "[data-tippy-root] .unique__tooltip"
+UNIQUE_TOOLTIP_SLOT_XPATH = ".//*[contains(@class, 'unique__tooltip__slot')]"
+VARIANT_INPUT_XPATH = "//*[contains(@class, 'builder__variant__input')]"
 
 
 class D4BuildsError(Exception):
@@ -107,7 +111,9 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         LOGGER.error(msg := "No items found")
         raise D4BuildsError(msg)
     slot_to_unique_name_map = _get_item_slots(data=data)
-    finished_filters = []
+    weapon_paperdoll_icons = _get_weapon_paperdoll_icons(driver=driver)
+    finished_filters: list[ItemFilterModel] = []
+    finished_filter_name_hints: list[str | None] = []
     charm_filters, seal_filters = _extract_d4builds_seal_charm_filters(driver=driver, config=config)
     aspect_upgrade_filters = _get_legendary_aspects(data=data)
     for item in items[0]:
@@ -179,6 +185,9 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         if not affixes and not item_filter.unique_aspect:
             continue
 
+        if item_type is None and is_weapon and (icon := weapon_paperdoll_icons.get(slot)) is not None:
+            item_type = _get_weapon_type_from_paperdoll_tooltip(driver=driver, icon=icon)
+
         if item_type is None:
             if is_weapon:
                 LOGGER.warning(
@@ -200,6 +209,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                 ]
         item_filter.min_power = 100
         finished_filters.append(item_filter)
+        finished_filter_name_hints.append(weapon_slot_name_hint(item_filter, slot))
     ImportPipeline.run(
         adapter=StaticBuildGuideAdapter(
             url=url,
@@ -212,6 +222,7 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
                     Variant(
                         name=variant_name,
                         affix_filters=finished_filters,
+                        affix_filter_name_hints=finished_filter_name_hints,
                         charm_filters=charm_filters,
                         seal_filters=seal_filters,
                         aspect_upgrade_filters=aspect_upgrade_filters,
@@ -239,6 +250,47 @@ def _corrections(input_str: str) -> str:
     return input_str
 
 
+def _weapon_type_from_unique_tooltip_html(tooltip_html: str) -> ItemType | None:
+    tooltip = _tooltip_element(tooltip_html)
+    if tooltip is None:
+        return None
+    slot_text = _first_text(tooltip=tooltip, xpath=UNIQUE_TOOLTIP_SLOT_XPATH)
+    if not slot_text:
+        return None
+    return fix_weapon_type(input_str=slot_text)
+
+
+def _get_weapon_paperdoll_icons(driver: ChromiumDriver) -> dict[str, WebElement]:
+    """Map weapon slot name to its paperdoll gear icon element, without hovering anything.
+
+    Hovering (to read the tooltip) is comparatively slow, so callers should only hover the icon for a
+    slot once they've confirmed the affix bullets alone couldn't resolve that slot's item_type.
+    """
+    result = {}
+    for item in driver.find_elements(By.CSS_SELECTOR, PAPERDOLL_WEAPON_ITEM_CSS):
+        slot_elements = item.find_elements(By.CSS_SELECTOR, PAPERDOLL_ITEM_SLOT_CSS)
+        icon_elements = item.find_elements(By.CSS_SELECTOR, PAPERDOLL_GEAR_ICON_CSS)
+        if not slot_elements or not icon_elements:
+            continue
+        slot = slot_elements[0].text
+        if slot == "2H Weapon":  # This happens when a build has a weapon and no offhand
+            slot = "Weapon"
+        result[slot] = icon_elements[0]
+    return result
+
+
+def _get_weapon_type_from_paperdoll_tooltip(driver: ChromiumDriver, icon: WebElement) -> ItemType | None:
+    """Hover a unique/mythic weapon paperdoll icon to read its type from the tooltip.
+
+    D4Builds only reveals a weapon's type this way for unique/mythic items; generic legendary weapons
+    (aspect only) show an aspect tooltip with no type info, so this returns None for those.
+    """
+    tooltip_html = hover_and_get_tooltip_html(
+        driver=driver, element=icon, tooltip_css=UNIQUE_TOOLTIP_CSS, warn_on_timeout=False
+    )
+    return _weapon_type_from_unique_tooltip_html(tooltip_html)
+
+
 def _extract_d4builds_seal_charm_filters(
     driver: ChromiumDriver, config: ImportConfig
 ) -> tuple[list[CharmFilterModel], list[SealFilterModel]]:
@@ -247,7 +299,7 @@ def _extract_d4builds_seal_charm_filters(
     set_names = []
 
     for _, charm_element in enumerate(driver.find_elements(By.CSS_SELECTOR, ACTIVE_CHARM_CSS)):
-        tooltip_html = _hover_and_get_tooltip_html(driver=driver, element=charm_element, tooltip_css=CHARM_TOOLTIP_CSS)
+        tooltip_html = hover_and_get_tooltip_html(driver=driver, element=charm_element, tooltip_css=CHARM_TOOLTIP_CSS)
         charm_filter, set_name = _create_charm_filter_from_tooltip_html(
             tooltip_html=tooltip_html, require_gas=config.require_greater_affixes
         )
@@ -265,7 +317,7 @@ def _extract_d4builds_seal_charm_filters(
     guessed_set_name = set_names[0] if set_names else None
 
     for seal_element in driver.find_elements(By.CSS_SELECTOR, ACTIVE_SEAL_CSS):
-        tooltip_html = _hover_and_get_tooltip_html(driver=driver, element=seal_element, tooltip_css=SEAL_TOOLTIP_CSS)
+        tooltip_html = hover_and_get_tooltip_html(driver=driver, element=seal_element, tooltip_css=SEAL_TOOLTIP_CSS)
         seal_filter = _create_seal_filter_from_tooltip_html(
             tooltip_html=tooltip_html, require_gas=config.require_greater_affixes, guessed_set_name=guessed_set_name
         )
@@ -273,22 +325,6 @@ def _extract_d4builds_seal_charm_filters(
             seal_filters.append(seal_filter)
 
     return charm_filters, seal_filters
-
-
-def _hover_and_get_tooltip_html(driver: ChromiumDriver, element, tooltip_css: str) -> str:
-    driver.execute_script("document.querySelectorAll('[data-tippy-root]').forEach((node) => node.remove());")
-    ActionChains(driver).move_to_element(element).perform()
-    driver.execute_script(
-        "arguments[0].dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));"
-        "arguments[0].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));",
-        element,
-    )
-    try:
-        tooltip = WebDriverWait(driver, 2).until(ec.presence_of_element_located((By.CSS_SELECTOR, tooltip_css)))
-    except TimeoutException:
-        LOGGER.warning("Unable to read D4Builds tooltip for selector %s.", tooltip_css)
-        return ""
-    return str(tooltip.get_attribute("outerHTML") or "")
 
 
 def _create_seal_filter_from_tooltip_html(
@@ -497,12 +533,7 @@ if __name__ == "__main__":
 
     driver = setup_webdriver()
 
-    URLS = [
-        "https://d4builds.gg/builds/whirlwind-barbarian-endgame/?var=4",
-        "https://d4builds.gg/builds/dread-claws-warlock-endgame/?var=0",
-        "https://d4builds.gg/builds/dance-of-knives-rogue-endgame/?var=0",
-        "https://d4builds.gg/builds/blood-wave-necromancer-endgame/?var=0",
-    ]
+    URLS = ["https://d4builds.gg/builds/penetrating-shot-rogue-endgame/?var=0"]
     for X in URLS:
         config = ImportConfig(
             url=X,

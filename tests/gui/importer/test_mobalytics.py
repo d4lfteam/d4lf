@@ -5,13 +5,17 @@ import typing
 from types import SimpleNamespace
 
 import pytest
+from selenium.common.exceptions import NoSuchElementException
 
 from src.config.profile_models import ParagonPayloadModel
 from src.dataloader import Dataloader
+from src.gui.importer import mobalytics as mobalytics_module
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.mobalytics import (
     _convert_raw_to_affixes,
     _extract_mobalytics_charm_set_name,
+    _get_weapon_slot_trigger,
+    _get_weapon_type_from_slot_tooltip,
     _log_mobalytics_page_diagnostics,
     import_mobalytics,
 )
@@ -188,6 +192,89 @@ def test_extract_mobalytics_charm_set_name_from_icon_url(
     item = _mobalytics_slot(slot="season-12-charm-1", entity_type="charms", title=title, icon_url=icon_url)
 
     assert _extract_mobalytics_charm_set_name(item) == expected_set_name
+
+
+def test_get_weapon_slot_trigger_looks_up_span_by_humanized_slot_title(mocker: MockerFixture) -> None:
+    driver = mocker.Mock()
+
+    _get_weapon_slot_trigger(driver=driver, slot_type="dual-wield-weapon-1")
+
+    (by, xpath), _kwargs = driver.find_element.call_args
+    assert "Dual wield weapon 1" in xpath
+
+
+def test_get_weapon_slot_trigger_returns_none_when_not_found(mocker: MockerFixture) -> None:
+    driver = mocker.Mock()
+    driver.find_element.side_effect = NoSuchElementException
+
+    assert _get_weapon_slot_trigger(driver=driver, slot_type="weapon") is None
+
+
+def test_get_weapon_type_from_slot_tooltip_reads_mythic_unique_type(mocker: MockerFixture) -> None:
+    mocker.patch.object(mobalytics_module, "_get_weapon_slot_trigger", return_value=object())
+    mocker.patch.object(
+        mobalytics_module,
+        "hover_and_get_tooltip_html",
+        return_value="<div><p>Sundered Night</p><p>Mythic Unique 2h Axe</p><p>description</p></div>",
+    )
+
+    assert _get_weapon_type_from_slot_tooltip(driver=mocker.Mock(), slot_type="weapon") == ItemType.Axe2H
+
+
+def test_get_weapon_type_from_slot_tooltip_returns_none_for_legendary_aspect_tooltip(mocker: MockerFixture) -> None:
+    """Generic legendary weapons (aspect only, no unique) show a tooltip with no type info."""
+    mocker.patch.object(mobalytics_module, "_get_weapon_slot_trigger", return_value=object())
+    mocker.patch.object(
+        mobalytics_module,
+        "hover_and_get_tooltip_html",
+        return_value="<div><p>Aspect of Glynn's Anvil</p><p>Legendary Aspect</p><p>description</p></div>",
+    )
+
+    assert _get_weapon_type_from_slot_tooltip(driver=mocker.Mock(), slot_type="weapon") is None
+
+
+def test_get_weapon_type_from_slot_tooltip_returns_none_when_trigger_missing(mocker: MockerFixture) -> None:
+    mocker.patch.object(mobalytics_module, "_get_weapon_slot_trigger", return_value=None)
+    hover_spy = mocker.patch.object(mobalytics_module, "hover_and_get_tooltip_html")
+
+    assert _get_weapon_type_from_slot_tooltip(driver=mocker.Mock(), slot_type="weapon") is None
+    hover_spy.assert_not_called()
+
+
+def test_import_mobalytics_names_unresolved_weapon_filter_by_slot(mock_ini_loader, mocker: MockerFixture) -> None:
+    """When neither inherents nor the hover tooltip can resolve a weapon's type, name the filter after its slot."""
+    captured_profile = {}
+    modifiers = {"gearStats": [{"id": "strength"}], "implicitStats": None}
+    driver = _MobalyticsImportDriver(
+        page_source=_mobalytics_page_source([
+            _mobalytics_slot(slot="weapon", entity_type="uniqueItems", title="Sundered Night", modifiers=modifiers)
+        ])
+    )
+    mocker.patch.object(mobalytics_module, "_get_weapon_type_from_slot_tooltip", return_value=None)
+
+    def fake_save_new(*, file_name, profile, source):
+        captured_profile["profile"] = profile
+        return SimpleNamespace(file_name=file_name)
+
+    profile_store = mocker.Mock()
+    profile_store.save_new.side_effect = fake_save_new
+    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+
+    import_mobalytics(
+        config=ImportConfig(
+            url="https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
+            import_aspect_upgrades=False,
+            import_greater_affixes=False,
+            require_greater_affixes=False,
+            add_to_profiles=False,
+            custom_file_name="test",
+        ),
+        driver=driver,
+    )
+
+    profile = captured_profile["profile"]
+    assert len(profile.affixes) == 1
+    assert next(iter(profile.affixes[0].root)) == "Weapon"
 
 
 def test_import_mobalytics_imports_set_charm_and_deduplicates_identical_rings(

@@ -11,7 +11,7 @@ from src.gui.importer.gui_common import (
 )
 from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart, ImportConfig
 from src.item.data.affix import Affix, AffixType
-from src.item.data.item_type import ItemType
+from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.data.rarity import ItemRarity
 
 
@@ -189,6 +189,25 @@ def test_deduplicate_filters_supports_item_filters() -> None:
     assert "Ring(x2)" in deduped[0]
     assert deduped[0]["Ring(x2)"] == f1
     assert "Amulet" in deduped[1]
+
+
+def test_deduplicate_filters_names_unresolved_weapon_by_slot_hint() -> None:
+    f1 = ItemFilterModel(item_type=WEAPON_TYPES)
+    f2 = ItemFilterModel(item_type=[ItemType.Ring])
+
+    deduped = deduplicate_filters([f1, f2], name_hints=["Dual-Wield Weapon 1", None])
+
+    assert "Dual-Wield Weapon 1" in deduped[0]
+    assert "Axe" not in deduped[0]
+    assert "Ring" in deduped[1]
+
+
+def test_deduplicate_filters_falls_back_to_axe_without_hint() -> None:
+    f1 = ItemFilterModel(item_type=WEAPON_TYPES)
+
+    deduped = deduplicate_filters([f1])
+
+    assert "Axe" in deduped[0]
 
 
 def test_to_yaml_str_preserves_paragon_aliases(mock_ini_loader) -> None:
