@@ -120,7 +120,10 @@ def test_mythic_sigil_always_kept(mocker: MockerFixture):
 )
 def test_tributes(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    test_filter.tribute_filters = {filters.tributes.name: filters.tributes.tributes}
+    tribute_filter = filters.tributes.tributes
+    if tribute_filter is None:
+        pytest.fail("tribute fixture must define a filter")
+    test_filter.tribute_filters = {filters.tributes.name: tribute_filter}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 

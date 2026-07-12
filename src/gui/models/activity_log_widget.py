@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import datetime
 import logging
 import re
 from html import escape
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from PyQt6.QtCore import QMimeData, QObject, Qt, pyqtSignal
-from PyQt6.QtGui import QDrag, QTextCursor
+from PyQt6.QtGui import QDrag, QDragEnterEvent, QDragMoveEvent, QDropEvent, QMouseEvent, QTextCursor
 from PyQt6.QtWidgets import (
     QFrame,
     QGraphicsOpacityEffect,
@@ -28,10 +30,27 @@ from src.config.settings_models import IS_HOTKEY_KEY
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from collections.abc import Set as AbstractSet
     from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
+
+
+class DragHandleButton(QPushButton):
+    def __init__(
+        self,
+        row_widget: QWidget,
+        start_drag: Callable[[QMouseEvent | None, QWidget, QWidget], None],
+        parent: QWidget | None = None,
+    ):
+        super().__init__("⠿", parent)
+        self._row_widget = row_widget
+        self._start_drag = start_drag
+
+    @override
+    def mouseMoveEvent(self, a0: QMouseEvent | None) -> None:
+        self._start_drag(a0, self._row_widget, self)
 
 
 class ANSIConsoleWidget(QTextEdit):
@@ -100,7 +119,8 @@ class QtConsoleHandler(logging.Handler, QObject):
         logging.Handler.__init__(self)
         QObject.__init__(self)
 
-    def emit(self, record):
+    @override
+    def emit(self, record: logging.LogRecord) -> None:
         msg = self.format(record)
         self.log_signal.emit(msg)
 
@@ -245,12 +265,14 @@ class ActivityLogWidget(QWidget):
         """Build the hotkey grid dynamically from AdvancedOptionsModel metadata."""
         while self.hotkey_grid.count():
             item = self.hotkey_grid.takeAt(0)
+            if item is None:
+                continue
             if widget := item.widget():
                 widget.deleteLater()
             elif layout := item.layout():
                 while layout.count():
                     child = layout.takeAt(0)
-                    if w := child.widget():
+                    if child is not None and (w := child.widget()):
                         w.deleteLater()
 
         opts = self._config.advanced_options
@@ -282,7 +304,7 @@ class ActivityLogWidget(QWidget):
         """Scan the profiles folder and update the list."""
         for i in reversed(range(self.profile_layout.count())):
             child = self.profile_layout.takeAt(i)
-            if w := child.widget():
+            if child is not None and (w := child.widget()):
                 w.deleteLater()
 
         self._checkboxes.clear()
@@ -314,7 +336,7 @@ class ActivityLogWidget(QWidget):
                 header_hbox.setSpacing(5)
 
                 toggle_btn = self._create_row_btn("▶")
-                drag_handle = self._create_row_btn("⠿")
+                drag_handle = DragHandleButton(row_widget, self._start_drag)
                 drag_handle.setCursor(Qt.CursorShape.SizeAllCursor)
 
                 cb = CheckmarkCheckBox(name.replace("_", " "))
@@ -345,9 +367,6 @@ class ActivityLogWidget(QWidget):
                 summary_lbl.setWordWrap(True)
                 summary_lbl.setVisible(False)
                 toggle_btn.clicked.connect(lambda _, lbl=summary_lbl, btn=toggle_btn: self._toggle_row(lbl, btn))
-
-                # Connect drag handle
-                drag_handle.mouseMoveEvent = lambda e, w=row_widget, h=drag_handle: self._start_drag(e, w, h)
 
                 row_vbox.addWidget(header_container)
                 row_vbox.addWidget(summary_lbl)
@@ -442,7 +461,9 @@ class ActivityLogWidget(QWidget):
         except OSError, ProfileDocumentError:
             return f"Path: {path}\n(Could not parse profile details)"
 
-    def _start_drag(self, event, row_widget: QWidget, handle: QWidget):
+    def _start_drag(self, event: QMouseEvent | None, row_widget: QWidget, handle: QWidget) -> None:
+        if event is None:
+            return
         if event.buttons() != Qt.MouseButton.LeftButton:
             return
         click_pos = handle.mapTo(row_widget, event.position().toPoint())
@@ -463,29 +484,47 @@ class ActivityLogWidget(QWidget):
         row_widget.setGraphicsEffect(None)
         self.drop_indicator.hide()
 
-    def dragEnterEvent(self, event):  # noqa: N802
-        if event.mimeData().hasText():
-            event.acceptProposedAction()
+    @override
+    def dragEnterEvent(self, a0: QDragEnterEvent | None) -> None:
+        if a0 is None:
+            return
+        mime_data = a0.mimeData()
+        if mime_data is not None and mime_data.hasText():
+            a0.acceptProposedAction()
 
-    def dragMoveEvent(self, event):  # noqa: N802
-        source_id = event.mimeData().text()
+    @override
+    def dragMoveEvent(self, a0: QDragMoveEvent | None) -> None:
+        if a0 is None:
+            return
+        mime_data = a0.mimeData()
+        if mime_data is None:
+            return
+        source_id = mime_data.text()
 
         # Auto-scroll the list if dragging near the top or bottom edges
-        global_pos = self.mapToGlobal(event.position().toPoint())
-        viewport_pos = self.profile_scroll.viewport().mapFromGlobal(global_pos)
+        global_pos = self.mapToGlobal(a0.position().toPoint())
+        viewport = self.profile_scroll.viewport()
+        if viewport is None:
+            return
+        viewport_pos = viewport.mapFromGlobal(global_pos)
         margin = 40
         if viewport_pos.y() < margin:
             sb = self.profile_scroll.verticalScrollBar()
-            sb.setValue(sb.value() - 10)
-        elif viewport_pos.y() > self.profile_scroll.viewport().height() - margin:
+            if sb is not None:
+                sb.setValue(sb.value() - 10)
+        elif viewport_pos.y() > viewport.height() - margin:
             sb = self.profile_scroll.verticalScrollBar()
-            sb.setValue(sb.value() + 10)
+            if sb is not None:
+                sb.setValue(sb.value() + 10)
 
-        pos = self.profile_container.mapFrom(self, event.position().toPoint())
+        pos = self.profile_container.mapFrom(self, a0.position().toPoint())
         dragged_row = None
         current_idx = -1
         for i in range(self.profile_layout.count()):
-            w = self.profile_layout.itemAt(i).widget()
+            item = self.profile_layout.itemAt(i)
+            if item is None:
+                continue
+            w = item.widget()
             if w and str(id(w)) == source_id:
                 dragged_row = w
                 current_idx = i
@@ -493,7 +532,10 @@ class ActivityLogWidget(QWidget):
         if not dragged_row:
             return
         for i in range(self.profile_layout.count()):
-            target_row = self.profile_layout.itemAt(i).widget()
+            item = self.profile_layout.itemAt(i)
+            if item is None:
+                continue
+            target_row = item.widget()
             if not target_row or target_row in (dragged_row, self.drop_indicator):
                 continue
             rect = target_row.geometry()
@@ -502,21 +544,28 @@ class ActivityLogWidget(QWidget):
                 self.profile_layout.insertWidget(i, self.drop_indicator)
                 self.profile_layout.insertWidget(i, dragged_row)
                 break
-        event.acceptProposedAction()
+        a0.acceptProposedAction()
 
-    def dropEvent(self, event):  # noqa: N802
+    @override
+    def dropEvent(self, a0: QDropEvent | None) -> None:
         self._on_toggle()
         self._update_zebra_striping()
-        event.acceptProposedAction()
+        if a0 is not None:
+            a0.acceptProposedAction()
 
     def _update_zebra_striping(self):
         """Update alternating background colors for currently visible rows."""
         visible_count = 0
         for i in range(self.profile_layout.count()):
-            widget = self.profile_layout.itemAt(i).widget()
+            item = self.profile_layout.itemAt(i)
+            if item is None:
+                continue
+            widget = item.widget()
             if widget and widget.objectName() == "profile-row" and not widget.isHidden():
                 widget.setProperty("alt", visible_count % 2 == 0)
-                widget.style().polish(widget)
+                style = widget.style()
+                if style is not None:
+                    style.polish(widget)
                 visible_count += 1
 
     def _filter_profiles(self, text: str):
@@ -544,7 +593,10 @@ class ActivityLogWidget(QWidget):
     def _on_toggle(self):
         active: list[str] = []
         for i in range(self.profile_layout.count()):
-            widget = self.profile_layout.itemAt(i).widget()
+            item = self.profile_layout.itemAt(i)
+            if item is None:
+                continue
+            widget = item.widget()
             if widget:
                 name = widget.property("profile_name")
                 if name and self._checkboxes.get(name) and self._checkboxes[name].isChecked():

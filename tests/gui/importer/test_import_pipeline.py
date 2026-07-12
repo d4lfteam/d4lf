@@ -8,16 +8,17 @@ from src.item.data.item_type import ItemType
 
 
 def _config(**overrides) -> ImportConfig:
-    defaults = {
-        "url": "https://example.invalid/build",
-        "import_aspect_upgrades": True,
-        "add_to_profiles": False,
-        "import_greater_affixes": False,
-        "require_greater_affixes": False,
-        "export_paragon": False,
-    }
-    defaults.update(overrides)
-    return ImportConfig(**defaults)
+    config = ImportConfig(
+        url="https://example.invalid/build",
+        import_aspect_upgrades=True,
+        add_to_profiles=False,
+        import_greater_affixes=False,
+        require_greater_affixes=False,
+        export_paragon=False,
+    )
+    for key, value in overrides.items():
+        setattr(config, key, value)
+    return config
 
 
 def _item_filter(item_type: ItemType) -> ItemFilterModel:

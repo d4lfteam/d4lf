@@ -52,7 +52,7 @@ else:
 
 
 def is_numeric(val):
-    return isinstance(val, float | int | np.int32 | np.int64 | np.float32 | np.float64)
+    return isinstance(val, (float, int, np.integer, np.floating))
 
 
 def is_list_of_points(value):

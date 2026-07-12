@@ -1,5 +1,7 @@
+from typing import override
+
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QMouseEvent
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QSpacerItem, QStackedLayout, QVBoxLayout, QWidget
 
 
@@ -55,7 +57,8 @@ class Header(QWidget):
         background.setMinimumHeight(int(layout.sizeHint().height() * 1.5))
         self.collapse()
 
-    def mousePressEvent(self, *args):  # noqa: N802
+    @override
+    def mousePressEvent(self, a0: QMouseEvent | None) -> None:
         """Handle mouse events, call the function to toggle groups."""
         # Toggle between expand and collapse based on the visibility of the content widget
         self.expand() if not self.content.isVisible() else self.collapse()

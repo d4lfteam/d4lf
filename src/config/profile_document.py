@@ -4,6 +4,7 @@ import pathlib
 import re
 import shutil
 from dataclasses import dataclass
+from typing import override
 
 import yaml
 from pydantic import ValidationError
@@ -18,6 +19,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class UniqueKeyLoader(yaml.SafeLoader):
+    @override
     def construct_mapping(self, node: MappingNode, deep=False):
         mapping = set()
         for key_node, _ in node.value:

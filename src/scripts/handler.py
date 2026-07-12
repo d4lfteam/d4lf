@@ -2,7 +2,7 @@ import logging
 import threading
 import time
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -41,20 +41,28 @@ LOGGER = logging.getLogger(__name__)
 LOCK = threading.Lock()
 
 
+class VisionMode(Protocol):
+    def start(self) -> None: ...
+
+    def stop(self) -> None: ...
+
+    def running(self) -> bool: ...
+
+
 class ScriptHandler:
     def __init__(self):
-        self.loot_interaction_thread = None
+        self.loot_interaction_thread: threading.Thread | None = None
         self.paragon_overlay_thread: threading.Thread | None = None
-        self._info_overlay_last_toggle_time = 0
-        self.did_stop_scripts = False
-        self._vision_mode_was_running_before_overlay = False
-        self._hotkey_handles: list[Any] = []
+        self._info_overlay_last_toggle_time: float = 0
+        self.did_stop_scripts: bool = False
+        self._vision_mode_was_running_before_overlay: bool = False
+        self._hotkey_handles: list[int] = []
         self._runtime_config_lock = threading.RLock()
-        self._manual_restart_warning = False
+        self._manual_restart_warning: bool = False
         self._config = IniConfigLoader()
         self._win_spec = WindowSpec(self._config.advanced_options.process_name)
         self._language = self._config.general.language
-        self.vision_mode = self._create_vision_mode(self._config.general.vision_mode_type)
+        self.vision_mode: VisionMode = self._create_vision_mode(self._config.general.vision_mode_type)
 
         # Initialize Info Overlay hooks and subscriptions
         set_info_busy_checker(lambda: self.loot_interaction_thread is not None)
@@ -64,7 +72,7 @@ class ScriptHandler:
         if self._config.general.run_vision_mode_on_startup:
             self.run_vision_mode()
 
-    def _create_vision_mode(self, vision_mode_type: VisionModeType):
+    def _create_vision_mode(self, vision_mode_type: VisionModeType) -> VisionMode:
         if vision_mode_type == VisionModeType.fast:
             return src.scripts.vision_mode_fast.VisionModeFast()
         return src.scripts.vision_mode_with_highlighting.VisionModeWithHighlighting()
@@ -129,7 +137,7 @@ class ScriptHandler:
         try:
             if self.paragon_overlay_thread is not None and self.paragon_overlay_thread.is_alive():
                 LOGGER.info("Closing Paragon overlay")
-                with suppress(Exception):  # type: ignore[attr-defined]
+                with suppress(Exception):
                     request_close_paragon()
                 self.paragon_overlay_thread.join(timeout=2)
                 # Vision mode is restored by the overlay thread cleanup.

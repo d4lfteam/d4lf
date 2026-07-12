@@ -21,6 +21,9 @@ class _ResTransformer:
         height, width = src.shape[:2]
         return cv2.resize(src=src, dsize=(int(width * self._scale_y), int(height * self._scale_y)))
 
+    def _resize_optional_image(self, src: np.ndarray | None) -> np.ndarray | None:
+        return self._resize_image(src) if src is not None else None
+
     def _transform(self, value: int) -> int:
         return int(value * self._scale_y)
 
@@ -55,10 +58,10 @@ class _ResTransformer:
             else:
                 result[key] = Template(
                     name=value.name,
-                    img_bgra=self._resize_image(src=value.img_bgra),
-                    img_bgr=self._resize_image(src=value.img_bgr),
-                    img_gray=self._resize_image(src=value.img_gray),
-                    alpha_mask=self._resize_image(src=value.alpha_mask) if value.alpha_mask is not None else None,
+                    img_bgra=self._resize_optional_image(src=value.img_bgra),
+                    img_bgr=self._resize_optional_image(src=value.img_bgr),
+                    img_gray=self._resize_optional_image(src=value.img_gray),
+                    alpha_mask=self._resize_optional_image(src=value.alpha_mask),
                 )
         return result
 

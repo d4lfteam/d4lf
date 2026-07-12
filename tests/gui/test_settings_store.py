@@ -135,7 +135,10 @@ def test_reset_all_restores_defaults(isolated_ini_loader: IniConfigLoader) -> No
 
 
 def test_config_tab_constructs_without_error(qapp, isolated_ini_loader: IniConfigLoader) -> None:
-    checkmark_checkbox_module = types.ModuleType("src.gui.models.checkmark_checkbox")
+    class _CheckmarkCheckboxModule(types.ModuleType):
+        CheckmarkCheckBox: type[QCheckBox]
+
+    checkmark_checkbox_module = _CheckmarkCheckboxModule("src.gui.models.checkmark_checkbox")
     checkmark_checkbox_module.CheckmarkCheckBox = QCheckBox
     sys.modules["src.gui.models.checkmark_checkbox"] = checkmark_checkbox_module
 

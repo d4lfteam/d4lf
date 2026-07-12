@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from collections.abc import Callable, Hashable
+from typing import TYPE_CHECKING, TypeVar, override
+
 from PyQt6.QtCore import QSettings, QSize, Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -35,7 +40,22 @@ from src.dataloader import Dataloader
 from src.gui.importer.gui_common import MAX_POWER
 from src.gui.settings_tab import IgnoreScrollWheelComboBox
 from src.item.data.item_type import ItemType
-from src.item.sigil_rules import SIGIL_RULE_TARGET_TYPES, SigilRules
+from src.item.sigil_rules import SIGIL_RULE_TARGET_TYPES, SigilRules, SigilRuleTargetType
+
+if TYPE_CHECKING:
+    from PyQt6.QtGui import QCloseEvent, QWheelEvent
+
+OptionT = TypeVar("OptionT", bound=Hashable)
+
+
+def _selected_sigil_target_type(combo: QComboBox) -> SigilRuleTargetType:
+    target_type = combo.currentText()
+    if target_type == "dungeon":
+        return "dungeon"
+    if target_type == "affix":
+        return "affix"
+    msg = f"Unknown sigil rule target type: {target_type}"
+    raise ValueError(msg)
 
 
 class IgnoreScrollWheelSpinBox(QSpinBox):
@@ -43,11 +63,14 @@ class IgnoreScrollWheelSpinBox(QSpinBox):
         super().__init__()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
-    def wheelEvent(self, event):  # noqa: N802
+    @override
+    def wheelEvent(self, e: QWheelEvent | None) -> None:
         if self.hasFocus():
-            return QSpinBox.wheelEvent(self, event)
+            super().wheelEvent(e)
+            return
 
-        return event.ignore()
+        if e is not None:
+            e.ignore()
 
 
 class MinPowerDialog(QDialog):
@@ -167,7 +190,8 @@ class CreateItem(QDialog):
 
         self.setLayout(self.main_layout)
 
-    def accept(self):
+    @override
+    def accept(self) -> None:
         if not self.name_input.text():
             QMessageBox.warning(self, "Warning", "Item name cannot be empty")
             return
@@ -188,7 +212,7 @@ class CreateItem(QDialog):
             )
         ]
         item.min_power = 100
-        return DynamicItemFilterModel(**{item_name: item})
+        return DynamicItemFilterModel(root={item_name: item})
 
 
 class DeleteItem(QDialog):
@@ -209,7 +233,7 @@ class DeleteItem(QDialog):
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.groupbox_layout.addWidget(label)
 
-        self.checkbox_list = []
+        self.checkbox_list: list[QCheckBox] = []
         for name in item_names:
             checkbox = QCheckBox(name)
             scrollable_layout.addWidget(checkbox)
@@ -258,7 +282,7 @@ class DeleteAffixPool(QDialog):
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.groupbox_layout.addWidget(label)
 
-        self.checkbox_list = []
+        self.checkbox_list: list[QCheckBox] = []
         for i in range(nb_affix_pool):
             checkbox = QCheckBox(f"Count {i}")
             scrollable_layout.addWidget(checkbox)
@@ -309,13 +333,17 @@ class CreateSigil(QDialog):
         self.name_input = IgnoreScrollWheelComboBox()
         self.name_input.setEditable(True)
         self.name_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.name_input.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        name_completer = self.name_input.completer()
+        if name_completer is not None:
+            name_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self._populate_names()
         self.type_label = QLabel("Type: ")
         self.type_input = IgnoreScrollWheelComboBox()
         self.type_input.setEditable(True)
         self.type_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.type_input.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        type_completer = self.type_input.completer()
+        if type_completer is not None:
+            type_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.type_input.addItems(["whitelist", "blacklist"])
         self.form_layout.addRow(self.kind_label, self.kind_input)
         self.form_layout.addRow(self.name_label, self.name_input)
@@ -334,7 +362,8 @@ class CreateSigil(QDialog):
 
         self.setLayout(self.main_layout)
 
-    def accept(self):
+    @override
+    def accept(self) -> None:
         if self.type_input.currentText() == "whitelist" and self.name_input.currentText() in self.whitelist_sigils:
             QMessageBox.warning(self, "Warning", "Sigil already exist in whitelist. You can modify the existing one.")
             return
@@ -345,18 +374,20 @@ class CreateSigil(QDialog):
 
     def _populate_names(self):
         self.name_input.clear()
-        targets = SigilRules.default().targets(self.kind_input.currentText())
+        targets = SigilRules.default().targets(_selected_sigil_target_type(self.kind_input))
         self.name_input.addItems([target.display for target in targets])
 
     def get_value(self):
         sigil_name = self.name_input.currentText()
         type_name = self.type_input.currentText()
-        kind = self.kind_input.currentText()
+        kind = _selected_sigil_target_type(self.kind_input)
         return sigil_name, type_name, kind
 
-    def closeEvent(self, event):  # noqa: N802
+    @override
+    def closeEvent(self, a0: QCloseEvent | None) -> None:
         self.settings.setValue("create_sigil_size", self.size())
-        event.accept()
+        if a0 is not None:
+            a0.accept()
 
 
 class RemoveSigil(QDialog):
@@ -383,7 +414,7 @@ class RemoveSigil(QDialog):
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.groupbox_layout.addWidget(label)
 
-        self.checkbox_list = []
+        self.checkbox_list: list[QCheckBox] = []
         for sigil in self.sigils:
             checkbox = QCheckBox(sigil)
             scrollable_layout.addWidget(checkbox)
@@ -426,7 +457,9 @@ class CreateTribute(QDialog):
         self.name_input = IgnoreScrollWheelComboBox()
         self.name_input.setEditable(True)
         self.name_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.name_input.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        name_completer = self.name_input.completer()
+        if name_completer is not None:
+            name_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.name_input.addItems(sorted(Dataloader().tribute_dict.values()))
         self.form_layout.addRow(self.name_label, self.name_input)
         self.buttonLayout = QHBoxLayout()
@@ -443,7 +476,8 @@ class CreateTribute(QDialog):
 
         self.setLayout(self.main_layout)
 
-    def accept(self):
+    @override
+    def accept(self) -> None:
         reverse_dict = {v: k for k, v in Dataloader().tribute_dict.items()}
         tribute_name = reverse_dict.get(self.name_input.currentText())
         if tribute_name is None:
@@ -457,6 +491,9 @@ class CreateTribute(QDialog):
     def get_value(self):
         reverse_dict = {v: k for k, v in Dataloader().tribute_dict.items()}
         tribute_name = reverse_dict.get(self.name_input.currentText())
+        if tribute_name is None:
+            msg = "Select a valid tribute from the list."
+            raise ValueError(msg)
         return TributeFilterModel(name=[tribute_name], rarities=[])
 
 
@@ -476,7 +513,9 @@ class AddTributeRarity(QDialog):
         self.rarity_input = IgnoreScrollWheelComboBox()
         self.rarity_input.setEditable(True)
         self.rarity_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.rarity_input.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        rarity_completer = self.rarity_input.completer()
+        if rarity_completer is not None:
+            rarity_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.rarity_input.addItems([rarity.name for rarity in ItemRarity])
         self.form_layout.addRow(self.rarity_label, self.rarity_input)
         self.buttonLayout = QHBoxLayout()
@@ -493,7 +532,8 @@ class AddTributeRarity(QDialog):
 
         self.setLayout(self.main_layout)
 
-    def accept(self):
+    @override
+    def accept(self) -> None:
         rarity_name = self.rarity_input.currentText()
         if rarity_name not in ItemRarity.__members__:
             QMessageBox.warning(self, "Warning", "Select a valid rarity from the list.")
@@ -531,9 +571,9 @@ class RemoveTribute(QDialog):
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.groupbox_layout.addWidget(label)
 
-        self.checkbox_list = []
+        self.checkbox_list: list[QCheckBox] = []
         for tribute in self.tributes:
-            checkbox = QCheckBox(Dataloader().tribute_dict[tribute]) if tribute else QCheckBox("None")
+            checkbox = QCheckBox(str(Dataloader().tribute_dict[tribute])) if tribute else QCheckBox("None")
             scrollable_layout.addWidget(checkbox)
             self.checkbox_list.append(checkbox)
         scroll_widget.setLayout(scrollable_layout)
@@ -577,8 +617,10 @@ class AddAspectUpgrade(QDialog):
         self.name_input = IgnoreScrollWheelComboBox()
         self.name_input.setEditable(True)
         self.name_input.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.name_input.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.name_input.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+        name_completer = self.name_input.completer()
+        if name_completer is not None:
+            name_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+            name_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.name_input.addItems(unchosen_aspect_ugprades)
         self.form_layout.addRow(self.name_label, self.name_input)
         self.buttonLayout = QHBoxLayout()
@@ -595,7 +637,7 @@ class AddAspectUpgrade(QDialog):
 
         self.setLayout(self.main_layout)
 
-    def get_value(self):
+    def get_value(self) -> str:
         return self.name_input.currentText()
 
 
@@ -615,7 +657,7 @@ class CreateUnique(QDialog):
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.groupbox_layout.addWidget(label)
 
-        self.checkbox_list = []
+        self.checkbox_list: list[QCheckBox] = []
 
         checkbox_aspect = QCheckBox("Aspect")
         checkbox_affixe = QCheckBox("Affixes")
@@ -649,7 +691,7 @@ def rarity_summary(rarities: list[ItemRarity]) -> str:
     return ", ".join(r.value for r in rarities)
 
 
-class CheckboxListDialog(QDialog):
+class CheckboxListDialog[OptionT](QDialog):
     """Generic multi-select checkbox dialog with an Ok/Cancel/Clear button row.
 
     Subclasses (or callers) supply the option list, current selection, and labels;
@@ -661,14 +703,14 @@ class CheckboxListDialog(QDialog):
         parent: QWidget,
         window_title: str,
         group_title: str,
-        options: list,
-        selected: list,
+        options: list[OptionT],
+        selected: list[OptionT],
         note_text: str,
-        option_text=str,
+        option_text: Callable[[OptionT], str] | None = None,
     ):
         super().__init__(parent)
         self.setWindowTitle(window_title)
-        self.checkboxes: dict = {}
+        self.checkboxes: dict[OptionT, QCheckBox] = {}
 
         selected_set = set(selected)
 
@@ -684,7 +726,7 @@ class CheckboxListDialog(QDialog):
         content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         for option in options:
-            checkbox = QCheckBox(option_text(option))
+            checkbox = QCheckBox(option_text(option) if option_text is not None else str(option))
             checkbox.setChecked(option in selected_set)
             self.checkboxes[option] = checkbox
             content_layout.addWidget(checkbox)
@@ -699,7 +741,8 @@ class CheckboxListDialog(QDialog):
 
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         clear_button = button_box.addButton("Clear", QDialogButtonBox.ButtonRole.ResetRole)
-        clear_button.clicked.connect(self.clear_selection)
+        if clear_button is not None:
+            clear_button.clicked.connect(self.clear_selection)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
@@ -708,11 +751,11 @@ class CheckboxListDialog(QDialog):
         for checkbox in self.checkboxes.values():
             checkbox.setChecked(False)
 
-    def get_selected(self) -> list:
+    def get_selected(self) -> list[OptionT]:
         return [option for option, checkbox in self.checkboxes.items() if checkbox.isChecked()]
 
 
-class RarityPicker(CheckboxListDialog):
+class RarityPicker(CheckboxListDialog[ItemRarity]):
     def __init__(self, parent: QWidget, selected_rarities: list[ItemRarity]):
         super().__init__(
             parent,
@@ -759,7 +802,8 @@ class CreateCharmOrSeal(QDialog):
         self.main_layout.addLayout(self.buttonLayout)
         self.setLayout(self.main_layout)
 
-    def accept(self):
+    @override
+    def accept(self) -> None:
         if not self.name_input.text():
             QMessageBox.warning(self, "Warning", "Name cannot be empty")
             return
@@ -777,12 +821,12 @@ class CreateCharmOrSeal(QDialog):
 
         if self.is_charm:
             config = CharmFilterModel(affix_pool=[default_pool])
-            return DynamicCharmFilterModel(**{item_name: config})
+            return DynamicCharmFilterModel(root={item_name: config})
         config = SealFilterModel(affix_pool=[default_pool])
-        return DynamicSealFilterModel(**{item_name: config})
+        return DynamicSealFilterModel(root={item_name: config})
 
 
-class SetPicker(CheckboxListDialog):
+class SetPicker(CheckboxListDialog[str]):
     """Multi-select dialog for charm set names."""
 
     def __init__(self, parent: QWidget, selected_sets: list[str]):

@@ -76,6 +76,26 @@ def _normalize_tribute_names(data: str | list[str] | None) -> list[str]:
     return normalized_names
 
 
+def _as_string_keyed_dict(data: object) -> dict[str, object] | None:
+    if not isinstance(data, dict):
+        return None
+
+    normalized: dict[str, object] = {}
+    for key, value in data.items():
+        if not isinstance(key, str):
+            return None
+        normalized[key] = value
+    return normalized
+
+
+def _legacy_filter_values(value: object) -> list[object]:
+    if isinstance(value, str) or value is None:
+        return [value]
+    if isinstance(value, list):
+        return list(value)
+    return [value]
+
+
 class AffixAspectFilterModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str
@@ -103,7 +123,7 @@ class AffixAspectFilterModel(BaseModel):
 
 
 class AffixFilterModel(AffixAspectFilterModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
     min_percent_of_affix: int = Field(default=0, alias="minPercentOfAffix")
     want_greater: bool = False
 
@@ -137,7 +157,7 @@ class AffixFilterModel(AffixAspectFilterModel):
 
 
 class AffixFilterCountModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
     count: list[AffixFilterModel] = []
     max_count: int = Field(default=sys.maxsize, alias="maxCount")
     min_count: int = Field(default=0, alias="minCount")
@@ -177,7 +197,7 @@ def _validate_affix_pool_names(
 
 
 class AspectUniqueFilterModel(AffixAspectFilterModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
     min_percent_of_aspect: int = Field(default=0, alias="minPercentOfAspect")
 
     @field_validator("name")
@@ -208,7 +228,7 @@ class AspectUniqueFilterModel(AffixAspectFilterModel):
 
 
 class GlobalUniqueModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
     profile_alias: str = Field(default="", alias="profileAlias")
     min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
     min_percent_of_aspect: int = Field(default=0, alias="minPercentOfAspect")
@@ -231,7 +251,7 @@ class GlobalUniqueModel(BaseModel):
 
 
 class ItemFilterModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
     affix_pool: list[AffixFilterCountModel] = Field(default=[], alias="affixPool")
     inherent_pool: list[AffixFilterCountModel] = Field(default=[], alias="inherentPool")
     item_type: list[ItemType] = Field(default=[], alias="itemType")
@@ -262,7 +282,7 @@ class ItemFilterModel(BaseModel):
 
     @field_validator("unique_aspect", mode="before")
     @classmethod
-    def parse_unique_aspect(cls, data: dict | list[dict] | None) -> list[dict]:
+    def parse_unique_aspect(cls, data: dict[str, object] | list[dict[str, object]] | None) -> list[dict[str, object]]:
         if not data:
             return []
         if isinstance(data, dict):
@@ -291,7 +311,7 @@ DynamicItemFilterModel = RootModel[dict[str, ItemFilterModel]]
 
 
 class _BaseSealOrCharmFilterModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
     affix_pool: list[AffixFilterCountModel] = Field(default=[], alias="affixPool")
     min_greater_affix_count: int = Field(default=0, alias="minGreaterAffixCount")
     rarities: list[ItemRarity] = Field(default=[], validation_alias="rarity", serialization_alias="rarity")
@@ -322,7 +342,14 @@ class CharmFilterModel(_BaseSealOrCharmFilterModel):
     @field_validator("set")
     @classmethod
     def set_must_exist(cls, sets: list[str]) -> list[str]:
-        return [_validate_set_name(name, "set") for name in sets]
+        normalized_sets: list[str] = []
+        for name in sets:
+            normalized_name = _validate_set_name(name, "set")
+            if normalized_name is None:
+                msg = "set name must not be empty"
+                raise ValueError(msg)
+            normalized_sets.append(normalized_name)
+        return normalized_sets
 
     @model_validator(mode="after")
     def set_and_unique_aspects_must_be_unique(self) -> CharmFilterModel:
@@ -371,7 +398,7 @@ class SigilConditionModel(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def parse_data(cls, data: str | list[str] | list[str | float] | dict[str, str | float]) -> dict[str, str | float]:
+    def parse_data(cls, data: str | list[str] | dict[str, object]) -> dict[str, object]:
         if isinstance(data, dict):
             return data
         if isinstance(data, str):
@@ -405,7 +432,7 @@ class SigilConditionModel(BaseModel):
 
 
 class SigilFilterModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
     blacklist: list[SigilConditionModel] = []
     priority: SigilPriority = SigilPriority.blacklist
     rarities: list[ItemRarity] = Field(default=[], validation_alias="rarity", serialization_alias="rarity")
@@ -426,7 +453,7 @@ class SigilFilterModel(BaseModel):
 
 
 class TributeFilterModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
     name: list[str] = []
     rarities: list[ItemRarity] = Field(
         default=[], validation_alias=AliasChoices("rarity", "rarities"), serialization_alias="rarity"
@@ -444,7 +471,7 @@ class TributeFilterModel(BaseModel):
 
 
 class ParagonBoardModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
 
     name: str = Field(alias="Name")
     glyph: str = Field(default="", alias="Glyph")
@@ -490,11 +517,11 @@ class ParagonBoardModel(BaseModel):
         if len(nodes) != NODES_LEN:
             msg = f"Nodes must contain exactly {NODES_LEN} values"
             raise ValueError(msg)
-        return nodes
+        return list(nodes)
 
 
 class ParagonPayloadModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
 
     name: str = Field(alias="Name")
     source: str | None = Field(default=None, alias="Source")
@@ -513,27 +540,28 @@ class ParagonPayloadModel(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def normalize_paragon_boards_list(cls, data: object) -> object:
-        if not isinstance(data, dict):
+        data_dict = _as_string_keyed_dict(data)
+        if data_dict is None:
             return data
 
         key = (
             "ParagonBoardsList"
-            if "ParagonBoardsList" in data
+            if "ParagonBoardsList" in data_dict
             else "paragon_boards_list"
-            if "paragon_boards_list" in data
+            if "paragon_boards_list" in data_dict
             else None
         )
         if key is None:
             return data
 
-        boards_list = data[key]
+        boards_list = data_dict[key]
         if not isinstance(boards_list, list):
             return data
         if not boards_list:
             msg = "ParagonBoardsList must not be empty"
             raise ValueError(msg)
         if all(not isinstance(step, list) for step in boards_list):
-            normalized = dict(data)
+            normalized = dict(data_dict)
             normalized.pop(key, None)
             normalized["ParagonBoardsList"] = [boards_list]
             return normalized
@@ -548,7 +576,7 @@ class ParagonPayloadModel(BaseModel):
 
 
 class ProfileModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, validate_by_alias=True)
     affixes: list[DynamicItemFilterModel] = Field(default=[], alias="Affixes")
     aspect_upgrades: list[str] = Field(default=[], alias="AspectUpgrades")
     charms: list[DynamicCharmFilterModel] = Field(default=[], alias="Charms")
@@ -565,70 +593,102 @@ class ProfileModel(BaseModel):
     @classmethod
     def migrate_list_tributes(cls, data: object) -> object:
         """Merge legacy list-shaped Tributes into a single object."""
-        if not isinstance(data, dict):
+        data_dict = _as_string_keyed_dict(data)
+        if data_dict is None:
             return data
-        key = "Tributes" if "Tributes" in data else "tributes" if "tributes" in data else None
+        key = "Tributes" if "Tributes" in data_dict else "tributes" if "tributes" in data_dict else None
         if key is None:
             return data
-        tributes = data[key]
+        tributes = data_dict[key]
         if not isinstance(tributes, list):
             return data
-        names: list[str] = []
-        rarities: list[str] = []
+        names: list[object] = []
+        rarities: list[object] = []
         for entry in tributes:
-            if isinstance(entry, dict):
-                raw_names = entry.get("name", [])
-                raw_rarities = entry.get("rarity", entry.get("rarities", []))
-                for n in [raw_names] if isinstance(raw_names, str) else raw_names:
-                    if n not in names:
-                        names.append(n)
-                for r in [raw_rarities] if isinstance(raw_rarities, str) else raw_rarities:
-                    if r not in rarities:
-                        rarities.append(r)
-        return {**data, key: {"name": names, "rarity": rarities} if names or rarities else {}}
+            entry_dict = _as_string_keyed_dict(entry)
+            if entry_dict is None:
+                msg = "Legacy Tributes entries must be mappings"
+                raise ValueError(msg)
+            unknown_keys = [key for key in entry_dict if key not in {"name", "rarity", "rarities"}]
+            if unknown_keys:
+                msg = f"Legacy Tributes entries contain unsupported keys: {unknown_keys}"
+                raise ValueError(msg)
+            if "rarity" in entry_dict and "rarities" in entry_dict:
+                msg = "Legacy Tributes entries must not contain both rarity and rarities"
+                raise ValueError(msg)
+
+            raw_names = entry_dict.get("name")
+            names_in_entry = _legacy_filter_values(raw_names) if "name" in entry_dict else []
+            for name in names_in_entry:
+                if name not in names:
+                    names.append(name)
+
+            raw_rarities = entry_dict.get("rarity", entry_dict.get("rarities"))
+            rarities_in_entry = (
+                _legacy_filter_values(raw_rarities) if "rarity" in entry_dict or "rarities" in entry_dict else []
+            )
+            for rarity in rarities_in_entry:
+                if rarity not in rarities:
+                    rarities.append(rarity)
+        return {**data_dict, key: {"name": names, "rarity": rarities} if names or rarities else {}}
 
     @model_validator(mode="before")
-    def aspects_must_exist(self) -> ProfileModel:
+    @classmethod
+    def aspects_must_exist(cls, data: object) -> object:
         # This on module level would be a circular import, so we do it lazy for now
         from src.dataloader import Dataloader  # noqa: PLC0415
 
+        data_dict = _as_string_keyed_dict(data)
+        if data_dict is None:
+            return data
+
         # Check both snake_case and camelCase (alias) keys
-        aspect_key = "aspect_upgrades" if "aspect_upgrades" in self else "AspectUpgrades"
-        if aspect_key not in self:
-            return self
+        aspect_key = "aspect_upgrades" if "aspect_upgrades" in data_dict else "AspectUpgrades"
+        if aspect_key not in data_dict:
+            return data
 
         all_aspects_list = Dataloader().aspect_list
-        aspects_not_in_all_aspects = [x for x in self[aspect_key] if x not in all_aspects_list]
+        raw_aspects = data_dict[aspect_key]
+        if not isinstance(raw_aspects, list):
+            return data
+        aspect_names: list[str] = []
+        for aspect in raw_aspects:
+            if not isinstance(aspect, str):
+                return data
+            aspect_names.append(aspect)
+        aspects_not_in_all_aspects = [x for x in aspect_names if x not in all_aspects_list]
         if aspects_not_in_all_aspects:
             msg = f"The following aspects in AspectUpgrades do not exist in our data: {', '.join(aspects_not_in_all_aspects)}"
             raise ValueError(msg)
 
-        return self
+        return data
 
     @model_validator(mode="before")
     @classmethod
     def normalize_paragon(cls, data: object) -> object:
-        if not isinstance(data, dict):
+        data_dict = _as_string_keyed_dict(data)
+        if data_dict is None:
             return data
 
-        key = "Paragon" if "Paragon" in data else "paragon" if "paragon" in data else None
+        key = "Paragon" if "Paragon" in data_dict else "paragon" if "paragon" in data_dict else None
         if key is None:
             return data
 
-        paragon = data[key]
+        paragon = data_dict[key]
         if paragon is None:
             return data
         if not isinstance(paragon, list):
             return data
         if not paragon:
-            return {**data, key: None}
+            return {**data_dict, key: None}
         if len(paragon) > 1:
             msg = "Paragon must contain at most one payload"
             raise ValueError(msg)
-        if not isinstance(paragon[0], dict):
+        paragon_payload = _as_string_keyed_dict(paragon[0])
+        if paragon_payload is None:
             msg = "Paragon legacy list entries must be objects"
             raise ValueError(msg)
-        return {**data, key: paragon[0]}
+        return {**data_dict, key: paragon_payload}
 
     @field_serializer("paragon", when_used="json-unless-none")
     def serialize_paragon(self, paragon: ParagonPayloadModel | None) -> object:

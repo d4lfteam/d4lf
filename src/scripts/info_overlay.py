@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import logging
 import re
@@ -5,7 +7,7 @@ import threading
 import time
 import tkinter as tk
 from contextlib import suppress
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Literal, TypeVar, override
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -128,6 +130,37 @@ def save_info_settings(values: dict[str, InfoSettingValue]) -> None:
             settings_q.setValue(k, v)
 
 
+def _setting_int(settings: dict[str, InfoSettingValue], key: str, default: int) -> int:
+    value = settings.get(key)
+    return value if isinstance(value, int) else default
+
+
+def _setting_str(settings: dict[str, InfoSettingValue], key: str, default: str) -> str:
+    value = settings.get(key)
+    return value if isinstance(value, str) else default
+
+
+def _setting_bool(settings: dict[str, InfoSettingValue], key: str, *, default: bool) -> bool:
+    value = settings.get(key)
+    return value if isinstance(value, bool) else default
+
+
+def _setting_datetime(settings: dict[str, InfoSettingValue], key: str, default: datetime.datetime) -> datetime.datetime:
+    value = settings.get(key)
+    return value if isinstance(value, datetime.datetime) else default
+
+
+def _setting_position(value: InfoSettingValue) -> tuple[int, ...] | None:
+    if isinstance(value, tuple):
+        return value
+    if isinstance(value, str):
+        try:
+            return tuple(int(x.strip()) for x in value.strip("()").replace(",", " ").split())
+        except ValueError:
+            return None
+    return None
+
+
 def get_info_setting(key: str, default: InfoDefaultT | None = None) -> InfoSettingValue | InfoDefaultT | None:
     """Quick access to a specific info overlay setting."""
     return load_info_settings().get(key, default)
@@ -140,18 +173,14 @@ def update_info_stats(**kwargs):
 
 
 def _hover_experience_balance(info_config: dict[str, InfoSettingValue]):
-    pos = info_config.get("exp_bar_pos")
-    if pos:
-        if isinstance(pos, str):
-            with suppress(Exception):
-                pos = tuple(int(x.strip()) for x in pos.strip("()").replace(",", " ").split())
-        if pos and len(pos) == 4:
-            p1 = (pos[0], pos[1])
-            p2 = (pos[2], pos[3])
-            Mouse.move(*Cam().window_to_monitor(p1))
-            time.sleep(0.1)
-            Mouse.move(*Cam().window_to_monitor(p2))
-            return
+    pos = _setting_position(info_config.get("exp_bar_pos"))
+    if pos is not None and len(pos) == 4:
+        p1 = (pos[0], pos[1])
+        p2 = (pos[2], pos[3])
+        Mouse.move(*Cam().window_to_monitor(p1))
+        time.sleep(0.1)
+        Mouse.move(*Cam().window_to_monitor(p2))
+        return
 
     # Default fallback: bottom center
     res = Cam().window_roi
@@ -177,14 +206,14 @@ def is_info_overlay_open() -> bool:
 @singleton
 class SessionStats:
     def __init__(self):
-        self.start_time = None
-        self.total_gold = 0
-        self.total_exp = 0
-        self.pending_gold = None
-        self.gold_verify_count = 0
-        self.last_gold = None
-        self.last_exp = None
-        self.max_exp = None
+        self.start_time: float | None = None
+        self.total_gold: int = 0
+        self.total_exp: int = 0
+        self.pending_gold: int | None = None
+        self.gold_verify_count: int = 0
+        self.last_gold: int | None = None
+        self.last_exp: int | None = None
+        self.max_exp: int | None = None
 
         self._is_subscribed = False
 
@@ -236,7 +265,8 @@ class SessionStats:
             LOGGER.debug(f"TTS Stat detected: gold_balance={val}")
 
             if self.last_gold is None:
-                self.last_gold, self.start_time = val, self.start_time or time.time()
+                self.last_gold = val
+                self.start_time = self.start_time or time.time()
                 update_info_stats(gph=0, total_gained=0)
                 return
             if val == self.last_gold:
@@ -257,7 +287,11 @@ class SessionStats:
                     delta = val - self.last_gold
                     if delta > 0:
                         self.total_gold += delta
-                    elapsed = (time.time() - self.start_time) / 3600.0
+                    start_time = self.start_time
+                    if start_time is None:
+                        start_time = time.time()
+                        self.start_time = start_time
+                    elapsed = (time.time() - start_time) / 3600.0
                     gph = int(self.total_gold / elapsed) if elapsed > (1 / 60.0) else 0
                     update_info_stats(gph=gph, total_gained=self.total_gold)
                     self.last_gold = val
@@ -277,14 +311,19 @@ class SessionStats:
             LOGGER.debug(f"TTS Stat detected: experience_gain={val}")
 
             if self.last_exp is None:
-                self.last_exp, self.max_exp, self.start_time = val, mx_val, self.start_time or time.time()
+                self.last_exp, self.max_exp = val, mx_val
+                self.start_time = self.start_time or time.time()
                 update_info_stats(eph=0, total_exp=0, t2l="-")
                 return
             delta = val - self.last_exp
             if delta > 0:
                 self.total_exp += delta
             self.last_exp, self.max_exp = val, mx_val or self.max_exp
-            elapsed = (time.time() - self.start_time) / 3600.0
+            start_time = self.start_time
+            if start_time is None:
+                start_time = time.time()
+                self.start_time = start_time
+            elapsed = (time.time() - start_time) / 3600.0
             eph = int(self.total_exp / elapsed) if elapsed > (1 / 60.0) else 0
             t2l = "-"
             if eph > 0 and self.max_exp:
@@ -311,6 +350,8 @@ class InventoryExpTracker:
         if not info_config.get("capture_exp_stats", False):
             return
         exp_age = info_config.get("exp_age_before_refresh", 5)
+        if not isinstance(exp_age, int):
+            exp_age = 5
         if exp_age == -1:
             return
         if not info_config.get("check_exp_on_inventory_open", True):
@@ -365,6 +406,43 @@ class BossTimerOverlay(tk.Toplevel):
 
     def __init__(self, parent):
         super().__init__(parent)
+        self._after_ids: list[str] = []
+        self._closing: bool = False
+        self._gold_initialized: bool = False
+        self._exp_initialized: bool = False
+        self._is_dragging: bool = False
+        self._menu_vars: list[tk.Variable] = []  # Initialize here to store tk.Variable instances
+        self._settings_popup: tk.Toplevel | None = None
+        self._last_focus_time: float = time.time()
+        self._last_menu_pos: tuple[int, int] = (100, 100)
+        self._open_submenus: dict[str, tk.Toplevel] = {}  # To keep track of open submenus
+        self.settings: dict[str, InfoSettingValue]
+        self.x: int
+        self.y: int
+        self.font_size: int
+        self.next_boss_name: str
+        self.orientation: str
+        self.locked: bool
+        self.font_family: str
+        self.capture_gold_stats: bool
+        self.capture_exp_stats: bool
+        self.show_wb: bool
+        self.show_legion: bool
+        self.show_ht: bool
+        self.show_gold: bool
+        self.show_gph: bool
+        self.show_total_gold: bool
+        self.show_exp: bool
+        self.show_eph: bool
+        self.show_total_exp: bool
+        self.show_t2l: bool
+        self.show_next_scan: bool
+        self.wb_reference: datetime.datetime
+        self.synced_wb: tuple[datetime.datetime, str] | None
+        self.synced_legion: datetime.datetime | None
+        self.synced_helltide: datetime.datetime | None
+        self.labels_to_resize: list[tk.Label] = []
+
         self.title("D4LF Boss Timer")
         self.attributes("-topmost", 1)
         self.overrideredirect(boolean=True)
@@ -372,15 +450,6 @@ class BossTimerOverlay(tk.Toplevel):
         self.configure(bg=TRANSPARENT_KEY)
 
         self._win_spec = WindowSpec(IniConfigLoader().advanced_options.process_name)
-        self._after_ids: list[str] = []
-        self._closing = False
-        self._gold_initialized = False
-        self._exp_initialized = False
-        self._is_dragging = False
-        self._menu_vars = []  # Initialize here to store tk.Variable instances
-        self._settings_popup = None
-        self._last_focus_time = time.time()
-        self._last_menu_pos = (100, 100)
         self._cam = Cam()
 
         self.settings = load_info_settings()
@@ -389,14 +458,14 @@ class BossTimerOverlay(tk.Toplevel):
         self._flash_toggle = False
         self._setup_ui()
         self._bind_events()
-        self._open_submenus: dict[str, tk.Toplevel] = {}  # To keep track of open submenus
         self._update_timers()  # Initial update for timers
 
         self._session_stats = SessionStats()
         self._session_stats.subscribe()
         self._auto_sync()
 
-    def destroy(self):
+    @override
+    def destroy(self) -> None:
         """Perform cleanup and unsubscribe from stats on destruction."""
         if self._closing:
             return
@@ -408,8 +477,7 @@ class BossTimerOverlay(tk.Toplevel):
                 self.after_cancel(after_id)
         self._after_ids.clear()
 
-        if self._settings_popup and self._settings_popup.winfo_exists():
-            self._settings_popup.destroy()
+        self._destroy_settings_popup()
         self._close_all_submenus()
 
         self._session_stats.unsubscribe()
@@ -429,21 +497,29 @@ class BossTimerOverlay(tk.Toplevel):
         roi = self._cam.window_roi
         offset_x = roi.get("left", 0) if roi else 0
         offset_y = roi.get("top", 0) if roi else 0
-        self.x, self.y = self.settings["x"] + offset_x, self.settings["y"] + offset_y
-        self.font_size = self.settings["font_size"]
-        self.next_boss_name = self.settings["next_boss_name"]
-        self.orientation = self.settings["orientation"]
-        self.locked = self.settings["locked"]
-        self.font_family = self.settings["font_family"]
-        self.capture_gold_stats = self.settings["capture_gold_stats"]
-        self.capture_exp_stats = self.settings["capture_exp_stats"]
-
-        # Assign all show_ attributes
-        for k in self.settings:
-            if k.startswith("show_"):
-                setattr(self, k, self.settings[k])
-
-        self.wb_reference = self.settings["wb_reference"]
+        self.x = _setting_int(self.settings, "x", 100) + offset_x
+        self.y = _setting_int(self.settings, "y", 100) + offset_y
+        self.font_size = _setting_int(self.settings, "font_size", 14)
+        self.next_boss_name = _setting_str(self.settings, "next_boss_name", "Unknown")
+        self.orientation = _setting_str(self.settings, "orientation", "horizontal")
+        self.locked = _setting_bool(self.settings, "locked", default=False)
+        self.font_family = _setting_str(self.settings, "font_family", "Consolas")
+        self.capture_gold_stats = _setting_bool(self.settings, "capture_gold_stats", default=False)
+        self.capture_exp_stats = _setting_bool(self.settings, "capture_exp_stats", default=False)
+        self.show_wb = _setting_bool(self.settings, "show_wb", default=True)
+        self.show_legion = _setting_bool(self.settings, "show_legion", default=True)
+        self.show_ht = _setting_bool(self.settings, "show_ht", default=True)
+        self.show_gold = _setting_bool(self.settings, "show_gold", default=True)
+        self.show_gph = _setting_bool(self.settings, "show_gph", default=True)
+        self.show_total_gold = _setting_bool(self.settings, "show_total_gold", default=True)
+        self.show_exp = _setting_bool(self.settings, "show_exp", default=True)
+        self.show_eph = _setting_bool(self.settings, "show_eph", default=True)
+        self.show_total_exp = _setting_bool(self.settings, "show_total_exp", default=True)
+        self.show_t2l = _setting_bool(self.settings, "show_t2l", default=True)
+        self.show_next_scan = _setting_bool(self.settings, "show_next_scan", default=True)
+        self.wb_reference = _setting_datetime(
+            self.settings, "wb_reference", datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
+        )
 
         # In-memory synced data
         self.synced_wb = None
@@ -502,10 +578,10 @@ class BossTimerOverlay(tk.Toplevel):
         with suppress(Exception):
             is_colorblind = IniConfigLoader().general.colorblind_mode
 
-        self.frame = tk.Frame(self, bg=CARD_BG, highlightthickness=1, highlightbackground=colors.matched)
-        self.frame.pack(padx=5, pady=5)
+        self.overlay_frame = tk.Frame(self, bg=CARD_BG, highlightthickness=1, highlightbackground=colors.matched)
+        self.overlay_frame.pack(padx=5, pady=5)
 
-        self.wb_group = tk.Frame(self.frame, bg=CARD_BG)
+        self.wb_group = tk.Frame(self.overlay_frame, bg=CARD_BG)
         lbl_wb = tk.Label(
             self.wb_group,
             text="World Boss:",
@@ -521,7 +597,7 @@ class BossTimerOverlay(tk.Toplevel):
         self.wb_timer.pack(side="left")
         self.labels_to_resize.append(self.wb_timer)
 
-        self.legion_group = tk.Frame(self.frame, bg=CARD_BG)
+        self.legion_group = tk.Frame(self.overlay_frame, bg=CARD_BG)
         self.lbl_legion = tk.Label(
             self.legion_group,
             text="Legion:",
@@ -537,7 +613,7 @@ class BossTimerOverlay(tk.Toplevel):
         self.legion_timer.pack(side="left")
         self.labels_to_resize.append(self.legion_timer)
 
-        self.ht_group = tk.Frame(self.frame, bg=CARD_BG)
+        self.ht_group = tk.Frame(self.overlay_frame, bg=CARD_BG)
         self.lbl_ht = tk.Label(
             self.ht_group,
             text="Helltide:",
@@ -553,7 +629,7 @@ class BossTimerOverlay(tk.Toplevel):
         self.ht_timer.pack(side="left")
         self.labels_to_resize.append(self.ht_timer)
 
-        self.stats_group = tk.Frame(self.frame, bg=CARD_BG)
+        self.stats_group = tk.Frame(self.overlay_frame, bg=CARD_BG)
         self.lbl_gph_title = tk.Label(
             self.stats_group,
             text="GPH:",
@@ -592,7 +668,7 @@ class BossTimerOverlay(tk.Toplevel):
         self.total_gained_value_label.pack(side="left")
         self.labels_to_resize.append(self.total_gained_value_label)
 
-        self.exp_group = tk.Frame(self.frame, bg=CARD_BG)
+        self.exp_group = tk.Frame(self.overlay_frame, bg=CARD_BG)
         self.lbl_eph_title = tk.Label(
             self.exp_group,
             text="EPH:",
@@ -631,7 +707,7 @@ class BossTimerOverlay(tk.Toplevel):
         self.total_exp_value_label.pack(side="left")
         self.labels_to_resize.append(self.total_exp_value_label)
 
-        self.t2l_group = tk.Frame(self.frame, bg=CARD_BG)
+        self.t2l_group = tk.Frame(self.overlay_frame, bg=CARD_BG)
         self.lbl_t2l_title = tk.Label(
             self.t2l_group,
             text="T2L:",
@@ -678,25 +754,31 @@ class BossTimerOverlay(tk.Toplevel):
         self.exp_group.pack_forget()
         self.t2l_group.pack_forget()
 
-        side = "top" if self.orientation == "vertical" else "left"
-        anchor = "w" if self.orientation == "vertical" else None
+        side: Literal["top", "left"] = "top" if self.orientation == "vertical" else "left"
+        anchor: Literal["w"] | None = "w" if self.orientation == "vertical" else None
+
+        def pack_group(group: tk.Frame) -> None:
+            if anchor is None:
+                group.pack(side=side, padx=2)
+            else:
+                group.pack(side=side, anchor=anchor, padx=2)
 
         if self.show_wb:
-            self.wb_group.pack(side=side, anchor=anchor, padx=2)
+            pack_group(self.wb_group)
         if self.show_legion:
-            self.legion_group.pack(side=side, anchor=anchor, padx=2)
+            pack_group(self.legion_group)
         if self.show_ht:
-            self.ht_group.pack(side=side, anchor=anchor, padx=2)
+            pack_group(self.ht_group)
         if self.capture_gold_stats and (self.show_gph or self.show_total_gold):
             self._repack_gold_group()
-            self.stats_group.pack(side=side, anchor=anchor, padx=2)
+            pack_group(self.stats_group)
         if self.capture_exp_stats:
             if self.show_eph or self.show_total_exp:
                 self._repack_exp_group()
-                self.exp_group.pack(side=side, anchor=anchor, padx=2)
+                pack_group(self.exp_group)
             if self.show_t2l or self.show_next_scan:
                 self._repack_t2l_group()
-                self.t2l_group.pack(side=side, anchor=anchor, padx=2)
+                pack_group(self.t2l_group)
 
     def _repack_gold_group(self):
         self.lbl_gph_title.pack_forget()
@@ -761,7 +843,7 @@ class BossTimerOverlay(tk.Toplevel):
 
     def _toggle_orientation(self):
         self.orientation = "vertical" if self.orientation == "horizontal" else "horizontal"
-        self.frame.config(highlightbackground=get_filter_colors().matched)
+        self.overlay_frame.config(highlightbackground=get_filter_colors().matched)
         self._repack()
         self._save_settings()
 
@@ -861,8 +943,7 @@ class BossTimerOverlay(tk.Toplevel):
             self._repack()
             self._save_settings()
             # Rebuild the entire popup to update all radio buttons in the group
-            if self._settings_popup and self._settings_popup.winfo_exists():
-                self._settings_popup.destroy()
+            self._destroy_settings_popup()
             self._show_context_menu(event=None)  # Re-open at last position
 
         btn.config(command=_on_click)
@@ -912,8 +993,7 @@ class BossTimerOverlay(tk.Toplevel):
 
         # Focus is truly gone, cleanup everything
         self._close_all_submenus()
-        if self._settings_popup and self._settings_popup.winfo_exists():
-            self._settings_popup.destroy()
+        self._destroy_settings_popup()
 
     def _open_submenu(self, parent_btn: tk.Button, submenu_id: str, content_builder: Callable[[tk.Toplevel], None]):
         """Opens a cascading Toplevel submenu to the side of the parent button."""
@@ -956,10 +1036,7 @@ class BossTimerOverlay(tk.Toplevel):
 
         # Bind events
         submenu_popup.bind("<FocusOut>", self._on_popup_focus_out)
-        submenu_popup.bind(
-            "<Escape>",
-            lambda _: (self._settings_popup.destroy() if self._settings_popup else None, self._close_all_submenus()),
-        )
+        submenu_popup.bind("<Escape>", lambda _: (self._destroy_settings_popup(), self._close_all_submenus()))
 
         self._open_submenus[submenu_id] = submenu_popup
 
@@ -968,8 +1045,7 @@ class BossTimerOverlay(tk.Toplevel):
 
     def _show_context_menu(self, event):
         """Create and display a persistent settings popup."""
-        if self._settings_popup and self._settings_popup.winfo_exists():
-            self._settings_popup.destroy()
+        self._destroy_settings_popup()
 
         if event:
             self._last_menu_pos = (event.x_root, event.y_root)
@@ -1068,7 +1144,7 @@ class BossTimerOverlay(tk.Toplevel):
                     self._create_radio_button(
                         sub_submenu_frame,
                         label,
-                        self.settings["exp_age_before_refresh"],
+                        _setting_int(self.settings, "exp_age_before_refresh", 5),
                         val,
                         lambda _: None,
                         config_key="exp_age_before_refresh",
@@ -1092,11 +1168,7 @@ class BossTimerOverlay(tk.Toplevel):
                 font=(self.font_family, self.font_size, "bold"),
                 activebackground=ACCENT,
                 activeforeground=CARD_BG,
-                command=lambda: (
-                    self._pick_exp_bar_pos(),
-                    self._settings_popup.destroy() if self._settings_popup else None,
-                    self._close_all_submenus(),
-                ),
+                command=lambda: (self._pick_exp_bar_pos(), self._destroy_settings_popup(), self._close_all_submenus()),
             )
             btn_pick.pack(fill="x")
 
@@ -1112,11 +1184,7 @@ class BossTimerOverlay(tk.Toplevel):
                 font=(self.font_family, self.font_size, "bold"),
                 activebackground=ACCENT,
                 activeforeground=CARD_BG,
-                command=lambda: (
-                    self._reset_exp_bar_pos(),
-                    self._settings_popup.destroy() if self._settings_popup else None,
-                    self._close_all_submenus(),
-                ),
+                command=lambda: (self._reset_exp_bar_pos(), self._destroy_settings_popup(), self._close_all_submenus()),
             )
             btn_reset_pos.pack(fill="x")
 
@@ -1176,7 +1244,7 @@ class BossTimerOverlay(tk.Toplevel):
             activeforeground=CARD_BG,
             command=lambda: (
                 self._toggle_orientation(),
-                self._settings_popup.destroy(),
+                self._destroy_settings_popup(),
                 self._show_context_menu(event=None),
             ),
         ).pack(fill="x")
@@ -1192,7 +1260,7 @@ class BossTimerOverlay(tk.Toplevel):
             font=(self.font_family, self.font_size),
             activebackground=ACCENT,
             activeforeground=CARD_BG,
-            command=lambda: (self._change_size(2), self._settings_popup.destroy(), self._show_context_menu(event=None)),
+            command=lambda: (self._change_size(2), self._destroy_settings_popup(), self._show_context_menu(event=None)),
         ).pack(fill="x")
         tk.Button(
             popup,
@@ -1208,7 +1276,7 @@ class BossTimerOverlay(tk.Toplevel):
             activeforeground=CARD_BG,
             command=lambda: (
                 self._change_size(-2),
-                self._settings_popup.destroy(),
+                self._destroy_settings_popup(),
                 self._show_context_menu(event=None),
             ),
         ).pack(fill="x")
@@ -1249,7 +1317,7 @@ class BossTimerOverlay(tk.Toplevel):
                 activeforeground=CARD_BG,
                 command=lambda c=cmd, lbl=label: (
                     c(),
-                    self._settings_popup.destroy(),
+                    self._destroy_settings_popup(),
                     self._show_context_menu(event=None) if lbl != "Close Overlay" else None,
                 ),
             )
@@ -1316,18 +1384,22 @@ class BossTimerOverlay(tk.Toplevel):
             fill=ACTIVE_GREEN,
         )
 
-        state = {"start": None, "line": None}
+        start: tuple[int, int] | None = None
+        line_id: int | None = None
 
-        def on_press(event):
-            state["start"] = (event.x_root, event.y_root)
-            state["line"] = canvas.create_line(event.x, event.y, event.x, event.y, fill=ACTIVE_GREEN, width=3)
+        def on_press(event: tk.Event) -> None:
+            nonlocal start, line_id
+            start = (event.x_root, event.y_root)
+            line_id = canvas.create_line(event.x, event.y, event.x, event.y, fill=ACTIVE_GREEN, width=3)
 
-        def on_motion(event):
-            if state["line"]:
-                canvas.coords(state["line"], state["start"][0], state["start"][1], event.x, event.y)
+        def on_motion(event: tk.Event) -> None:
+            if line_id is not None and start is not None:
+                canvas.coords(line_id, start[0], start[1], event.x, event.y)
 
-        def on_release(event):
-            win_start = Cam().monitor_to_window(state["start"])
+        def on_release(event: tk.Event) -> None:
+            if start is None:
+                return
+            win_start = Cam().monitor_to_window(start)
             win_end = Cam().monitor_to_window((event.x_root, event.y_root))
             val = f"({int(win_start[0])}, {int(win_start[1])}, {int(win_end[0])}, {int(win_end[1])})"
             save_info_settings({"exp_bar_pos": val})
@@ -1346,10 +1418,16 @@ class BossTimerOverlay(tk.Toplevel):
         self.settings["exp_bar_pos"] = None
         LOGGER.info("Experience bar position reset to default calculation")
 
+    def _destroy_settings_popup(self) -> None:
+        popup = self._settings_popup
+        self._settings_popup = None
+        if popup is not None and popup.winfo_exists():
+            popup.destroy()
+
     def _bind_events(self):
         self._recursive_bind_drag(self)
 
-    def _recursive_bind_drag(self, widget):
+    def _recursive_bind_drag(self, widget: tk.Misc) -> None:
         """Bind drag events to a widget and all its children recursively."""
         widget.bind("<Button-1>", self._start_drag, add="+")
         widget.bind("<B1-Motion>", self._do_drag, add="+")
@@ -1358,7 +1436,7 @@ class BossTimerOverlay(tk.Toplevel):
         for child in widget.winfo_children():
             self._recursive_bind_drag(child)
 
-    def _change_size(self, delta):
+    def _change_size(self, delta: int) -> None:
         self.font_size = max(8, min(48, self.font_size + delta))
         for lbl in self.labels_to_resize:
             lbl.config(font=(self.font_family, self.font_size, "bold"))
@@ -1575,7 +1653,7 @@ class BossTimerOverlay(tk.Toplevel):
             elif SessionStats().last_exp is None:
                 self.next_scan_value_label.config(text="Ready")
             else:
-                remaining = (info_conf["exp_age_before_refresh"] * 60) - (
+                remaining = (_setting_int(info_conf, "exp_age_before_refresh", 5) * 60) - (
                     time.time() - InventoryExpTracker().last_hover_time
                 )
                 if remaining <= 0:

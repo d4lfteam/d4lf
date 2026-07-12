@@ -3,10 +3,10 @@ import sys
 import time
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from PyQt6.QtCore import QEvent, QObject, QPoint, QSettings, QSize, Qt, QThread, QTimer, QUrl, pyqtSignal
-from PyQt6.QtGui import QDesktopServices, QIcon
+from PyQt6.QtGui import QAction, QCloseEvent, QDesktopServices, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -282,18 +282,18 @@ class UnifiedMainWindow(QMainWindow):
 
     def _init_backend(self):
         if sys.platform != "win32":
-            self.thread = None
+            self._backend_thread = None
             self.worker = None
             self.update_vision_status(None)
             self.update_tts_status(None)
             return
 
-        self.thread = QThread()
+        self._backend_thread = QThread()
         self.worker = BackendWorker()
-        self.worker.moveToThread(self.thread)
-        self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.thread.quit)
-        self.thread.start()
+        self.worker.moveToThread(self._backend_thread)
+        self._backend_thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self._backend_thread.quit)
+        self._backend_thread.start()
 
     def _show_singleton_modal(self, key: str, window_class, *args, **kwargs):
         existing_window = self._child_windows.get(key)
@@ -372,12 +372,14 @@ class UnifiedMainWindow(QMainWindow):
             self.tray_icon.setIcon(QIcon(str(ICON_PATH)))
 
         tray_menu = QMenu()
-        restore_action = tray_menu.addAction("Restore")
+        restore_action = QAction("Restore", tray_menu)
+        tray_menu.addAction(restore_action)
         restore_action.triggered.connect(self._restore_from_tray)
 
         tray_menu.addSeparator()
 
-        exit_action = tray_menu.addAction("Exit")
+        exit_action = QAction("Exit", tray_menu)
+        tray_menu.addAction(exit_action)
         exit_action.triggered.connect(self.close)
 
         self.tray_icon.setContextMenu(tray_menu)
@@ -393,16 +395,23 @@ class UnifiedMainWindow(QMainWindow):
         self.showNormal()
         self.activateWindow()
 
-    def changeEvent(self, event: QEvent):  # noqa: N802
+    @override
+    def changeEvent(self, a0: QEvent | None):
+        # PyQt exposes `a0` as a keyword, so the override must retain that public name.
+        event = a0
         if (
-            event.type() == QEvent.Type.WindowStateChange
+            event is not None
+            and event.type() == QEvent.Type.WindowStateChange
             and self.isMinimized()
             and self.activity_tab.minimize_to_tray_cb.isChecked()
         ):
             self.hide()
         super().changeEvent(event)
 
-    def closeEvent(self, event):  # noqa: N802
+    @override
+    def closeEvent(self, a0: QCloseEvent | None):
+        # PyQt exposes `a0` as a keyword, so the override must retain that public name.
+        event = a0
         for win in list(self._child_windows.values()):
             with suppress(Exception):
                 win.close()
@@ -411,8 +420,6 @@ class UnifiedMainWindow(QMainWindow):
         root_logger = logging.getLogger()
         with suppress(Exception):
             root_logger.removeHandler(self.console_handler)
-        with suppress(Exception):
-            logging._handlerList.clear()
 
         super().closeEvent(event)
 
@@ -431,4 +438,6 @@ class UnifiedMainWindow(QMainWindow):
         template = DARK_THEME_TEMPLATE if theme_name == "dark" else LIGHT_THEME_TEMPLATE
         stylesheet = template.replace("{accent}", accent_color)
 
-        QApplication.instance().setStyleSheet(stylesheet)
+        app = QApplication.instance()
+        if isinstance(app, QApplication):
+            app.setStyleSheet(stylesheet)

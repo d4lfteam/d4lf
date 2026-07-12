@@ -28,7 +28,7 @@ class ImportConfig:
     require_greater_affixes: bool
     export_paragon: bool = False
     custom_file_name: str | None = None
-    filename_parts: tuple[FilenamePart, ...] = DEFAULT_FILENAME_PARTS
+    filename_parts: tuple[FilenamePart | str, ...] = DEFAULT_FILENAME_PARTS
 
     def __post_init__(self):
         self.filename_parts = tuple(FilenamePart(part) for part in self.filename_parts)

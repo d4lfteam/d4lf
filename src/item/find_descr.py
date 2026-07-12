@@ -21,11 +21,13 @@ map_template_rarity = {
 
 
 def _choose_best_result(res_left: SearchResult, res_right: SearchResult) -> SearchResult:
-    if res_left.success and not res_right.success:
+    left_has_match = res_left.success and bool(res_left.matches)
+    right_has_match = res_right.success and bool(res_right.matches)
+    if left_has_match and not right_has_match:
         return res_left
-    if res_right.success and not res_left.success:
+    if right_has_match and not left_has_match:
         return res_right
-    if res_left.success and res_right.success:
+    if left_has_match and right_has_match:
         return res_left if res_left.matches[0].score > res_right.matches[0].score else res_right
     return SearchResult(success=False)
 
@@ -48,7 +50,7 @@ def _template_search(img: np.ndarray, anchor: int, roi: np.ndarray, take_debug_s
 
 def find_descr(
     img: np.ndarray, anchor: tuple[int, int]
-) -> tuple[bool, ItemRarity, np.ndarray, tuple[int, int, int, int]]:
+) -> tuple[bool, ItemRarity | None, np.ndarray | None, tuple[int, int, int, int] | None]:
     item_descr_width = ResManager().offsets.item_descr_width
     item_descr_pad = ResManager().offsets.item_descr_pad
     _, window_height = ResManager().pos.window_dimensions
@@ -58,7 +60,7 @@ def find_descr(
 
     res = _choose_best_result(res_left, res_right)
 
-    if res is not None and res.success:
+    if res.success and res.matches:
         match = res.matches[0]
         rarity = map_template_rarity[match.name.lower()]
         # find equipe template
@@ -86,7 +88,8 @@ def find_descr(
                 item_descr_width - 2 * item_descr_pad,
                 roi_height,
             ]
-            cropped_descr = crop(img, crop_roi)
-            return True, rarity, cropped_descr, crop_roi
+            crop_roi_tuple = (crop_roi[0], crop_roi[1], crop_roi[2], crop_roi[3])
+            cropped_descr = crop(img, crop_roi_tuple)
+            return True, rarity, cropped_descr, crop_roi_tuple
 
     return False, None, None, None

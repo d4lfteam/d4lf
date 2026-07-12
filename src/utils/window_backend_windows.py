@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import ctypes
 import logging
 import os
 import threading
 import time
+from typing import TYPE_CHECKING
 
 import psutil
 from pywintypes import error as win32_error
@@ -11,10 +14,13 @@ from win32process import GetWindowThreadProcessId
 
 from src.cam import Cam
 
+if TYPE_CHECKING:
+    from src.utils.window_backend import WindowSpecLike
+
 LOGGER = logging.getLogger(__name__)
 
 DETECTION_WINDOW_FLAG = True
-DETECT_WINDOW_THREAD = None
+DETECT_WINDOW_THREAD: threading.Thread | None = None
 
 
 def list_active_window_ids() -> list[int]:
@@ -38,7 +44,7 @@ def get_process_from_window_name(hwnd: int) -> str:
         return ""
 
 
-def get_window_spec_id(window_spec) -> int | None:
+def get_window_spec_id(window_spec: WindowSpecLike) -> int | None:
     for hwnd in list_active_window_ids():
         if window_spec.match(hwnd):
             return hwnd
@@ -49,7 +55,7 @@ def get_window_spec_id(window_spec) -> int | None:
     return None
 
 
-def start_detecting_window(window_spec):
+def start_detecting_window(window_spec: WindowSpecLike) -> None:
     global DETECTION_WINDOW_FLAG, DETECT_WINDOW_THREAD
     if DETECT_WINDOW_THREAD is None:
         LOGGER.info(f"Using WinAPI to search for window: {window_spec.process_name}")
@@ -58,14 +64,14 @@ def start_detecting_window(window_spec):
         DETECT_WINDOW_THREAD.start()
 
 
-def detect_window(window_spec):
+def detect_window(window_spec: WindowSpecLike) -> None:
     global DETECTION_WINDOW_FLAG
     while DETECTION_WINDOW_FLAG:
         find_and_set_window_position(window_spec)
     LOGGER.debug("Detect window thread stopped")
 
 
-def find_and_set_window_position(window_spec):
+def find_and_set_window_position(window_spec: WindowSpecLike) -> None:
     hwnd = get_window_spec_id(window_spec)
     if hwnd is not None:
         try:
@@ -80,7 +86,7 @@ def find_and_set_window_position(window_spec):
     time.sleep(1)
 
 
-def stop_detecting_window():
+def stop_detecting_window() -> None:
     global DETECTION_WINDOW_FLAG, DETECT_WINDOW_THREAD
     DETECTION_WINDOW_FLAG = False
     if DETECT_WINDOW_THREAD:
@@ -88,14 +94,14 @@ def stop_detecting_window():
     DETECT_WINDOW_THREAD = None
 
 
-def move_window_to_foreground(window_spec):
+def move_window_to_foreground(window_spec: WindowSpecLike) -> None:
     hwnd = get_window_spec_id(window_spec)
     if hwnd is not None:
         ctypes.windll.user32.ShowWindow(hwnd, 5)
         ctypes.windll.user32.SetForegroundWindow(hwnd)
 
 
-def is_window_foreground(window_spec) -> bool:
+def is_window_foreground(window_spec: WindowSpecLike) -> bool:
     hwnd = get_window_spec_id(window_spec)
     if hwnd is not None:
         active_window_handle = ctypes.windll.user32.GetForegroundWindow()

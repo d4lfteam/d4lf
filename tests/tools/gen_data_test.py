@@ -25,3 +25,22 @@ def test_excluded_seal_affix_patterns_match_charm_set_powers() -> None:
         or (key.startswith("while_at_least_") and "_charms_equipped_" in key)
         or "_charm_equipped_" in key
     ] == excluded_keys
+
+
+def test_merge_custom_data_handles_list_and_nested_overrides(tmp_path, monkeypatch) -> None:
+    custom_file = tmp_path / "src/tools/data/custom_enUS.json"
+    custom_file.parent.mkdir(parents=True)
+    custom_file.write_text(
+        '{"sets": ["existing", "new"], "sigils": {"minor": {"new": "New"}, "major": {"boss": "Boss"}}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gen_data, "D4LF_BASE_DIR", tmp_path)
+
+    sets = ["existing"]
+    sigils = {"minor": {"existing": "Existing"}}
+
+    gen_data.merge_custom_data(sets, "sets", "enUS")
+    gen_data.merge_custom_data(sigils, "sigils", "enUS")
+
+    assert sets == ["existing", "new"]
+    assert sigils == {"minor": {"existing": "Existing", "new": "New"}, "major": {"boss": "Boss"}}

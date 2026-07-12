@@ -1,8 +1,10 @@
+import collections.abc
 import logging
 import queue
 import tkinter as tk
 from tkinter import font
 from tkinter.font import Font
+from typing import Literal
 
 import src.item.descr.read_descr_tts
 import src.tts
@@ -20,13 +22,20 @@ from src.utils.window import screenshot
 
 LOGGER = logging.getLogger(__name__)
 
+Iterable = collections.abc.Iterable
+
+type FastVisionTask = tuple[Literal["clear"]] | tuple[Literal["text"], str, str]
+
 
 @singleton
 class VisionModeFast:
     def __init__(self):
-        self.clear_timer_id = None
-        self.queue = queue.Queue()
-        self.is_running = False
+        self.root: tk.Toplevel
+        self.canvas: tk.Canvas
+        self.textbox: tk.Text
+        self.clear_timer_id: str | None = None
+        self.queue: queue.Queue[FastVisionTask] = queue.Queue()
+        self.is_running: bool = False
 
         def _build_ui() -> None:
             self.root, self.canvas = create_overlay_toplevel(get_root())
@@ -53,7 +62,9 @@ class VisionModeFast:
         height = (line_count + 1) * line_height
 
         mouse_pos = Cam().monitor_to_window(Mouse.get_position())
-        self.textbox.config(x=mouse_pos[0], y=mouse_pos[1], width=width // 9, height=(height // line_height) - 2)
+        self.textbox.place_configure(
+            x=mouse_pos[0], y=mouse_pos[1], width=width // 9, height=(height // line_height) - 2
+        )
 
         self.textbox.config(state=tk.DISABLED)
 
@@ -72,8 +83,10 @@ class VisionModeFast:
             x = ResManager().resolution[0] / 2
             y = ResManager().resolution[1] / 5
         else:
-            x = IniConfigLoader().advanced_options.fast_vision_mode_coordinates[0]
-            y = IniConfigLoader().advanced_options.fast_vision_mode_coordinates[1]
+            coordinates = IniConfigLoader().advanced_options.fast_vision_mode_coordinates
+            if coordinates is None:
+                return
+            x, y = coordinates
         self.textbox.place(x=x, y=y)
         self.textbox.config(state=tk.DISABLED)
 
@@ -89,7 +102,7 @@ class VisionModeFast:
 
         self.canvas.after(10, self.draw_from_queue)
 
-    def insert_colored_text(self, text, color):
+    def insert_colored_text(self, text: str, color: str) -> None:
         self.create_textbox()
         self.textbox.config(state=tk.NORMAL)
         self.textbox.insert(tk.END, text + "\n", "colored")
@@ -141,6 +154,8 @@ class VisionModeFast:
                         text = ["Unique"]
                     elif item_descr.rarity == ItemRarity.Mythic:
                         text = ["Mythic (Always Kept)"]
+                    else:
+                        text = []
                 else:
                     if any(res_matched.profile.endswith(ASPECT_UPGRADES_LABEL) for res_matched in res.matched):
                         color = get_filter_colors().codex_upgrade
@@ -165,8 +180,8 @@ class VisionModeFast:
         return self.is_running
 
 
-def create_match_text(matches: list[MatchedFilter]):
-    result = []
+def create_match_text(matches: Iterable[MatchedFilter]) -> list[str]:
+    result: list[str] = []
     for match in matches:
         match_list = [f"  - {ma.name}" for ma in match.matched_affixes]
         if match.aspect_match:

@@ -10,16 +10,11 @@ if TYPE_CHECKING:
 
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
+from src.config.ui import ResManager
 from src.gui.importer.gui_common import ACCENT_BLUE, DARK_GRAY_BG
 from src.item.data.item_type import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
 from src.utils import hotkeys
 from src.utils.custom_mouse import Mouse
-
-try:
-    from src.config.ui import ResManager
-except ImportError:  # pragma: no cover
-    ResManager = None  # type: ignore[assignment]
-
 
 if TYPE_CHECKING:
     from src.item.models import Item
@@ -191,8 +186,7 @@ def draw_text_with_background(
     # If caller didn't provide window_height, attempt to fetch it lazily.
     if window_height is None:
         try:
-            if ResManager is not None:
-                window_height = ResManager().pos.window_dimensions[1]
+            window_height = ResManager().pos.window_dimensions[1]
         except Exception:
             LOGGER.debug("Failed to read overlay window height from ResManager.", exc_info=True)
             window_height = None

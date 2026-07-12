@@ -5,9 +5,13 @@ import re
 import time
 from typing import TYPE_CHECKING, Any
 
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+
 from src import __version__
 from src.config.profile_models import ParagonPayloadModel
 from src.gui.importer.gui_common import PLAYER_CLASSES, get_with_retry
+from src.gui.importer.gui_common import as_string_keyed_mapping as _as_mapping
 from src.paragon_transform import NODES_LEN
 from src.paragon_transform import class_slug_from_name as _class_slug_from_name
 from src.paragon_transform import prefix_with_class_slug as _prefix_with_class_slug
@@ -17,19 +21,35 @@ from src.paragon_transform import slugify as _slugify
 from src.paragon_transform import transform_flat_index as _transform_flat_index
 from src.paragon_transform import transform_xy as _transform_xy
 
-try:
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-except ImportError:  # pragma: no cover
-    By = None  # type: ignore[assignment]
-    WebDriverWait = None  # type: ignore[assignment]
-
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from selenium.webdriver.remote.webdriver import WebDriver
-    from selenium.webdriver.support.ui import WebDriverWait as SeleniumWebDriverWait
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _as_list(value: object) -> list[object]:
+    result: list[object] = []
+    if isinstance(value, list):
+        result.extend(value)
+    return result
+
+
+def _as_int(value: object, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    return default
 
 
 def _maxroll_class_slug(board_id: str) -> str:
@@ -38,18 +58,18 @@ def _maxroll_class_slug(board_id: str) -> str:
     return _slugify(m.group(1)) if m else ""
 
 
-def _maxroll_board_slug(board_id: str, board_data: dict) -> str:
+def _maxroll_board_slug(board_id: str, board_data: Mapping[str, object]) -> str:
     cls = _maxroll_class_slug(board_id)
-    name = board_data.get(board_id).get("name")
-    name_slug = _slugify(name)
+    name = _as_mapping(board_data.get(board_id)).get("name")
+    name_slug = _slugify(name) if isinstance(name, str) else ""
     return f"{cls}-{name_slug}" if cls and name_slug else _slugify(board_id)
 
 
-def _maxroll_glyph_slug(glyph_id: str, board_id: str, glyph_data: dict) -> str:
+def _maxroll_glyph_slug(glyph_id: str, board_id: str, glyph_data: Mapping[str, object]) -> str:
     # We prefix with class for consistency with Mobalytics output.
     cls = _maxroll_class_slug(board_id)
-    name = glyph_data.get(glyph_id).get("name", glyph_id)
-    name_slug = _slugify(name)
+    name = _as_mapping(glyph_data.get(glyph_id)).get("name", glyph_id)
+    name_slug = _slugify(name) if isinstance(name, str) else _slugify(glyph_id)
     return f"{cls}-{name_slug}" if cls and name_slug else _slugify(glyph_id)
 
 
@@ -141,34 +161,39 @@ def _fix_mobalytics_starting_board_slug(board_slug: str) -> str:
     return board_slug
 
 
-def extract_mobalytics_paragon_steps(paragon_data: dict[str, Any]) -> list[list[dict[str, Any]]]:
+def extract_mobalytics_paragon_steps(paragon_data: Mapping[str, object]) -> list[list[dict[str, Any]]]:
     """Extract paragon boards from Mobalytics preloaded-state build variant.
 
     Matches the rotation + node-index transformation used in Diablo4Companion.
     """
     paragon = paragon_data or {}
-    boards_data = paragon.get("boards") or []
-    nodes_data = paragon.get("nodes") or []
+    boards_data = _as_list(paragon.get("boards"))
+    nodes_data = _as_list(paragon.get("nodes"))
 
     boards_out: list[dict[str, Any]] = []
 
     for board in boards_data:
-        board_slug = ((board or {}).get("board") or {}).get("slug", "")
+        board_data = _as_mapping(board)
+        board_slug = _as_mapping(board_data.get("board")).get("slug", "")
+        board_slug = board_slug if isinstance(board_slug, str) else ""
         board_slug = _fix_mobalytics_starting_board_slug(board_slug)
 
-        glyph_slug = ((board or {}).get("glyph") or {}).get("slug", "")
-        rotation = int((board or {}).get("rotation", 0))
+        glyph_slug = _as_mapping(board_data.get("glyph")).get("slug", "")
+        glyph_slug = glyph_slug if isinstance(glyph_slug, str) else ""
+        rotation = _as_int(board_data.get("rotation"))
 
         nodes_bool = [False] * NODES_LEN
         # Mobalytics exposes nodes as one flat list, so filter it back down to the current board first.
         board_nodes = [
             n
             for n in nodes_data
-            if isinstance(n, dict) and isinstance(n.get("slug"), str) and n["slug"].startswith(board_slug)
+            if isinstance((node_slug := _as_mapping(n).get("slug")), str) and node_slug.startswith(board_slug)
         ]
 
         for n in board_nodes:
-            slug = n.get("slug", "")
+            slug = _as_mapping(n).get("slug", "")
+            if not isinstance(slug, str):
+                continue
             node_position = slug.replace(board_slug + "-", "")
             try:
                 x_part, y_part = node_position.split("-", 1)
@@ -311,7 +336,7 @@ def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[l
 
 
 def extract_d4builds_paragon_steps(
-    driver: WebDriver, class_name: str = "", *, wait: SeleniumWebDriverWait | None = None
+    driver: WebDriver, class_name: str = "", *, wait: WebDriverWait[WebDriver] | None = None
 ) -> list[list[dict[str, Any]]]:
     """Extract paragon boards from D4Builds using Selenium.
 
@@ -319,10 +344,6 @@ def extract_d4builds_paragon_steps(
     click/wait for the Paragon tab if boards are not already present in the DOM.
     """
     class_slug = _class_slug_from_name(class_name)
-
-    if By is None or WebDriverWait is None:  # pragma: no cover
-        msg = "Selenium not available, cannot export D4Builds paragon"
-        raise RuntimeError(msg)
 
     if wait is None:
         wait = WebDriverWait(driver, 10)

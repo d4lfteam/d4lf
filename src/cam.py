@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import logging
 import threading
 import time
+from typing import TypedDict
 
 import mss
 import mss.windows
@@ -11,22 +14,30 @@ from src.utils.misc import convert_args_to_numpy
 
 LOGGER = logging.getLogger(__name__)
 
-mss.windows.CAPTUREBLT = 0
+# The mss Windows module consumes this Win32 flag at runtime, but its stubs omit it.
+mss.windows.__dict__["CAPTUREBLT"] = 0
 cached_img_lock = threading.Lock()
 
 
+class WindowROI(TypedDict):
+    top: int
+    left: int
+    width: int
+    height: int
+
+
 class Cam:
-    last_grab: int = None
-    cached_img: np.ndarray = None
+    last_grab: float | None = None
+    cached_img: np.ndarray | None = None
     window_offset_set: bool = False
-    window_roi: dict = {"top": 0, "left": 0, "width": 0, "height": 0}
-    monitor_x_range: tuple[int] = None
-    monitor_y_range: tuple[int] = None
+    window_roi: WindowROI = {"top": 0, "left": 0, "width": 0, "height": 0}
+    monitor_x_range: tuple[int, int] | None = None
+    monitor_y_range: tuple[int, int] | None = None
     res_key = ""
     _window_generation: int = 0
 
     _initialized: bool = False
-    _instance = None
+    _instance: Cam | None = None
 
     def __new__(cls):
         if cls._instance is None:

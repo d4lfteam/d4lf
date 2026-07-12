@@ -1,9 +1,10 @@
 import logging
 import sys
 from pathlib import Path
+from typing import override
 
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QCloseEvent, QIcon
 from PyQt6.QtWidgets import QMainWindow
 
 from src.gui.settings_tab import ConfigTab
@@ -55,10 +56,12 @@ class ConfigWindow(QMainWindow):
             self.config_tab.nav_list.setCurrentRow(current_idx)
         old_tab.deleteLater()
 
-    def closeEvent(self, event):  # noqa: N802
+    @override
+    def closeEvent(self, a0: QCloseEvent | None) -> None:
         """Save window size/position."""
         if not self.isMaximized():
             self.settings.setValue("size", self.size())
             self.settings.setValue("pos", self.pos())
         self.settings.setValue("maximized", self.isMaximized())
-        event.accept()
+        if a0 is not None:
+            a0.accept()

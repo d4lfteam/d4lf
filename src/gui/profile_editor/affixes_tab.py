@@ -1,3 +1,5 @@
+from typing import Protocol, runtime_checkable
+
 from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, QTimer
 from PyQt6.QtGui import QDoubleValidator, QIntValidator
 from PyQt6.QtWidgets import (
@@ -54,6 +56,13 @@ AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
 AFFIX_PERCENT_MODE = "Min %"
 UNIQUE_ASPECTS_TITLE = "Unique Aspects"
+
+
+@runtime_checkable
+class GreaterCountParent(Protocol):
+    def update_greater_count_label(self) -> None: ...
+
+    def sync_min_greater_from_checkboxes(self) -> None: ...
 
 
 def _item_type_summary(item_types: list[ItemType]) -> str:
@@ -125,7 +134,8 @@ class ItemTypePicker(QDialog):
 
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         clear_button = button_box.addButton("Clear", QDialogButtonBox.ButtonRole.ResetRole)
-        clear_button.clicked.connect(self.clear_selection)
+        if clear_button is not None:
+            clear_button.clicked.connect(self.clear_selection)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
@@ -458,8 +468,11 @@ class AffixGroupEditor(QWidget):
             to_delete_list = []
             for i in range(layout_widget.count()):
                 item = layout_widget.itemAt(i)
-                if item and item.widget() is not None and item.widget().header.name in to_delete:
-                    to_delete_list.append((item.widget(), i))
+                if item is None:
+                    continue
+                widget = item.widget()
+                if isinstance(widget, Container) and widget.header.name in to_delete:
+                    to_delete_list.append((widget, i))
             to_delete_list.reverse()
             for widget, index in to_delete_list:
                 widget.setParent(None)
@@ -472,8 +485,11 @@ class AffixGroupEditor(QWidget):
     def reorganize_pool(self, layout_widget: QVBoxLayout):
         for i in range(layout_widget.count()):
             item = layout_widget.itemAt(i)
-            if item and item.widget() is not None:
-                item.widget().header.set_name(f"Count {i}")
+            if item is None:
+                continue
+            widget = item.widget()
+            if isinstance(widget, Container):
+                widget.header.set_name(f"Count {i}")
 
     def refresh_item_type_summary(self):
         self.item_type_line_edit.setText(_item_type_summary(self.config.item_type))
@@ -545,10 +561,16 @@ class AffixGroupEditor(QWidget):
 
         # Inherents do not participate in Greater Affix auto-sync or bulk Min % updates.
         for i in range(self.affix_pool_layout.count()):
-            container = self.affix_pool_layout.itemAt(i).widget()
-            if container is None or not hasattr(container, "content_widget"):
+            item = self.affix_pool_layout.itemAt(i)
+            if item is None:
                 continue
-            pool_item = container.content_widget.layout().itemAt(0)
+            container = item.widget()
+            if not isinstance(container, Container):
+                continue
+            pool_layout = container.content_widget.layout()
+            if pool_layout is None:
+                continue
+            pool_item = pool_layout.itemAt(0)
             if pool_item is None:
                 continue
             pool_widget = pool_item.widget()
@@ -615,8 +637,10 @@ class UniqueAspectWidget(QWidget):
         self.name_combo = IgnoreScrollWheelComboBox()
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.name_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+        name_completer = self.name_combo.completer()
+        if name_completer is not None:
+            name_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+            name_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         aspects = (
             self.allowed_aspects if self.allowed_aspects is not None else sorted(Dataloader().aspect_unique_dict.keys())
         )
@@ -919,8 +943,10 @@ class AffixWidget(QWidget):
         self.name_combo = IgnoreScrollWheelComboBox()
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.name_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+        name_completer = self.name_combo.completer()
+        if name_completer is not None:
+            name_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+            name_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.name_combo.setMaximumWidth(600)
         self.populate_affix_combo()
         # currentIndexChanged misses some editable-combobox keyboard flows.
@@ -942,7 +968,7 @@ class AffixWidget(QWidget):
     def update_parent_count_label(self):
         parent = self.parent()
         while parent:
-            if hasattr(parent, "update_greater_count_label") and hasattr(parent, "sync_min_greater_from_checkboxes"):
+            if isinstance(parent, GreaterCountParent):
                 parent.update_greater_count_label()
                 parent.sync_min_greater_from_checkboxes()
                 break
@@ -1123,8 +1149,8 @@ class AffixesTab(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             min_greater_affix = dialog.get_value()
             for i in range(self.tab_widget.count()):
-                tab: AffixGroupEditor = self.tab_widget.widget(i)
-                if tab.auto_sync_checkbox.isChecked():
+                tab = self.tab_widget.widget(i)
+                if not isinstance(tab, AffixGroupEditor) or tab.auto_sync_checkbox.isChecked():
                     continue
                 tab.min_greater.setValue(min_greater_affix)
                 tab.update_min_greater_affix()
@@ -1141,6 +1167,8 @@ class AffixesTab(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             min_power = dialog.get_value()
             for i in range(self.tab_widget.count()):
-                tab: AffixGroupEditor = self.tab_widget.widget(i)
+                tab = self.tab_widget.widget(i)
+                if not isinstance(tab, AffixGroupEditor):
+                    continue
                 tab.min_power.setValue(min_power)
                 tab.update_min_power()
