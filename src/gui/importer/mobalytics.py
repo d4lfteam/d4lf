@@ -268,15 +268,15 @@ def import_mobalytics(config: ImportConfig, driver: WebDriver | None = None) -> 
         inherents = _convert_raw_to_affixes(raw_inherents, item_type=item_type, guessed_set_name=guessed_set_name)
 
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
-            # Extract unique aspect and set info for charms
-            charm_unique_aspect = None
-            charm_set_name = None
+            # Extract unique identity for seals and charms, plus set info for charms.
+            unique_aspect_name = None
+            set_name = None
+            normalized_item_name = correct_name(item_name)
+            if normalized_item_name in Dataloader().aspect_unique_dict:
+                unique_aspect_name = normalized_item_name
             if item_type == ItemType.Charm:
-                normalized_item_name = correct_name(item_name)
-                if normalized_item_name in Dataloader().aspect_unique_dict:
-                    charm_unique_aspect = normalized_item_name
-                charm_set_name = _extract_mobalytics_charm_set_name(item)
-            if not affixes and not charm_unique_aspect and not charm_set_name:
+                set_name = _extract_mobalytics_charm_set_name(item)
+            if not affixes and not unique_aspect_name and not set_name:
                 LOGGER.warning(f"Skipping {item_name} because it had no supported affixes, unique aspect, or set name.")
                 continue
             if item_type == ItemType.Charm:
@@ -284,8 +284,8 @@ def import_mobalytics(config: ImportConfig, driver: WebDriver | None = None) -> 
                     affixes=affixes,
                     require_gas=config.require_greater_affixes,
                     model_type=CharmFilterModel,
-                    unique_name=charm_unique_aspect,
-                    set_name=charm_set_name,
+                    unique_name=unique_aspect_name,
+                    set_name=set_name,
                 )
                 charm_filters.append(charm_filter)
                 if not guessed_set_name and charm_filter.set:
@@ -296,8 +296,8 @@ def import_mobalytics(config: ImportConfig, driver: WebDriver | None = None) -> 
                         affixes=affixes,
                         require_gas=config.require_greater_affixes,
                         model_type=SealFilterModel,
-                        unique_name=charm_unique_aspect,
-                        set_name=charm_set_name,
+                        unique_name=unique_aspect_name,
+                        set_name=set_name,
                     )
                 )
             continue

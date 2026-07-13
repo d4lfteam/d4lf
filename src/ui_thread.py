@@ -1,7 +1,5 @@
 """Shared Tk UI thread. Every overlay subsystem attaches to this one root instead of creating its own tk.Tk()."""
 
-from __future__ import annotations
-
 import logging
 import queue
 import threading

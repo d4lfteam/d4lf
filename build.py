@@ -21,7 +21,7 @@ def build(release_dir: Path):
             "src",
             r"src\main.py",
         ],
-        check=False,
+        check=True,
     )
     (release_dir / "main.exe").rename(release_dir / EXE_NAME)
 

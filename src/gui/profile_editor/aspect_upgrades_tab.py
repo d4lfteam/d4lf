@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Protocol, override, runtime_checkable
 
 from src.gui.models.dialog import AddAspectUpgrade

@@ -357,6 +357,52 @@ def test_import_mobalytics_imports_set_charm_and_deduplicates_identical_rings(
     assert charm_filter.set == ["might_of_the_den_mother"]
 
 
+def test_import_mobalytics_imports_seal_identity_with_or_without_affixes(
+    mock_ini_loader, mocker: MockerFixture
+) -> None:
+    captured_profile = {}
+    driver = _MobalyticsImportDriver(
+        page_source=_mobalytics_page_source([
+            _mobalytics_slot(slot="season-12-seal-1", entity_type="seals", title="Seal of the Diamond Mind"),
+            _mobalytics_slot(
+                slot="season-12-seal-2",
+                entity_type="seals",
+                title="Seal of the Golden Epiphany",
+                modifiers={"sealStats": [{"id": "cooldown-reduction"}]},
+            ),
+        ])
+    )
+
+    def fake_save_new(*, file_name, profile, source):
+        captured_profile["profile"] = profile
+        return SimpleNamespace(file_name=file_name)
+
+    profile_store = mocker.Mock()
+    profile_store.save_new.side_effect = fake_save_new
+    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+
+    import_mobalytics(
+        config=ImportConfig(
+            url="https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
+            import_aspect_upgrades=False,
+            import_greater_affixes=False,
+            require_greater_affixes=False,
+            add_to_profiles=False,
+            custom_file_name="test",
+        ),
+        driver=driver,
+    )
+
+    profile = captured_profile["profile"]
+    seal_filters = [seal for group in profile.seals for seal in group.root.values()]
+    assert {seal.unique_aspect[0].name for seal in seal_filters} == {
+        "seal_of_the_diamond_mind",
+        "seal_of_the_golden_epiphany",
+    }
+    golden_epiphany = next(seal for seal in seal_filters if seal.unique_aspect[0].name == "seal_of_the_golden_epiphany")
+    assert golden_epiphany.affix_pool[0].count[0].name == "cooldown_reduction"
+
+
 @pytest.mark.parametrize("url", URLS)
 @pytest.mark.requests
 @pytest.mark.skipif(not IN_GITHUB_ACTIONS, reason="Importer tests are skipped if not run from Github Actions")

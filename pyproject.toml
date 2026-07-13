@@ -42,7 +42,7 @@ dev = [
   "pytest-xdist",
   "ruff",
   "ty",
-  "types-pywin32>=312.0.0.20260609",
+  "types-pywin32",
   "typing-extensions",
 ]
 
