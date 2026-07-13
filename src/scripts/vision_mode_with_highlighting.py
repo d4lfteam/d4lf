@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from src.item.models import Item
 
 LOGGER = logging.getLogger(__name__)
+_FRAME_RETRY_DELAY_SECONDS = 0.01
 
 
 class CancellationRequestedError(Exception):
@@ -333,12 +334,15 @@ class VisionModeWithHighlighting:
                 top_left_corner = None if not found else item_roi[:2]
                 if found:
                     if not is_confirmed:
+                        time.sleep(_FRAME_RETRY_DELAY_SECONDS)
+                        self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
                         found_check, _, cropped_descr_check, _ = find_descr(Cam().grab(), item_center)
-                        if found_check:
-                            score = compare_histograms(cropped_descr, cropped_descr_check)
-                            if score < 0.99:
-                                continue
-                            is_confirmed = True
+                        if not found_check:
+                            continue
+                        score = compare_histograms(cropped_descr, cropped_descr_check)
+                        if score < 0.99:
+                            continue
+                        is_confirmed = True
 
                     self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
 
@@ -388,12 +392,34 @@ class VisionModeWithHighlighting:
                                     self.request_codex_upgrade_box(item_descr, item_roi, res)
                                 else:
                                     if not is_sigil(item_descr.item_type):
-                                        locator_result = locate_affix_markers(
-                                            tooltip_image=cropped_descr,
+                                        matched_affixes = res.matched[0].matched_affixes if res.matched else []
+                                        aspect_matched = any(m.aspect_match for m in res.matched)
+
+                                        def locate_markers(
+                                            tooltip_image: np.ndarray,
+                                            *,
                                             item=item_descr,
-                                            matched_affixes=res.matched[0].matched_affixes if res.matched else [],
-                                            aspect_matched=any(m.aspect_match for m in res.matched),
-                                        )
+                                            matched_affixes=matched_affixes,
+                                            aspect_matched=aspect_matched,
+                                        ) -> LocatorResult:
+                                            return locate_affix_markers(
+                                                tooltip_image=tooltip_image,
+                                                item=item,
+                                                matched_affixes=matched_affixes,
+                                                aspect_matched=aspect_matched,
+                                            )
+
+                                        locator_result = locate_markers(cropped_descr)
+                                        if not locator_result.reliable:
+                                            # Bullet templates may still be fading after the tooltip is confirmed.
+                                            time.sleep(_FRAME_RETRY_DELAY_SECONDS)
+                                            self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
+                                            found_retry, _, cropped_descr_retry, item_roi_retry = find_descr(
+                                                Cam().grab(), item_center
+                                            )
+                                            if found_retry:
+                                                locator_result = locate_markers(cropped_descr_retry)
+                                                item_roi = item_roi_retry
                                     self.request_match_box(item_descr, item_roi, res, locator_result)
                             elif not match:
                                 self.request_no_match_box(item_descr, item_roi)

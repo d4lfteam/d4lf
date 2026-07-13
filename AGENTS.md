@@ -39,6 +39,10 @@ Item flow:
 - UI coordinates in `src/config/data.py` are defined at 3840x2160 and scaled by `ResManager`.
 - Keep existing comments unless the related code is removed.
 
+### Python 3.14
+
+- from __future__ import annotations aren't needed
+
 ## Agent skills
 
 ### Issue tracker
