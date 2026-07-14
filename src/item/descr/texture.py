@@ -11,6 +11,12 @@ _LONG_SEPARATOR_TEMPLATE_REFS = [
     "item_seperator_long_legendary",
     "item_seperator_long_mythic",
 ]
+_SHORT_SEPARATOR_TEMPLATE_REFS = [
+    "item_seperator_short_magic",
+    "item_seperator_short_rare",
+    "item_seperator_short_legendary",
+    "item_seperator_short_mythic",
+]
 
 
 @dataclass
@@ -21,22 +27,31 @@ class BulletSearchTrace:
     accepted: list[TemplateMatch] = field(default_factory=list)
 
 
-def find_seperator_short(img_item_descr: np.ndarray, threshold: float = 0.62) -> TemplateMatch | None:
-    refs = ["item_seperator_short_rare", "item_seperator_short_legendary", "item_seperator_short_mythic"]
-    roi = [
-        0,
-        int(ResManager().offsets.find_seperator_short_offset_top / 5),
-        img_item_descr.shape[1],
-        ResManager().offsets.find_seperator_short_offset_top,
-    ]
+def find_seperator_short(
+    img_item_descr: np.ndarray, threshold: float = 0.62, *, roi: list[int] | None = None, mode: str = "all"
+) -> TemplateMatch | None:
+    if roi is None:
+        roi = [
+            0,
+            int(ResManager().offsets.find_seperator_short_offset_top / 5),
+            img_item_descr.shape[1],
+            ResManager().offsets.find_seperator_short_offset_top,
+        ]
     if not (
         sep_short := search(
-            refs, img_item_descr, threshold, roi, use_grayscale=True, mode="all", do_multi_process=False
+            _SHORT_SEPARATOR_TEMPLATE_REFS,
+            inp_img=img_item_descr,
+            threshold=threshold,
+            roi=roi,
+            use_grayscale=True,
+            mode=mode,
+            do_multi_process=False,
         )
     ).success:
         return None
-    sorted_matches = sorted(sep_short.matches, key=lambda match: match.center[1])
-    return sorted_matches[0]
+    if mode == "first":
+        return sep_short.matches[0]
+    return min(sep_short.matches, key=lambda match: match.center[1])
 
 
 def find_seperator_long(

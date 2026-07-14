@@ -176,6 +176,49 @@ def _get_cv_result(
     return res, template_img, roi
 
 
+def _find_template_matches(
+    template: Template,
+    img: np.ndarray,
+    roi: list[float] | None,
+    color_match: list[float] | None,
+    use_grayscale: bool,
+    threshold: float,
+    take_debug_screenshot: bool = False,
+) -> list[TemplateMatch]:
+    """Find all matches for one template without sharing search state between workers."""
+    res, template_img, new_roi = _get_cv_result(template, img, roi, color_match, use_grayscale, take_debug_screenshot)
+    template_matches = []
+
+    while res is not None:
+        _, max_val, _, max_pos = cv2.minMaxLoc(res)
+        if max_val < threshold:
+            break
+
+        rec_x = int(max_pos[0] + new_roi[0])
+        rec_y = int(max_pos[1] + new_roi[1])
+        rec_w = int(template_img.shape[1])
+        rec_h = int(template_img.shape[0])
+
+        template_match = TemplateMatch()
+        template_match.region = [rec_x, rec_y, rec_w, rec_h]
+        template_match.region_monitor = [*Cam().window_to_monitor((rec_x, rec_y)), rec_w, rec_h]
+        template_match.center = get_center(template_match.region)
+        template_match.center_monitor = Cam().window_to_monitor(template_match.center)
+        template_match.name = template.name
+        template_match.score = max_val
+        template_matches.append(template_match)
+
+        cv2.rectangle(
+            res,
+            (max_pos[0] - template_img.shape[1] // 2, max_pos[1] - template_img.shape[0] // 2),
+            (max_pos[0] + template_img.shape[1], max_pos[1] + template_img.shape[0]),
+            (0, 0, 0),
+            -1,
+        )
+
+    return template_matches
+
+
 def search(
     ref: TemplateRefs,
     inp_img: np.ndarray | None = None,
@@ -274,10 +317,35 @@ def search(
     while time_remains and not matches:
         img = Cam().grab() if inp_img is None else inp_img
         if do_multi_process:
-            future_list = [
-                TP.submit(_process_cv_result, template, img, take_debug_screenshot) for template in templates
-            ]
-            if mode == "first" or stop_condition is not None:
+            if stop_condition is not None:
+                # Worker completion order is nondeterministic. Collect each worker's local results first, then
+                # apply the stop condition in template order so a lower-scoring template cannot win the race.
+                future_list = [
+                    TP.submit(
+                        _find_template_matches,
+                        template,
+                        img,
+                        roi,
+                        color_match,
+                        use_grayscale,
+                        threshold,
+                        take_debug_screenshot,
+                    )
+                    for template in templates
+                ]
+                template_matches = [future.result() for future in future_list]
+                for matches_for_template in template_matches:
+                    for template_match in matches_for_template:
+                        matches.append(template_match)
+                        if should_stop():
+                            stop_search.set()
+                            break
+                    if stop_search.is_set():
+                        break
+            elif mode == "first":
+                future_list = [
+                    TP.submit(_process_cv_result, template, img, take_debug_screenshot) for template in templates
+                ]
                 pending = set(future_list)
                 while pending and not should_stop():
                     done, pending = wait(pending, return_when=FIRST_COMPLETED)
@@ -286,6 +354,9 @@ def search(
                 for future in pending:
                     future.cancel()
             else:
+                future_list = [
+                    TP.submit(_process_cv_result, template, img, take_debug_screenshot) for template in templates
+                ]
                 for future in future_list:
                     _ = future.result()
         else:

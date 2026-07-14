@@ -1,6 +1,12 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
+from time import sleep
+
 import cv2
+import numpy as np
 
 import src.template_finder
+from src.config.data import Template
 from src.utils.misc import is_in_roi
 
 
@@ -60,3 +66,37 @@ def test_search_all_stops_when_condition_is_met():
     )
 
     assert len(result.matches) == 2
+
+
+def test_parallel_stop_condition_preserves_template_order(mocker):
+    """A fast lower-priority template must not win a parallel early-stop search."""
+    correct_template = Template(name="correct")
+    false_template = Template(name="false")
+    fast_template_finished = Event()
+
+    mocker.patch("src.template_finder._process_template_refs", return_value=[correct_template, false_template])
+
+    def fake_get_cv_result(template, *_args, **_kwargs):
+        if template.name == "correct":
+            assert fast_template_finished.wait(timeout=1)
+            sleep(0.05)
+        else:
+            fast_template_finished.set()
+        return np.array([[0.9]], dtype=np.float32), np.zeros((1, 1), dtype=np.uint8), [0, 0, 4, 4]
+
+    mocker.patch("src.template_finder._get_cv_result", side_effect=fake_get_cv_result)
+    executor = ThreadPoolExecutor(max_workers=2)
+    mocker.patch("src.template_finder.TP", executor)
+
+    try:
+        result = src.template_finder.search(
+            ref=["correct", "false"],
+            inp_img=np.zeros((10, 10, 3), dtype=np.uint8),
+            threshold=0.8,
+            mode="all",
+            stop_condition=lambda matches: len(matches) >= 1,
+        )
+    finally:
+        executor.shutdown(wait=True)
+
+    assert [match.name for match in result.matches] == ["correct"]

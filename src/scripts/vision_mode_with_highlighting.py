@@ -21,7 +21,7 @@ from src.item.data.item_type import is_sigil
 from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.item.descr.geometry_locator import LocatorResult, locate_affix_markers
 from src.item.filter import Filter, FilterResult
-from src.item.find_descr import find_descr
+from src.item.find_descr import find_descr, find_descr_with_diagnostics, get_separator_match_in_crop
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item, reset_canvas
 from src.tts import Publisher
 from src.ui.char_inventory import CharInventory
@@ -329,7 +329,10 @@ class VisionModeWithHighlighting:
                 # Before we get the cropped_descr we need to ensure there is no previous overlay on screen
                 while not self.is_cleared:
                     time.sleep(0.10)
-                found, rarity, cropped_descr, item_roi = find_descr(Cam().grab(), item_center)
+                detection = find_descr_with_diagnostics(Cam().grab(), item_center)
+                found = detection.found
+                cropped_descr = detection.cropped_descr
+                item_roi = detection.crop_roi
 
                 top_left_corner = None if not found else item_roi[:2]
                 if found:
@@ -401,25 +404,31 @@ class VisionModeWithHighlighting:
                                             item=item_descr,
                                             matched_affixes=matched_affixes,
                                             aspect_matched=aspect_matched,
+                                            short_separator_match=None,
                                         ) -> LocatorResult:
                                             return locate_affix_markers(
                                                 tooltip_image=tooltip_image,
                                                 item=item,
                                                 matched_affixes=matched_affixes,
                                                 aspect_matched=aspect_matched,
+                                                short_separator_match=short_separator_match,
                                             )
 
-                                        locator_result = locate_markers(cropped_descr)
+                                        def locate_markers_for_detection(detection) -> LocatorResult:
+                                            return locate_markers(
+                                                detection.cropped_descr,
+                                                short_separator_match=get_separator_match_in_crop(detection),
+                                            )
+
+                                        locator_result = locate_markers_for_detection(detection)
                                         if not locator_result.reliable:
                                             # Bullet templates may still be fading after the tooltip is confirmed.
                                             time.sleep(_FRAME_RETRY_DELAY_SECONDS)
                                             self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
-                                            found_retry, _, cropped_descr_retry, item_roi_retry = find_descr(
-                                                Cam().grab(), item_center
-                                            )
-                                            if found_retry:
-                                                locator_result = locate_markers(cropped_descr_retry)
-                                                item_roi = item_roi_retry
+                                            retry_detection = find_descr_with_diagnostics(Cam().grab(), item_center)
+                                            if retry_detection.found:
+                                                locator_result = locate_markers_for_detection(retry_detection)
+                                                item_roi = retry_detection.crop_roi
                                     self.request_match_box(item_descr, item_roi, res, locator_result)
                             elif not match:
                                 self.request_no_match_box(item_descr, item_roi)

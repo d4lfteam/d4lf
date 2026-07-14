@@ -179,7 +179,7 @@ def test_main_returns_reliability_status_without_requiring_window(monkeypatch, r
     config = ReplayConfig(Path("tooltip.png"), "3840x2160", Item(), [], False)
     result = type("ReplayResult", (), {"reliable": reliable})()
     monkeypatch.setattr("src.tools.replay_cropped_tooltip.REPLAY_CONFIG", config)
-    monkeypatch.setattr("src.tools.replay_cropped_tooltip.setup_logging", lambda: None)
+    monkeypatch.setattr("src.tools.replay_cropped_tooltip.setup", lambda **_kwargs: None)
     monkeypatch.setattr("src.tools.replay_cropped_tooltip.run_replay", lambda *_args, **_kwargs: result)
     monkeypatch.setattr("src.tools.replay_cropped_tooltip.show_result", lambda *_args: None)
 

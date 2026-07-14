@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, NoReturn
 
 import cv2
 
+from item.data.affix import Affix
+from item.data.aspect import Aspect
 from src.config.ui import ResManager
 from src.item.descr.geometry_locator import (
     BulletMatchDiagnostics,
@@ -58,11 +60,20 @@ class ReplayResult:
 # BEGIN EDITABLE REPLAY CONFIGURATION
 # Replace these values with the cropped tooltip and the Item captured from production.
 REPLAY_CONFIG = ReplayConfig(
-    image_path=Path("path/to/cropped_tooltip.png"),
-    game_resolution="3840x2160",
-    item=Item(affixes=[]),
-    matched_row_indices=[],
-    aspect_matched=False,
+    image_path=Path("/Users/chris/Downloads/test8.png"),
+    game_resolution="1920x1080",
+    item=Item(
+        affixes=[
+            Affix(name="dexterity"),
+            Affix(name="maxmimum_life"),
+            Affix(name="maximum_resource"),
+            Affix(name="armor"),
+            Affix(name="armor"),
+        ],
+        aspect=Aspect(name="godslayer_crown"),
+    ),
+    matched_row_indices=[0, 1, 2, 3, 4],
+    aspect_matched=True,
 )
 # END EDITABLE REPLAY CONFIGURATION
 
@@ -333,12 +344,8 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
     )
 
 
-def setup_logging() -> None:
-    setup(enable_stdout=True)
-
-
 def main() -> int:
-    setup_logging()
+    setup(enable_stdout=True)
     try:
         result = run_replay(REPLAY_CONFIG)
     except ReplayConfigurationError as error:

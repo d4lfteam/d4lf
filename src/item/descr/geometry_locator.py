@@ -118,8 +118,11 @@ def locate_affix_markers(
     item: Item,
     matched_affixes: list[Affix] | None = None,
     aspect_matched: bool = False,
+    short_separator_match: TemplateMatch | None = None,
 ) -> LocatorResult:
-    return _locate_affix_markers_core(tooltip_image, item, matched_affixes or [], aspect_matched, None)
+    return _locate_affix_markers_core(
+        tooltip_image, item, matched_affixes or [], aspect_matched, short_separator_match, None
+    )
 
 
 def locate_affix_markers_with_diagnostics(
@@ -128,9 +131,12 @@ def locate_affix_markers_with_diagnostics(
     item: Item,
     matched_affixes: list[Affix] | None = None,
     aspect_matched: bool = False,
+    short_separator_match: TemplateMatch | None = None,
 ) -> DiagnosticLocatorResult:
     diagnostics = LocatorDiagnostics()
-    result = _locate_affix_markers_core(tooltip_image, item, matched_affixes or [], aspect_matched, diagnostics)
+    result = _locate_affix_markers_core(
+        tooltip_image, item, matched_affixes or [], aspect_matched, short_separator_match, diagnostics
+    )
     return DiagnosticLocatorResult(result, diagnostics)
 
 
@@ -139,12 +145,15 @@ def _locate_affix_markers_core(
     item: Item,
     matched_affixes: list[Affix],
     aspect_matched: bool,
+    short_separator_match: TemplateMatch | None,
     diagnostics: LocatorDiagnostics | None,
 ) -> LocatorResult:
     if not matched_affixes and not aspect_matched:
         return LocatorResult(markers=[], reliable=True)
 
-    all_markers = _locate_tts_guided_template(tooltip_image, item, matched_affixes, aspect_matched, diagnostics)
+    all_markers = _locate_tts_guided_template(
+        tooltip_image, item, matched_affixes, aspect_matched, short_separator_match, diagnostics
+    )
     if all_markers is None:
         return LocatorResult(markers=[], reliable=False)
 
@@ -173,6 +182,7 @@ def _locate_tts_guided_template(
     item: Item,
     matched_affixes: list[Affix],
     aspect_matched: bool,
+    short_separator_match: TemplateMatch | None,
     diagnostics: LocatorDiagnostics | None,
 ) -> list[LocatedMarker] | None:
     # Keep texture imports lazy so non-vision tests do not import Windows-only screenshot dependencies.
@@ -188,7 +198,11 @@ def _locate_tts_guided_template(
             diagnostics.failure_reason = "missing_separator"
         return None
 
-    separator_match = find_seperator_short(tooltip_image, threshold=_SEPARATOR_MATCH_THRESHOLD)
+    separator_match = (
+        short_separator_match
+        if short_separator_match is not None
+        else find_seperator_short(tooltip_image, threshold=_SEPARATOR_MATCH_THRESHOLD)
+    )
     if separator_match is None:
         if diagnostics is not None:
             diagnostics.failure_reason = "missing_separator"

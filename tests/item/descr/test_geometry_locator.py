@@ -59,6 +59,29 @@ def test_production_locator_uses_untraced_bullet_search(mocker) -> None:
     traced_search.assert_not_called()
 
 
+def test_production_locator_reuses_supplied_short_separator(mocker) -> None:
+    separator = TemplateMatch(name="item_seperator_short_rare", center=(50, 40), region=[46, 36, 8, 8], score=0.9)
+    long_separator = TemplateMatch(name="item_seperator_long_rare", center=(50, 180), region=[46, 176, 8, 8], score=0.9)
+    bullet = TemplateMatch(name="affix_bullet_point_1", center=(10, 60), region=[6, 56, 8, 8], score=0.9)
+    plain_search = mocker.patch("src.item.descr.texture.find_bullets_for_templates", return_value=[bullet])
+    separator_search = mocker.patch(
+        "src.item.descr.texture.find_seperator_short", side_effect=AssertionError("separator should be reused")
+    )
+    mocker.patch("src.item.descr.texture.find_seperator_long", return_value=long_separator)
+    affix = Affix(name="life")
+
+    result = locate_affix_markers(
+        tooltip_image=np.zeros((300, 100, 3), dtype=np.uint8),
+        item=Item(affixes=[affix]),
+        matched_affixes=[affix],
+        short_separator_match=separator,
+    )
+
+    assert result.reliable
+    assert plain_search.call_args.kwargs["max_y"] == long_separator.region[1]
+    separator_search.assert_not_called()
+
+
 def test_locator_uses_all_available_affix_bullet_templates() -> None:
     all_bullet_templates = _available_bullet_template_refs()
     expected_affix_templates = {
