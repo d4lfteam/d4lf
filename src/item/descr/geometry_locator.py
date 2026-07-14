@@ -162,7 +162,7 @@ def _locate_affix_markers_core(
     selected_markers = _select_requested_markers(item, matched_affixes, aspect_matched, all_markers)
     if diagnostics is not None:
         diagnostics.selected_markers = selected_markers
-    has_requested_markers = _has_requested_markers(matched_affixes, aspect_matched, selected_markers)
+    has_requested_markers = _has_requested_markers(item, matched_affixes, aspect_matched, selected_markers)
     above_threshold = all(marker.confidence >= _BULLET_MATCH_THRESHOLD for marker in selected_markers)
     reliable = has_requested_markers and above_threshold
 
@@ -288,19 +288,24 @@ def _to_bullet_match_diagnostics(trace: BulletSearchTrace) -> BulletMatchDiagnos
 def _select_requested_markers(
     item: Item, matched_affixes: list[Affix], aspect_matched: bool, markers: list[LocatedMarker]
 ) -> list[LocatedMarker]:
-    requested_affix_rows = {
-        row_index for affix in matched_affixes if (row_index := _affix_row_index(item, affix)) is not None
-    }
+    requested_affix_rows = _requested_affix_rows(item, matched_affixes)
     selected = [marker for marker in markers if marker.kind == "affix" and marker.index in requested_affix_rows]
     if aspect_matched:
         selected.extend(marker for marker in markers if marker.kind == "aspect" and marker.index == 0)
     return selected
 
 
-def _has_requested_markers(matched_affixes: list[Affix], aspect_matched: bool, markers: list[LocatedMarker]) -> bool:
-    affix_marker_count = sum(1 for marker in markers if marker.kind == "affix")
+def _has_requested_markers(
+    item: Item, matched_affixes: list[Affix], aspect_matched: bool, markers: list[LocatedMarker]
+) -> bool:
+    requested_affix_rows = _requested_affix_rows(item, matched_affixes)
+    selected_affix_rows = {marker.index for marker in markers if marker.kind == "affix"}
     has_aspect_marker = any(marker.kind == "aspect" for marker in markers)
-    return affix_marker_count == len(matched_affixes) and (not aspect_matched or has_aspect_marker)
+    return selected_affix_rows == requested_affix_rows and (not aspect_matched or has_aspect_marker)
+
+
+def _requested_affix_rows(item: Item, matched_affixes: list[Affix]) -> set[int]:
+    return {row_index for affix in matched_affixes if (row_index := _affix_row_index(item, affix)) is not None}
 
 
 def _affix_row_index(item: Item, affix: Affix) -> int | None:
