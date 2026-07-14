@@ -58,7 +58,7 @@ _ASPECT_BULLET_TEMPLATE_REFS = [
     "unique_bullet_point_medium",
 ]
 _SEPARATOR_MATCH_THRESHOLD = 0.6
-_BULLET_MATCH_THRESHOLD = 0.8
+_BULLET_MATCH_THRESHOLD = 0.75
 FailureReason = Literal[
     "missing_separator", "insufficient_affix_rows", "missing_aspect_marker", "marker_below_threshold"
 ]

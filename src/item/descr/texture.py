@@ -99,10 +99,13 @@ def find_bullets_for_templates(
 
 
 def _filter_outliers(template_matches: list[TemplateMatch]) -> list[TemplateMatch]:
+    # Extract center[0] values
     centers_x = [tm.center[0] for tm in template_matches]
     if not centers_x:
         return []
+    # Select the leftmost center
     target_center_x = np.min(centers_x)
+    # Filter out the outliers
     return [tm for tm in template_matches if abs(tm.center[0] - target_center_x) < 1.2 * tm.region[2]]
 
 

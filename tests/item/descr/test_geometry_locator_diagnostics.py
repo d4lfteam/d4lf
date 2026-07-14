@@ -219,7 +219,7 @@ def test_missing_aspect_marker_is_reported(mocker) -> None:
 
 def test_low_confidence_selected_marker_is_reported(mocker) -> None:
     separator = _make_tm("item_seperator_short_rare", 50, 40)
-    bullet = _make_tm("affix_bullet_point_1", 10, 60, score=0.75)
+    bullet = _make_tm("affix_bullet_point_1", 10, 60, score=0.74)
     trace = BulletSearchTrace(raw=[bullet], accepted=[bullet])
     mocker.patch("src.item.descr.texture.find_seperator_short", return_value=separator)
     mocker.patch("src.item.descr.texture.find_seperator_long", return_value=None)
@@ -233,7 +233,7 @@ def test_low_confidence_selected_marker_is_reported(mocker) -> None:
     assert not result.result.reliable
     assert result.result.markers == []
     assert result.diagnostics.failure_reason == "marker_below_threshold"
-    assert result.diagnostics.selected_markers[0].confidence == pytest.approx(0.75)
+    assert result.diagnostics.selected_markers[0].confidence == pytest.approx(0.74)
 
 
 def test_trace_preserves_filter_stages_and_horadric_suppression(mocker) -> None:

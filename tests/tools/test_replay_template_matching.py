@@ -7,7 +7,7 @@ import pytest
 
 from src.template_finder import SearchResult, TemplateMatch
 from src.tools.replay_template_matching import (
-    REROLLED_BULLET_POINT_TEMPLATES,
+    TEMPLATES,
     ReplayConfig,
     ReplayConfigurationError,
     run_replay,
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 def make_replay_config(tmp_path: Path, **overrides) -> ReplayConfig:
     image_path = tmp_path / "screen.png"
     cv2.imwrite(str(image_path), np.zeros((200, 300, 3), dtype=np.uint8))
-    values = {"image_path": image_path, "templates": REROLLED_BULLET_POINT_TEMPLATES.copy(), "threshold": 0.8}
+    values = {"game_resolution": "300x200", "image_path": image_path, "templates": TEMPLATES.copy(), "threshold": 0.8}
     values.update(overrides)
     return ReplayConfig(**values)
 
@@ -68,6 +68,7 @@ def test_run_replay_matches_all_templates_logs_confidence_and_saves_annotation(t
     assert kwargs["use_grayscale"] is True
     assert kwargs["mode"] == "all"
     assert kwargs["do_multi_process"] is False
+    assert "resolution=300x200" in caplog.text
     output = cv2.imread(str(result.output_path))
     assert tuple(output[40, 30]) == (0, 255, 255)
     assert "Template matching: count=2" in caplog.text

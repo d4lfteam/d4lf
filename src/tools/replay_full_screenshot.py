@@ -1,14 +1,18 @@
 import logging
-import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, NoReturn
+from typing import TYPE_CHECKING
 
 import cv2
 
 from src.config.ui import ResManager
 from src.item.find_descr import DescrDetection, find_descr_with_diagnostics
 from src.logger import setup
+from src.tools.replay_common import ReplayConfigurationError, load_replay_image, show_replay_result
+from src.tools.replay_common import font_scale as _font_scale
+from src.tools.replay_common import parse_resolution as _parse_resolution
+from src.tools.replay_common import raise_configuration_error as _raise_configuration_error
+from src.tools.replay_common import write_image as _write_image
 
 if TYPE_CHECKING:
     import numpy as np
@@ -30,54 +34,31 @@ FAILURE_COLOR = (0, 0, 255)
 
 @dataclass
 class ReplayConfig:
-    image_path: Path | str
     game_resolution: str
+    image_path: Path | str
     item_anchor: tuple[int, int]
-
-
-class ReplayConfigurationError(ValueError):
-    """Raised when the editable full-screenshot replay configuration cannot be used."""
 
 
 @dataclass(frozen=True)
 class ReplayResult:
-    output_path: Path
     crop_path: Path | None
-    found: bool
     failure_reason: str | None
+    found: bool
+    output_path: Path
 
 
 # BEGIN EDITABLE REPLAY CONFIGURATION
 # Replace these values with a full game screenshot and the hovered item's center.
 # Configure the generated *_cropped.png in replay_cropped_tooltip.py for marker matching.
-REPLAY_CONFIG = ReplayConfig(image_path=Path("path/to/image.png"), game_resolution="3840x2160", item_anchor=(261, 427))
+REPLAY_CONFIG = ReplayConfig(
+    image_path=Path("/Users/chris/Downloads/schoof1.png"), game_resolution="1920x1080", item_anchor=(623, 703)
+)
 # END EDITABLE REPLAY CONFIGURATION
-
-
-def _raise_configuration_error(message: str) -> NoReturn:
-    raise ReplayConfigurationError(message)
-
-
-def _parse_resolution(resolution: str) -> tuple[int, int]:
-    if not isinstance(resolution, str) or re.fullmatch(r"[1-9]\d*x[1-9]\d*", resolution) is None:
-        _raise_configuration_error(f"Game resolution must use WIDTHxHEIGHT form, got {resolution!r}.")
-    width, height = (int(value) for value in resolution.split("x"))
-    return width, height
 
 
 def validate_replay_config(config: ReplayConfig) -> tuple[Path, np.ndarray]:
     """Validate replay inputs and return the normalized full-screenshot path and decoded image."""
-    try:
-        image_path = Path(config.image_path)
-    except TypeError:
-        _raise_configuration_error(f"Full screenshot image path is invalid: {config.image_path!r}")
-    if not image_path.exists():
-        _raise_configuration_error(f"Full screenshot image path does not exist: {image_path}")
-    if not image_path.is_file():
-        _raise_configuration_error(f"Full screenshot image path is not a file: {image_path}")
-    image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
-    if image is None:
-        _raise_configuration_error(f"Full screenshot image cannot be read: {image_path}")
+    image_path, image = load_replay_image(config.image_path, label="Full screenshot image")
 
     _parse_resolution(config.game_resolution)
     anchor = config.item_anchor
@@ -115,10 +96,6 @@ def _log_detection(detection: DescrDetection) -> None:
         detection.rarity,
         detection.failure_reason,
     )
-
-
-def _font_scale(image: np.ndarray) -> float:
-    return max(0.45, min(1.0, image.shape[0] / 800))
 
 
 def _draw_match(image: np.ndarray, label: str, match, color: tuple[int, int, int]) -> None:
@@ -211,15 +188,7 @@ def _annotate(image: np.ndarray, detection: DescrDetection, anchor: tuple[int, i
 
 def show_result(image: np.ndarray) -> None:
     """Display the full replay result until the user closes the blocking window."""
-    cv2.imshow("D4LF full screenshot replay", image)
-    cv2.waitKey(0)
-    cv2.destroyWindow("D4LF full screenshot replay")
-
-
-def _write_image(path: Path, image: np.ndarray) -> None:
-    if not cv2.imwrite(str(path), image):
-        message = f"Could not write replay output: {path}"
-        raise OSError(message)
+    show_replay_result(image, "D4LF full screenshot replay")
 
 
 def _has_valid_crop(image: np.ndarray, detection: DescrDetection) -> bool:

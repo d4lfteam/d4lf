@@ -1,14 +1,13 @@
 import logging
-import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, NoReturn
+from typing import TYPE_CHECKING
 
 import cv2
 
-from item.data.affix import Affix
-from item.data.aspect import Aspect
 from src.config.ui import ResManager
+from src.item.data.affix import Affix
+from src.item.data.aspect import Aspect
 from src.item.descr.geometry_locator import (
     BulletMatchDiagnostics,
     DiagnosticLocatorResult,
@@ -17,6 +16,11 @@ from src.item.descr.geometry_locator import (
 )
 from src.item.models import Item
 from src.logger import setup
+from src.tools.replay_common import ReplayConfigurationError, load_replay_image, show_replay_result
+from src.tools.replay_common import font_scale as _font_scale
+from src.tools.replay_common import parse_resolution as _parse_resolution
+from src.tools.replay_common import raise_configuration_error as _raise_configuration_error
+from src.tools.replay_common import write_image as _write_image
 
 if TYPE_CHECKING:
     import numpy as np
@@ -33,34 +37,26 @@ BACKGROUND_COLOR = (30, 30, 30)
 _MARKER_THICKNESS_RATIO = 0.0047
 
 
-class ReplayConfigurationError(ValueError):
-    """Raised when the editable replay configuration cannot be used."""
-
-
-def _raise_configuration_error(message: str) -> NoReturn:
-    raise ReplayConfigurationError(message)
-
-
 @dataclass
 class ReplayConfig:
-    image_path: Path | str
+    aspect_matched: bool
     game_resolution: str
+    image_path: Path | str
     item: Item
     matched_row_indices: list[int]
-    aspect_matched: bool
 
 
 @dataclass(frozen=True)
 class ReplayResult:
+    failure_reason: str | None
     output_path: Path
     reliable: bool
-    failure_reason: str | None
 
 
 # BEGIN EDITABLE REPLAY CONFIGURATION
 # Replace these values with the cropped tooltip and the Item captured from production.
 REPLAY_CONFIG = ReplayConfig(
-    image_path=Path("/Users/chris/Downloads/test8.png"),
+    image_path=Path("/Users/chris/Downloads/schoof2.png"),
     game_resolution="1920x1080",
     item=Item(
         affixes=[
@@ -72,32 +68,15 @@ REPLAY_CONFIG = ReplayConfig(
         ],
         aspect=Aspect(name="godslayer_crown"),
     ),
-    matched_row_indices=[0, 1, 2, 3, 4],
+    matched_row_indices=[0, 1, 2],
     aspect_matched=True,
 )
 # END EDITABLE REPLAY CONFIGURATION
 
 
-def _parse_resolution(resolution: str) -> tuple[int, int]:
-    if not isinstance(resolution, str) or re.fullmatch(r"[1-9]\d*x[1-9]\d*", resolution) is None:
-        _raise_configuration_error(f"Game resolution must use WIDTHxHEIGHT form, got {resolution!r}.")
-    width, height = (int(value) for value in resolution.split("x"))
-    return width, height
-
-
 def validate_replay_config(config: ReplayConfig) -> tuple[Path, np.ndarray]:
     """Validate replay inputs and return the normalized image path and decoded image."""
-    try:
-        image_path = Path(config.image_path)
-    except TypeError:
-        _raise_configuration_error(f"Tooltip image path is invalid: {config.image_path!r}")
-    if not image_path.exists():
-        _raise_configuration_error(f"Tooltip image path does not exist: {image_path}")
-    if not image_path.is_file():
-        _raise_configuration_error(f"Tooltip image path is not a file: {image_path}")
-    image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
-    if image is None:
-        _raise_configuration_error(f"Tooltip image cannot be read: {image_path}")
+    image_path, image = load_replay_image(config.image_path, label="Tooltip image")
 
     _parse_resolution(config.game_resolution)
     if not isinstance(config.item, Item):
@@ -187,10 +166,6 @@ def _log_diagnostics(diagnostic_result: DiagnosticLocatorResult) -> None:
             marker.center,
             marker.confidence,
         )
-
-
-def _font_scale(image: np.ndarray) -> float:
-    return max(0.45, min(1.0, image.shape[0] / 800))
 
 
 def _draw_trace(
@@ -291,9 +266,7 @@ def _annotate(image: np.ndarray, diagnostic_result: DiagnosticLocatorResult, mar
 
 def show_result(image: np.ndarray) -> None:
     """Display the replay result until the user closes the blocking window."""
-    cv2.imshow("D4LF cropped tooltip replay", image)
-    cv2.waitKey(0)
-    cv2.destroyWindow("D4LF cropped tooltip replay")
+    show_replay_result(image, "D4LF cropped tooltip replay")
 
 
 def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
@@ -331,9 +304,7 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
     )
     marker_size = int(int(height * _MARKER_THICKNESS_RATIO) * 3)
     annotated = _annotate(image, diagnostic_result, marker_size)
-    if not cv2.imwrite(str(output_path), annotated):
-        message = f"Could not write replay output: {output_path}"
-        raise OSError(message)
+    _write_image(output_path, annotated)
     LOGGER.info("Replay output: %s", output_path)
     if display:
         show_result(annotated)

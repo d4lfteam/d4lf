@@ -7,7 +7,7 @@ from src.item.data.rarity import ItemRarity
 from src.item.descr.texture import find_seperator_short
 from src.template_finder import SearchResult, TemplateMatch, search
 from src.utils.image_operations import crop
-from src.utils.roi_operations import fit_roi_to_window_size
+from src.utils.roi_operations import fit_roi_to_window_size, intersect
 
 if TYPE_CHECKING:
     import numpy as np
@@ -36,14 +36,22 @@ class DescrDetection:
     failure_reason: str | None = None
 
 
-def _choose_best_result(res_left: SearchResult, res_right: SearchResult) -> SearchResult:
-    if res_left.success and not res_right.success:
-        return res_left
-    if res_right.success and not res_left.success:
-        return res_right
-    if res_left.success and res_right.success:
-        return res_left if res_left.matches[0].score > res_right.matches[0].score else res_right
-    return SearchResult(success=False)
+def _choose_best_result(
+    res_left: SearchResult, res_right: SearchResult, anchor_x: int, screen_width: int
+) -> SearchResult:
+    candidates = [match for result in (res_left, res_right) if result.success for match in result.matches]
+    if not candidates:
+        return SearchResult(success=False)
+
+    if anchor_x < screen_width / 2:
+        preferred_candidates = [candidate for candidate in candidates if candidate.center[0] > anchor_x]
+    else:
+        preferred_candidates = [candidate for candidate in candidates if candidate.center[0] < anchor_x]
+    if not preferred_candidates:
+        return SearchResult(success=False)
+
+    match = min(preferred_candidates, key=lambda candidate: (abs(candidate.center[0] - anchor_x), -candidate.score))
+    return SearchResult(success=True, matches=[match])
 
 
 def _template_search(img: np.ndarray, anchor: int, roi: np.ndarray, take_debug_screenshot: bool = False):
@@ -109,12 +117,12 @@ def get_separator_match_in_crop(detection: DescrDetection) -> TemplateMatch | No
 def _find_descr_core(img: np.ndarray, anchor: tuple[int, int], *, collect_diagnostics: bool) -> DescrDetection:
     item_descr_width = ResManager().offsets.item_descr_width
     item_descr_pad = ResManager().offsets.item_descr_pad
-    _, window_height = ResManager().pos.window_dimensions
+    window_width, window_height = ResManager().pos.window_dimensions
 
     res_left = _template_search(img, anchor[0], ResManager().roi.rel_descr_search_left)
     res_right = _template_search(img, anchor[0], ResManager().roi.rel_descr_search_right)
 
-    res = _choose_best_result(res_left, res_right)
+    res = _choose_best_result(res_left, res_right, anchor[0], window_width)
 
     if res is not None and res.success:
         match = res.matches[0]
@@ -139,12 +147,25 @@ def _find_descr_core(img: np.ndarray, anchor: tuple[int, int], *, collect_diagno
             ).success:
                 bottom_match = res_bottom.matches[0]
                 roi_height = bottom_match.center[1] - off_bottom_of_descr - match.region[1]
-            crop_roi = [
-                match.region[0] + item_descr_pad,
-                match.region[1] + item_descr_pad,
-                item_descr_width - 2 * item_descr_pad,
-                roi_height,
-            ]
+            crop_roi = intersect(
+                [
+                    match.region[0] + item_descr_pad,
+                    match.region[1] + item_descr_pad,
+                    item_descr_width - 2 * item_descr_pad,
+                    roi_height,
+                ],
+                (0, 0, img.shape[1], img.shape[0]),
+            )
+            if crop_roi is None:
+                return DescrDetection(
+                    found=False,
+                    rarity=rarity,
+                    rarity_match=match if collect_diagnostics else None,
+                    separator_match=separator_match if collect_diagnostics else None,
+                    bottom_match=bottom_match if collect_diagnostics else None,
+                    failure_reason="invalid_crop",
+                )
+            crop_roi = list(crop_roi)
             cropped_descr = crop(img, crop_roi)
             return DescrDetection(
                 found=True,

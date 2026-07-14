@@ -1,5 +1,11 @@
 name: Build and zip exe
 
+inputs:
+  version:
+    description: Optional version override for the archive
+    required: false
+    default: ""
+
 outputs:
   version:
     description: The application version
@@ -14,9 +20,14 @@ runs:
     - name: Build & Zip exe
       id: build_zip
       shell: powershell
+      env:
+        VERSION_OVERRIDE: ${{ inputs.version }}
       run: |
         python build.py
-        $version = python -c "from src import __version__; print(__version__)"
+        $version = $env:VERSION_OVERRIDE
+        if ([string]::IsNullOrWhiteSpace($version)) {
+          $version = python -c "from src import __version__; print(__version__)"
+        }
         $folderName = "d4lf"
         $zipName = "d4lf_v" + $version
         Compress-Archive -Path $folderName -DestinationPath "$zipName.zip"
