@@ -23,33 +23,27 @@ jobs:
         uses: ./.github/actions/setup_env
       - name: Build & Zip exe
         id: build_zip
-        shell: powershell
-        run: |
-          python build.py
-          $version = python -c "from src import __version__; print(__version__)"
-          echo "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          $folderName = "d4lf"
-          $zipName = "d4lf_v" + $version
-          Compress-Archive -Path $folderName -DestinationPath "$zipName.zip"
+        uses: ./.github/actions/build_zip
       - name: Create Tag
         shell: powershell
         run: |
-          git tag "v${{ env.VERSION }}"
-          git push origin "v${{ env.VERSION }}"
+          git tag "v${{ steps.build_zip.outputs.version }}"
+          git push origin "v${{ steps.build_zip.outputs.version }}"
       - name: Check if beta
         id: check_beta
         shell: powershell
         run: |
-          if ($env:VERSION -like "*beta*" -or $env:VERSION -like "*alpha*") {
+          $version = "${{ steps.build_zip.outputs.version }}"
+          if ($version -like "*beta*" -or $version -like "*alpha*") {
             echo "IS_BETA=true" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
           } else {
             echo "IS_BETA=false" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
           }
       - uses: softprops/action-gh-release@v3
         with:
-          files: d4lf_v*.zip
+          files: ${{ steps.build_zip.outputs.zip_path }}
           generate_release_notes: true
-          name: "v${{ env.VERSION }}"
+          name: "v${{ steps.build_zip.outputs.version }}"
           prerelease: ${{ env.IS_BETA == 'true' }}
-          tag_name: "v${{ env.VERSION }}"
+          tag_name: "v${{ steps.build_zip.outputs.version }}"
           token: "${{ secrets.RELEASE_TOKEN }}"

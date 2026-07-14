@@ -1,0 +1,23 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: build
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup env
+        uses: ./.github/actions/setup_env
+      - name: Build & Zip exe
+        id: build_zip
+        uses: ./.github/actions/build_zip
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: d4lf_v${{ steps.build_zip.outputs.version }}
+          path: ${{ steps.build_zip.outputs.zip_path }}
