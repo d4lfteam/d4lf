@@ -35,29 +35,37 @@ def _loaded_tab(name: str) -> SigilsTab:
     return tab
 
 
+def _layout_widget(tab: SigilsTab):
+    layout_item = tab.blacklist_layout.itemAt(0)
+    assert layout_item is not None
+    widget = layout_item.widget()
+    assert widget is not None
+    return widget
+
+
 def test_global_affix_blacklist_loads_as_affix_kind(qapp, mock_ini_loader):
     tab = _loaded_tab(_first_affix_key())
-    widget = tab.blacklist_layout.itemAt(0).widget()
+    widget = _layout_widget(tab)
     assert isinstance(widget, SigilWidget)
     assert widget.kind == "affix"
 
 
 def test_dungeon_blacklist_loads_as_dungeon_kind(qapp, mock_ini_loader):
     tab = _loaded_tab(_first_dungeon_key())
-    widget = tab.blacklist_layout.itemAt(0).widget()
+    widget = _layout_widget(tab)
     assert isinstance(widget, SigilWidget)
     assert widget.kind == "dungeon"
 
 
 def test_affix_kind_has_condition_list(qapp, mock_ini_loader):
     tab = _loaded_tab(_first_affix_key())
-    widget = tab.blacklist_layout.itemAt(0).widget()
+    widget = _layout_widget(tab)
     assert hasattr(widget, "condition_list")
 
 
 def test_dungeon_kind_has_condition_list(qapp, mock_ini_loader):
     tab = _loaded_tab(_first_dungeon_key())
-    widget = tab.blacklist_layout.itemAt(0).widget()
+    widget = _layout_widget(tab)
     assert hasattr(widget, "condition_list")
 
 
@@ -82,3 +90,11 @@ def test_create_sigil_remembers_size(qapp, monkeypatch):
 
     restored = CreateSigil([], [])
     assert restored.size() == QSize(640, 360)
+
+
+def test_create_sigil_rejects_unknown_target_kind(qapp, mocker):
+    dialog = CreateSigil([], [])
+    mocker.patch.object(dialog.kind_input, "currentText", return_value="unknown")
+
+    with pytest.raises(ValueError, match="Unknown sigil rule target type"):
+        dialog.get_value()

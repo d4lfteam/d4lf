@@ -90,11 +90,11 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
     elif item.rarity == ItemRarity.Unique:
         affixes_num = 2 if is_seal_or_charm(item.item_type) else 4
 
-    if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
+    if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and item.name is not None:
         # Uniques can have variable amounts of inherents.
-        unique_inherents = Dataloader().aspect_unique_dict.get(item.name)["num_inherents"]
-        if unique_inherents is not None:
-            inherent_num = unique_inherents
+        unique_data = Dataloader().aspect_unique_dict.get(item.name)
+        if unique_data is not None and unique_data["num_inherents"] is not None:
+            inherent_num = unique_data["num_inherents"]
 
     # Rares have either 3 or 4 affixes so we have to do special handling to figure out where exactly the affixes end.
     # This will also grab up slotted gems but we really don't have much choice
@@ -130,7 +130,7 @@ def _compute_affix_layout(tts_section: list[str], item: Item) -> tuple[int, int,
 
 
 def _assign_aspect_or_set(item: Item, aspect_or_set_text: str | None) -> None:
-    if not aspect_or_set_text:
+    if not aspect_or_set_text or item.name is None:
         return
     if item.rarity == ItemRarity.Mythic:
         item.aspect = Aspect(name=item.name, text=aspect_or_set_text, value=find_number(aspect_or_set_text))
@@ -238,7 +238,10 @@ def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
     affixes = [tts_section[first_affix_index], tts_section[second_affix_index]]
 
     for affix_name in affixes:
-        affix = Affix(name=correct_name(keep_letters_and_spaces(affix_name)))
+        normalized_name = correct_name(keep_letters_and_spaces(affix_name))
+        if normalized_name is None:
+            normalized_name = ""
+        affix = Affix(name=normalized_name)
         affix.type = AffixType.normal
         item.affixes.append(affix)
 
@@ -435,23 +438,23 @@ def _get_affix_from_text(text: str, item_type: ItemType | None = None) -> Affix:
         for x in [f"for {for_seconds_match} Seconds", f"[{for_seconds_match}]"]:
             text = text.replace(x, "")
 
-    matched_groups = {}
+    matched_groups: dict[str, str] = {}
     for match in _AFFIX_RE.finditer(text):
-        matched_groups = {name: value for name, value in match.groupdict().items() if value is not None}
+        matched_groups = {name: value for name, value in match.groupdict().items() if isinstance(value, str)}
     if not matched_groups and _has_numbers(text):
         msg = f"Could not match affix text: {text}"
         raise Exception(msg)
     for x in ["minvalue1", "minvalue2"]:
-        if matched_groups.get(x) is not None:
-            result.min_value = float(matched_groups[x])
+        if (value := matched_groups.get(x)) is not None:
+            result.min_value = float(value)
             break
     for x in ["maxvalue1", "maxvalue2"]:
-        if matched_groups.get(x) is not None:
-            result.max_value = float(matched_groups[x])
+        if (value := matched_groups.get(x)) is not None:
+            result.max_value = float(value)
             break
     for x in ["affixvalue1", "affixvalue2", "affixvalue3", "affixvalue4"]:
-        if matched_groups.get(x) is not None:
-            result.value = float(matched_groups[x])
+        if (value := matched_groups.get(x)) is not None:
+            result.value = float(value)
             break
     for x in ["greateraffix1", "greateraffix2"]:
         if matched_groups.get(x) is not None:
@@ -459,9 +462,9 @@ def _get_affix_from_text(text: str, item_type: ItemType | None = None) -> Affix:
             if x == "greateraffix2":
                 result.value = float(matched_groups[x])
             break
-    if matched_groups.get("onlyvalue") is not None:
-        result.min_value = float(matched_groups.get("onlyvalue"))
-        result.max_value = float(matched_groups.get("onlyvalue"))
+    if (only_value := matched_groups.get("onlyvalue")) is not None:
+        result.min_value = float(only_value)
+        result.max_value = float(only_value)
 
     if "Charm Slot" in text:  # These are never greater even if they look like they are greater
         result.type = AffixType.normal
@@ -472,11 +475,15 @@ def _get_affix_from_text(text: str, item_type: ItemType | None = None) -> Affix:
     elif item_type == ItemType.Charm:
         affix_dict = Dataloader().affix_dict | Dataloader().charm_affix_dict
 
-    result.name = rapidfuzz.process.extractOne(
+    match = rapidfuzz.process.extractOne(
         keep_letters_and_spaces(_REPLACE_COMPARE_RE.sub("", result.text).strip()),
         list(affix_dict),
         scorer=rapidfuzz.distance.Levenshtein.distance,
-    )[0]
+    )
+    if match is None or not isinstance(match[0], str):
+        msg = f"Could not match affix name: {result.text}"
+        raise ValueError(msg)
+    result.name = match[0]
     return result
 
 
@@ -609,24 +616,28 @@ class _TtsItemParser:
 
     def _parse_with_locations(self) -> Item | None:
         item = self._current_item
-        if (sep_short_match := find_seperator_short(self.img_item_descr)) is None:
+        img_item_descr = self.img_item_descr
+        if img_item_descr is None:
+            LOGGER.warning("Cannot attach item locations without an item description image.")
+            return None
+        if (sep_short_match := find_seperator_short(img_item_descr)) is None:
             LOGGER.warning("Could not detect item_seperator_short.")
-            screenshot("failed_seperator_short", img=self.img_item_descr)
+            screenshot("failed_seperator_short", img=img_item_descr)
             return None
 
-        TP.submit(find_seperators_long, self.img_item_descr, sep_short_match)
+        TP.submit(find_seperators_long, img_item_descr, sep_short_match)
         aspect_bullet_future = (
-            TP.submit(find_aspect_bullet, self.img_item_descr, sep_short_match)
+            TP.submit(find_aspect_bullet, img_item_descr, sep_short_match)
             if item.rarity in [ItemRarity.Legendary, ItemRarity.Unique, ItemRarity.Mythic]
             else None
         )
-        affix_bullets = find_affix_bullets(self.img_item_descr, sep_short_match)
+        affix_bullets = find_affix_bullets(img_item_descr, sep_short_match)
 
         self._validate_unique()
         self._add_upgrade_flags()
         aspect_bullet = aspect_bullet_future.result() if aspect_bullet_future else None
         return _add_affixes_from_tts_mixed(
-            self.tts_section, item, affix_bullets, self.img_item_descr, aspect_bullet=aspect_bullet
+            self.tts_section, item, affix_bullets, img_item_descr, aspect_bullet=aspect_bullet
         )
 
     def _validate_unique(self) -> None:
@@ -653,7 +664,7 @@ class _TtsItemParser:
         item.cosmetic_upgrade = _is_cosmetic_upgrade(self.tts_section)
 
 
-def read_descr_mixed(img_item_descr: np.ndarray) -> Item | None:
+def read_descr_mixed(img_item_descr: np.ndarray | None) -> Item | None:
     tts_section = copy.copy(src.tts.LAST_ITEM)
     return _TtsItemParser(tts_section, img_item_descr=img_item_descr, attach_locations=True).parse()
 

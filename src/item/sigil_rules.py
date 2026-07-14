@@ -19,7 +19,7 @@ SIGIL_RULE_TARGET_TYPES: tuple[SigilRuleTargetType, ...] = ("dungeon", "affix")
 
 class SigilRuleLike(Protocol):
     name: str
-    condition: Sequence[str]
+    condition: list[str]
 
 
 @dataclass(frozen=True, slots=True)

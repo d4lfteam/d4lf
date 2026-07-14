@@ -29,6 +29,12 @@ def test_mixed_parser_returns_boss_keys_without_image_lookup():
     assert read_descr_mixed(None) == Item(item_type=ItemType.LairBossKey, original_name="MALIGNANT HEART")
 
 
+def test_mixed_parser_returns_none_for_equipment_without_image_lookup():
+    src.tts.LAST_ITEM = ["TEST BOOTS", "Rare Boots", "Item Power 900"]
+
+    assert read_descr_mixed(None) is None
+
+
 def test_sigil_rarity_is_derived_from_tts_affixes():
     src.tts.LAST_ITEM = [
         "Nightmare Sigil",

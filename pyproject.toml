@@ -1,52 +1,54 @@
-[build-system]
-build-backend = "hatchling.build"
-requires = ["hatchling"]
+[project]
+name = "d4lf"
+requires-python = ">=3.14"
+dependencies = [
+  "beautifultable",
+  "colorama",
+  "httpx",
+  "jsonpath",
+  "lxml",
+  "mss",
+  "natsort",
+  "numpy",
+  "opencv-python",
+  "pillow",
+  "psutil",
+  "pydantic",
+  "pydantic-numpy",
+  "pydantic-yaml",
+  "pynput",
+  "pyqt6",
+  "python-jsonpath",
+  "pytweening",
+  "pywin32; sys_platform == 'win32'",
+  "pyyaml",
+  "rapidfuzz",
+  "ruamel-yaml",
+  "selenium",
+  "seleniumbase",
+  "tk",
+  "webdriver-manager"
+]
+dynamic = ["version"]
 
 [dependency-groups]
 dev = [
-    "pyinstaller",
-    "pytest",
-    "pytest-cov",
-    "pytest-env",
-    "pytest-mock",
-    "pytest-pythonpath",
-    "pytest-xdist",
-    "typing-extensions"
+  "pyinstaller",
+  "pytest",
+  "pytest-cov",
+  "pytest-env",
+  "pytest-mock",
+  "pytest-pythonpath",
+  "pytest-xdist",
+  "ruff",
+  "ty",
+  "types-pywin32",
+  "typing-extensions",
 ]
 
-[project]
-dependencies = [
-    "beautifultable",
-    "colorama",
-    "httpx",
-    "jsonpath",
-    "lxml",
-    "mss",
-    "natsort",
-    "numpy",
-    "opencv-python",
-    "pillow",
-    "psutil",
-    "pydantic",
-    "pydantic-numpy",
-    "pydantic-yaml",
-    "pynput",
-    "pyqt6",
-    "python-jsonpath",
-    "pytweening",
-    "pywin32; sys_platform == 'win32'",
-    "pyyaml",
-    "rapidfuzz",
-    "ruamel-yaml",
-    "ruff",
-    "selenium",
-    "seleniumbase",
-    "tk",
-    "webdriver-manager"
-]
-dynamic = ["version"]
-name = "d4lf"
-requires-python = ">=3.14"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
@@ -69,82 +71,82 @@ skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
 ignore = [
-    "ANN001",  # fix more in the future, this is typing
-    "ANN002",  # fix more in the future, this is typing
-    "ANN003",  # fix more in the future, this is typing
-    "ANN201",  # fix more in the future, this is typing
-    "ANN202",  # fix more in the future, this is typing
-    "ANN204",  # fix more in the future, this is typing
-    "ANN205",  # fix more in the future, this is typing
-    "ARG001",  # fix more in the future
-    "ARG002",  # fix more in the future
-    "C901",  # fix more in the future
-    "COM812",
-    "CPY",
-    "D100",
-    "D101",
-    "D102",
-    "D103",
-    "D104",
-    "D105",
-    "D106",
-    "D107",
-    "DOC201",  # fix more in the future, this is doc
-    "DOC501",  # fix more in the future, this is docs
-    "DOC502",  # fix more in the future, this is docs
-    "E501",
-    "ERA001",  # fix more in the future
-    "FBT001",
-    "FBT002",
-    "FIX002",  # fix more in the future
-    "FIX004",  # fix more in the future
-    "G004",
-    "LOG014",
-    "NPY002",  # fix more in the future
-    "PLC0206",  # fix more in the future
-    "PLR0904",  # fix more in the future
-    "PLR0911",  # fix more in the future
-    "PLR0912",  # fix more in the future
-    "PLR0913",
-    "PLR0914",  # fix more in the future
-    "PLR0915",  # fix more in the future
-    "PLR0916",  # fix more in the future
-    "PLR0917",
-    "PLR1702",  # fix more in the future
-    "PLR1704",  # fix more in the future
-    "PLR2004",  # fix more in the future
-    "PLR6104",  # fix more in the future
-    "PLR6201",  # fix more in the future
-    "PLR6301",  # fix more in the future, staticmethods
-    "PLW0108",  # fix more in the future
-    "PLW0602",  # fix more in the future
-    "PLW0603",  # fix more in the future
-    "PLW0717",  # fix more in the future
-    "RUF001",  # fix more in the future
-    "RUF005",  # fix more in the future
-    "RUF012",  # fix more in the future
-    "RUF043",  # fix more in the future
-    "RUF045",  # fix more in the future
-    "RUF059",  # fix more in the future
-    "RUF067",  # fix more in the future
-    "S101",  # fix more in the future
-    "S311",  # fix more in the future
-    "S404",
-    "S506",  # fix more in the future
-    "S603",
-    "S605",  # fix more in the future
-    "S606",  # fix more in the future
-    "S607",
-    "SLF001",  # fix more in the future
-    "T201",  # fix more in the future
-    "TD002",  # fix more in the future
-    "TD003",  # fix more in the future
-    "TD004",  # fix more in the future
-    "TRY002",  # fix more in the future
-    "TRY003",  # fix more in the future
-    "TRY004",  # fix more in the future
-    "TRY400",  # fix more in the future
-    "UP047"  # fix more in the future
+  "ANN001",  # fix more in the future, this is typing
+  "ANN002",  # fix more in the future, this is typing
+  "ANN003",  # fix more in the future, this is typing
+  "ANN201",  # fix more in the future, this is typing
+  "ANN202",  # fix more in the future, this is typing
+  "ANN204",  # fix more in the future, this is typing
+  "ANN205",  # fix more in the future, this is typing
+  "ARG001",  # fix more in the future
+  "ARG002",  # fix more in the future
+  "C901",  # fix more in the future
+  "COM812",
+  "CPY",
+  "D100",
+  "D101",
+  "D102",
+  "D103",
+  "D104",
+  "D105",
+  "D106",
+  "D107",
+  "DOC201",  # fix more in the future, this is doc
+  "DOC501",  # fix more in the future, this is docs
+  "DOC502",  # fix more in the future, this is docs
+  "E501",
+  "ERA001",  # fix more in the future
+  "FBT001",
+  "FBT002",
+  "FIX002",  # fix more in the future
+  "FIX004",  # fix more in the future
+  "G004",
+  "LOG014",
+  "NPY002",  # fix more in the future
+  "PLC0206",  # fix more in the future
+  "PLR0904",  # fix more in the future
+  "PLR0911",  # fix more in the future
+  "PLR0912",  # fix more in the future
+  "PLR0913",
+  "PLR0914",  # fix more in the future
+  "PLR0915",  # fix more in the future
+  "PLR0916",  # fix more in the future
+  "PLR0917",
+  "PLR1702",  # fix more in the future
+  "PLR1704",  # fix more in the future
+  "PLR2004",  # fix more in the future
+  "PLR6104",  # fix more in the future
+  "PLR6201",  # fix more in the future
+  "PLR6301",  # fix more in the future, staticmethods
+  "PLW0108",  # fix more in the future
+  "PLW0602",  # fix more in the future
+  "PLW0603",  # fix more in the future
+  "PLW0717",  # fix more in the future
+  "RUF001",  # fix more in the future
+  "RUF005",  # fix more in the future
+  "RUF012",  # fix more in the future
+  "RUF043",  # fix more in the future
+  "RUF045",  # fix more in the future
+  "RUF059",  # fix more in the future
+  "RUF067",  # fix more in the future
+  "S101",  # fix more in the future
+  "S311",  # fix more in the future
+  "S404",
+  "S506",  # fix more in the future
+  "S603",
+  "S605",  # fix more in the future
+  "S606",  # fix more in the future
+  "S607",
+  "SLF001",  # fix more in the future
+  "T201",  # fix more in the future
+  "TD002",  # fix more in the future
+  "TD003",  # fix more in the future
+  "TD004",  # fix more in the future
+  "TRY002",  # fix more in the future
+  "TRY003",  # fix more in the future
+  "TRY004",  # fix more in the future
+  "TRY400",  # fix more in the future
+  "UP047"  # fix more in the future
 ]
 select = ["ALL"]
 
@@ -152,14 +154,17 @@ select = ["ALL"]
 split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = [
-    "FBT003",
-    "PLC2701",
-    "PLR2004",
-    "S101",
-    "S311",
-    "SLF001"
-]
+"tests/*" = ["FBT003", "PLC2701", "PLR2004", "S101", "S311", "SLF001"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ty.analysis]
+respect-type-ignore-comments = false
+
+[tool.ty.environment]
+python-platform = "win32"
+python-version = "3.14"
+
+[tool.ty.rules]
+all = "error"

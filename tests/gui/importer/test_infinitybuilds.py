@@ -24,6 +24,8 @@ from src.gui.importer.paragon_export import (
 )
 
 if typing.TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
     from pytest_mock import MockerFixture
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
@@ -47,7 +49,7 @@ class _InfinityBuildsImportDriver:
         return None
 
 
-def _push_chunk(payload: dict) -> str:
+def _push_chunk(payload: Mapping[str, object]) -> str:
     # Mirrors InfinityBuilds' React Flight payload: a JSON-encoded string embedded in a
     # self.__next_f.push([id, "<json-string>"]) call, with the interesting data (classId, variants)
     # inside that string. Real payloads are minified (no spaces around separators), which matters
@@ -56,7 +58,9 @@ def _push_chunk(payload: dict) -> str:
     return f"self.__next_f.push([1,{json.dumps(inner)}])"
 
 
-def _infinitybuilds_page_source(class_id: str, variants: list[dict], title: str = "Test Build") -> str:
+def _infinitybuilds_page_source(
+    class_id: str, variants: Sequence[Mapping[str, object]], title: str = "Test Build"
+) -> str:
     payload = {"classId": class_id, "variants": variants}
     script = _push_chunk(payload)
     return f"<html><head><title>{title} | InfinityBuilds</title></head><body><script>{script}</script></body></html>"
@@ -64,7 +68,7 @@ def _infinitybuilds_page_source(class_id: str, variants: list[dict], title: str 
 
 def _gear_piece(
     slot: str, item_id: str, affix_ids: list[str], kind: str = "custom_legendary", aspect_id: str | None = None
-) -> dict:
+) -> dict[str, object]:
     piece = {
         "kind": kind,
         "slot": slot,

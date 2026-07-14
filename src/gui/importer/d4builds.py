@@ -4,7 +4,6 @@ import time
 from typing import TYPE_CHECKING
 
 import lxml.html
-import rapidfuzz
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
@@ -28,6 +27,7 @@ from src.gui.importer.gui_common import (
     get_class_name,
     hover_and_get_tooltip_html,
     is_unique_like_rarity,
+    match_set_aware_seal_affix,
     match_to_enum,
     retry_importer,
     update_mingreateraffixcount,
@@ -43,8 +43,9 @@ from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
 
 if TYPE_CHECKING:
-    from selenium.webdriver.chromium.webdriver import ChromiumDriver
+    from selenium.webdriver.remote.webdriver import WebDriver
     from selenium.webdriver.remote.webelement import WebElement
+
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
@@ -92,7 +93,10 @@ class D4BuildsError(Exception):
 
 
 @retry_importer(inject_webdriver=True)
-def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
+def import_d4builds(config: ImportConfig, driver: WebDriver | None = None) -> None:
+    if driver is None:
+        msg = "A Selenium WebDriver is required for D4Builds imports"
+        raise RuntimeError(msg)
     url = config.url.strip().replace("\n", "")
     if BASE_URL not in url:
         LOGGER.error("Invalid url, please use a d4builds url")
@@ -135,8 +139,9 @@ def import_d4builds(config: ImportConfig, driver: ChromiumDriver = None):
         affixes = []
         inherents = []
 
-        if slot_to_unique_name_map[slot]:
-            unique_name, rarity = slot_to_unique_name_map[slot]
+        unique_item = slot_to_unique_name_map[slot]
+        if unique_item is not None:
+            unique_name, rarity = unique_item
             try:
                 item_filter.unique_aspect = [AspectUniqueFilterModel(name=unique_name)]
             except Exception:
@@ -260,7 +265,7 @@ def _weapon_type_from_unique_tooltip_html(tooltip_html: str) -> ItemType | None:
     return fix_weapon_type(input_str=slot_text)
 
 
-def _get_weapon_paperdoll_icons(driver: ChromiumDriver) -> dict[str, WebElement]:
+def _get_weapon_paperdoll_icons(driver: WebDriver) -> dict[str, WebElement]:
     """Map weapon slot name to its paperdoll gear icon element, without hovering anything.
 
     Hovering (to read the tooltip) is comparatively slow, so callers should only hover the icon for a
@@ -279,7 +284,7 @@ def _get_weapon_paperdoll_icons(driver: ChromiumDriver) -> dict[str, WebElement]
     return result
 
 
-def _get_weapon_type_from_paperdoll_tooltip(driver: ChromiumDriver, icon: WebElement) -> ItemType | None:
+def _get_weapon_type_from_paperdoll_tooltip(driver: WebDriver, icon: WebElement) -> ItemType | None:
     """Hover a unique/mythic weapon paperdoll icon to read its type from the tooltip.
 
     D4Builds only reveals a weapon's type this way for unique/mythic items; generic legendary weapons
@@ -292,7 +297,7 @@ def _get_weapon_type_from_paperdoll_tooltip(driver: ChromiumDriver, icon: WebEle
 
 
 def _extract_d4builds_seal_charm_filters(
-    driver: ChromiumDriver, config: ImportConfig
+    driver: WebDriver, config: ImportConfig
 ) -> tuple[list[CharmFilterModel], list[SealFilterModel]]:
     charm_filters = []
     seal_filters = []
@@ -389,7 +394,7 @@ def _match_d4builds_tooltip_affix(text: str, item_type: ItemType, guessed_set_na
         item_type == ItemType.HoradricSeal
         and guessed_set_name
         and (
-            matched_name := _match_d4builds_set_aware_seal_affix(
+            matched_name := match_set_aware_seal_affix(
                 stat_clean=stat_clean, affix_dict=affix_dict, guessed_set_name=guessed_set_name
             )
         )
@@ -397,29 +402,6 @@ def _match_d4builds_tooltip_affix(text: str, item_type: ItemType, guessed_set_na
         return matched_name
 
     return closest_match(stat_clean, affix_dict)
-
-
-def _match_d4builds_set_aware_seal_affix(
-    stat_clean: str, affix_dict: dict[str, str], guessed_set_name: str
-) -> str | None:
-    best_global_key = closest_match(stat_clean, affix_dict)
-    if best_global_key and best_global_key != "damage":
-        global_display = affix_dict[best_global_key]
-        if rapidfuzz.distance.Levenshtein.distance(stat_clean, global_display) <= 2:
-            is_set_specific = any(best_global_key.startswith(f"{set_name}_") for set_name in Dataloader().set_list)
-            if not is_set_specific:
-                return best_global_key
-
-    set_keys = {k: v for k, v in Dataloader().seal_affix_dict.items() if k.startswith(f"{guessed_set_name}_")}
-    if not set_keys:
-        return None
-    potential_match = closest_match(stat_clean, set_keys)
-    if not potential_match:
-        return None
-    display_name = Dataloader().seal_affix_dict[potential_match]
-    if rapidfuzz.fuzz.token_set_ratio(stat_clean, display_name) >= 50:
-        return potential_match
-    return None
 
 
 def _tooltip_texts(tooltip_html: str, value_xpath: str) -> list[str]:
@@ -506,7 +488,12 @@ def _get_legendary_aspects(data: lxml.html.HtmlElement) -> list[str]:
 
     aspects = paperdoll[0].xpath(PAPERDOLL_LEGENDARY_ASPECT_XPATH)
     for aspect in aspects:
-        aspect_name = correct_name(aspect.text.lower().replace("aspect", "").strip())
+        aspect_text = aspect.text
+        if not aspect_text:
+            continue
+        aspect_name = correct_name(aspect_text.lower().replace("aspect", "").strip())
+        if aspect_name is None:
+            continue
 
         if aspect_name not in Dataloader().aspect_list:
             LOGGER.warning(

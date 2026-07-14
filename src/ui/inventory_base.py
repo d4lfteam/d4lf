@@ -9,13 +9,13 @@ from src.template_finder import search
 from src.ui.menu import Menu
 from src.utils.custom_mouse import Mouse
 from src.utils.image_operations import crop
-from src.utils.roi_operations import get_center, to_grid
+from src.utils.roi_operations import Rectangle, get_center, to_grid
 
 
 @dataclass
 class ItemSlot:
-    bounding_box: list[int] = None
-    center: list[int] = None
+    bounding_box: Rectangle
+    center: tuple[int, int]
     is_fav: bool = False
     is_junk: bool = False
 
@@ -54,7 +54,8 @@ class InventoryBase(Menu):
         """
         if img is None:
             img = Cam().grab()
-        grid = to_grid(self.slots_roi, self.rows, self.columns)
+        slots_roi = (int(self.slots_roi[0]), int(self.slots_roi[1]), int(self.slots_roi[2]), int(self.slots_roi[3]))
+        grid = to_grid(slots_roi, self.rows, self.columns)
         occupied_slots = []
         empty_slots = []
 
@@ -64,7 +65,9 @@ class InventoryBase(Menu):
 
             hsv_img = cv2.cvtColor(slot_img, cv2.COLOR_BGR2HSV)
             mean_value_overall = np.mean(hsv_img[:, :, 2])
-            fav_flag_crop = crop(hsv_img, ResManager().roi.rel_fav_flag)
+            rel_fav_flag = ResManager().roi.rel_fav_flag
+            fav_roi = (int(rel_fav_flag[0]), int(rel_fav_flag[1]), int(rel_fav_flag[2]), int(rel_fav_flag[3]))
+            fav_flag_crop = crop(hsv_img, fav_roi)
             mean_value_fav = cv2.mean(fav_flag_crop)[2]
 
             res_junk = search(self.junk_template, slot_img, threshold=0.65, use_grayscale=True)
@@ -87,13 +90,8 @@ class InventoryBase(Menu):
 
     # Needed for double checking a TTS
     def hover_left_of_item(self, item: ItemSlot):
-        Mouse.move(
-            *Cam().window_to_monitor([
-                item.bounding_box[0] - item.bounding_box[2] / 2,
-                item.bounding_box[1] + item.bounding_box[3] / 2,
-            ]),
-            randomize=15,
-        )
+        x, y, width, height = item.bounding_box
+        Mouse.move(*Cam().window_to_monitor([x - width / 2, y + height / 2]), randomize=15)
 
     def hover_item_with_delay(self, item: ItemSlot, delay_factor: tuple[float, float] = (2, 3)):
         Mouse.move(*Cam().window_to_monitor(item.center), randomize=15, delay_factor=delay_factor)

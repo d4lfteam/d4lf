@@ -2,9 +2,12 @@ import functools
 import logging
 import re
 import time
-from typing import TYPE_CHECKING, Literal, TypeVar
+from collections.abc import Mapping
+from enum import Enum
+from typing import TYPE_CHECKING, Literal, TypeVar, overload
 
 import httpx
+import rapidfuzz
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
@@ -31,17 +34,16 @@ from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePar
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.data.rarity import ItemRarity
+from src.item.descr.text import closest_match
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from selenium.webdriver.chromium.webdriver import ChromiumDriver
+    from collections.abc import Callable, Sequence
 
 
 LOGGER = logging.getLogger(__name__)
 
-D = TypeVar("D", bound=WebDriver | WebElement)
-T = TypeVar("T")
+E = TypeVar("E", bound=Enum)
+FilterModelT = TypeVar("FilterModelT", bound=ItemFilterModel | CharmFilterModel | SealFilterModel)
 HEADERS = {"User-Agent": "Diablo 4 Loot Filter - Profile Importer"}
 
 # UI Theme Colors
@@ -214,6 +216,65 @@ def affix_dict_for_item_type(item_type: ItemType | None) -> dict[str, str]:
     return Dataloader().affix_dict
 
 
+def match_set_aware_seal_affix(stat_clean: str, affix_dict: dict[str, str], guessed_set_name: str) -> str | None:
+    # First check if the stat is a generic affix with an exact or very close match
+    best_global_key = closest_match(stat_clean, affix_dict)
+    if best_global_key and best_global_key != "damage":
+        global_display = affix_dict[best_global_key]
+        if rapidfuzz.distance.Levenshtein.distance(stat_clean, global_display) <= 2:
+            # Ensure it's not a set-specific affix of another set
+            is_set_specific = any(best_global_key.startswith(f"{set_name}_") for set_name in Dataloader().set_list)
+            if not is_set_specific:
+                return best_global_key
+
+    set_affixes = {
+        key: value for key, value in Dataloader().seal_affix_dict.items() if key.startswith(f"{guessed_set_name}_")
+    }
+    if not set_affixes:
+        return None
+    potential_match = closest_match(stat_clean, set_affixes)
+    if potential_match is None:
+        return None
+    display_name = Dataloader().seal_affix_dict[potential_match]
+    return potential_match if rapidfuzz.fuzz.token_set_ratio(stat_clean, display_name) >= 50 else None
+
+
+def as_string_keyed_mapping(value: object) -> dict[str, object]:
+    if not isinstance(value, Mapping):
+        return {}
+    return {key: item for key, item in value.items() if isinstance(key, str)}
+
+
+def as_string_keyed_mapping_list(value: object) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        return []
+    return [as_string_keyed_mapping(item) for item in value if isinstance(item, Mapping)]
+
+
+def as_text(value: object) -> str:
+    return value if isinstance(value, str) else ""
+
+
+@overload
+def create_seal_charm_filter(
+    affixes: list[Affix],
+    require_gas: bool,
+    model_type: type[CharmFilterModel],
+    unique_name: str | None = None,
+    set_name: str | None = None,
+) -> CharmFilterModel: ...
+
+
+@overload
+def create_seal_charm_filter(
+    affixes: list[Affix],
+    require_gas: bool,
+    model_type: type[SealFilterModel] = SealFilterModel,
+    unique_name: str | None = None,
+    set_name: str | None = None,
+) -> SealFilterModel: ...
+
+
 def create_seal_charm_filter(
     affixes: list[Affix],
     require_gas: bool,
@@ -266,7 +327,7 @@ def weapon_slot_name_hint(item_filter: ItemFilterModel, slot: str) -> str | None
     return slot if item_filter.item_type == WEAPON_TYPES else None
 
 
-def unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
+def unique_filter_name(filter_name_template: str, filters: Sequence[Mapping[str, object]]) -> str:
     filter_name = filter_name_template
     i = 2
     while any(filter_name == next(iter(existing_filter)) for existing_filter in filters):
@@ -276,8 +337,8 @@ def unique_filter_name(filter_name_template: str, filters: list[dict]) -> str:
 
 
 def deduplicate_filters(
-    filters: list[ItemFilterModel | CharmFilterModel | SealFilterModel], name_hints: list[str | None] | None = None
-) -> list[dict[str, ItemFilterModel | CharmFilterModel | SealFilterModel]]:
+    filters: Sequence[FilterModelT], name_hints: Sequence[str | None] | None = None
+) -> list[dict[str, FilterModelT]]:
     """Merge identical filters, naming duplicates with an (xN) count suffix.
 
     Filters are compared by their Pydantic model data.
@@ -291,7 +352,7 @@ def deduplicate_filters(
     if not filters:
         return []
 
-    groups: list[tuple[str, ItemFilterModel | CharmFilterModel | SealFilterModel, int]] = []
+    groups: list[tuple[str, FilterModelT, int]] = []
     for i, filter_spec in enumerate(filters):
         merged = False
         for idx, (base_name, existing_model, count) in enumerate(groups):
@@ -310,8 +371,8 @@ def deduplicate_filters(
                 base_name = "Charm" if isinstance(filter_spec, CharmFilterModel) else "HoradricSeal"
             groups.append((base_name, filter_spec, 1))
 
-    result: list[dict[str, ItemFilterModel | CharmFilterModel | SealFilterModel]] = []
-    used_names: list[dict[str, ItemFilterModel | CharmFilterModel | SealFilterModel]] = []
+    result: list[dict[str, FilterModelT]] = []
+    used_names: list[dict[str, FilterModelT]] = []
     for base_name, model, count in groups:
         if count > 1:
             candidate = f"{base_name}(x{count})"
@@ -328,11 +389,11 @@ def deduplicate_filters(
     return result
 
 
-def sort_profile_filters(filters: list[dict[str, ItemFilterModel]]) -> list[dict[str, ItemFilterModel]]:
-    return sorted(filters, key=_profile_filter_sort_key)
+def sort_profile_filters(filters: Sequence[Mapping[str, FilterModelT]]) -> list[dict[str, FilterModelT]]:
+    return [dict(filter_entry) for filter_entry in sorted(filters, key=_profile_filter_sort_key)]
 
 
-def _profile_filter_sort_key(filter_entry: dict[str, ItemFilterModel]) -> str:
+def _profile_filter_sort_key(filter_entry: Mapping[str, object]) -> str:
     filter_name, _ = next(iter(filter_entry.items()))
     return filter_name.casefold()
 
@@ -352,9 +413,9 @@ def get_with_retry(url: str, custom_headers: dict[str, str] | None = None) -> ht
     raise ConnectionError(msg)
 
 
-def handle_popups[D: WebDriver | WebElement, T](
-    driver: ChromiumDriver, method: Callable[[D], Literal[False] | T], timeout: int = 10
-):
+def handle_popups[T: WebElement](
+    driver: WebDriver, method: Callable[[WebDriver], Literal[False] | T], timeout: int = 10
+) -> None:
     LOGGER.info("Handling cookie / adblock popups")
     wait = WebDriverWait(driver, timeout)
     for _ in range(3):
@@ -366,10 +427,10 @@ def handle_popups[D: WebDriver | WebElement, T](
         time.sleep(1)
 
 
-def match_to_enum(enum_class, target_string: str, check_keys: bool = False):
+def match_to_enum(enum_class: type[E], target_string: str, check_keys: bool = False) -> E | None:
     target_string = target_string.casefold().replace(" ", "").replace("-", "")
     for enum_member in enum_class:
-        if enum_member.value.casefold().replace(" ", "").replace("-", "") == target_string:
+        if str(enum_member.value).casefold().replace(" ", "").replace("-", "") == target_string:
             return enum_member
         if check_keys and enum_member.name.casefold().replace(" ", "").replace("-", "") == target_string:
             return enum_member
@@ -377,7 +438,7 @@ def match_to_enum(enum_class, target_string: str, check_keys: bool = False):
 
 
 def hover_and_get_tooltip_html(
-    driver: ChromiumDriver, element: WebElement, tooltip_css: str, warn_on_timeout: bool = True
+    driver: WebDriver, element: WebElement, tooltip_css: str, warn_on_timeout: bool = True
 ) -> str:
     """Hover an element and return the outerHTML of the tippy tooltip it reveals, if any.
 
@@ -432,9 +493,14 @@ def add_to_profiles(build_name):
         LOGGER.info(f"Added {build_name} to active profiles configuration")
 
 
-def setup_webdriver(uc: bool = False) -> ChromiumDriver:
+def setup_webdriver(uc: bool = False) -> WebDriver:
     if uc:
-        return Driver(uc=uc, headless2=True, agent=HEADERS["User-Agent"])
+        driver = Driver(uc=uc, headless2=True, agent=HEADERS["User-Agent"])
+        if not isinstance(driver, WebDriver):
+            msg = "seleniumbase did not return a Selenium WebDriver"
+            raise TypeError(msg)
+        return driver
+    driver: WebDriver | None = None
     match IniConfigLoader().general.browser:
         case BrowserType.edge:
             options = webdriver.EdgeOptions()
@@ -453,4 +519,7 @@ def setup_webdriver(uc: bool = False) -> ChromiumDriver:
             options.add_argument("--headless")
             options.set_preference("general.useragent.override", HEADERS["User-Agent"])
             driver = webdriver.Firefox(options=options)
-    return driver  # It must be one of the 3 browsers due to ini validation
+    if driver is None:
+        msg = "Unsupported browser configured for profile importer"
+        raise ValueError(msg)
+    return driver

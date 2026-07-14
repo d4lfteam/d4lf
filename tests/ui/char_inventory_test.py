@@ -37,6 +37,8 @@ def test_char_inventory(img_res, input_img):
 def test_get_item_slots(img_res, input_img, occupied, junk, fav):
     Cam().update_window_pos(0, 0, *img_res)
     img = cv2.imread(input_img)
+    if img is None:
+        pytest.fail(f"Unable to load test image: {input_img}")
     inv = CharInventory()
     occupied_slots, is_open = inv.get_item_slots(img)
     num_junk = 0

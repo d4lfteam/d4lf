@@ -1,6 +1,7 @@
 import sys
 import threading
 import tkinter as tk
+from typing import override
 
 import pytest
 
@@ -20,6 +21,7 @@ class _FakeOverlay(tk.Toplevel):
         self.withdraw()
         _FakeOverlay.instances_created += 1
 
+    @override
     def destroy(self):
         super().destroy()
         with info_overlay._OVERLAY_LOCK:

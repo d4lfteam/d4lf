@@ -9,7 +9,12 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication, QCheckBox
 
-checkmark_checkbox_module = types.ModuleType("src.gui.models.checkmark_checkbox")
+
+class _CheckmarkCheckboxModule(types.ModuleType):
+    CheckmarkCheckBox: type[QCheckBox]
+
+
+checkmark_checkbox_module = _CheckmarkCheckboxModule("src.gui.models.checkmark_checkbox")
 checkmark_checkbox_module.CheckmarkCheckBox = QCheckBox
 sys.modules["src.gui.models.checkmark_checkbox"] = checkmark_checkbox_module
 
@@ -17,6 +22,7 @@ importer_window_module = importlib.import_module("src.gui.importer_window")
 importer_config_module = importlib.import_module("src.gui.importer.importer_config")
 DEFAULT_FILENAME_PARTS = importer_config_module.DEFAULT_FILENAME_PARTS
 FilenamePart = importer_config_module.FilenamePart
+ImportConfig = importer_config_module.ImportConfig
 GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP = importer_window_module.GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP
 ImporterWindow = importer_window_module.ImporterWindow
 
@@ -85,7 +91,7 @@ def test_generate_requires_url_and_filename_parts_or_custom_name(qapp, importer_
 
 
 def test_generate_passes_selected_filename_parts(qapp, importer_settings, monkeypatch):
-    captured_config = None
+    captured_config: ImportConfig | None = None
 
     class FakeThreadPool:
         def start(self, worker):
@@ -101,6 +107,7 @@ def test_generate_passes_selected_filename_parts(qapp, importer_settings, monkey
 
     window._generate_button_click()
 
+    assert captured_config is not None
     assert captured_config.filename_parts == (FilenamePart.SOURCE, FilenamePart.CLASS, FilenamePart.BUILD_TITLE)
 
     window.close()

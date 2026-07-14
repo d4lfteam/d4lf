@@ -1,5 +1,7 @@
+from typing import override
+
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QPainter, QPen
+from PyQt6.QtGui import QColor, QPainter, QPaintEvent, QPen
 from PyQt6.QtWidgets import QCheckBox, QStyle, QStyleOptionButton
 
 from src.scripts.common import get_filter_colors
@@ -11,10 +13,15 @@ class CheckmarkCheckBox(QCheckBox):
     The checkmark is rendered when the box is checked, using the theme's accent color.
     """
 
-    def paintEvent(self, event):  # noqa: N802
-        super().paintEvent(event)  # Draw the default checkbox background/border
+    @override
+    def paintEvent(self, a0: QPaintEvent | None) -> None:
+        super().paintEvent(a0)  # Draw the default checkbox background/border
 
         if not self.isChecked():
+            return
+
+        style = self.style()
+        if style is None:
             return
 
         painter = QPainter(self)
@@ -23,7 +30,7 @@ class CheckmarkCheckBox(QCheckBox):
 
             option = QStyleOptionButton()
             self.initStyleOption(option)
-            indicator_rect = self.style().subElementRect(QStyle.SubElement.SE_CheckBoxIndicator, option, self)
+            indicator_rect = style.subElementRect(QStyle.SubElement.SE_CheckBoxIndicator, option, self)
 
             # Draw a simple checkmark inside the indicator
             pen = QPen(QColor(get_filter_colors().matched))

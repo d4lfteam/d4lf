@@ -6,7 +6,7 @@ import time
 import tkinter as tk
 from threading import Event, Thread
 from tkinter.font import Font
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -36,6 +36,14 @@ if TYPE_CHECKING:
 
 LOGGER = logging.getLogger(__name__)
 
+type HighlightTask = (
+    tuple[Literal["clear"]]
+    | tuple[Literal["empty"], Item, tuple[int, int, int, int], str, str | None]
+    | tuple[Literal["match"], Item, tuple[int, int, int, int], FilterResult, Item]
+    | tuple[Literal["no_match"], Item, tuple[int, int, int, int]]
+    | tuple[Literal["codex_upgrade"], Item, tuple[int, int, int, int], FilterResult]
+)
+
 
 class CancellationRequestedError(Exception):
     """Exception raised when a cancellation is requested."""
@@ -45,14 +53,16 @@ class CancellationRequestedError(Exception):
 class VisionModeWithHighlighting:
     def __init__(self):
         super().__init__()
-        self.clear_when_item_not_selected_thread = None
-        self.clear_when_item_not_selected_thread_cancel_event = None
-        self.evaluate_item_thread = None
-        self.evaluate_item_thread_cancel_event = None
-        self.current_item = None
-        self.is_cleared = True
-        self.queue = queue.Queue()
-        self.is_running = False
+        self.root: tk.Toplevel
+        self.canvas: tk.Canvas
+        self.clear_when_item_not_selected_thread: Thread | None = None
+        self.clear_when_item_not_selected_thread_cancel_event: Event | None = None
+        self.evaluate_item_thread: Thread | None = None
+        self.evaluate_item_thread_cancel_event: Event | None = None
+        self.current_item: Item | None = None
+        self.is_cleared: bool = True
+        self.queue: queue.Queue[HighlightTask] = queue.Queue()
+        self.is_running: bool = False
 
         def _build_ui() -> None:
             self.root, self.canvas = create_overlay_toplevel(get_root())
@@ -94,17 +104,19 @@ class VisionModeWithHighlighting:
         self.screen_off_x = Cam().window_roi["left"]
         self.screen_off_y = Cam().window_roi["top"]
 
-    def draw_rect(self, canvas: tk.Canvas, bullet_width, obj, off, color):
-        offset_loc = np.array(obj.loc) + off
+    def draw_rect(self, canvas: tk.Canvas, bullet_width: int, loc: tuple[int, int], off: int, color: str) -> None:
+        offset_loc = np.array(loc) + off
         x1 = int(offset_loc[0] - bullet_width / 2)
         y1 = int(offset_loc[1] - bullet_width / 2)
         x2 = int(offset_loc[0] + bullet_width / 2)
         y2 = int(offset_loc[1] + bullet_width / 2)
-        self.canvas.create_rectangle(x1, y1, x2, y2, fill=color)
+        canvas.create_rectangle(x1, y1, x2, y2, fill=color)
 
-    def draw_text(self, canvas, text, color, previous_text_y, offset, canvas_center_x) -> int:
+    def draw_text(
+        self, canvas: tk.Canvas, text: str, color: str, previous_text_y: int, offset: int, canvas_center_x: int
+    ) -> int:
         if not text:
-            return None
+            return previous_text_y
 
         font_name = "Courier New"
         minimum_font_size = IniConfigLoader().general.minimum_overlay_font_size
@@ -228,10 +240,10 @@ class VisionModeWithHighlighting:
             bullet_width = self.thick * 3
             for affix in should_keep_res.matched[0].matched_affixes:
                 if affix.loc:
-                    self.draw_rect(self.canvas, bullet_width, affix, off, get_filter_colors().matched)
+                    self.draw_rect(self.canvas, bullet_width, affix.loc, off, get_filter_colors().matched)
 
             if item_descr.aspect and item_descr.aspect.loc and any(m.aspect_match for m in should_keep_res.matched):
-                self.draw_rect(self.canvas, bullet_width, item_descr.aspect, off, get_filter_colors().matched)
+                self.draw_rect(self.canvas, bullet_width, item_descr.aspect.loc, off, get_filter_colors().matched)
 
         self.root.update_idletasks()
         self.root.update()
@@ -282,13 +294,14 @@ class VisionModeWithHighlighting:
         if self.evaluate_item_thread:
             self.stop_thread_and_wait(self.evaluate_item_thread, self.evaluate_item_thread_cancel_event)
 
-        self.evaluate_item_thread_cancel_event = threading.Event()
+        cancel_event = threading.Event()
+        self.evaluate_item_thread_cancel_event = cancel_event
         self.evaluate_item_thread = threading.Thread(
-            target=self.evaluate_item_and_queue_draw, args=(item_descr,), daemon=True
+            target=self.evaluate_item_and_queue_draw, args=(item_descr, cancel_event), daemon=True
         )
         self.evaluate_item_thread.start()
 
-    def evaluate_item_and_queue_draw(self, item_descr: Item):
+    def evaluate_item_and_queue_draw(self, item_descr: Item, cancel_event: Event) -> None:
         if not self.is_cleared:
             self.request_clear()
         if self.clear_when_item_not_selected_thread:
@@ -305,7 +318,7 @@ class VisionModeWithHighlighting:
         retry_count = 0
         try:
             while retry_count < 5 and not is_confirmed:
-                self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
+                self.check_for_thread_cancellation(cancel_event)
                 retry_count += 1
                 mouse_pos = Cam().monitor_to_window(Mouse.get_position())
                 # get closest pos to a item center
@@ -313,17 +326,17 @@ class VisionModeWithHighlighting:
                 delta = centers_to_use - mouse_pos
                 distances = np.linalg.norm(delta, axis=1)
                 closest_index = np.argmin(distances)
-                item_center = centers_to_use[closest_index]
+                item_center_array = centers_to_use[closest_index]
+                item_center = (int(item_center_array[0]), int(item_center_array[1]))
 
-                self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
-
+                self.check_for_thread_cancellation(cancel_event)
                 # Before we get the cropped_descr we need to ensure there is no previous overlay on screen
                 while not self.is_cleared:
                     time.sleep(0.10)
                 found, rarity, cropped_descr, item_roi = find_descr(Cam().grab(), item_center)
 
-                top_left_corner = None if not found else item_roi[:2]
-                if found:
+                top_left_corner = None if not found or item_roi is None else item_roi[:2]
+                if found and item_roi is not None:
                     if not is_confirmed:
                         found_check, _, cropped_descr_check, _ = find_descr(Cam().grab(), item_center)
                         if found_check:
@@ -332,14 +345,15 @@ class VisionModeWithHighlighting:
                                 continue
                             is_confirmed = True
 
-                    self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
+                    self.check_for_thread_cancellation(cancel_event)
 
-                    if (
+                    moved_to_new_item = (
                         last_top_left_corner is None
-                        or last_top_left_corner[0] != top_left_corner[0]
-                        or last_top_left_corner[1] != top_left_corner[1]
+                        or top_left_corner is None
+                        or last_top_left_corner != top_left_corner
                         or (last_center is not None and last_center[1] != item_center[1])
-                    ):
+                    )
+                    if moved_to_new_item:
                         ignored_item = is_ignored_item(item_descr)
                         # Make the canvas gray for "found the item" or blue for "ignored this item"
                         if ignored_item:
@@ -355,11 +369,14 @@ class VisionModeWithHighlighting:
                         # Since we've now drawn something we kick off a thread to remove the drawing
                         # if the item is unselected. It is also automatically removed if a different
                         # TTS item comes in.
-                        self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
+                        self.check_for_thread_cancellation(cancel_event)
                         if not self.clear_when_item_not_selected_thread:
-                            self.clear_when_item_not_selected_thread_cancel_event = threading.Event()
+                            clear_cancel_event = threading.Event()
+                            self.clear_when_item_not_selected_thread_cancel_event = clear_cancel_event
                             self.clear_when_item_not_selected_thread = threading.Thread(
-                                target=self.check_for_item_still_selected, args=(item_center,), daemon=True
+                                target=self.check_for_item_still_selected,
+                                args=(item_center, clear_cancel_event),
+                                daemon=True,
                             )
                             self.clear_when_item_not_selected_thread.start()
 
@@ -408,7 +425,7 @@ class VisionModeWithHighlighting:
                                 self.request_no_match_box(item_descr, item_roi)
                 else:
                     self.request_clear()
-                    self.check_for_thread_cancellation(self.evaluate_item_thread_cancel_event)
+                    self.check_for_thread_cancellation(cancel_event)
                     last_center = None
                     last_top_left_corner = None
                     is_confirmed = False
@@ -428,14 +445,16 @@ class VisionModeWithHighlighting:
             raise CancellationRequestedError
 
     @staticmethod
-    def stop_thread_and_wait(thread: Thread, cancel_event: Event):
+    def stop_thread_and_wait(thread: Thread | None, cancel_event: Event | None) -> None:
+        if thread is None or cancel_event is None:
+            return
         cancel_event.set()
         thread.join()
 
-    def check_for_item_still_selected(self, item_center):
+    def check_for_item_still_selected(self, item_center: tuple[int, int], cancel_event: Event) -> None:
         try:
             while True:
-                self.check_for_thread_cancellation(self.clear_when_item_not_selected_thread_cancel_event)
+                self.check_for_thread_cancellation(cancel_event)
                 found_check, _, _, _ = find_descr(Cam().grab(), item_center)
                 if not found_check:
                     self.request_clear()

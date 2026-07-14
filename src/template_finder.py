@@ -2,7 +2,9 @@ import logging
 import operator
 import threading
 import time
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, field
+from typing import override
 
 import cv2
 import numpy as np
@@ -16,48 +18,78 @@ from src.utils.misc import run_until_condition
 from src.utils.roi_operations import get_center
 from src.utils.window import screenshot
 
+Rectangle = tuple[int, int, int, int]
+TemplateReference = str | np.ndarray
+TemplateReferences = TemplateReference | Sequence[TemplateReference]
+ColorMatch = list[np.ndarray] | str | None
+
 LOGGER = logging.getLogger(__name__)
 
 TEMPLATES_LOCK = threading.Lock()
+_MISSING_BGR_IMAGE = "Template has no BGR image"
+_MISSING_GRAYSCALE_IMAGE = "Template has no grayscale image"
+_INVALID_COLOR_IMAGE = "Color filtering did not produce an image"
+
+
+def _is_finite_real_array(value: object, size: int) -> bool:
+    if not isinstance(value, np.ndarray) or value.ndim != 1 or value.size != size:
+        return False
+    if not np.issubdtype(value.dtype, np.number) or np.issubdtype(value.dtype, np.complexfloating):
+        return False
+    return bool(np.all(np.isfinite(value)))
+
+
+def _is_valid_roi(value: np.ndarray) -> bool:
+    values = [float(item) for item in value]
+    return values[0] >= 0 and values[1] >= 0 and values[2] > 0 and values[3] > 0
+
+
+def _is_valid_hsv_range(lower: np.ndarray, upper: np.ndarray) -> bool:
+    lower_values = [float(item) for item in lower]
+    upper_values = [float(item) for item in upper]
+    return (
+        -179 <= lower_values[0] <= 179
+        and -179 <= upper_values[0] <= 179
+        and all(0 <= item <= 255 for item in (*lower_values[1:], *upper_values[1:]))
+        and all(lower_value <= upper_value for lower_value, upper_value in zip(lower_values, upper_values, strict=True))
+    )
 
 
 @dataclass
 class TemplateMatch:
-    center: tuple[int, int] = None
-    center_monitor: tuple[int, int] = None
-    name: str = None
-    region: list[int, int, int, int] = None
-    region_monitor: list[int, int, int, int] = None
+    center: tuple[int, int]
+    center_monitor: tuple[int, int]
+    name: str
+    region: list[int]
+    region_monitor: list[int]
     score: float = -1.0
 
-    def __eq__(self, other):
+    @override
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, TemplateMatch):
             return self.center == other.center and self.score == other.score
         return False
 
-    def __hash__(self):
+    @override
+    def __hash__(self) -> int:
         return hash((self.center, self.score))
 
 
 @dataclass
 class SearchResult:
-    matches: list[TemplateMatch] = None
+    matches: list[TemplateMatch] = field(default_factory=list)
     success: bool = False
-
-    def __post_init__(self):
-        if self.matches is None:
-            self.matches = []
 
 
 @dataclass
 class SearchArgs:
     _search_args = None
-    ref: str | np.ndarray | list[str]
+    ref: TemplateReferences
     inp_img: np.ndarray | None = None
     threshold: float = 0.68
-    roi: list[float] | str | None = None
+    roi: Sequence[int | float] | str | None = None
     use_grayscale: bool = False
-    color_match: list[float] | str | None = None
+    color_match: ColorMatch = None
     mode: str = "first"
     timeout: int = 0
     suppress_debug: bool = True
@@ -70,21 +102,20 @@ class SearchArgs:
     def as_dict(self):
         return self.__dict__
 
-    def detect(self, img: np.ndarray = None) -> SearchResult:
+    def detect(self, img: np.ndarray | None = None) -> SearchResult:
         if img is not None:
             self.inp_img = img
         else:
             Cam().grab() if self.inp_img is None else self.inp_img
         return search(**self.as_dict())
 
-    def is_visible(self, img: np.ndarray = None) -> bool:
+    def is_visible(self, img: np.ndarray | None = None) -> bool:
         return self.detect(img).success
 
     def wait_until_visible(self, timeout: float = 30, suppress_debug: bool = False) -> SearchResult:
-        if (
-            not (result := run_until_condition(lambda: self.detect(), lambda match: match.success, timeout)[0]).success
-            and not suppress_debug
-        ):
+        raw_result, _ = run_until_condition(lambda: self.detect(), lambda match: match.success, timeout)
+        result = raw_result if isinstance(raw_result, SearchResult) else SearchResult()
+        if not result.success and not suppress_debug:
             LOGGER.debug(f"{self.ref} not found after {timeout} seconds")
         return result
 
@@ -98,26 +129,27 @@ class SearchArgs:
 
     @staticmethod
     def wait_for_update(
-        img: np.ndarray, roi: list[int] | None = None, timeout: float = 3, suppress_debug: bool = False
+        img: np.ndarray, roi: Rectangle | None = None, timeout: float = 3, suppress_debug: bool = False
     ) -> bool:
-        roi = roi if roi is not None else [0, 0, img.shape[0] - 1, img.shape[1] - 1]
+        resolved_roi = roi if roi is not None else (0, 0, img.shape[0] - 1, img.shape[1] - 1)
         if (
             not (
                 change := run_until_condition(
-                    lambda: crop(Cam().grab(), roi), lambda res: not np.array_equal(crop(img, roi), res), timeout
+                    lambda: crop(Cam().grab(), resolved_roi),
+                    lambda res: not np.array_equal(crop(img, resolved_roi), res),
+                    timeout,
                 )[1]
             )
             and not suppress_debug
         ):
-            LOGGER.debug(f"ROI: '{roi}' unchanged after {timeout} seconds")
+            LOGGER.debug(f"ROI: '{resolved_roi}' unchanged after {timeout} seconds")
         return change
 
 
-def _process_template_refs(ref: str | np.ndarray | list[str]) -> list[Template]:
+def _process_template_refs(ref: TemplateReferences) -> list[Template]:
     templates = []
-    if not isinstance(ref, list):
-        ref = [ref]
-    for i in ref:
+    refs: list[TemplateReference] = [ref] if isinstance(ref, (str, np.ndarray)) else list(ref)
+    for i in refs:
         # if the reference is a string, then it's a reference to a named template asset
         if isinstance(i, str):
             try:
@@ -126,41 +158,51 @@ def _process_template_refs(ref: str | np.ndarray | list[str]) -> list[Template]:
                 LOGGER.warning(f"Template not defined: {i}")
         # if the reference is an image, append new Template class object
         elif isinstance(i, np.ndarray):
-            templates.append(
-                Template(img_bgr=i, img_gray=cv2.cvtColor(i, cv2.COLOR_BGR2GRAY), alpha_mask=alpha_to_mask(i))
-            )
+            template = Template(img_bgr=i, img_gray=cv2.cvtColor(i, cv2.COLOR_BGR2GRAY))
+            alpha_mask = alpha_to_mask(i)
+            if alpha_mask is not None:
+                template.alpha_mask = alpha_mask
+            templates.append(template)
     return templates
 
 
 def _get_cv_result(
     template: Template,
     inp_img: np.ndarray,
-    roi: list[float] | None = None,
-    color_match: list[float] | None = None,
+    roi: Sequence[int | float] | None = None,
+    color_match: list[np.ndarray] | None = None,
     use_grayscale: bool = False,
     take_debug_screenshot: bool = False,
-) -> list[np.ndarray]:
+) -> tuple[np.ndarray | None, np.ndarray, list[int]]:
+    template_bgr = template.img_bgr
+    if not isinstance(template_bgr, np.ndarray):
+        raise RuntimeError(_MISSING_BGR_IMAGE)
+
     # crop image to roi
-    if roi is None:
-        # if no roi is provided roi = full inp_img
-        roi = [0, 0, inp_img.shape[1], inp_img.shape[0]]
-    roi = np.clip(np.array(roi), 0, None)
-    rx, ry, rw, rh = roi
+    # if no roi is provided roi = full inp_img
+    resolved_roi = [0, 0, inp_img.shape[1], inp_img.shape[0]] if roi is None else [max(0, int(value)) for value in roi]
+    rx, ry, rw, rh = resolved_roi
     img = inp_img[ry : ry + rh, rx : rx + rw]
     if img.shape[0] == 0 or img.shape[1] == 0:
-        return None, template.img_bgr, roi
+        return None, template_bgr, resolved_roi
     if take_debug_screenshot:
         screenshot("template_finder", img=img)
 
     # filter for desired color or make grayscale
     if color_match:
-        _, template_img = color_filter(template.img_bgr, color_match)
-        _, img = color_filter(img, color_match)
+        _, filtered_template = color_filter(template_bgr, color_match)
+        _, filtered_img = color_filter(img, color_match)
+        if filtered_template is None or filtered_img is None:
+            raise RuntimeError(_INVALID_COLOR_IMAGE)
+        template_img = filtered_template
+        img = filtered_img
     elif use_grayscale:
         template_img = template.img_gray
+        if not isinstance(template_img, np.ndarray):
+            raise RuntimeError(_MISSING_GRAYSCALE_IMAGE)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     else:
-        template_img = template.img_bgr
+        template_img = template_bgr
     if not (img.shape[0] > template_img.shape[0] and img.shape[1] > template_img.shape[1]):
         # LOGGER.error(
         #     f"Image shape and template shape are incompatible: {template.name}. Image: {img.shape}, Template: {template_img.shape}, roi: {roi}"
@@ -169,16 +211,16 @@ def _get_cv_result(
     else:
         res = cv2.matchTemplate(img, template_img, cv2.TM_CCOEFF_NORMED, mask=template.alpha_mask)
         np.nan_to_num(res, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
-    return res, template_img, roi
+    return res, template_img, resolved_roi
 
 
 def search(
-    ref: str | np.ndarray | list[str],
+    ref: TemplateReferences,
     inp_img: np.ndarray | None = None,
     threshold: float = 0.68,
-    roi: list[float] | str | None = None,
+    roi: Sequence[int | float] | str | None = None,
     use_grayscale: bool = False,
-    color_match: list[float] | str | None = None,
+    color_match: ColorMatch = None,
     mode: str = "first",
     timeout: int = 0,
     suppress_debug: bool = True,
@@ -202,23 +244,50 @@ def search(
     result = SearchResult()
     matches = []
     future_list = []
+    resolved_roi: list[float] | None
     if isinstance(roi, str):
         try:
-            roi = getattr(ResManager().roi, roi)
-        except KeyError as e:
+            candidate_roi = getattr(ResManager().roi, roi)
+        except (AttributeError, KeyError, TypeError) as e:
             LOGGER.error(f"Invalid roi key: {roi}")
             LOGGER.error(e)
+            message = f"Invalid roi key: {roi}"
+            raise ValueError(message) from e
+        if not _is_finite_real_array(candidate_roi, 4) or not _is_valid_roi(candidate_roi):
+            message = f"Invalid roi value for key: {roi}"
+            raise ValueError(message)
+        resolved_roi = [float(value) for value in candidate_roi]
+    else:
+        resolved_roi = None if roi is None else [float(value) for value in roi]
+
+    resolved_color_match: list[np.ndarray] | None
     if isinstance(color_match, str):
         try:
-            color_match = getattr(COLORS, color_match)
-        except KeyError as e:
+            candidate_color = getattr(COLORS, color_match)
+            lower = candidate_color.h_s_v_min
+            upper = candidate_color.h_s_v_max
+        except (AttributeError, KeyError, TypeError) as e:
             LOGGER.error(f"Invalid color_match key: {color_match}")
             LOGGER.error(e)
+            message = f"Invalid color_match key: {color_match}"
+            raise ValueError(message) from e
+        if not _is_finite_real_array(lower, 3) or not _is_finite_real_array(upper, 3):
+            message = f"Invalid color range for key: {color_match}"
+            raise ValueError(message)
+        if not isinstance(lower, np.ndarray) or not isinstance(upper, np.ndarray):
+            message = f"Invalid color range for key: {color_match}"
+            raise ValueError(message)
+        if not _is_valid_hsv_range(lower, upper):
+            message = f"Invalid color range for key: {color_match}"
+            raise ValueError(message)
+        resolved_color_match = [lower, upper]
+    else:
+        resolved_color_match = color_match
 
     def _process_cv_result(template: Template, img: np.ndarray, take_debug_screenshot: bool = False) -> bool:
         new_match = False
         res, template_img, new_roi = _get_cv_result(
-            template, img, roi, color_match, use_grayscale, take_debug_screenshot
+            template, img, resolved_roi, resolved_color_match, use_grayscale, take_debug_screenshot
         )
 
         while True and not (matches and mode == "first") and res is not None:
@@ -232,13 +301,16 @@ def search(
                 rec_w = int(template_img.shape[1])
                 rec_h = int(template_img.shape[0])
 
-                template_match = TemplateMatch()
-                template_match.region = [rec_x, rec_y, rec_w, rec_h]
-                template_match.region_monitor = [*Cam().window_to_monitor((rec_x, rec_y)), rec_w, rec_h]
-                template_match.center = get_center(template_match.region)
-                template_match.center_monitor = Cam().window_to_monitor(template_match.center)
-                template_match.name = template.name
-                template_match.score = max_val
+                region = (rec_x, rec_y, rec_w, rec_h)
+                center = get_center(region)
+                template_match = TemplateMatch(
+                    region=list(region),
+                    region_monitor=[*Cam().window_to_monitor((rec_x, rec_y)), rec_w, rec_h],
+                    center=center,
+                    center_monitor=Cam().window_to_monitor(center),
+                    name=template.name,
+                    score=max_val,
+                )
 
                 matches.append(template_match)
                 if mode == "first":

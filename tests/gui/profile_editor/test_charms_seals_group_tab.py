@@ -27,14 +27,14 @@ def _create_mock_charm_model(name: str) -> DynamicCharmFilterModel:
     default_affix = AffixFilterModel(name="movement_speed", value=None)
     default_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
     config = CharmFilterModel(affix_pool=[default_pool])
-    return DynamicCharmFilterModel(**{name: config})
+    return DynamicCharmFilterModel(root={name: config})
 
 
 def _create_mock_seal_model(name: str) -> DynamicSealFilterModel:
     default_affix = AffixFilterModel(name="all_stats", value=None)
     default_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
     config = SealFilterModel(affix_pool=[default_pool])
-    return DynamicSealFilterModel(**{name: config})
+    return DynamicSealFilterModel(root={name: config})
 
 
 def test_charms_tab_close_tab_safely(qapp, mock_ini_loader):
@@ -45,7 +45,10 @@ def test_charms_tab_close_tab_safely(qapp, mock_ini_loader):
     config2 = CharmFilterModel(affix_pool=[default_pool], min_greater_affix_count=2)
 
     # Initial state with a grouped entry
-    charms_list = [DynamicCharmFilterModel(Charm1=config1, Charm2=config2), _create_mock_charm_model("Charm3")]
+    charms_list = [
+        DynamicCharmFilterModel(root={"Charm1": config1, "Charm2": config2}),
+        _create_mock_charm_model("Charm3"),
+    ]
 
     tab = CharmsTab(charms_list)
     tab.load()
@@ -73,7 +76,7 @@ def test_seals_tab_close_tab_safely(qapp, mock_ini_loader):
     config1 = SealFilterModel(affix_pool=[default_pool])
     config2 = SealFilterModel(affix_pool=[default_pool], min_greater_affix_count=2)
 
-    seals_list = [DynamicSealFilterModel(Seal1=config1, Seal2=config2), _create_mock_seal_model("Seal3")]
+    seals_list = [DynamicSealFilterModel(root={"Seal1": config1, "Seal2": config2}), _create_mock_seal_model("Seal3")]
 
     tab = SealsTab(seals_list)
     tab.load()
@@ -177,7 +180,7 @@ def test_charm_group_editor_rejects_multi_key_dynamic_model(qapp, mock_ini_loade
     default_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
     config1 = CharmFilterModel(affix_pool=[default_pool])
     config2 = CharmFilterModel(affix_pool=[default_pool], min_greater_affix_count=2)
-    multi_key_model = DynamicCharmFilterModel(Charm1=config1, Charm2=config2)
+    multi_key_model = DynamicCharmFilterModel(root={"Charm1": config1, "Charm2": config2})
 
     with pytest.raises(ValueError, match="single-key"):
         CharmGroupEditor(multi_key_model)

@@ -6,14 +6,17 @@ from types import SimpleNamespace
 
 import pytest
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.remote.webdriver import WebDriver
 
 from src.config.profile_models import ParagonPayloadModel
 from src.dataloader import Dataloader
 from src.gui.importer import mobalytics as mobalytics_module
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.mobalytics import (
+    _as_text,
     _convert_raw_to_affixes,
     _extract_mobalytics_charm_set_name,
+    _first_jsonpath_result,
     _get_weapon_slot_trigger,
     _get_weapon_type_from_slot_tooltip,
     _log_mobalytics_page_diagnostics,
@@ -23,6 +26,8 @@ from src.gui.importer.paragon_export import build_paragon_profile_payload, extra
 from src.item.data.item_type import ItemType
 
 if typing.TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from pytest_mock import MockerFixture
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
@@ -42,7 +47,10 @@ URLS = [
 ]
 
 
-class _MobalyticsDiagnosticsDriver:
+class _MobalyticsDiagnosticsDriver(WebDriver):
+    def __init__(self) -> None:
+        pass
+
     current_url = "https://mobalytics.gg/blocked"
     title = "Access denied"
 
@@ -64,7 +72,7 @@ class _MobalyticsImportDriver:
         return None
 
 
-def _mobalytics_page_source(slots: list[dict]) -> str:
+def _mobalytics_page_source(slots: list[Mapping[str, object]]) -> str:
     build_data = {
         "name": "Pulverize Druid",
         "buildVariants": {"values": [{"id": "variant-1", "genericBuilder": {"slots": slots}, "paragon": {}}]},
@@ -83,8 +91,8 @@ def _mobalytics_page_source(slots: list[dict]) -> str:
 
 
 def _mobalytics_slot(
-    slot: str, entity_type: str, title: str, modifiers: dict | None = None, icon_url: str = ""
-) -> dict:
+    slot: str, entity_type: str, title: str, modifiers: Mapping[str, object] | None = None, icon_url: str = ""
+) -> dict[str, object]:
     return {
         "gameSlotSlug": slot,
         "gameEntity": {
@@ -110,6 +118,15 @@ def test_extract_mobalytics_paragon_steps_normalizes_warlock_starting_board():
     assert board["Name"] == "warlock-starting-board"
     assert board["Nodes"].count(True) == 1
     assert board["Nodes"][node_index] is True
+
+
+@pytest.mark.parametrize("value", [None, 7, False])
+def test_as_text_rejects_non_string_remote_values(value: object) -> None:
+    assert not _as_text(value)
+
+
+def test_first_jsonpath_result_returns_none_for_missing_data() -> None:
+    assert _first_jsonpath_result("$.missing", {"present": True}) is None
 
 
 @pytest.mark.parametrize(("rotation", "expected_index"), [(0, 283), (90, 217), (180, 157), (270, 223)])
@@ -338,6 +355,52 @@ def test_import_mobalytics_imports_set_charm_and_deduplicates_identical_rings(
     assert len(profile.charms) == 1
     charm_filter = next(iter(profile.charms[0].root.values()))
     assert charm_filter.set == ["might_of_the_den_mother"]
+
+
+def test_import_mobalytics_imports_seal_identity_with_or_without_affixes(
+    mock_ini_loader, mocker: MockerFixture
+) -> None:
+    captured_profile = {}
+    driver = _MobalyticsImportDriver(
+        page_source=_mobalytics_page_source([
+            _mobalytics_slot(slot="season-12-seal-1", entity_type="seals", title="Seal of the Diamond Mind"),
+            _mobalytics_slot(
+                slot="season-12-seal-2",
+                entity_type="seals",
+                title="Seal of the Golden Epiphany",
+                modifiers={"sealStats": [{"id": "cooldown-reduction"}]},
+            ),
+        ])
+    )
+
+    def fake_save_new(*, file_name, profile, source):
+        captured_profile["profile"] = profile
+        return SimpleNamespace(file_name=file_name)
+
+    profile_store = mocker.Mock()
+    profile_store.save_new.side_effect = fake_save_new
+    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+
+    import_mobalytics(
+        config=ImportConfig(
+            url="https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
+            import_aspect_upgrades=False,
+            import_greater_affixes=False,
+            require_greater_affixes=False,
+            add_to_profiles=False,
+            custom_file_name="test",
+        ),
+        driver=driver,
+    )
+
+    profile = captured_profile["profile"]
+    seal_filters = [seal for group in profile.seals for seal in group.root.values()]
+    assert {seal.unique_aspect[0].name for seal in seal_filters} == {
+        "seal_of_the_diamond_mind",
+        "seal_of_the_golden_epiphany",
+    }
+    golden_epiphany = next(seal for seal in seal_filters if seal.unique_aspect[0].name == "seal_of_the_golden_epiphany")
+    assert golden_epiphany.affix_pool[0].count[0].name == "cooldown_reduction"
 
 
 @pytest.mark.parametrize("url", URLS)

@@ -8,7 +8,7 @@ from src.template_finder import TemplateMatch, search
 from src.utils.image_operations import color_filter, crop
 
 
-def find_seperators_long(img_item_descr: np.ndarray, sep_short_match: TemplateMatch) -> list[TemplateMatch]:
+def find_seperators_long(img_item_descr: np.ndarray, sep_short_match: TemplateMatch) -> list[TemplateMatch] | None:
     refs = ["item_seperator_long_legendary", "item_seperator_long_mythic"]
     roi = [0, sep_short_match.center[1], img_item_descr.shape[1], img_item_descr.shape[0] - sep_short_match.center[1]]
     if not (
@@ -30,7 +30,7 @@ def find_seperators_long(img_item_descr: np.ndarray, sep_short_match: TemplateMa
     return sorted(filtered_matches, key=lambda match: match.center[1])
 
 
-def find_seperator_short(img_item_descr: np.ndarray) -> TemplateMatch:
+def find_seperator_short(img_item_descr: np.ndarray) -> TemplateMatch | None:
     refs = ["item_seperator_short_rare", "item_seperator_short_legendary", "item_seperator_short_mythic"]
     roi = [
         0,
@@ -38,9 +38,8 @@ def find_seperator_short(img_item_descr: np.ndarray) -> TemplateMatch:
         img_item_descr.shape[1],
         ResManager().offsets.find_seperator_short_offset_top,
     ]
-    if not (
-        sep_short := search(refs, img_item_descr, 0.62, roi, use_grayscale=True, mode="all", do_multi_process=False)
-    ).success:
+    sep_short = search(refs, img_item_descr, 0.62, roi, use_grayscale=True, mode="all", do_multi_process=False)
+    if not sep_short.success or not sep_short.matches:
         return None
     sorted_matches = sorted(sep_short.matches, key=lambda match: match.center[1])
     return sorted_matches[0]
@@ -139,11 +138,13 @@ def find_aspect_bullet(img_item_descr: np.ndarray, sep_short_match: TemplateMatc
 def find_aspect_search_area(img_item_descr: np.ndarray, aspect_bullet: TemplateMatch) -> list[int]:
     line_height = ResManager().offsets.item_descr_line_height
     img_height, img_width = img_item_descr.shape[:2]
-    offset_x = aspect_bullet.center[0] + int(line_height // 5)
-    top = aspect_bullet.center[1] - int(line_height * 0.8)
+    offset_x = int(aspect_bullet.center[0] + int(line_height // 5))
+    top = int(aspect_bullet.center[1] - int(line_height * 0.8))
     roi_aspect = [offset_x, top, int(img_width * 0.99) - offset_x, int(img_height * 0.95) - top]
-    cropped_bottom = crop(img_item_descr, roi_aspect)
-    filtered, _ = color_filter(cropped_bottom, COLORS.unique_gold, calc_filtered_img=False)
+    cropped_bottom = crop(img_item_descr, (roi_aspect[0], roi_aspect[1], roi_aspect[2], roi_aspect[3]))
+    filtered, _ = color_filter(
+        cropped_bottom, [COLORS.unique_gold.h_s_v_min, COLORS.unique_gold.h_s_v_max], calc_filtered_img=False
+    )
     bounding_values = np.nonzero(filtered)
     if len(bounding_values[0]) > 0:
         roi_aspect[3] = bounding_values[0].max() + int(line_height * 0.4)

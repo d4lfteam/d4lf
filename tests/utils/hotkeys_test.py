@@ -1,4 +1,5 @@
 import unittest
+from typing import override
 from unittest.mock import patch
 
 from pynput import keyboard
@@ -47,6 +48,7 @@ class _FakeListener:
 
 
 class GlobalHotkeyRegistryTest(unittest.TestCase):
+    @override
     def setUp(self):
         _FakeListener.instances = []
         self.listener_patch = patch.object(hotkeys.keyboard, "Listener", _FakeListener)

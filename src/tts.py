@@ -45,15 +45,16 @@ class Publisher:
                 self.publish_info(data)
 
             local_cache.append(data)
-            if not filter_data(data) and (
-                any(word in data.lower() for word in ["mouse button", "action button"])
-                and (start := find_item_start(local_cache)) is not None
-            ):
-                global LAST_ITEM
-                LAST_ITEM = local_cache[start:]
-                LOGGER.debug(f"TTS Found: {LAST_ITEM}")
-                local_cache = []
-                self.publish_item(LAST_ITEM)
+            if filter_data(data) or not any(word in data.lower() for word in ["mouse button", "action button"]):
+                continue
+            start = find_item_start(local_cache)
+            if start is None:
+                continue
+            global LAST_ITEM
+            LAST_ITEM = local_cache[start:]
+            LOGGER.debug(f"TTS Found: {LAST_ITEM}")
+            local_cache = []
+            self.publish_item(LAST_ITEM)
 
     def publish_item(self, data):
         with self._subscriber_lock:

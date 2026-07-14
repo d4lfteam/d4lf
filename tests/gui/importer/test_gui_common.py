@@ -7,6 +7,7 @@ from src.gui.importer.gui_common import (
     create_item_affix_pool,
     deduplicate_filters,
     is_unique_like_rarity,
+    match_set_aware_seal_affix,
     unique_filter_name,
 )
 from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart, ImportConfig
@@ -130,6 +131,10 @@ def test_affix_dict_for_item_type_uses_context_specific_dict() -> None:
     assert affix_dict_for_item_type(ItemType.HoradricSeal) is Dataloader().seal_affix_dict
     assert affix_dict_for_item_type(ItemType.Ring) is Dataloader().affix_dict
     assert affix_dict_for_item_type(None) is Dataloader().affix_dict
+
+
+def test_match_set_aware_seal_affix_returns_none_for_unknown_set() -> None:
+    assert match_set_aware_seal_affix("maximum resolve", Dataloader().seal_affix_dict, "unknown_set") is None
 
 
 def test_is_unique_like_rarity_handles_enum_and_string_values() -> None:

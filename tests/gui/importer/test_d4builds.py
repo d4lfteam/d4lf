@@ -1,9 +1,12 @@
 import os
 import typing
-from types import SimpleNamespace
+from typing import override
 
 import lxml.html
 import pytest
+from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
 
 from src.dataloader import Dataloader
 from src.gui.importer import d4builds as d4builds_module
@@ -14,6 +17,7 @@ from src.item.data.item_type import ItemType
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
+    from selenium.webdriver.support.relative_locator import RelativeBy
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 URLS = [
@@ -131,6 +135,8 @@ def test_create_seal_filter_from_tooltip_html_matches_tooltip_values() -> None:
     """
 
     seal_filter = d4builds_module._create_seal_filter_from_tooltip_html(tooltip_html=tooltip_html, require_gas=False)
+    if seal_filter is None:
+        pytest.fail("Expected seal tooltip to produce a filter")
 
     assert [affix.name for affix in seal_filter.affix_pool[0].count] == [
         "critical_strike_damage",
@@ -155,6 +161,8 @@ def test_create_charm_filter_from_tooltip_html_reads_set_name_and_affixes() -> N
     charm_filter, set_name = d4builds_module._create_charm_filter_from_tooltip_html(
         tooltip_html=tooltip_html, require_gas=False
     )
+    if charm_filter is None:
+        pytest.fail("Expected charm tooltip to produce a filter")
 
     assert set_name == "berserkers_crucible"
     assert charm_filter.set == ["berserkers_crucible"]
@@ -174,6 +182,8 @@ def test_create_charm_filter_from_tooltip_html_does_not_guess_set_from_title() -
     charm_filter, set_name = d4builds_module._create_charm_filter_from_tooltip_html(
         tooltip_html=tooltip_html, require_gas=False
     )
+    if charm_filter is None:
+        pytest.fail("Expected charm tooltip to produce a filter")
 
     assert not set_name
     assert charm_filter.set == []
@@ -190,6 +200,8 @@ def test_create_charm_filter_from_tooltip_html_reads_unique_aspect() -> None:
     charm_filter, set_name = d4builds_module._create_charm_filter_from_tooltip_html(
         tooltip_html=tooltip_html, require_gas=False
     )
+    if charm_filter is None:
+        pytest.fail("Expected charm tooltip to produce a filter")
 
     assert not set_name
     assert charm_filter.affix_pool == []
@@ -235,28 +247,55 @@ def test_weapon_type_from_unique_tooltip_html_returns_none_for_empty_html() -> N
     assert d4builds_module._weapon_type_from_unique_tooltip_html("") is None
 
 
-class _FakePaperdollItem:
-    def __init__(self, slot_text: str, icon: object):
+class _FakePaperdollItem(WebElement):
+    def __init__(self, slot_text: str, icon: WebElement) -> None:
         self._slot_text = slot_text
         self._icon = icon
 
-    def find_elements(self, by, value):
+    @override
+    def find_elements(self, by: str = By.ID, value: str | None = None) -> list[WebElement]:
+        if value is None:
+            value = str(by)
         if value == d4builds_module.PAPERDOLL_ITEM_SLOT_CSS:
-            return [SimpleNamespace(text=self._slot_text)]
+            return [_FakeTextElement(self._slot_text)]
         if value == d4builds_module.PAPERDOLL_GEAR_ICON_CSS:
             return [self._icon]
         msg = f"unexpected selector: {value}"
         raise AssertionError(msg)
 
 
-def test_get_weapon_paperdoll_icons_maps_slot_to_icon_without_hovering(mocker: MockerFixture) -> None:
-    bow_icon, dagger_icon = object(), object()
-    items = [_FakePaperdollItem("Ranged Weapon", bow_icon), _FakePaperdollItem("Dual-Wield Weapon 1", dagger_icon)]
+class _FakeIcon(WebElement):
+    def __init__(self) -> None:
+        pass
 
-    class _FakeDriver:
-        def find_elements(self, by, value):
+
+class _FakeTextElement(WebElement):
+    def __init__(self, text: str) -> None:
+        self._text = text
+
+    @property
+    @override
+    def text(self) -> str:
+        return self._text
+
+
+def test_get_weapon_paperdoll_icons_maps_slot_to_icon_without_hovering(mocker: MockerFixture) -> None:
+    bow_icon, dagger_icon = _FakeIcon(), _FakeIcon()
+    items: list[WebElement] = [
+        _FakePaperdollItem("Ranged Weapon", bow_icon),
+        _FakePaperdollItem("Dual-Wield Weapon 1", dagger_icon),
+    ]
+
+    class _FakeDriver(WebDriver):
+        def __init__(self) -> None:
+            pass
+
+        @override
+        def find_elements(self, by: str | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
+            if value is None:
+                value = str(by)
             assert value == d4builds_module.PAPERDOLL_WEAPON_ITEM_CSS
-            return items
+            return list(items)
 
     hover_spy = mocker.patch.object(d4builds_module, "hover_and_get_tooltip_html")
 
@@ -267,10 +306,16 @@ def test_get_weapon_paperdoll_icons_maps_slot_to_icon_without_hovering(mocker: M
 
 
 def test_get_weapon_paperdoll_icons_renames_2h_weapon_slot() -> None:
-    staff_icon = object()
+    staff_icon = _FakeIcon()
 
-    class _FakeDriver:
-        def find_elements(self, by, value):
+    class _FakeDriver(WebDriver):
+        def __init__(self) -> None:
+            pass
+
+        @override
+        def find_elements(self, by: str | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
+            if value is None:
+                value = str(by)
             assert value == d4builds_module.PAPERDOLL_WEAPON_ITEM_CSS
             return [_FakePaperdollItem("2H Weapon", staff_icon)]
 
@@ -280,7 +325,7 @@ def test_get_weapon_paperdoll_icons_renames_2h_weapon_slot() -> None:
 
 
 def test_get_weapon_type_from_paperdoll_tooltip_hovers_given_icon(mocker: MockerFixture) -> None:
-    icon = object()
+    icon = _FakeIcon()
     mocker.patch.object(
         d4builds_module,
         "hover_and_get_tooltip_html",
@@ -309,31 +354,39 @@ def test_match_d4builds_tooltip_affix_keeps_generic_seal_match_with_guessed_set(
 
 
 def test_parse_d4builds_paragon_boards_produces_valid_typed_payload_input() -> None:
-    class _FakeTextNode:
-        def __init__(self, text: str):
+    class _FakeTextNode(WebElement):
+        def __init__(self, text: str) -> None:
             self._text = text
 
+        @override
         def get_attribute(self, name: str) -> str:
             return self._text if name == "innerText" else ""
 
-    class _FakeTile:
-        def __init__(self, class_name: str):
+    class _FakeTile(WebElement):
+        def __init__(self, class_name: str) -> None:
             self._class_name = class_name
 
+        @override
         def get_attribute(self, name: str) -> str:
             return self._class_name if name == "class" else ""
 
-    class _FakeBoardElement:
-        def __init__(self):
+    class _FakeBoardElement(WebElement):
+        def __init__(self) -> None:
             self._attrs = {"data-board-id": "Paragon_Barb_00"}
 
-        def find_element(self, by, value):
+        @override
+        def find_element(self, by: str = By.ID, value: str | None = None) -> WebElement:
+            if value is None:
+                value = str(by)
             if value == "paragon__board__name":
                 return _FakeTextNode("Starting Board")
             msg = f"unexpected selector: {value}"
             raise AssertionError(msg)
 
-        def find_elements(self, by, value):
+        @override
+        def find_elements(self, by: str = By.ID, value: str | None = None) -> list[WebElement]:
+            if value is None:
+                value = str(by)
             if value == "paragon__board__name__glyph":
                 return [_FakeTextNode("Glyph Name")]
             if value == "paragon__board__tile":
@@ -341,14 +394,22 @@ def test_parse_d4builds_paragon_boards_produces_valid_typed_payload_input() -> N
             msg = f"unexpected selector: {value}"
             raise AssertionError(msg)
 
+        @override
         def get_attribute(self, name: str) -> str:
             return "transform: rotate(90deg);" if name == "style" else ""
 
-    class _FakeDriver:
-        def execute_script(self, script, board_elem):
-            return board_elem._attrs
+    class _FakeDriver(WebDriver):
+        def __init__(self) -> None:
+            pass
 
-        def find_elements(self, by, value):
+        @override
+        def execute_script(self, script: str, *args: object) -> object:
+            return {"data-board-id": "Paragon_Barb_00"}
+
+        @override
+        def find_elements(self, by: str | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
+            if value is None:
+                value = str(by)
             if value == "paragon__board":
                 return [_FakeBoardElement()]
             msg = f"unexpected selector: {value}"
@@ -367,31 +428,39 @@ def test_parse_d4builds_paragon_boards_produces_valid_typed_payload_input() -> N
 def test_parse_d4builds_paragon_boards_keeps_supported_rotation_transform_behavior(
     rotation_deg: int, expected_index: int
 ) -> None:
-    class _FakeTextNode:
-        def __init__(self, text: str):
+    class _FakeTextNode(WebElement):
+        def __init__(self, text: str) -> None:
             self._text = text
 
+        @override
         def get_attribute(self, name: str) -> str:
             return self._text if name == "innerText" else ""
 
-    class _FakeTile:
-        def __init__(self, class_name: str):
+    class _FakeTile(WebElement):
+        def __init__(self, class_name: str) -> None:
             self._class_name = class_name
 
+        @override
         def get_attribute(self, name: str) -> str:
             return self._class_name if name == "class" else ""
 
-    class _FakeBoardElement:
-        def __init__(self):
+    class _FakeBoardElement(WebElement):
+        def __init__(self) -> None:
             self._attrs = {"data-board-id": "Paragon_Barb_00"}
 
-        def find_element(self, by, value):
+        @override
+        def find_element(self, by: str = By.ID, value: str | None = None) -> WebElement:
+            if value is None:
+                value = by
             if value == "paragon__board__name":
                 return _FakeTextNode("Starting Board")
             msg = f"unexpected selector: {value}"
             raise AssertionError(msg)
 
-        def find_elements(self, by, value):
+        @override
+        def find_elements(self, by: str = By.ID, value: str | None = None) -> list[WebElement]:
+            if value is None:
+                value = by
             if value == "paragon__board__name__glyph":
                 return []
             if value == "paragon__board__tile":
@@ -399,16 +468,24 @@ def test_parse_d4builds_paragon_boards_keeps_supported_rotation_transform_behavi
             msg = f"unexpected selector: {value}"
             raise AssertionError(msg)
 
+        @override
         def get_attribute(self, name: str) -> str:
             if name == "style":
                 return f"transform: rotate({rotation_deg}deg);"
             return ""
 
-    class _FakeDriver:
-        def execute_script(self, script, board_elem):
-            return board_elem._attrs
+    class _FakeDriver(WebDriver):
+        def __init__(self) -> None:
+            pass
 
-        def find_elements(self, by, value):
+        @override
+        def execute_script(self, script: str, *args: object) -> object:
+            return {"data-board-id": "Paragon_Barb_00"}
+
+        @override
+        def find_elements(self, by: str | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
+            if value is None:
+                value = str(by)
             if value == "paragon__board":
                 return [_FakeBoardElement()]
             msg = f"unexpected selector: {value}"
@@ -423,31 +500,39 @@ def test_parse_d4builds_paragon_boards_keeps_supported_rotation_transform_behavi
 
 
 def test_parse_d4builds_paragon_boards_uses_question_mark_fallback_for_unsupported_rotation() -> None:
-    class _FakeTextNode:
-        def __init__(self, text: str):
+    class _FakeTextNode(WebElement):
+        def __init__(self, text: str) -> None:
             self._text = text
 
+        @override
         def get_attribute(self, name: str) -> str:
             return self._text if name == "innerText" else ""
 
-    class _FakeTile:
-        def __init__(self, class_name: str):
+    class _FakeTile(WebElement):
+        def __init__(self, class_name: str) -> None:
             self._class_name = class_name
 
+        @override
         def get_attribute(self, name: str) -> str:
             return self._class_name if name == "class" else ""
 
-    class _FakeBoardElement:
-        def __init__(self):
+    class _FakeBoardElement(WebElement):
+        def __init__(self) -> None:
             self._attrs = {"data-board-id": "Paragon_Barb_00"}
 
-        def find_element(self, by, value):
+        @override
+        def find_element(self, by: str = By.ID, value: str | None = None) -> WebElement:
+            if value is None:
+                value = str(by)
             if value == "paragon__board__name":
                 return _FakeTextNode("Starting Board")
             msg = f"unexpected selector: {value}"
             raise AssertionError(msg)
 
-        def find_elements(self, by, value):
+        @override
+        def find_elements(self, by: str = By.ID, value: str | None = None) -> list[WebElement]:
+            if value is None:
+                value = str(by)
             if value == "paragon__board__name__glyph":
                 return []
             if value == "paragon__board__tile":
@@ -455,14 +540,22 @@ def test_parse_d4builds_paragon_boards_uses_question_mark_fallback_for_unsupport
             msg = f"unexpected selector: {value}"
             raise AssertionError(msg)
 
+        @override
         def get_attribute(self, name: str) -> str:
             return "transform: rotate(45deg);" if name == "style" else ""
 
-    class _FakeDriver:
-        def execute_script(self, script, board_elem):
-            return board_elem._attrs
+    class _FakeDriver(WebDriver):
+        def __init__(self) -> None:
+            pass
 
-        def find_elements(self, by, value):
+        @override
+        def execute_script(self, script: str, *args: object) -> object:
+            return {"data-board-id": "Paragon_Barb_00"}
+
+        @override
+        def find_elements(self, by: str | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
+            if value is None:
+                value = str(by)
             if value == "paragon__board":
                 return [_FakeBoardElement()]
             msg = f"unexpected selector: {value}"

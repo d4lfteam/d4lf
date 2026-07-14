@@ -1,6 +1,8 @@
 import logging
+from typing import override
 
 from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, pyqtSignal
+from PyQt6.QtGui import QStandardItemModel
 from PyQt6.QtWidgets import (
     QComboBox,
     QGroupBox,
@@ -126,10 +128,16 @@ class ProfileTab(QWidget):
         previous_profile_name = self.current_profile_name
         self.file_path = self.profile_paths[profile_name]
         if self.load_yaml():
-            self._set_model_editor(self.loaded_profile)
+            loaded_profile = self.loaded_profile
+            root = self.root
+            if loaded_profile is None or root is None:
+                self.file_path = self.profile_paths.get(previous_profile_name)
+                self.set_current_profile_combo(previous_profile_name)
+                return
+            self._set_model_editor(loaded_profile)
             self.current_profile_name = profile_name
             self.set_current_profile_combo(profile_name)
-            LOGGER.info(f"Profile {self.root.name} loaded into profile editor.")
+            LOGGER.info(f"Profile {root.name} loaded into profile editor.")
             return
 
         self.file_path = self.profile_paths.get(previous_profile_name)
@@ -140,7 +148,12 @@ class ProfileTab(QWidget):
             return
         self.profile_combo.addItem(label, None)
         section_index = self.profile_combo.count() - 1
-        section_item = self.profile_combo.model().item(section_index)
+        model = self.profile_combo.model()
+        if not isinstance(model, QStandardItemModel):
+            return
+        section_item = model.item(section_index)
+        if section_item is None:
+            return
         section_item.setEnabled(False)
         for profile_name in profiles:
             self.profile_combo.addItem(profile_name, profile_name)
@@ -164,8 +177,11 @@ class ProfileTab(QWidget):
         if not self.active_profiles and not self.inactive_profiles:
             self.current_profile_name = ""
             self.profile_combo.addItem("No profiles found", None)
-            no_profiles_item = self.profile_combo.model().item(0)
-            no_profiles_item.setEnabled(False)
+            model = self.profile_combo.model()
+            if isinstance(model, QStandardItemModel):
+                no_profiles_item = model.item(0)
+                if no_profiles_item is not None:
+                    no_profiles_item.setEnabled(False)
             self.profile_combo.setEnabled(False)
             self.save_button.setEnabled(False)
             self.refresh_button.setEnabled(False)
@@ -196,10 +212,12 @@ class ProfileTab(QWidget):
         self.load_selected_profile(self.inactive_profiles[0])
 
     def create_profile_editor(self):
-        if not self.profile_editor_created and self.root:
-            self._set_model_editor(self.loaded_profile)
+        loaded_profile = self.loaded_profile
+        root = self.root
+        if not self.profile_editor_created and loaded_profile is not None and root is not None:
+            self._set_model_editor(loaded_profile)
             self.profile_editor_created = True
-            LOGGER.info(f"Profile {self.root.name} loaded into profile editor.")
+            LOGGER.info(f"Profile {root.name} loaded into profile editor.")
 
     def load_yaml(self):
         if not self.file_path:
@@ -243,13 +261,16 @@ class ProfileTab(QWidget):
                 QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard,
             )
             if save_coerced == QMessageBox.StandardButton.Save:
+                loaded_profile = self.loaded_profile
+                if loaded_profile is None:
+                    return
                 force_result = self.session.save(save_result.coerced_model, force=True)
                 if isinstance(force_result, Saved):
                     QMessageBox.information(
                         self, "Info", f"Profile saved successfully to {force_result.saved.path.name}"
                     )
                     self.loaded_profile = LoadedProfile(
-                        path=self.loaded_profile.path, name=self.loaded_profile.name, profile=save_result.coerced_model
+                        path=loaded_profile.path, name=loaded_profile.name, profile=save_result.coerced_model
                     )
                     self._set_model_editor(self.loaded_profile)
                     self.root = save_result.coerced_model
@@ -272,8 +293,12 @@ class ProfileTab(QWidget):
     def refresh(self):
         if not self.load_yaml():
             return
-        self._set_model_editor(self.loaded_profile)
-        LOGGER.info(f"Profile {self.root.name} refreshed.")
+        loaded_profile = self.loaded_profile
+        root = self.root
+        if loaded_profile is None or root is None:
+            return
+        self._set_model_editor(loaded_profile)
+        LOGGER.info(f"Profile {root.name} refreshed.")
 
     def _set_model_editor(self, loaded_profile: LoadedProfile) -> None:
         if self.model_editor:
@@ -287,8 +312,10 @@ class _QSettingsLastOpenedStore(ProfileLastOpenedStore):
     def __init__(self, settings: QSettings) -> None:
         self._settings = settings
 
+    @override
     def get(self) -> str | None:
         return self._settings.value("last_opened_profile", None, type=str)
 
+    @override
     def set(self, name: str) -> None:
         self._settings.setValue("last_opened_profile", name)

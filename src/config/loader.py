@@ -279,21 +279,25 @@ class IniConfigLoader:
         with self._lock:
             if self._parser is None:
                 self.load(notify=False)
+            parser = self._parser
+            if parser is None:
+                msg = "Config parser could not be initialized"
+                raise RuntimeError(msg)
 
             previous_snapshot = self._state_snapshot.copy()
             model = self._model_for_section(section)
             if model is not None:
                 setattr(model, key, value)
 
-            if section not in self._parser.sections():
-                self._parser.add_section(section)
+            if section not in parser.sections():
+                parser.add_section(section)
 
             new_serialized_value = str(value)
-            old_serialized_value = self._parser.get(section, key, fallback=None)
+            old_serialized_value = parser.get(section, key, fallback=None)
             if old_serialized_value == new_serialized_value:
                 return
 
-            self._parser.set(section, key, new_serialized_value)
+            parser.set(section, key, new_serialized_value)
             self._write_parser()
             self._last_config_signature = self._get_config_signature()
             self._config_revision += 1

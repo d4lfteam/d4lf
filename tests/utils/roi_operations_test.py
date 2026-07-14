@@ -1,3 +1,5 @@
+import numpy as np
+
 from src.utils.roi_operations import bounding_box, get_center, intersect, is_in_roi
 
 
@@ -18,6 +20,12 @@ def test_intersect() -> None:
     rects = [(2, 2, 2, 2), (5, 5, 2, 2)]
     intersection = intersect(rects)
     assert intersection is None
+
+    intersection = intersect([(2, 2, 6, 6)], [(4, 4, 6, 6)])
+    assert intersection == (4, 4, 4, 4)
+
+    intersection = intersect([2, 2, 6, 6], [4, 4, 6, 6])
+    assert intersection == (4, 4, 4, 4)
 
 
 def test_bounding_box() -> None:
@@ -44,6 +52,13 @@ def test_bounding_box() -> None:
     invalid_arg = [(2, 2, 2, 2, 2)]
     bounding = bounding_box(invalid_arg)
     assert bounding is None
+
+    numpy_coords = [(np.int64(2), np.int64(2)), (np.int64(6), np.int64(6))]
+    assert bounding_box(numpy_coords) == (2, 2, 4, 4)
+    assert bounding_box(((np.int64(2), np.int64(2)), (np.int64(6), np.int64(6)))) == (2, 2, 4, 4)
+    assert bounding_box(iter(numpy_coords)) == (2, 2, 4, 4)
+    assert bounding_box(np.array(numpy_coords)) == (2, 2, 4, 4)
+    assert bounding_box(np.array(1)) is None
 
 
 def test_is_coor_in_roi() -> None:

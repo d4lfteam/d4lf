@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from src.config.loader import IniConfigLoader
-from src.config.profile_document import ProfileDocumentStore
-from src.config.profile_models import TributeFilterModel
+from src.config.profile_document import LoadedProfile, ProfileDocumentStore, SavedProfile
+from src.config.profile_models import ProfileModel, TributeFilterModel
 from src.config.profile_session import (
     EmptyError,
     Failed,
@@ -165,18 +165,16 @@ def test_save_returns_failed_on_store_error(tmp_path: Path) -> None:
     _write_profile(tmp_path, "alpha.yaml", "AspectUpgrades:\n- accelerating\n")
     base_store = _store(tmp_path)
 
-    class FailingStore:
-        def __init__(self) -> None:
-            self.profiles_dir = base_store.profiles_dir
-
-        def load(self, path):
-            return base_store.load(path)
-
-        def save_existing(self, *, loaded, profile, source, backup_original=False):
+    class FailingStore(ProfileDocumentStore):
+        @override
+        def save_existing(
+            self, *, loaded: LoadedProfile, profile: ProfileModel, source: str, backup_original: bool = False
+        ) -> SavedProfile:
             msg = "boom"
             raise RuntimeError(msg)
 
-    session = ProfileSession(document_store=FailingStore(), last_opened_store=LastOpenedStore())
+    failing_store = FailingStore(profiles_dir=base_store.profiles_dir, full_dump=base_store.full_dump)
+    session = ProfileSession(document_store=failing_store, last_opened_store=LastOpenedStore())
     loaded = session.load("alpha")
     assert isinstance(loaded, Loaded)
 

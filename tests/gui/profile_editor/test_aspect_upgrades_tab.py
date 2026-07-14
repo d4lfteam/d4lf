@@ -1,4 +1,5 @@
 import os
+from typing import override
 
 import pytest
 
@@ -14,6 +15,7 @@ class _AcceptedDialog(QDialog):
         super().__init__()
         self._value = value
 
+    @override
     def exec(self) -> int:
         return QDialog.DialogCode.Accepted
 
@@ -43,7 +45,9 @@ def test_add_aspect_adds_rule_to_list_and_widget(qapp, monkeypatch):
 
     assert aspects == ["old", "new"]
     assert tab.list_widget.count() == 2
-    assert tab.list_widget.item(1).text() == "new"
+    item = tab.list_widget.item(1)
+    assert item is not None
+    assert item.text() == "new"
 
 
 def test_remove_selected_with_no_selection_shows_warning_and_does_not_crash(qapp, monkeypatch):
