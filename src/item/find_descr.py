@@ -12,13 +12,16 @@ from src.utils.roi_operations import fit_roi_to_window_size, intersect
 if TYPE_CHECKING:
     import numpy as np
 
+ITEM_TOP_LEFT_THRESHOLD = 0.85
+ITEM_BOTTOM_EDGE_THRESHOLD = 0.54
+
 map_template_rarity = {
-    "item_common_top_left": ItemRarity.Common,
-    "item_leg_top_left": ItemRarity.Legendary,
-    "item_magic_top_left": ItemRarity.Magic,
-    "item_mythic_top_left": ItemRarity.Mythic,
-    "item_rare_top_left": ItemRarity.Rare,
-    "item_unique_top_left": ItemRarity.Unique,
+    "item_top_left_common": ItemRarity.Common,
+    "item_top_left_legendary": ItemRarity.Legendary,
+    "item_top_left_magic": ItemRarity.Magic,
+    "item_top_left_mythic": ItemRarity.Mythic,
+    "item_top_left_rare": ItemRarity.Rare,
+    "item_top_left_unique": ItemRarity.Unique,
 }
 
 
@@ -63,7 +66,7 @@ def _template_search(img: np.ndarray, anchor: int, roi: np.ndarray, take_debug_s
             ref=list(map_template_rarity.keys()),
             inp_img=img,
             roi=roi_left,
-            threshold=0.8,
+            threshold=ITEM_TOP_LEFT_THRESHOLD,
             mode="all",
             take_debug_screenshot=take_debug_screenshot,
         )
@@ -136,7 +139,7 @@ def _find_descr_core(img: np.ndarray, anchor: tuple[int, int], *, collect_diagno
         delta_x = int(item_descr_width * 0.03)
         roi = [match.region[0] - delta_x, roi_y, item_descr_width + 2 * delta_x, search_height]
 
-        separator_match = find_seperator_short(img, threshold=0.8, roi=roi, mode="first")
+        separator_match = find_seperator_short(img, roi=roi, mode="first")
 
         if separator_match is not None:
             off_bottom_of_descr = ResManager().offsets.item_descr_off_bottom_edge
@@ -144,7 +147,12 @@ def _find_descr_core(img: np.ndarray, anchor: tuple[int, int], *, collect_diagno
             bottom_match = None
             if (
                 res_bottom := search(
-                    ref=["item_bottom_edge"], inp_img=img, roi=roi, threshold=0.54, use_grayscale=True, mode="all"
+                    ref=["item_bottom_edge"],
+                    inp_img=img,
+                    roi=roi,
+                    threshold=ITEM_BOTTOM_EDGE_THRESHOLD,
+                    use_grayscale=True,
+                    mode="all",
                 )
             ).success:
                 bottom_match = res_bottom.matches[0]

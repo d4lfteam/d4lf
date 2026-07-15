@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
 from src.item.data.item_type import ItemType
+from src.item.descr.texture import BULLET_THRESHOLD
 
 if TYPE_CHECKING:
     import numpy as np
@@ -57,8 +58,7 @@ _ASPECT_BULLET_TEMPLATE_REFS = [
     "unique_bullet_point",
     "unique_bullet_point_medium",
 ]
-_SEPARATOR_MATCH_THRESHOLD = 0.6
-_BULLET_MATCH_THRESHOLD = 0.75
+
 FailureReason = Literal[
     "missing_separator", "insufficient_affix_rows", "missing_aspect_marker", "marker_below_threshold"
 ]
@@ -163,7 +163,7 @@ def _locate_affix_markers_core(
     if diagnostics is not None:
         diagnostics.selected_markers = selected_markers
     has_requested_markers = _has_requested_markers(item, matched_affixes, aspect_matched, selected_markers)
-    above_threshold = all(marker.confidence >= _BULLET_MATCH_THRESHOLD for marker in selected_markers)
+    above_threshold = all(marker.confidence >= BULLET_THRESHOLD for marker in selected_markers)
     reliable = has_requested_markers and above_threshold
 
     if diagnostics is not None and not reliable:
@@ -199,9 +199,7 @@ def _locate_tts_guided_template(
         return None
 
     separator_match = (
-        short_separator_match
-        if short_separator_match is not None
-        else find_seperator_short(tooltip_image, threshold=_SEPARATOR_MATCH_THRESHOLD)
+        short_separator_match if short_separator_match is not None else find_seperator_short(tooltip_image)
     )
     if separator_match is None:
         if diagnostics is not None:
@@ -218,7 +216,6 @@ def _locate_tts_guided_template(
 
     if matched_affixes:
         bullet_search_kwargs = {
-            "threshold": _BULLET_MATCH_THRESHOLD,
             "expected_count": len(item.inherent) + len(item.affixes),
             "max_y": long_separator_match.region[1] if long_separator_match is not None else None,
         }
@@ -250,19 +247,11 @@ def _locate_tts_guided_template(
     if aspect_matched and item.aspect is not None:
         if diagnostics is None:
             aspect_bullets = find_bullets_for_templates(
-                tooltip_image,
-                separator_match,
-                _ASPECT_BULLET_TEMPLATE_REFS,
-                threshold=_BULLET_MATCH_THRESHOLD,
-                expected_count=1,
+                tooltip_image, separator_match, _ASPECT_BULLET_TEMPLATE_REFS, expected_count=1
             )
         else:
             aspect_bullets, aspect_trace = find_bullets_for_templates_traced(
-                tooltip_image,
-                separator_match,
-                _ASPECT_BULLET_TEMPLATE_REFS,
-                threshold=_BULLET_MATCH_THRESHOLD,
-                expected_count=1,
+                tooltip_image, separator_match, _ASPECT_BULLET_TEMPLATE_REFS, expected_count=1
             )
             diagnostics.aspect_bullets = _to_bullet_match_diagnostics(aspect_trace)
         if aspect_bullets:

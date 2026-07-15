@@ -130,7 +130,7 @@ def test_find_descr_clips_crop_to_image_before_translating_separator(mocker):
             roi=SimpleNamespace(rel_descr_search_left=[0, 0, 1, 1], rel_descr_search_right=[0, 0, 1, 1]),
         ),
     )
-    rarity_match = _make_match((80, 10), 0.9, name="item_leg_top_left", region=[70, 0, 20, 20])
+    rarity_match = _make_match((80, 10), 0.9, name="item_top_left_legendary", region=[70, 0, 20, 20])
     separator_match = _make_match((85, 30), 0.9, name="separator", region=[80, 25, 10, 10])
     mocker.patch(
         "src.item.find_descr._template_search",

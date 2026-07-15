@@ -7,16 +7,21 @@ from src.config.ui import ResManager
 from src.template_finder import TemplateMatch, search
 
 _LONG_SEPARATOR_TEMPLATE_REFS = [
-    "item_seperator_long_magic",
     "item_seperator_long_legendary",
+    "item_seperator_long_magic",
     "item_seperator_long_mythic",
+    "item_seperator_long_rare",
 ]
 _SHORT_SEPARATOR_TEMPLATE_REFS = [
-    "item_seperator_short_magic",
-    "item_seperator_short_rare",
     "item_seperator_short_legendary",
+    "item_seperator_short_magic",
     "item_seperator_short_mythic",
+    "item_seperator_short_rare",
 ]
+
+ITEM_SEP_SHORT_THRESHOLD = 0.85
+ITEM_SEP_LONG_THRESHOLD = 0.7
+BULLET_THRESHOLD = 0.75
 
 
 @dataclass
@@ -28,7 +33,7 @@ class BulletSearchTrace:
 
 
 def find_seperator_short(
-    img_item_descr: np.ndarray, threshold: float = 0.62, *, roi: list[int] | None = None, mode: str = "all"
+    img_item_descr: np.ndarray, *, roi: list[int] | None = None, mode: str = "all"
 ) -> TemplateMatch | None:
     if roi is None:
         roi = [
@@ -39,9 +44,9 @@ def find_seperator_short(
         ]
     if not (
         sep_short := search(
-            _SHORT_SEPARATOR_TEMPLATE_REFS,
+            ref=_SHORT_SEPARATOR_TEMPLATE_REFS,
             inp_img=img_item_descr,
-            threshold=threshold,
+            threshold=ITEM_SEP_SHORT_THRESHOLD,
             roi=roi,
             use_grayscale=True,
             mode=mode,
@@ -54,9 +59,7 @@ def find_seperator_short(
     return min(sep_short.matches, key=lambda match: match.center[1])
 
 
-def find_seperator_long(
-    img_item_descr: np.ndarray, short_separator_match: TemplateMatch, threshold: float = 0.62
-) -> TemplateMatch | None:
+def find_seperator_long(img_item_descr: np.ndarray, short_separator_match: TemplateMatch) -> TemplateMatch | None:
     roi = [
         0,
         short_separator_match.center[1],
@@ -65,10 +68,10 @@ def find_seperator_long(
     ]
     if not (
         long_separator := search(
-            _LONG_SEPARATOR_TEMPLATE_REFS,
-            img_item_descr,
-            threshold,
-            roi,
+            ref=_LONG_SEPARATOR_TEMPLATE_REFS,
+            inp_img=img_item_descr,
+            threshold=ITEM_SEP_LONG_THRESHOLD,
+            roi=roi,
             use_grayscale=True,
             mode="all",
             do_multi_process=False,
@@ -82,18 +85,11 @@ def find_bullets_for_templates(
     img_item_descr: np.ndarray,
     sep_short_match: TemplateMatch,
     template_list: list[str],
-    threshold: float = 0.80,
     expected_count: int | None = None,
     max_y: int | None = None,
 ) -> list[TemplateMatch]:
     matches, _ = _find_bullets_for_templates(
-        img_item_descr,
-        sep_short_match,
-        template_list,
-        threshold=threshold,
-        expected_count=expected_count,
-        max_y=max_y,
-        collect_trace=False,
+        img_item_descr, sep_short_match, template_list, expected_count=expected_count, max_y=max_y, collect_trace=False
     )
     return matches
 
@@ -135,18 +131,11 @@ def find_bullets_for_templates_traced(
     img_item_descr: np.ndarray,
     sep_short_match: TemplateMatch,
     template_list: list[str],
-    threshold: float = 0.80,
     expected_count: int | None = None,
     max_y: int | None = None,
 ) -> tuple[list[TemplateMatch], BulletSearchTrace]:
     matches, trace = _find_bullets_for_templates(
-        img_item_descr,
-        sep_short_match,
-        template_list,
-        threshold=threshold,
-        expected_count=expected_count,
-        max_y=max_y,
-        collect_trace=True,
+        img_item_descr, sep_short_match, template_list, expected_count=expected_count, max_y=max_y, collect_trace=True
     )
     assert trace is not None
     return matches, trace
@@ -156,7 +145,6 @@ def _find_bullets_for_templates(
     img_item_descr: np.ndarray,
     sep_short_match: TemplateMatch,
     template_list: list[str],
-    threshold: float,
     expected_count: int | None,
     max_y: int | None,
     collect_trace: bool,
@@ -179,7 +167,7 @@ def _find_bullets_for_templates(
     all_bullets = search(
         ref=template_list,
         inp_img=img_item_descr,
-        threshold=threshold,
+        threshold=BULLET_THRESHOLD,
         roi=roi_bullets,
         use_grayscale=True,
         mode="all",

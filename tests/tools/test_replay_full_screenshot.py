@@ -50,7 +50,7 @@ def test_run_replay_saves_crop_and_composes_full_annotation(tmp_path, monkeypatc
         center_monitor=(180, 100),
         region=[170, 90, 20, 20],
         region_monitor=[170, 90, 20, 20],
-        name="item_leg_top_left",
+        name="item_top_left_legendary",
         score=0.93,
     )
     separator_match = TemplateMatch(
@@ -91,7 +91,7 @@ def test_run_replay_saves_crop_and_composes_full_annotation(tmp_path, monkeypatc
     assert tuple(output[90, 170]) == (128, 128, 128)
     assert tuple(output[80, 120]) == (0, 255, 0)
     for expected in (
-        "rarity: template=item_leg_top_left",
+        "rarity: template=item_top_left_legendary",
         "separator: template=item_seperator_short_legendary",
         "bottom: template=item_bottom_edge",
         "crop: roi=[120, 80, 240, 200]",
