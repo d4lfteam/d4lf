@@ -5,6 +5,14 @@ minimum_prek_version = "0.4.8"
 [[repos]]
 hooks = [
   {
+    id = "check_lines",
+    name = "check lines",
+    entry = "uv run --no-project hooks/check_lines.py",
+    language = "system",
+    pass_filenames = false,
+    priority = 4294967295
+  },
+  {
     id = "ty",
     name = "ty check",
     entry = "uv run --frozen --all-extras --all-groups ty check .",

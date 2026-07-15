@@ -34,6 +34,7 @@ Item flow:
 ## Conventions
 
 - Runtime target is Windows. Some tests are skipped outside Windows.
+- No more than 300 lines of code in Python files in `src` and `tests`.
 - User data lives under `~/.d4lf/` including profiles, params, and logs.
 - Profile YAML files live under `~/.d4lf/profiles/` and validate through `ProfileModel`.
 - UI coordinates in `src/config/data.py` are defined at 3840x2160 and scaled by `ResManager`.

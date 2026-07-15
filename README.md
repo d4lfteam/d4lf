@@ -942,7 +942,8 @@ Just use [prek](https://prek.j178.dev/).
 Then run:
 
 ```bash
-prek run -a
+uv run prek run -a
+uv run pytest . -m "not selenium" -v -n logical
 ```
 
 To automatically run prek before every push, you can install it as a git hook with:
