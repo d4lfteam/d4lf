@@ -31,8 +31,7 @@ from src.gui.importer.paragon_export import (
     extract_infinitybuilds_paragon_steps,
     fetch_infinitybuilds_paragon_catalog,
 )
-from src.item.data.affix import Affix, AffixType
-from src.item.data.item_type import ItemType
+from src.item import Affix, AffixType, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
 

@@ -12,7 +12,7 @@ from src.config.profile_models import SigilConditionModel, SigilFilterModel
 from src.gui.models import dialog as dialog_module
 from src.gui.models.dialog import CreateSigil
 from src.gui.profile_editor.sigils_tab import SigilsTab, SigilWidget
-from src.item.sigil_rules import SigilRules
+from src.item import SigilRules
 
 
 @pytest.fixture(scope="module")

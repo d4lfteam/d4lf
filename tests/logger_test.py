@@ -77,10 +77,10 @@ def test_remove_transient_gui_handlers_keeps_file_and_console_output(isolated_ro
 
 def _record() -> logging.LogRecord:
     return logging.LogRecord(
-        name="src.item.filter",
+        name="src.item.filter.engine",
         level=logging.INFO,
         pathname=__file__,
-        lineno=556,
+        lineno=1,
         msg="item marked junk",
         args=(),
         exc_info=None,
@@ -94,7 +94,7 @@ def test_default_gui_log_formatter_hides_technical_information_and_timestamp():
 def test_technical_gui_log_formatter_restores_technical_information():
     formatted = create_formatter(technical=True, timestamp=False).format(_record())
 
-    assert formatted.endswith(" | INFO | src.item.filter:556 | item marked junk")
+    assert formatted.endswith(" | INFO | src.item.filter.engine:1 | item marked junk")
 
 
 def test_timestamp_gui_log_formatter_restores_timestamp():

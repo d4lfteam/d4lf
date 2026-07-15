@@ -31,9 +31,7 @@ from src.config.profile_models import (
 from src.config.settings_models import BrowserType
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart
-from src.item.data.affix import Affix, AffixType
-from src.item.data.item_type import WEAPON_TYPES, ItemType
-from src.item.data.rarity import ItemRarity
+from src.item import WEAPON_TYPES, Affix, AffixType, ItemRarity, ItemType
 from src.item.descr.text import closest_match
 
 if TYPE_CHECKING:

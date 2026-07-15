@@ -17,10 +17,8 @@ from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
 from src.gui.importer.gui_common import DARK_GRAY_BG
-from src.item.data.item_type import is_sigil
-from src.item.data.seasonal_attribute import SeasonalAttribute
+from src.item import Filter, FilterResult, SeasonalAttribute, is_sigil
 from src.item.descr.geometry_locator import LocatorResult, locate_affix_markers
-from src.item.filter import Filter, FilterResult
 from src.item.find_descr import find_descr, find_descr_with_diagnostics, get_separator_match_in_crop
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item, reset_canvas
 from src.tts import Publisher
@@ -33,7 +31,7 @@ from src.utils.image_operations import compare_histograms
 from src.utils.window import screenshot
 
 if TYPE_CHECKING:
-    from src.item.models import Item
+    from src.item import Item
 
 LOGGER = logging.getLogger(__name__)
 _FRAME_RETRY_DELAY_SECONDS = 0.01

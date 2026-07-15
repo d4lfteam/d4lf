@@ -33,7 +33,7 @@ from src.gui.importer.gui_common import (
     TEXT,
     TRANSPARENT_KEY,
 )
-from src.item.filter import Filter
+from src.item import Filter
 from src.paragon_transform import GRID, NODES_LEN, nodes_to_grid, parse_rotation
 from src.ui_thread import call_on_ui_thread, get_root, is_alive, post_to_ui_thread
 from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground

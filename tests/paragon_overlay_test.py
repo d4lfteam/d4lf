@@ -18,7 +18,7 @@ def test_load_builds_from_path_uses_typed_paragon_payloads(monkeypatch):
         ],
     })
 
-    monkeypatch.setattr("src.item.filter.Filter.get_paragon_filters", lambda _self: {"profile_name": payload})
+    monkeypatch.setattr("src.item.Filter.get_paragon_filters", lambda _self: {"profile_name": payload})
 
     builds = load_builds_from_path()
 

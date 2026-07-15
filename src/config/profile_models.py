@@ -17,8 +17,7 @@ from pydantic import (
 )
 
 from src.config.helper import check_greater_than_zero, validate_greater_affix_count, validate_percent
-from src.item.data.item_type import ItemType  # noqa: TC001
-from src.item.data.rarity import ItemRarity
+from src.item import ItemRarity, ItemType
 from src.paragon_transform import NODES_LEN
 from src.scripts import correct_name
 
@@ -420,7 +419,7 @@ class SigilConditionModel(BaseModel):
     @classmethod
     def name_must_exist(cls, names_in: str | list[str]) -> str | list[str]:
         # This on module level would be a circular import, so we do it lazy for now
-        from src.item.sigil_rules import SigilRules  # noqa: PLC0415
+        from src.item import SigilRules  # noqa: PLC0415
 
         names = [names_in] if isinstance(names_in, str) else names_in
         sigil_rules = SigilRules.default()

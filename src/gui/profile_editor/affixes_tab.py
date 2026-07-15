@@ -50,7 +50,7 @@ from src.gui.models.dialog import (
     RarityPicker,
     rarity_summary,
 )
-from src.item.data.item_type import ItemType, is_armor, is_jewelry, is_weapon
+from src.item import ItemType, is_armor, is_jewelry, is_weapon
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"

@@ -7,10 +7,7 @@ import src.tts
 from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.settings_models import ItemRefreshType, UnfilteredUniquesType
-from src.item.data.affix import AffixType
-from src.item.data.item_type import ItemType, is_sigil
-from src.item.data.rarity import ItemRarity
-from src.item.filter import Filter
+from src.item import AffixType, Filter, ItemRarity, ItemType, is_sigil
 from src.scripts.common import (
     ASPECT_UPGRADES_LABEL,
     drop_item_from_inventory,

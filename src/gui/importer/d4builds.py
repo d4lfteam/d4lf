@@ -36,9 +36,7 @@ from src.gui.importer.gui_common import (
 from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.paragon_export import extract_d4builds_paragon_steps
-from src.item.data.affix import Affix, AffixType
-from src.item.data.item_type import WEAPON_TYPES, ItemType
-from src.item.data.rarity import ItemRarity
+from src.item import WEAPON_TYPES, Affix, AffixType, ItemRarity, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
 

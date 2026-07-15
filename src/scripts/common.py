@@ -3,7 +3,7 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from src.item.data.seasonal_attribute import SeasonalAttribute
+from src.item import SeasonalAttribute
 
 if TYPE_CHECKING:
     from tkinter import Canvas
@@ -12,12 +12,12 @@ from src.cam import Cam
 from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
 from src.gui.importer.gui_common import ACCENT_BLUE, DARK_GRAY_BG
-from src.item.data.item_type import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
+from src.item import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
 from src.utils import hotkeys
 from src.utils.custom_mouse import Mouse
 
 if TYPE_CHECKING:
-    from src.item.models import Item
+    from src.item import Item
 
 LOGGER = logging.getLogger(__name__)
 

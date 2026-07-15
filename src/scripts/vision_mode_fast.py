@@ -12,8 +12,7 @@ from src.cam import Cam
 from src.config.helper import singleton
 from src.config.loader import IniConfigLoader
 from src.config.ui import ResManager
-from src.item.data.rarity import ItemRarity
-from src.item.filter import Filter, MatchedFilter
+from src.item import Filter, ItemRarity, MatchedFilter
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item
 from src.tts import Publisher
 from src.ui_thread import call_on_ui_thread, create_overlay_toplevel, get_root

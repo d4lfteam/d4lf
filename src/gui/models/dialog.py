@@ -37,8 +37,7 @@ from src.config.profile_models import (
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import MAX_POWER
 from src.gui.settings_tab import IgnoreScrollWheelComboBox
-from src.item.data.item_type import ItemType
-from src.item.sigil_rules import SIGIL_RULE_TARGET_TYPES, SigilRules, SigilRuleTargetType
+from src.item import SIGIL_RULE_TARGET_TYPES, ItemType, SigilRules, SigilRuleTargetType
 
 if TYPE_CHECKING:
     from PyQt6.QtGui import QCloseEvent, QWheelEvent

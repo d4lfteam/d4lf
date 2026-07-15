@@ -6,7 +6,7 @@ from typing import TypeGuard
 
 from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
-from src.item.data.item_type import ItemType
+from src.item import ItemType
 
 LOGGER = logging.getLogger(__name__)
 

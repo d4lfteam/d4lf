@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 if sys.platform == "win32":
     from src import tts as tts_module
     from src.cam import Cam
-    from src.item.filter import Filter
+    from src.item import Filter
     from src.main import check_for_proper_tts_configuration
     from src.overlay import Overlay
     from src.scripts.handler import ScriptHandler

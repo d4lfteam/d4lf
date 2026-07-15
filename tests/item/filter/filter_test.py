@@ -16,11 +16,7 @@ from src.config.profile_models import (
     TributeFilterModel,
 )
 from src.config.settings_models import AspectFilterType
-from src.item.data.affix import Affix, AffixType
-from src.item.data.item_type import ItemType
-from src.item.data.rarity import ItemRarity
-from src.item.filter import Filter, FilterResult
-from src.item.models import Item
+from src.item import Affix, AffixType, Filter, FilterResult, Item, ItemRarity, ItemType
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.aspects import aspects

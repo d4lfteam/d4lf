@@ -22,7 +22,7 @@ from src.logger import LOG_DIR
 if sys.platform == "win32":
     from src import tts
     from src.cam import Cam
-    from src.item.filter import Filter
+    from src.item import Filter
     from src.overlay import Overlay
     from src.scripts.handler import ScriptHandler
     from src.utils.window import WindowSpec, start_detecting_window

@@ -1,10 +1,9 @@
 import logging
 
 from src.config.profile_models import SigilConditionModel
+from src.item import SIGIL_RULE_TARGET_TYPES, Item, SigilRules
 from src.item.data.affix import Affix
 from src.item.data.rarity import ItemRarity
-from src.item.models import Item
-from src.item.sigil_rules import SIGIL_RULE_TARGET_TYPES, SigilRules
 
 
 def test_target_types_preserve_editor_choices():

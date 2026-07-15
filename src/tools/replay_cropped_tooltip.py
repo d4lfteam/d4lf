@@ -6,15 +6,13 @@ from typing import TYPE_CHECKING
 import cv2
 
 from src.config.ui import ResManager
-from src.item.data.affix import Affix
-from src.item.data.item_type import ItemType
+from src.item import Affix, Aspect, Item, ItemType
 from src.item.descr.geometry_locator import (
     BulletMatchDiagnostics,
     DiagnosticLocatorResult,
     TemplateMatchTrace,
     locate_affix_markers_with_diagnostics,
 )
-from src.item.models import Item
 from src.logger import setup
 from src.tools.replay_common import ReplayConfigurationError, load_replay_image, show_replay_result
 from src.tools.replay_common import font_scale as _font_scale
