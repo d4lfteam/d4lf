@@ -26,6 +26,14 @@ def make_replay_config(tmp_path: Path, **overrides) -> ReplayConfig:
     return ReplayConfig(**values)
 
 
+def _read_output(path: Path) -> np.ndarray:
+    output = cv2.imread(str(path))
+    if output is None:
+        message = f"Missing replay output: {path}"
+        raise AssertionError(message)
+    return output
+
+
 @pytest.mark.parametrize(
     ("overrides", "message"),
     [
@@ -44,8 +52,22 @@ def test_validate_replay_config_rejects_invalid_inputs(tmp_path, overrides, mess
 def test_run_replay_matches_all_templates_logs_confidence_and_saves_annotation(tmp_path, monkeypatch, caplog):
     config = make_replay_config(tmp_path, templates=["rerolled_bullet_point_1", "rerolled_bullet_point_2"])
     matches = [
-        TemplateMatch(center=(40, 50), region=[30, 40, 20, 20], name="rerolled_bullet_point_1", score=0.93),
-        TemplateMatch(center=(100, 120), region=[90, 110, 20, 20], name="rerolled_bullet_point_2", score=0.87),
+        TemplateMatch(
+            center=(40, 50),
+            center_monitor=(40, 50),
+            region=[30, 40, 20, 20],
+            region_monitor=[30, 40, 20, 20],
+            name="rerolled_bullet_point_1",
+            score=0.93,
+        ),
+        TemplateMatch(
+            center=(100, 120),
+            center_monitor=(100, 120),
+            region=[90, 110, 20, 20],
+            region_monitor=[90, 110, 20, 20],
+            name="rerolled_bullet_point_2",
+            score=0.87,
+        ),
     ]
     search_calls = []
 
@@ -69,7 +91,7 @@ def test_run_replay_matches_all_templates_logs_confidence_and_saves_annotation(t
     assert kwargs["mode"] == "all"
     assert kwargs["do_multi_process"] is False
     assert "resolution=300x200" in caplog.text
-    output = cv2.imread(str(result.output_path))
+    output = _read_output(result.output_path)
     assert tuple(output[40, 30]) == (0, 255, 255)
     assert "Template matching: count=2" in caplog.text
     assert "template=rerolled_bullet_point_1" in caplog.text

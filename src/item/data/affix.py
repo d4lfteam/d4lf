@@ -1,5 +1,6 @@
 import enum
 from dataclasses import dataclass
+from typing import override
 
 
 class AffixType(enum.Enum):
@@ -14,6 +15,7 @@ class AffixType(enum.Enum):
 class Affix:
     __hash__ = None
 
+    loc: tuple[int, int] | None = None
     max_value: float | None = None
     min_value: float | None = None
     name: str = ""
@@ -21,7 +23,8 @@ class Affix:
     type: AffixType = AffixType.normal
     value: float | None = None
 
-    def __eq__(self, other: Affix) -> bool:
+    @override
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Affix):
             return False
         return (

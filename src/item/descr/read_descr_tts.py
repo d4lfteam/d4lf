@@ -81,11 +81,11 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
     elif item.rarity == ItemRarity.Unique:
         affixes_num = 2 if is_seal_or_charm(item.item_type) else 4
 
-    if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic]:
+    if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and item.name is not None:
         # Uniques can have variable amounts of inherents.
-        unique_inherents = Dataloader().aspect_unique_dict.get(item.name)["num_inherents"]
-        if unique_inherents is not None:
-            inherent_num = unique_inherents
+        unique_data = Dataloader().aspect_unique_dict.get(item.name)
+        if unique_data is not None and unique_data["num_inherents"] is not None:
+            inherent_num = unique_data["num_inherents"]
 
     # Rares have either 3 or 4 affixes so we have to do special handling to figure out where exactly the affixes end.
     # This will also grab up slotted gems but we really don't have much choice
@@ -121,7 +121,7 @@ def _compute_affix_layout(tts_section: list[str], item: Item) -> tuple[int, int,
 
 
 def _assign_aspect_or_set(item: Item, aspect_or_set_text: str | None) -> None:
-    if not aspect_or_set_text:
+    if not aspect_or_set_text or item.name is None:
         return
     if item.rarity == ItemRarity.Mythic:
         item.aspect = Aspect(name=item.name, text=aspect_or_set_text, value=find_number(aspect_or_set_text))
@@ -168,7 +168,10 @@ def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
     affixes = [tts_section[first_affix_index], tts_section[second_affix_index]]
 
     for affix_name in affixes:
-        affix = Affix(name=correct_name(keep_letters_and_spaces(affix_name)))
+        normalized_name = correct_name(keep_letters_and_spaces(affix_name))
+        if normalized_name is None:
+            normalized_name = ""
+        affix = Affix(name=normalized_name)
         affix.type = AffixType.normal
         item.affixes.append(affix)
 
@@ -365,23 +368,23 @@ def _get_affix_from_text(text: str, item_type: ItemType | None = None) -> Affix:
         for x in [f"for {for_seconds_match} Seconds", f"[{for_seconds_match}]"]:
             text = text.replace(x, "")
 
-    matched_groups = {}
+    matched_groups: dict[str, str] = {}
     for match in _AFFIX_RE.finditer(text):
-        matched_groups = {name: value for name, value in match.groupdict().items() if value is not None}
+        matched_groups = {name: value for name, value in match.groupdict().items() if isinstance(value, str)}
     if not matched_groups and _has_numbers(text):
         msg = f"Could not match affix text: {text}"
         raise Exception(msg)
     for x in ["minvalue1", "minvalue2"]:
-        if matched_groups.get(x) is not None:
-            result.min_value = float(matched_groups[x])
+        if (value := matched_groups.get(x)) is not None:
+            result.min_value = float(value)
             break
     for x in ["maxvalue1", "maxvalue2"]:
-        if matched_groups.get(x) is not None:
-            result.max_value = float(matched_groups[x])
+        if (value := matched_groups.get(x)) is not None:
+            result.max_value = float(value)
             break
     for x in ["affixvalue1", "affixvalue2", "affixvalue3", "affixvalue4"]:
-        if matched_groups.get(x) is not None:
-            result.value = float(matched_groups[x])
+        if (value := matched_groups.get(x)) is not None:
+            result.value = float(value)
             break
     for x in ["greateraffix1", "greateraffix2"]:
         if matched_groups.get(x) is not None:
@@ -389,9 +392,9 @@ def _get_affix_from_text(text: str, item_type: ItemType | None = None) -> Affix:
             if x == "greateraffix2":
                 result.value = float(matched_groups[x])
             break
-    if matched_groups.get("onlyvalue") is not None:
-        result.min_value = float(matched_groups.get("onlyvalue"))
-        result.max_value = float(matched_groups.get("onlyvalue"))
+    if (only_value := matched_groups.get("onlyvalue")) is not None:
+        result.min_value = float(only_value)
+        result.max_value = float(only_value)
 
     if "Charm Slot" in text:  # These are never greater even if they look like they are greater
         result.type = AffixType.normal
@@ -402,11 +405,15 @@ def _get_affix_from_text(text: str, item_type: ItemType | None = None) -> Affix:
     elif item_type == ItemType.Charm:
         affix_dict = Dataloader().affix_dict | Dataloader().charm_affix_dict
 
-    result.name = rapidfuzz.process.extractOne(
+    match = rapidfuzz.process.extractOne(
         keep_letters_and_spaces(_REPLACE_COMPARE_RE.sub("", result.text).strip()),
         list(affix_dict),
         scorer=rapidfuzz.distance.Levenshtein.distance,
-    )[0]
+    )
+    if match is None or not isinstance(match[0], str):
+        msg = f"Could not match affix name: {result.text}"
+        raise ValueError(msg)
+    result.name = match[0]
     return result
 
 

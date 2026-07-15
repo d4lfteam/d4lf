@@ -1,4 +1,5 @@
 import os
+from typing import override
 
 import pytest
 
@@ -7,6 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PyQt6.QtWidgets import QApplication, QDialog, QPushButton
 
 from src.config.profile_models import ItemRarity, TributeFilterModel
+from src.gui.models.dialog import CreateTribute
 from src.gui.profile_editor.profile_editor import _to_editor_tribute_filter
 from src.gui.profile_editor.tributes_tab import TributesTab
 
@@ -16,6 +18,7 @@ class _AcceptedDialog(QDialog):
         super().__init__()
         self._value = value
 
+    @override
     def exec(self) -> int:
         return QDialog.DialogCode.Accepted
 
@@ -28,6 +31,7 @@ class _AcceptedRarityPicker(QDialog):
         super().__init__()
         self._selected_rarities = selected_rarities
 
+    @override
     def exec(self) -> int:
         return QDialog.DialogCode.Accepted
 
@@ -64,7 +68,9 @@ def test_add_tribute_adds_name_rule_with_expected_display_text(qapp, monkeypatch
     _button(tab, "Add Tribute").click()
 
     assert tributes.name == ["tribute_of_test"]
-    assert tab.list_widget.item(0).text() == "Tribute: Tribute Of Test"
+    item = tab.list_widget.item(0)
+    assert item is not None
+    assert item.text() == "Tribute: Tribute Of Test"
 
 
 def test_edit_rarities_updates_summary_and_model(qapp, monkeypatch):
@@ -91,3 +97,11 @@ def test_to_editor_tribute_filter_returns_empty_model_for_none():
 def test_to_editor_tribute_filter_returns_model_unchanged():
     model = TributeFilterModel.model_construct(name=["tribute_of_harmony"], rarities=[ItemRarity.Rare])
     assert _to_editor_tribute_filter(model) is model
+
+
+def test_create_tribute_rejects_unknown_display_name(qapp):
+    dialog = CreateTribute([])
+    dialog.name_input.setCurrentText("Unknown Tribute")
+
+    with pytest.raises(ValueError, match="Select a valid tribute"):
+        dialog.get_value()

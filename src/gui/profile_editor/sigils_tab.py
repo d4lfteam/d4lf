@@ -19,7 +19,7 @@ from src.config.profile_models import SigilConditionModel, SigilFilterModel, Sig
 from src.dataloader import Dataloader
 from src.gui.models.collapsible_widget import Container
 from src.gui.models.dialog import CreateSigil, IgnoreScrollWheelComboBox, RarityPicker, RemoveSigil, rarity_summary
-from src.item.sigil_rules import SigilRules
+from src.item.sigil_rules import SigilRules, SigilRuleTargetType
 
 SIGILS_TABNAME = "Sigils"
 
@@ -35,7 +35,9 @@ class ConditionWidget(QWidget):
         self.name_combo = IgnoreScrollWheelComboBox()
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        name_completer = self.name_combo.completer()
+        if name_completer is not None:
+            name_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.name_combo.addItems([target.display for target in SigilRules.default().targets("affix")])
         self.name_combo.setMaximumWidth(600)
         self.name_combo.setCurrentText(condition)
@@ -52,7 +54,9 @@ class ConditionWidget(QWidget):
 class SigilWidget(Container):
     dungeon_changed = pyqtSignal()
 
-    def __init__(self, sigil_name: str, sigil: SigilConditionModel, whitelist: bool, kind: str = "dungeon"):
+    def __init__(
+        self, sigil_name: str, sigil: SigilConditionModel, whitelist: bool, kind: SigilRuleTargetType = "dungeon"
+    ):
         super().__init__(sigil_name, color_background=True)
         self.sigil = sigil
         self.sigil_name = sigil_name
@@ -72,7 +76,9 @@ class SigilWidget(Container):
         self.sigil_name_combo = IgnoreScrollWheelComboBox()
         self.sigil_name_combo.setEditable(True)
         self.sigil_name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.sigil_name_combo.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        name_completer = self.sigil_name_combo.completer()
+        if name_completer is not None:
+            name_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.sigil_name_combo.addItems([target.display for target in SigilRules.default().targets(self.kind)])
         self.sigil_name_combo.setCurrentText(self.sigil_name)
         self.sigil_name_combo.setMaximumWidth(150)
@@ -193,7 +199,9 @@ class SigilsTab(QWidget):
         self.priority_combobox = IgnoreScrollWheelComboBox()
         self.priority_combobox.setEditable(True)
         self.priority_combobox.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.priority_combobox.completer().setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        priority_completer = self.priority_combobox.completer()
+        if priority_completer is not None:
+            priority_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.priority_combobox.addItems(SigilPriority._member_names_)
         self.priority_combobox.setCurrentText(self.sigil_model.priority)
         self.priority_combobox.setMaximumWidth(150)
@@ -277,8 +285,11 @@ class SigilsTab(QWidget):
                     self.blacklist_sigils.remove(sigil)
                 to_delete_list = []
                 for i in range(self.blacklist_layout.count()):
-                    sigil_widget: SigilWidget = self.blacklist_layout.itemAt(i).widget()
-                    if sigil_widget.sigil_name in to_delete:
+                    item = self.blacklist_layout.itemAt(i)
+                    if item is None:
+                        continue
+                    sigil_widget = item.widget()
+                    if isinstance(sigil_widget, SigilWidget) and sigil_widget.sigil_name in to_delete:
                         to_delete_list.append(sigil_widget)
                 for sig_widget in to_delete_list:
                     sig_widget.setParent(None)
@@ -288,8 +299,11 @@ class SigilsTab(QWidget):
                     self.whitelist_sigils.remove(sigil)
                 to_delete_list = []
                 for i in range(self.whitelist_layout.count()):
-                    sigil_widget: SigilWidget = self.whitelist_layout.itemAt(i).widget()
-                    if sigil_widget.sigil_name in to_delete:
+                    item = self.whitelist_layout.itemAt(i)
+                    if item is None:
+                        continue
+                    sigil_widget = item.widget()
+                    if isinstance(sigil_widget, SigilWidget) and sigil_widget.sigil_name in to_delete:
                         to_delete_list.append(sigil_widget)
                 for sig_widget in to_delete_list:
                     sig_widget.setParent(None)

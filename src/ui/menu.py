@@ -1,5 +1,6 @@
 import logging
 import time
+from collections.abc import Sequence
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -48,16 +49,36 @@ class Menu:
 
         :param res: The TemplateMatch to check.
         """
-        if self.is_open_search_args.mode == "best":
-            return res.matches[0].name.lower() == self.is_open_search_args.ref[0].lower()
+        search_args = self.is_open_search_args
+        if search_args is None:
+            message = f"{self.menu_name} has no open search configuration"
+            raise RuntimeError(message)
+        if search_args.mode == "best":
+            if not res.matches:
+                return False
+            match_name = res.matches[0].name
+            ref = search_args.ref
+            if (
+                not isinstance(match_name, str)
+                or isinstance(ref, str)
+                or not isinstance(ref, Sequence)
+                or not ref
+                or not isinstance(ref[0], str)
+            ):
+                return False
+            return match_name.lower() == ref[0].lower()
         return True
 
-    def is_open(self, img: np.ndarray = None) -> bool:
+    def is_open(self, img: np.ndarray | None = None) -> bool:
         """Checks if the menu is open.
 
         :return: True if the menu is open, False otherwise.
         """
-        res = self.is_open_search_args.detect(img)
+        search_args = self.is_open_search_args
+        if search_args is None:
+            message = f"{self.menu_name} has no open search configuration"
+            raise RuntimeError(message)
+        res = search_args.detect(img)
         if res.success:
             return self._check_match(res)
         return False

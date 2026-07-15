@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QDialog, QPushButton, QTabWidget, QToolBar, QVBoxLay
 from src.gui.models.dialog import DeleteItem
 
 
-class TabGroupWidget(QWidget):
+class TabGroupWidget[ModelT](QWidget):
     """Shared base for profile editor tabs that show one sub-editor per model in a closable QTabWidget.
 
     Subclasses must implement create_editor(), tab_label(), and create_model(), and may override the
@@ -11,7 +11,7 @@ class TabGroupWidget(QWidget):
     tabs).
     """
 
-    def __init__(self, models: list, parent=None):
+    def __init__(self, models: list[ModelT], parent=None):
         super().__init__(parent)
         self.models = models
         self.loaded = False
@@ -59,15 +59,15 @@ class TabGroupWidget(QWidget):
     def corner_widget(self) -> QWidget | None:
         return None
 
-    def create_editor(self, model) -> QWidget:
+    def create_editor(self, model: ModelT) -> QWidget:
         msg = "Subclasses must implement create_editor()."
         raise NotImplementedError(msg)
 
-    def tab_label(self, model, index: int) -> str:
+    def tab_label(self, model: ModelT, index: int) -> str:
         msg = "Subclasses must implement tab_label()."
         raise NotImplementedError(msg)
 
-    def create_model(self):
+    def create_model(self) -> ModelT | None:
         """Return a new model to add, or None if the user cancelled the creation flow."""
         msg = "Subclasses must implement create_model()."
         raise NotImplementedError(msg)

@@ -232,7 +232,7 @@ def _locate_tts_guided_template(
             )
             diagnostics.affix_bullets = _to_bullet_match_diagnostics(affix_trace)
         if item.item_type == ItemType.HoradricSeal and affix_bullets:
-            if diagnostics is not None:
+            if diagnostics is not None and diagnostics.affix_bullets is not None:
                 diagnostics.affix_bullets.suppressed_horadric_seal = [_to_template_match_trace(affix_bullets[0])]
             affix_bullets = affix_bullets[1:]
 

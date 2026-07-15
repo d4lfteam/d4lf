@@ -254,7 +254,11 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
             output_path=output_path, crop_path=None, found=False, failure_reason=detection.failure_reason
         )
 
-    _write_image(crop_path, detection.cropped_descr)
+    cropped_descr = detection.cropped_descr
+    if cropped_descr is None:
+        message = "A successful replay detection must include a cropped description."
+        raise RuntimeError(message)
+    _write_image(crop_path, cropped_descr)
     annotated = _annotate(image, detection, tuple(config.item_anchor))
     _write_image(output_path, annotated)
     LOGGER.info(

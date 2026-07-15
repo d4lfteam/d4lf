@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 import psutil
-from beautifultable import BeautifulTable
+from beautifultable import BeautifulTable, Style
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication
 
@@ -60,7 +60,7 @@ def main():
     LOGGER.info("============ D4 Loot Filter %s ============", __version__)
 
     table = BeautifulTable()
-    table.set_style(BeautifulTable.STYLE_BOX_ROUNDED)
+    table.set_style(Style.STYLE_BOX_ROUNDED)
     adv = IniConfigLoader().advanced_options
     table.rows.append([adv.run_vision_mode, "Run/Stop Vision Mode"])
     table.rows.append([adv.info_overlay, "Info Panel Overlay"])

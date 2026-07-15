@@ -1,7 +1,7 @@
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 if TYPE_CHECKING:
     from src.item.data.affix import Affix
@@ -32,7 +32,8 @@ class Item:
     seasonal_attribute: SeasonalAttribute | None = None
     set: str | None = None
 
-    def __eq__(self, other):
+    @override
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Item):
             return False
         res = True
@@ -75,7 +76,8 @@ class Item:
 
 
 class ItemJSONEncoder(json.JSONEncoder):
-    def default(self, o):
+    @override
+    def default(self, o: object) -> object:
         if isinstance(o, Item):
             return {
                 "affixes": [affix.__dict__ for affix in o.affixes],

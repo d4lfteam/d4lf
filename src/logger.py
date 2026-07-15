@@ -3,7 +3,7 @@ import logging
 import logging.handlers
 import sys
 import threading
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, override
 
 import colorama
 
@@ -29,6 +29,7 @@ _startup_log_records: list[logging.LogRecord] = []
 
 
 class _StartupBufferHandler(logging.Handler):
+    @override
     def emit(self, record: logging.LogRecord) -> None:
         _startup_log_records.append(record)
 
@@ -38,7 +39,7 @@ class ColoredFormatter(logging.Formatter):
         self,
         fmt: str | None = None,
         datefmt: str | None = None,
-        style: str = "%",
+        style: Literal["%", "{", "$"] = "%",
         validate: bool = True,
         *,
         defaults: dict[str, object] | None = None,
@@ -54,9 +55,10 @@ class ColoredFormatter(logging.Formatter):
         "CRITICAL": colorama.Fore.MAGENTA + colorama.Back.YELLOW,
     }
 
+    @override
     def format(self, record: logging.LogRecord) -> str:
         log_message = super().format(record)
-        return self.COLORS.get(record.levelname, "") + log_message + colorama.Style.RESET_ALL
+        return str(self.COLORS.get(record.levelname, "")) + log_message + str(colorama.Style.RESET_ALL)
 
 
 def create_formatter(colored: bool = False, technical: bool = False, timestamp: bool = False) -> logging.Formatter:
@@ -179,7 +181,9 @@ def clean_up_old_log_files():
 
 
 def _log_unhandled_exceptions(args: threading.ExceptHookArgs) -> None:
-    if isinstance(args.exc_value, SystemExit):
+    if args.exc_value is None or isinstance(args.exc_value, SystemExit):
+        return
+    if args.exc_type is None:
         return
     thread_name = args.thread.name if args.thread is not None else "unknown"
     LOGGER.critical(

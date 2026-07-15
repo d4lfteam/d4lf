@@ -18,6 +18,13 @@ TEMPLATE_DIR = Path(__file__).parents[3] / "assets" / "templates" / "item_descr"
 ASPECT_BULLET_PREFIXES = ("legendary_bullet_point", "mythic_bullet_point", "unique_bullet_point")
 
 
+def _make_tm(name: str, center: tuple[int, int], score: float = 0.9) -> TemplateMatch:
+    region = [center[0] - 4, center[1] - 4, 8, 8]
+    return TemplateMatch(
+        name=name, center=center, center_monitor=center, region=region, region_monitor=region.copy(), score=score
+    )
+
+
 def _available_bullet_template_refs() -> set[str]:
     return {
         template.stem
@@ -38,9 +45,9 @@ def test_locator_skips_template_matching_when_nothing_matched() -> None:
 
 
 def test_production_locator_uses_untraced_bullet_search(mocker) -> None:
-    separator = TemplateMatch(name="item_seperator_short_rare", center=(50, 40), region=[46, 36, 8, 8], score=0.9)
-    long_separator = TemplateMatch(name="item_seperator_long_rare", center=(50, 180), region=[46, 176, 8, 8], score=0.9)
-    bullet = TemplateMatch(name="affix_bullet_point_1", center=(10, 60), region=[6, 56, 8, 8], score=0.9)
+    separator = _make_tm("item_seperator_short_rare", (50, 40))
+    long_separator = _make_tm("item_seperator_long_rare", (50, 180))
+    bullet = _make_tm("affix_bullet_point_1", (10, 60))
     plain_search = mocker.patch("src.item.descr.texture.find_bullets_for_templates", return_value=[bullet])
     traced_search = mocker.patch(
         "src.item.descr.texture.find_bullets_for_templates_traced",
@@ -60,9 +67,9 @@ def test_production_locator_uses_untraced_bullet_search(mocker) -> None:
 
 
 def test_production_locator_reuses_supplied_short_separator(mocker) -> None:
-    separator = TemplateMatch(name="item_seperator_short_rare", center=(50, 40), region=[46, 36, 8, 8], score=0.9)
-    long_separator = TemplateMatch(name="item_seperator_long_rare", center=(50, 180), region=[46, 176, 8, 8], score=0.9)
-    bullet = TemplateMatch(name="affix_bullet_point_1", center=(10, 60), region=[6, 56, 8, 8], score=0.9)
+    separator = _make_tm("item_seperator_short_rare", (50, 40))
+    long_separator = _make_tm("item_seperator_long_rare", (50, 180))
+    bullet = _make_tm("affix_bullet_point_1", (10, 60))
     plain_search = mocker.patch("src.item.descr.texture.find_bullets_for_templates", return_value=[bullet])
     separator_search = mocker.patch(
         "src.item.descr.texture.find_seperator_short", side_effect=AssertionError("separator should be reused")
@@ -83,8 +90,8 @@ def test_production_locator_reuses_supplied_short_separator(mocker) -> None:
 
 
 def test_locator_accepts_duplicate_matches_for_same_affix_row(mocker) -> None:
-    separator = TemplateMatch(name="item_seperator_short_rare", center=(50, 40), region=[46, 36, 8, 8], score=0.9)
-    bullet = TemplateMatch(name="affix_bullet_point_1", center=(10, 60), region=[6, 56, 8, 8], score=0.9)
+    separator = _make_tm("item_seperator_short_rare", (50, 40))
+    bullet = _make_tm("affix_bullet_point_1", (10, 60))
     mocker.patch("src.item.descr.texture.find_seperator_short", return_value=separator)
     mocker.patch("src.item.descr.texture.find_seperator_long", return_value=None)
     mocker.patch("src.item.descr.texture.find_bullets_for_templates", return_value=[bullet])

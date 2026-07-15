@@ -104,7 +104,10 @@ class TributesTab(QWidget):
             return
 
         for row in rows:
-            text = self.list_widget.item(row).text()
+            item = self.list_widget.item(row)
+            if item is None:
+                continue
+            text = item.text()
             if text.startswith(_TRIBUTE_PREFIX):
                 selected_name = text.removeprefix(_TRIBUTE_PREFIX)
                 reverse_dict = {value: key for key, value in Dataloader().tribute_dict.items()}

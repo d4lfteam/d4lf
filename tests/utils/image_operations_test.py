@@ -13,6 +13,14 @@ from src.utils.image_operations import (
 )
 
 
+def _masked_image(img: np.ndarray, roi: tuple[int, int, int, int], masking_type: str) -> np.ndarray:
+    masked = mask_by_roi(img, roi, masking_type)
+    if masked is None:
+        msg = f"Unexpected masking type: {masking_type}"
+        raise AssertionError(msg)
+    return masked
+
+
 def test_binary_threshold() -> None:
     # Create a dummy 3-channel image
     # Left half is filled with 40s (intensity less than threshold)
@@ -50,7 +58,7 @@ def test_mask_by_roi() -> None:
     img = np.zeros((10, 10, 3), dtype=np.uint8)
     roi = (2, 2, 5, 5)
     # After masking, the image should remain full of zeros, since the ROI is pasted onto a black image
-    masked = mask_by_roi(img, roi, "regular")
+    masked = _masked_image(img, roi, "regular")
     # Therefore, the count of non-zero elements should be 0
     assert np.count_nonzero(masked) == 0
 
@@ -59,7 +67,7 @@ def test_mask_by_roi() -> None:
     img = np.ones((10, 10, 3), dtype=np.uint8) * 255
     roi = (2, 2, 5, 5)
     # After masking, only the ROI area should remain white
-    masked = mask_by_roi(img, roi, "regular")
+    masked = _masked_image(img, roi, "regular")
     # The number of pixels in the ROI is 5*5 = 25
     # Each pixel has 3 channels (RGB), so the total number of white values should be 25 * 3 = 75
     assert np.count_nonzero(masked) == 25 * 3
@@ -69,7 +77,7 @@ def test_mask_by_roi() -> None:
     img = np.ones((10, 10, 3), dtype=np.uint8) * 255
     roi = (2, 2, 5, 5)
     # After masking, the ROI area in the image should be blackened out
-    masked = mask_by_roi(img, roi, "inverse")
+    masked = _masked_image(img, roi, "inverse")
     # The total number of pixels is 10*10 = 100
     # The number of pixels in the ROI is 5*5 = 25
     # So the number of white pixels outside the ROI is 100 - 25 = 75
@@ -81,7 +89,7 @@ def test_mask_by_roi() -> None:
     img = np.zeros((10, 10, 3), dtype=np.uint8)
     roi = (2, 2, 5, 5)
     # After masking, the image should remain full of zeros, since the ROI is made black on the already black image
-    masked = mask_by_roi(img, roi, "inverse")
+    masked = _masked_image(img, roi, "inverse")
     # Therefore, the count of non-zero elements should be 0
     assert np.count_nonzero(masked) == 0
 

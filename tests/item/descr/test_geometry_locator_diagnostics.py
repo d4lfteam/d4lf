@@ -36,19 +36,31 @@ def use_tooltip_fixture_resolution():
 
 
 def _make_tm(name: str, cx: int, cy: int, score: float = 0.9) -> TemplateMatch:
-    return TemplateMatch(name=name, center=(cx, cy), region=[cx - 4, cy - 4, 8, 8], score=score)
+    region = [cx - 4, cy - 4, 8, 8]
+    return TemplateMatch(
+        name=name, center=(cx, cy), center_monitor=(cx, cy), region=region, region_monitor=region.copy(), score=score
+    )
 
 
 def _realistic_tooltip_image() -> np.ndarray:
     image = np.zeros((600, 500, 3), dtype=np.uint8)
-    separator = cv2.imread(str(TEMPLATE_DIR / "item_seperator_short_rare.png"), cv2.IMREAD_UNCHANGED)[:, :, :3]
-    image[100 : 100 + separator.shape[0], : separator.shape[1]] = separator
+    separator = cv2.imread(str(TEMPLATE_DIR / "item_seperator_short_rare.png"), cv2.IMREAD_UNCHANGED)
+    if separator is None:
+        message = "Missing short separator test template"
+        raise AssertionError(message)
+    image[100 : 100 + separator.shape[0], : separator.shape[1]] = separator[:, :, :3]
 
     affix_bullet = cv2.imread(str(TEMPLATE_DIR / "affix_bullet_point_1.png"))
+    if affix_bullet is None:
+        message = "Missing affix bullet test template"
+        raise AssertionError(message)
     for y in (150, 190):
         image[y : y + affix_bullet.shape[0], 10 : 10 + affix_bullet.shape[1]] = affix_bullet
 
     aspect_bullet = cv2.imread(str(TEMPLATE_DIR / "legendary_bullet_point.png"))
+    if aspect_bullet is None:
+        message = "Missing aspect bullet test template"
+        raise AssertionError(message)
     image[250 : 250 + aspect_bullet.shape[0], 10 : 10 + aspect_bullet.shape[1]] = aspect_bullet
     return image
 

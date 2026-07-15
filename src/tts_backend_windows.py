@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pywintypes
 import win32file
 import win32pipe
+import win32security
 
 if TYPE_CHECKING:
     import logging
@@ -12,18 +13,36 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-def create_pipe(logger: logging.Logger):
+def _require_message_size(value: object) -> int:
+    if not isinstance(value, int):
+        message = "Named pipe returned an invalid message size"
+        raise TypeError(message)
+    return value
+
+
+def _require_message_bytes(value: object) -> bytes:
+    if not isinstance(value, bytes):
+        message = "Named pipe returned a non-byte message"
+        raise TypeError(message)
+    return value
+
+
+def _create_named_pipe() -> int:
+    return win32pipe.CreateNamedPipe(
+        r"\\.\pipe\d4lf",
+        win32pipe.PIPE_ACCESS_DUPLEX,
+        win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_READMODE_MESSAGE | win32pipe.PIPE_WAIT,
+        1,
+        65536,
+        65536,
+        0,
+        win32security.SECURITY_ATTRIBUTES(),
+    )
+
+
+def create_pipe(logger: logging.Logger) -> int:
     try:
-        return win32pipe.CreateNamedPipe(
-            r"\\.\pipe\d4lf",
-            win32pipe.PIPE_ACCESS_DUPLEX,
-            win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_READMODE_MESSAGE | win32pipe.PIPE_WAIT,
-            1,
-            65536,
-            65536,
-            0,
-            None,
-        )
+        return _create_named_pipe()
     except pywintypes.error as e:
         if e.args[0] == 231:  # ERROR_PIPE_BUSY
             logger.error("")
@@ -40,7 +59,7 @@ def create_pipe(logger: logging.Logger):
 
 
 def read_pipe(
-    create_pipe_fn: Callable[[], object],
+    create_pipe_fn: Callable[[], int],
     data_queue: queue.Queue[str],
     logger: logging.Logger,
     set_connected: Callable[[bool], None],
@@ -56,12 +75,13 @@ def read_pipe(
         while True:
             try:
                 # Block until data is available (assumes PIPE_WAIT)
-                win32file.ReadFile(handle, 0, None)
+                win32file.ReadFile(handle, 0)
                 # Query message size
                 _, _, message_size = win32pipe.PeekNamedPipe(handle, 0)
+                message_size = _require_message_size(message_size)
                 # Read message
-                _, data = win32file.ReadFile(handle, message_size, None)
-                data = data.decode().replace("\x00", "")
+                _, raw_data = win32file.ReadFile(handle, message_size)
+                data = _require_message_bytes(raw_data).decode().replace("\x00", "")
                 if not data:
                     continue
                 if "DISCONNECTED" in data:

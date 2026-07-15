@@ -1,3 +1,5 @@
+from typing import override
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QFormLayout, QFrame, QGroupBox, QLineEdit, QScrollArea, QToolButton, QVBoxLayout, QWidget
 
@@ -81,34 +83,42 @@ class UniqueWidget(QWidget):
         self.unique_model.min_percent_of_aspect = self.min_percent.value()
 
 
-class UniquesTab(TabGroupWidget):
+class UniquesTab(TabGroupWidget[GlobalUniqueModel]):
     def __init__(self, unique_model_list: list[GlobalUniqueModel], parent=None):
         super().__init__(unique_model_list, parent)
 
+    @override
     def toolbar_name(self) -> str:
         return "MyToolBar"
 
+    @override
     def corner_widget(self) -> QToolButton:
         add_button = QToolButton()
         add_button.setText("+")
         add_button.clicked.connect(self.add_item)
         return add_button
 
+    @override
     def create_editor(self, model: GlobalUniqueModel) -> UniqueWidget:
         return UniqueWidget(model)
 
+    @override
     def tab_label(self, model: GlobalUniqueModel, index: int) -> str:
         return f"Unique Rule {index}"
 
+    @override
     def create_model(self) -> GlobalUniqueModel:
         return GlobalUniqueModel()
 
+    @override
     def add_button_text(self) -> str:
         return "Create Rule"
 
+    @override
     def remove_button_text(self) -> str:
         return "Remove Rule"
 
-    def after_models_changed(self):
+    @override
+    def after_models_changed(self) -> None:
         for i in range(self.tab_widget.count()):
             self.tab_widget.setTabText(i, f"Unique Rule {i}")

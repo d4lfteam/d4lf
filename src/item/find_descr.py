@@ -72,7 +72,7 @@ def _template_search(img: np.ndarray, anchor: int, roi: np.ndarray, take_debug_s
 
 def find_descr(
     img: np.ndarray, anchor: tuple[int, int]
-) -> tuple[bool, ItemRarity, np.ndarray, tuple[int, int, int, int]]:
+) -> tuple[bool, ItemRarity | None, np.ndarray | None, list[int] | None]:
     detection = _find_descr_core(img, anchor, collect_diagnostics=False)
     return detection.found, detection.rarity, detection.cropped_descr, detection.crop_roi
 
@@ -108,7 +108,9 @@ def get_separator_match_in_crop(detection: DescrDetection) -> TemplateMatch | No
     region_x, region_y, region_width, region_height = match.region
     return TemplateMatch(
         center=(match.center[0] - crop_x, match.center[1] - crop_y),
+        center_monitor=match.center_monitor,
         region=[region_x - crop_x, region_y - crop_y, region_width, region_height],
+        region_monitor=match.region_monitor,
         name=match.name,
         score=match.score,
     )
@@ -124,7 +126,7 @@ def _find_descr_core(img: np.ndarray, anchor: tuple[int, int], *, collect_diagno
 
     res = _choose_best_result(res_left, res_right, anchor[0], window_width)
 
-    if res is not None and res.success:
+    if res.success and res.matches:
         match = res.matches[0]
         rarity = map_template_rarity[match.name.lower()]
         # find equipe template
@@ -166,7 +168,8 @@ def _find_descr_core(img: np.ndarray, anchor: tuple[int, int], *, collect_diagno
                     failure_reason="invalid_crop",
                 )
             crop_roi = list(crop_roi)
-            cropped_descr = crop(img, crop_roi)
+            crop_roi_tuple = (crop_roi[0], crop_roi[1], crop_roi[2], crop_roi[3])
+            cropped_descr = crop(img, crop_roi_tuple)
             return DescrDetection(
                 found=True,
                 rarity=rarity,

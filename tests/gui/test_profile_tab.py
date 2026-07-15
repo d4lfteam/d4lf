@@ -22,7 +22,12 @@ from src.config.profile_session import (
     YamlError,
 )
 
-profile_editor_module = types.ModuleType("src.gui.profile_editor.profile_editor")
+
+class _ProfileEditorModule(types.ModuleType):
+    ProfileEditor: type[QWidget]
+
+
+profile_editor_module = _ProfileEditorModule("src.gui.profile_editor.profile_editor")
 profile_editor_module.ProfileEditor = QWidget
 sys.modules["src.gui.profile_editor.profile_editor"] = profile_editor_module
 

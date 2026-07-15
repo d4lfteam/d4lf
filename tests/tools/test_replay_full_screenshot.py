@@ -21,6 +21,14 @@ def make_replay_config(tmp_path: Path, **overrides) -> ReplayConfig:
     return ReplayConfig(**values)
 
 
+def _read_output(path: Path) -> np.ndarray:
+    output = cv2.imread(str(path))
+    if output is None:
+        message = f"Missing replay output: {path}"
+        raise AssertionError(message)
+    return output
+
+
 @pytest.mark.parametrize(
     ("overrides", "message"),
     [
@@ -37,11 +45,30 @@ def test_validate_replay_config_rejects_invalid_inputs(tmp_path, overrides, mess
 
 def test_run_replay_saves_crop_and_composes_full_annotation(tmp_path, monkeypatch, caplog):
     config = make_replay_config(tmp_path)
-    rarity_match = TemplateMatch(center=(180, 100), region=[170, 90, 20, 20], name="item_leg_top_left", score=0.93)
-    separator_match = TemplateMatch(
-        center=(200, 150), region=[190, 145, 20, 10], name="item_seperator_short_legendary", score=0.91
+    rarity_match = TemplateMatch(
+        center=(180, 100),
+        center_monitor=(180, 100),
+        region=[170, 90, 20, 20],
+        region_monitor=[170, 90, 20, 20],
+        name="item_leg_top_left",
+        score=0.93,
     )
-    bottom_match = TemplateMatch(center=(200, 350), region=[190, 345, 20, 10], name="item_bottom_edge", score=0.89)
+    separator_match = TemplateMatch(
+        center=(200, 150),
+        center_monitor=(200, 150),
+        region=[190, 145, 20, 10],
+        region_monitor=[190, 145, 20, 10],
+        name="item_seperator_short_legendary",
+        score=0.91,
+    )
+    bottom_match = TemplateMatch(
+        center=(200, 350),
+        center_monitor=(200, 350),
+        region=[190, 345, 20, 10],
+        region_monitor=[190, 345, 20, 10],
+        name="item_bottom_edge",
+        score=0.89,
+    )
     detection = DescrDetection(
         found=True,
         cropped_descr=np.zeros((200, 240, 3), dtype=np.uint8),
@@ -60,7 +87,7 @@ def test_run_replay_saves_crop_and_composes_full_annotation(tmp_path, monkeypatc
     assert result.output_path == tmp_path / "full_screenshot_full_template_matches.png"
     crop = cv2.imread(str(result.crop_path))
     np.testing.assert_array_equal(crop, detection.cropped_descr)
-    output = cv2.imread(str(result.output_path))
+    output = _read_output(result.output_path)
     assert tuple(output[90, 170]) == (128, 128, 128)
     assert tuple(output[80, 120]) == (0, 255, 0)
     for expected in (
@@ -85,5 +112,5 @@ def test_run_replay_writes_and_displays_full_failure_annotation(tmp_path, monkey
     assert not result.found
     assert result.failure_reason == "missing_rarity_border"
     assert len(displayed) == 1
-    output = cv2.imread(str(result.output_path))
+    output = _read_output(result.output_path)
     assert tuple(output[0, 0]) == (0, 0, 255)

@@ -11,7 +11,6 @@ This file contains:
 
 import json
 import re
-from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -43,35 +42,46 @@ from tests.config.data import sigils, uniques
 class TestSigil:
     @staticmethod
     @pytest.mark.parametrize("data", sigils.all_bad_cases)
-    def test_all_bad_cases(data: dict[str, Any]) -> None:
+    def test_all_bad_cases(data: dict[str, object]) -> None:
         data["name"] = "bad"
         with pytest.raises(ValidationError):
-            ProfileModel(**data)
+            ProfileModel.model_validate(data)
 
     @staticmethod
     @pytest.mark.parametrize("data", sigils.all_good_cases)
-    def test_all_good_cases(data: dict[str, Any]) -> None:
+    def test_all_good_cases(data: dict[str, object]) -> None:
         data["name"] = "good"
-        assert ProfileModel(**data)
+        assert ProfileModel.model_validate(data)
 
 
 class TestUnique:
     @staticmethod
     @pytest.mark.parametrize(("data", "expected_msg"), uniques.all_bad_cases)
-    def test_all_bad_cases(data: dict[str, Any], expected_msg: str) -> None:
+    def test_all_bad_cases(data: dict[str, object], expected_msg: str) -> None:
         data["name"] = "bad"
         with pytest.raises(ValidationError, match=re.escape(expected_msg)):
-            ProfileModel(**data)
+            ProfileModel.model_validate(data)
 
     @staticmethod
     def test_all_good_cases() -> None:
-        assert ProfileModel(**uniques.all_good_cases)
+        assert ProfileModel.model_validate(uniques.all_good_cases)
 
 
 class TestGeneralProfiles:
     @staticmethod
     def test_profiles_empty_entries_are_removed() -> None:
         assert GeneralModel(profiles="alpha, , beta,   ,").profiles == ["alpha", "beta"]
+
+    @staticmethod
+    def test_check_chest_tabs_preserves_zero_based_integer_input() -> None:
+        assert GeneralModel(check_chest_tabs=[0, 2]).check_chest_tabs == [0, 2]
+        assert GeneralModel(check_chest_tabs=["1", "3"]).check_chest_tabs == [0, 2]
+
+    @staticmethod
+    @pytest.mark.parametrize("value", [[1.5], [None], [True], [{"tab": 1}]])
+    def test_check_chest_tabs_rejects_non_string_and_non_integer_values(value: list[object]) -> None:
+        with pytest.raises(ValidationError, match="list entries must be strings or integers"):
+            GeneralModel.model_validate({"check_chest_tabs": value})
 
 
 class TestAffixAspectFilterModel:
@@ -454,7 +464,7 @@ class TestItemFilterModel:
 
     def test_unique_aspect_parse_empty(self) -> None:
         """Test parsing empty unique_aspect."""
-        model = ItemFilterModel(unique_aspect=None)
+        model = ItemFilterModel.model_validate({"unique_aspect": None})
         assert model.unique_aspect == []
 
     def test_affix_pool_rejects_charm_only_affix(self) -> None:
@@ -503,8 +513,8 @@ class TestEdgeCases:
         assert model.min_percent_of_aspect == 100
         assert model.min_power == 1
 
-    def test_populate_by_name_enables_both(self) -> None:
-        """Test that populate_by_name=True is configured correctly."""
+    def test_validate_by_name_and_alias_enable_both(self) -> None:
+        """Test that both field names and aliases are accepted."""
         # Both aliases should work independently
         model1 = ItemFilterModel(min_power=800)
         assert model1.min_power == 800
@@ -512,8 +522,7 @@ class TestEdgeCases:
         model2 = ItemFilterModel(minPower=850)
         assert model2.min_power == 850
 
-        # Using both would cause the last one to win (pydantic behavior with populate_by_name)
-        # We just test that both are accepted
+        # Field names and aliases remain independently accepted for construction.
 
     def test_field_order_independence(self) -> None:
         """Test that field order doesn't matter with mixed naming."""
@@ -567,7 +576,7 @@ class TestTributeFilterModel:
 class TestCharmFilterModel:
     def test_extra_fields_are_forbidden(self) -> None:
         with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-            CharmFilterModel(unexpected=True)
+            CharmFilterModel.model_validate({"unexpected": True})
 
     def test_set_name_is_validated_and_normalized(self) -> None:
         model = CharmFilterModel(set=["Breath of the Frozen Sea"])
@@ -765,6 +774,20 @@ class TestProfileModel:
         assert model.tributes.name == ["tribute_of_harmony"]
         assert model.tributes.rarities == [ItemRarity.Legendary]
 
+    @pytest.mark.parametrize(
+        "tributes",
+        [
+            [{"name": 123}],
+            [{"rarity": [123]}],
+            [{"raritty": "legendary"}],
+            [{"rarity": "rare", "rarities": "unique"}],
+            [123],
+        ],
+    )
+    def test_invalid_legacy_tribute_entries_are_rejected(self, tributes: list[object]) -> None:
+        with pytest.raises(ValidationError):
+            ProfileModel.model_validate({"name": "invalid_tributes", "Tributes": tributes})
+
     def test_camelcase_top_level_fields(self) -> None:
         """Test that camelCase top-level fields work."""
         profile = ProfileModel(
@@ -864,16 +887,16 @@ class TestProfileModel:
 
     def test_dict_construction_camelcase(self) -> None:
         """Test constructing from dict with camelCase keys."""
-        data: dict[str, Any] = {"name": "dict_test", "GlobalUniques": [{"minPower": 800}]}
-        model = ProfileModel(**data)
+        data: dict[str, object] = {"name": "dict_test", "GlobalUniques": [{"minPower": 800}]}
+        model = ProfileModel.model_validate(data)
         assert model.name == "dict_test"
         assert len(model.global_uniques) == 1
         assert model.global_uniques[0].min_power == 800
 
     def test_dict_construction_snake_case(self) -> None:
         """Test constructing from dict with snake_case keys."""
-        data: dict[str, Any] = {"name": "dict_test", "global_uniques": [{"min_power": 900}]}
-        model = ProfileModel(**data)
+        data: dict[str, object] = {"name": "dict_test", "global_uniques": [{"min_power": 900}]}
+        model = ProfileModel.model_validate(data)
         assert model.name == "dict_test"
         assert len(model.global_uniques) == 1
         assert model.global_uniques[0].min_power == 900
@@ -881,7 +904,7 @@ class TestProfileModel:
 
 class TestParagonModels:
     @staticmethod
-    def _board_data(**overrides: object) -> dict[str, Any]:
+    def _board_data(**overrides: object) -> dict[str, object]:
         board = {
             "Name": "Starting Board",
             "Glyph": "glyph_name",
@@ -1061,7 +1084,7 @@ class TestItemFilterModelRarity:
         assert model.rarities == []
 
     def test_keyword_construction_with_rarities(self) -> None:
-        """ItemFilterModel(rarities=[...]) works via populate_by_name."""
+        """ItemFilterModel(rarities=[...]) works via validation by field name."""
         model = ItemFilterModel(rarities=[ItemRarity.Rare])
         assert model.rarities == [ItemRarity.Rare]
 

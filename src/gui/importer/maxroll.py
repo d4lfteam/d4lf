@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from typing import TYPE_CHECKING
 
 import lxml.html
 
@@ -19,6 +20,9 @@ from src.gui.importer.gui_common import (
     retry_importer,
     update_mingreateraffixcount,
 )
+from src.gui.importer.gui_common import as_string_keyed_mapping as _as_mapping
+from src.gui.importer.gui_common import as_string_keyed_mapping_list as _as_mapping_list
+from src.gui.importer.gui_common import as_text as _as_text
 from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.paragon_export import extract_maxroll_paragon_steps
@@ -27,6 +31,10 @@ from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
 from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
@@ -84,10 +92,10 @@ def import_maxroll(config: ImportConfig):
         build_name = all_data["class"]
     if variant_name:
         build_name += f"_{variant_name}"
-    finished_filters = []
-    charm_filters = []
-    seal_filters = []
-    aspect_upgrade_filters = []
+    finished_filters: list[ItemFilterModel] = []
+    charm_filters: list[CharmFilterModel] = []
+    seal_filters: list[SealFilterModel] = []
+    aspect_upgrade_filters: list[str] = []
     for item_id in active_profile["items"].values():
         resolved_item = items[str(item_id)]
         resolved_item_id = resolved_item["id"]
@@ -132,17 +140,26 @@ def import_maxroll(config: ImportConfig):
                     f"Skipping {resolved_item.get('name', '(could not determine item name)')} because it had no supported affixes, unique aspect, or set name."
                 )
                 continue
-            seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
-            seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
-            seal_charm_filters.append(
-                create_seal_charm_filter(
-                    affixes=seal_charm_affixes,
-                    require_gas=config.require_greater_affixes,
-                    model_type=seal_charm_model,
-                    unique_name=charm_or_seal_unique_aspect,
-                    set_name=charm_set_name,
+            if item_type == ItemType.Charm:
+                charm_filters.append(
+                    create_seal_charm_filter(
+                        affixes=seal_charm_affixes,
+                        require_gas=config.require_greater_affixes,
+                        model_type=CharmFilterModel,
+                        unique_name=charm_or_seal_unique_aspect,
+                        set_name=charm_set_name,
+                    )
                 )
-            )
+            else:
+                seal_filters.append(
+                    create_seal_charm_filter(
+                        affixes=seal_charm_affixes,
+                        require_gas=config.require_greater_affixes,
+                        model_type=SealFilterModel,
+                        unique_name=charm_or_seal_unique_aspect,
+                        set_name=charm_set_name,
+                    )
+                )
             continue
 
         item_filter.item_type = [item_type]
@@ -240,20 +257,37 @@ def _find_item_rarity(resolved_item_id, mapping_data) -> ItemRarity:
 
 
 def _find_item_affixes(
-    mapping_data: dict, item_affixes: dict, item_type: ItemType, import_greater_affixes=False
+    mapping_data: Mapping[str, object],
+    item_affixes: Sequence[Mapping[str, object]],
+    item_type: ItemType,
+    import_greater_affixes: bool = False,
 ) -> list[Affix]:
     res = []
+    affix_data = _as_mapping(mapping_data.get("affixes"))
+    ui_strings = _as_mapping(mapping_data.get("uiStrings"))
+    damage_type_labels = _as_text_mapping(ui_strings.get("damageType"))
+    resource_type_labels = _as_text_mapping(ui_strings.get("resourceType"))
+    attributes = _as_mapping(mapping_data.get("attributes"))
+    attribute_descriptions = _as_text_mapping(mapping_data.get("attributeDescriptions"))
+    skills = _as_mapping(mapping_data.get("skills"))
     for affix_id in item_affixes:
-        for affix_key, affix in mapping_data["affixes"].items():
-            if affix["id"] != affix_id["nid"]:
+        affix_reference = _as_mapping(affix_id)
+        reference_id = affix_reference.get("nid")
+        for affix_key, raw_affix in affix_data.items():
+            affix = _as_mapping(raw_affix)
+            affix_value = affix.get("id")
+            if affix_value != reference_id or not isinstance(affix_value, (int, str)):
                 continue
-            if affix["magicType"] in [2, 4]:
+            if affix.get("magicType") in [2, 4]:
                 break
-            attr_desc = _attr_desc_special_handling(affix["id"])
+            attributes_list = _as_mapping_list(affix.get("attributes"))
+            attr_desc = _attr_desc_special_handling(affix_value)
             if not attr_desc:
-                attribute = affix["attributes"][0]
+                if not attributes_list:
+                    continue
+                attribute = attributes_list[0]
                 formula = attribute.get("formula")
-                if formula and formula.startswith("SancAffix_"):
+                if isinstance(formula, str) and formula.startswith("SancAffix_"):
                     LOGGER.info(f"Skipping Transfiguration affix for item type '{item_type.value}'")
                     break
                 if formula in [
@@ -266,37 +300,37 @@ def _find_item_affixes(
                 ]:
                     if formula in ["GearAffix_DamageType", "GearAffix_DamageType_Greater"]:
                         param = str(attribute["param"])
-                        if param in mapping_data["uiStrings"]["damageType"]:
-                            attr_desc = mapping_data["uiStrings"]["damageType"][param] + " Damage Multiplier"
+                        if param in damage_type_labels:
+                            attr_desc = damage_type_labels[param] + " Damage Multiplier"
                         elif "desc" in affix:
                             # These are seal affixes and we have to get the skill from the description
                             pattern = r"\{c_important\}([^{}]+)\{/c\}\s*(.+)$"
-                            match = re.search(pattern, affix["desc"])
+                            match = re.search(pattern, _as_text(affix.get("desc")))
                             if match:
                                 attr_desc = f"{match.group(1)} {match.group(2)}"
                     elif formula == "GearAffix_Resistance_Single":
-                        attr_desc = mapping_data["uiStrings"]["damageType"][str(attribute["param"])] + " Resistance"
+                        attr_desc = damage_type_labels[str(attribute["param"])] + " Resistance"
                     elif formula == "GearAffix_Resource_Per_Second":
                         param = str(attribute["param"])
-                        attr_desc = mapping_data["uiStrings"]["resourceType"][param] + " Regeneration"
+                        attr_desc = resource_type_labels[param] + " Regeneration"
                     elif formula in ["GearAffix_Resource_On_Kill", "GearAffix_Resource_On_Kill_Warlock"]:
-                        attr_desc = mapping_data["uiStrings"]["resourceType"][str(attribute["param"])] + " On Kill"
+                        attr_desc = resource_type_labels[str(attribute["param"])] + " On Kill"
                 elif "param" not in attribute:
                     attr_id = attribute["id"]
-                    attr_obj = mapping_data["attributes"][str(attr_id)]
-                    attr_desc = mapping_data["attributeDescriptions"].get(
-                        _attribute_description_corrections(attr_obj["name"])
-                    )
+                    attr_obj = _as_mapping(attributes.get(str(attr_id)))
+                    attr_name = _as_text(attr_obj.get("name"))
+                    attr_desc = attribute_descriptions.get(_attribute_description_corrections(attr_name))
                     if not attr_desc:
                         LOGGER.warning(
-                            f"Unable to map {attr_obj['name']} from MaxRoll data to an affix, skipping affix and please report a bug."
+                            f"Unable to map {attr_name} from MaxRoll data to an affix, skipping affix and please report a bug."
                         )
                         continue
                 else:  # must be + to talent or skill
                     attr_param = attribute["param"]
-                    for skill_data in mapping_data["skills"].values():
-                        if skill_data["id"] == attr_param:
-                            attr_desc = f"to {skill_data['name']}"
+                    for raw_skill in skills.values():
+                        skill_data = _as_mapping(raw_skill)
+                        if skill_data.get("id") == attr_param:
+                            attr_desc = f"to {_as_text(skill_data.get('name'))}"
                             break
                     else:
                         attr_desc = _find_skill_rank_affix_description(
@@ -309,7 +343,7 @@ def _find_item_affixes(
                 # "Talisman_Barbarian_05" and then find that in the mapping data. That will also give set name.
                 if "Talisman" in affix_key and "Set" in affix_key:
                     pattern = r"\{c_set\}([^{}]+)\{/c\}"
-                    match = re.search(pattern, affix["desc"]) if "desc" in affix else None
+                    match = re.search(pattern, _as_text(affix.get("desc"))) if "desc" in affix else None
                     if match:
                         attr_desc = match.group(1) + " " + attr_desc
                     else:
@@ -328,13 +362,14 @@ def _find_item_affixes(
 
             affix_dict = affix_dict_for_item_type(item_type=item_type)
             affix_obj = Affix(name=closest_match(clean_str(clean_desc), affix_dict))
-            if import_greater_affixes and affix_id.get("greater", False):
+            if import_greater_affixes and affix_id.get("greater") is True:
                 affix_obj.type = AffixType.greater
             if affix_obj.name is not None:
                 res.append(affix_obj)
             elif (
-                "formula" in affix["attributes"][0]
-                and affix["attributes"][0]["formula"] == "InherentAffixAnyResist_Ring"
+                attributes_list
+                and "formula" in attributes_list[0]
+                and attributes_list[0]["formula"] == "InherentAffixAnyResist_Ring"
             ):
                 LOGGER.info("Skipping InherentAffixAnyResist_Ring")
             else:
@@ -343,28 +378,33 @@ def _find_item_affixes(
     return res
 
 
-def _find_skill_rank_affix_description(mapping_data: dict, affix_key: str, attribute: dict) -> str:
+def _find_skill_rank_affix_description(
+    mapping_data: Mapping[str, object], affix_key: str, attribute: Mapping[str, object]
+) -> str:
     if attribute.get("formula") not in SKILL_RANK_BONUS_FORMULAS:
         return ""
 
-    if (label := _find_skill_rank_label_from_descriptions(mapping_data, attribute.get("param"))) or (
+    param = attribute.get("param")
+    param_int = param if isinstance(param, int) and not isinstance(param, bool) else None
+    if (label := _find_skill_rank_label_from_descriptions(mapping_data, param_int)) or (
         label := _find_skill_rank_label_from_affix_key(affix_key)
     ):
         return f"to {label} skills"
     return ""
 
 
-def _find_skill_rank_label_from_descriptions(mapping_data: dict, param: int | None) -> str:
+def _find_skill_rank_label_from_descriptions(mapping_data: Mapping[str, object], param: int | None) -> str:
     if param is None:
         return ""
 
-    for affix in mapping_data["affixes"].values():
+    for raw_affix in _as_mapping(mapping_data.get("affixes")).values():
+        affix = _as_mapping(raw_affix)
         if not any(
             attr.get("formula") in SKILL_RANK_BONUS_FORMULAS and attr.get("param") == param
-            for attr in affix.get("attributes", [])
+            for attr in _as_mapping_list(affix.get("attributes"))
         ):
             continue
-        if match := SKILL_RANK_DESC_LABEL_REGEX.search(affix.get("desc", "")):
+        if match := SKILL_RANK_DESC_LABEL_REGEX.search(_as_text(affix.get("desc"))):
             return match.group(1)
     return ""
 
@@ -382,27 +422,40 @@ def _find_skill_rank_label_from_affix_key(affix_key: str) -> str:
     return ""
 
 
-def _find_legendary_aspect(mapping_data: dict, legendary_aspect: dict) -> str | None:
+def _find_legendary_aspect(
+    mapping_data: Mapping[str, object], legendary_aspect: Mapping[str, object] | list[object]
+) -> str | None:
     if not legendary_aspect:
         return None
 
     if isinstance(legendary_aspect, list):
-        legendary_aspect = legendary_aspect[0]
+        if not legendary_aspect:
+            return None
+        first_aspect = legendary_aspect[0]
+        if not isinstance(first_aspect, dict):
+            return None
+        aspect_data = _as_mapping(first_aspect)
+    else:
+        aspect_data = _as_mapping(legendary_aspect)
 
-    for affix in mapping_data["affixes"].values():
-        if affix["id"] != legendary_aspect["nid"]:
+    aspect_id = aspect_data.get("nid")
+    for raw_affix in _as_mapping(mapping_data.get("affixes")).values():
+        affix = _as_mapping(raw_affix)
+        if affix.get("id") != aspect_id:
             continue
 
-        if "prefix" in affix:
-            return correct_name(affix["prefix"])
-        if "suffix" in affix:
-            return correct_name(affix["suffix"])
+        prefix = affix.get("prefix")
+        if isinstance(prefix, str):
+            return correct_name(prefix)
+        suffix = affix.get("suffix")
+        if isinstance(suffix, str):
+            return correct_name(suffix)
         return None
 
     return None
 
 
-def _attr_desc_special_handling(affix_id: str) -> str:
+def _attr_desc_special_handling(affix_id: int | str) -> str:
     match affix_id:
         case 2609197:
             return "charm slot"
@@ -440,7 +493,7 @@ def _unique_name_special_handling(unique_name: str) -> str:
             return unique_name.replace("\xa0", " ")
 
 
-def _find_item_type(mapping_data: dict, value: str, class_name: str = "") -> ItemType | None:
+def _find_item_type(mapping_data: Mapping[str, Mapping[str, str]], value: str, class_name: str = "") -> ItemType | None:
     for d_key, d_value in mapping_data.items():
         if d_key == value:
             item_type_str = d_value["type"]
@@ -500,7 +553,10 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, bool]:
     script_elements = data.xpath(SCRIPT_XPATH)
     for script_element in script_elements:
         if script_element.text and script_element.text.strip().startswith(BUILD_SCRIPT_PREFIX):
-            planner_link = PLANNER_API_REGEX.search(script_element.text).group()
+            planner_match = PLANNER_API_REGEX.search(script_element.text)
+            if planner_match is None:
+                continue
+            planner_link = planner_match.group()
             if planner_link:
                 api_url, build_id, build_id_is_visible_position = _extract_planner_url_and_id_from_planner(planner_link)
                 return api_url, build_id, build_id_is_visible_position
@@ -510,7 +566,7 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, bool]:
     raise MaxrollError(msg)
 
 
-def _resolve_visible_profile_index(profiles: list[dict], visible_profile_index: int) -> int:
+def _resolve_visible_profile_index(profiles: Sequence[Mapping[str, object]], visible_profile_index: int) -> int:
     visible_index = 0
     for profile_index, profile in enumerate(profiles):
         if profile.get("hidden"):
@@ -519,6 +575,12 @@ def _resolve_visible_profile_index(profiles: list[dict], visible_profile_index: 
             return profile_index
         visible_index += 1
     return visible_profile_index
+
+
+def _as_text_mapping(value: object) -> Mapping[str, str]:
+    if not isinstance(value, dict):
+        return {}
+    return {key: item for key, item in value.items() if isinstance(key, str) and isinstance(item, str)}
 
 
 def _extract_guide_profile_id(embed: lxml.html.HtmlElement) -> int | None:

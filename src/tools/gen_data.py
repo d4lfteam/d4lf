@@ -2,7 +2,7 @@
 import json
 import re
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, TypeGuard, TypeVar
 
 from src.tools.gen_data_helpers import (
     CROWD_CONTROL_LOCALISATION_IDS,
@@ -49,6 +49,41 @@ class AffixGenerationContext(TypedDict):
     skill_tags_by_sno: dict[int, list[str]]
     ui_tooltips: dict[str, str]
     weapon_types_by_sno: dict[int, str]
+
+
+class AffixFormula(TypedDict):
+    value: str
+
+
+class AffixAttribute(TypedDict, total=False):
+    __eAttribute_name__: str
+    nParam: int
+    szAttributeFormula: AffixFormula
+
+
+class AffixAttributeEntry(TypedDict, total=False):
+    tAttribute: AffixAttribute
+
+
+class AffixData(TypedDict, total=False):
+    __fileName__: str
+    eMagicType: int
+    ptItemAffixAttributes: list[AffixAttributeEntry]
+
+
+class AttributeReplacement(TypedDict):
+    formula: str
+    id: str
+    parameter: int
+
+
+DataT = TypeVar("DataT")
+
+
+def _is_nested_data(value: object) -> TypeGuard[dict[str, dict[str, DataT]]]:
+    return isinstance(value, dict) and all(
+        isinstance(key, str) and isinstance(item, dict) for key, item in value.items()
+    )
 
 
 def remove_content_in_braces(input_string) -> str:
@@ -285,12 +320,14 @@ def replace_parameter_placeholder(
 
 
 def companion_style_affix_description(
-    affix_data: dict, context: AffixGenerationContext, d4data_dir: Path, language: str
+    affix_data: AffixData, context: AffixGenerationContext, d4data_dir: Path, language: str
 ) -> str:
     affix_name = Path(affix_data["__fileName__"]).stem
-    attributes = []
+    attributes: list[AttributeReplacement] = []
     for item_affix_attribute in affix_data.get("ptItemAffixAttributes") or []:
-        attribute = item_affix_attribute.get("tAttribute") or {}
+        attribute = item_affix_attribute.get("tAttribute")
+        if attribute is None:
+            continue
         localisation_id = attribute.get("__eAttribute_name__") or ""
         if not localisation_id:
             continue
@@ -447,7 +484,7 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
         json_file.write("\n")
 
 
-def merge_custom_data(data: dict | list, name: str, language: str):
+def merge_custom_data(data: list[DataT] | dict[str, DataT], name: str, language: str) -> None:
     """Merge entries from a custom override file into the generated data.
 
     Reads the *name* section from a single ``src/tools/data/custom_<language>.json``
@@ -473,13 +510,13 @@ def merge_custom_data(data: dict | list, name: str, language: str):
 
     if isinstance(data, list):
         _merge_list(data, custom, name)
-    elif isinstance(data, dict) and custom and all(isinstance(v, dict) for v in custom.values()):
+    elif _is_nested_data(data) and _is_nested_data(custom) and custom:
         _merge_nested_dict(data, custom, name)
     elif isinstance(data, dict):
         _merge_flat_dict(data, custom, name)
 
 
-def _merge_list(data: list, custom: list, name: str):
+def _merge_list(data: list[DataT], custom: list[DataT], name: str) -> None:
     existing = set(data)
     for entry in custom:
         if entry in existing:
@@ -488,7 +525,7 @@ def _merge_list(data: list, custom: list, name: str):
             data.append(entry)
 
 
-def _merge_flat_dict(data: dict, custom: dict, name: str):
+def _merge_flat_dict(data: dict[str, DataT], custom: dict[str, DataT], name: str) -> None:
     for key, value in custom.items():
         if key in data:
             if data[key] == value:
@@ -500,20 +537,21 @@ def _merge_flat_dict(data: dict, custom: dict, name: str):
             data[key] = value
 
 
-def _merge_nested_dict(data: dict, custom: dict, name: str):
+def _merge_nested_dict(data: dict[str, dict[str, DataT]], custom: dict[str, dict[str, DataT]], name: str) -> None:
     for section, entries in custom.items():
         if section not in data:
             data[section] = entries
             continue
+        current = data[section]
         for key, value in entries.items():
-            if key in data[section]:
-                if data[section][key] == value:
+            if key in current:
+                if current[key] == value:
                     print(f"{name}: '{key}' in '{section}' already exists. Can be deleted from custom json")
                 else:
                     print(f"{name}: '{key}' in '{section}' already exists but with different value")
-                    data[section][key] = value
+                    current[key] = value
             else:
-                data[section][key] = value
+                current[key] = value
 
 
 def get_string_list_name(string_list_file: Path) -> str | None:

@@ -48,6 +48,14 @@ def make_replay_config(tmp_path: Path, *, item: Item | None = None, **overrides)
     return ReplayConfig(**values)
 
 
+def _read_output(path: Path) -> np.ndarray:
+    output = cv2.imread(str(path))
+    if output is None:
+        message = f"Missing replay output: {path}"
+        raise AssertionError(message)
+    return output
+
+
 @pytest.mark.parametrize(
     ("overrides", "message"),
     [
@@ -65,7 +73,7 @@ def test_validate_replay_config_rejects_invalid_inputs(tmp_path, overrides, mess
 
 def test_validate_replay_config_rejects_unreadable_image(tmp_path):
     config = make_replay_config(tmp_path)
-    config.image_path.write_text("not an image", encoding="utf-8")
+    Path(config.image_path).write_text("not an image", encoding="utf-8")
 
     with pytest.raises(ReplayConfigurationError, match="cannot be read"):
         validate_replay_config(config)
@@ -100,7 +108,7 @@ def test_run_replay_saves_annotated_output_and_logs_all_stages(tmp_path, monkeyp
     assert result.reliable
     assert result.output_path == tmp_path / "tooltip_template_matches.png"
     assert result.output_path.exists()
-    output = cv2.imread(str(result.output_path))
+    output = _read_output(result.output_path)
     assert tuple(output[100, 20]) == (93, 252, 35)
     assert tuple(output[70, 40]) == (255, 255, 0)
     for expected in (
@@ -129,7 +137,7 @@ def test_run_replay_saves_failure_annotation_without_display(tmp_path, monkeypat
     result = run_replay(make_replay_config(tmp_path, matched_row_indices=[1]), display=False)
 
     assert not result.reliable
-    output = cv2.imread(str(result.output_path))
+    output = _read_output(result.output_path)
     assert tuple(output[0, 0]) == (0, 0, 255)
 
 
@@ -151,7 +159,7 @@ def test_run_replay_annotates_all_match_stages_and_resolution_sized_marker(tmp_p
     )
 
     result = run_replay(config, display=False)
-    output = cv2.imread(str(result.output_path))
+    output = _read_output(result.output_path)
 
     assert tuple(output[96, 100]) == (128, 128, 128)
     assert tuple(output[96, 200]) == (0, 165, 255)
@@ -176,7 +184,7 @@ def test_show_result_uses_blocking_window(monkeypatch):
 
 @pytest.mark.parametrize(("reliable", "expected_status"), [(True, 0), (False, 1)])
 def test_main_returns_reliability_status_without_requiring_window(monkeypatch, reliable, expected_status):
-    config = ReplayConfig(Path("tooltip.png"), "3840x2160", Item(), [], False)
+    config = ReplayConfig(False, "3840x2160", Path("tooltip.png"), Item(), [])
     result = type("ReplayResult", (), {"reliable": reliable})()
     monkeypatch.setattr("src.tools.replay_cropped_tooltip.REPLAY_CONFIG", config)
     monkeypatch.setattr("src.tools.replay_cropped_tooltip.setup", lambda **_kwargs: None)

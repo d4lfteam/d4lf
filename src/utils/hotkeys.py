@@ -71,7 +71,9 @@ def canonicalize_hotkey(hotkey: str) -> str:
         msg = "Hotkey must include at least one non-modifier key."
         raise ValueError(msg)
 
-    modifiers = sorted((token for token in canonical_tokens if token in _MODIFIER_KEYS), key=_MODIFIER_ORDER.get)
+    modifiers = sorted(
+        (token for token in canonical_tokens if token in _MODIFIER_KEYS), key=lambda token: _MODIFIER_ORDER[token]
+    )
     keys = [token for token in canonical_tokens if token not in _MODIFIER_KEYS]
     return "+".join([*modifiers, *keys])
 

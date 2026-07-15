@@ -78,11 +78,11 @@ POSITIONS = (
 
 @dataclass
 class Template:
-    name: str = None
-    img_bgra: np.ndarray = None
-    img_bgr: np.ndarray = None
-    img_gray: np.ndarray = None
-    alpha_mask: np.ndarray = None
+    name: str = ""
+    img_bgra: np.ndarray | None = None
+    img_bgr: np.ndarray | None = None
+    img_gray: np.ndarray | None = None
+    alpha_mask: np.ndarray | None = None
 
 
 @lru_cache
@@ -94,6 +94,9 @@ def load_templates() -> dict[str, Template]:
             template_img = cv2.imread(str(template), cv2.IMREAD_UNCHANGED)
         except cv2.error:
             LOGGER.exception(f"Could not load image: {template}")
+            continue
+        if template_img is None:
+            LOGGER.error(f"Could not load image: {template}")
             continue
         result[template.stem.lower()] = Template(
             name=template.stem.lower(),

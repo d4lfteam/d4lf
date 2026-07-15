@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 from src import __version__
@@ -8,10 +9,20 @@ EXE_NAME = "d4lf.exe"
 
 
 def build(release_dir: Path):
-    installer_cmd = (
-        f"pyinstaller --clean --onefile --icon=assets/logo.ico --distpath {release_dir} --paths src src\\main.py"
+    subprocess.run(
+        [
+            "pyinstaller",
+            "--clean",
+            "--onefile",
+            "--icon=assets/logo.ico",
+            "--distpath",
+            str(release_dir),
+            "--paths",
+            "src",
+            r"src\main.py",
+        ],
+        check=True,
     )
-    os.system(installer_cmd)
     (release_dir / "main.exe").rename(release_dir / EXE_NAME)
 
 

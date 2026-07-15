@@ -4,11 +4,13 @@ import logging
 import queue
 import threading
 import tkinter as tk
+from collections.abc import Callable
 
 LOGGER = logging.getLogger(__name__)
 
 _UI_THREAD: threading.Thread | None = None
-_UI_QUEUE: queue.Queue[tuple[object, threading.Event | None, dict[str, object]]] = queue.Queue()
+UiCallback = Callable[[], object]
+_UI_QUEUE: queue.Queue[tuple[UiCallback, threading.Event | None, dict[str, object]]] = queue.Queue()
 _UI_ROOT: tk.Tk | None = None
 _UI_READY = threading.Event()
 _START_LOCK = threading.Lock()
@@ -33,7 +35,7 @@ def _tk_thread_main() -> None:
                 break
 
             try:
-                box["result"] = fn()  # type: ignore[operator]
+                box["result"] = fn()
             except Exception as exc:
                 LOGGER.exception("Shared UI thread callback failed")
                 box["error"] = exc
@@ -63,18 +65,22 @@ def ensure_ui_thread() -> None:
 def get_root() -> tk.Tk:
     """Return the shared root, starting the UI thread first if needed."""
     ensure_ui_thread()
-    assert _UI_ROOT is not None
+    if _UI_ROOT is None:
+        message = "Shared Tk UI root is unavailable"
+        raise RuntimeError(message)
     return _UI_ROOT
 
 
 def join_ui_thread() -> None:
     """Block the calling thread until the shared UI thread exits."""
     ensure_ui_thread()
-    assert _UI_THREAD is not None
+    if _UI_THREAD is None:
+        message = "Shared Tk UI thread is unavailable"
+        raise RuntimeError(message)
     _UI_THREAD.join()
 
 
-def call_on_ui_thread(fn: object) -> object:
+def call_on_ui_thread(fn: UiCallback) -> object:
     """Execute a callback on the Tk thread and wait for its return value."""
     ensure_ui_thread()
     done, box = threading.Event(), {}
@@ -86,7 +92,7 @@ def call_on_ui_thread(fn: object) -> object:
     return box.get("result")
 
 
-def post_to_ui_thread(fn: object) -> None:
+def post_to_ui_thread(fn: UiCallback) -> None:
     """Queue work on the Tk thread without blocking the caller."""
     ensure_ui_thread()
     _UI_QUEUE.put((fn, None, {}))

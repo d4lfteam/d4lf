@@ -2,9 +2,10 @@ import logging
 import sys
 import threading
 from pathlib import Path
+from typing import override
 
 from PyQt6.QtCore import QObject, QPoint, QRunnable, QSettings, QSize, Qt, QThreadPool, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtGui import QAction, QCloseEvent, QIcon
 from PyQt6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
@@ -319,8 +320,11 @@ class ImporterWindow(QMainWindow):
     def _filename_part_setting_key(filename_part: FilenamePart) -> str:
         return f"filename_part_{filename_part.value}"
 
-    def closeEvent(self, event):  # noqa: N802
+    @override
+    def closeEvent(self, a0: QCloseEvent | None):
         """Cleanup when window closes and save geometry."""
+        # PyQt exposes `a0` as a keyword, so the override must retain that public name.
+        event = a0
         # Save window geometry
         if not self.isMaximized():
             self.settings.setValue("size", self.size())
@@ -330,7 +334,8 @@ class ImporterWindow(QMainWindow):
         # Cleanup log handler
         for name in IMPORTER_WINDOW_LOGGERS:
             logging.getLogger(name).removeHandler(self.log_handler)
-        event.accept()
+        if event is not None:
+            event.accept()
 
 
 class _GuiLogHandler(logging.Handler):
@@ -345,7 +350,8 @@ class _GuiLogHandler(logging.Handler):
         # Set log level to DEBUG to capture everything
         self.setLevel(logging.DEBUG)
 
-    def emit(self, record):
+    @override
+    def emit(self, record: logging.LogRecord):
         """Called from any thread - emit signal instead of direct GUI update."""
         log_entry = self.format(record)
         try:
@@ -379,6 +385,7 @@ class _Worker(QRunnable):
         self.signals = _WorkerSignals()
 
     @pyqtSlot()
+    @override
     def run(self):
         threading.current_thread().name = self.name
         self.fn(*self.args, **self.kwargs)

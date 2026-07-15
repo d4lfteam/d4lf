@@ -1,4 +1,5 @@
 import os
+from typing import override
 
 import pytest
 
@@ -14,6 +15,7 @@ class _AcceptedDialog(QDialog):
         super().__init__()
         self._value = value
 
+    @override
     def exec(self) -> int:
         return QDialog.DialogCode.Accepted
 
@@ -22,17 +24,24 @@ class _AcceptedDialog(QDialog):
 
 
 class _StubRuleListTab(RuleListTab[str]):
+    @override
     def description_text(self) -> str:
         return "Stub description"
 
+    @override
     def add_actions(self):
         return [("Add Item", lambda: _AcceptedDialog("beta"))]
 
+    @override
     def on_add_accepted(self, dialog: QDialog) -> str:
+        if not isinstance(dialog, _AcceptedDialog):
+            msg = "unexpected dialog type"
+            raise TypeError(msg)
         item = dialog.get_value()
         self.items.append(item)
         return item
 
+    @override
     def to_display_text(self, item: str) -> str:
         return f"Item: {item}"
 
@@ -55,7 +64,9 @@ def test_add_action_appends_to_backing_list_and_list_widget(qapp):
 
     assert items == ["alpha", "beta"]
     assert tab.list_widget.count() == 2
-    assert tab.list_widget.item(1).text() == "Item: beta"
+    item = tab.list_widget.item(1)
+    assert item is not None
+    assert item.text() == "Item: beta"
 
 
 def test_remove_selected_removes_rows_from_backing_list_and_widget(qapp):
@@ -63,13 +74,19 @@ def test_remove_selected_removes_rows_from_backing_list_and_widget(qapp):
     tab = _StubRuleListTab(items)
     tab.load()
 
-    tab.list_widget.item(0).setSelected(True)
-    tab.list_widget.item(2).setSelected(True)
+    first_item = tab.list_widget.item(0)
+    third_item = tab.list_widget.item(2)
+    assert first_item is not None
+    assert third_item is not None
+    first_item.setSelected(True)
+    third_item.setSelected(True)
     _button(tab, "Remove Selected").click()
 
     assert items == ["beta"]
     assert tab.list_widget.count() == 1
-    assert tab.list_widget.item(0).text() == "Item: beta"
+    item = tab.list_widget.item(0)
+    assert item is not None
+    assert item.text() == "Item: beta"
 
 
 def test_remove_selected_warns_when_nothing_is_selected(qapp, monkeypatch):

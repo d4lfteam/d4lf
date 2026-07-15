@@ -2,6 +2,7 @@ import json
 import logging
 import pathlib
 import threading
+from typing import TypeGuard
 
 from src.config import BASE_DIR
 from src.config.loader import IniConfigLoader
@@ -12,10 +13,25 @@ LOGGER = logging.getLogger(__name__)
 DATALOADER_LOCK = threading.Lock()
 
 
+def _is_string_map(value: object) -> TypeGuard[dict[str, str]]:
+    return isinstance(value, dict) and all(
+        isinstance(key, str) and isinstance(item, str) for key, item in value.items()
+    )
+
+
+def _load_string_map(path: pathlib.Path) -> dict[str, str]:
+    with path.open(encoding="utf-8") as f:
+        data: object = json.load(f)
+    if not _is_string_map(data):
+        msg = f"Expected a JSON object containing only string keys and values: {path}"
+        raise ValueError(msg)
+    return data
+
+
 class Dataloader:
-    affix_dict = {}
-    charm_affix_dict = {}
-    seal_affix_dict = {}
+    affix_dict: dict[str, str] = {}
+    charm_affix_dict: dict[str, str] = {}
+    seal_affix_dict: dict[str, str] = {}
     affix_sigil_dict = {}
     affix_sigil_dict_all = {}
     aspect_list = []
@@ -26,7 +42,7 @@ class Dataloader:
     item_types_dict = {}
     set_list = []
     tooltips = {}
-    tribute_dict = {}
+    tribute_dict: dict[str, str] = {}
 
     _instance = None
     data_loaded = False
@@ -41,20 +57,10 @@ class Dataloader:
         return cls._instance
 
     def load_data(self):
-        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/affixes.json").open(
-            encoding="utf-8"
-        ) as f:
-            self.affix_dict: dict = json.load(f)
-
-        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/seals_affixes.json").open(
-            encoding="utf-8"
-        ) as f:
-            self.seal_affix_dict: dict = json.load(f)
-
-        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/charms_affixes.json").open(
-            encoding="utf-8"
-        ) as f:
-            self.charm_affix_dict: dict = json.load(f)
+        language_dir = pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}")
+        self.affix_dict = _load_string_map(language_dir / "affixes.json")
+        self.seal_affix_dict = _load_string_map(language_dir / "seals_affixes.json")
+        self.charm_affix_dict = _load_string_map(language_dir / "charms_affixes.json")
 
         with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/aspects.json").open(
             encoding="utf-8"
@@ -92,10 +98,7 @@ class Dataloader:
                 **self.affix_sigil_dict_all["positive"],
             }
 
-        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/tributes.json").open(
-            encoding="utf-8"
-        ) as f:
-            self.tribute_dict: dict = json.load(f)
+        self.tribute_dict = _load_string_map(language_dir / "tributes.json")
 
         with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/tooltips.json").open(
             encoding="utf-8"

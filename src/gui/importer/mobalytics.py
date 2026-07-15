@@ -6,7 +6,6 @@ from urllib.parse import unquote
 
 import jsonpath
 import lxml.html
-import rapidfuzz
 from selenium.common.exceptions import NoSuchElementException, WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
@@ -29,11 +28,15 @@ from src.gui.importer.gui_common import (
     fix_offhand_type,
     fix_weapon_type,
     hover_and_get_tooltip_html,
+    match_set_aware_seal_affix,
     match_to_enum,
     retry_importer,
     update_mingreateraffixcount,
     weapon_slot_name_hint,
 )
+from src.gui.importer.gui_common import as_string_keyed_mapping as _as_mapping
+from src.gui.importer.gui_common import as_string_keyed_mapping_list as _as_mapping_list
+from src.gui.importer.gui_common import as_text as _as_text
 from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.paragon_export import extract_mobalytics_paragon_steps
@@ -41,6 +44,13 @@ from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.scripts import correct_name
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
+    from selenium.webdriver.remote.webdriver import WebDriver
+    from selenium.webdriver.remote.webelement import WebElement
+
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
@@ -63,10 +73,7 @@ PAGE_DIAGNOSTIC_MARKERS = (
 PROFILE_GUIDE_BASE_URL = f"{BUILD_GUIDE_BASE_URL}profile"
 SCRIPT_XPATH = "//script"
 ITEM_TOOLTIP_CSS = "[data-tippy-root]"
-
-if TYPE_CHECKING:
-    from selenium.webdriver.chromium.webdriver import ChromiumDriver
-    from selenium.webdriver.remote.webelement import WebElement
+type _JsonPathValue = str | int | float | bool | list[object] | dict[str, object] | None
 
 
 class MobalyticsError(Exception):
@@ -74,7 +81,10 @@ class MobalyticsError(Exception):
 
 
 @retry_importer(inject_webdriver=True)
-def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
+def import_mobalytics(config: ImportConfig, driver: WebDriver | None = None) -> None:
+    if driver is None:
+        msg = "A Selenium WebDriver is required for Mobalytics imports"
+        raise RuntimeError(msg)
     url = config.url.strip().replace("\n", "")
     if BUILD_GUIDE_BASE_URL not in url:
         LOGGER.error("Invalid url, please use a mobalytics build guide")
@@ -92,10 +102,14 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
     raw_html_data = lxml.html.fromstring(page_source)
     # The build is shoved in a massive JSON in one of the script tags. We find that json now.
     scripts_elem = raw_html_data.xpath(SCRIPT_XPATH)
-    full_script_data_json = None
+    full_script_data_json: _JsonPathValue = None
     for script in scripts_elem:
         if script.text and script.text.strip().startswith(BUILD_SCRIPT_PREFIX):
-            full_script_data_json = json.loads(script.text.strip().replace(BUILD_SCRIPT_PREFIX, "")[:-1])
+            try:
+                full_script_data_json = json.loads(script.text.strip().replace(BUILD_SCRIPT_PREFIX, "")[:-1])
+            except json.JSONDecodeError as exc:
+                msg = "Mobalytics build data was not valid JSON"
+                raise MobalyticsError(msg) from exc
             break
 
     if not full_script_data_json:
@@ -107,28 +121,45 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         raise MobalyticsError(msg)
 
     # Get the JSON block that contains the build and its variants
-    build_data = dict(jsonpath.findall("$..userGeneratedDocumentBySlug.data.data", full_script_data_json)[0])
+    build_data_value = _first_jsonpath_result("$..userGeneratedDocumentBySlug.data.data", full_script_data_json)
+    build_data = _as_mapping(build_data_value)
+    if not build_data:
+        LOGGER.error(msg := "No build data found")
+        raise MobalyticsError(msg)
     season_number = _extract_mobalytics_season_number(full_script_data_json)
-    build_header = build_data["name"]
+    build_header = _as_text(build_data.get("name"))
     if not build_header:
         LOGGER.error(msg := "No build name found")
         raise MobalyticsError(msg)
-    class_name = jsonpath.findall(
+    class_name_value = _first_jsonpath_result(
         "$..userGeneratedDocumentBySlug.data.tags.data[?@.groupSlug=='class'].name", full_script_data_json
-    )[0].lower()
+    )
+    class_name = _as_text(class_name_value).lower()
     if not class_name:
         LOGGER.error(msg := "No class name found")
         raise MobalyticsError(msg)
     if variant_id:
-        items = jsonpath.findall(f"$..buildVariants.values[?@.id=='{variant_id}'].genericBuilder.slots", build_data)[0]
+        items = _first_jsonpath_result(
+            f"$..buildVariants.values[?@.id=='{variant_id}'].genericBuilder.slots", build_data
+        )
     else:
-        items = jsonpath.findall("$..buildVariants.values[0].genericBuilder.slots", build_data)[0]
-        variant_id = jsonpath.findall("$..buildVariants.values[0].id", build_data)[0]
+        items = _first_jsonpath_result("$..buildVariants.values[0].genericBuilder.slots", build_data)
+        variant_value = _first_jsonpath_result("$..buildVariants.values[0].id", build_data)
+        if not isinstance(variant_value, str):
+            LOGGER.error(msg := "No variant id found")
+            raise MobalyticsError(msg)
+        variant_id = variant_value
 
-    paragon_data = jsonpath.findall(f"$..buildVariants.values[?@.id=='{variant_id}'].paragon", build_data)[0]
+    items = _as_mapping_list(items)
+    paragon_value = _first_jsonpath_result(f"$..buildVariants.values[?@.id=='{variant_id}'].paragon", build_data)
+    if paragon_value is None:
+        LOGGER.error(msg := "No paragon data found")
+        raise MobalyticsError(msg)
+    paragon_data = _as_mapping(paragon_value)
 
-    variant_name = jsonpath.findall(f"$..childrenVariants[?@.id=='{variant_id}'].title", full_script_data_json)
-    variant_name = variant_name[0] if variant_name else ""
+    variant_name = _as_text(
+        _first_jsonpath_result(f"$..childrenVariants[?@.id=='{variant_id}'].title", full_script_data_json)
+    )
     build_name = f"{build_header} {variant_name}".strip() if variant_name else build_header
 
     if not items:
@@ -137,13 +168,13 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
 
     finished_filters: list[ItemFilterModel] = []
     finished_filter_name_hints: list[str | None] = []
-    charm_filters = []
-    seal_filters = []
-    aspect_upgrade_filters = []
+    charm_filters: list[CharmFilterModel] = []
+    seal_filters: list[SealFilterModel] = []
+    aspect_upgrade_filters: list[str] = []
     guessed_set_name = None
-    for item in sorted(items, key=lambda item: jsonpath.findall(".gameEntity.type", item)[0] != "charms"):
+    for item in sorted(items, key=lambda item: _as_text(_first_jsonpath_result(".gameEntity.type", item)) != "charms"):
         item_filter = ItemFilterModel()
-        entity_type = jsonpath.findall(".gameEntity.type", item)[0]
+        entity_type = _as_text(_first_jsonpath_result(".gameEntity.type", item))
         if entity_type not in ["aspects", "uniqueItems", "charms", "seals", "items"]:
             continue
         title_result = jsonpath.findall(".gameEntity.entity.title", item) or jsonpath.findall(".gameEntity.title", item)
@@ -158,14 +189,12 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         if not slot_result or not (slot_type := str(slot_result[0]).strip()):
             LOGGER.error(msg := f"No slot type found for {item_name}")
             raise MobalyticsError(msg)
-        raw_affixes = (
+        raw_affixes = _as_mapping_list(
             jsonpath.findall(".gameEntity.modifiers.gearStats[*]", item)
             + jsonpath.findall(".gameEntity.modifiers.sealStats[*]", item)
             + jsonpath.findall(".gameEntity.modifiers.charmStats[*]", item)
         )
-        raw_inherents = jsonpath.findall(".gameEntity.modifiers.implicitStats[*]", item)
-        raw_affixes = [x for x in raw_affixes if x is not None]
-        raw_inherents = [x for x in raw_inherents if x is not None]
+        raw_inherents = _as_mapping_list(jsonpath.findall(".gameEntity.modifiers.implicitStats[*]", item))
 
         is_unique = entity_type == "uniqueItems"
         if is_unique:
@@ -191,14 +220,14 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         # Item type is hidden in the inherents. If it's in there, then we assume there are no further inherents
         is_weapon = "weapon" in slot_type
         for inherent in raw_inherents:
-            potential_item_type = " ".join(inherent["id"].split("-")[:2]).lower()
+            inherent_id = str(inherent.get("id", ""))
+            potential_item_type = " ".join(inherent_id.split("-")[:2]).lower()
             if is_weapon and (x := fix_weapon_type(input_str=potential_item_type)) is not None:
                 item_type = x
                 break
             if (
                 "offhand" in slot_type
-                and (x := fix_offhand_type(input_str=inherent["id"].replace("-", " "), class_str=class_name))
-                is not None
+                and (x := fix_offhand_type(input_str=inherent_id.replace("-", " "), class_str=class_name)) is not None
             ):
                 item_type = x
                 break
@@ -239,29 +268,38 @@ def import_mobalytics(config: ImportConfig, driver: ChromiumDriver = None):
         inherents = _convert_raw_to_affixes(raw_inherents, item_type=item_type, guessed_set_name=guessed_set_name)
 
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
-            seal_charm_filters = charm_filters if item_type == ItemType.Charm else seal_filters
-            seal_charm_model = CharmFilterModel if item_type == ItemType.Charm else SealFilterModel
-            # Extract unique aspect and set info for charms
-            charm_unique_aspect = None
-            charm_set_name = None
+            # Extract unique identity for seals and charms, plus set info for charms.
+            unique_aspect_name = None
+            set_name = None
+            normalized_item_name = correct_name(item_name)
+            if normalized_item_name in Dataloader().aspect_unique_dict:
+                unique_aspect_name = normalized_item_name
             if item_type == ItemType.Charm:
-                normalized_item_name = correct_name(item_name)
-                if normalized_item_name in Dataloader().aspect_unique_dict:
-                    charm_unique_aspect = normalized_item_name
-                charm_set_name = _extract_mobalytics_charm_set_name(item)
-            if not affixes and not charm_unique_aspect and not charm_set_name:
+                set_name = _extract_mobalytics_charm_set_name(item)
+            if not affixes and not unique_aspect_name and not set_name:
                 LOGGER.warning(f"Skipping {item_name} because it had no supported affixes, unique aspect, or set name.")
                 continue
-            seal_charm_filter = create_seal_charm_filter(
-                affixes=affixes,
-                require_gas=config.require_greater_affixes,
-                model_type=seal_charm_model,
-                unique_name=charm_unique_aspect,
-                set_name=charm_set_name,
-            )
-            seal_charm_filters.append(seal_charm_filter)
-            if isinstance(seal_charm_filter, CharmFilterModel) and not guessed_set_name and seal_charm_filter.set:
-                guessed_set_name = seal_charm_filter.set[0]
+            if item_type == ItemType.Charm:
+                charm_filter = create_seal_charm_filter(
+                    affixes=affixes,
+                    require_gas=config.require_greater_affixes,
+                    model_type=CharmFilterModel,
+                    unique_name=unique_aspect_name,
+                    set_name=set_name,
+                )
+                charm_filters.append(charm_filter)
+                if not guessed_set_name and charm_filter.set:
+                    guessed_set_name = charm_filter.set[0]
+            else:
+                seal_filters.append(
+                    create_seal_charm_filter(
+                        affixes=affixes,
+                        require_gas=config.require_greater_affixes,
+                        model_type=SealFilterModel,
+                        unique_name=unique_aspect_name,
+                        set_name=set_name,
+                    )
+                )
             continue
 
         if affixes:
@@ -316,7 +354,14 @@ def _fix_input_url(url: str) -> str:
     return unquote(url)
 
 
-def _log_mobalytics_page_diagnostics(driver: ChromiumDriver, page_source: str, script_count: int) -> None:
+def _first_jsonpath_result(path: str, value: _JsonPathValue) -> object | None:
+    results = jsonpath.findall(path, value)
+    if not isinstance(results, list) or not results:
+        return None
+    return results[0]
+
+
+def _log_mobalytics_page_diagnostics(driver: WebDriver, page_source: str, script_count: int) -> None:
     page_source_casefold = page_source.casefold()
     matched_markers = [marker for marker in PAGE_DIAGNOSTIC_MARKERS if marker.casefold() in page_source_casefold]
     LOGGER.debug(
@@ -329,7 +374,7 @@ def _log_mobalytics_page_diagnostics(driver: ChromiumDriver, page_source: str, s
     )
 
 
-def _read_mobalytics_driver_value(driver: ChromiumDriver, value_name: str) -> str:
+def _read_mobalytics_driver_value(driver: WebDriver, value_name: str) -> str:
     try:
         value = getattr(driver, value_name)
     except WebDriverException as exc:
@@ -337,7 +382,7 @@ def _read_mobalytics_driver_value(driver: ChromiumDriver, value_name: str) -> st
     return str(value)
 
 
-def _extract_mobalytics_season_number(full_script_data_json: dict) -> str:
+def _extract_mobalytics_season_number(full_script_data_json: Mapping[str, object]) -> str:
     tag_names = jsonpath.findall("$..userGeneratedDocumentBySlug.data.tags.data[*].name", full_script_data_json)
     for tag_name in tag_names:
         if season_match := re.search(r"\bSeason\s+(\d+)\b", str(tag_name), flags=re.IGNORECASE):
@@ -353,7 +398,7 @@ def _humanize_mobalytics_slot(slot_type: str) -> str:
     return slot_type.replace("-", " ").capitalize()
 
 
-def _get_weapon_slot_trigger(driver: ChromiumDriver, slot_type: str) -> WebElement | None:
+def _get_weapon_slot_trigger(driver: WebDriver, slot_type: str) -> WebElement | None:
     """Find the hoverable element for a weapon slot, keyed off its human-readable title.
 
     Mobalytics markup uses hashed, non-semantic class names, so slots are instead located by the
@@ -366,7 +411,7 @@ def _get_weapon_slot_trigger(driver: ChromiumDriver, slot_type: str) -> WebEleme
         return None
 
 
-def _get_weapon_type_from_slot_tooltip(driver: ChromiumDriver, slot_type: str) -> ItemType | None:
+def _get_weapon_type_from_slot_tooltip(driver: WebDriver, slot_type: str) -> ItemType | None:
     """Hover a weapon's paperdoll icon to read its type from the tooltip.
 
     Mobalytics only reveals a weapon's type this way for unique/mythic items; generic legendary
@@ -390,6 +435,8 @@ def _get_weapon_type_from_slot_tooltip(driver: ChromiumDriver, slot_type: str) -
 def _get_legendary_aspect(name: str) -> str:
     if "aspect" in name.lower():
         aspect_name = correct_name(name.lower().replace("aspect", "").strip())
+        if aspect_name is None:
+            return ""
 
         if aspect_name not in Dataloader().aspect_list:
             LOGGER.warning(
@@ -400,13 +447,15 @@ def _get_legendary_aspect(name: str) -> str:
     return ""
 
 
-def _extract_mobalytics_charm_set_name(item: dict) -> str | None:
+def _extract_mobalytics_charm_set_name(item: Mapping[str, object]) -> str | None:
     icon_url = (jsonpath.findall(".gameEntity.iconUrl", item) or [""])[0]
     match = CHARM_ICON_SET_SLUG_REGEX.search(str(icon_url))
     if not match:
         return None
 
     set_candidate = correct_name(match.group("slug").replace("-", " "))
+    if set_candidate is None:
+        return None
     if set_candidate in Dataloader().set_list:
         return set_candidate
 
@@ -422,8 +471,8 @@ def _extract_mobalytics_charm_set_name(item: dict) -> str | None:
 
 
 def _convert_raw_to_affixes(
-    raw_stats: list[dict],
-    import_greater_affixes=False,
+    raw_stats: Sequence[Mapping[str, object]],
+    import_greater_affixes: bool = False,
     item_type: ItemType | None = None,
     guessed_set_name: str | None = None,
 ) -> list[Affix]:
@@ -431,36 +480,16 @@ def _convert_raw_to_affixes(
     affix_dict = affix_dict_for_item_type(item_type=item_type)
     for stat in raw_stats:
         if stat:
-            stat_id = stat["id"]
+            stat_id = stat.get("id")
+            if not isinstance(stat_id, str):
+                continue
 
             stat_clean = clean_str(_corrections(input_str=stat_id.replace("-", " ")))
             matched_name = None
             if item_type == ItemType.HoradricSeal and guessed_set_name:
-                # First check if the stat is a generic affix with an exact or very close match
-                best_global_key = closest_match(stat_clean, affix_dict)
-                is_exact_generic = False
-                if best_global_key and best_global_key != "damage":
-                    global_display = affix_dict[best_global_key]
-                    if rapidfuzz.distance.Levenshtein.distance(stat_clean, global_display) <= 2:
-                        # Ensure it's not a set-specific affix of another set
-                        is_set_specific = False
-                        for set_name in Dataloader().set_list:
-                            if best_global_key.startswith(set_name + "_"):
-                                is_set_specific = True
-                                break
-                        if not is_set_specific:
-                            is_exact_generic = True
-                            matched_name = best_global_key
-
-                if not is_exact_generic:
-                    set_keys = {
-                        k: v for k, v in Dataloader().seal_affix_dict.items() if k.startswith(guessed_set_name + "_")
-                    }
-                    potential_match = closest_match(stat_clean, set_keys)
-                    if potential_match:
-                        display_name = Dataloader().seal_affix_dict[potential_match]
-                        if rapidfuzz.fuzz.token_set_ratio(stat_clean, display_name) >= 50:
-                            matched_name = potential_match
+                matched_name = match_set_aware_seal_affix(
+                    stat_clean=stat_clean, affix_dict=affix_dict, guessed_set_name=guessed_set_name
+                )
             if matched_name is None:
                 matched_name = closest_match(stat_clean, affix_dict)
 
