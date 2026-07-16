@@ -5,8 +5,8 @@ import pytest
 if sys.platform != "win32":
     pytest.skip("Windows-only overlay test", allow_module_level=True)
 
-from src.config.profile_models import ParagonPayloadModel
 from src.paragon_overlay import format_board_display_text, load_builds_from_path
+from src.profiles import ParagonPayloadModel
 
 
 def test_load_builds_from_path_uses_typed_paragon_payloads(monkeypatch):

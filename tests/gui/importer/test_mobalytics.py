@@ -8,7 +8,6 @@ import pytest
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.config.profile_models import ParagonPayloadModel
 from src.dataloader import Dataloader
 from src.gui.importer import mobalytics as mobalytics_module
 from src.gui.importer.importer_config import ImportConfig
@@ -24,6 +23,7 @@ from src.gui.importer.mobalytics import (
 )
 from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_mobalytics_paragon_steps
 from src.item.data.item_type import ItemType
+from src.profiles import ParagonPayloadModel
 
 if typing.TYPE_CHECKING:
     from collections.abc import Mapping
@@ -275,7 +275,7 @@ def test_import_mobalytics_names_unresolved_weapon_filter_by_slot(mock_ini_loade
 
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = fake_save_new
-    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     import_mobalytics(
         config=ImportConfig(
@@ -335,7 +335,7 @@ def test_import_mobalytics_imports_set_charm_and_deduplicates_identical_rings(
 
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = fake_save_new
-    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     import_mobalytics(
         config=ImportConfig(
@@ -379,7 +379,7 @@ def test_import_mobalytics_imports_seal_identity_with_or_without_affixes(
 
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = fake_save_new
-    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     import_mobalytics(
         config=ImportConfig(

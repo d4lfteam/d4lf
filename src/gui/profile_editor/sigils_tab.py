@@ -15,11 +15,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.profile_models import SigilConditionModel, SigilFilterModel, SigilPriority
 from src.dataloader import Dataloader
 from src.gui.models.collapsible_widget import Container
 from src.gui.models.dialog import CreateSigil, IgnoreScrollWheelComboBox, RarityPicker, RemoveSigil, rarity_summary
 from src.item import SigilRules, SigilRuleTargetType
+from src.profiles import SigilConditionModel, SigilFilterModel, SigilPriority
 
 SIGILS_TABNAME = "Sigils"
 

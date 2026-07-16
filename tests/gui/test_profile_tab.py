@@ -9,14 +9,15 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget
 
-from src.config.profile_document import LoadedProfile, SavedProfile
-from src.config.profile_models import ProfileModel
-from src.config.profile_session import (
+from src.profiles import (
     EmptyError,
     Failed,
     Loaded,
+    LoadedProfile,
     ProfileCatalog,
+    ProfileModel,
     Saved,
+    SavedProfile,
     ValidationDiffers,
     ValidationError,
     YamlError,

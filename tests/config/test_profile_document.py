@@ -2,8 +2,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from src.config.profile_document import ProfileDocumentStore, ProfileValidationError
-from src.config.profile_models import ProfileModel, TributeFilterModel
+from src.profiles import ProfileDocumentStore, ProfileModel, ProfileValidationError, TributeFilterModel
 
 if TYPE_CHECKING:
     from pathlib import Path

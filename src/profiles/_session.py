@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 from src.config.loader import IniConfigLoader
-from src.config.profile_document import (
+from src.profiles._document import (
     EmptyProfileError,
     LoadedProfile,
     ProfileDocumentStore,
@@ -12,7 +12,7 @@ from src.config.profile_document import (
     ProfileYamlError,
     SavedProfile,
 )
-from src.config.profile_models import ProfileModel
+from src.profiles._profile import ProfileModel
 
 LOGGER = logging.getLogger(__name__)
 

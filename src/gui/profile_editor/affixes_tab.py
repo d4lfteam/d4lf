@@ -27,14 +27,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.profile_models import (
-    AffixFilterCountModel,
-    AffixFilterModel,
-    AspectUniqueFilterModel,
-    CharmFilterModel,
-    DynamicItemFilterModel,
-    SealFilterModel,
-)
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import MAX_POWER
 from src.gui.models.collapsible_widget import Container
@@ -51,6 +43,14 @@ from src.gui.models.dialog import (
     rarity_summary,
 )
 from src.item import ItemType, is_armor, is_jewelry, is_weapon
+from src.profiles import (
+    AffixFilterCountModel,
+    AffixFilterModel,
+    AspectUniqueFilterModel,
+    CharmFilterModel,
+    DynamicItemFilterModel,
+    SealFilterModel,
+)
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"

@@ -48,7 +48,7 @@ IMPORTER_WINDOW_LOGGERS = (
     "src.gui.importer.infinitybuilds",
     "src.gui.importer.gui_common",
     "src.gui.importer.import_pipeline",
-    "src.config.profile_document",
+    "src.profiles",
 )
 
 

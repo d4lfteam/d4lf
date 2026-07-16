@@ -229,7 +229,7 @@ def test_import_infinitybuilds_maps_gear_and_aspect_upgrades(mock_ini_loader, mo
 
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = fake_save_new
-    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     import_infinitybuilds(
         config=ImportConfig(
@@ -288,7 +288,7 @@ def test_import_infinitybuilds_saves_one_profile_per_variant_and_resolves_gear_o
 
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # noqa: ARG005
-    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     import_infinitybuilds(
         config=ImportConfig(

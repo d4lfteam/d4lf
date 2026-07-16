@@ -107,7 +107,7 @@ def test_import_maxroll_keeps_mythic_item_without_affixes(mock_ini_loader, mocke
 
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = fake_save_new
-    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     import_maxroll(
         config=ImportConfig(

@@ -5,18 +5,18 @@ import pytest
 from natsort import natsorted
 
 from src.config.loader import IniConfigLoader
-from src.config.profile_document import ProfileDocumentStore
-from src.config.profile_models import (
+from src.config.settings_models import AspectFilterType
+from src.item import Affix, AffixType, Filter, FilterResult, Item, ItemRarity, ItemType
+from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,
     ItemFilterModel,
     ParagonPayloadModel,
+    ProfileDocumentStore,
     ProfileModel,
     SigilPriority,
     TributeFilterModel,
 )
-from src.config.settings_models import AspectFilterType
-from src.item import Affix, AffixType, Filter, FilterResult, Item, ItemRarity, ItemType
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.aspects import aspects

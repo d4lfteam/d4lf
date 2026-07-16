@@ -9,7 +9,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 
 from src import __version__
-from src.config.profile_models import ParagonPayloadModel
 from src.gui.importer.gui_common import PLAYER_CLASSES, get_with_retry
 from src.gui.importer.gui_common import as_string_keyed_mapping as _as_mapping
 from src.paragon_transform import NODES_LEN
@@ -20,6 +19,7 @@ from src.paragon_transform import rotation_info_quarter_turn as _rotation_info_q
 from src.paragon_transform import slugify as _slugify
 from src.paragon_transform import transform_flat_index as _transform_flat_index
 from src.paragon_transform import transform_xy as _transform_xy
+from src.profiles import ParagonPayloadModel
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

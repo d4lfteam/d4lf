@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from src.config.profile_models import ParagonBoardModel
+    from src.profiles import ParagonBoardModel
 
 LOGGER = logging.getLogger(__name__)
 

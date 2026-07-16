@@ -5,8 +5,8 @@ from PyQt6.QtWidgets import QApplication, QWidget
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from src.config.profile_models import AffixFilterModel, CharmFilterModel, SealFilterModel
 from src.gui.profile_editor.affixes_tab import AffixWidget
+from src.profiles import AffixFilterModel, CharmFilterModel, SealFilterModel
 
 
 @pytest.fixture(scope="module")

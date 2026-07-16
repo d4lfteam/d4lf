@@ -7,10 +7,11 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication, QDialog, QPushButton
 
-from src.config.profile_models import ItemRarity, TributeFilterModel
 from src.gui.models.dialog import CreateTribute
 from src.gui.profile_editor.profile_editor import _to_editor_tribute_filter
 from src.gui.profile_editor.tributes_tab import TributesTab
+from src.item import ItemRarity
+from src.profiles import TributeFilterModel
 
 
 class _AcceptedDialog(QDialog):

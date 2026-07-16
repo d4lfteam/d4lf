@@ -12,14 +12,6 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
-from src.config.profile_models import (
-    AffixFilterCountModel,
-    AffixFilterModel,
-    AspectUniqueFilterModel,
-    CharmFilterModel,
-    ItemFilterModel,
-    SealFilterModel,
-)
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     affix_dict_for_item_type,
@@ -42,6 +34,14 @@ from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.paragon_export import extract_mobalytics_paragon_steps
 from src.item import WEAPON_TYPES, Affix, AffixType, ItemType
 from src.item.descr.text import clean_str, closest_match
+from src.profiles import (
+    AffixFilterCountModel,
+    AffixFilterModel,
+    AspectUniqueFilterModel,
+    CharmFilterModel,
+    ItemFilterModel,
+    SealFilterModel,
+)
 from src.scripts import correct_name
 
 if TYPE_CHECKING:

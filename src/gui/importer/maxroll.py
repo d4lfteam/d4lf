@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 import lxml.html
 
 import src.logger
-from src.config.profile_models import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     affix_dict_for_item_type,
@@ -28,6 +27,7 @@ from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.paragon_export import extract_maxroll_paragon_steps
 from src.item import Affix, AffixType, ItemRarity, ItemType
 from src.item.descr.text import clean_str, closest_match
+from src.profiles import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
 from src.scripts import correct_name
 
 if TYPE_CHECKING:

@@ -2,8 +2,6 @@ import dataclasses
 import logging
 from typing import TYPE_CHECKING, Any, Protocol
 
-from src.config.profile_document import ProfileDocumentStore
-from src.config.profile_models import CharmFilterModel, ItemFilterModel, ProfileModel, SealFilterModel
 from src.gui.importer.gui_common import (
     add_to_profiles,
     build_default_profile_file_name,
@@ -11,6 +9,7 @@ from src.gui.importer.gui_common import (
     sort_profile_filters,
 )
 from src.gui.importer.paragon_export import build_paragon_profile_payload
+from src.profiles import CharmFilterModel, ItemFilterModel, ProfileDocumentStore, ProfileModel, SealFilterModel
 
 if TYPE_CHECKING:
     from src.gui.importer.importer_config import ImportConfig

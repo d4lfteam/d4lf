@@ -19,20 +19,20 @@ from selenium.webdriver.support.wait import WebDriverWait
 from seleniumbase import Driver
 
 from src.config.loader import IniConfigLoader
-from src.config.profile_document import normalize_profile_file_name
-from src.config.profile_models import (
+from src.config.settings_models import BrowserType
+from src.dataloader import Dataloader
+from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart
+from src.item import WEAPON_TYPES, Affix, AffixType, ItemRarity, ItemType
+from src.item.descr.text import closest_match
+from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
     CharmFilterModel,
     ItemFilterModel,
     SealFilterModel,
+    normalize_profile_file_name,
 )
-from src.config.settings_models import BrowserType
-from src.dataloader import Dataloader
-from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart
-from src.item import WEAPON_TYPES, Affix, AffixType, ItemRarity, ItemType
-from src.item.descr.text import closest_match
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence

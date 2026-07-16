@@ -1,5 +1,3 @@
-from src.config.profile_document import to_yaml_str
-from src.config.profile_models import CharmFilterModel, ItemFilterModel, ProfileModel
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import (
     affix_dict_for_item_type,
@@ -14,6 +12,7 @@ from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePar
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.data.rarity import ItemRarity
+from src.profiles import CharmFilterModel, ItemFilterModel, ProfileModel, to_yaml_str
 
 
 def test_build_default_profile_file_name_maxroll() -> None:

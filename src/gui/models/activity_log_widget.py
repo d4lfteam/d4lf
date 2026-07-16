@@ -23,9 +23,9 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config.loader import IniConfigLoader
-from src.config.profile_document import ProfileDocumentError, ProfileDocumentStore
 from src.config.settings_models import IS_HOTKEY_KEY
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
+from src.profiles import ProfileDocumentError, ProfileDocumentStore
 
 if TYPE_CHECKING:
     from collections.abc import Callable

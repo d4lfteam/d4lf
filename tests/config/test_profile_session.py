@@ -2,14 +2,17 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, override
 
 from src.config.loader import IniConfigLoader
-from src.config.profile_document import LoadedProfile, ProfileDocumentStore, SavedProfile
-from src.config.profile_models import ProfileModel, TributeFilterModel
-from src.config.profile_session import (
+from src.profiles import (
     EmptyError,
     Failed,
     Loaded,
+    LoadedProfile,
+    ProfileDocumentStore,
+    ProfileModel,
     ProfileSession,
     Saved,
+    SavedProfile,
+    TributeFilterModel,
     ValidationDiffers,
     ValidationError,
     YamlError,
@@ -149,7 +152,7 @@ def test_save_returns_validation_differs_and_force_save(tmp_path: Path, monkeypa
     assert isinstance(loaded, Loaded)
     coerced_model = loaded.loaded_profile.profile.model_copy(deep=True)
     coerced_model.aspect_upgrades.append("snowveiled")
-    monkeypatch.setattr("src.config.profile_session.ProfileModel.model_validate", lambda _value: coerced_model)
+    monkeypatch.setattr("src.profiles.ProfileModel.model_validate", lambda _value: coerced_model)
 
     first = session.save(loaded.loaded_profile.profile)
 

@@ -7,13 +7,8 @@ from src.item.data.item_type import ItemType  # noqa: TC001
 from src.item.data.rarity import ItemRarity
 
 if TYPE_CHECKING:
-    from src.config.profile_models import (
-        AffixAspectFilterModel,
-        AffixFilterCountModel,
-        AffixFilterModel,
-        AspectUniqueFilterModel,
-    )
     from src.item.models import Item
+    from src.profiles import AffixAspectFilterModel, AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel
 
 
 class FilterContext:

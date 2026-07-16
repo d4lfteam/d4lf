@@ -16,11 +16,13 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.profile_document import LoadedProfile
-from src.config.profile_session import (
+from src.dataloader import Dataloader
+from src.gui.profile_editor.profile_editor import ProfileEditor
+from src.profiles import (
     EmptyError,
     Failed,
     Loaded,
+    LoadedProfile,
     ProfileLastOpenedStore,
     ProfileSession,
     Saved,
@@ -28,8 +30,6 @@ from src.config.profile_session import (
     ValidationError,
     YamlError,
 )
-from src.dataloader import Dataloader
-from src.gui.profile_editor.profile_editor import ProfileEditor
 
 LOGGER = logging.getLogger(__name__)
 

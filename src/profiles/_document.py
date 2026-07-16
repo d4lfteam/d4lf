@@ -13,7 +13,7 @@ from yaml import MappingNode, MarkedYAMLError
 
 from src import __version__
 from src.config.loader import IniConfigLoader
-from src.config.profile_models import ProfileModel
+from src.profiles._profile import ProfileModel
 
 LOGGER = logging.getLogger(__name__)
 

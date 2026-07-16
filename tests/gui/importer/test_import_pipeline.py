@@ -1,10 +1,10 @@
 from types import SimpleNamespace
 
-from src.config.profile_models import ItemFilterModel
 from src.dataloader import Dataloader
 from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.gui.importer.importer_config import FilenamePart, ImportConfig
 from src.item.data.item_type import ItemType
+from src.profiles import ItemFilterModel
 
 
 def _config(**overrides) -> ImportConfig:
@@ -51,7 +51,7 @@ def test_run_saves_single_variant_and_attaches_paragon(mock_ini_loader, mocker) 
         or SimpleNamespace(file_name=file_name)
     )
     add_to_profiles = mocker.patch("src.gui.importer.import_pipeline.add_to_profiles")
-    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     saved_file_names = ImportPipeline.run(
         StaticBuildGuideAdapter(
@@ -85,7 +85,7 @@ def test_run_saves_multiple_variants_and_adds_profiles(mock_ini_loader, mocker) 
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # noqa: ARG005
     add_to_profiles = mocker.patch("src.gui.importer.import_pipeline.add_to_profiles")
-    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     saved_file_names = ImportPipeline.run(
         StaticBuildGuideAdapter(
@@ -112,7 +112,7 @@ def test_run_suffixes_custom_filename_for_multiple_variants(mock_ini_loader, moc
     Dataloader()
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # noqa: ARG005
-    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     saved_file_names = ImportPipeline.run(
         StaticBuildGuideAdapter(
@@ -137,7 +137,7 @@ def test_run_uses_selected_filename_parts(mock_ini_loader, mocker) -> None:
     profile_store.save_new.side_effect = lambda *, file_name, profile, source: (  # noqa: ARG005
         saved.update({"file_name": file_name}) or SimpleNamespace(file_name=file_name)
     )
-    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     ImportPipeline.run(
         StaticBuildGuideAdapter(url="https://example.invalid/build", build=_build()),
@@ -151,7 +151,7 @@ def test_run_warns_when_paragon_export_enabled_without_steps(mock_ini_loader, mo
     Dataloader()
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # noqa: ARG005
-    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     with caplog.at_level("WARNING"):
         ImportPipeline.run(
@@ -168,7 +168,7 @@ def test_run_deduplicates_identical_affix_filters(mock_ini_loader, mocker) -> No
     profile_store.save_new.side_effect = lambda *, file_name, profile, source: (  # noqa: ARG005
         saved.update({"profile": profile}) or SimpleNamespace(file_name=file_name)
     )
-    mocker.patch("src.gui.importer.import_pipeline.ProfileDocumentStore.default", return_value=profile_store)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     ImportPipeline.run(
         StaticBuildGuideAdapter(

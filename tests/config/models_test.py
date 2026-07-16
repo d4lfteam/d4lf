@@ -15,7 +15,10 @@ import re
 import pytest
 from pydantic import ValidationError
 
-from src.config.profile_models import (
+from src.config.settings_models import GeneralModel
+from src.item import ItemRarity, ItemType
+from src.paragon_transform import NODES_LEN
+from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
@@ -24,7 +27,6 @@ from src.config.profile_models import (
     DynamicSealFilterModel,
     GlobalUniqueModel,
     ItemFilterModel,
-    ItemRarity,
     ParagonBoardModel,
     ParagonPayloadModel,
     ProfileModel,
@@ -33,9 +35,6 @@ from src.config.profile_models import (
     SigilFilterModel,
     TributeFilterModel,
 )
-from src.config.settings_models import GeneralModel
-from src.item.data.item_type import ItemType
-from src.paragon_transform import NODES_LEN
 from tests.config.data import sigils, uniques
 
 

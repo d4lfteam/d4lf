@@ -8,11 +8,11 @@ from PyQt6.QtCore import QSize
 from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QApplication
 
-from src.config.profile_models import SigilConditionModel, SigilFilterModel
 from src.gui.models import dialog as dialog_module
 from src.gui.models.dialog import CreateSigil
 from src.gui.profile_editor.sigils_tab import SigilsTab, SigilWidget
 from src.item import SigilRules
+from src.profiles import SigilConditionModel, SigilFilterModel
 
 
 @pytest.fixture(scope="module")

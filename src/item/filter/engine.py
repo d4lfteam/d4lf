@@ -4,17 +4,18 @@ import time
 from typing import TYPE_CHECKING
 
 from src.config.loader import IniConfigLoader
-from src.config.profile_document import ProfileDocumentError, ProfileDocumentStore
 from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity
 from src.item.filter.equipment import FilterEquipmentMixin
 from src.item.filter.matching import FilterContext, FilterMatchingMixin
 from src.item.filter.special import FilterSpecialMixin
 from src.item.models import FilterResult, MatchedFilter
+from src.profiles import ProfileDocumentError, ProfileDocumentStore
 from src.scripts.common import ASPECT_UPGRADES_LABEL
 
 if TYPE_CHECKING:
-    from src.config.profile_models import (
+    from src.item.models import Item
+    from src.profiles import (
         DynamicCharmFilterModel,
         DynamicItemFilterModel,
         DynamicSealFilterModel,
@@ -23,7 +24,6 @@ if TYPE_CHECKING:
         SigilFilterModel,
         TributeFilterModel,
     )
-    from src.item.models import Item
 
 LOGGER = logging.getLogger(__name__)
 

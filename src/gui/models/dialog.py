@@ -22,7 +22,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.profile_models import (
+from src.dataloader import Dataloader
+from src.gui.importer.gui_common import MAX_POWER
+from src.gui.settings_tab import IgnoreScrollWheelComboBox
+from src.item import SIGIL_RULE_TARGET_TYPES, ItemRarity, ItemType, SigilRules, SigilRuleTargetType
+from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,
     CharmFilterModel,
@@ -30,14 +34,9 @@ from src.config.profile_models import (
     DynamicItemFilterModel,
     DynamicSealFilterModel,
     ItemFilterModel,
-    ItemRarity,
     SealFilterModel,
     TributeFilterModel,
 )
-from src.dataloader import Dataloader
-from src.gui.importer.gui_common import MAX_POWER
-from src.gui.settings_tab import IgnoreScrollWheelComboBox
-from src.item import SIGIL_RULE_TARGET_TYPES, ItemType, SigilRules, SigilRuleTargetType
 
 if TYPE_CHECKING:
     from PyQt6.QtGui import QCloseEvent, QWheelEvent

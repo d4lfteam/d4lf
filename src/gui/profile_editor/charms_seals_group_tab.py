@@ -20,15 +20,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.profile_models import (
-    AffixFilterCountModel,
-    AffixFilterModel,
-    AspectUniqueFilterModel,
-    CharmFilterModel,
-    DynamicCharmFilterModel,
-    DynamicSealFilterModel,
-    SealFilterModel,
-)
 from src.dataloader import Dataloader
 from src.gui.models.collapsible_widget import Container
 from src.gui.models.dialog import (
@@ -42,6 +33,15 @@ from src.gui.models.dialog import (
 )
 from src.gui.models.tab_group_widget import TabGroupWidget
 from src.gui.profile_editor.affixes_tab import UNIQUE_ASPECTS_TITLE, AffixPoolWidget, AffixWidget, UniqueAspectWidget
+from src.profiles import (
+    AffixFilterCountModel,
+    AffixFilterModel,
+    AspectUniqueFilterModel,
+    CharmFilterModel,
+    DynamicCharmFilterModel,
+    DynamicSealFilterModel,
+    SealFilterModel,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable

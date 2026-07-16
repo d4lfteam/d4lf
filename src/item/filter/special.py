@@ -2,18 +2,18 @@ import logging
 from typing import TYPE_CHECKING
 
 from src.config.loader import IniConfigLoader
-from src.config.profile_models import CharmFilterModel, SigilPriority
 from src.config.settings_models import CosmeticFilterType
 from src.item.data.rarity import ItemRarity
 from src.item.models import FilterResult, MatchedFilter
 from src.item.sigil_rules import SigilRules
+from src.profiles import CharmFilterModel, SigilPriority
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-    from src.config.profile_models import DynamicCharmFilterModel, DynamicSealFilterModel
     from src.item.filter.matching import FilterContext
     from src.item.models import Item
+    from src.profiles import DynamicCharmFilterModel, DynamicSealFilterModel
 
 LOGGER = logging.getLogger(__name__)
 

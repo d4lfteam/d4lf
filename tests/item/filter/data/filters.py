@@ -1,4 +1,6 @@
-from src.config.profile_models import (
+from src.item.data.item_type import ItemType
+from src.item.data.rarity import ItemRarity
+from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
@@ -13,8 +15,6 @@ from src.config.profile_models import (
     SigilFilterModel,
     TributeFilterModel,
 )
-from src.item.data.item_type import ItemType
-from src.item.data.rarity import ItemRarity
 
 # noinspection PyTypeChecker
 affix = ProfileModel(

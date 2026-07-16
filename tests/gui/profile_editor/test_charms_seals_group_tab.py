@@ -5,7 +5,9 @@ from PyQt6.QtWidgets import QApplication, QDialog
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from src.config.profile_models import (
+from src.gui.profile_editor.charms_seals_group_tab import CharmGroupEditor, CharmsTab, SealGroupEditor, SealsTab
+from src.item.data.rarity import ItemRarity
+from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
@@ -14,8 +16,6 @@ from src.config.profile_models import (
     DynamicSealFilterModel,
     SealFilterModel,
 )
-from src.gui.profile_editor.charms_seals_group_tab import CharmGroupEditor, CharmsTab, SealGroupEditor, SealsTab
-from src.item.data.rarity import ItemRarity
 
 
 @pytest.fixture(scope="module")
