@@ -7,7 +7,7 @@ from PyQt6.QtCore import QPoint, QSettings, QSize, Qt
 from PyQt6.QtGui import QCloseEvent, QIcon
 from PyQt6.QtWidgets import QMainWindow
 
-from src.gui.settings_tab import ConfigTab
+from src.settings.tab import ConfigTab
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 

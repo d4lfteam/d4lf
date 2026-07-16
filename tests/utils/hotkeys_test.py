@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from pynput import keyboard
 
-from src.utils import hotkeys
+from src.settings import hotkeys
 
 
 class _FakeListener:

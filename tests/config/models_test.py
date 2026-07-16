@@ -15,7 +15,6 @@ import re
 import pytest
 from pydantic import ValidationError
 
-from src.config.settings_models import GeneralModel
 from src.item import ItemRarity, ItemType
 from src.paragon_transform import NODES_LEN
 from src.profiles import (
@@ -35,6 +34,7 @@ from src.profiles import (
     SigilFilterModel,
     TributeFilterModel,
 )
+from src.settings import GeneralModel
 from tests.config.data import sigils, uniques
 
 

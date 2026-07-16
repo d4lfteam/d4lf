@@ -1,12 +1,11 @@
 import logging
 from typing import TYPE_CHECKING
 
-from src.config.loader import IniConfigLoader
-from src.config.settings_models import CosmeticFilterType
 from src.item.data.rarity import ItemRarity
 from src.item.models import FilterResult, MatchedFilter
 from src.item.sigil_rules import SigilRules
 from src.profiles import CharmFilterModel, SigilPriority
+from src.settings import CosmeticFilterType, get_settings
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -22,8 +21,8 @@ class FilterSpecialMixin:
     @staticmethod
     def _check_cosmetic(item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
-        if IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.junk or (
-            IniConfigLoader().general.handle_cosmetics == CosmeticFilterType.ignore and not item.cosmetic_upgrade
+        if get_settings().general.handle_cosmetics == CosmeticFilterType.junk or (
+            get_settings().general.handle_cosmetics == CosmeticFilterType.ignore and not item.cosmetic_upgrade
         ):
             return res
         if not item.cosmetic_upgrade:

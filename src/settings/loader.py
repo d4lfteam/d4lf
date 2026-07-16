@@ -7,11 +7,11 @@ import threading
 from collections.abc import Callable
 from pathlib import Path
 
-from src.config.helper import singleton
-from src.config.settings_models import AdvancedOptionsModel, CharModel, GeneralModel
+from src.settings.models import GeneralModel
+from src.settings.models_core import AdvancedOptionsModel, CharModel
+from src.settings.validation import singleton
 
 type SectionModel = AdvancedOptionsModel | CharModel | GeneralModel
-
 LOGGER = logging.getLogger(__name__)
 PARAMS_INI = "params.ini"
 MANUAL_RESTART_SETTING_KEYS = {"general.vision_mode_type"}
@@ -45,7 +45,6 @@ class IniConfigLoader:
         config_path = self._config_path()
         if not config_path.exists():
             return None
-
         stat_result = config_path.stat()
         return stat_result.st_mtime_ns, stat_result.st_size
 
@@ -73,7 +72,6 @@ class IniConfigLoader:
         if self._parser is None:
             msg = "Config parser has not been initialized"
             raise RuntimeError(msg)
-
         with self._config_path().open("w", encoding="utf-8") as config_file:
             self._parser.write(config_file)
 
@@ -81,21 +79,17 @@ class IniConfigLoader:
         if self._parser is None:
             msg = "Config parser has not been initialized"
             raise RuntimeError(msg)
-
         removed_key = False
         for section, model in self._section_models().items():
             if section not in self._parser:
                 continue
-
             valid_keys = type(model).model_fields
             for key in list(self._parser[section]):
                 if key in valid_keys:
                     continue
-
                 self._log_defunct_model_key(section, key)
                 self._parser.remove_option(section, key)
                 removed_key = True
-
         return removed_key
 
     def _log_defunct_model_key(self, section: str, key: str) -> None:
@@ -117,7 +111,6 @@ class IniConfigLoader:
     def _remove_defunct_values(self) -> bool:
         if self._parser is None:
             return False
-
         removed = False
         # Move items "everything" migration: if found, remove the key so it defaults to the full list
         if "general" in self._parser:
@@ -162,19 +155,16 @@ class IniConfigLoader:
     def _log_changed_values(self, changed_keys: set[str]) -> None:
         if not changed_keys:
             return
-
         snapshot = self._state_snapshot.copy()
         formatted_entries = [f"{key}={self._format_value_for_log(snapshot.get(key))}" for key in sorted(changed_keys)]
         noun = "change" if len(formatted_entries) == 1 else "changes"
         LOGGER.debug("Applied setting %s: %s", noun, ", ".join(formatted_entries))
-
         if any(key in MANUAL_RESTART_SETTING_KEYS for key in changed_keys):
             LOGGER.warning("Please restart d4lf manually to apply vision mode changes.")
 
     def _notify_listeners(self, changed_keys: set[str]) -> None:
         if not changed_keys:
             return
-
         listeners = list(self._change_listeners)
         frozen_keys = frozenset(changed_keys)
         for listener in listeners:
@@ -206,35 +196,28 @@ class IniConfigLoader:
             config_path = self._config_path()
             if not config_path.exists() or clear:
                 config_path.write_text("", encoding="utf-8")
-
             self._parser = configparser.ConfigParser()
             self._parser.read(config_path, encoding="utf-8")
-
             defunct_keys_removed = self._remove_defunct_model_keys()
             defunct_values_removed = self._remove_defunct_values()
             if defunct_keys_removed or defunct_values_removed:
                 self._write_parser()
-
             if "advanced_options" in self._parser:
                 self._advanced_options = AdvancedOptionsModel(**self._parser["advanced_options"])
             else:
                 self._advanced_options = AdvancedOptionsModel()
-
             if "char" in self._parser:
                 self._char = CharModel(**self._parser["char"])
             else:
                 self._char = CharModel()
-
             if "general" in self._parser:
                 self._general = GeneralModel(**self._parser["general"])
             else:
                 self._general = GeneralModel()
-
             self._last_config_signature = self._get_config_signature()
             self._config_revision += 1
             self._state_snapshot = self._capture_state_snapshot()
             changed_keys = self._changed_keys(previous_snapshot, self._state_snapshot)
-
         if notify:
             self._log_changed_values(changed_keys)
             self._notify_listeners(changed_keys)
@@ -244,7 +227,6 @@ class IniConfigLoader:
             current_signature = self._get_config_signature()
             if current_signature == self._last_config_signature:
                 return False
-
         LOGGER.debug("Detected external params.ini change. Reloading configuration.")
         self.load(notify=True)
         return True
@@ -275,7 +257,6 @@ class IniConfigLoader:
 
     def save_value(self, section: str, key: str, value: object) -> None:
         changed_keys: set[str] = set()
-
         with self._lock:
             if self._parser is None:
                 self.load(notify=False)
@@ -283,27 +264,22 @@ class IniConfigLoader:
             if parser is None:
                 msg = "Config parser could not be initialized"
                 raise RuntimeError(msg)
-
             previous_snapshot = self._state_snapshot.copy()
             model = self._model_for_section(section)
             if model is not None:
                 setattr(model, key, value)
-
             if section not in parser.sections():
                 parser.add_section(section)
-
             new_serialized_value = str(value)
             old_serialized_value = parser.get(section, key, fallback=None)
             if old_serialized_value == new_serialized_value:
                 return
-
             parser.set(section, key, new_serialized_value)
             self._write_parser()
             self._last_config_signature = self._get_config_signature()
             self._config_revision += 1
             self._state_snapshot = self._capture_state_snapshot()
             changed_keys = self._changed_keys(previous_snapshot, self._state_snapshot)
-
         self._log_changed_values(changed_keys)
         self._notify_listeners(changed_keys)
 

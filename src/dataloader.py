@@ -4,9 +4,8 @@ import pathlib
 import threading
 from typing import TypeGuard
 
-from src.config import BASE_DIR
-from src.config.loader import IniConfigLoader
 from src.item import ItemType
+from src.settings import BASE_DIR, get_settings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -57,17 +56,17 @@ class Dataloader:
         return cls._instance
 
     def load_data(self):
-        language_dir = pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}")
+        language_dir = pathlib.Path(BASE_DIR / f"assets/lang/{get_settings().general.language}")
         self.affix_dict = _load_string_map(language_dir / "affixes.json")
         self.seal_affix_dict = _load_string_map(language_dir / "seals_affixes.json")
         self.charm_affix_dict = _load_string_map(language_dir / "charms_affixes.json")
 
-        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/aspects.json").open(
+        with pathlib.Path(BASE_DIR / f"assets/lang/{get_settings().general.language}/aspects.json").open(
             encoding="utf-8"
         ) as f:
             self.aspect_list = json.load(f)
 
-        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/corrections.json").open(
+        with pathlib.Path(BASE_DIR / f"assets/lang/{get_settings().general.language}/corrections.json").open(
             encoding="utf-8"
         ) as f:
             data = json.load(f)
@@ -75,7 +74,7 @@ class Dataloader:
             self.filter_words = data["filter_words"]
             self.bad_tts_uniques = data["bad_tts_uniques"]
 
-        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/item_types.json").open(
+        with pathlib.Path(BASE_DIR / f"assets/lang/{get_settings().general.language}/item_types.json").open(
             encoding="utf-8"
         ) as f:
             data = json.load(f)
@@ -87,7 +86,7 @@ class Dataloader:
                 else:
                     LOGGER.warning(f"{item} type not in item_type.py")
 
-        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/sigils.json").open(
+        with pathlib.Path(BASE_DIR / f"assets/lang/{get_settings().general.language}/sigils.json").open(
             encoding="utf-8"
         ) as f:
             self.affix_sigil_dict_all = json.load(f)
@@ -100,17 +99,17 @@ class Dataloader:
 
         self.tribute_dict = _load_string_map(language_dir / "tributes.json")
 
-        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/tooltips.json").open(
+        with pathlib.Path(BASE_DIR / f"assets/lang/{get_settings().general.language}/tooltips.json").open(
             encoding="utf-8"
         ) as f:
             self.tooltips = json.load(f)
 
-        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/uniques.json").open(
+        with pathlib.Path(BASE_DIR / f"assets/lang/{get_settings().general.language}/uniques.json").open(
             encoding="utf-8"
         ) as f:
             self.aspect_unique_dict = json.load(f)
 
-        with pathlib.Path(BASE_DIR / f"assets/lang/{IniConfigLoader().general.language}/sets.json").open(
+        with pathlib.Path(BASE_DIR / f"assets/lang/{get_settings().general.language}/sets.json").open(
             encoding="utf-8"
         ) as f:
             self.set_list = json.load(f)

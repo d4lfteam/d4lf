@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 import src.template_finder
-from src.config.data import Template
+from src.settings import Template
 from src.utils.misc import is_in_roi
 
 
@@ -133,7 +133,7 @@ def test_search_rejects_missing_named_roi(monkeypatch):
     class EmptyResources:
         roi = EmptyRoi()
 
-    monkeypatch.setattr(src.template_finder, "ResManager", lambda: EmptyResources())
+    monkeypatch.setattr(src.template_finder, "get_ui_coordinates", lambda: EmptyResources())
 
     with pytest.raises(ValueError, match="Invalid roi key: missing"):
         src.template_finder.search(template, image, threshold=0.6, roi="missing")

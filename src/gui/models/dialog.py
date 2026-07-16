@@ -24,7 +24,6 @@ from PyQt6.QtWidgets import (
 
 from src.dataloader import Dataloader
 from src.gui.importer.gui_common import MAX_POWER
-from src.gui.settings_tab import IgnoreScrollWheelComboBox
 from src.item import SIGIL_RULE_TARGET_TYPES, ItemRarity, ItemType, SigilRules, SigilRuleTargetType
 from src.profiles import (
     AffixFilterCountModel,
@@ -65,6 +64,20 @@ class IgnoreScrollWheelSpinBox(QSpinBox):
             super().wheelEvent(e)
             return
 
+        if e is not None:
+            e.ignore()
+
+
+class IgnoreScrollWheelComboBox(QComboBox):
+    def __init__(self):
+        super().__init__()
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    @override
+    def wheelEvent(self, e: QWheelEvent | None) -> None:
+        if self.hasFocus():
+            super().wheelEvent(e)
+            return
         if e is not None:
             e.ignore()
 

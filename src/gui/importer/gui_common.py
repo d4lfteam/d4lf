@@ -18,8 +18,6 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 from seleniumbase import Driver
 
-from src.config.loader import IniConfigLoader
-from src.config.settings_models import BrowserType
 from src.dataloader import Dataloader
 from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart
 from src.item import WEAPON_TYPES, Affix, AffixType, ItemRarity, ItemType
@@ -33,6 +31,7 @@ from src.profiles import (
     SealFilterModel,
     normalize_profile_file_name,
 )
+from src.settings import BrowserType, get_settings
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -482,12 +481,12 @@ def retry_importer(func=None, inject_webdriver: bool = False, uc=False):
 
 
 def add_to_profiles(build_name):
-    profiles = IniConfigLoader().general.profiles
+    profiles = get_settings().general.profiles
     if build_name in profiles:
         LOGGER.info(f"Profile {build_name} was already an active profile.")
     else:
         profiles.append(build_name)
-        IniConfigLoader().save_value("general", "profiles", ", ".join(profiles))
+        get_settings().save_value("general", "profiles", ", ".join(profiles))
         LOGGER.info(f"Added {build_name} to active profiles configuration")
 
 
@@ -499,7 +498,7 @@ def setup_webdriver(uc: bool = False) -> WebDriver:
             raise TypeError(msg)
         return driver
     driver: WebDriver | None = None
-    match IniConfigLoader().general.browser:
+    match get_settings().general.browser:
         case BrowserType.edge:
             options = webdriver.EdgeOptions()
             options.add_argument("--headless=new")

@@ -11,17 +11,9 @@ if TYPE_CHECKING:
 import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
+import src.settings as hotkeys
 import src.tts
 from src.cam import Cam
-from src.config.loader import IniConfigLoader
-from src.config.reload_groups import (
-    HOTKEY_SETTING_KEYS,
-    LANGUAGE_SETTING_KEYS,
-    MANUAL_RESTART_SETTING_KEYS,
-    VISION_MODE_TYPE_SETTING_KEY,
-    has_any_changed,
-)
-from src.config.settings_models import ItemRefreshType, VisionModeType
 from src.dataloader import Dataloader
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
 from src.paragon_overlay import request_close as request_close_paragon
@@ -29,9 +21,19 @@ from src.paragon_overlay import run_paragon_overlay
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.scripts.info_overlay import InventoryExpTracker, is_info_overlay_open, open_boss_timer_overlay, request_close
 from src.scripts.info_overlay import set_busy_checker as set_info_busy_checker
+from src.settings import (
+    HOTKEY_SETTING_KEYS,
+    LANGUAGE_SETTING_KEYS,
+    MANUAL_RESTART_SETTING_KEYS,
+    VISION_MODE_TYPE_SETTING_KEY,
+    ItemRefreshType,
+    Settings,
+    VisionModeType,
+    get_settings,
+    has_any_changed,
+)
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
-from src.utils import hotkeys
 from src.utils.custom_mouse import Mouse
 from src.utils.process_handler import kill_thread, safe_exit
 from src.utils.window import WindowSpec, is_window_foreground, screenshot
@@ -59,7 +61,7 @@ class ScriptHandler:
         self._hotkey_handles: list[int] = []
         self._runtime_config_lock = threading.RLock()
         self._manual_restart_warning: bool = False
-        self._config = IniConfigLoader()
+        self._config = get_settings()
         self._win_spec = WindowSpec(self._config.advanced_options.process_name)
         self._language = self._config.general.language
         self.vision_mode: VisionMode = self._create_vision_mode(self._config.general.vision_mode_type)
@@ -92,7 +94,7 @@ class ScriptHandler:
             elif has_any_changed(changed_keys, MANUAL_RESTART_SETTING_KEYS):
                 self._notify_manual_restart_required("settings changes")
 
-    def _hotkey_signature(self, config: IniConfigLoader) -> tuple[str | bool, ...]:
+    def _hotkey_signature(self, config: Settings) -> tuple[str | bool, ...]:
         advanced_options = config.advanced_options
         return (
             advanced_options.run_vision_mode,
@@ -108,7 +110,7 @@ class ScriptHandler:
             advanced_options.move_to_chest,
         )
 
-    def _refresh_hotkeys(self, config: IniConfigLoader) -> None:
+    def _refresh_hotkeys(self, config: Settings) -> None:
         current_signature = self._hotkey_signature(config)
         if getattr(self, "_current_hotkey_signature", None) == current_signature:
             return
@@ -117,7 +119,7 @@ class ScriptHandler:
         self.setup_key_binds()
         LOGGER.info("Reloaded hotkeys from updated settings")
 
-    def _refresh_language_assets(self, config: IniConfigLoader) -> None:
+    def _refresh_language_assets(self, config: Settings) -> None:
         if config.general.language == self._language:
             return
 
@@ -312,7 +314,7 @@ def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh,
     stash = Stash()
 
     if stash.is_open():
-        for i in IniConfigLoader().general.check_chest_tabs:
+        for i in get_settings().general.check_chest_tabs:
             stash.switch_to_tab(i)
             time.sleep(0.3)
             check_items(stash, force_refresh, stash_is_open=True, no_match_action="junk")

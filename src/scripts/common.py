@@ -8,12 +8,11 @@ from src.item import SeasonalAttribute
 if TYPE_CHECKING:
     from tkinter import Canvas
 
+import src.settings as hotkeys
 from src.cam import Cam
-from src.config.loader import IniConfigLoader
-from src.config.ui import ResManager
 from src.gui.importer.gui_common import ACCENT_BLUE, DARK_GRAY_BG
 from src.item import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
-from src.utils import hotkeys
+from src.settings import get_settings, get_ui_coordinates
 from src.utils.custom_mouse import Mouse
 
 if TYPE_CHECKING:
@@ -57,7 +56,7 @@ FILTER_COLORS_COLORBLIND = FilterColors(
 def get_filter_colors() -> FilterColors:
     """Return the active palette (default vs. colorblind mode)."""
     try:
-        if IniConfigLoader().general.colorblind_mode:
+        if get_settings().general.colorblind_mode:
             return FILTER_COLORS_COLORBLIND
     except Exception:
         # Fail-safe: if config isn't available yet, use defaults.
@@ -122,7 +121,7 @@ def is_ignored_item(item_descr: Item):
     if is_non_sigil_mapping(item_descr.item_type):
         LOGGER.info(f"{item_descr.original_name} -- Matched: Non-sigil Mapping")
         return True
-    if item_descr.item_type == ItemType.EscalationSigil and IniConfigLoader().general.ignore_escalation_sigils:
+    if item_descr.item_type == ItemType.EscalationSigil and get_settings().general.ignore_escalation_sigils:
         LOGGER.info(f"{item_descr.original_name} -- Matched: Escalation Sigil and configured to be ignored")
         return True
     if is_socketable(item_descr.item_type):
@@ -181,12 +180,12 @@ def draw_text_with_background(
     if not text:
         return None
 
-    minimum_font_size = IniConfigLoader().general.minimum_overlay_font_size
+    minimum_font_size = get_settings().general.minimum_overlay_font_size
 
     # If caller didn't provide window_height, attempt to fetch it lazily.
     if window_height is None:
         try:
-            window_height = ResManager().pos.window_dimensions[1]
+            window_height = get_ui_coordinates().pos.window_dimensions[1]
         except Exception:
             LOGGER.debug("Failed to read overlay window height from ResManager.", exc_info=True)
             window_height = None

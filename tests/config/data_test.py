@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from src.config import data
+import src.settings.coordinates as data
 
 if TYPE_CHECKING:
     from pathlib import Path

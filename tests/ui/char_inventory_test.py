@@ -2,7 +2,7 @@ import cv2
 import pytest
 
 from src.cam import Cam
-from src.config import BASE_DIR
+from src.settings import BASE_DIR
 from src.ui.char_inventory import CharInventory
 
 BASE_PATH = BASE_DIR / "tests/assets/ui"

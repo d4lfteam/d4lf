@@ -2,8 +2,8 @@ from copy import copy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from src.config.ui import ResManager
 from src.item.descr.texture import find_seperator_short
+from src.settings import get_ui_coordinates
 from src.template_finder import SearchResult, TemplateMatch, search
 from src.utils.image_operations import crop
 from src.utils.roi_operations import fit_roi_to_window_size, intersect
@@ -60,7 +60,7 @@ def _choose_best_result(
 def _template_search(img: np.ndarray, anchor: int, roi: np.ndarray, take_debug_screenshot: bool = False):
     roi_copy = copy(roi)
     roi_copy[0] += anchor
-    ok, roi_left = fit_roi_to_window_size(roi_copy, ResManager().pos.window_dimensions)
+    ok, roi_left = fit_roi_to_window_size(roi_copy, get_ui_coordinates().pos.window_dimensions)
     if ok:
         return search(
             ref=list(ITEM_TOP_LEFT_TEMPLATES),
@@ -118,12 +118,12 @@ def get_separator_match_in_crop(detection: DescrDetection) -> TemplateMatch | No
 
 
 def _find_descr_core(img: np.ndarray, anchor: tuple[int, int], *, collect_diagnostics: bool) -> DescrDetection:
-    item_descr_width = ResManager().offsets.item_descr_width
-    item_descr_pad = ResManager().offsets.item_descr_pad
-    window_width, window_height = ResManager().pos.window_dimensions
+    item_descr_width = get_ui_coordinates().offsets.item_descr_width
+    item_descr_pad = get_ui_coordinates().offsets.item_descr_pad
+    window_width, window_height = get_ui_coordinates().pos.window_dimensions
 
-    res_left = _template_search(img, anchor[0], ResManager().roi.rel_descr_search_left)
-    res_right = _template_search(img, anchor[0], ResManager().roi.rel_descr_search_right)
+    res_left = _template_search(img, anchor[0], get_ui_coordinates().roi.rel_descr_search_left)
+    res_right = _template_search(img, anchor[0], get_ui_coordinates().roi.rel_descr_search_right)
 
     res = _choose_best_result(res_left, res_right, anchor[0], window_width)
     if res.success and res.matches:
@@ -138,8 +138,8 @@ def _find_descr_core(img: np.ndarray, anchor: tuple[int, int], *, collect_diagno
         separator_match = find_seperator_short(img, roi=roi, mode="first")
 
         if separator_match is not None:
-            off_bottom_of_descr = ResManager().offsets.item_descr_off_bottom_edge
-            roi_height = ResManager().pos.window_dimensions[1] - (2 * off_bottom_of_descr) - match.region[1]
+            off_bottom_of_descr = get_ui_coordinates().offsets.item_descr_off_bottom_edge
+            roi_height = get_ui_coordinates().pos.window_dimensions[1] - (2 * off_bottom_of_descr) - match.region[1]
             bottom_match = None
             if (
                 res_bottom := search(

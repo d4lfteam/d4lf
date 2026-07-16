@@ -12,8 +12,7 @@ import numpy as np
 
 from src import TP
 from src.cam import Cam
-from src.config.data import COLORS, Template
-from src.config.ui import ResManager
+from src.settings import Template, get_ui_coordinates
 from src.utils.image_operations import alpha_to_mask, color_filter, crop
 from src.utils.misc import run_until_condition
 from src.utils.roi_operations import get_center
@@ -156,7 +155,7 @@ def _process_template_refs(ref: TemplateReferences) -> list[Template]:
         # if the reference is a string, then it's a reference to a named template asset
         if isinstance(i, str):
             try:
-                templates.append(ResManager().templates[i.lower()])
+                templates.append(get_ui_coordinates().templates[i.lower()])
             except KeyError:
                 LOGGER.warning(f"Template not defined: {i}")
         # if the reference is an image, append new Template class object
@@ -189,7 +188,7 @@ def _get_cv_result(
     if img.shape[0] == 0 or img.shape[1] == 0:
         return None, template_bgr, resolved_roi
     if take_debug_screenshot:
-        from src.utils.window import screenshot  # noqa: PLC0415
+        from src.utils.window import screenshot  # ruff:ignore[import-outside-top-level]
 
         screenshot("template_finder", img=img)
 
@@ -300,7 +299,7 @@ def search(
     resolved_roi: list[float] | None
     if isinstance(roi, str):
         try:
-            candidate_roi = getattr(ResManager().roi, roi)
+            candidate_roi = getattr(get_ui_coordinates().roi, roi)
         except (AttributeError, KeyError, TypeError) as e:
             LOGGER.error(f"Invalid roi key: {roi}")
             LOGGER.error(e)
@@ -316,7 +315,7 @@ def search(
     resolved_color_match: list[np.ndarray] | None
     if isinstance(color_match, str):
         try:
-            candidate_color = getattr(COLORS, color_match)
+            candidate_color = getattr(get_ui_coordinates().colors, color_match)
             lower = candidate_color.h_s_v_min
             upper = candidate_color.h_s_v_max
         except (AttributeError, KeyError, TypeError) as e:

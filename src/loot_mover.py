@@ -2,8 +2,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from src.cam import Cam
-from src.config.loader import IniConfigLoader
-from src.config.settings_models import MoveItemsType
+from src.settings import MoveItemsType, get_settings
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
 from src.utils.custom_mouse import Mouse
@@ -25,12 +24,12 @@ def move_items_to_stash():
         return
 
     unhandled_slots, _ = inv.get_item_slots()
-    move_item_types = IniConfigLoader().general.move_to_stash_item_type
+    move_item_types = get_settings().general.move_to_stash_item_type
     if not unhandled_slots:
         LOGGER.info("No items to move")
         return
 
-    for i in IniConfigLoader().general.check_chest_tabs:
+    for i in get_settings().general.check_chest_tabs:
         stash.switch_to_tab(i)
 
         _, empty_chest = stash.get_item_slots()
@@ -59,12 +58,12 @@ def move_items_to_inventory():
 
     _, empty_inv = inv.get_item_slots()
     empty_slot_count = len(empty_inv)
-    move_item_type = IniConfigLoader().general.move_to_inv_item_type
+    move_item_type = get_settings().general.move_to_inv_item_type
     if not empty_slot_count:
         LOGGER.info("No empty slots in inventory")
         return
 
-    for i in IniConfigLoader().general.check_chest_tabs:
+    for i in get_settings().general.check_chest_tabs:
         stash.switch_to_tab(i)
         unhandled_slots, _ = stash.get_item_slots()
 

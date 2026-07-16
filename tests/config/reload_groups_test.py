@@ -1,4 +1,4 @@
-from src.config.reload_groups import (
+from src.settings.reload_groups import (
     HOTKEY_SETTING_KEYS,
     LOG_LEVEL_SETTING_KEYS,
     VISION_MODE_TYPE_SETTING_KEY,

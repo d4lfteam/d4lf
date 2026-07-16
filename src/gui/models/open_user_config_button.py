@@ -2,7 +2,7 @@ import os
 
 from PyQt6.QtWidgets import QPushButton
 
-from src.config.loader import IniConfigLoader
+from src.settings import get_settings
 
 
 class OpenUserConfigButton(QPushButton):
@@ -12,4 +12,4 @@ class OpenUserConfigButton(QPushButton):
 
     @staticmethod
     def _open_userconfig_directory():
-        os.startfile(IniConfigLoader().user_dir)
+        os.startfile(get_settings().user_dir)

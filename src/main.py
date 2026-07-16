@@ -15,9 +15,8 @@ from PyQt6.QtWidgets import QApplication
 import src.logger
 from src import __version__
 from src.autoupdater import notify_if_update, start_auto_update
-from src.config.loader import IniConfigLoader
-from src.config.settings_models import VisionModeType
 from src.logger import LOG_DIR
+from src.settings import VisionModeType, get_settings
 
 if sys.platform == "win32":
     from src import tts
@@ -47,7 +46,7 @@ def main():
         LOGGER.info("Running in GUI-only mode on non-Windows. Runtime backend (TTS/automation) is disabled.")
         return
 
-    for dir_name in [LOG_DIR / "screenshots", IniConfigLoader().user_dir, IniConfigLoader().user_dir / "profiles"]:
+    for dir_name in [LOG_DIR / "screenshots", get_settings().user_dir, get_settings().user_dir / "profiles"]:
         Path(dir_name).mkdir(exist_ok=True, parents=True)
 
     # Detect if we're running locally and skip the autoupdate
@@ -61,7 +60,7 @@ def main():
 
     table = BeautifulTable()
     table.set_style(Style.STYLE_BOX_ROUNDED)
-    adv = IniConfigLoader().advanced_options
+    adv = get_settings().advanced_options
     table.rows.append([adv.run_vision_mode, "Run/Stop Vision Mode"])
     table.rows.append([adv.info_overlay, "Info Panel Overlay"])
     table.rows.append([adv.toggle_paragon_overlay, "Toggle Paragon Overlay"])
@@ -79,12 +78,12 @@ def main():
     for line in str(table).split("\n"):
         LOGGER.info(line)
 
-    if IniConfigLoader().advanced_options.vision_mode_only:
+    if get_settings().advanced_options.vision_mode_only:
         LOGGER.info("Vision mode only is enabled. All functionality that clicks the screen is disabled.")
 
     Filter().load_files()
 
-    win_spec = WindowSpec(IniConfigLoader().advanced_options.process_name)
+    win_spec = WindowSpec(get_settings().advanced_options.process_name)
     start_detecting_window(win_spec)
     while not Cam().is_offset_set():
         time.sleep(0.2)
@@ -93,7 +92,7 @@ def main():
 
     ScriptHandler()
 
-    LOGGER.debug(f"Vision mode type: {IniConfigLoader().general.vision_mode_type.value}")
+    LOGGER.debug(f"Vision mode type: {get_settings().general.vision_mode_type.value}")
     check_for_proper_tts_configuration()
     tts.start_connection()
 
@@ -144,7 +143,7 @@ def check_for_proper_tts_configuration():
             "No process named Diablo IV.exe was found and unable to automatically determine if TTS DLL is installed."
         )
 
-    if IniConfigLoader().advanced_options.disable_tts_warning:
+    if get_settings().advanced_options.disable_tts_warning:
         LOGGER.debug("Disable TTS warning is enabled, skipping TTS local prefs check")
     else:
         local_prefs = get_d4_local_prefs_file()
@@ -158,10 +157,7 @@ def check_for_proper_tts_configuration():
                 LOGGER.error(
                     f"3rd Party Screen Reader is not enabled in Accessibility Settings in D4. No items will be read. Read more about initial setup here: {SETUP_INSTRUCTIONS_URL}"
                 )
-            if (
-                'FontScale "2"' in prefs
-                and IniConfigLoader().general.vision_mode_type == VisionModeType.highlight_matches
-            ):
+            if 'FontScale "2"' in prefs and get_settings().general.vision_mode_type == VisionModeType.highlight_matches:
                 LOGGER.error(
                     "A font scale set to Large is not supported when using the highlight matches vision mode. Change to medium or small in the graphics options, or use the fast vision mode."
                 )
@@ -204,7 +200,7 @@ def hide_console():
 
 
 if __name__ == "__main__":
-    adv = IniConfigLoader().advanced_options
+    adv = get_settings().advanced_options
     if len(sys.argv) > 1 and sys.argv[1] == "--autoupdate":
         src.logger.setup(
             log_level=adv.log_lvl.value,

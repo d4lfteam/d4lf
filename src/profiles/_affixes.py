@@ -2,7 +2,7 @@ import sys
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from src.config.helper import check_greater_than_zero, validate_greater_affix_count, validate_percent
+from src.profiles._validators import check_greater_than_zero, validate_greater_affix_count, validate_percent
 
 
 class AffixAspectFilterModel(BaseModel):

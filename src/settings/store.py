@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel, ValidationError
 from pydantic_core import PydanticUndefined
 
-from src.config.loader import IniConfigLoader
+from src.settings.loader import IniConfigLoader
 
 type CategorySetting = tuple[BaseModel, str, str]
 type SectionModel = tuple[BaseModel, str]

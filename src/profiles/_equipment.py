@@ -1,6 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 
-from src.config.helper import check_greater_than_zero, validate_greater_affix_count
 from src.item import ItemRarity, ItemType  # ruff:ignore[typing-only-first-party-import]
 from src.profiles._affixes import (  # ruff:ignore[typing-only-first-party-import]
     AffixFilterCountModel,
@@ -12,6 +11,7 @@ from src.profiles._validation import (
     _validate_affix_pool_names,
     _validate_set_name,
 )
+from src.profiles._validators import check_greater_than_zero, validate_greater_affix_count
 
 
 class ItemFilterModel(BaseModel):

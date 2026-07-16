@@ -9,11 +9,10 @@ from typing import Literal
 import src.item.descr.read_descr_tts
 import src.tts
 from src.cam import Cam
-from src.config.helper import singleton
-from src.config.loader import IniConfigLoader
-from src.config.ui import ResManager
 from src.item import Filter, ItemRarity, MatchedFilter
+from src.scripts._singleton import singleton
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item
+from src.settings import get_settings, get_ui_coordinates
 from src.tts import Publisher
 from src.ui_thread import call_on_ui_thread, create_overlay_toplevel, get_root
 from src.utils.custom_mouse import Mouse
@@ -73,16 +72,16 @@ class VisionModeFast:
 
     def create_textbox(self):
         self.clear_textbox()
-        minimum_font_size = IniConfigLoader().general.minimum_overlay_font_size
+        minimum_font_size = get_settings().general.minimum_overlay_font_size
         minimum_font = Font(family="Courier New", size=minimum_font_size)
         self.textbox = tk.Text(
             self.root, bg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0, font=minimum_font
         )
-        if IniConfigLoader().advanced_options.fast_vision_mode_coordinates is None:
-            x = ResManager().resolution[0] / 2
-            y = ResManager().resolution[1] / 5
+        if get_settings().advanced_options.fast_vision_mode_coordinates is None:
+            x = get_ui_coordinates().resolution[0] / 2
+            y = get_ui_coordinates().resolution[1] / 5
         else:
-            coordinates = IniConfigLoader().advanced_options.fast_vision_mode_coordinates
+            coordinates = get_settings().advanced_options.fast_vision_mode_coordinates
             if coordinates is None:
                 return
             x, y = coordinates

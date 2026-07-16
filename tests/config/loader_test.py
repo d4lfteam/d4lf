@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from src.config.loader import PARAMS_INI, IniConfigLoader
+from src.settings.loader import PARAMS_INI, IniConfigLoader
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -101,7 +101,7 @@ class TestIniConfigLoader:
             encoding="utf-8",
         )
 
-        with caplog.at_level(logging.WARNING, logger="src.config.loader"):
+        with caplog.at_level(logging.WARNING, logger="src.settings.loader"):
             assert loader.reload_if_changed() is True
 
         config_text = config_path.read_text(encoding="utf-8")

@@ -22,10 +22,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.loader import IniConfigLoader
-from src.config.settings_models import IS_HOTKEY_KEY
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
 from src.profiles import ProfileDocumentError, ProfileDocumentStore
+from src.settings import IS_HOTKEY_KEY, get_settings
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -127,7 +126,7 @@ class ActivityLogWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._main_window = parent
-        self._config = IniConfigLoader()
+        self._config = get_settings()
         self._config.register_change_listener(self._on_config_changed)
         self.setAcceptDrops(True)
 

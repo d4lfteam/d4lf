@@ -6,7 +6,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication
 
-from src.gui.settings_tab import QChestTabWidget
+from src.settings.widgets import QChestTabWidget
 
 if TYPE_CHECKING:
     from collections.abc import Callable

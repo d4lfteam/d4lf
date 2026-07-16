@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from src.utils import hotkeys
+import src.settings as hotkeys
 from src.utils.misc import run_until_condition
 
 if TYPE_CHECKING:

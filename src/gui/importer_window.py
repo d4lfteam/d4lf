@@ -19,13 +19,13 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.config.loader import IniConfigLoader
 from src.gui.importer.d4builds import import_d4builds
 from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart, ImportConfig
 from src.gui.importer.infinitybuilds import import_infinitybuilds
 from src.gui.importer.maxroll import import_maxroll
 from src.gui.importer.mobalytics import import_mobalytics
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
+from src.settings import get_settings
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 
@@ -222,7 +222,7 @@ class ImporterWindow(QMainWindow):
             "https://mobalytics.gg/diablo-4/builds/barbarian/bash\n"
             "or\n"
             "https://infinitybuilds.gg/en/builds/barbarian-fL8P6vVSqI\n\n"
-            f"It will create a file based on the label of the build in the planner in: {IniConfigLoader().user_dir / 'profiles'}\n\n"
+            f"It will create a file based on the label of the build in the planner in: {get_settings().user_dir / 'profiles'}\n\n"
             "For d4builds you need to specify your browser in the Settings window"
         )
         instructions_text.setReadOnly(True)

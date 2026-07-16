@@ -3,8 +3,7 @@ import typing
 
 import pytest
 
-from src.config.loader import IniConfigLoader
-from src.config.settings_models import BrowserType
+from src.settings import BrowserType, get_settings
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -24,8 +23,8 @@ def pytest_ignore_collect(collection_path, config):
 
 @pytest.fixture
 def mock_ini_loader(mocker: MockerFixture):
-    general_mock = mocker.patch.object(IniConfigLoader(), "_general")
-    general_mock.language = "enUS"
-    general_mock.browser = BrowserType.edge
-    general_mock.full_dump = False
-    return IniConfigLoader()
+    settings = get_settings()
+    mocker.patch.object(settings.general, "language", "enUS")
+    mocker.patch.object(settings.general, "browser", BrowserType.edge)
+    mocker.patch.object(settings.general, "full_dump", False)
+    return settings

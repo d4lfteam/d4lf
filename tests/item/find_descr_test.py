@@ -122,7 +122,7 @@ def test_get_separator_match_in_crop_returns_none_for_invalid_crop():
 
 def test_find_descr_clips_crop_to_image_before_translating_separator(mocker):
     mocker.patch(
-        "src.item.find_descr.ResManager",
+        "src.item.find_descr.get_ui_coordinates",
         return_value=SimpleNamespace(
             offsets=SimpleNamespace(item_descr_width=100, item_descr_pad=10, item_descr_off_bottom_edge=0),
             pos=SimpleNamespace(window_dimensions=(100, 100)),

@@ -1,16 +1,16 @@
 """Everything is this file is based on UHD resolution (3840x2160)."""
 
 import logging
-from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
 import cv2
 import numpy as np
 
-from src.config import BASE_DIR
-from src.config.loader import IniConfigLoader
-from src.config.settings_models import ColorsModel, HSVRangeModel, UiOffsetsModel, UiPosModel, UiRoiModel
+from src.settings import BASE_DIR
+from src.settings._types import Template
+from src.settings.loader import IniConfigLoader
+from src.settings.models_ui import ColorsModel, HSVRangeModel, UiOffsetsModel, UiPosModel, UiRoiModel
 from src.utils.image_operations import alpha_to_mask
 
 LOGGER = logging.getLogger("d4lf")
@@ -74,15 +74,6 @@ POSITIONS = (
         vendor_menu_icon=np.array([182, 757, 220, 90]),
     ),
 )
-
-
-@dataclass
-class Template:
-    name: str = ""
-    img_bgra: np.ndarray | None = None
-    img_bgr: np.ndarray | None = None
-    img_gray: np.ndarray | None = None
-    alpha_mask: np.ndarray | None = None
 
 
 @lru_cache

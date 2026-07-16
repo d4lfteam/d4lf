@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, override
 
-from src.config.loader import IniConfigLoader
 from src.profiles import (
     EmptyError,
     Failed,
@@ -17,6 +16,7 @@ from src.profiles import (
     ValidationError,
     YamlError,
 )
+from src.settings import get_settings
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,12 +48,11 @@ def _write_profile(tmp_path: Path, file_name: str, body: str) -> Path:
     return path
 
 
-def test_discover_returns_active_and_inactive_profiles(tmp_path: Path) -> None:
+def test_discover_returns_active_and_inactive_profiles(tmp_path: Path, mocker) -> None:
     _write_profile(tmp_path, "alpha.yaml", "AspectUpgrades:\n- accelerating\n")
     _write_profile(tmp_path, "beta.yml", "AspectUpgrades:\n- accelerating\n")
     _write_profile(tmp_path, "zeta.yaml", "AspectUpgrades:\n- accelerating\n")
-    ini = IniConfigLoader()
-    ini._general.profiles = ["beta", "alpha", "beta", "missing"]
+    mocker.patch.object(get_settings().general, "profiles", ["beta", "alpha", "beta", "missing"])
 
     catalog = _session(tmp_path, LastOpenedStore()).discover()
 

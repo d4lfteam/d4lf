@@ -4,8 +4,6 @@ import typing
 import pytest
 from natsort import natsorted
 
-from src.config.loader import IniConfigLoader
-from src.config.settings_models import AspectFilterType
 from src.item import Affix, AffixType, Filter, FilterResult, Item, ItemRarity, ItemType
 from src.profiles import (
     AffixFilterCountModel,
@@ -17,6 +15,7 @@ from src.profiles import (
     SigilPriority,
     TributeFilterModel,
 )
+from src.settings import AspectFilterType, Settings, get_settings
 from tests.item.filter.data import filters
 from tests.item.filter.data.affixes import affixes
 from tests.item.filter.data.aspects import aspects
@@ -69,8 +68,7 @@ def test_affixes(_name: str, result: list[str], item: Item, mocker: MockerFixtur
 )
 def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
-    general_mock = mocker.patch.object(IniConfigLoader(), "_general")
-    general_mock.keep_aspects = AspectFilterType.upgrade
+    mocker.patch.object(get_settings().general, "keep_aspects", AspectFilterType.upgrade)
     mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
     test_filter.aspect_upgrade_filters = {filters.aspects_filters.name: filters.aspects_filters.aspect_upgrades}
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
@@ -394,9 +392,11 @@ def test_sigil_rarity_gate_drops_legendary_regardless_of_blacklist_state(mocker:
     assert test_filter.should_keep(sigil_derived_legendary).matched == []
 
 
-def test_filter_loads_typed_paragon_payload(tmp_path, mock_ini_loader: IniConfigLoader, mocker: MockerFixture) -> None:
-    mock_ini_loader._user_dir = tmp_path
-    mock_ini_loader.general.profiles = ["typed_paragon"]
+def test_filter_loads_typed_paragon_payload(tmp_path, mocker: MockerFixture) -> None:
+    settings = mocker.Mock(spec=Settings)
+    settings.user_dir = tmp_path
+    settings.general.profiles = ["typed_paragon"]
+    mocker.patch("src.item.filter.engine.get_settings", return_value=settings)
 
     profile = ProfileModel(
         name="typed_paragon",
@@ -407,7 +407,7 @@ def test_filter_loads_typed_paragon_payload(tmp_path, mock_ini_loader: IniConfig
             ],
         },
     )
-    ProfileDocumentStore.default().save_new(
+    ProfileDocumentStore(profiles_dir=tmp_path / "profiles", full_dump=False).save_new(
         file_name="typed_paragon", profile=profile, source="https://example.invalid"
     )
 

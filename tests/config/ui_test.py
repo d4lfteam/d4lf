@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from natsort import natsorted
 
-from src.config.data import COLORS
-from src.config.ui import ResManager, _ResTransformer
+from src.settings.coordinates import COLORS
+from src.settings.scaling import ResManager, _ResTransformer
 
 _PIXELS = [np.array([0, 0]), np.array([3840, 0]), np.array([0, 2160]), np.array([3840, 2160])]
 _TESTS = [

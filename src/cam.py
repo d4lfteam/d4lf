@@ -7,7 +7,7 @@ import mss
 import mss.windows
 import numpy as np
 
-from src.config.ui import ResManager
+from src.settings import get_ui_coordinates
 from src.utils.misc import convert_args_to_numpy
 
 LOGGER = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class Cam:
 
         LOGGER.debug(f"Found Window Res: {res_key}")
 
-        ResManager().set_resolution(res_key)
+        get_ui_coordinates().set_resolution(res_key)
         if width / height < 16 / 10:
             LOGGER.warning("Aspect ratio is too narrow, please use a wider window. At least 16/10")
 

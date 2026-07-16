@@ -4,7 +4,6 @@ import cv2
 import numpy as np
 import pytest
 
-from src.config.ui import ResManager
 from src.item.data.affix import Affix
 from src.item.data.aspect import Aspect
 from src.item.data.item_type import ItemType
@@ -21,6 +20,7 @@ from src.item.descr.texture import (
     find_bullets_for_templates_traced,
 )
 from src.item.models import Item
+from src.settings import get_ui_coordinates
 from src.template_finder import SearchResult, TemplateMatch
 
 TEMPLATE_DIR = Path(__file__).parents[3] / "assets" / "templates" / "item_descr"
@@ -28,7 +28,7 @@ TEMPLATE_DIR = Path(__file__).parents[3] / "assets" / "templates" / "item_descr"
 
 @pytest.fixture(autouse=True)
 def use_tooltip_fixture_resolution():
-    resolution_manager = ResManager()
+    resolution_manager = get_ui_coordinates()
     previous_resolution = "x".join(str(value) for value in resolution_manager.resolution)
     resolution_manager.set_resolution("3840x2160")
     yield

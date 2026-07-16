@@ -21,16 +21,14 @@ from PyQt6.QtWidgets import (
 
 from src import __version__
 from src.autoupdater import notify_if_update
-from src.config.loader import IniConfigLoader
-from src.config.reload_groups import LOG_LEVEL_SETTING_KEYS, has_any_changed
 from src.gui.importer_window import ImporterWindow
 from src.gui.models.activity_log_widget import ActivityLogWidget, ANSIConsoleWidget, QtConsoleHandler
 from src.gui.profile_editor_window import ProfileEditorWindow
-from src.gui.settings_window import ConfigWindow
 from src.gui.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.logger import apply_log_level, consume_startup_log_records, create_formatter, remove_transient_gui_handlers
 from src.logger import setup as setup_logging
 from src.scripts.common import get_filter_colors
+from src.settings import LOG_LEVEL_SETTING_KEYS, create_settings_window, get_settings, has_any_changed
 
 if TYPE_CHECKING:
     from src.scripts.handler import ScriptHandler
@@ -94,7 +92,7 @@ class BackendWorker(QObject):
         else:
             notify_if_update()
 
-        win_spec = WindowSpec(IniConfigLoader().advanced_options.process_name)
+        win_spec = WindowSpec(get_settings().advanced_options.process_name)
         start_detecting_window(win_spec)
 
         while not Cam().is_offset_set():
@@ -117,7 +115,7 @@ class UnifiedMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self._child_windows: dict[str, QMainWindow] = {}
-        self._config = IniConfigLoader()
+        self._config = get_settings()
 
         if ICON_PATH.exists():
             self.setWindowIcon(QIcon(str(ICON_PATH)))
@@ -331,7 +329,7 @@ class UnifiedMainWindow(QMainWindow):
         win.import_completed.connect(self.activity_tab.refresh_profiles, Qt.ConnectionType.UniqueConnection)
 
     def open_settings_dialog(self):
-        self._show_singleton_modal("config", ConfigWindow, theme_changed_callback=self.apply_theme)
+        self._show_singleton_modal("config", create_settings_window, theme_changed_callback=self.apply_theme)
 
     def open_profile_editor(self, profile_name: str | None = None):
         self._show_singleton_modal("editor", ProfileEditorWindow, profile_name=profile_name)
@@ -433,7 +431,7 @@ class UnifiedMainWindow(QMainWindow):
         self.console_output.append_ansi_text("")
 
     def apply_theme(self):
-        theme_name = IniConfigLoader().general.theme
+        theme_name = get_settings().general.theme
         accent_color = get_filter_colors().matched
         template = DARK_THEME_TEMPLATE if theme_name == "dark" else LIGHT_THEME_TEMPLATE
         stylesheet = template.replace("{accent}", accent_color)

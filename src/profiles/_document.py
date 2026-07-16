@@ -12,8 +12,8 @@ from ruamel.yaml import YAML, StringIO
 from yaml import MappingNode, MarkedYAMLError
 
 from src import __version__
-from src.config.loader import IniConfigLoader
 from src.profiles._profile import ProfileModel
+from src.settings import get_settings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ class ProfileDocumentStore:
 
     @classmethod
     def default(cls) -> ProfileDocumentStore:
-        config = IniConfigLoader()
+        config = get_settings()
         return cls(profiles_dir=config.user_dir / "profiles", full_dump=config.general.full_dump)
 
     def load(self, path: pathlib.Path | str) -> LoadedProfile:

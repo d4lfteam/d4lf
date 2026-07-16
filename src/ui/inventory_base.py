@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from src.cam import Cam
-from src.config.ui import ResManager
+from src.settings import get_ui_coordinates
 from src.template_finder import search
 from src.ui.menu import Menu
 from src.utils.custom_mouse import Mouse
@@ -30,7 +30,7 @@ class InventoryBase(Menu):
         super().__init__()
         self.rows = rows
         self.columns = columns
-        self.slots_roi = getattr(ResManager().roi, f"slots_{self.rows}x{self.columns}")
+        self.slots_roi = getattr(get_ui_coordinates().roi, f"slots_{self.rows}x{self.columns}")
         if is_stash:
             self.junk_template = "junk_stash"
         else:
@@ -65,7 +65,7 @@ class InventoryBase(Menu):
 
             hsv_img = cv2.cvtColor(slot_img, cv2.COLOR_BGR2HSV)
             mean_value_overall = np.mean(hsv_img[:, :, 2])
-            rel_fav_flag = ResManager().roi.rel_fav_flag
+            rel_fav_flag = get_ui_coordinates().roi.rel_fav_flag
             fav_roi = (int(rel_fav_flag[0]), int(rel_fav_flag[1]), int(rel_fav_flag[2]), int(rel_fav_flag[3]))
             fav_flag_crop = crop(hsv_img, fav_roi)
             mean_value_fav = cv2.mean(fav_flag_crop)[2]

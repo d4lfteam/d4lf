@@ -14,10 +14,10 @@ import httpx
 from PyQt6.QtCore import QSettings
 
 from src.cam import Cam
-from src.config.helper import singleton
-from src.config.loader import IniConfigLoader
 from src.gui.importer.gui_common import ACCENT_BLUE, ACCENT_GOLD, ACCENT_GREEN, CARD_BG, MUTED, TEXT, TRANSPARENT_KEY
+from src.scripts._singleton import singleton
 from src.scripts.common import get_filter_colors
+from src.settings import get_settings
 from src.tts import Publisher
 from src.ui_thread import call_on_ui_thread, get_root
 from src.utils.custom_mouse import Mouse
@@ -354,7 +354,7 @@ class InventoryExpTracker:
             return
         if not info_config.get("check_exp_on_inventory_open", True):
             return
-        if IniConfigLoader().advanced_options.vision_mode_only:
+        if get_settings().advanced_options.vision_mode_only:
             return
 
         now = time.time()
@@ -447,7 +447,7 @@ class BossTimerOverlay(tk.Toplevel):
         self.wm_attributes("-transparentcolor", TRANSPARENT_KEY)
         self.configure(bg=TRANSPARENT_KEY)
 
-        self._win_spec = WindowSpec(IniConfigLoader().advanced_options.process_name)
+        self._win_spec = WindowSpec(get_settings().advanced_options.process_name)
         self._cam = Cam()
 
         self.settings = load_info_settings()
@@ -574,7 +574,7 @@ class BossTimerOverlay(tk.Toplevel):
         colors = get_filter_colors()
         is_colorblind = False
         with suppress(Exception):
-            is_colorblind = IniConfigLoader().general.colorblind_mode
+            is_colorblind = get_settings().general.colorblind_mode
 
         self.overlay_frame = tk.Frame(self, bg=CARD_BG, highlightthickness=1, highlightbackground=colors.matched)
         self.overlay_frame.pack(padx=5, pady=5)

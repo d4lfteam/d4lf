@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from src.config.ui import ResManager
+from src.settings import get_ui_coordinates
 from src.template_finder import TemplateMatch, search
 
 _LONG_SEPARATOR_TEMPLATE_REFS = [
@@ -38,9 +38,9 @@ def find_seperator_short(
     if roi is None:
         roi = [
             0,
-            int(ResManager().offsets.find_seperator_short_offset_top / 5),
+            int(get_ui_coordinates().offsets.find_seperator_short_offset_top / 5),
             img_item_descr.shape[1],
-            ResManager().offsets.find_seperator_short_offset_top,
+            get_ui_coordinates().offsets.find_seperator_short_offset_top,
         ]
     if not (
         sep_short := search(
@@ -157,7 +157,7 @@ def _find_bullets_for_templates(
     roi_bullets = [
         0,
         sep_short_match.center[1],
-        ResManager().offsets.find_bullet_points_width,
+        get_ui_coordinates().offsets.find_bullet_points_width,
         bottom_y - sep_short_match.center[1],
     ]
 

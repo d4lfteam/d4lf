@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING
 import src.item.descr.read_descr_tts
 import src.tts
 from src.cam import Cam
-from src.config.loader import IniConfigLoader
-from src.config.settings_models import ItemRefreshType, UnfilteredUniquesType
 from src.item import AffixType, Filter, ItemRarity, ItemType, is_sigil
 from src.scripts.common import (
     ASPECT_UPGRADES_LABEL,
@@ -16,6 +14,7 @@ from src.scripts.common import (
     mark_as_junk,
     reset_item_status,
 )
+from src.settings import ItemRefreshType, UnfilteredUniquesType, get_settings
 from src.utils.custom_mouse import Mouse
 from src.utils.window import screenshot
 
@@ -76,7 +75,7 @@ def check_items(
             if (
                 not stash_is_open
                 and item_descr.item_type == ItemType.TemperManual
-                and IniConfigLoader().general.auto_use_temper_manuals
+                and get_settings().general.auto_use_temper_manuals
             ):
                 Mouse.click("right")
             continue
@@ -99,13 +98,13 @@ def check_items(
             elif res.keep:
                 if len(res.matched) == 1 and res.matched[0].profile.lower() == "cosmetics":
                     LOGGER.info("Ignoring unique because it matches no filters and is a cosmetic upgrade.")
-                elif any(match.aspect_match for match in res.matched) and IniConfigLoader().general.mark_as_favorite:
+                elif any(match.aspect_match for match in res.matched) and get_settings().general.mark_as_favorite:
                     # This means it was a legitimate match, not an ignore
                     mark_as_favorite()
-                elif IniConfigLoader().general.handle_uniques == UnfilteredUniquesType.favorite:
+                elif get_settings().general.handle_uniques == UnfilteredUniquesType.favorite:
                     mark_as_favorite()
         elif not res.keep:
-            if IniConfigLoader().general.do_not_junk_ancestral_legendaries and item_descr.is_ancestral:
+            if get_settings().general.do_not_junk_ancestral_legendaries and item_descr.is_ancestral:
                 LOGGER.info("Skipping marking as junk because it is an ancestral legendary.")
             else:
                 _handle_no_match()
@@ -118,7 +117,7 @@ def check_items(
                 or is_sigil(item_descr.item_type)
                 or item_descr.item_type == ItemType.Tribute
             )
-            and IniConfigLoader().general.mark_as_favorite
+            and get_settings().general.mark_as_favorite
         ):
             mark_as_favorite()
 

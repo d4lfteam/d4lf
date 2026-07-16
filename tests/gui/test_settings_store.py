@@ -8,8 +8,8 @@ import pytest
 from pydantic import BaseModel, Field
 from PyQt6.QtWidgets import QApplication, QCheckBox
 
-from src.config.loader import PARAMS_INI, IniConfigLoader
-from src.gui.settings_store import SettingsStore
+from src.settings.loader import PARAMS_INI, IniConfigLoader
+from src.settings.store import SettingsStore
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -142,7 +142,7 @@ def test_config_tab_constructs_without_error(qapp, isolated_ini_loader: IniConfi
     checkmark_checkbox_module.CheckmarkCheckBox = QCheckBox
     sys.modules["src.gui.models.checkmark_checkbox"] = checkmark_checkbox_module
 
-    settings_tab_module = importlib.import_module("src.gui.settings_tab")
+    settings_tab_module = importlib.import_module("src.settings.tab")
     config_tab_class = settings_tab_module.ConfigTab
 
     tab = config_tab_class()

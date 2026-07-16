@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from enum import Enum
 from numbers import Integral
 
-from src.config.ui import ResManager
+from src.settings import get_ui_coordinates
 
 LOGGER = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ def compare_tuples(t1, t2, uncertainty):
 
 def create_roi_from_rel(point, rel_roi):
     if isinstance(rel_roi, str):
-        rel_roi = getattr(ResManager().roi, rel_roi)
+        rel_roi = getattr(get_ui_coordinates().roi, rel_roi)
     x, y = point
     rel_x, rel_y, w, h = rel_roi
     abs_x = x + rel_x

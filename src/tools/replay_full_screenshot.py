@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 
 import cv2
 
-from src.config.ui import ResManager
 from src.item.find_descr import DescrDetection, find_descr_with_diagnostics
 from src.logger import setup
+from src.settings import get_ui_coordinates
 from src.tools.replay_common import ReplayConfigurationError, load_replay_image, show_replay_result
 from src.tools.replay_common import font_scale as _font_scale
 from src.tools.replay_common import parse_resolution as _parse_resolution
@@ -211,7 +211,7 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
         "Full replay inputs: image=%s resolution=%sx%s item_anchor=%s", image_path, width, height, config.item_anchor
     )
 
-    resolution_manager = ResManager()
+    resolution_manager = get_ui_coordinates()
     previous_resolution = "x".join(str(value) for value in resolution_manager.resolution)
     try:
         resolution_manager.set_resolution(config.game_resolution)

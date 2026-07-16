@@ -3,7 +3,6 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-from src.config.loader import IniConfigLoader
 from src.profiles._document import (
     EmptyProfileError,
     LoadedProfile,
@@ -13,6 +12,7 @@ from src.profiles._document import (
     SavedProfile,
 )
 from src.profiles._profile import ProfileModel
+from src.settings import get_settings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ class ProfileSession:
         }
 
         active: list[str] = []
-        for profile_name in IniConfigLoader().general.profiles:
+        for profile_name in get_settings().general.profiles:
             if profile_name in paths and profile_name not in active:
                 active.append(profile_name)
 

@@ -1,6 +1,6 @@
 import pytest
 
-from src.config.helper import singleton, str_to_int_list, validate_hotkey
+from src.settings.validation import singleton, str_to_int_list, validate_hotkey
 
 
 class TestKeyMustExist:

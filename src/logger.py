@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Literal, override
 import colorama
 
 from src import __version__
-from src.config import BASE_DIR
+from src.settings import BASE_DIR
 
 if TYPE_CHECKING:
     from collections.abc import Container

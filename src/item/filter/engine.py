@@ -3,7 +3,6 @@ import pathlib
 import time
 from typing import TYPE_CHECKING
 
-from src.config.loader import IniConfigLoader
 from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity
 from src.item.filter.equipment import FilterEquipmentMixin
@@ -12,6 +11,7 @@ from src.item.filter.special import FilterSpecialMixin
 from src.item.models import FilterResult, MatchedFilter
 from src.profiles import ProfileDocumentError, ProfileDocumentStore
 from src.scripts.common import ASPECT_UPGRADES_LABEL
+from src.settings import get_settings
 
 if TYPE_CHECKING:
     from src.item.models import Item
@@ -54,8 +54,8 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
     def _did_files_change(self) -> bool:
         if self.last_loaded is None:
             return True
-        IniConfigLoader().load()
-        current_profiles = [p.strip() for p in IniConfigLoader().general.profiles if p.strip()]
+        get_settings().load()
+        current_profiles = [p.strip() for p in get_settings().general.profiles if p.strip()]
         if self.last_profile_list != current_profiles:
             LOGGER.info(f"Profile list changed: {self.last_profile_list} → {current_profiles}")
             return True
@@ -71,7 +71,7 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
         self.sigil_filters = {}
         self.tribute_filters = {}
         self.global_unique_filters = {}
-        profiles = [p.strip() for p in IniConfigLoader().general.profiles if p.strip()]
+        profiles = [p.strip() for p in get_settings().general.profiles if p.strip()]
         if not profiles:
             LOGGER.warning(
                 "No profiles are currently loaded. Please load a profile via the Importer, Settings, or Edit Profile sections to begin using the tool."
@@ -80,7 +80,7 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
             self.last_profile_list = []
             return
 
-        custom_profile_path = IniConfigLoader().user_dir / "profiles"
+        custom_profile_path = get_settings().user_dir / "profiles"
         self.all_file_paths = []
         for profile_str in profiles:
             custom_file_path = custom_profile_path / f"{profile_str}.yaml"
@@ -124,7 +124,7 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
                 sections.append("Paragon")
             LOGGER.info((info_str + " ".join(sections)).rstrip())
             self.last_loaded = time.time()
-            self.last_profile_list = IniConfigLoader().general.profiles.copy()
+            self.last_profile_list = get_settings().general.profiles.copy()
 
     def get_paragon_filters(self) -> dict[str, ParagonPayloadModel]:
         """Return the loaded Paragon payloads, reloading profiles when needed."""

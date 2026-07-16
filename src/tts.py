@@ -6,7 +6,20 @@ import sys
 import threading
 
 from src import tts_backend_noop
-from src.config.helper import singleton
+
+
+def _singleton(cls):
+    instances = {}
+    lock = threading.Lock()
+
+    def get_instance(*args, **kwargs):
+        with lock:
+            if cls not in instances:
+                instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+
+    return get_instance
+
 
 if sys.platform == "win32":
     from src import tts_backend_windows as _backend
@@ -29,7 +42,7 @@ class ItemIdentifiers(enum.Enum):
     WHISPERING_KEY = "WHISPERING KEY"
 
 
-@singleton
+@_singleton
 class Publisher:
     def __init__(self):
         self._item_subscribers = set()

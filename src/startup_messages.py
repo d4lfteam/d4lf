@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from src import __version__
-from src.config.loader import IniConfigLoader
+from src.settings import get_settings
 
 BANNER = (
     "════════════════════════════════════════════════════════════════════════════════\n"
@@ -33,10 +33,10 @@ def emit_early_startup_logs():
     logger.info(f"Running version v{__version__}")
 
     # 2. Adapt your configs
-    logger.info(f"Adapt your configs in: {IniConfigLoader().user_dir}")
+    logger.info(f"Adapt your configs in: {get_settings().user_dir}")
 
     # 3. No profiles configured warning (if applicable)
-    profiles_dir = Path(IniConfigLoader().user_dir) / "profiles"
+    profiles_dir = Path(get_settings().user_dir) / "profiles"
     profile_files = list(profiles_dir.glob("*.ini"))
 
     if not profile_files:

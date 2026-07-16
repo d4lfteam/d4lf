@@ -13,14 +13,13 @@ import numpy as np
 import src.item.descr.read_descr_tts
 import src.tts
 from src.cam import Cam
-from src.config.helper import singleton
-from src.config.loader import IniConfigLoader
-from src.config.ui import ResManager
 from src.gui.importer.gui_common import DARK_GRAY_BG
 from src.item import Filter, FilterResult, SeasonalAttribute, is_sigil
 from src.item.descr.geometry_locator import LocatorResult, locate_affix_markers
 from src.item.find_descr import find_descr, find_descr_with_diagnostics, get_separator_match_in_crop
+from src.scripts._singleton import singleton
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item, reset_canvas
+from src.settings import get_settings, get_ui_coordinates
 from src.tts import Publisher
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
@@ -88,7 +87,7 @@ class VisionModeWithHighlighting:
         possible_centers += [slot.center for slot in empty_inv]
 
         # add possible centers of equipped items
-        for x in ResManager().pos.possible_centers:
+        for x in get_ui_coordinates().pos.possible_centers:
             possible_centers.append(x)
 
         possible_vendor_centers = possible_centers.copy()
@@ -119,10 +118,10 @@ class VisionModeWithHighlighting:
             return previous_text_y
 
         font_name = "Courier New"
-        minimum_font_size = IniConfigLoader().general.minimum_overlay_font_size
+        minimum_font_size = get_settings().general.minimum_overlay_font_size
 
         font_size = minimum_font_size
-        window_height = ResManager().pos.window_dimensions[1]
+        window_height = get_ui_coordinates().pos.window_dimensions[1]
         if window_height == 1440:
             font_size = minimum_font_size + 1
         elif window_height == 1600:

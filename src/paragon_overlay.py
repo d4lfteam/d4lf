@@ -18,8 +18,6 @@ from PIL import Image, ImageDraw, ImageFont
 from PyQt6.QtCore import QSettings
 
 from src.cam import Cam
-from src.config.loader import IniConfigLoader
-from src.config.ui import ResManager
 from src.gui.importer.gui_common import (
     ACCENT_BLUE,
     ACCENT_GOLD,
@@ -35,6 +33,7 @@ from src.gui.importer.gui_common import (
 )
 from src.item import Filter
 from src.paragon_transform import GRID, NODES_LEN, nodes_to_grid, parse_rotation
+from src.settings import get_settings, get_ui_coordinates
 from src.ui_thread import call_on_ui_thread, get_root, is_alive, post_to_ui_thread
 from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground
 
@@ -150,7 +149,7 @@ def _dpi_scale_for_widget(w: tk.Misc) -> float:
 
 def _params_ini_path() -> Path:
     """Return the user-specific params.ini path."""
-    return IniConfigLoader().user_dir / "params.ini"
+    return get_settings().user_dir / "params.ini"
 
 
 def _load_overlay_settings() -> OverlaySettings:
@@ -435,11 +434,11 @@ class ParagonOverlay(tk.Toplevel):
             if isinstance(val, bool):
                 setattr(self._cfg, attr, val)
 
-        self._config_loader = IniConfigLoader()
+        self._config_loader = get_settings()
         self._config_listener = self._on_config_changed
         self._config_loader.register_change_listener(self._config_listener)
         self._cam = Cam()
-        self._res = ResManager()
+        self._res = get_ui_coordinates()
         self._win_spec = WindowSpec(self._config_loader.advanced_options.process_name)
         self._supports_click_through: bool = sys.platform == "win32"
         self.builds: list[BuildRow] = list(builds)
@@ -739,7 +738,7 @@ class ParagonOverlay(tk.Toplevel):
         if getattr(self._cfg, "gold_frames", False):
             return GOLD
         try:
-            return NODE_BLUE if bool(getattr(IniConfigLoader().general, "colorblind_mode", False)) else NODE_GREEN
+            return NODE_BLUE if bool(getattr(get_settings().general, "colorblind_mode", False)) else NODE_GREEN
         except Exception:
             LOGGER.debug("Failed to determine Paragon overlay accent color.", exc_info=True)
             return NODE_GREEN

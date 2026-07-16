@@ -1,6 +1,6 @@
 import threading
 
-from src.utils.hotkeys import validate_hotkey as validate_hotkey_binding
+# lazy import in validate_hotkey
 
 
 def check_greater_than_zero(v: int) -> int:
@@ -26,6 +26,8 @@ def validate_greater_affix_count(v: int) -> int:
 
 
 def validate_hotkey(k: str) -> str:
+    from src.settings.hotkeys import validate_hotkey as validate_hotkey_binding  # ruff:ignore[import-outside-top-level]
+
     return validate_hotkey_binding(k)
 
 

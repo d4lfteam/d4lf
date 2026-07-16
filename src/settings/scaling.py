@@ -3,9 +3,9 @@ import logging
 import cv2
 import numpy as np
 
-from src.config.data import POSITIONS, Template, load_templates
-from src.config.helper import singleton
-from src.config.settings_models import UiOffsetsModel, UiPosModel, UiRoiModel
+from src.settings.coordinates import COLORS, POSITIONS, Template, load_templates
+from src.settings.models_ui import ColorsModel, UiOffsetsModel, UiPosModel, UiRoiModel
+from src.settings.validation import singleton
 
 LOGGER = logging.getLogger("d4lf")
 
@@ -123,6 +123,10 @@ class ResManager:
     @property
     def roi(self) -> UiRoiModel:
         return self._roi
+
+    @property
+    def colors(self) -> ColorsModel:
+        return COLORS
 
     @property
     def templates(self) -> dict[str, Template]:
