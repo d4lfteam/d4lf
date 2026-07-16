@@ -56,7 +56,7 @@ class ReplayResult:
 # BEGIN EDITABLE REPLAY CONFIGURATION
 # Replace these values with the cropped tooltip and the Item captured from production.
 REPLAY_CONFIG = ReplayConfig(
-    image_path=Path("/Users/chris/Downloads/schoof2.png"),
+    image_path=Path(r"E:\Downloads\test2.png"),
     game_resolution="1920x1080",
     item=Item(
         affixes=[
@@ -68,7 +68,7 @@ REPLAY_CONFIG = ReplayConfig(
         ],
         aspect=Aspect(name="godslayer_crown"),
     ),
-    matched_row_indices=[0, 1, 2],
+    matched_row_indices=[0, 1, 3],
     aspect_matched=True,
 )
 # END EDITABLE REPLAY CONFIGURATION

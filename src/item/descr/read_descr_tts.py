@@ -101,6 +101,14 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
     ):
         # Additionally, if someone imprinted a 3 affix rare we'd think it was a legendary so we need to catch those here
         affixes_num = 3
+    elif item.rarity in [ItemRarity.Legendary, ItemRarity.Unique, ItemRarity.Mythic]:
+        while (
+            next_line_index < len(tts_section)
+            and _is_known_affix_text(tts_section[next_line_index], item.item_type)
+            and not any(tts_section[next_line_index].lower().startswith(x) for x in _AFFIX_STOP_MARKERS)
+        ):
+            affixes_num += 1
+            next_line_index += 1
 
     if item.seasonal_attribute == SeasonalAttribute.bloodied:
         affixes_num = affixes_num + 1
@@ -399,12 +407,7 @@ def _get_affix_from_text(text: str, item_type: ItemType | None = None) -> Affix:
     if "Charm Slot" in text:  # These are never greater even if they look like they are greater
         result.type = AffixType.normal
 
-    affix_dict = Dataloader().affix_dict
-    if item_type == ItemType.HoradricSeal:
-        affix_dict = Dataloader().affix_dict | Dataloader().seal_affix_dict
-    elif item_type == ItemType.Charm:
-        affix_dict = Dataloader().affix_dict | Dataloader().charm_affix_dict
-
+    affix_dict = _get_affix_dictionary(item_type)
     match = rapidfuzz.process.extractOne(
         keep_letters_and_spaces(_REPLACE_COMPARE_RE.sub("", result.text).strip()),
         list(affix_dict),
@@ -426,6 +429,22 @@ def _clean_value_text(text: str) -> str:
     for x in _AFFIX_REPLACEMENTS:
         text = text.replace(x, "")
     return _REPLACE_COMPARE_RE.sub("", text).strip()
+
+
+def _get_affix_dictionary(item_type: ItemType | None) -> dict[str, str]:
+    if item_type == ItemType.HoradricSeal:
+        return Dataloader().affix_dict | Dataloader().seal_affix_dict
+    if item_type == ItemType.Charm:
+        return Dataloader().affix_dict | Dataloader().charm_affix_dict
+    return Dataloader().affix_dict
+
+
+def _is_known_affix_text(text: str, item_type: ItemType | None) -> bool:
+    normalized_text = keep_letters_and_spaces(_REPLACE_COMPARE_RE.sub("", text).strip()).casefold()
+    return any(
+        normalized_text == keep_letters_and_spaces(affix_text).casefold()
+        for affix_text in _get_affix_dictionary(item_type).values()
+    )
 
 
 # For unique aspects
