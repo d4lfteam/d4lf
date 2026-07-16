@@ -82,7 +82,7 @@ def _log_match(stage: str, match: TemplateMatch | None) -> None:
 
 
 def _log_detection(detection: DescrDetection) -> None:
-    _log_match("rarity", detection.rarity_match)
+    _log_match("top_left", detection.top_left_match)
     _log_match("separator", detection.separator_match)
     _log_match("bottom", detection.bottom_match)
     LOGGER.info(
@@ -90,12 +90,7 @@ def _log_detection(detection: DescrDetection) -> None:
         detection.crop_roi,
         None if detection.cropped_descr is None else detection.cropped_descr.shape,
     )
-    LOGGER.info(
-        "Full replay detection: found=%s rarity=%s failure_reason=%s",
-        detection.found,
-        detection.rarity,
-        detection.failure_reason,
-    )
+    LOGGER.info("Full replay detection: found=%s failure_reason=%s", detection.found, detection.failure_reason)
 
 
 def _draw_match(image: np.ndarray, label: str, match, color: tuple[int, int, int]) -> None:
@@ -147,8 +142,8 @@ def _draw_legend(image: np.ndarray) -> None:
 
 def _annotate(image: np.ndarray, detection: DescrDetection, anchor: tuple[int, int]) -> np.ndarray:
     annotated = image.copy()
-    if detection.rarity_match is not None:
-        _draw_match(annotated, "rarity", detection.rarity_match, RAW_MATCH_COLOR)
+    if detection.top_left_match is not None:
+        _draw_match(annotated, "top_left", detection.top_left_match, RAW_MATCH_COLOR)
     if detection.separator_match is not None:
         _draw_match(annotated, "separator", detection.separator_match, SEPARATOR_MATCH_COLOR)
     if detection.bottom_match is not None:
@@ -238,9 +233,8 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
     if not _has_valid_crop(image, detection):
         detection = DescrDetection(
             found=False,
-            rarity=detection.rarity,
             crop_roi=detection.crop_roi,
-            rarity_match=detection.rarity_match,
+            top_left_match=detection.top_left_match,
             separator_match=detection.separator_match,
             bottom_match=detection.bottom_match,
             failure_reason="invalid_crop",

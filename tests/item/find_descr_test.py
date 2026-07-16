@@ -2,7 +2,6 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from src.item.data.rarity import ItemRarity
 from src.item.find_descr import (
     DescrDetection,
     _choose_best_result,
@@ -69,13 +68,13 @@ def test_choose_best_result_returns_no_result_when_preferred_side_is_empty():
 
 
 def test_find_descr_uses_shared_core_without_diagnostics(mocker):
-    detection = DescrDetection(found=True, rarity=ItemRarity.Legendary, crop_roi=[1, 2, 3, 4])
+    detection = DescrDetection(found=True, crop_roi=[1, 2, 3, 4])
     core = mocker.patch("src.item.find_descr._find_descr_core", return_value=detection)
     image = np.zeros((10, 10, 3), dtype=np.uint8)
 
     result = find_descr(image, (100, 200))
 
-    assert result == (True, ItemRarity.Legendary, None, [1, 2, 3, 4])
+    assert result == (True, None, [1, 2, 3, 4])
     core.assert_called_once_with(image, (100, 200), collect_diagnostics=False)
 
 
@@ -130,11 +129,11 @@ def test_find_descr_clips_crop_to_image_before_translating_separator(mocker):
             roi=SimpleNamespace(rel_descr_search_left=[0, 0, 1, 1], rel_descr_search_right=[0, 0, 1, 1]),
         ),
     )
-    rarity_match = _make_match((80, 10), 0.9, name="item_top_left_legendary", region=[70, 0, 20, 20])
+    top_left_match = _make_match((80, 10), 0.9, name="item_top_left_legendary", region=[70, 0, 20, 20])
     separator_match = _make_match((85, 30), 0.9, name="separator", region=[80, 25, 10, 10])
     mocker.patch(
         "src.item.find_descr._template_search",
-        side_effect=[SearchResult(success=True, matches=[rarity_match]), SearchResult()],
+        side_effect=[SearchResult(success=True, matches=[top_left_match]), SearchResult()],
     )
     mocker.patch("src.item.find_descr.find_seperator_short", return_value=separator_match)
     mocker.patch("src.item.find_descr.search", return_value=SearchResult())

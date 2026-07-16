@@ -45,7 +45,7 @@ def test_validate_replay_config_rejects_invalid_inputs(tmp_path, overrides, mess
 
 def test_run_replay_saves_crop_and_composes_full_annotation(tmp_path, monkeypatch, caplog):
     config = make_replay_config(tmp_path)
-    rarity_match = TemplateMatch(
+    top_left_match = TemplateMatch(
         center=(180, 100),
         center_monitor=(180, 100),
         region=[170, 90, 20, 20],
@@ -73,7 +73,7 @@ def test_run_replay_saves_crop_and_composes_full_annotation(tmp_path, monkeypatc
         found=True,
         cropped_descr=np.zeros((200, 240, 3), dtype=np.uint8),
         crop_roi=[120, 80, 240, 200],
-        rarity_match=rarity_match,
+        top_left_match=top_left_match,
         separator_match=separator_match,
         bottom_match=bottom_match,
     )
@@ -91,7 +91,7 @@ def test_run_replay_saves_crop_and_composes_full_annotation(tmp_path, monkeypatc
     assert tuple(output[90, 170]) == (128, 128, 128)
     assert tuple(output[80, 120]) == (0, 255, 0)
     for expected in (
-        "rarity: template=item_top_left_legendary",
+        "top_left: template=item_top_left_legendary",
         "separator: template=item_seperator_short_legendary",
         "bottom: template=item_bottom_edge",
         "crop: roi=[120, 80, 240, 200]",
@@ -102,7 +102,7 @@ def test_run_replay_saves_crop_and_composes_full_annotation(tmp_path, monkeypatc
 
 def test_run_replay_writes_and_displays_full_failure_annotation(tmp_path, monkeypatch):
     config = make_replay_config(tmp_path)
-    detection = DescrDetection(found=False, failure_reason="missing_rarity_border")
+    detection = DescrDetection(found=False, failure_reason="missing_top_left_border")
     monkeypatch.setattr("src.tools.replay_full_screenshot.find_descr_with_diagnostics", lambda *_args: detection)
     displayed = []
     monkeypatch.setattr("src.tools.replay_full_screenshot.show_result", displayed.append)
@@ -110,7 +110,7 @@ def test_run_replay_writes_and_displays_full_failure_annotation(tmp_path, monkey
     result = run_replay(config)
 
     assert not result.found
-    assert result.failure_reason == "missing_rarity_border"
+    assert result.failure_reason == "missing_top_left_border"
     assert len(displayed) == 1
     output = _read_output(result.output_path)
     assert tuple(output[0, 0]) == (0, 0, 255)

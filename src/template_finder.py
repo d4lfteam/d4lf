@@ -268,7 +268,7 @@ def _find_template_matches(
 def search(
     ref: TemplateReferences,
     inp_img: np.ndarray | None = None,
-    threshold: float = 0.68,
+    threshold: float = 0.7,
     roi: Sequence[int | float] | str | None = None,
     use_grayscale: bool = False,
     color_match: ColorMatch = None,

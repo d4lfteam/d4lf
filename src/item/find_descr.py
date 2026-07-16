@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from src.config.ui import ResManager
-from src.item.data.rarity import ItemRarity
 from src.item.descr.texture import find_seperator_short
 from src.template_finder import SearchResult, TemplateMatch, search
 from src.utils.image_operations import crop
@@ -12,17 +11,18 @@ from src.utils.roi_operations import fit_roi_to_window_size, intersect
 if TYPE_CHECKING:
     import numpy as np
 
-ITEM_TOP_LEFT_THRESHOLD = 0.85
+ITEM_TOP_LEFT_THRESHOLD = 0.80
 ITEM_BOTTOM_EDGE_THRESHOLD = 0.54
 
-map_template_rarity = {
-    "item_top_left_common": ItemRarity.Common,
-    "item_top_left_legendary": ItemRarity.Legendary,
-    "item_top_left_magic": ItemRarity.Magic,
-    "item_top_left_mythic": ItemRarity.Mythic,
-    "item_top_left_rare": ItemRarity.Rare,
-    "item_top_left_unique": ItemRarity.Unique,
-}
+ITEM_TOP_LEFT_TEMPLATES = (
+    "item_top_left_common",
+    "item_top_left_legendary",
+    "item_top_left_magic",
+    "item_top_left_magic_1080p_special",
+    "item_top_left_mythic",
+    "item_top_left_rare",
+    "item_top_left_unique",
+)
 
 
 @dataclass(frozen=True)
@@ -30,10 +30,9 @@ class DescrDetection:
     """The production item-description detection result, including its template matches."""
 
     found: bool
-    rarity: ItemRarity | None = None
     cropped_descr: np.ndarray | None = None
     crop_roi: list[int] | None = None
-    rarity_match: TemplateMatch | None = None
+    top_left_match: TemplateMatch | None = None
     separator_match: TemplateMatch | None = None
     bottom_match: TemplateMatch | None = None
     failure_reason: str | None = None
@@ -63,7 +62,7 @@ def _template_search(img: np.ndarray, anchor: int, roi: np.ndarray, take_debug_s
     ok, roi_left = fit_roi_to_window_size(roi_copy, ResManager().pos.window_dimensions)
     if ok:
         return search(
-            ref=list(map_template_rarity.keys()),
+            ref=list(ITEM_TOP_LEFT_TEMPLATES),
             inp_img=img,
             roi=roi_left,
             threshold=ITEM_TOP_LEFT_THRESHOLD,
@@ -73,11 +72,9 @@ def _template_search(img: np.ndarray, anchor: int, roi: np.ndarray, take_debug_s
     return SearchResult(success=False)
 
 
-def find_descr(
-    img: np.ndarray, anchor: tuple[int, int]
-) -> tuple[bool, ItemRarity | None, np.ndarray | None, list[int] | None]:
+def find_descr(img: np.ndarray, anchor: tuple[int, int]) -> tuple[bool, np.ndarray | None, list[int] | None]:
     detection = _find_descr_core(img, anchor, collect_diagnostics=False)
-    return detection.found, detection.rarity, detection.cropped_descr, detection.crop_roi
+    return detection.found, detection.cropped_descr, detection.crop_roi
 
 
 def find_descr_with_diagnostics(img: np.ndarray, anchor: tuple[int, int]) -> DescrDetection:
@@ -128,10 +125,8 @@ def _find_descr_core(img: np.ndarray, anchor: tuple[int, int], *, collect_diagno
     res_right = _template_search(img, anchor[0], ResManager().roi.rel_descr_search_right)
 
     res = _choose_best_result(res_left, res_right, anchor[0], window_width)
-
     if res.success and res.matches:
         match = res.matches[0]
-        rarity = map_template_rarity[match.name.lower()]
         # find equipe template
         offset_top = int(window_height * 0.03)
         roi_y = match.region[1] + offset_top
@@ -169,8 +164,7 @@ def _find_descr_core(img: np.ndarray, anchor: tuple[int, int], *, collect_diagno
             if crop_roi is None:
                 return DescrDetection(
                     found=False,
-                    rarity=rarity,
-                    rarity_match=match if collect_diagnostics else None,
+                    top_left_match=match if collect_diagnostics else None,
                     separator_match=separator_match if collect_diagnostics else None,
                     bottom_match=bottom_match if collect_diagnostics else None,
                     failure_reason="invalid_crop",
@@ -180,16 +174,15 @@ def _find_descr_core(img: np.ndarray, anchor: tuple[int, int], *, collect_diagno
             cropped_descr = crop(img, crop_roi_tuple)
             return DescrDetection(
                 found=True,
-                rarity=rarity,
                 cropped_descr=cropped_descr,
                 crop_roi=crop_roi,
-                rarity_match=match if collect_diagnostics else None,
+                top_left_match=match if collect_diagnostics else None,
                 separator_match=separator_match if collect_diagnostics else None,
                 bottom_match=bottom_match if collect_diagnostics else None,
             )
 
         return DescrDetection(
-            found=False, rarity_match=match if collect_diagnostics else None, failure_reason="missing_separator"
+            found=False, top_left_match=match if collect_diagnostics else None, failure_reason="missing_separator"
         )
 
-    return DescrDetection(found=False, failure_reason="missing_rarity_border")
+    return DescrDetection(found=False, failure_reason="missing_top_left_border")

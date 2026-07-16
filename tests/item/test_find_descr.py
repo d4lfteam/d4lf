@@ -18,4 +18,4 @@ def test_find_descr_ignores_successful_search_without_matches(monkeypatch) -> No
     monkeypatch.setattr(find_descr_module, "ResManager", lambda: resources)
     monkeypatch.setattr(find_descr_module, "_template_search", lambda *_args, **_kwargs: next(search_results))
 
-    assert find_descr_module.find_descr(np.zeros((20, 20, 3), dtype=np.uint8), (0, 0)) == (False, None, None, None)
+    assert find_descr_module.find_descr(np.zeros((20, 20, 3), dtype=np.uint8), (0, 0)) == (False, None, None)

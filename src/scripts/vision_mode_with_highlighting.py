@@ -352,7 +352,7 @@ class VisionModeWithHighlighting:
                     if not is_confirmed:
                         time.sleep(_FRAME_RETRY_DELAY_SECONDS)
                         self.check_for_thread_cancellation(cancel_event)
-                        found_check, _, cropped_descr_check, _ = find_descr(Cam().grab(), item_center)
+                        found_check, cropped_descr_check, _ = find_descr(Cam().grab(), item_center)
                         if not found_check:
                             continue
                         score = compare_histograms(cropped_descr, cropped_descr_check)
@@ -484,7 +484,7 @@ class VisionModeWithHighlighting:
         try:
             while True:
                 self.check_for_thread_cancellation(cancel_event)
-                found_check, _, _, _ = find_descr(Cam().grab(), item_center)
+                found_check, _, _ = find_descr(Cam().grab(), item_center)
                 if not found_check:
                     self.request_clear()
                     self.clear_when_item_not_selected_thread = None
