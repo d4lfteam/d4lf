@@ -59,13 +59,13 @@ def select_source(url: str) -> ImportSource:
 
         return _SelectedSource("d4builds", import_d4builds)
     if host == "infinitybuilds.gg" or host.endswith(".infinitybuilds.gg"):
-        from src.gui.importer.infinitybuilds import import_infinitybuilds  # ruff:ignore[import-outside-top-level]
+        from src.importing.infinitybuilds import import_infinitybuilds  # ruff:ignore[import-outside-top-level]
 
-        return _SelectedSource("infinitybuilds", import_infinitybuilds, normalized_request=False)
+        return _SelectedSource("infinitybuilds", import_infinitybuilds)
     if host == "mobalytics.gg" or host.endswith(".mobalytics.gg"):
-        from src.gui.importer.mobalytics import import_mobalytics  # ruff:ignore[import-outside-top-level]
+        from src.importing.mobalytics import import_mobalytics  # ruff:ignore[import-outside-top-level]
 
-        return _SelectedSource("mobalytics", import_mobalytics, normalized_request=False)
+        return _SelectedSource("mobalytics", import_mobalytics)
     message = f"Unsupported build-guide URL: {url}"
     raise UnsupportedImportSourceError(message)
 

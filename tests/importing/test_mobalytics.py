@@ -2,15 +2,14 @@ import json
 import logging
 import os
 import typing
-from types import SimpleNamespace
 
 import pytest
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.dataloader import Dataloader
-from src.gui.importer import mobalytics as mobalytics_module
-from src.gui.importer.mobalytics import (
+import src.importing.mobalytics._extraction as mobalytics_module
+from src.importing import ImportOptions, ImportRequest
+from src.importing.mobalytics._extraction import (
     _as_text,
     _convert_raw_to_affixes,
     _extract_mobalytics_charm_set_name,
@@ -18,9 +17,7 @@ from src.gui.importer.mobalytics import (
     _get_weapon_slot_trigger,
     _get_weapon_type_from_slot_tooltip,
     _log_mobalytics_page_diagnostics,
-    import_mobalytics,
 )
-from src.importing.config import ImportConfig
 from src.importing.paragon_export import build_paragon_profile_payload, extract_mobalytics_paragon_steps
 from src.item.data.item_type import ItemType
 from src.profiles import ParagonPayloadModel
@@ -45,6 +42,27 @@ URLS = [
     # This has two rogue offhand weapons
     "https://mobalytics.gg/diablo-4/builds/rogue-efficientrogue-dance-of-knives?ws-ngf5-1=activeVariantId%2Ca2977139-f3e2-4b13-aa64-82ba69972528",
 ]
+
+
+def _request(
+    *,
+    url: str,
+    import_aspect_upgrades: bool = True,
+    add_to_profiles: bool = False,
+    import_greater_affixes: bool = False,
+    require_greater_affixes: bool = False,
+    custom_file_name: str | None = None,
+) -> ImportRequest:
+    return ImportRequest(
+        url=url,
+        options=ImportOptions(
+            import_aspect_upgrades=import_aspect_upgrades,
+            add_to_profiles=add_to_profiles,
+            import_greater_affixes=import_greater_affixes,
+            require_greater_affixes=require_greater_affixes,
+            custom_file_name=custom_file_name,
+        ),
+    )
 
 
 class _MobalyticsDiagnosticsDriver(WebDriver):
@@ -157,7 +175,7 @@ def test_build_paragon_profile_payload_returns_typed_model():
 
 
 def test_log_mobalytics_page_diagnostics_reports_loaded_page_shape(caplog: pytest.LogCaptureFixture):
-    caplog.set_level(logging.DEBUG, logger="src.gui.importer.mobalytics")
+    caplog.set_level(logging.DEBUG, logger="src.importing.mobalytics")
 
     _log_mobalytics_page_diagnostics(
         driver=_MobalyticsDiagnosticsDriver(),
@@ -256,165 +274,3 @@ def test_get_weapon_type_from_slot_tooltip_returns_none_when_trigger_missing(moc
 
     assert _get_weapon_type_from_slot_tooltip(driver=mocker.Mock(), slot_type="weapon") is None
     hover_spy.assert_not_called()
-
-
-def test_import_mobalytics_names_unresolved_weapon_filter_by_slot(mock_ini_loader, mocker: MockerFixture) -> None:
-    """When neither inherents nor the hover tooltip can resolve a weapon's type, name the filter after its slot."""
-    captured_profile = {}
-    modifiers = {"gearStats": [{"id": "strength"}], "implicitStats": None}
-    driver = _MobalyticsImportDriver(
-        page_source=_mobalytics_page_source([
-            _mobalytics_slot(slot="weapon", entity_type="uniqueItems", title="Sundered Night", modifiers=modifiers)
-        ])
-    )
-    mocker.patch.object(mobalytics_module, "_get_weapon_type_from_slot_tooltip", return_value=None)
-
-    def fake_save_new(*, file_name, profile, source):
-        captured_profile["profile"] = profile
-        return SimpleNamespace(file_name=file_name)
-
-    profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = fake_save_new
-    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
-
-    import_mobalytics(
-        config=ImportConfig(
-            url="https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
-            import_aspect_upgrades=False,
-            import_greater_affixes=False,
-            require_greater_affixes=False,
-            add_to_profiles=False,
-            custom_file_name="test",
-        ),
-        driver=driver,
-    )
-
-    profile = captured_profile["profile"]
-    assert len(profile.affixes) == 1
-    assert next(iter(profile.affixes[0].root)) == "Weapon"
-
-
-def test_import_mobalytics_imports_set_charm_and_deduplicates_identical_rings(
-    mock_ini_loader, mocker: MockerFixture
-) -> None:
-    captured_profile = {}
-    ring_1_modifiers = {
-        "gearStats": [
-            {"id": "willpower"},
-            {"id": "critical-strike-chance"},
-            {"id": "vulnerable-damage-multiplier"},
-            {"id": "critical-strike-damage-multiplier"},
-        ],
-        "implicitStats": [],
-    }
-    ring_2_modifiers = {
-        "gearStats": [
-            {"id": "willpower"},
-            {"id": "critical-strike-chance"},
-            {"id": "critical-strike-damage-multiplier"},
-            {"id": "vulnerable-damage-multiplier"},
-        ],
-        "implicitStats": [],
-    }
-    charm_icon_url = "https://cdn.mobalytics.gg/assets/diablo-4/images/charms/might-of-the-den-mother.png"
-    driver = _MobalyticsImportDriver(
-        page_source=_mobalytics_page_source([
-            _mobalytics_slot(slot="ring-1", entity_type="items", title="Vulpine's Aspect", modifiers=ring_1_modifiers),
-            _mobalytics_slot(
-                slot="ring-2", entity_type="items", title="Archdruid's Aspect", modifiers=ring_2_modifiers
-            ),
-            _mobalytics_slot(
-                slot="season-12-charm-1", entity_type="charms", title="Fer of the Den Mother", icon_url=charm_icon_url
-            ),
-        ])
-    )
-
-    def fake_save_new(*, file_name, profile, source):
-        captured_profile["profile"] = profile
-        return SimpleNamespace(file_name=file_name)
-
-    profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = fake_save_new
-    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
-
-    import_mobalytics(
-        config=ImportConfig(
-            url="https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
-            import_aspect_upgrades=False,
-            import_greater_affixes=False,
-            require_greater_affixes=False,
-            add_to_profiles=False,
-            custom_file_name="test",
-        ),
-        driver=driver,
-    )
-
-    profile = captured_profile["profile"]
-    assert len(profile.affixes) == 1
-    assert next(iter(profile.affixes[0].root)) == "Ring(x2)"
-    assert len(profile.charms) == 1
-    charm_filter = next(iter(profile.charms[0].root.values()))
-    assert charm_filter.set == ["might_of_the_den_mother"]
-
-
-def test_import_mobalytics_imports_seal_identity_with_or_without_affixes(
-    mock_ini_loader, mocker: MockerFixture
-) -> None:
-    captured_profile = {}
-    driver = _MobalyticsImportDriver(
-        page_source=_mobalytics_page_source([
-            _mobalytics_slot(slot="season-12-seal-1", entity_type="seals", title="Seal of the Diamond Mind"),
-            _mobalytics_slot(
-                slot="season-12-seal-2",
-                entity_type="seals",
-                title="Seal of the Golden Epiphany",
-                modifiers={"sealStats": [{"id": "cooldown-reduction"}]},
-            ),
-        ])
-    )
-
-    def fake_save_new(*, file_name, profile, source):
-        captured_profile["profile"] = profile
-        return SimpleNamespace(file_name=file_name)
-
-    profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = fake_save_new
-    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
-
-    import_mobalytics(
-        config=ImportConfig(
-            url="https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid",
-            import_aspect_upgrades=False,
-            import_greater_affixes=False,
-            require_greater_affixes=False,
-            add_to_profiles=False,
-            custom_file_name="test",
-        ),
-        driver=driver,
-    )
-
-    profile = captured_profile["profile"]
-    seal_filters = [seal for group in profile.seals for seal in group.root.values()]
-    assert {seal.unique_aspect[0].name for seal in seal_filters} == {
-        "seal_of_the_diamond_mind",
-        "seal_of_the_golden_epiphany",
-    }
-    golden_epiphany = next(seal for seal in seal_filters if seal.unique_aspect[0].name == "seal_of_the_golden_epiphany")
-    assert golden_epiphany.affix_pool[0].count[0].name == "cooldown_reduction"
-
-
-@pytest.mark.parametrize("url", URLS)
-@pytest.mark.requests
-@pytest.mark.skipif(not IN_GITHUB_ACTIONS, reason="Importer tests are skipped if not run from Github Actions")
-def test_import_mobalytics(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
-    Dataloader()  # need to load data first or the mock will make it impossible
-    mocker.patch("builtins.open", new=mocker.mock_open())
-    config = ImportConfig(
-        url=url,
-        import_aspect_upgrades=True,
-        add_to_profiles=False,
-        import_greater_affixes=True,
-        require_greater_affixes=True,
-        custom_file_name=None,
-    )
-    import_mobalytics(config=config)

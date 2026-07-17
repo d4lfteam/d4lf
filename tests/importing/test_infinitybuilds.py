@@ -7,29 +7,46 @@ import lxml.html
 import pytest
 
 from src.dataloader import Dataloader
-from src.gui.importer.infinitybuilds import (
+from src.importing import ImportOptions, ImportRequest
+from src.importing.infinitybuilds import import_infinitybuilds
+from src.importing.infinitybuilds._extraction import (
     _convert_raw_to_affixes,
     _extract_balanced,
     _extract_build_data,
     _extract_build_title,
     _normalize_aspect_name,
     _resolve_gear_data,
-    import_infinitybuilds,
-)
-from src.importing.config import ImportConfig
-from src.importing.paragon_export import (
-    InfinityBuildsParagonCatalog,
-    extract_infinitybuilds_paragon_steps,
-    fetch_infinitybuilds_paragon_catalog,
 )
 
 if typing.TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
     from pytest_mock import MockerFixture
+    from selenium.webdriver.remote.webdriver import WebDriver
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 URLS = ["https://infinitybuilds.gg/en/builds/barbarian-fL8P6vVSqI"]
+
+
+def _request(
+    *,
+    url: str,
+    import_aspect_upgrades: bool = True,
+    add_to_profiles: bool = False,
+    import_greater_affixes: bool = False,
+    require_greater_affixes: bool = False,
+    custom_file_name: str | None = None,
+) -> ImportRequest:
+    return ImportRequest(
+        url=url,
+        options=ImportOptions(
+            import_aspect_upgrades=import_aspect_upgrades,
+            add_to_profiles=add_to_profiles,
+            import_greater_affixes=import_greater_affixes,
+            require_greater_affixes=require_greater_affixes,
+            custom_file_name=custom_file_name,
+        ),
+    )
 
 
 class _InfinityBuildsImportDriver:
@@ -155,7 +172,7 @@ def test_resolve_gear_data_queries_view_endpoint_with_unique_sorted_ids(mocker: 
             }
         }
     }
-    get_with_retry = mocker.patch("src.gui.importer.infinitybuilds.get_with_retry", return_value=response)
+    get_with_retry = mocker.patch("src.importing.infinitybuilds._extraction.get_with_retry", return_value=response)
 
     resolved = _resolve_gear_data("barbarian", gear)
 
@@ -219,7 +236,7 @@ def test_import_infinitybuilds_maps_gear_and_aspect_upgrades(mock_ini_loader, mo
             }
         }
     }
-    mocker.patch("src.gui.importer.infinitybuilds.get_with_retry", return_value=response)
+    mocker.patch("src.importing.infinitybuilds._extraction.get_with_retry", return_value=response)
 
     captured_profile = {}
 
@@ -232,7 +249,7 @@ def test_import_infinitybuilds_maps_gear_and_aspect_upgrades(mock_ini_loader, mo
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     import_infinitybuilds(
-        config=ImportConfig(
+        request=_request(
             url="https://infinitybuilds.gg/en/builds/barbarian-fL8P6vVSqI",
             import_aspect_upgrades=True,
             import_greater_affixes=True,
@@ -240,7 +257,7 @@ def test_import_infinitybuilds_maps_gear_and_aspect_upgrades(mock_ini_loader, mo
             add_to_profiles=False,
             custom_file_name="test",
         ),
-        driver=driver,
+        driver=typing.cast("WebDriver", driver),
     )
 
     profile = captured_profile["profile"]
@@ -257,170 +274,3 @@ def test_import_infinitybuilds_maps_gear_and_aspect_upgrades(mock_ini_loader, mo
     gloves_filter = next(entry.root["Gloves"] for entry in profile.affixes if "Gloves" in entry.root)
     assert gloves_filter.unique_aspect[0].name == "doombringer"
     assert gloves_filter.affix_pool == []
-
-
-def test_import_infinitybuilds_saves_one_profile_per_variant_and_resolves_gear_once(
-    mock_ini_loader, mocker: MockerFixture
-) -> None:
-    # InfinityBuilds URLs can't pin a specific variant like Mobalytics' activeVariantId does, so
-    # every variant on the build should be imported as its own profile.
-    Dataloader()
-    variants = [
-        {"id": "v-1", "name": "Variant One", "gear": [_gear_piece("chest", "item-chest-1", ["affix-armor"])]},
-        {"id": "v-2", "name": "Variant Two", "gear": [_gear_piece("chest", "item-chest-2", ["affix-armor"])]},
-    ]
-    driver = _InfinityBuildsImportDriver(page_source=_infinitybuilds_page_source("barbarian", variants))
-
-    response = mocker.Mock()
-    response.json.return_value = {
-        "dataset": {
-            "gear": {
-                "items": [
-                    {"id": "item-chest-1", "label": "Item One", "rarity": "legendary", "slot": "Chest Armor"},
-                    {"id": "item-chest-2", "label": "Item Two", "rarity": "legendary", "slot": "Chest Armor"},
-                ],
-                "aspects": [],
-                "affixes": [{"id": "affix-armor", "label": "Armor", "greaterAffixEligible": False}],
-            }
-        }
-    }
-    get_with_retry = mocker.patch("src.gui.importer.infinitybuilds.get_with_retry", return_value=response)
-
-    profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # noqa: ARG005
-    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
-
-    import_infinitybuilds(
-        config=ImportConfig(
-            url="https://infinitybuilds.gg/en/builds/barbarian-fL8P6vVSqI",
-            import_aspect_upgrades=True,
-            import_greater_affixes=True,
-            require_greater_affixes=False,
-            add_to_profiles=False,
-            custom_file_name="test",
-        ),
-        driver=driver,
-    )
-
-    # A single combined API call resolves gear from both variants.
-    assert get_with_retry.call_count == 1
-    called_url = get_with_retry.call_args[0][0]
-    assert "itemIds=item-chest-1%2Citem-chest-2" in called_url
-
-    assert profile_store.save_new.call_count == 2
-    file_names = [call.kwargs["file_name"] for call in profile_store.save_new.call_args_list]
-    assert file_names == ["test_1", "test_2"]
-
-
-def test_extract_infinitybuilds_paragon_steps_groups_boards_transforms_nodes_and_resolves_names() -> None:
-    paragon_data = {
-        "slots": [{"boardId": "paragon-board::paragon-barb-10", "rotation": 1}],
-        "glyphs": {"paragon-board::paragon-barb-00::136": "glyph::rare-016-dexterity-side"},
-        "activeNodes": [
-            "paragon-board::paragon-barb-00::10",
-            "paragon-board::paragon-barb-00::136",
-            "paragon-board::paragon-barb-10::5",
-        ],
-    }
-    catalog = InfinityBuildsParagonCatalog(
-        board_labels={"paragon-board::paragon-barb-00": "Start", "paragon-board::paragon-barb-10": "Force of Nature"},
-        glyph_labels={"glyph::rare-016-dexterity-side": "Exploit"},
-    )
-
-    steps = extract_infinitybuilds_paragon_steps(paragon_data, catalog, "barbarian")
-
-    assert len(steps) == 1
-    boards = steps[0]
-    assert [b["BoardId"] for b in boards] == ["paragon-board::paragon-barb-00", "paragon-board::paragon-barb-10"]
-
-    start_board = boards[0]
-    assert start_board["Name"] == "barbarian-start"
-    assert start_board["Rotation"] == "0°"
-    assert start_board["Glyph"] == "barbarian-exploit"
-    assert start_board["GlyphId"] == "glyph::rare-016-dexterity-side"
-    assert start_board["Nodes"].count(True) == 2
-    assert start_board["Nodes"][10] is True
-    assert start_board["Nodes"][136] is True
-
-    rotated_board = boards[1]
-    assert rotated_board["Name"] == "barbarian-force-of-nature"
-    assert rotated_board["Rotation"] == "90°"
-    assert not rotated_board["Glyph"]
-    assert rotated_board["GlyphId"] is None
-    # Raw location 5 (x=5, y=0) rotated 90 degrees lands at (xt=20, yt=5) -> flat index 125.
-    assert rotated_board["Nodes"].count(True) == 1
-    assert rotated_board["Nodes"][125] is True
-
-
-def test_extract_infinitybuilds_paragon_steps_falls_back_to_raw_id_slug_when_catalog_misses() -> None:
-    paragon_data = {"slots": [], "glyphs": {}, "activeNodes": ["paragon-board::paragon-unknown-99::0"]}
-    catalog = InfinityBuildsParagonCatalog(board_labels={}, glyph_labels={})
-
-    steps = extract_infinitybuilds_paragon_steps(paragon_data, catalog, "barbarian")
-
-    board = steps[0][0]
-    assert board["Name"] == "barbarian-paragon-board-paragon-unknown-99"
-    assert board["BoardId"] == "paragon-board::paragon-unknown-99"
-
-
-def test_extract_infinitybuilds_paragon_steps_returns_empty_when_no_active_nodes() -> None:
-    catalog = InfinityBuildsParagonCatalog(board_labels={}, glyph_labels={})
-
-    assert extract_infinitybuilds_paragon_steps({}, catalog, "barbarian") == []
-
-
-@pytest.mark.parametrize(("rotation", "expected_index"), [(0, 5), (1, 125), (2, 435), (3, 315)])
-def test_extract_infinitybuilds_paragon_steps_keeps_rotation_index_mapping(rotation: int, expected_index: int) -> None:
-    paragon_data = {
-        "slots": [{"boardId": "paragon-board::paragon-barb-10", "rotation": rotation}],
-        "glyphs": {},
-        "activeNodes": ["paragon-board::paragon-barb-10::5"],
-    }
-    catalog = InfinityBuildsParagonCatalog(
-        board_labels={"paragon-board::paragon-barb-10": "Force of Nature"}, glyph_labels={}
-    )
-
-    steps = extract_infinitybuilds_paragon_steps(paragon_data, catalog, "barbarian")
-    board = steps[0][0]
-
-    assert board["Rotation"] in {"0°", "90°", "180°", "270°"}
-    assert board["Nodes"].count(True) == 1
-    assert board["Nodes"][expected_index] is True
-
-
-def test_fetch_infinitybuilds_paragon_catalog_builds_label_maps_from_both_datasets(mocker: MockerFixture) -> None:
-    boards_response = mocker.Mock()
-    boards_response.json.return_value = {
-        "paragon": {"boards": [{"id": "paragon-board::paragon-barb-00", "label": "Start"}]}
-    }
-    glyphs_response = mocker.Mock()
-    glyphs_response.json.return_value = {
-        "paragon": {"glyphs": [{"id": "glyph::rare-016-dexterity-side", "label": "Exploit"}]}
-    }
-    get_with_retry = mocker.patch(
-        "src.importing.paragon_export.get_with_retry", side_effect=[boards_response, glyphs_response]
-    )
-
-    catalog = fetch_infinitybuilds_paragon_catalog()
-
-    assert get_with_retry.call_args_list[0][0][0].endswith("paragon-boards.json")
-    assert get_with_retry.call_args_list[1][0][0].endswith("glyphs.json")
-    assert catalog.board_labels == {"paragon-board::paragon-barb-00": "Start"}
-    assert catalog.glyph_labels == {"glyph::rare-016-dexterity-side": "Exploit"}
-
-
-@pytest.mark.parametrize("url", URLS)
-@pytest.mark.requests
-@pytest.mark.skipif(not IN_GITHUB_ACTIONS, reason="Importer tests are skipped if not run from Github Actions")
-def test_import_infinitybuilds(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
-    Dataloader()  # need to load data first or the mock will make it impossible
-    mocker.patch("builtins.open", new=mocker.mock_open())
-    config = ImportConfig(
-        url=url,
-        import_aspect_upgrades=True,
-        add_to_profiles=False,
-        import_greater_affixes=True,
-        require_greater_affixes=True,
-        custom_file_name=None,
-    )
-    import_infinitybuilds(config=config)

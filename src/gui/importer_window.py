@@ -39,10 +39,10 @@ FILENAME_PART_LABELS = {
 }
 GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP = "Select at least one filename part or enter a custom file name."
 IMPORTER_WINDOW_LOGGERS = (
-    "src.gui.importer.mobalytics",
+    "src.importing.mobalytics",
     "src.importing.maxroll",
     "src.importing.d4builds",
-    "src.gui.importer.infinitybuilds",
+    "src.importing.infinitybuilds",
     "src.gui.importer.gui_common",
     "src.importing.pipeline",
     "src.profiles",
