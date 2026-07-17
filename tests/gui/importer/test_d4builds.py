@@ -9,10 +9,13 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
 from src.dataloader import Dataloader
-from src.gui.importer import d4builds as d4builds_module
-from src.gui.importer import paragon_export as paragon_export_module
-from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import build_paragon_profile_payload
+from src.importing import ImportOptions, ImportRequest
+from src.importing import paragon_export as paragon_export_module
+from src.importing.d4builds import adapter as d4builds_module
+from src.importing.d4builds import constants as d4builds_constants
+from src.importing.d4builds import extraction as _d4builds_helpers
+from src.importing.d4builds import metadata as d4builds_metadata
+from src.importing.paragon_export import build_paragon_profile_payload
 from src.item.data.item_type import ItemType
 
 if typing.TYPE_CHECKING:
@@ -59,7 +62,7 @@ def test_extract_build_metadata_from_planner_header() -> None:
         </div>
     """)
 
-    assert d4builds_module._extract_build_metadata(data) == (
+    assert d4builds_metadata._extract_build_metadata(data) == (
         "Necromancer",
         "Rob's Golem Minion Necro (S4) Pit 142+",
         "4",
@@ -87,7 +90,7 @@ def test_extract_build_metadata_prefers_description_for_guides() -> None:
         </div>
     """)
 
-    assert d4builds_module._extract_build_metadata(data) == (
+    assert d4builds_metadata._extract_build_metadata(data) == (
         "Paladin",
         "Rob's Cpt. America (S12)",
         "12",
@@ -113,7 +116,7 @@ def test_extract_d4builds_season_number_from_gear_dropdown() -> None:
         </div>
     """)
 
-    assert d4builds_module._extract_d4builds_season_number(data) == "12"
+    assert d4builds_metadata._extract_d4builds_season_number(data) == "12"
 
 
 def test_create_seal_filter_from_tooltip_html_matches_tooltip_values() -> None:
@@ -134,7 +137,7 @@ def test_create_seal_filter_from_tooltip_html_matches_tooltip_values() -> None:
         </div>
     """
 
-    seal_filter = d4builds_module._create_seal_filter_from_tooltip_html(tooltip_html=tooltip_html, require_gas=False)
+    seal_filter = _d4builds_helpers._create_seal_filter_from_tooltip_html(tooltip_html=tooltip_html, require_gas=False)
     if seal_filter is None:
         pytest.fail("Expected seal tooltip to produce a filter")
 
@@ -158,7 +161,7 @@ def test_create_charm_filter_from_tooltip_html_reads_set_name_and_affixes() -> N
         </div>
     """
 
-    charm_filter, set_name = d4builds_module._create_charm_filter_from_tooltip_html(
+    charm_filter, set_name = _d4builds_helpers._create_charm_filter_from_tooltip_html(
         tooltip_html=tooltip_html, require_gas=False
     )
     if charm_filter is None:
@@ -179,7 +182,7 @@ def test_create_charm_filter_from_tooltip_html_does_not_guess_set_from_title() -
         </div>
     """
 
-    charm_filter, set_name = d4builds_module._create_charm_filter_from_tooltip_html(
+    charm_filter, set_name = _d4builds_helpers._create_charm_filter_from_tooltip_html(
         tooltip_html=tooltip_html, require_gas=False
     )
     if charm_filter is None:
@@ -197,7 +200,7 @@ def test_create_charm_filter_from_tooltip_html_reads_unique_aspect() -> None:
         </div>
     """
 
-    charm_filter, set_name = d4builds_module._create_charm_filter_from_tooltip_html(
+    charm_filter, set_name = _d4builds_helpers._create_charm_filter_from_tooltip_html(
         tooltip_html=tooltip_html, require_gas=False
     )
     if charm_filter is None:
@@ -216,7 +219,7 @@ def test_weapon_type_from_unique_tooltip_html_reads_bow() -> None:
         </div>
     """
 
-    assert d4builds_module._weapon_type_from_unique_tooltip_html(tooltip_html) == ItemType.Bow
+    assert _d4builds_helpers._weapon_type_from_unique_tooltip_html(tooltip_html) == ItemType.Bow
 
 
 def test_weapon_type_from_unique_tooltip_html_reads_one_handed_dagger() -> None:
@@ -227,7 +230,7 @@ def test_weapon_type_from_unique_tooltip_html_reads_one_handed_dagger() -> None:
         </div>
     """
 
-    assert d4builds_module._weapon_type_from_unique_tooltip_html(tooltip_html) == ItemType.Dagger
+    assert _d4builds_helpers._weapon_type_from_unique_tooltip_html(tooltip_html) == ItemType.Dagger
 
 
 def test_weapon_type_from_unique_tooltip_html_returns_none_for_aspect_tooltip() -> None:
@@ -240,11 +243,11 @@ def test_weapon_type_from_unique_tooltip_html_returns_none_for_aspect_tooltip() 
         </div>
     """
 
-    assert d4builds_module._weapon_type_from_unique_tooltip_html(tooltip_html) is None
+    assert _d4builds_helpers._weapon_type_from_unique_tooltip_html(tooltip_html) is None
 
 
 def test_weapon_type_from_unique_tooltip_html_returns_none_for_empty_html() -> None:
-    assert d4builds_module._weapon_type_from_unique_tooltip_html("") is None
+    assert _d4builds_helpers._weapon_type_from_unique_tooltip_html("") is None
 
 
 class _FakePaperdollItem(WebElement):
@@ -256,9 +259,9 @@ class _FakePaperdollItem(WebElement):
     def find_elements(self, by: str = By.ID, value: str | None = None) -> list[WebElement]:
         if value is None:
             value = str(by)
-        if value == d4builds_module.PAPERDOLL_ITEM_SLOT_CSS:
+        if value == d4builds_constants.PAPERDOLL_ITEM_SLOT_CSS:
             return [_FakeTextElement(self._slot_text)]
-        if value == d4builds_module.PAPERDOLL_GEAR_ICON_CSS:
+        if value == d4builds_constants.PAPERDOLL_GEAR_ICON_CSS:
             return [self._icon]
         msg = f"unexpected selector: {value}"
         raise AssertionError(msg)
@@ -294,12 +297,12 @@ def test_get_weapon_paperdoll_icons_maps_slot_to_icon_without_hovering(mocker: M
         def find_elements(self, by: str | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
             if value is None:
                 value = str(by)
-            assert value == d4builds_module.PAPERDOLL_WEAPON_ITEM_CSS
+            assert value == d4builds_constants.PAPERDOLL_WEAPON_ITEM_CSS
             return list(items)
 
-    hover_spy = mocker.patch.object(d4builds_module, "hover_and_get_tooltip_html")
+    hover_spy = mocker.patch.object(_d4builds_helpers, "hover_and_get_tooltip_html")
 
-    result = d4builds_module._get_weapon_paperdoll_icons(driver=_FakeDriver())
+    result = _d4builds_helpers._get_weapon_paperdoll_icons(driver=_FakeDriver())
 
     assert result == {"Ranged Weapon": bow_icon, "Dual-Wield Weapon 1": dagger_icon}
     hover_spy.assert_not_called()
@@ -316,10 +319,10 @@ def test_get_weapon_paperdoll_icons_renames_2h_weapon_slot() -> None:
         def find_elements(self, by: str | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
             if value is None:
                 value = str(by)
-            assert value == d4builds_module.PAPERDOLL_WEAPON_ITEM_CSS
+                assert value == d4builds_constants.PAPERDOLL_WEAPON_ITEM_CSS
             return [_FakePaperdollItem("2H Weapon", staff_icon)]
 
-    result = d4builds_module._get_weapon_paperdoll_icons(driver=_FakeDriver())
+    result = _d4builds_helpers._get_weapon_paperdoll_icons(driver=_FakeDriver())
 
     assert result == {"Weapon": staff_icon}
 
@@ -327,18 +330,18 @@ def test_get_weapon_paperdoll_icons_renames_2h_weapon_slot() -> None:
 def test_get_weapon_type_from_paperdoll_tooltip_hovers_given_icon(mocker: MockerFixture) -> None:
     icon = _FakeIcon()
     mocker.patch.object(
-        d4builds_module,
+        _d4builds_helpers,
         "hover_and_get_tooltip_html",
         return_value='<div class="unique__tooltip"><div class="unique__tooltip__slot">Mythic Unique Bow</div></div>',
     )
 
-    result = d4builds_module._get_weapon_type_from_paperdoll_tooltip(driver=mocker.Mock(), icon=icon)
+    result = _d4builds_helpers._get_weapon_type_from_paperdoll_tooltip(driver=mocker.Mock(), icon=icon)
 
     assert result == ItemType.Bow
 
 
 def test_match_d4builds_tooltip_affix_uses_guessed_charm_set_for_seal_affixes() -> None:
-    affix_name = d4builds_module._match_d4builds_tooltip_affix(
+    affix_name = _d4builds_helpers._match_d4builds_tooltip_affix(
         text="Maximum Resolve", item_type=ItemType.HoradricSeal, guessed_set_name="arms_of_arreat"
     )
 
@@ -346,7 +349,7 @@ def test_match_d4builds_tooltip_affix_uses_guessed_charm_set_for_seal_affixes() 
 
 
 def test_match_d4builds_tooltip_affix_keeps_generic_seal_match_with_guessed_set() -> None:
-    affix_name = d4builds_module._match_d4builds_tooltip_affix(
+    affix_name = _d4builds_helpers._match_d4builds_tooltip_affix(
         text="Cooldown Reduction", item_type=ItemType.HoradricSeal, guessed_set_name="arms_of_arreat"
     )
 
@@ -572,12 +575,16 @@ def test_parse_d4builds_paragon_boards_uses_question_mark_fallback_for_unsupport
 def test_import_d4builds(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
     Dataloader()  # need to load data first or the mock will make it impossible
     mocker.patch("builtins.open", new=mocker.mock_open())
-    config = ImportConfig(
+    request = ImportRequest(
         url=url,
-        import_aspect_upgrades=True,
-        add_to_profiles=False,
-        import_greater_affixes=True,
-        require_greater_affixes=True,
-        custom_file_name=None,
+        options=ImportOptions(
+            import_aspect_upgrades=True,
+            add_to_profiles=False,
+            import_greater_affixes=True,
+            require_greater_affixes=True,
+        ),
     )
-    d4builds_module.import_d4builds(config=config)
+    result = d4builds_module.import_d4builds(request=request)
+
+    assert result is not None
+    assert result.source_name == "d4builds"

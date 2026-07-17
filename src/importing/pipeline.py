@@ -2,16 +2,16 @@ import dataclasses
 import logging
 from typing import TYPE_CHECKING, Any, Protocol
 
-from src.gui.importer.paragon_export import build_paragon_profile_payload
-from src.importing import ImportResult, assemble_profile_file_name
+from src.importing import ImportOptions, ImportRequest, ImportResult, assemble_profile_file_name
 from src.importing._filters import deduplicate_filters, sort_profile_filters
 from src.importing._profiles import add_to_profiles
+from src.importing.paragon_export import build_paragon_profile_payload
 from src.profiles import CharmFilterModel, ItemFilterModel, ProfileDocumentStore, ProfileModel, SealFilterModel
 
-if TYPE_CHECKING:
-    from src.gui.importer.importer_config import ImportConfig
-
 LOGGER = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from src.importing.config import ImportConfig
 
 
 @dataclasses.dataclass(slots=True)
@@ -52,13 +52,34 @@ class StaticBuildGuideAdapter:
 
 class ImportPipeline:
     @staticmethod
-    def run(adapter: BuildGuideAdapter, config: ImportConfig) -> list[str]:
-        return list(ImportPipeline.run_result(adapter, config).saved_file_names)
+    def run(
+        adapter: BuildGuideAdapter, request: ImportRequest | None = None, *, config: ImportConfig | None = None
+    ) -> list[str]:
+        return list(ImportPipeline.run_result(adapter, request, config=config).saved_file_names)
 
     @staticmethod
-    def run_result(adapter: BuildGuideAdapter, config: ImportConfig) -> ImportResult:
+    def run_result(
+        adapter: BuildGuideAdapter, request: ImportRequest | None = None, *, config: ImportConfig | None = None
+    ) -> ImportResult:
         """Normalize, persist, and return the result of an extracted build."""
+        if request is None:
+            if config is None:
+                message = "An ImportRequest is required"
+                raise TypeError(message)
+            request = ImportRequest(
+                url=config.url,
+                options=ImportOptions(
+                    import_aspect_upgrades=config.import_aspect_upgrades,
+                    add_to_profiles=config.add_to_profiles,
+                    import_greater_affixes=config.import_greater_affixes,
+                    require_greater_affixes=config.require_greater_affixes,
+                    export_paragon=config.export_paragon,
+                    custom_file_name=config.custom_file_name,
+                    filename_parts=config.filename_parts,
+                ),
+            )
         build = adapter.extract()
+        options: ImportOptions = request.options
         saved_file_names: list[str] = []
         selected_profile = ProfileModel(name="imported profile")
         selected_variant = ""
@@ -74,25 +95,25 @@ class ImportPipeline:
                 Charms=sort_profile_filters(deduplicate_filters(variant.charm_filters)),
                 Seals=sort_profile_filters(deduplicate_filters(variant.seal_filters)),
             )
-            if config.import_aspect_upgrades and variant.aspect_upgrade_filters:
+            if options.import_aspect_upgrades and variant.aspect_upgrade_filters:
                 profile.aspect_upgrades = variant.aspect_upgrade_filters
 
-            file_name = config.custom_file_name or assemble_profile_file_name(
+            file_name = options.custom_file_name or assemble_profile_file_name(
                 source_name=build.source_name,
                 class_name=build.class_name,
                 season_number=build.season_number,
                 build_header=build.build_header,
                 variant_name=variant.name,
-                filename_parts=config.filename_parts,
+                filename_parts=options.filename_parts,
             )
-            if config.custom_file_name and len(build.variants) > 1:
+            if options.custom_file_name and len(build.variants) > 1:
                 file_name = f"{file_name}_{index + 1}"
 
-            if config.export_paragon:
+            if options.export_paragon:
                 if variant.paragon_steps:
                     profile.paragon = build_paragon_profile_payload(
                         build_name=variant.paragon_build_name or build.build_header or build.class_name,
-                        source_url=adapter.url,
+                        source_url=request.url,
                         paragon_boards_list=variant.paragon_steps,
                     )
                 else:
@@ -114,7 +135,7 @@ class ImportPipeline:
                 selected_variant = variant.name
                 selected_paragon = profile.paragon
 
-        if config.add_to_profiles:
+        if options.add_to_profiles:
             for saved_file_name in saved_file_names:
                 add_to_profiles(saved_file_name)
 

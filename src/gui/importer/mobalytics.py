@@ -13,9 +13,6 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
 from src.dataloader import Dataloader
-from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
-from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import extract_mobalytics_paragon_steps
 from src.importing._conversion import as_string_keyed_mapping as _as_mapping
 from src.importing._conversion import as_string_keyed_mapping_list as _as_mapping_list
 from src.importing._conversion import as_text as _as_text
@@ -31,6 +28,9 @@ from src.importing._filters import (
     weapon_slot_name_hint,
 )
 from src.importing._web import hover_and_get_tooltip_html, retry_importer
+from src.importing.config import ImportConfig
+from src.importing.paragon_export import extract_mobalytics_paragon_steps
+from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.item import WEAPON_TYPES, Affix, AffixType, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.profiles import (

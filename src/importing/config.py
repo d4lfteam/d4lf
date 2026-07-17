@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from src.importing import DEFAULT_FILENAME_PARTS, FilenamePart
+from src.importing.contracts import DEFAULT_FILENAME_PARTS, FilenamePart
 
 
 @dataclass

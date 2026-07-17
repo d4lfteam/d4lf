@@ -12,13 +12,6 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
 from src.dataloader import Dataloader
-from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
-from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import (
-    InfinityBuildsParagonCatalog,
-    extract_infinitybuilds_paragon_steps,
-    fetch_infinitybuilds_paragon_catalog,
-)
 from src.importing._conversion import as_string_keyed_mapping as _as_object
 from src.importing._filters import (
     affix_dict_for_item_type,
@@ -29,6 +22,13 @@ from src.importing._filters import (
     update_mingreateraffixcount,
 )
 from src.importing._web import get_with_retry, retry_importer
+from src.importing.config import ImportConfig
+from src.importing.paragon_export import (
+    InfinityBuildsParagonCatalog,
+    extract_infinitybuilds_paragon_steps,
+    fetch_infinitybuilds_paragon_catalog,
+)
+from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.item import Affix, AffixType, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.profiles import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel

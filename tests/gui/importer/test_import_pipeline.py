@@ -1,8 +1,8 @@
 from types import SimpleNamespace
 
 from src.dataloader import Dataloader
-from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
-from src.gui.importer.importer_config import FilenamePart, ImportConfig
+from src.importing.config import FilenamePart, ImportConfig
+from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.item.data.item_type import ItemType
 from src.profiles import ItemFilterModel
 
@@ -50,7 +50,7 @@ def test_run_saves_single_variant_and_attaches_paragon(mock_ini_loader, mocker) 
         saved.update({"file_name": file_name, "profile": profile, "source": source})
         or SimpleNamespace(file_name=file_name)
     )
-    add_to_profiles = mocker.patch("src.gui.importer.import_pipeline.add_to_profiles")
+    add_to_profiles = mocker.patch("src.importing.pipeline.add_to_profiles")
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     saved_file_names = ImportPipeline.run(
@@ -68,7 +68,7 @@ def test_run_saves_single_variant_and_attaches_paragon(mock_ini_loader, mocker) 
                 ]
             ),
         ),
-        _config(export_paragon=True),
+        config=_config(export_paragon=True),
     )
 
     assert saved_file_names == ["maxroll_s12_spiritborn_touch_of_death_pit_push"]
@@ -84,7 +84,7 @@ def test_run_saves_multiple_variants_and_adds_profiles(mock_ini_loader, mocker) 
     Dataloader()
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # noqa: ARG005
-    add_to_profiles = mocker.patch("src.gui.importer.import_pipeline.add_to_profiles")
+    add_to_profiles = mocker.patch("src.importing.pipeline.add_to_profiles")
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     saved_file_names = ImportPipeline.run(
@@ -97,7 +97,7 @@ def test_run_saves_multiple_variants_and_adds_profiles(mock_ini_loader, mocker) 
                 ]
             ),
         ),
-        _config(add_to_profiles=True),
+        config=_config(add_to_profiles=True),
     )
 
     assert saved_file_names == [
@@ -124,7 +124,7 @@ def test_run_suffixes_custom_filename_for_multiple_variants(mock_ini_loader, moc
                 ]
             ),
         ),
-        _config(custom_file_name="custom-name"),
+        config=_config(custom_file_name="custom-name"),
     )
 
     assert saved_file_names == ["custom-name_1", "custom-name_2"]
@@ -141,7 +141,7 @@ def test_run_uses_selected_filename_parts(mock_ini_loader, mocker) -> None:
 
     ImportPipeline.run(
         StaticBuildGuideAdapter(url="https://example.invalid/build", build=_build()),
-        _config(filename_parts=(FilenamePart.SOURCE, FilenamePart.BUILD_TITLE)),
+        config=_config(filename_parts=(FilenamePart.SOURCE, FilenamePart.BUILD_TITLE)),
     )
 
     assert saved["file_name"] == "maxroll_touch_of_death"
@@ -155,7 +155,8 @@ def test_run_warns_when_paragon_export_enabled_without_steps(mock_ini_loader, mo
 
     with caplog.at_level("WARNING"):
         ImportPipeline.run(
-            StaticBuildGuideAdapter(url="https://example.invalid/build", build=_build()), _config(export_paragon=True)
+            StaticBuildGuideAdapter(url="https://example.invalid/build", build=_build()),
+            config=_config(export_paragon=True),
         )
 
     assert "Paragon export enabled, but no paragon data was found" in caplog.text
@@ -179,7 +180,7 @@ def test_run_deduplicates_identical_affix_filters(mock_ini_loader, mocker) -> No
                 ]
             ),
         ),
-        _config(),
+        config=_config(),
     )
 
     assert len(saved["profile"].affixes) == 1

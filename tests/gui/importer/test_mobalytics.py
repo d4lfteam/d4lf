@@ -10,7 +10,6 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 from src.dataloader import Dataloader
 from src.gui.importer import mobalytics as mobalytics_module
-from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.mobalytics import (
     _as_text,
     _convert_raw_to_affixes,
@@ -21,7 +20,8 @@ from src.gui.importer.mobalytics import (
     _log_mobalytics_page_diagnostics,
     import_mobalytics,
 )
-from src.gui.importer.paragon_export import build_paragon_profile_payload, extract_mobalytics_paragon_steps
+from src.importing.config import ImportConfig
+from src.importing.paragon_export import build_paragon_profile_payload, extract_mobalytics_paragon_steps
 from src.item.data.item_type import ItemType
 from src.profiles import ParagonPayloadModel
 

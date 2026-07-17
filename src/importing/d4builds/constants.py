@@ -1,0 +1,38 @@
+ACTIVE_CHARM_CSS = ".builder__charm.active"
+ACTIVE_SEAL_CSS = ".builder__seal.active"
+BASE_URL = "https://d4builds.gg/builds"
+BUILD_DESCRIPTION_XPATH = "//*[contains(@class, 'builder__header__description')]"
+BUILD_HEADER_INPUT_XPATH = "//*[contains(@class, 'builder__header__input')]"
+BUILD_OVERVIEW_XPATH = "//*[@class='builder__stats__list']"
+CHARM_TOOLTIP_CSS = "[data-tippy-root] .charm__tooltip"
+CHARM_TOOLTIP_SET_NAME_XPATH = ".//*[contains(@class, 'charm__tooltip__set__name')]"
+CHARM_TOOLTIP_UNIQUE_XPATH = ".//*[contains(@class, 'charm__tooltip__name--unique')]"
+CHARM_TOOLTIP_VALUE_XPATH = (
+    ".//*[contains(@class, 'charm__tooltip__values')]//*[contains(@class, 'charm__tooltip__value')]"
+)
+CLASS_XPATH = "//*[contains(@class, 'builder__header__name')]"
+GA_XPATH = ".//*[contains(@class, 'greater__affix__button--filled')]"
+ITEM_GROUP_XPATH = ".//*[contains(@class, 'builder__stats__group')]"
+ITEM_SLOT_XPATH = ".//*[contains(@class, 'builder__stats__slot')]"
+ITEM_STATS_XPATH = ".//*[contains(@class, 'dropdown__button__wrapper')]"
+PAPERDOLL_GEAR_ICON_CSS = ".builder__gear__icon"
+PAPERDOLL_ITEM_SLOT_CSS = ".builder__gear__slot"
+PAPERDOLL_ITEM_SLOT_XPATH = ".//*[contains(@class, 'builder__gear__slot')]"
+PAPERDOLL_ITEM_UNIQUE_NAME_XPATH = ".//*[contains(@class, 'builder__gear__name--')]"
+PAPERDOLL_ITEM_XPATH = ".//*[contains(@class, 'builder__gear__item') and not(contains(@class, 'disabled'))]"
+PAPERDOLL_LEGENDARY_ASPECT_XPATH = (
+    "//*[@class='builder__gear__name' and not(contains(@class, 'builder__gear__name--'))]"
+)
+PAPERDOLL_WEAPON_ITEM_CSS = ".builder__gear__item.weapon:not(.disabled)"
+PAPERDOLL_XPATH = "//*[contains(@class, 'builder__gear__items')]"
+SANCTIFIED_ICON_XPATH = ".//*[contains(@src, 'sanctified_icon.png')]"
+SEAL_TOOLTIP_CSS = "[data-tippy-root] .seal__tooltip"
+SEAL_TOOLTIP_VALUE_XPATH = ".//*[contains(@class, 'seal__tooltip__value__text')]"
+SEASON_DROPDOWN_XPATH = (
+    "//*[contains(@class, 'builder__gear')]/*[contains(@class, 'builder__dropdown__wrapper')]"
+    "//*[contains(@class, 'dropdown__button') and starts-with(normalize-space(), 'Season ')]"
+)
+TEMPERING_ICON_XPATH = ".//*[contains(@src, 'tempering_02.png')]"
+UNIQUE_TOOLTIP_CSS = "[data-tippy-root] .unique__tooltip"
+UNIQUE_TOOLTIP_SLOT_XPATH = ".//*[contains(@class, 'unique__tooltip__slot')]"
+VARIANT_INPUT_XPATH = "//*[contains(@class, 'builder__variant__input')]"

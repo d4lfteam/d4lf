@@ -7,7 +7,6 @@ import lxml.html
 import pytest
 
 from src.dataloader import Dataloader
-from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.infinitybuilds import (
     _convert_raw_to_affixes,
     _extract_balanced,
@@ -17,7 +16,8 @@ from src.gui.importer.infinitybuilds import (
     _resolve_gear_data,
     import_infinitybuilds,
 )
-from src.gui.importer.paragon_export import (
+from src.importing.config import ImportConfig
+from src.importing.paragon_export import (
     InfinityBuildsParagonCatalog,
     extract_infinitybuilds_paragon_steps,
     fetch_infinitybuilds_paragon_catalog,
@@ -398,7 +398,7 @@ def test_fetch_infinitybuilds_paragon_catalog_builds_label_maps_from_both_datase
         "paragon": {"glyphs": [{"id": "glyph::rare-016-dexterity-side", "label": "Exploit"}]}
     }
     get_with_retry = mocker.patch(
-        "src.gui.importer.paragon_export.get_with_retry", side_effect=[boards_response, glyphs_response]
+        "src.importing.paragon_export.get_with_retry", side_effect=[boards_response, glyphs_response]
     )
 
     catalog = fetch_infinitybuilds_paragon_catalog()

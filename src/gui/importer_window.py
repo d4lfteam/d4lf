@@ -19,9 +19,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
 from src.importing import ImportOptions, ImportRequest, ImportResult, import_build
+from src.importing.config import DEFAULT_FILENAME_PARTS, FilenamePart
 from src.settings import get_settings
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
@@ -40,11 +40,11 @@ FILENAME_PART_LABELS = {
 GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP = "Select at least one filename part or enter a custom file name."
 IMPORTER_WINDOW_LOGGERS = (
     "src.gui.importer.mobalytics",
-    "src.gui.importer.maxroll",
-    "src.gui.importer.d4builds",
+    "src.importing.maxroll",
+    "src.importing.d4builds",
     "src.gui.importer.infinitybuilds",
     "src.gui.importer.gui_common",
-    "src.gui.importer.import_pipeline",
+    "src.importing.pipeline",
     "src.profiles",
 )
 

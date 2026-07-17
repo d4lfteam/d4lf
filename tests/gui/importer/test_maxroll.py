@@ -7,9 +7,14 @@ from types import SimpleNamespace
 import pytest
 
 from src.dataloader import Dataloader
-from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.maxroll import _find_item_affixes, _find_item_type, _resolve_visible_profile_index, import_maxroll
-from src.gui.importer.paragon_export import extract_maxroll_paragon_steps
+from src.importing import ImportOptions, ImportRequest
+from src.importing.maxroll.adapter import (
+    _find_item_affixes,
+    _find_item_type,
+    _resolve_visible_profile_index,
+    import_maxroll,
+)
+from src.importing.paragon_export import extract_maxroll_paragon_steps
 from src.item.data.item_type import ItemType
 
 if typing.TYPE_CHECKING:
@@ -35,15 +40,16 @@ URLS = [
 def test_import_maxroll(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
     Dataloader()  # need to load data first or the mock will make it impossible
     mocker.patch("builtins.open", new=mocker.mock_open())
-    config = ImportConfig(
+    request = ImportRequest(
         url=url,
-        import_aspect_upgrades=True,
-        add_to_profiles=False,
-        import_greater_affixes=True,
-        require_greater_affixes=True,
-        custom_file_name=None,
+        options=ImportOptions(
+            import_aspect_upgrades=True,
+            add_to_profiles=False,
+            import_greater_affixes=True,
+            require_greater_affixes=True,
+        ),
     )
-    import_maxroll(config=config)
+    import_maxroll(request=request)
 
 
 def test_find_item_type_uses_fix_weapon_type_with_slot_context() -> None:
@@ -97,7 +103,7 @@ def test_import_maxroll_keeps_mythic_item_without_affixes(mock_ini_loader, mocke
         "affixes": {},
         "skills": {},
     }
-    mocker.patch("src.gui.importer.maxroll.get_with_retry", side_effect=[planner_response, mapping_response])
+    mocker.patch("src.importing.maxroll.adapter.get_with_retry", side_effect=[planner_response, mapping_response])
 
     captured_profile = {}
 
@@ -109,17 +115,24 @@ def test_import_maxroll_keeps_mythic_item_without_affixes(mock_ini_loader, mocke
     profile_store.save_new.side_effect = fake_save_new
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
-    import_maxroll(
-        config=ImportConfig(
+    result = import_maxroll(
+        request=ImportRequest(
             url="https://maxroll.gg/d4/planner/test-profile#1",
-            import_aspect_upgrades=False,
-            add_to_profiles=False,
-            import_greater_affixes=True,
-            require_greater_affixes=False,
-            custom_file_name="test",
+            options=ImportOptions(
+                import_aspect_upgrades=False,
+                add_to_profiles=False,
+                import_greater_affixes=True,
+                require_greater_affixes=False,
+                custom_file_name="test",
+            ),
         )
     )
 
+    assert result is not None
+    assert result.source_name == "maxroll"
+    assert result.selected_variant == "Default"
+    assert result.saved_file_name == "test"
+    assert result.paragon is None
     profile = captured_profile["profile"]
     assert {next(iter(entry.root)) for entry in profile.affixes} == {"Helm"}
     helm_filter = next(entry.root["Helm"] for entry in profile.affixes if "Helm" in entry.root)

@@ -19,7 +19,7 @@ checkmark_checkbox_module.CheckmarkCheckBox = QCheckBox
 sys.modules["src.gui.models.checkmark_checkbox"] = checkmark_checkbox_module
 
 importer_window_module = importlib.import_module("src.gui.importer_window")
-importer_config_module = importlib.import_module("src.gui.importer.importer_config")
+importer_config_module = importlib.import_module("src.importing.config")
 DEFAULT_FILENAME_PARTS = importer_config_module.DEFAULT_FILENAME_PARTS
 FilenamePart = importer_config_module.FilenamePart
 ImportConfig = importer_config_module.ImportConfig
