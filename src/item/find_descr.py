@@ -21,6 +21,7 @@ ITEM_TOP_LEFT_TEMPLATES = (
     "item_top_left_magic_1080p_special",
     "item_top_left_mythic",
     "item_top_left_rare",
+    "item_top_left_set",
     "item_top_left_unique",
 )
 
