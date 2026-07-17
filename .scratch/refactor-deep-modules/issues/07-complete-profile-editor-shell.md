@@ -2,6 +2,10 @@
 
 **What to build:** Let users open, edit, save, reload, and switch profiles through one cohesive profile UI that composes the refactored rule editors without exposing their implementation.
 
+The shell composes the public profile editor subpackage facades (`src.profiles.affix`,
+`src.profiles.aspect`, `src.profiles.unique`, `src.profiles.charm_seal`, `src.profiles.sigil`, and
+`src.profiles.tribute`); it must not reach into implementation modules.
+
 **Blocked by:** 05 — Refactor affix, aspect, and unique profile editing; 06 — Refactor sigil, tribute, charm, and seal profile editing.
 
 **Status:** ready-for-agent

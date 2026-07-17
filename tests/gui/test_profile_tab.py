@@ -1,6 +1,4 @@
 import os
-import sys
-import types
 from typing import TYPE_CHECKING
 
 import pytest
@@ -9,6 +7,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget
 
+import src.profiles.editor.profile_tab as profile_tab_module
 from src.profiles import (
     EmptyError,
     Failed,
@@ -22,17 +21,7 @@ from src.profiles import (
     ValidationError,
     YamlError,
 )
-
-
-class _ProfileEditorModule(types.ModuleType):
-    ProfileEditor: type[QWidget]
-
-
-profile_editor_module = _ProfileEditorModule("src.gui.profile_editor.profile_editor")
-profile_editor_module.ProfileEditor = QWidget
-sys.modules["src.gui.profile_editor.profile_editor"] = profile_editor_module
-
-import src.gui.profile_tab as profile_tab_module  # noqa: E402
+from src.profiles.editor import ProfileTab
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -104,7 +93,7 @@ def test_load_validation_guidance_shows_critical(qapp, monkeypatch, tmp_path: Pa
         lambda _self, title, message: critical_calls.append((title, message)),
     )
 
-    profile_tab_module.ProfileTab()
+    ProfileTab()
 
     assert critical_calls == [("Profile Validation Failed", "guidance text")]
 
@@ -122,7 +111,7 @@ def test_load_yaml_error_does_not_show_critical(qapp, monkeypatch, tmp_path: Pat
         lambda _self, title, message: critical_calls.append((title, message)),
     )
 
-    tab = profile_tab_module.ProfileTab()
+    tab = ProfileTab()
 
     assert critical_calls == []
     assert tab.model_editor is None
@@ -141,7 +130,7 @@ def test_load_empty_error_does_not_show_critical(qapp, monkeypatch, tmp_path: Pa
         lambda _self, title, message: critical_calls.append((title, message)),
     )
 
-    tab = profile_tab_module.ProfileTab()
+    tab = ProfileTab()
 
     assert critical_calls == []
     assert tab.model_editor is None
@@ -160,7 +149,7 @@ def test_load_validation_without_guidance_shows_validation_error(qapp, monkeypat
         lambda _self, title, message: critical_calls.append((title, message)),
     )
 
-    profile_tab_module.ProfileTab()
+    ProfileTab()
 
     assert critical_calls == [("Validation Error", "validation message")]
 
@@ -189,7 +178,7 @@ def test_save_validation_differs_retries_with_force_and_emits_signal(qapp, monke
     monkeypatch.setattr(profile_tab_module.QMessageBox, "information", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(profile_tab_module.QMessageBox, "critical", lambda *_args, **_kwargs: None)
 
-    tab = profile_tab_module.ProfileTab()
+    tab = ProfileTab()
     emitted: list[str] = []
     tab.profile_saved.connect(emitted.append)
 
@@ -218,7 +207,7 @@ def test_save_saved_shows_info_and_emits_signal(qapp, monkeypatch, tmp_path: Pat
         profile_tab_module.QMessageBox, "information", lambda _self, title, message: info_calls.append((title, message))
     )
 
-    tab = profile_tab_module.ProfileTab()
+    tab = ProfileTab()
     emitted: list[str] = []
     tab.profile_saved.connect(emitted.append)
     tab.save_yaml()
@@ -248,7 +237,7 @@ def test_save_failed_shows_critical(qapp, monkeypatch, tmp_path: Path):
         lambda _self, title, message: critical_calls.append((title, message)),
     )
 
-    tab = profile_tab_module.ProfileTab()
+    tab = ProfileTab()
     tab.save_yaml()
 
     assert critical_calls == [("Error", "Failed to save profile: boom")]
@@ -267,7 +256,7 @@ def test_check_close_save_uses_session_dirty(qapp, monkeypatch, tmp_path: Path):
     )
     monkeypatch.setattr(profile_tab_module, "ProfileSession", lambda **_kwargs: fake_session)
 
-    tab = profile_tab_module.ProfileTab()
+    tab = ProfileTab()
     monkeypatch.setattr(tab, "confirm_discard_changes", lambda: False)
 
     assert tab.check_close_save() is False

@@ -7,7 +7,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox, QPushButton
 
-from src.gui.profile_editor.aspect_upgrades_tab import AspectUpgradesTab
+from src.profiles.aspect import AspectUpgradesTab
 
 
 class _AcceptedDialog(QDialog):
@@ -33,9 +33,7 @@ def _button(tab: AspectUpgradesTab, text: str) -> QPushButton:
 
 
 def test_add_aspect_adds_rule_to_list_and_widget(qapp, monkeypatch):
-    monkeypatch.setattr(
-        "src.gui.profile_editor.aspect_upgrades_tab.AddAspectUpgrade", lambda *_args, **_kwargs: _AcceptedDialog("new")
-    )
+    monkeypatch.setattr("src.profiles.aspect.tabs.AddAspectUpgrade", lambda *_args, **_kwargs: _AcceptedDialog("new"))
 
     aspects = ["old"]
     tab = AspectUpgradesTab(aspects)

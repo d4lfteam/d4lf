@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QDialog, QPushButton, QTabWidget, QToolBar, QVBoxLayout, QWidget
 
-from src.gui.models.dialog import DeleteItem
+from src.profiles.editor.dialogs_delete import DeleteItem
 
 
 class TabGroupWidget[ModelT](QWidget):

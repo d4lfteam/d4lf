@@ -39,6 +39,9 @@ Item flow:
 - Profile YAML files live under `~/.d4lf/profiles/` and validate through `ProfileModel`.
 - UI coordinates in `src/config/data.py` are defined at 3840x2160 and scaled by `ResManager`.
 - Keep existing comments unless the related code is removed.
+- Capability subdomains use public subpackages with deliberate `__init__.py` facades (for example,
+  `src.profiles.affix` and `src.profiles.aspect`). Callers import from those facades rather than
+  prefixed implementation modules; implementation modules remain internal to their subpackage.
 
 ### Python 3.14
 

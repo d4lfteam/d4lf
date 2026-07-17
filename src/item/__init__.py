@@ -22,6 +22,7 @@ from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.item.models import FilterResult, Item, ItemJSONEncoder, MatchedFilter
 
 if TYPE_CHECKING:
+    from src.dataloader import Dataloader
     from src.item.filter.engine import Filter
     from src.item.sigil_rules import (
         SIGIL_RULE_TARGET_TYPES,
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
 
 _LAZY_EXPORTS = {
     "Filter": ("src.item.filter.engine", "Filter"),
+    "Dataloader": ("src.dataloader", "Dataloader"),
     "SIGIL_RULE_TARGET_TYPES": ("src.item.sigil_rules", "SIGIL_RULE_TARGET_TYPES"),
     "SigilItem": ("src.item.sigil_rules", "SigilItem"),
     "SigilRuleTarget": ("src.item.sigil_rules", "SigilRuleTarget"),
@@ -41,11 +43,13 @@ _LAZY_EXPORTS = {
 }
 
 __all__ = [
+    "MAX_POWER",
     "SIGIL_RULE_TARGET_TYPES",
     "WEAPON_TYPES",
     "Affix",
     "AffixType",
     "Aspect",
+    "Dataloader",
     "Filter",
     "FilterResult",
     "Item",
@@ -67,6 +71,8 @@ __all__ = [
     "is_socketable",
     "is_weapon",
 ]
+
+MAX_POWER = 900
 
 
 def __getattr__(name: str) -> object:

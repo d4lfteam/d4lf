@@ -8,11 +8,10 @@ from PyQt6.QtCore import QSize
 from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QApplication
 
-from src.gui.models import dialog as dialog_module
-from src.gui.models.dialog import CreateSigil
-from src.gui.profile_editor.sigils_tab import SigilsTab, SigilWidget
 from src.item import SigilRules
 from src.profiles import SigilConditionModel, SigilFilterModel
+from src.profiles.sigil import CreateSigil, SigilsTab, SigilWidget
+from src.profiles.sigil import dialogs as dialog_module
 
 
 @pytest.fixture(scope="module")
@@ -79,7 +78,7 @@ def test_create_sigil_remembers_size(qapp, monkeypatch):
         def value(self, key, default=None):
             return store.get(key, default)
 
-        def setValue(self, key, value):  # noqa: N802
+        def setValue(self, key, value):  # ruff:ignore[invalid-function-name]
             store[key] = value
 
     monkeypatch.setattr(dialog_module, "QSettings", FakeSettings)

@@ -17,9 +17,10 @@
 
 `src.profiles` is now the sole cross-capability facade for profile models, document persistence,
 Paragon values, and `ProfileSession` result types. The former `src.config.profile_*` modules were
-removed without compatibility forwarding modules; private profile implementations are split into
-cohesive modules below 300 lines. Production and test imports, type-only imports, dynamic module
-references, and patch targets use the facade, including the `src.item` filtering callers.
+removed without compatibility forwarding modules; profile subdomains are split into cohesive public
+subpackages whose facades are the supported intra-capability import paths, with implementation
+modules below 300 lines. Production and test imports, type-only imports, dynamic module references,
+and patch targets use the appropriate facade, including the `src.item` filtering callers.
 
 Focused profile, importer, filter, and Paragon tests pass. The full non-Selenium suite passes:
 598 passed, 47 skipped after the post-rebase filter correction.

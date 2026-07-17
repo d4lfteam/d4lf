@@ -7,7 +7,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox, QPushButton
 
-from src.gui.models.rule_list_tab import RuleListTab
+from src.profiles.editor import RuleListTab
 
 
 class _AcceptedDialog(QDialog):

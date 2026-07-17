@@ -5,7 +5,6 @@ from PyQt6.QtWidgets import QApplication, QDialog
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from src.gui.profile_editor.charms_seals_group_tab import CharmGroupEditor, CharmsTab, SealGroupEditor, SealsTab
 from src.item.data.rarity import ItemRarity
 from src.profiles import (
     AffixFilterCountModel,
@@ -16,6 +15,7 @@ from src.profiles import (
     DynamicSealFilterModel,
     SealFilterModel,
 )
+from src.profiles.charm_seal import CharmGroupEditor, CharmsTab, SealGroupEditor, SealsTab
 
 
 @pytest.fixture(scope="module")
@@ -136,9 +136,9 @@ def test_charms_ui_edit_rarities(qapp, mock_ini_loader, mocker):
     charm_editor = CharmGroupEditor(charm_model)
 
     # Mock RarityPicker dialog execution
-    mock_exec = mocker.patch("src.gui.profile_editor.charms_seals_group_tab.RarityPicker.exec", return_value=1)
+    mock_exec = mocker.patch("src.profiles.charm_seal.pools.RarityPicker.exec", return_value=1)
     mock_get_selected_rarities = mocker.patch(
-        "src.gui.profile_editor.charms_seals_group_tab.RarityPicker.get_selected_rarities",
+        "src.profiles.charm_seal.pools.RarityPicker.get_selected_rarities",
         return_value=[ItemRarity.Rare, ItemRarity.Legendary],
     )
 
@@ -168,7 +168,7 @@ def test_charms_ui_edit_sets_updates_model(qapp, mock_ini_loader, monkeypatch):
         def get_selected_sets(self):
             return ["sescherons_fury", "demonbinder"]
 
-    monkeypatch.setattr("src.gui.profile_editor.charms_seals_group_tab.SetPicker", FakeSetPicker)
+    monkeypatch.setattr("src.profiles.charm_seal.group.SetPicker", FakeSetPicker)
 
     charm_editor.edit_sets()
 

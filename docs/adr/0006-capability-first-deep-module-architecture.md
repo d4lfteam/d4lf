@@ -25,17 +25,37 @@ The target source layout has these capability packages:
 | Tools       | `src.tools`      | Replay and data-generation entry points.                                                        |
 
 `src.main` remains the executable entry point. It is not a general-purpose public API. Each
-capability package may have private modules beneath it, but its package initializer is the only
-cross-capability import location. Application composition is the runtime place that wires multiple
-capability facades together; cross-capability integration tests may compose those public facades.
-This rule applies to production code, package-interface tests, test patches, build configuration,
-and dynamic Windows imports. Focused unit tests may import private modules only from the capability
-that owns the behavior under test.
+capability may contain cohesive public subpackages, and each package or subpackage exposes its
+deliberate interface from `__init__.py`. A subpackage may use implementation modules internally,
+but callers do not import prefixed implementation paths. The capability root remains the only
+cross-capability import location unless a subpackage is itself an explicitly documented
+cross-capability seam. Application composition is the runtime place that wires multiple capability
+facades together; cross-capability integration tests may compose those public facades. This rule
+applies to production code, package-interface tests, test patches, build configuration, and dynamic
+Windows imports. Focused unit tests may import implementation modules only from the capability that
+owns the behavior under test.
 
-Package facades export behavior and domain result types, not implementation classes, GUI widgets,
-or generic service locators. A facade grows only when a second capability has a concrete use for
-the new operation. Capability-specific GUI belongs to its capability; `src.desktop` retains only
-primitives with multiple real consumers.
+Profile editor behavior is organized by public subpackage rather than a technical GUI bucket:
+
+| Subpackage                | Responsibility                                                                         | Public interface                   |
+| ------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------- |
+| `src.profiles.affix`      | Affix pools, item-type/rarity/power/Greater Affix controls, and reusable affix widgets | `src.profiles.affix.__init__`      |
+| `src.profiles.aspect`     | Aspect-upgrade and unique-aspect editing                                               | `src.profiles.aspect.__init__`     |
+| `src.profiles.unique`     | Global unique editing                                                                  | `src.profiles.unique.__init__`     |
+| `src.profiles.charm_seal` | Shared charm and seal editing, dialogs, and tabs                                       | `src.profiles.charm_seal.__init__` |
+| `src.profiles.sigil`      | Sigil tabs, widgets, and dialogs                                                       | `src.profiles.sigil.__init__`      |
+| `src.profiles.tribute`    | Tribute tabs and dialogs                                                               | `src.profiles.tribute.__init__`    |
+| `src.profiles.editor`     | Shared profile-editor primitives and profile editor composition                        | `src.profiles.editor.__init__`     |
+
+These subpackage facades are public within the Profiles capability and do not make Qt widgets part
+of the top-level `src.profiles` cross-capability contract.
+
+Capability-root facades export behavior and domain result types, not implementation classes, GUI
+widgets, or generic service locators. Capability-owned UI subpackage facades may export their
+widgets, dialogs, and editor composition types to callers within that capability; those types do
+not become part of the capability-root cross-capability contract. A facade grows only when a second
+capability has a concrete use for the new operation. Capability-specific GUI belongs to its
+capability; `src.desktop` retains only primitives with multiple real consumers.
 
 ## High-risk seam choices
 

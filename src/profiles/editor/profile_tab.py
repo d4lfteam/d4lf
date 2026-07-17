@@ -1,5 +1,4 @@
 import logging
-from typing import override
 
 from PyQt6.QtCore import QSettings, QSignalBlocker, Qt, pyqtSignal
 from PyQt6.QtGui import QStandardItemModel
@@ -17,19 +16,19 @@ from PyQt6.QtWidgets import (
 )
 
 from src.dataloader import Dataloader
-from src.gui.profile_editor.profile_editor import ProfileEditor
 from src.profiles import (
     EmptyError,
     Failed,
     Loaded,
     LoadedProfile,
-    ProfileLastOpenedStore,
     ProfileSession,
     Saved,
     ValidationDiffers,
     ValidationError,
     YamlError,
 )
+from src.profiles.editor import ProfileEditor
+from src.profiles.editor.session_store import QSettingsLastOpenedStore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -42,8 +41,7 @@ class ProfileTab(QWidget):
     def __init__(self):
         super().__init__()
         self.settings = QSettings("d4lf", "profile_editor")
-        self.session = ProfileSession(last_opened_store=_QSettingsLastOpenedStore(self.settings))
-
+        self.session = ProfileSession(last_opened_store=QSettingsLastOpenedStore(self.settings))
         self.root = None
         self.current_profile_name = ""
         self.file_path = None
@@ -54,12 +52,10 @@ class ProfileTab(QWidget):
         self.model_editor = None
         self.first_show = True
         self.main_layout = QVBoxLayout(self)
-
         scroll_area = QScrollArea(self)
         scroll_widget = QWidget(scroll_area)
         self.scrollable_layout = QVBoxLayout(scroll_widget)
         scroll_area.setWidgetResizable(True)
-
         info_layout = QHBoxLayout()
         info_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -77,22 +73,18 @@ class ProfileTab(QWidget):
         tools_groupbox.setLayout(tools_groupbox_layout)
         info_layout.addWidget(tools_groupbox)
         self.main_layout.addLayout(info_layout)
-
         self.itemTypes = Dataloader().item_types_dict
         self.affixesNames = Dataloader().affix_dict
-
         self.profile_editor_created = False
         scroll_widget.setLayout(self.scrollable_layout)
         scroll_area.setWidget(scroll_widget)
         self.main_layout.addWidget(scroll_area)
         instructions_label = QLabel("Instructions")
         self.main_layout.addWidget(instructions_label)
-
         instructions_text = QTextBrowser()
         instructions_text.append(
             "Select a profile from the dropdown. Click 'Save' to save your changes. Click 'Undo Changes' to revert your changes."
         )
-
         instructions_text.setFixedHeight(50)
         self.main_layout.addWidget(instructions_text)
         self.setLayout(self.main_layout)
@@ -306,16 +298,3 @@ class ProfileTab(QWidget):
             self.model_editor.deleteLater()
         self.model_editor = ProfileEditor(loaded_profile)
         self.scrollable_layout.addWidget(self.model_editor)
-
-
-class _QSettingsLastOpenedStore(ProfileLastOpenedStore):
-    def __init__(self, settings: QSettings) -> None:
-        self._settings = settings
-
-    @override
-    def get(self) -> str | None:
-        return self._settings.value("last_opened_profile", None, type=str)
-
-    @override
-    def set(self, name: str) -> None:
-        self._settings.setValue("last_opened_profile", name)

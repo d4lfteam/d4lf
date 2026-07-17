@@ -7,9 +7,13 @@ from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QTimer
 from PyQt6.QtGui import QCloseEvent, QIcon
 from PyQt6.QtWidgets import QMainWindow
 
-from src.gui.profile_tab import ProfileTab
+from src.profiles.editor import ProfileTab
 
-BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+BASE_DIR = (
+    Path(sys.executable).parent
+    if getattr(sys, "frozen", False)
+    else Path(__file__).resolve().parent.parent.parent.parent
+)
 
 ICON_PATH = BASE_DIR / "assets" / "logo.png"
 

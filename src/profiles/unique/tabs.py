@@ -3,10 +3,9 @@ from typing import override
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QFormLayout, QFrame, QGroupBox, QLineEdit, QScrollArea, QToolButton, QVBoxLayout, QWidget
 
-from src.gui.importer.gui_common import MAX_POWER
-from src.gui.models.dialog import IgnoreScrollWheelSpinBox
-from src.gui.models.tab_group_widget import TabGroupWidget
+from src.item import MAX_POWER
 from src.profiles import GlobalUniqueModel
+from src.profiles.editor import IgnoreScrollWheelSpinBox, TabGroupWidget
 
 UNIQUES_TABNAME = "GlobalUniques"
 

@@ -23,10 +23,10 @@ from src import __version__
 from src.autoupdater import notify_if_update
 from src.gui.importer_window import ImporterWindow
 from src.gui.models.activity_log_widget import ActivityLogWidget, ANSIConsoleWidget, QtConsoleHandler
-from src.gui.profile_editor_window import ProfileEditorWindow
 from src.gui.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.logger import apply_log_level, consume_startup_log_records, create_formatter, remove_transient_gui_handlers
 from src.logger import setup as setup_logging
+from src.profiles.editor import ProfileEditorWindow
 from src.scripts.common import get_filter_colors
 from src.settings import LOG_LEVEL_SETTING_KEYS, create_settings_window, get_settings, has_any_changed
 
@@ -349,7 +349,7 @@ class UnifiedMainWindow(QMainWindow):
         self.tabs.setCurrentIndex(settings.value("selected_tab", 0, int))
         # Using False as a positional argument for defaultValue is required by the QSettings API
         self.activity_tab.minimize_to_tray_cb.setChecked(
-            settings.value("minimize_to_tray", False, type=bool)  # noqa: FBT003
+            settings.value("minimize_to_tray", False, type=bool)  # ruff:ignore[boolean-positional-value-in-call]
         )
 
     def save_geometry(self):
