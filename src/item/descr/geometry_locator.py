@@ -34,6 +34,7 @@ _AFFIX_BULLET_TEMPLATE_REFS = [
     "seal_set_bullet_point",
     "seal_set_bullet_point_1080p_special",
     "seal_set_bullet_point_medium",
+    "seal_set_bullet_point_medium_1080p_special",
     "tempered_affix_bullet_point_1",
     "tempered_affix_bullet_point_1_medium",
     "tempered_affix_bullet_point_2",

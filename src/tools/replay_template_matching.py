@@ -50,7 +50,7 @@ class ReplayResult:
 # BEGIN EDITABLE REPLAY CONFIGURATION
 # Replace the screenshot path, template names, and minimum confidence as needed.
 REPLAY_CONFIG = ReplayConfig(
-    image_path=Path(r"E:\Downloads\test5.png"), templates=TEMPLATES.copy(), threshold=0.75, game_resolution="3840x2160"
+    image_path=Path(r"E:\Downloads\test6.png"), templates=TEMPLATES.copy(), threshold=0.4, game_resolution="1920x1080"
 )
 # END EDITABLE REPLAY CONFIGURATION
 
