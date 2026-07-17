@@ -22,9 +22,19 @@ sigil rules, and keep/junk evaluation. All production callers use that interface
 `MatchedFilter` and `FilterResult` are item values in `src/item/models.py`; no forwarding module
 remains.
 
-Focused item and related interface tests pass (101 passed, 1 skipped), as do the full non-Selenium
-suite and type checks. After rebasing onto `vision-mode-improvements`, production source is 26,213
-lines, exactly at the 26,213 baseline. The target branch contributed eight perception and vision
-lines, offsetting the eight-line reduction from this item slice; no new item filtering source
-violation was introduced. The repository-wide line guard remains blocked by oversized modules
-outside this slice and the deferred test-tree migration.
+Focused item and related interface tests pass, as do the full non-Selenium suite and type checks.
+The slice was originally measured at the 26,213-line source baseline; subsequent profile/settings
+slices and target-branch changes mean the current source total is tracked by the source-freeze
+ticket instead. The repository-wide line guard remains blocked by oversized modules outside this
+slice and the deferred test-tree migration.
+
+## Comments
+
+### 2026-07-17 rebase audit
+
+The rebase exposed that duplicate affix requirements reused the first matching item row, so the
+ticket's new duplicate-row tests initially failed. `src/item/filter/matching.py` now assigns
+distinct item rows through a constrained search, preserving value and Greater Affix requirements;
+the unused unique-affix matcher was also removed. The focused filter suite passes (82 passed), and
+the full suite passes (598 passed, 47 skipped). The slice is valid after this correction; the
+global line-gate checkbox remains open for the later source-freeze work.

@@ -26,3 +26,13 @@ passed and 47 skipped non-Selenium tests.
 plus its focused line-gate command. The pre-existing user-owned `hooks/check_lines.py` and
 `prek.toml` changes were preserved. The complete non-Selenium suite passes; the line gate correctly
 reports the 29 source and 8 test migrations that the later refactor slices must complete.
+
+## Comments
+
+### 2026-07-17 rebase audit
+
+The 29-source/8-test count and 586-passed/47-skipped suite are decision-point baselines, not
+current totals. After rebasing the implementation branch and completing the duplicate-affix fix,
+the current macOS suite is 598 passed and 47 skipped. The line gate currently reports 24 oversized
+source files and 9 oversized test files; source Python totals 26,586 lines against the 26,213
+freeze ceiling. The source-freeze and later test-mirroring tickets therefore remain necessary.

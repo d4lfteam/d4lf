@@ -1,9 +1,9 @@
 import sys
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, NoReturn
 
 from src.item.data.affix import Affix, AffixType
-from src.item.data.aspect import Aspect  # noqa: TC001
-from src.item.data.item_type import ItemType  # noqa: TC001
+from src.item.data.aspect import Aspect  # ruff:ignore[typing-only-first-party-import]
+from src.item.data.item_type import ItemType  # ruff:ignore[typing-only-first-party-import]
 from src.item.data.rarity import ItemRarity
 
 if TYPE_CHECKING:
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class FilterContext:
-    def __getattr__(self, name: str) -> Any:
+    def __getattr__(self, name: str) -> NoReturn:
         raise AttributeError(name)
 
 
@@ -35,66 +35,72 @@ class FilterMatchingMixin:
             expected_percent=matched_unique_aspect.min_percent_of_aspect, item_aspect_or_affix=item.aspect
         )
 
+    def _match_count_group(
+        self, count_group: AffixFilterCountModel, item_affixes: list[Affix]
+    ) -> list[tuple[AffixFilterModel, Affix]]:
+        candidates = [
+            [
+                item_index
+                for item_index, item_affix in enumerate(item_affixes)
+                if self._match_item_aspect_or_affix(expected, item_affix)
+            ]
+            for expected in count_group.count
+        ]
+        best_matches: list[tuple[AffixFilterModel, Affix]] = []
+
+        def search(
+            expected_index: int, used_item_indices: set[int], matches: list[tuple[AffixFilterModel, Affix]]
+        ) -> None:
+            nonlocal best_matches
+            if len(matches) > count_group.max_count:
+                return
+            if len(matches) + len(count_group.count) - expected_index < count_group.min_count:
+                return
+            if len(matches) > len(best_matches):
+                best_matches = matches.copy()
+            if expected_index == len(count_group.count):
+                return
+
+            expected = count_group.count[expected_index]
+            for item_index in candidates[expected_index]:
+                if item_index in used_item_indices:
+                    continue
+                search(
+                    expected_index + 1,
+                    used_item_indices | {item_index},
+                    matches + [(expected, item_affixes[item_index])],
+                )
+            search(expected_index + 1, used_item_indices, matches)
+
+        search(0, set(), [])
+        return best_matches
+
     def _match_affixes_count(
         self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix], min_greater_affix_count: int = 0
     ) -> list[Affix]:
         result = []
         for count_group in expected_affixes:
-            group_res = []
-            for affix in count_group.count:
-                matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
-                if matched_item_affix is not None and self._match_item_aspect_or_affix(affix, matched_item_affix):
-                    group_res.append(matched_item_affix)
-
-            if not (count_group.min_count <= len(group_res) <= count_group.max_count):
+            best_matches = self._match_count_group(count_group, item_affixes)
+            if len(best_matches) < count_group.min_count:
                 return []
 
             want_greater_affixes = [a for a in count_group.count if getattr(a, "want_greater", False)]
             want_greater_count = len(want_greater_affixes)
             if want_greater_count > 0 and min_greater_affix_count > 0:
                 if min_greater_affix_count > want_greater_count:  # all flagged affixes must be GAs
-                    for affix in want_greater_affixes:
-                        matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
-                        if matched_item_affix is None or matched_item_affix.type != AffixType.greater:
+                    for expected, matched_item_affix in best_matches:
+                        if expected.want_greater and matched_item_affix.type != AffixType.greater:
                             return []
                 else:
                     flagged_ga_count = sum(
                         1
-                        for affix in want_greater_affixes
-                        if (matched := next((a for a in item_affixes if a.name == affix.name), None))
-                        and matched.type == AffixType.greater
+                        for expected, matched in best_matches
+                        if expected.want_greater and matched.type == AffixType.greater
                     )
                     if flagged_ga_count < min_greater_affix_count:  # not enough flagged affixes are GAs
                         return []
-            result.extend(group_res)
+            result.extend(matched for _, matched in best_matches)
         return result
-
-    def _match_affixes_uniques(
-        self, expected_affixes: list[AffixFilterModel], item_affixes: list[Affix], min_greater_affix_count: int = 0
-    ) -> bool:
-        for expected_affix in expected_affixes:
-            matched_item_affix = next((a for a in item_affixes if a.name == expected_affix.name), None)
-            if matched_item_affix is None or not self._match_item_aspect_or_affix(expected_affix, matched_item_affix):
-                return False
-
-        want_greater_affixes = [a for a in expected_affixes if getattr(a, "want_greater", False)]
-        want_greater_count = len(want_greater_affixes)
-        if want_greater_count > 0 and min_greater_affix_count > 0:
-            if min_greater_affix_count > want_greater_count:  # all flagged affixes must be GAs
-                for affix in want_greater_affixes:
-                    matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
-                    if matched_item_affix is None or matched_item_affix.type != AffixType.greater:
-                        return False
-            else:
-                flagged_ga_count = sum(
-                    1
-                    for affix in want_greater_affixes
-                    if (matched := next((a for a in item_affixes if a.name == affix.name), None))
-                    and matched.type == AffixType.greater
-                )
-                if flagged_ga_count < min_greater_affix_count:  # not enough flagged affixes are GAs
-                    return False
-        return True
 
     @staticmethod
     def _match_greater_affix_count(expected_min_count: int, item_affixes: list[Affix]) -> bool:

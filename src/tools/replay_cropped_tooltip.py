@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import cv2
 
-from src.item import Affix, Aspect, Item, ItemType
+from src.item import Affix, Item, ItemType
 from src.item.descr.geometry_locator import (
     BulletMatchDiagnostics,
     DiagnosticLocatorResult,

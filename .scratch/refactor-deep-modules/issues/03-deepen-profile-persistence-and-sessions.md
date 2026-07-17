@@ -22,6 +22,13 @@ cohesive modules below 300 lines. Production and test imports, type-only imports
 references, and patch targets use the facade, including the `src.item` filtering callers.
 
 Focused profile, importer, filter, and Paragon tests pass. The full non-Selenium suite passes:
-589 passed, 47 skipped.
+598 passed, 47 skipped after the post-rebase filter correction.
 The repository-wide line guard remains blocked by pre-existing oversized modules outside this
 slice, so its checklist item remains open.
+
+## Comments
+
+### 2026-07-17 rebase audit
+
+The earlier 589-test count was the slice-time result. The profile facade and session boundary remain
+valid after rebasing; the current suite includes target-branch and later-slice coverage.

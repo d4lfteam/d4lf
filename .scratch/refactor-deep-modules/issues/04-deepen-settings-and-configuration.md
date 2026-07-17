@@ -24,5 +24,13 @@ forwarders, and production callers use only the facade.
 
 Settings models, persistence, coordinates, hotkeys, and Qt implementation modules are all below 300
 physical lines. The affected behavioral manifest passes with 352 tests and 32 skips, and the complete
-non-Selenium suite passes with 594 tests and 47 skips. Ruff and `ty` pass for the refactor. The global
+non-Selenium suite now passes with 598 tests and 47 skips. Ruff and `ty` pass for the refactor. The global
 line hook continues to report only the documented pre-existing oversized modules outside this slice.
+
+## Comments
+
+### 2026-07-17 rebase audit
+
+The earlier 594-test count was the slice-time result. The settings facade, lazy platform boundaries,
+and coordinate seam remain valid after rebasing; the current suite includes target-branch and later-
+slice coverage.
