@@ -13,25 +13,24 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
 from src.dataloader import Dataloader
-from src.gui.importer.gui_common import (
+from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
+from src.gui.importer.importer_config import ImportConfig
+from src.gui.importer.paragon_export import extract_mobalytics_paragon_steps
+from src.importing._conversion import as_string_keyed_mapping as _as_mapping
+from src.importing._conversion import as_string_keyed_mapping_list as _as_mapping_list
+from src.importing._conversion import as_text as _as_text
+from src.importing._filters import (
     affix_dict_for_item_type,
     create_item_affix_pool,
     create_seal_charm_filter,
     fix_offhand_type,
     fix_weapon_type,
-    hover_and_get_tooltip_html,
     match_set_aware_seal_affix,
     match_to_enum,
-    retry_importer,
     update_mingreateraffixcount,
     weapon_slot_name_hint,
 )
-from src.gui.importer.gui_common import as_string_keyed_mapping as _as_mapping
-from src.gui.importer.gui_common import as_string_keyed_mapping_list as _as_mapping_list
-from src.gui.importer.gui_common import as_text as _as_text
-from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
-from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import extract_mobalytics_paragon_steps
+from src.importing._web import hover_and_get_tooltip_html, retry_importer
 from src.item import WEAPON_TYPES, Affix, AffixType, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.profiles import (
@@ -49,6 +48,8 @@ if TYPE_CHECKING:
 
     from selenium.webdriver.remote.webdriver import WebDriver
     from selenium.webdriver.remote.webelement import WebElement
+
+    from src.importing import ImportResult
 
 
 LOGGER = logging.getLogger(__name__)
@@ -80,17 +81,17 @@ class MobalyticsError(Exception):
 
 
 @retry_importer(inject_webdriver=True)
-def import_mobalytics(config: ImportConfig, driver: WebDriver | None = None) -> None:
+def import_mobalytics(config: ImportConfig, driver: WebDriver | None = None) -> ImportResult | None:
     if driver is None:
         msg = "A Selenium WebDriver is required for Mobalytics imports"
         raise RuntimeError(msg)
     url = config.url.strip().replace("\n", "")
     if BUILD_GUIDE_BASE_URL not in url:
         LOGGER.error("Invalid url, please use a mobalytics build guide")
-        return
+        return None
     if PROFILE_GUIDE_BASE_URL in url:
         LOGGER.error("Builds from user profiles are not supported at this time.")
-        return
+        return None
     url = _fix_input_url(url=url)
     LOGGER.info(f"Loading {url}")
     driver.get(url)
@@ -314,7 +315,7 @@ def import_mobalytics(config: ImportConfig, driver: WebDriver | None = None) -> 
         finished_filters.append(item_filter)
         finished_filter_name_hints.append(weapon_slot_name_hint(item_filter, _humanize_mobalytics_slot(slot_type)))
 
-    ImportPipeline.run(
+    return ImportPipeline.run_result(
         adapter=StaticBuildGuideAdapter(
             url=url,
             build=ExtractedBuild(
@@ -504,7 +505,7 @@ def _convert_raw_to_affixes(
 
 if __name__ == "__main__":
     src.logger.setup()
-    from src.gui.importer.gui_common import setup_webdriver
+    from src.importing._web import setup_webdriver
 
     driver = setup_webdriver()
 

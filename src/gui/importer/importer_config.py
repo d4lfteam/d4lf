@@ -1,22 +1,6 @@
 from dataclasses import dataclass
-from enum import StrEnum
 
-
-class FilenamePart(StrEnum):
-    SOURCE = "source"
-    SEASON = "season"
-    CLASS = "class"
-    BUILD_TITLE = "build_title"
-    VARIANT = "variant"
-
-
-DEFAULT_FILENAME_PARTS = (
-    FilenamePart.SOURCE,
-    FilenamePart.SEASON,
-    FilenamePart.CLASS,
-    FilenamePart.BUILD_TITLE,
-    FilenamePart.VARIANT,
-)
+from src.importing import DEFAULT_FILENAME_PARTS, FilenamePart
 
 
 @dataclass

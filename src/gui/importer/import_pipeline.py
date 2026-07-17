@@ -2,13 +2,10 @@ import dataclasses
 import logging
 from typing import TYPE_CHECKING, Any, Protocol
 
-from src.gui.importer.gui_common import (
-    add_to_profiles,
-    build_default_profile_file_name,
-    deduplicate_filters,
-    sort_profile_filters,
-)
 from src.gui.importer.paragon_export import build_paragon_profile_payload
+from src.importing import ImportResult, assemble_profile_file_name
+from src.importing._filters import deduplicate_filters, sort_profile_filters
+from src.importing._profiles import add_to_profiles
 from src.profiles import CharmFilterModel, ItemFilterModel, ProfileDocumentStore, ProfileModel, SealFilterModel
 
 if TYPE_CHECKING:
@@ -56,8 +53,16 @@ class StaticBuildGuideAdapter:
 class ImportPipeline:
     @staticmethod
     def run(adapter: BuildGuideAdapter, config: ImportConfig) -> list[str]:
+        return list(ImportPipeline.run_result(adapter, config).saved_file_names)
+
+    @staticmethod
+    def run_result(adapter: BuildGuideAdapter, config: ImportConfig) -> ImportResult:
+        """Normalize, persist, and return the result of an extracted build."""
         build = adapter.extract()
-        saved_file_names = []
+        saved_file_names: list[str] = []
+        selected_profile = ProfileModel(name="imported profile")
+        selected_variant = ""
+        selected_paragon = None
 
         for index, variant in enumerate(build.variants):
             affix_filters = deduplicate_filters(
@@ -72,7 +77,7 @@ class ImportPipeline:
             if config.import_aspect_upgrades and variant.aspect_upgrade_filters:
                 profile.aspect_upgrades = variant.aspect_upgrade_filters
 
-            file_name = config.custom_file_name or build_default_profile_file_name(
+            file_name = config.custom_file_name or assemble_profile_file_name(
                 source_name=build.source_name,
                 class_name=build.class_name,
                 season_number=build.season_number,
@@ -104,10 +109,21 @@ class ImportPipeline:
                 .file_name
             )
             saved_file_names.append(corrected_file_name)
+            if index == 0:
+                selected_profile = profile
+                selected_variant = variant.name
+                selected_paragon = profile.paragon
 
         if config.add_to_profiles:
             for saved_file_name in saved_file_names:
                 add_to_profiles(saved_file_name)
 
         LOGGER.info("Finished")
-        return saved_file_names
+        return ImportResult(
+            source_name=build.source_name,
+            selected_variant=selected_variant,
+            profile=selected_profile,
+            paragon=selected_paragon,
+            saved_file_name=saved_file_names[0] if saved_file_names else None,
+            saved_file_names=tuple(saved_file_names),
+        )

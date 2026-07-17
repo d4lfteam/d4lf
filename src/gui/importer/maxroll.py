@@ -7,24 +7,23 @@ import lxml.html
 
 import src.logger
 from src.dataloader import Dataloader
-from src.gui.importer.gui_common import (
+from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
+from src.gui.importer.importer_config import ImportConfig
+from src.gui.importer.paragon_export import extract_maxroll_paragon_steps
+from src.importing._conversion import as_string_keyed_mapping as _as_mapping
+from src.importing._conversion import as_string_keyed_mapping_list as _as_mapping_list
+from src.importing._conversion import as_text as _as_text
+from src.importing._filters import (
     affix_dict_for_item_type,
     create_item_affix_pool,
     create_seal_charm_filter,
     fix_offhand_type,
     fix_weapon_type,
-    get_with_retry,
     is_unique_like_rarity,
     match_to_enum,
-    retry_importer,
     update_mingreateraffixcount,
 )
-from src.gui.importer.gui_common import as_string_keyed_mapping as _as_mapping
-from src.gui.importer.gui_common import as_string_keyed_mapping_list as _as_mapping_list
-from src.gui.importer.gui_common import as_text as _as_text
-from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
-from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import extract_maxroll_paragon_steps
+from src.importing._web import get_with_retry, retry_importer
 from src.item import Affix, AffixType, ItemRarity, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.profiles import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
@@ -32,6 +31,8 @@ from src.scripts import correct_name
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+
+    from src.importing import ImportResult
 
 
 LOGGER = logging.getLogger(__name__)
@@ -54,11 +55,11 @@ class MaxrollError(Exception):
 
 
 @retry_importer
-def import_maxroll(config: ImportConfig):
+def import_maxroll(config: ImportConfig) -> ImportResult | None:
     url = config.url.strip().replace("\n", "")
     if PLANNER_BASE_URL not in url and BUILD_GUIDE_BASE_URL not in url:
         LOGGER.error("Invalid url, please use a maxroll build guide or maxroll planner url")
-        return
+        return None
     LOGGER.info(f"Loading {url}")
     if BUILD_GUIDE_BASE_URL in url:
         api_url, build_id, build_id_is_visible_position = _extract_planner_url_and_id_from_guide(url)
@@ -68,7 +69,7 @@ def import_maxroll(config: ImportConfig):
         r = get_with_retry(url=api_url)
     except ConnectionError:
         LOGGER.error("Couldn't get planner")
-        return
+        return None
     all_data = r.json()
     guide_season = all_data.get("season", "")
     build_data = json.loads(all_data["data"])
@@ -79,7 +80,7 @@ def import_maxroll(config: ImportConfig):
         mapping_data = get_with_retry(url=PLANNER_API_DATA_URL).json()
     except ConnectionError:
         LOGGER.error("Couldn't get planner data")
-        return
+        return None
     # The attribute descriptions are not always consistent with the casing for the key so we fix that here
     mapping_data["attributeDescriptions"] = {k.lower(): v for k, v in mapping_data["attributeDescriptions"].items()}
     active_profile = build_data["profiles"][build_id]
@@ -204,7 +205,7 @@ def import_maxroll(config: ImportConfig):
         # instead of preserving duplicates via incrementing name suffixes.
         finished_filters.append(item_filter)
 
-    ImportPipeline.run(
+    return ImportPipeline.run_result(
         adapter=StaticBuildGuideAdapter(
             url=url,
             build=ExtractedBuild(

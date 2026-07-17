@@ -1,14 +1,14 @@
 from src.dataloader import Dataloader
-from src.gui.importer.gui_common import (
+from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart, ImportConfig
+from src.importing import assemble_profile_file_name
+from src.importing._filters import (
     affix_dict_for_item_type,
-    build_default_profile_file_name,
     create_item_affix_pool,
     deduplicate_filters,
     is_unique_like_rarity,
     match_set_aware_seal_affix,
     unique_filter_name,
 )
-from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart, ImportConfig
 from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import WEAPON_TYPES, ItemType
 from src.item.data.rarity import ItemRarity
@@ -16,7 +16,7 @@ from src.profiles import CharmFilterModel, ItemFilterModel, ProfileModel, to_yam
 
 
 def test_build_default_profile_file_name_maxroll() -> None:
-    file_name = build_default_profile_file_name(
+    file_name = assemble_profile_file_name(
         source_name="maxroll", class_name="Spiritborn", build_header="Touch of Death", variant_name="Pit Push"
     )
 
@@ -24,7 +24,7 @@ def test_build_default_profile_file_name_maxroll() -> None:
 
 
 def test_build_default_profile_file_name_d4builds_strips_title_suffix() -> None:
-    file_name = build_default_profile_file_name(
+    file_name = assemble_profile_file_name(
         source_name="d4builds", class_name="Barbarian", build_header="Bash Build - D4Builds"
     )
 
@@ -32,7 +32,7 @@ def test_build_default_profile_file_name_d4builds_strips_title_suffix() -> None:
 
 
 def test_build_default_profile_file_name_d4builds_strips_spaced_title_suffix() -> None:
-    file_name = build_default_profile_file_name(
+    file_name = assemble_profile_file_name(
         source_name="d4builds", class_name="Barbarian", build_header="Bash Build · D4 Builds"
     )
 
@@ -40,7 +40,7 @@ def test_build_default_profile_file_name_d4builds_strips_spaced_title_suffix() -
 
 
 def test_build_default_profile_file_name_keeps_unknown_class_and_empty_variant() -> None:
-    file_name = build_default_profile_file_name(
+    file_name = assemble_profile_file_name(
         source_name="mobalytics", class_name="Unknown", build_header="Whirlwind Leveling Barb", variant_name=""
     )
 
@@ -48,7 +48,7 @@ def test_build_default_profile_file_name_keeps_unknown_class_and_empty_variant()
 
 
 def test_build_default_profile_file_name_adds_season_and_strips_matching_header_marker() -> None:
-    file_name = build_default_profile_file_name(
+    file_name = assemble_profile_file_name(
         source_name="d4builds",
         class_name="Paladin",
         season_number="12",
@@ -60,7 +60,7 @@ def test_build_default_profile_file_name_adds_season_and_strips_matching_header_
 
 
 def test_build_default_profile_file_name_replaces_stale_season_marker_in_header() -> None:
-    file_name = build_default_profile_file_name(
+    file_name = assemble_profile_file_name(
         source_name="maxroll", class_name="Sorcerer", season_number="12", build_header="S11 Crackling Energy Sorc"
     )
 
@@ -68,7 +68,7 @@ def test_build_default_profile_file_name_replaces_stale_season_marker_in_header(
 
 
 def test_build_default_profile_file_name_uses_selected_parts() -> None:
-    file_name = build_default_profile_file_name(
+    file_name = assemble_profile_file_name(
         source_name="d4builds",
         class_name="Barbarian",
         season_number="12",
@@ -81,13 +81,13 @@ def test_build_default_profile_file_name_uses_selected_parts() -> None:
 
 
 def test_build_default_profile_file_name_uses_unknown_for_selected_missing_class() -> None:
-    file_name = build_default_profile_file_name(source_name="", class_name="", filename_parts=(FilenamePart.CLASS,))
+    file_name = assemble_profile_file_name(source_name="", class_name="", filename_parts=(FilenamePart.CLASS,))
 
     assert file_name == "unknown"
 
 
 def test_build_default_profile_file_name_falls_back_when_no_parts_selected() -> None:
-    file_name = build_default_profile_file_name(
+    file_name = assemble_profile_file_name(
         source_name="d4builds", class_name="Barbarian", build_header="Bash Build", filename_parts=()
     )
 

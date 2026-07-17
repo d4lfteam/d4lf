@@ -10,24 +10,23 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
 from src.dataloader import Dataloader
-from src.gui.importer.gui_common import (
+from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
+from src.gui.importer.importer_config import ImportConfig
+from src.gui.importer.paragon_export import extract_d4builds_paragon_steps
+from src.importing._filters import (
     affix_dict_for_item_type,
     create_item_affix_pool,
     create_seal_charm_filter,
     fix_offhand_type,
     fix_weapon_type,
     get_class_name,
-    hover_and_get_tooltip_html,
     is_unique_like_rarity,
     match_set_aware_seal_affix,
     match_to_enum,
-    retry_importer,
     update_mingreateraffixcount,
     weapon_slot_name_hint,
 )
-from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
-from src.gui.importer.importer_config import ImportConfig
-from src.gui.importer.paragon_export import extract_d4builds_paragon_steps
+from src.importing._web import hover_and_get_tooltip_html, retry_importer
 from src.item import WEAPON_TYPES, Affix, AffixType, ItemRarity, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.profiles import (
@@ -43,6 +42,8 @@ from src.scripts import correct_name
 if TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver
     from selenium.webdriver.remote.webelement import WebElement
+
+    from src.importing import ImportResult
 
 
 LOGGER = logging.getLogger(__name__)
@@ -91,14 +92,14 @@ class D4BuildsError(Exception):
 
 
 @retry_importer(inject_webdriver=True)
-def import_d4builds(config: ImportConfig, driver: WebDriver | None = None) -> None:
+def import_d4builds(config: ImportConfig, driver: WebDriver | None = None) -> ImportResult | None:
     if driver is None:
         msg = "A Selenium WebDriver is required for D4Builds imports"
         raise RuntimeError(msg)
     url = config.url.strip().replace("\n", "")
     if BASE_URL not in url:
         LOGGER.error("Invalid url, please use a d4builds url")
-        return
+        return None
     LOGGER.info(f"Loading {url}")
     driver.get(url)
     wait = WebDriverWait(driver, 10)
@@ -213,7 +214,7 @@ def import_d4builds(config: ImportConfig, driver: WebDriver | None = None) -> No
         item_filter.min_power = 100
         finished_filters.append(item_filter)
         finished_filter_name_hints.append(weapon_slot_name_hint(item_filter, slot))
-    ImportPipeline.run(
+    return ImportPipeline.run_result(
         adapter=StaticBuildGuideAdapter(
             url=url,
             build=ExtractedBuild(
@@ -514,7 +515,7 @@ def _get_affix_name(stat: lxml.html.HtmlElement) -> str:
 
 if __name__ == "__main__":
     src.logger.setup()
-    from src.gui.importer.gui_common import setup_webdriver
+    from src.importing._web import setup_webdriver
 
     driver = setup_webdriver()
 

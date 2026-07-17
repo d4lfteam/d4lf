@@ -12,17 +12,6 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 import src.logger
 from src.dataloader import Dataloader
-from src.gui.importer.gui_common import (
-    affix_dict_for_item_type,
-    create_item_affix_pool,
-    create_seal_charm_filter,
-    get_with_retry,
-    is_unique_like_rarity,
-    match_to_enum,
-    retry_importer,
-    update_mingreateraffixcount,
-)
-from src.gui.importer.gui_common import as_string_keyed_mapping as _as_object
 from src.gui.importer.import_pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.gui.importer.importer_config import ImportConfig
 from src.gui.importer.paragon_export import (
@@ -30,6 +19,16 @@ from src.gui.importer.paragon_export import (
     extract_infinitybuilds_paragon_steps,
     fetch_infinitybuilds_paragon_catalog,
 )
+from src.importing._conversion import as_string_keyed_mapping as _as_object
+from src.importing._filters import (
+    affix_dict_for_item_type,
+    create_item_affix_pool,
+    create_seal_charm_filter,
+    is_unique_like_rarity,
+    match_to_enum,
+    update_mingreateraffixcount,
+)
+from src.importing._web import get_with_retry, retry_importer
 from src.item import Affix, AffixType, ItemType
 from src.item.descr.text import clean_str, closest_match
 from src.profiles import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
@@ -39,6 +38,8 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
     from selenium.webdriver.remote.webdriver import WebDriver
+
+    from src.importing import ImportResult
 
 
 LOGGER = logging.getLogger(__name__)
@@ -110,14 +111,14 @@ CatalogT = TypeVar("CatalogT", _CatalogItem, _CatalogAspect, _CatalogAffix)
 
 
 @retry_importer(inject_webdriver=True)
-def import_infinitybuilds(config: ImportConfig, driver: WebDriver | None = None) -> None:
+def import_infinitybuilds(config: ImportConfig, driver: WebDriver | None = None) -> ImportResult | None:
     if driver is None:
         msg = "A Selenium WebDriver is required for InfinityBuilds imports"
         raise RuntimeError(msg)
     url = config.url.strip().replace("\n", "")
     if BUILD_GUIDE_BASE_URL not in url:
         LOGGER.error("Invalid url, please use an infinitybuilds.gg build link")
-        return
+        return None
     LOGGER.info(f"Loading {url}")
     driver.get(url)
     wait = WebDriverWait(driver, 15)
@@ -176,7 +177,7 @@ def import_infinitybuilds(config: ImportConfig, driver: WebDriver | None = None)
         extracted_variant.paragon_build_name = build_header or extracted_variant.name
         extracted_variants.append(extracted_variant)
 
-    ImportPipeline.run(
+    return ImportPipeline.run_result(
         adapter=StaticBuildGuideAdapter(
             url=url,
             build=ExtractedBuild(
@@ -544,7 +545,7 @@ def _catalog_by_id(entries: Sequence[CatalogT]) -> dict[str, CatalogT]:
 
 if __name__ == "__main__":
     src.logger.setup()
-    from src.gui.importer.gui_common import setup_webdriver
+    from src.importing._web import setup_webdriver
 
     driver = setup_webdriver()
 

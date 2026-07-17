@@ -9,8 +9,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 
 from src import __version__
-from src.gui.importer.gui_common import PLAYER_CLASSES, get_with_retry
-from src.gui.importer.gui_common import as_string_keyed_mapping as _as_mapping
+from src.gui.importer.gui_common import PLAYER_CLASSES
+from src.importing._conversion import as_string_keyed_mapping as _as_mapping
+from src.importing._web import get_with_retry
 from src.paragon_transform import NODES_LEN
 from src.paragon_transform import class_slug_from_name as _class_slug_from_name
 from src.paragon_transform import prefix_with_class_slug as _prefix_with_class_slug

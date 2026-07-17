@@ -19,12 +19,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.gui.importer.d4builds import import_d4builds
-from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart, ImportConfig
-from src.gui.importer.infinitybuilds import import_infinitybuilds
-from src.gui.importer.maxroll import import_maxroll
-from src.gui.importer.mobalytics import import_mobalytics
+from src.gui.importer.importer_config import DEFAULT_FILENAME_PARTS, FilenamePart
 from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
+from src.importing import ImportOptions, ImportRequest, ImportResult, import_build
 from src.settings import get_settings
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
@@ -282,25 +279,20 @@ class ImporterWindow(QMainWindow):
             custom_filename = custom_filename.split(".")[0]
             custom_filename = custom_filename.strip()
 
-        importer_config = ImportConfig(
-            url,
-            self.import_aspect_upgrades_checkbox.isChecked(),
-            self.add_to_profiles_checkbox.isChecked(),
-            self.import_gas_checkbox.isChecked(),
-            self.require_all_gas_checkbox.isChecked(),
-            self.export_paragon_checkbox.isChecked(),
-            custom_filename,
-            self._selected_filename_parts(),
+        importer_config = ImportRequest(
+            url=url,
+            options=ImportOptions(
+                import_aspect_upgrades=self.import_aspect_upgrades_checkbox.isChecked(),
+                add_to_profiles=self.add_to_profiles_checkbox.isChecked(),
+                import_greater_affixes=self.import_gas_checkbox.isChecked(),
+                require_greater_affixes=self.require_all_gas_checkbox.isChecked(),
+                export_paragon=self.export_paragon_checkbox.isChecked(),
+                custom_file_name=custom_filename,
+                filename_parts=self._selected_filename_parts(),
+            ),
         )
 
-        if "maxroll" in url:
-            worker = _Worker(name="maxroll", fn=import_maxroll, config=importer_config)
-        elif "d4builds" in url:
-            worker = _Worker(name="d4builds", fn=import_d4builds, config=importer_config)
-        elif "infinitybuilds" in url:
-            worker = _Worker(name="infinitybuilds", fn=import_infinitybuilds, config=importer_config)
-        else:
-            worker = _Worker(name="mobalytics", fn=import_mobalytics, config=importer_config)
+        worker = _Worker(name="import", fn=_run_import, config=importer_config)
 
         worker.signals.finished.connect(self._on_worker_finished)
         self.is_generating = True
@@ -336,6 +328,10 @@ class ImporterWindow(QMainWindow):
             logging.getLogger(name).removeHandler(self.log_handler)
         if event is not None:
             event.accept()
+
+
+def _run_import(*, config: ImportRequest) -> ImportResult:
+    return import_build(config)
 
 
 class _GuiLogHandler(logging.Handler):
@@ -388,8 +384,12 @@ class _Worker(QRunnable):
     @override
     def run(self):
         threading.current_thread().name = self.name
-        self.fn(*self.args, **self.kwargs)
-        self.signals.finished.emit()
+        try:
+            self.fn(*self.args, **self.kwargs)
+        except Exception:
+            LOGGER.exception("Import worker failed")
+        finally:
+            self.signals.finished.emit()
 
 
 class _WorkerSignals(QObject):
