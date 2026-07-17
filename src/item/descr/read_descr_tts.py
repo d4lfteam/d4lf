@@ -81,6 +81,9 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
     elif item.rarity == ItemRarity.Unique:
         affixes_num = 2 if is_seal_or_charm(item.item_type) else 4
 
+    if item.item_type == ItemType.HoradricSeal and start < len(tts_section):
+        inherent_num = int(_is_charm_slot_unlock(tts_section[start]))
+
     if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and item.name is not None:
         # Uniques can have variable amounts of inherents.
         unique_data = Dataloader().aspect_unique_dict.get(item.name)
@@ -154,6 +157,11 @@ def _add_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
 
     _assign_aspect_or_set(item, aspect_or_set_text)
     return item
+
+
+def _is_charm_slot_unlock(text: str) -> bool:
+    normalized = text.lower()
+    return normalized.startswith("unlocks ") and "charm slot" in normalized
 
 
 def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
@@ -293,11 +301,7 @@ def _get_affix_starting_location_from_tts_section(tts_section: list[str], item: 
         start = _get_index_of_armor_dps_or_all_resist(tts_section, "armor")
     elif item.item_type == ItemType.HoradricSeal:
         index = _get_index_after_item_power(tts_section, fallback=4)
-        index = _skip_armory_loadout_banner(tts_section, index)
-        # Seals also report their max charm slot count right after Item Power; skip past it to reach the affixes.
-        if index < len(tts_section) and "charm slot" in tts_section[index].lower():
-            index += 1
-        return index
+        return _skip_armory_loadout_banner(tts_section, index)
     elif item.item_type == ItemType.Charm:
         index = _get_index_after_item_power(tts_section, fallback=3)
         return _skip_armory_loadout_banner(tts_section, index)

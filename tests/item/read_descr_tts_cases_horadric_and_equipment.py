@@ -425,7 +425,16 @@ items = [
             aspect=None,
             codex_upgrade=False,
             cosmetic_upgrade=False,
-            inherent=[],
+            inherent=[
+                Affix(
+                    max_value=None,
+                    min_value=None,
+                    name="charm_slot",
+                    text="Unlocks 4 Charm Slots",
+                    type=AffixType.inherent,
+                    value=4.0,
+                )
+            ],
             is_in_shop=False,
             item_type=ItemType.HoradricSeal,
             name="vigorous_horadric_seal_of_determination",
@@ -480,7 +489,16 @@ items = [
             aspect=None,
             codex_upgrade=False,
             cosmetic_upgrade=False,
-            inherent=[],
+            inherent=[
+                Affix(
+                    max_value=None,
+                    min_value=None,
+                    name="charm_slot",
+                    text="Unlocks 5 Charm Slots",
+                    type=AffixType.inherent,
+                    value=5.0,
+                )
+            ],
             is_in_shop=False,
             item_type=ItemType.HoradricSeal,
             name="resistant_horadric_seal_of_current",
@@ -535,7 +553,16 @@ items = [
             aspect=None,
             codex_upgrade=False,
             cosmetic_upgrade=False,
-            inherent=[],
+            inherent=[
+                Affix(
+                    max_value=None,
+                    min_value=None,
+                    name="charm_slot",
+                    text="Unlocks 6 Charm Slots",
+                    type=AffixType.inherent,
+                    value=6.0,
+                )
+            ],
             is_in_shop=False,
             item_type=ItemType.HoradricSeal,
             name="resistant_horadric_seal_of_glory",
@@ -591,7 +618,16 @@ items = [
             aspect=None,
             codex_upgrade=False,
             cosmetic_upgrade=False,
-            inherent=[],
+            inherent=[
+                Affix(
+                    max_value=None,
+                    min_value=None,
+                    name="charm_slot",
+                    text="Unlocks 6 Charm Slots",
+                    type=AffixType.inherent,
+                    value=6.0,
+                )
+            ],
             is_in_shop=False,
             item_type=ItemType.HoradricSeal,
             name="keen_horadric_seal_of_glory",

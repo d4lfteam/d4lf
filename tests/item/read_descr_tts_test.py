@@ -31,6 +31,38 @@ def test_parser_returns_boss_keys_without_image_lookup():
     assert read_descr() == Item(item_type=ItemType.LairBossKey, original_name="MALIGNANT HEART")
 
 
+def test_legendary_horadric_seal_parses_item_power_charm_slots_as_inherent():
+    src.tts.LAST_ITEM = [
+        "SHIELDING HORADRIC SEAL OF ILL-TEMPERANCE",
+        "Legendary Horadric Seal",
+        "850 Item Power",
+        "Unlocks 5 Charm Slots",
+        "+11.6% Barrier Generation [8.0 - 12.0]% (+11.6%)",
+        "Sescherons Fury:. +9% [8 - 11]% Fury Generation",
+        "Berserkers Crucible:. Lucky Hit: Up to a 7% [7 - 9]% chance to Become Berserking",
+        "Properties lost when equipped:",
+        "Unlocks 1 Charm Slots",
+        "18.0%[x] Critical Strike Damage",
+        "Seal Power",
+        "Seal Power",
+        "Requires Level 50. Lord of Hatred Item",
+        "Sell Value: 13,386,186 Gold",
+        "Right mouse button",
+    ]
+
+    item = read_descr()
+
+    assert item is not None
+    assert [(affix.name, affix.text, affix.value, affix.type) for affix in item.inherent] == [
+        ("charm_slot", "Unlocks 5 Charm Slots", 5.0, AffixType.inherent)
+    ]
+    assert [affix.name for affix in item.affixes] == [
+        "barrier_generation",
+        "sescherons_fury_fury_generation",
+        "berserkers_crucible_lucky_hit_up_to_a_chance_to_become_berserking",
+    ]
+
+
 def test_unique_helm_with_armory_loadout_has_five_affixes_and_one_aspect():
     src.tts.LAST_ITEM = [
         "GODSLAYER CROWN",

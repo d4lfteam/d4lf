@@ -59,7 +59,9 @@ def find_seperator_short(
     return min(sep_short.matches, key=lambda match: match.center[1])
 
 
-def find_seperator_long(img_item_descr: np.ndarray, short_separator_match: TemplateMatch) -> TemplateMatch | None:
+def find_seperator_long(
+    img_item_descr: np.ndarray, short_separator_match: TemplateMatch, match_index: int = 0
+) -> TemplateMatch | None:
     roi = [
         0,
         short_separator_match.center[1],
@@ -78,7 +80,8 @@ def find_seperator_long(img_item_descr: np.ndarray, short_separator_match: Templ
         )
     ).success:
         return None
-    return min(long_separator.matches, key=lambda match: match.region[1])
+    matches = sorted(_dedupe_matches(long_separator.matches), key=lambda match: match.region[1])
+    return matches[match_index] if match_index < len(matches) else None
 
 
 def find_bullets_for_templates(

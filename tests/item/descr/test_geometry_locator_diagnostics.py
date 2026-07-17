@@ -175,6 +175,37 @@ def test_affix_search_stops_at_long_separator(mocker) -> None:
     assert find_bullets.call_args.kwargs["max_y"] == long_separator.region[1]
 
 
+def test_horadric_seal_with_inherent_uses_second_long_separator(mocker) -> None:
+    short_separator = _make_tm("item_seperator_short_legendary", 50, 40)
+    first_long_separator = _make_tm("item_seperator_long_rare", 50, 180)
+    second_long_separator = _make_tm("item_seperator_long_rare", 50, 300)
+    bullets = [_make_tm("affix_bullet_point_1", 10, y) for y in (60, 90, 120, 150)]
+    trace = BulletSearchTrace(raw=bullets, accepted=bullets)
+    inherent = Affix(name="charm_slot")
+    affixes = [Affix(name=f"affix_{index}") for index in range(3)]
+
+    mocker.patch("src.item.descr.texture.find_seperator_short", return_value=short_separator)
+    mocker.patch(
+        "src.item.descr.texture.search",
+        return_value=SearchResult(matches=[first_long_separator, second_long_separator], success=True),
+    )
+    find_bullets = mocker.patch(
+        "src.item.descr.texture.find_bullets_for_templates_traced", return_value=(bullets, trace)
+    )
+
+    result = locate_affix_markers_with_diagnostics(
+        tooltip_image=np.zeros((400, 100, 3), dtype=np.uint8),
+        item=Item(item_type=ItemType.HoradricSeal, inherent=[inherent], affixes=affixes),
+        matched_affixes=[affixes[0]],
+    )
+
+    assert result.result.reliable
+    assert [(marker.kind, marker.index) for marker in result.result.markers] == [("affix", 1)]
+    assert result.diagnostics.long_separator is not None
+    assert result.diagnostics.long_separator.region == second_long_separator.region
+    assert find_bullets.call_args.kwargs["max_y"] == second_long_separator.region[1]
+
+
 def test_long_separator_is_collected_for_aspect_only_replays(mocker) -> None:
     short_separator = _make_tm("item_seperator_short_legendary", 50, 40)
     long_separator = _make_tm("item_seperator_long_legendary", 50, 180)
@@ -248,7 +279,7 @@ def test_low_confidence_selected_marker_is_reported(mocker) -> None:
     assert result.diagnostics.selected_markers[0].confidence == pytest.approx(0.74)
 
 
-def test_trace_preserves_filter_stages_and_horadric_suppression(mocker) -> None:
+def test_trace_preserves_filter_stages_for_horadric_seal(mocker) -> None:
     separator = _make_tm("item_seperator_short_rare", 50, 40)
     accepted = _make_tm("affix_bullet_point_1", 10, 60)
     duplicate = _make_tm("affix_bullet_point_1_medium", 10, 61, score=0.85)
@@ -269,12 +300,11 @@ def test_trace_preserves_filter_stages_and_horadric_suppression(mocker) -> None:
         matched_affixes=[affix],
     )
 
-    assert not result.result.reliable
-    assert result.diagnostics.failure_reason == "insufficient_affix_rows"
+    assert result.result.reliable
+    assert result.diagnostics.failure_reason is None
     assert result.diagnostics.affix_bullets is not None
     assert len(result.diagnostics.affix_bullets.rejected_outliers) == 1
     assert len(result.diagnostics.affix_bullets.rejected_duplicates) == 1
-    assert len(result.diagnostics.affix_bullets.suppressed_horadric_seal) == 1
 
 
 def test_plain_and_traced_bullet_searches_return_same_matches(mocker) -> None:

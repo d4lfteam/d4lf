@@ -6,9 +6,17 @@ from natsort import natsorted
 
 from src.config.loader import IniConfigLoader
 from src.config.profile_document import ProfileDocumentStore
-from src.config.profile_models import ParagonPayloadModel, ProfileModel, SigilPriority, TributeFilterModel
+from src.config.profile_models import (
+    AffixFilterCountModel,
+    AffixFilterModel,
+    ItemFilterModel,
+    ParagonPayloadModel,
+    ProfileModel,
+    SigilPriority,
+    TributeFilterModel,
+)
 from src.config.settings_models import AspectFilterType
-from src.item.data.affix import Affix
+from src.item.data.affix import Affix, AffixType
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
 from src.item.filter import Filter, FilterResult
@@ -242,6 +250,73 @@ def test_affix_rarity_gate(rarity: ItemRarity, expected: set[str], mocker: Mocke
     test_filter = _create_mocked_filter(mocker)
     test_filter.affix_filters = {filters.affix_rarity.name: filters.affix_rarity.affixes}
     assert {m.profile for m in test_filter.should_keep(boots).matched} == expected
+
+
+def test_duplicate_affix_requirements_match_distinct_item_rows(mocker: MockerFixture):
+    profile = ProfileModel(
+        name="duplicates",
+        affixes=[
+            {
+                "TwoArmor": ItemFilterModel(
+                    item_type=[ItemType.Helm],
+                    affix_pool=[
+                        AffixFilterCountModel(count=[AffixFilterModel(name="armor"), AffixFilterModel(name="armor")])
+                    ],
+                )
+            }
+        ],
+    )
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.affix_filters = {profile.name: profile.affixes}
+
+    one_armor = Item(
+        item_type=ItemType.Helm, power=900, rarity=ItemRarity.Rare, affixes=[Affix(name="armor", value=100)]
+    )
+    assert not test_filter.should_keep(one_armor).keep
+
+    first_armor = Affix(name="armor", value=100)
+    second_armor = Affix(name="armor", value=200)
+    two_armors = Item(item_type=ItemType.Helm, power=900, rarity=ItemRarity.Rare, affixes=[first_armor, second_armor])
+    result = test_filter.should_keep(two_armors)
+
+    assert result.keep
+    assert result.matched[0].matched_affixes == [first_armor, second_armor]
+    assert result.matched[0].matched_affixes[0] is first_armor
+    assert result.matched[0].matched_affixes[1] is second_armor
+
+
+def test_duplicate_affix_requirements_assign_value_and_greater_constraints(mocker: MockerFixture):
+    profile = ProfileModel(
+        name="duplicates",
+        affixes=[
+            {
+                "TwoArmor": ItemFilterModel(
+                    item_type=[ItemType.Helm],
+                    min_greater_affix_count=1,
+                    affix_pool=[
+                        AffixFilterCountModel(
+                            count=[
+                                AffixFilterModel(name="armor"),
+                                AffixFilterModel(name="armor", value=200, want_greater=True),
+                            ]
+                        )
+                    ],
+                )
+            }
+        ],
+    )
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.affix_filters = {profile.name: profile.affixes}
+
+    first_armor = Affix(name="armor", value=100)
+    second_armor = Affix(name="armor", value=200, type=AffixType.greater)
+    item = Item(item_type=ItemType.Helm, power=900, rarity=ItemRarity.Rare, affixes=[first_armor, second_armor])
+
+    result = test_filter.should_keep(item)
+
+    assert result.keep
+    assert result.matched[0].matched_affixes == [first_armor, second_armor]
+    assert result.matched[0].matched_affixes[1] is second_armor
 
 
 def test_sigil_rarity_gate_keeps_matching_rarity(mocker: MockerFixture):

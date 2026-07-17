@@ -7,7 +7,7 @@ import cv2
 
 from src.config.ui import ResManager
 from src.item.data.affix import Affix
-from src.item.data.aspect import Aspect
+from src.item.data.item_type import ItemType
 from src.item.descr.geometry_locator import (
     BulletMatchDiagnostics,
     DiagnosticLocatorResult,
@@ -56,20 +56,19 @@ class ReplayResult:
 # BEGIN EDITABLE REPLAY CONFIGURATION
 # Replace these values with the cropped tooltip and the Item captured from production.
 REPLAY_CONFIG = ReplayConfig(
-    image_path=Path(r"E:\Downloads\test2.png"),
-    game_resolution="1920x1080",
+    image_path=Path(r"E:\Downloads\test5.png"),
+    game_resolution="3840x2160",
     item=Item(
+        inherent=[Affix(name="charm_slot")],
         affixes=[
-            Affix(name="dexterity"),
-            Affix(name="maxmimum_life"),
-            Affix(name="maximum_resource"),
-            Affix(name="armor"),
-            Affix(name="armor"),
+            Affix(name="barrier_generation"),
+            Affix(name="sescherons_fury_fury_generation"),
+            Affix(name="berserkers_crucible_lucky_hit_up_to_a_chance_to_become_berserking"),
         ],
-        aspect=Aspect(name="godslayer_crown"),
+        item_type=ItemType.HoradricSeal,
     ),
-    matched_row_indices=[0, 1, 3],
-    aspect_matched=True,
+    matched_row_indices=[2],
+    aspect_matched=False,
 )
 # END EDITABLE REPLAY CONFIGURATION
 
@@ -124,7 +123,6 @@ def _log_bullet_diagnostics(stage: str, diagnostics: BulletMatchDiagnostics | No
     _log_trace_group(f"{stage}.rejected_outliers", diagnostics.rejected_outliers)
     _log_trace_group(f"{stage}.rejected_duplicates", diagnostics.rejected_duplicates)
     _log_trace_group(f"{stage}.accepted", diagnostics.accepted)
-    _log_trace_group(f"{stage}.suppressed_horadric_seal", diagnostics.suppressed_horadric_seal)
 
 
 def _log_diagnostics(diagnostic_result: DiagnosticLocatorResult) -> None:
@@ -195,8 +193,6 @@ def _draw_bullet_diagnostics(image: np.ndarray, stage: str, diagnostics: BulletM
         _draw_trace(image, trace, REJECTED_MATCH_COLOR, f"{stage} rejected", font_scale)
     for trace in diagnostics.accepted:
         _draw_trace(image, trace, ACCEPTED_MATCH_COLOR, f"{stage} accepted", font_scale)
-    for trace in diagnostics.suppressed_horadric_seal:
-        _draw_trace(image, trace, REJECTED_MATCH_COLOR, f"{stage} suppressed", font_scale)
 
 
 def _draw_legend(image: np.ndarray) -> None:

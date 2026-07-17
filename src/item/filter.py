@@ -1,4 +1,5 @@
 import logging
+import operator
 import pathlib
 import sys
 import time
@@ -395,75 +396,86 @@ class Filter:
     ) -> list[Affix]:
         result = []
         for count_group in expected_affixes:
-            group_res = []
-
-            # Do the normal affix matching first
-            for affix in count_group.count:
-                matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
-                if matched_item_affix is not None and self._match_item_aspect_or_affix(affix, matched_item_affix):
-                    group_res.append(matched_item_affix)
-
-            # Check minCount and maxCount
-            if not (count_group.min_count <= len(group_res) <= count_group.max_count):
+            group_res = self._match_affix_group(
+                count_group=count_group, item_affixes=item_affixes, min_greater_affix_count=min_greater_affix_count
+            )
+            if group_res is None:
                 return []  # if one group fails, everything fails
-
-            # Check want_greater requirements (2-mode system)
-            want_greater_affixes = [a for a in count_group.count if getattr(a, "want_greater", False)]
-            want_greater_count = len(want_greater_affixes)
-
-            if want_greater_count > 0 and min_greater_affix_count > 0:
-                if min_greater_affix_count > want_greater_count:
-                    # Mode 1: ALL flagged affixes MUST be GA (hard requirement)
-                    for affix in want_greater_affixes:
-                        matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
-                        if matched_item_affix is None or matched_item_affix.type != AffixType.greater:
-                            return []  # Flagged affix is missing or not GA, fail
-                else:
-                    # Mode 2: At least min_greater_affix_count of the flagged affixes must be GA (flexible)
-                    flagged_ga_count = sum(
-                        1
-                        for affix in want_greater_affixes
-                        if (matched := next((a for a in item_affixes if a.name == affix.name), None))
-                        and matched.type == AffixType.greater
-                    )
-                    if flagged_ga_count < min_greater_affix_count:
-                        return []  # Not enough flagged affixes are GA
-
             result.extend(group_res)
         return result
+
+    def _match_affix_group(
+        self, count_group: AffixFilterCountModel, item_affixes: list[Affix], min_greater_affix_count: int
+    ) -> list[Affix] | None:
+        expected_affixes = count_group.count
+        compatible_item_indices = [
+            [
+                item_index
+                for item_index, item_affix in enumerate(item_affixes)
+                if self._match_item_aspect_or_affix(expected_affix, item_affix)
+            ]
+            for expected_affix in expected_affixes
+        ]
+        expected_order = sorted(
+            range(len(expected_affixes)), key=lambda expected_index: len(compatible_item_indices[expected_index])
+        )
+        want_greater_indices = {
+            expected_index
+            for expected_index, expected_affix in enumerate(expected_affixes)
+            if expected_affix.want_greater
+        }
+        required_greater_count = min(min_greater_affix_count, len(want_greater_indices))
+        max_match_count = -1
+        valid_assignment: list[tuple[int, int]] | None = None
+
+        def visit(position: int, used_item_indices: set[int], assignment: list[tuple[int, int]]) -> None:
+            nonlocal max_match_count, valid_assignment
+            if position == len(expected_order):
+                match_count = len(assignment)
+                flagged_ga_count = sum(
+                    1
+                    for expected_index, item_index in assignment
+                    if expected_index in want_greater_indices and item_affixes[item_index].type == AffixType.greater
+                )
+                meets_greater_requirement = flagged_ga_count >= required_greater_count
+                if match_count > max_match_count:
+                    max_match_count = match_count
+                    valid_assignment = assignment.copy() if meets_greater_requirement else None
+                elif match_count == max_match_count and meets_greater_requirement and valid_assignment is None:
+                    valid_assignment = assignment.copy()
+                return
+
+            expected_index = expected_order[position]
+            for item_index in compatible_item_indices[expected_index]:
+                if item_index in used_item_indices:
+                    continue
+                used_item_indices.add(item_index)
+                assignment.append((expected_index, item_index))
+                visit(position + 1, used_item_indices, assignment)
+                assignment.pop()
+                used_item_indices.remove(item_index)
+            visit(position + 1, used_item_indices, assignment)
+
+        visit(0, set(), [])
+        if valid_assignment is None or not (count_group.min_count <= max_match_count <= count_group.max_count):
+            return None
+
+        return [item_affixes[item_index] for _, item_index in sorted(valid_assignment, key=operator.itemgetter(0))]
 
     def _match_affixes_uniques(
         self, expected_affixes: list[AffixFilterModel], item_affixes: list[Affix], min_greater_affix_count: int = 0
     ) -> bool:
-        # First, check if all expected affixes are present with correct values
-        for expected_affix in expected_affixes:
-            matched_item_affix = next((a for a in item_affixes if a.name == expected_affix.name), None)
-            if matched_item_affix is None or not self._match_item_aspect_or_affix(expected_affix, matched_item_affix):
-                return False
-
-        # Then, check want_greater requirements (2-mode system)
-        want_greater_affixes = [a for a in expected_affixes if getattr(a, "want_greater", False)]
-        want_greater_count = len(want_greater_affixes)
-
-        if want_greater_count > 0 and min_greater_affix_count > 0:
-            if min_greater_affix_count > want_greater_count:
-                # Mode 1: ALL flagged affixes MUST be GA (hard requirement)
-                for affix in want_greater_affixes:
-                    matched_item_affix = next((a for a in item_affixes if a.name == affix.name), None)
-                    if matched_item_affix is None or matched_item_affix.type != AffixType.greater:
-                        return False  # Flagged affix is missing or not GA
-            else:
-                # Mode 2: At least min_greater_affix_count of the flagged affixes must be GA (flexible)
-                flagged_ga_count = sum(
-                    1
-                    for affix in want_greater_affixes
-                    if (matched := next((a for a in item_affixes if a.name == affix.name), None))
-                    and matched.type == AffixType.greater
-                )
-                if flagged_ga_count < min_greater_affix_count:
-                    return False  # Not enough flagged affixes are GA
-
-        return True
+        if not expected_affixes:
+            return True
+        count_group = AffixFilterCountModel(
+            count=expected_affixes, min_count=len(expected_affixes), max_count=len(expected_affixes)
+        )
+        return (
+            self._match_affix_group(
+                count_group=count_group, item_affixes=item_affixes, min_greater_affix_count=min_greater_affix_count
+            )
+            is not None
+        )
 
     @staticmethod
     def _match_greater_affix_count(expected_min_count: int, item_affixes: list[Affix]) -> bool:

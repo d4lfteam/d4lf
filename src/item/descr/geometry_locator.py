@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
-from src.item.data.item_type import ItemType
 from src.item.descr.texture import BULLET_THRESHOLD
 
 if TYPE_CHECKING:
@@ -92,7 +91,6 @@ class BulletMatchDiagnostics:
     rejected_outliers: list[TemplateMatchTrace] = field(default_factory=list)
     rejected_duplicates: list[TemplateMatchTrace] = field(default_factory=list)
     accepted: list[TemplateMatchTrace] = field(default_factory=list)
-    suppressed_horadric_seal: list[TemplateMatchTrace] = field(default_factory=list)
 
 
 @dataclass
@@ -210,7 +208,7 @@ def _locate_tts_guided_template(
         diagnostics.separator = _to_template_match_trace(separator_match)
     markers: list[LocatedMarker] = []
 
-    long_separator_match = find_seperator_long(tooltip_image, separator_match)
+    long_separator_match = find_seperator_long(tooltip_image, separator_match, match_index=1 if item.inherent else 0)
     if diagnostics is not None and long_separator_match is not None:
         diagnostics.long_separator = _to_template_match_trace(long_separator_match)
 
@@ -228,11 +226,6 @@ def _locate_tts_guided_template(
                 tooltip_image, separator_match, _AFFIX_BULLET_TEMPLATE_REFS, **bullet_search_kwargs
             )
             diagnostics.affix_bullets = _to_bullet_match_diagnostics(affix_trace)
-        if item.item_type == ItemType.HoradricSeal and affix_bullets:
-            if diagnostics is not None and diagnostics.affix_bullets is not None:
-                diagnostics.affix_bullets.suppressed_horadric_seal = [_to_template_match_trace(affix_bullets[0])]
-            affix_bullets = affix_bullets[1:]
-
         expected_affix_rows = len(item.inherent) + len(item.affixes)
         if len(affix_bullets) < expected_affix_rows:
             if diagnostics is not None:
