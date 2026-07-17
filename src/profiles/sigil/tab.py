@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.item import Dataloader, SigilRules
+from src.item import SigilRules
 from src.profiles import SigilConditionModel, SigilFilterModel, SigilPriority
 from src.profiles.editor import Container, IgnoreScrollWheelComboBox, RarityPicker, rarity_summary
 from src.profiles.sigil.dialogs import CreateSigil, RemoveSigil
@@ -94,7 +94,7 @@ class SigilsTab(QWidget):
 
         for sigil_condition in self.sigil_model.blacklist:
             self.add_sigil(sigil_condition)
-            self.blacklist_sigils.append(Dataloader().affix_sigil_dict[sigil_condition.name])
+            self.blacklist_sigils.append(sigil_condition.name)
 
         # Whitelist
         self.whitelist_container = Container("Whitelist")
@@ -103,7 +103,7 @@ class SigilsTab(QWidget):
 
         for sigil_condition in self.sigil_model.whitelist:
             self.add_sigil(sigil_condition, whitelist=True)
-            self.whitelist_sigils.append(Dataloader().affix_sigil_dict[sigil_condition.name])
+            self.whitelist_sigils.append(sigil_condition.name)
 
         self.main_layout.addWidget(self.whitelist_container)
         self.main_layout.addWidget(self.blacklist_container)
@@ -131,47 +131,31 @@ class SigilsTab(QWidget):
                 widget = SigilWidget(sigil_name, sigil_condition, whitelist=True, kind=kind)
                 widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
                 self.whitelist_layout.addWidget(widget)
-                self.whitelist_sigils.append(sigil_name)
+                self.whitelist_sigils.append(target.name)
                 self.sigil_model.whitelist.append(sigil_condition)
             elif type_name == "blacklist":
                 widget = SigilWidget(sigil_name, sigil_condition, whitelist=False, kind=kind)
                 widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
                 self.blacklist_layout.addWidget(widget)
-                self.blacklist_sigils.append(sigil_name)
+                self.blacklist_sigils.append(target.name)
                 self.sigil_model.blacklist.append(sigil_condition)
 
     def remove_sigil(self, blacklist: bool = False):
-        dialog = RemoveSigil(self.blacklist_sigils, blacklist=True) if blacklist else RemoveSigil(self.whitelist_sigils)
+        sigils = self.blacklist_sigils if blacklist else self.whitelist_sigils
+        layout = self.blacklist_layout if blacklist else self.whitelist_layout
+        rules = self.sigil_model.blacklist if blacklist else self.sigil_model.whitelist
+        dialog = RemoveSigil(sigils, blacklist=blacklist)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            to_delete = dialog.get_value()
-            if blacklist:
-                for sigil in to_delete:
-                    self.blacklist_sigils.remove(sigil)
-                to_delete_list = []
-                for i in range(self.blacklist_layout.count()):
-                    item = self.blacklist_layout.itemAt(i)
-                    if item is None:
-                        continue
-                    sigil_widget = item.widget()
-                    if isinstance(sigil_widget, SigilWidget) and sigil_widget.sigil_name in to_delete:
-                        to_delete_list.append(sigil_widget)
-                for sig_widget in to_delete_list:
-                    sig_widget.setParent(None)
-                    self.sigil_model.blacklist.remove(sig_widget.sigil)
-            else:
-                for sigil in to_delete:
-                    self.whitelist_sigils.remove(sigil)
-                to_delete_list = []
-                for i in range(self.whitelist_layout.count()):
-                    item = self.whitelist_layout.itemAt(i)
-                    if item is None:
-                        continue
-                    sigil_widget = item.widget()
-                    if isinstance(sigil_widget, SigilWidget) and sigil_widget.sigil_name in to_delete:
-                        to_delete_list.append(sigil_widget)
-                for sig_widget in to_delete_list:
-                    sig_widget.setParent(None)
-                    self.sigil_model.whitelist.remove(sig_widget.sigil)
+            to_delete = set(dialog.get_value())
+            sigils[:] = [sigil for sigil in sigils if sigil not in to_delete]
+            for index in reversed(range(layout.count())):
+                item = layout.itemAt(index)
+                widget = item.widget() if item is not None else None
+                if not isinstance(widget, SigilWidget) or widget.sigil.name not in to_delete:
+                    continue
+                layout.takeAt(index)
+                widget.setParent(None)
+                rules.remove(widget.sigil)
 
     def update_priority(self):
         self.sigil_model.priority = SigilPriority(self.priority_combobox.currentText())
@@ -187,8 +171,8 @@ class SigilsTab(QWidget):
 
     def on_dungeon_changed(self, sigil_widget: SigilWidget):
         whitelist = sigil_widget.whitelist
-        new_name = sigil_widget.sigil_name
-        old_name = sigil_widget.old_name
+        new_name = sigil_widget.sigil.name
+        old_name = sigil_widget.old_sigil_name
         if whitelist and new_name in self.whitelist_sigils:
             QMessageBox.warning(self, "Warning", "Sigil already exist in whitelist. You can modify the existing one.")
             sigil_widget.revert_sigil_dungeon()

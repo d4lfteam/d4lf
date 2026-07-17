@@ -90,10 +90,13 @@ class CreateSigil(QDialog):
 
     @override
     def accept(self) -> None:
-        if self.type_input.currentText() == "whitelist" and self.name_input.currentText() in self.whitelist_sigils:
+        target = SigilRules.default().target(
+            self.name_input.currentText(), target_type=_selected_sigil_target_type(self.kind_input), display=True
+        )
+        if self.type_input.currentText() == "whitelist" and target.name in self.whitelist_sigils:
             QMessageBox.warning(self, "Warning", "Sigil already exist in whitelist. You can modify the existing one.")
             return
-        if self.type_input.currentText() == "blacklist" and self.name_input.currentText() in self.blacklist_sigils:
+        if self.type_input.currentText() == "blacklist" and target.name in self.blacklist_sigils:
             QMessageBox.warning(self, "Warning", "Sigil already exist in whitelist. You can modify the existing one.")
             return
         super().accept()
@@ -142,7 +145,7 @@ class RemoveSigil(QDialog):
 
         self.checkbox_list: list[QCheckBox] = []
         for sigil in self.sigils:
-            checkbox = QCheckBox(sigil)
+            checkbox = QCheckBox(SigilRules.default().target(sigil).display)
             scrollable_layout.addWidget(checkbox)
             self.checkbox_list.append(checkbox)
         scroll_widget.setLayout(scrollable_layout)
@@ -164,4 +167,7 @@ class RemoveSigil(QDialog):
         self.setLayout(self.main_layout)
 
     def get_value(self):
-        return [checkbox.text() for checkbox in self.checkbox_list if checkbox.isChecked()]
+        rules = SigilRules.default()
+        return [
+            rules.target(checkbox.text(), display=True).name for checkbox in self.checkbox_list if checkbox.isChecked()
+        ]

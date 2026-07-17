@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.item import Dataloader, SigilRules, SigilRuleTargetType
+from src.item import SigilRules, SigilRuleTargetType
 from src.profiles.editor import Container, IgnoreScrollWheelComboBox
 
 if TYPE_CHECKING:
@@ -61,6 +61,7 @@ class SigilWidget(Container):
         self.sigil_name = sigil_name
         self.whitelist = whitelist
         self.kind = kind
+        self.old_sigil_name = sigil.name
         self.setup_ui()
 
     def setup_ui(self):
@@ -94,7 +95,7 @@ class SigilWidget(Container):
         for condition in self.sigil.condition:
             if not condition:
                 continue
-            self.add_condition_to_list(Dataloader().affix_sigil_dict[condition])
+            self.add_condition_to_list(SigilRules.default().target(condition, target_type="affix").display)
 
         condition_btn_layout = QHBoxLayout()
         add_condition_btn = QPushButton("Add Condition")
@@ -119,9 +120,11 @@ class SigilWidget(Container):
         self.condition_list.setItemWidget(widget_item, widget)
 
     def add_condition(self):
-        minor_dict = Dataloader().affix_sigil_dict_all.get("minor", {})
-        default_val = next(iter(minor_dict.values()), "")
-        default_key = next(iter(minor_dict.keys()), "")
+        default_target = next(iter(SigilRules.default().targets("affix")), None)
+        if default_target is None:
+            return
+        default_val = default_target.display
+        default_key = default_target.name
         self.add_condition_to_list(default_val)
         self.sigil.condition.append(default_key)
 
@@ -137,10 +140,12 @@ class SigilWidget(Container):
         self.sigil_name_combo.setCurrentText(self.old_name)
         self.sigil_name_combo.currentTextChanged.disconnect()
         self.sigil_name_combo.currentIndexChanged.connect(self.update_sigil_dungeon)
+        self.old_sigil_name = self.sigil.name
 
     def update_sigil_dungeon(self, classic=True):
         new_name = self.sigil_name_combo.currentText()
         self.old_name = self.sigil_name
+        self.old_sigil_name = self.sigil.name
         self.sigil_name = new_name
         self.header.set_name(new_name)
         self.sigil.name = SigilRules.default().target(new_name, target_type=self.kind, display=True).name

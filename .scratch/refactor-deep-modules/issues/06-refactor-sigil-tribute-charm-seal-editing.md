@@ -10,11 +10,20 @@ The public capability subpackages are `src.profiles.charm_seal`, `src.profiles.s
 
 **Blocked by:** 02 — Deepen item models and filtering; 03 — Deepen profile persistence and sessions; 04 — Deepen settings and configuration.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Sigil dungeon and affix targets remain distinct and preserve blacklist and whitelist behavior.
-- [ ] Tribute name and rarity remain independent OR gates, and legacy list input still migrates correctly.
-- [ ] Charm and seal editing preserves set-aware affixes, rarity handling, and mutual-exclusion behavior.
-- [ ] Create, remove, and selection dialogs remain behaviorally unchanged.
-- [ ] Every touched source Python file is at most 300 physical lines.
-- [ ] Focused editor tests and the line guard pass.
+- [x] Sigil dungeon and affix targets remain distinct and preserve blacklist and whitelist behavior.
+- [x] Tribute name and rarity remain independent OR gates, and legacy list input still migrates correctly.
+- [x] Charm and seal editing preserves set-aware affixes, rarity handling, and mutual-exclusion behavior.
+- [x] Create, remove, and selection dialogs remain behaviorally unchanged.
+- [x] Every touched source Python file is at most 300 physical lines.
+- [x] Focused editor tests and the line guard pass.
+
+## Answer
+
+Sigil editor state now tracks canonical dungeon and affix targets through the `src.profiles.sigil`
+facade, while dialogs continue to show their display labels. Duplicate detection, removal, and
+post-rejection renaming preserve blacklist and whitelist model values. Public facade coverage and
+focused profile-editor tests cover the sigil, tribute, charm, and seal seams. The affected manifest
+passes; the full non-Selenium suite passes 606 tests with 47 skipped tests. The repository-wide
+line hook still reports the pre-existing oversized files outside this slice.
