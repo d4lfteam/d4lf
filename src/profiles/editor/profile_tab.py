@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.dataloader import Dataloader
+from src.item import Dataloader
 from src.profiles import (
     EmptyError,
     Failed,
@@ -27,18 +27,16 @@ from src.profiles import (
     ValidationError,
     YamlError,
 )
-from src.profiles.editor import ProfileEditor
-from src.profiles.editor.session_store import QSettingsLastOpenedStore
+from src.profiles.editor import ProfileEditor, QSettingsLastOpenedStore
 
 LOGGER = logging.getLogger(__name__)
-
 PROFILE_TABNAME = "edit profile (beta)"
 
 
 class ProfileTab(QWidget):
     profile_saved = pyqtSignal(str)
 
-    def __init__(self):
+    def __init__(self, initial_profile_name: str | None = None):
         super().__init__()
         self.settings = QSettings("d4lf", "profile_editor")
         self.session = ProfileSession(last_opened_store=QSettingsLastOpenedStore(self.settings))
@@ -50,7 +48,6 @@ class ProfileTab(QWidget):
         self.active_profiles = []
         self.inactive_profiles = []
         self.model_editor = None
-        self.first_show = True
         self.main_layout = QVBoxLayout(self)
         scroll_area = QScrollArea(self)
         scroll_widget = QWidget(scroll_area)
@@ -58,7 +55,6 @@ class ProfileTab(QWidget):
         scroll_area.setWidgetResizable(True)
         info_layout = QHBoxLayout()
         info_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
         tools_groupbox = QGroupBox("Profile")
         tools_groupbox_layout = QHBoxLayout()
         self.profile_combo = QComboBox()
@@ -75,7 +71,6 @@ class ProfileTab(QWidget):
         self.main_layout.addLayout(info_layout)
         self.itemTypes = Dataloader().item_types_dict
         self.affixesNames = Dataloader().affix_dict
-        self.profile_editor_created = False
         scroll_widget.setLayout(self.scrollable_layout)
         scroll_area.setWidget(scroll_widget)
         self.main_layout.addWidget(scroll_area)
@@ -87,8 +82,7 @@ class ProfileTab(QWidget):
         )
         instructions_text.setFixedHeight(50)
         self.main_layout.addWidget(instructions_text)
-        self.setLayout(self.main_layout)
-        self.populate_profile_dropdown()
+        self.populate_profile_dropdown(initial_profile_name)
 
     def confirm_discard_changes(self):
         reply = QMessageBox.warning(
@@ -106,34 +100,43 @@ class ProfileTab(QWidget):
         reply = QMessageBox.warning(self, "Alert", msg, QMessageBox.StandardButton.Ok)
         return reply == QMessageBox.StandardButton.Ok
 
-    def show_tab(self):
-        if self.first_show:
-            self.first_show = False
-            return
-
     def profile_selection_changed(self, index):
         selected_profile = self.profile_combo.itemData(index, Qt.ItemDataRole.UserRole)
         if selected_profile and selected_profile != self.current_profile_name:
             self.load_selected_profile(selected_profile)
 
     def load_selected_profile(self, profile_name):
+        if profile_name not in self.profile_paths:
+            self.set_current_profile_combo(self.current_profile_name)
+            return False
+
         previous_profile_name = self.current_profile_name
+        previous_file_path = self.file_path
+        previous_root = self.root
+        previous_loaded_profile = self.loaded_profile
+        previous_model_editor = self.model_editor
         self.file_path = self.profile_paths[profile_name]
         if self.load_yaml():
             loaded_profile = self.loaded_profile
             root = self.root
             if loaded_profile is None or root is None:
-                self.file_path = self.profile_paths.get(previous_profile_name)
-                self.set_current_profile_combo(previous_profile_name)
-                return
+                self.file_path = previous_file_path
+                self.root = previous_root
+                self.loaded_profile = previous_loaded_profile
+                self.model_editor = previous_model_editor
+                return False
             self._set_model_editor(loaded_profile)
             self.current_profile_name = profile_name
             self.set_current_profile_combo(profile_name)
             LOGGER.info(f"Profile {root.name} loaded into profile editor.")
-            return
+            return True
 
-        self.file_path = self.profile_paths.get(previous_profile_name)
+        self.file_path = previous_file_path
+        self.root = previous_root
+        self.loaded_profile = previous_loaded_profile
+        self.model_editor = previous_model_editor
         self.set_current_profile_combo(previous_profile_name)
+        return False
 
     def add_profile_combo_section(self, label, profiles):
         if not profiles:
@@ -155,7 +158,7 @@ class ProfileTab(QWidget):
             index = self.profile_combo.findData(profile_name, Qt.ItemDataRole.UserRole)
             self.profile_combo.setCurrentIndex(index)
 
-    def populate_profile_dropdown(self):
+    def populate_profile_dropdown(self, initial_profile_name: str | None = None):
         catalog = self.session.discover()
         self.profile_paths = catalog.paths
         self.active_profiles = catalog.active
@@ -182,7 +185,7 @@ class ProfileTab(QWidget):
         self.profile_combo.setEnabled(True)
         self.save_button.setEnabled(True)
         self.refresh_button.setEnabled(True)
-        self.select_initial_profile()
+        self.select_initial_profile(initial_profile_name)
 
     def load(self):
         profile_name = self.current_profile_name
@@ -191,7 +194,11 @@ class ProfileTab(QWidget):
             return self.load_yaml()
         return False
 
-    def select_initial_profile(self):
+    def select_initial_profile(self, initial_profile_name: str | None = None):
+        if initial_profile_name in self.profile_paths:
+            self.load_selected_profile(initial_profile_name)
+            return
+
         last_opened = self.session.last_opened_profile()
         if last_opened in self.profile_paths:
             self.load_selected_profile(last_opened)
@@ -203,19 +210,10 @@ class ProfileTab(QWidget):
 
         self.load_selected_profile(self.inactive_profiles[0])
 
-    def create_profile_editor(self):
-        loaded_profile = self.loaded_profile
-        root = self.root
-        if not self.profile_editor_created and loaded_profile is not None and root is not None:
-            self._set_model_editor(loaded_profile)
-            self.profile_editor_created = True
-            LOGGER.info(f"Profile {root.name} loaded into profile editor.")
-
     def load_yaml(self):
         if not self.file_path:
             LOGGER.debug("No profile loaded, cannot refresh.")
             return False
-        self.root = None
         load_result = self.session.load(self.file_path.stem)
         if isinstance(load_result, YamlError):
             LOGGER.error(load_result.message)

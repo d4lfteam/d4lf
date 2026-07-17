@@ -27,6 +27,7 @@ class ProfileEditorWindow(QMainWindow):
         super().__init__(parent)
         self.settings = QSettings("d4lf", "profile_editor")
         self._initial_profile = profile_name
+        self._closing = False
 
         if ICON_PATH.exists():
             self.setWindowIcon(QIcon(str(ICON_PATH)))
@@ -44,11 +45,10 @@ class ProfileEditorWindow(QMainWindow):
         QTimer.singleShot(0, self._finish_construction)
 
     def _finish_construction(self):
-        self.profile_tab = ProfileTab()
-        if self._initial_profile:
-            self.profile_tab.load_selected_profile(self._initial_profile)
+        if self._closing:
+            return
+        self.profile_tab = ProfileTab(initial_profile_name=self._initial_profile)
         self.setCentralWidget(self.profile_tab)
-        self.profile_tab.show_tab()
 
     @override
     def closeEvent(self, a0: QCloseEvent | None) -> None:
@@ -60,7 +60,11 @@ class ProfileEditorWindow(QMainWindow):
 
         if a0 is None:
             return
-        if self.profile_tab.check_close_save():
+        profile_tab = getattr(self, "profile_tab", None)
+        if profile_tab is None:
+            self._closing = True
+            a0.accept()
+        elif profile_tab.check_close_save():
             a0.accept()
         else:
             a0.ignore()
