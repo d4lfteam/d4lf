@@ -24,4 +24,5 @@ oversized flat modules. The old flat tool modules, unused random-number helper, 
 The documented data-generation workflow now uses `uv run python -m src.tools.data_generation` and
 retains the repository-relative default d4data path. Focused tool tests pass (27 tests), all tool
 source files are below 300 lines, and the complete non-Selenium suite passes (688 passed, 16
-skipped on macOS).
+skipped on macOS). The repository-wide line hook still reports pre-existing violations owned by
+later source-freeze work.

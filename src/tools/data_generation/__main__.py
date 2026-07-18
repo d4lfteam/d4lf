@@ -13,7 +13,7 @@ def run() -> int:
     path = parser.parse_args().d4data_dir
     if not path.exists() or not path.is_dir():
         print(f"The provided path '{path}' does not exist or is not a directory.")
-        return 1
+        return 0
     main(path)
     return 0
 
