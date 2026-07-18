@@ -6,7 +6,7 @@ from PyQt6.QtGui import QDesktopServices, QIcon
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QPushButton, QTabWidget, QWidget
 
 from src import __version__
-from src.gui.backend_worker import BackendWorker, tts_module
+from src.gui.backend_worker import BackendWorker, perception_module
 from src.gui.models.activity_log_widget import ActivityLogWidget, ANSIConsoleWidget, QtConsoleHandler
 from src.gui.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.gui.unified_lifecycle import UnifiedWindowLifecycle
@@ -160,7 +160,7 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
 
     def _refresh_dashboard_status(self):
         """Poll backend states and update the Dashboard labels."""
-        self.update_tts_status(tts_module.CONNECTED if tts_module is not None else None)
+        self.update_tts_status(perception_module.is_connected() if perception_module is not None else None)
         if self.worker and self.worker.script_handler:
             self.update_vision_status(self.worker.script_handler.vision_mode.running())
 

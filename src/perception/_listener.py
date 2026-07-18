@@ -1,36 +1,21 @@
+from __future__ import annotations
+
 import enum
 import logging
 import queue
 import re
-import sys
 import threading
+from typing import TYPE_CHECKING, ClassVar
 
-from src import tts_backend_noop
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
-
-def _singleton(cls):
-    instances = {}
-    lock = threading.Lock()
-
-    def get_instance(*args, **kwargs):
-        with lock:
-            if cls not in instances:
-                instances[cls] = cls(*args, **kwargs)
-        return instances[cls]
-
-    return get_instance
-
-
-if sys.platform == "win32":
-    from src import tts_backend_windows as _backend
-else:
-    _backend = tts_backend_noop
+from ._backend import load_backend
 
 CONNECTED = False
-LAST_ITEM = []
-TO_FILTER = ["Champions who earn the favor of"]
+LAST_ITEM: list[str] = []
 _DATA_QUEUE = queue.Queue(maxsize=100)
-
+_backend = load_backend()
 LOGGER = logging.getLogger(__name__)
 
 
@@ -42,21 +27,50 @@ class ItemIdentifiers(enum.Enum):
     WHISPERING_KEY = "WHISPERING KEY"
 
 
-@_singleton
+def find_item_start(data: list[str]) -> int | None:
+    ignored_words = ["COMPASS AFFIXES", "DUNGEON AFFIXES", "AFFIXES", "SELECT ALL"]
+    for index, item in reversed(list(enumerate(data))):
+        if any(ignored in item for ignored in ignored_words):
+            continue
+        if any(item.startswith(identifier.value) for identifier in ItemIdentifiers):
+            return index
+        if len(re.sub(r"[^A-Za-z]", "", item)) >= 3 and item.isupper():
+            return index
+    return None
+
+
+def filter_data(data: str) -> bool:
+    return "Champions who earn the favor of" in data
+
+
+def fix_data(data: str) -> str:
+    for token in ["&apos;", "&quot;", "[FAVORITED ITEM]. ", "ￂﾠ", "(Spiritborn Only)", "[MARKED AS JUNK]. "]:
+        data = data.replace(token, "")
+    return data.strip()
+
+
 class Publisher:
-    def __init__(self):
-        self._item_subscribers = set()
-        self._info_subscribers = set()
-        self._subscriber_lock = threading.Lock()
+    _instance: ClassVar[Publisher | None] = None
+    _instance_lock: ClassVar[threading.Lock] = threading.Lock()
+    _item_subscribers: set[Callable[..., None]]
+    _info_subscribers: set[Callable[..., None]]
+    _subscriber_lock: threading.Lock
+
+    def __new__(cls):
+        with cls._instance_lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                cls._instance._item_subscribers = set()
+                cls._instance._info_subscribers = set()
+                cls._instance._subscriber_lock = threading.Lock()
+        return cls._instance
 
     def find_item(self) -> None:
         local_cache = []
         while True:
             data = fix_data(_DATA_QUEUE.get())
-            # Pass numerical stat lines directly to info subscribers (Gold/Exp)
             if "gold" in data.lower() or "experience" in data.lower():
                 self.publish_info(data)
-
             local_cache.append(data)
             if filter_data(data) or not any(word in data.lower() for word in ["mouse button", "action button"]):
                 continue
@@ -65,9 +79,8 @@ class Publisher:
                 continue
             global LAST_ITEM
             LAST_ITEM = local_cache[start:]
-            LOGGER.debug(f"TTS Found: {LAST_ITEM}")
-            local_cache = []
             self.publish_item(LAST_ITEM)
+            local_cache = []
 
     def publish_item(self, data):
         with self._subscriber_lock:
@@ -96,7 +109,7 @@ class Publisher:
             self._info_subscribers.discard(subscriber)
 
 
-def _set_connected(value: bool) -> None:
+def set_connected(value: bool) -> None:
     global CONNECTED
     CONNECTED = value
 
@@ -106,37 +119,7 @@ def create_pipe():
 
 
 def read_pipe() -> None:
-    _backend.read_pipe(create_pipe, _DATA_QUEUE, LOGGER, _set_connected)
-
-
-def find_item_start(data: list[str]) -> int | None:
-    ignored_words = ["COMPASS AFFIXES", "DUNGEON AFFIXES", "AFFIXES", "SELECT ALL"]
-
-    for index, item in reversed(list(enumerate(data))):
-        if any(ignored in item for ignored in ignored_words):
-            continue
-
-        if any(item.startswith(x) for x in [y.value for y in ItemIdentifiers]):
-            return index
-
-        cleaned_str = re.sub(r"[^A-Za-z]", "", item)
-        if len(cleaned_str) >= 3 and item.isupper():
-            return index
-
-    return None
-
-
-def filter_data(data: str) -> bool:
-    return any(word in data for word in TO_FILTER)
-
-
-def fix_data(data: str) -> str:
-    to_remove = ["&apos;", "&quot;", "[FAVORITED ITEM]. ", "ￂﾠ", "(Spiritborn Only)", "[MARKED AS JUNK]. "]
-
-    for item in to_remove:
-        data = data.replace(item, "")
-
-    return data.strip()
+    _backend.read_pipe(create_pipe, _DATA_QUEUE, LOGGER, set_connected)
 
 
 def start_connection() -> None:

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from src.scripts.handler import ScriptHandler
 
 if sys.platform == "win32":
-    from src import tts as tts_module
+    from src import perception as perception_module
     from src.cam import Cam
     from src.item import Filter
     from src.main import check_for_proper_tts_configuration
@@ -20,7 +20,7 @@ if sys.platform == "win32":
     from src.scripts.handler import ScriptHandler
     from src.utils.window import WindowSpec, start_detecting_window
 else:
-    tts_module = None
+    perception_module = None
 
 LOGGER = logging.getLogger(__name__)
 
@@ -52,6 +52,6 @@ class BackendWorker(QObject):
         time.sleep(0.5)
         self.script_handler = ScriptHandler()
         check_for_proper_tts_configuration()
-        tts_module.start_connection()
+        perception_module.start_connection()
         Overlay().run()
         self.finished.emit()

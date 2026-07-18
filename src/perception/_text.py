@@ -6,6 +6,10 @@ import rapidfuzz.distance.Levenshtein
 from src.dataloader import Dataloader
 
 
+def keep_letters_and_spaces(text: str) -> str:
+    return "".join(char for char in text if char.isalpha() or char.isspace()).strip().replace("  ", " ")
+
+
 def closest_match(target, candidates):
     keys, values = zip(*candidates.items(), strict=False)
     result = rapidfuzz.process.extractOne(

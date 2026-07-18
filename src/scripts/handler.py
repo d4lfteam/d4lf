@@ -8,11 +8,11 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Set as AbstractSet
 
+import src.perception
 import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
 import src.settings as hotkeys
-import src.tts
 from src.cam import Cam
 from src.dataloader import Dataloader
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
@@ -240,7 +240,7 @@ class ScriptHandler:
         self._current_hotkey_signature = self._hotkey_signature(config)
 
     def filter_items(self, force_refresh=ItemRefreshType.no_refresh, no_match_action: str = "junk"):
-        if src.tts.CONNECTED:
+        if src.perception.is_connected():
             self._start_or_stop_loot_interaction_thread(run_loot_filter, (force_refresh, no_match_action))
         else:
             LOGGER.warning(

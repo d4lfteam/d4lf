@@ -6,14 +6,13 @@ from tkinter import font
 from tkinter.font import Font
 from typing import Literal
 
-import src.item.descr.read_descr_tts
-import src.tts
+import src.perception
 from src.cam import Cam
 from src.item import Filter, ItemRarity, MatchedFilter
+from src.perception import Publisher
 from src.scripts._singleton import singleton
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item
 from src.settings import get_settings, get_ui_coordinates
-from src.tts import Publisher
 from src.ui_thread import call_on_ui_thread, create_overlay_toplevel, get_root
 from src.utils.custom_mouse import Mouse
 from src.utils.window import screenshot
@@ -125,12 +124,12 @@ class VisionModeFast:
         try:
             item_descr = None
             try:
-                item_descr = src.item.descr.read_descr_tts.read_descr()
+                item_descr = src.perception.read_latest_item()
                 LOGGER.debug(f"Parsed item based on TTS: {item_descr}")
             except Exception:
                 img = Cam().grab()
                 screenshot("tts_error", img=img)
-                LOGGER.exception(f"Error in TTS read_descr. {src.tts.LAST_ITEM=}")
+                LOGGER.exception(f"Error in TTS read_descr. {src.perception.latest_item_lines()=}")
             if item_descr is None:
                 return None
 

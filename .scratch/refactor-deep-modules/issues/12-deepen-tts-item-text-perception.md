@@ -4,11 +4,24 @@
 
 **Blocked by:** 02 — Deepen item models and filtering; 04 — Deepen settings and configuration.
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] Named-pipe TTS acquisition preserves its Windows runtime behavior.
-- [ ] Windows and no-op TTS adapters satisfy one real seam without compatibility forwarding modules.
-- [ ] Equipment, sigil, charm, seal, tribute, rarity, affix, and aspect text parses to equivalent item values.
-- [ ] Parser errors and incomplete descriptions remain observable through established behavior.
-- [ ] Every perception source file in this slice is at most 300 physical lines.
-- [ ] Focused TTS/parser tests and the line guard pass.
+- [x] Named-pipe TTS acquisition preserves its Windows runtime behavior.
+- [x] Windows and no-op TTS adapters satisfy one real seam without compatibility forwarding modules.
+- [x] Equipment, sigil, charm, seal, tribute, rarity, affix, and aspect text parses to equivalent item values.
+- [x] Parser errors and incomplete descriptions remain observable through established behavior.
+- [x] Every perception source file in this slice is at most 300 physical lines.
+- [x] Focused TTS/parser tests and the perception line guard pass.
+
+## Answer
+
+`src.perception` now fronts item-text acquisition and parsing. Its Windows and no-op adapters share
+one TTS backend contract, preserving the named pipe, queue, disconnect, connection-state, and
+non-Windows behavior. The parser was split into private perception modules, while
+`parse_item_text` and latest-item access provide the public typed seam. Item-text helpers moved
+with the capability, and production callers no longer import the removed TTS/parser modules.
+
+Parser equivalence coverage now runs on every platform: 40 focused perception/parser tests pass,
+and the full non-Selenium suite passes (654 passed, 16 skipped). Every new perception source file
+is at most 300 lines, and Ruff, ty, compilation, and diff checks pass. The repository-wide line
+hook still reports pre-existing oversized modules outside this slice.

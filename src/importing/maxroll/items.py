@@ -7,7 +7,7 @@ from src.importing._conversion import as_string_keyed_mapping_list as _as_mappin
 from src.importing._conversion import as_text as _as_text
 from src.importing._filters import affix_dict_for_item_type
 from src.item import Affix, AffixType, ItemRarity, ItemType
-from src.item.descr.text import clean_str, closest_match
+from src.perception import clean_str, closest_match
 
 from .constants import SKILL_RANK_AFFIX_KEY_REGEX, SKILL_RANK_BONUS_FORMULAS, SKILL_RANK_DESC_LABEL_REGEX
 

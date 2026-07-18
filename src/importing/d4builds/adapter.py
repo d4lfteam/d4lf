@@ -22,7 +22,7 @@ from src.importing._web import retry_importer
 from src.importing.paragon_export import extract_d4builds_paragon_steps
 from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.item import WEAPON_TYPES, Affix, AffixType, ItemType
-from src.item.descr.text import clean_str, closest_match
+from src.perception import clean_str, closest_match
 from src.profiles import AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel, ItemFilterModel
 
 from .constants import (

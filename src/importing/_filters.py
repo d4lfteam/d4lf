@@ -6,7 +6,7 @@ import rapidfuzz
 
 from src.dataloader import Dataloader
 from src.item import WEAPON_TYPES, Affix, AffixType, ItemRarity, ItemType
-from src.item.descr.text import closest_match
+from src.perception import closest_match
 from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,

@@ -10,17 +10,16 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
-import src.item.descr.read_descr_tts
-import src.tts
+import src.perception
 from src.cam import Cam
 from src.gui.importer.gui_common import DARK_GRAY_BG
 from src.item import Filter, FilterResult, SeasonalAttribute, is_sigil
 from src.item.descr.geometry_locator import LocatorResult, locate_affix_markers
 from src.item.find_descr import find_descr, find_descr_with_diagnostics, get_separator_match_in_crop
+from src.perception import Publisher
 from src.scripts._singleton import singleton
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item, reset_canvas
 from src.settings import get_settings, get_ui_coordinates
-from src.tts import Publisher
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
 from src.ui.vendor import Vendor
@@ -283,11 +282,11 @@ class VisionModeWithHighlighting:
         img = Cam().grab()
         item_descr = None
         try:
-            item_descr = src.item.descr.read_descr_tts.read_descr()
+            item_descr = src.perception.read_latest_item()
             LOGGER.debug(f"Parsed item based on TTS: {item_descr}")
         except Exception:
             screenshot("tts_error", img=img)
-            LOGGER.exception(f"Error in TTS read_descr. {src.tts.LAST_ITEM=}")
+            LOGGER.exception(f"Error in TTS read_descr. {src.perception.latest_item_lines()=}")
 
         if item_descr is None:
             self.request_clear()

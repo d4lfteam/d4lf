@@ -12,7 +12,7 @@ from src.importing._filters import (
 )
 from src.importing._web import hover_and_get_tooltip_html
 from src.item import Affix, ItemType
-from src.item.descr.text import clean_str, closest_match
+from src.perception import clean_str, closest_match
 from src.profiles import CharmFilterModel, SealFilterModel
 from src.scripts import correct_name
 

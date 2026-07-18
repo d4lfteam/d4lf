@@ -19,7 +19,7 @@ from src.logger import LOG_DIR
 from src.settings import VisionModeType, get_settings
 
 if sys.platform == "win32":
-    from src import tts
+    from src import perception
     from src.cam import Cam
     from src.item import Filter
     from src.overlay import Overlay
@@ -94,7 +94,7 @@ def main():
 
     LOGGER.debug(f"Vision mode type: {get_settings().general.vision_mode_type.value}")
     check_for_proper_tts_configuration()
-    tts.start_connection()
+    perception.start_connection()
 
     overlay = Overlay()
     overlay.run()

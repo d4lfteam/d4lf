@@ -1,38 +1,36 @@
-import src.tts
+from src import perception
 from src.item.data.affix import AffixType
 from src.item.data.aspect import Aspect
 from src.item.data.item_type import ItemType
 from src.item.data.rarity import ItemRarity
-from src.item.descr.read_descr_tts import read_descr
 from src.item.models import Item
+from src.perception import parse_item_text
 
 LOOT_FILTER_TTS = ["SELECT ALL", "Checkbox Disabled", "Item Power Range", "Left mouse button"]
 
 
 def test_loot_filter_controls_are_not_tts_item_start():
-    assert src.tts.find_item_start(LOOT_FILTER_TTS) is None
+    assert perception.find_item_start(LOOT_FILTER_TTS) is None
 
 
 def test_loot_filter_controls_do_not_raise_tts_parser_error():
-    src.tts.LAST_ITEM = LOOT_FILTER_TTS
-
-    assert read_descr() is None
+    assert parse_item_text(LOOT_FILTER_TTS) is None
 
 
 def test_parser_returns_non_equipment_items_without_image_lookup():
-    src.tts.LAST_ITEM = ["GREATER MATERIALS CACHE", "Legendary Cache"]
+    item_text = ["GREATER MATERIALS CACHE", "Legendary Cache"]
 
-    assert read_descr() == Item(item_type=ItemType.Cache, original_name="GREATER MATERIALS CACHE")
+    assert parse_item_text(item_text) == Item(item_type=ItemType.Cache, original_name="GREATER MATERIALS CACHE")
 
 
 def test_parser_returns_boss_keys_without_image_lookup():
-    src.tts.LAST_ITEM = ["MALIGNANT HEART", "Legendary Boss Key"]
+    item_text = ["MALIGNANT HEART", "Legendary Boss Key"]
 
-    assert read_descr() == Item(item_type=ItemType.LairBossKey, original_name="MALIGNANT HEART")
+    assert parse_item_text(item_text) == Item(item_type=ItemType.LairBossKey, original_name="MALIGNANT HEART")
 
 
 def test_legendary_horadric_seal_parses_item_power_charm_slots_as_inherent():
-    src.tts.LAST_ITEM = [
+    item_text = [
         "SHIELDING HORADRIC SEAL OF ILL-TEMPERANCE",
         "Legendary Horadric Seal",
         "850 Item Power",
@@ -50,7 +48,7 @@ def test_legendary_horadric_seal_parses_item_power_charm_slots_as_inherent():
         "Right mouse button",
     ]
 
-    item = read_descr()
+    item = parse_item_text(item_text)
 
     assert item is not None
     assert [(affix.name, affix.text, affix.value, affix.type) for affix in item.inherent] == [
@@ -64,7 +62,7 @@ def test_legendary_horadric_seal_parses_item_power_charm_slots_as_inherent():
 
 
 def test_unique_helm_with_armory_loadout_has_five_affixes_and_one_aspect():
-    src.tts.LAST_ITEM = [
+    item_text = [
         "GODSLAYER CROWN",
         "Ancestral Unique Helm",
         "900 Item Power",
@@ -87,7 +85,7 @@ def test_unique_helm_with_armory_loadout_has_five_affixes_and_one_aspect():
         "Right mouse button",
     ]
 
-    item = read_descr()
+    item = parse_item_text(item_text)
 
     assert item is not None
     assert [affix.text for affix in item.affixes] == [
@@ -114,7 +112,7 @@ def test_unique_helm_with_armory_loadout_has_five_affixes_and_one_aspect():
 
 
 def test_sigil_rarity_is_derived_from_tts_affixes():
-    src.tts.LAST_ITEM = [
+    item_text = [
         "Nightmare Sigil",
         "Transform this dungeon into. aNightmare Dungeon",
         "Beast Graveyard in Nahantu",
@@ -128,7 +126,7 @@ def test_sigil_rarity_is_derived_from_tts_affixes():
         "Right mouse button",
     ]
 
-    item = read_descr()
+    item = parse_item_text(item_text)
 
     assert item is not None
     assert item.item_type == ItemType.Sigil

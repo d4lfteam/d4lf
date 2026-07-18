@@ -2,8 +2,7 @@ import logging
 import time
 from typing import TYPE_CHECKING
 
-import src.item.descr.read_descr_tts
-import src.tts
+import src.perception
 from src.cam import Cam
 from src.item import AffixType, Filter, ItemRarity, ItemType, is_sigil
 from src.scripts.common import (
@@ -60,12 +59,12 @@ def check_items(
 
         while item_descr is None and retry_count != 2:
             try:
-                item_descr = src.item.descr.read_descr_tts.read_descr()
+                item_descr = src.perception.read_latest_item()
                 LOGGER.debug(f"Attempt {retry_count} to parse item based on TTS: {item_descr}")
                 retry_count += 1
             except Exception:
                 screenshot("tts_error", img=img)
-                LOGGER.exception(f"Error in TTS read_descr. {src.tts.LAST_ITEM=}")
+                LOGGER.exception(f"Error in TTS read_descr. {src.perception.latest_item_lines()=}")
 
         if item_descr is None:
             continue
