@@ -15,8 +15,8 @@ import src.scripts.vision_mode_with_highlighting
 import src.settings as hotkeys
 from src.dataloader import Dataloader
 from src.loot_mover import move_items_to_inventory, move_items_to_stash
-from src.paragon_overlay import request_close as request_close_paragon
-from src.paragon_overlay import run_paragon_overlay
+from src.paragon import request_close as request_close_paragon
+from src.paragon import run_paragon_overlay
 from src.perception import abs_window_to_monitor, capture
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.scripts.info_overlay import InventoryExpTracker, is_info_overlay_open, open_boss_timer_overlay, request_close

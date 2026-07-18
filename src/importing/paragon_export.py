@@ -12,14 +12,14 @@ from src import __version__
 from src.importing._conversion import as_string_keyed_mapping as _as_mapping
 from src.importing._filters import PLAYER_CLASSES
 from src.importing._web import get_with_retry
-from src.paragon_transform import NODES_LEN
-from src.paragon_transform import class_slug_from_name as _class_slug_from_name
-from src.paragon_transform import prefix_with_class_slug as _prefix_with_class_slug
-from src.paragon_transform import rotation_info_degrees as _rotation_info_degrees
-from src.paragon_transform import rotation_info_quarter_turn as _rotation_info_quarter_turn
-from src.paragon_transform import slugify as _slugify
-from src.paragon_transform import transform_flat_index as _transform_flat_index
-from src.paragon_transform import transform_xy as _transform_xy
+from src.paragon import NODES_LEN
+from src.paragon import class_slug_from_name as _class_slug_from_name
+from src.paragon import prefix_with_class_slug as _prefix_with_class_slug
+from src.paragon import rotation_info_degrees as _rotation_info_degrees
+from src.paragon import rotation_info_quarter_turn as _rotation_info_quarter_turn
+from src.paragon import slugify as _slugify
+from src.paragon import transform_flat_index as _transform_flat_index
+from src.paragon import transform_xy as _transform_xy
 from src.profiles import ParagonPayloadModel
 
 if TYPE_CHECKING:

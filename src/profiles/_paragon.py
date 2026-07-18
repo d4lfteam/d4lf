@@ -2,7 +2,7 @@ import re
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from src.paragon_transform import NODES_LEN
+from src.paragon import NODES_LEN
 from src.profiles._validation import _as_string_keyed_dict
 
 

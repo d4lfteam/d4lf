@@ -16,7 +16,7 @@ import pytest
 from pydantic import ValidationError
 
 from src.item import ItemRarity, ItemType
-from src.paragon_transform import NODES_LEN
+from src.paragon import NODES_LEN
 from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,

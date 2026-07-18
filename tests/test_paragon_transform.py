@@ -1,6 +1,6 @@
 import pytest
 
-from src.paragon_transform import (
+from src.paragon import (
     GRID,
     NODES_LEN,
     class_slug_from_name,
