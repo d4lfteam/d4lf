@@ -1,7 +1,7 @@
 import logging
 from typing import TYPE_CHECKING
 
-from src.ui_thread import call_on_ui_thread, create_overlay_toplevel, get_root, join_ui_thread
+from src.desktop import call_on_ui_thread, create_overlay_toplevel, get_root, join_ui_thread
 
 if TYPE_CHECKING:
     import tkinter as tk

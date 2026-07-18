@@ -1,9 +1,9 @@
 import logging
 from typing import TYPE_CHECKING
 
+from src.item import ASPECT_UPGRADES_LABEL
 from src.item.data.affix import AffixType
 from src.item.models import FilterResult, MatchedFilter
-from src.scripts.common import ASPECT_UPGRADES_LABEL
 from src.settings import AspectFilterType, UnfilteredUniquesType, get_settings
 
 if TYPE_CHECKING:

@@ -14,8 +14,8 @@ from src.gui.unified_shell import DISCORD_ICON, GITHUB_ICON, ICON_PATH
 from src.importing.gui import ImporterWindow
 from src.logger import apply_log_level, consume_startup_log_records, create_formatter, remove_transient_gui_handlers
 from src.logger import setup as setup_logging
+from src.loot import get_filter_colors
 from src.profiles.editor import ProfileEditorWindow
-from src.scripts.common import get_filter_colors
 from src.settings import LOG_LEVEL_SETTING_KEYS, create_settings_window, get_settings, has_any_changed
 
 LOGGER = logging.getLogger(__name__)

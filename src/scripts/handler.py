@@ -2,33 +2,26 @@ import logging
 import threading
 import time
 from contextlib import suppress
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Set as AbstractSet
 
 import src.perception
-import src.scripts.loot_filter_tts
-import src.scripts.vision_mode_fast
-import src.scripts.vision_mode_with_highlighting
 from src import automation
 from src.automation import (
     WindowSpec,
-    character_inventory,
     is_window_foreground,
     kill_thread,
     move_items_to_inventory,
     move_items_to_stash,
-    move_pointer,
     safe_exit,
-    stash_inventory,
 )
 from src.dataloader import Dataloader
+from src.loot import VisionMode, create_vision_mode, run_loot_filter
 from src.paragon import request_close as request_close_paragon
 from src.paragon import run_paragon_overlay
-from src.perception import abs_window_to_monitor, capture, screenshot
-from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.scripts.info_overlay import InventoryExpTracker, is_info_overlay_open, open_boss_timer_overlay, request_close
 from src.scripts.info_overlay import set_busy_checker as set_info_busy_checker
 from src.settings import (
@@ -44,16 +37,8 @@ from src.settings import (
 )
 
 LOGGER = logging.getLogger(__name__)
-
 LOCK = threading.Lock()
-
-
-class VisionMode(Protocol):
-    def start(self) -> None: ...
-
-    def stop(self) -> None: ...
-
-    def running(self) -> bool: ...
+SETUP_INSTRUCTIONS_URL = "https://github.com/d4lfteam/d4lf/blob/main/README.md#how-to-setup"
 
 
 class ScriptHandler:
@@ -80,9 +65,7 @@ class ScriptHandler:
             self.run_vision_mode()
 
     def _create_vision_mode(self, vision_mode_type: VisionModeType) -> VisionMode:
-        if vision_mode_type == VisionModeType.fast:
-            return src.scripts.vision_mode_fast.VisionModeFast()
-        return src.scripts.vision_mode_with_highlighting.VisionModeWithHighlighting()
+        return create_vision_mode(vision_mode_type)
 
     def _graceful_exit(self):
         safe_exit()
@@ -308,29 +291,3 @@ class ScriptHandler:
                 LOCK.release()
         else:
             return
-
-
-def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh, no_match_action: str = "junk"):
-    LOGGER.info("Running loot filter")
-    move_pointer(*abs_window_to_monitor((0, 0)))
-    check_items = src.scripts.loot_filter_tts.check_items
-
-    inv = character_inventory()
-    stash = stash_inventory()
-
-    if stash.is_open():
-        for i in get_settings().general.check_chest_tabs:
-            stash.switch_to_tab(i)
-            time.sleep(0.3)
-            check_items(stash, force_refresh, stash_is_open=True, no_match_action="junk")
-        move_pointer(*abs_window_to_monitor((0, 0)))
-        time.sleep(0.3)
-        check_items(inv, force_refresh, stash_is_open=True, no_match_action="junk")
-    else:
-        if not inv.open():
-            screenshot("inventory_not_open", img=capture())
-            LOGGER.error("Inventory did not open up")
-            return
-        check_items(inv, force_refresh, no_match_action=no_match_action)
-    move_pointer(*abs_window_to_monitor((0, 0)))
-    LOGGER.info("Loot filter done")

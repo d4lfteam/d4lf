@@ -4,17 +4,11 @@ from typing import TYPE_CHECKING
 
 import src.perception
 from src import automation
-from src.item import AffixType, Filter, ItemRarity, ItemType, is_sigil
+from src.item import ASPECT_UPGRADES_LABEL, AffixType, Filter, ItemRarity, ItemType, is_sigil
 from src.perception import capture, screenshot
-from src.scripts.common import (
-    ASPECT_UPGRADES_LABEL,
-    drop_item_from_inventory,
-    is_ignored_item,
-    mark_as_favorite,
-    mark_as_junk,
-    reset_item_status,
-)
 from src.settings import ItemRefreshType, UnfilteredUniquesType, get_settings
+
+from ._colors import drop_item_from_inventory, is_ignored_item, mark_as_favorite, mark_as_junk, reset_item_status
 
 if TYPE_CHECKING:
     from src.automation import Inventory

@@ -10,7 +10,7 @@ if sys.platform != "win32":
     # whole interpreter on macOS. Same reason paragon_overlay_test.py is skipped here.
     pytest.skip("Windows-only: shared UI thread requires a non-main-thread Tk root", allow_module_level=True)
 
-from src import ui_thread
+from src import desktop as ui_thread
 
 
 def test_post_to_ui_thread_runs_on_shared_ui_thread():

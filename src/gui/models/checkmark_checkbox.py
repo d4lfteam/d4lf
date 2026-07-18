@@ -4,7 +4,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPainter, QPaintEvent, QPen
 from PyQt6.QtWidgets import QCheckBox, QStyle, QStyleOptionButton
 
-from src.scripts.common import get_filter_colors
+from src.loot import get_filter_colors
 
 
 class CheckmarkCheckBox(QCheckBox):

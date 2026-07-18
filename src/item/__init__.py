@@ -43,6 +43,7 @@ _LAZY_EXPORTS = {
 }
 
 __all__ = [
+    "ASPECT_UPGRADES_LABEL",
     "MAX_POWER",
     "SIGIL_RULE_TARGET_TYPES",
     "WEAPON_TYPES",
@@ -73,6 +74,7 @@ __all__ = [
 ]
 
 MAX_POWER = 900
+ASPECT_UPGRADES_LABEL = "AspectUpgrades"
 
 
 def __getattr__(name: str) -> object:

@@ -8,12 +8,13 @@ from typing import Literal
 
 import src.perception
 from src.automation import pointer_position
-from src.item import Filter, ItemRarity, MatchedFilter
+from src.desktop import call_on_ui_thread, create_overlay_toplevel, get_root
+from src.item import ASPECT_UPGRADES_LABEL, Filter, ItemRarity, MatchedFilter
 from src.perception import Publisher, capture, monitor_to_window, screenshot
-from src.scripts._singleton import singleton
-from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item
 from src.settings import get_settings, get_ui_coordinates
-from src.ui_thread import call_on_ui_thread, create_overlay_toplevel, get_root
+
+from ._colors import get_filter_colors, is_ignored_item
+from ._singleton import singleton
 
 LOGGER = logging.getLogger(__name__)
 
@@ -140,23 +141,8 @@ class VisionModeFast:
                 LOGGER.info("Unknown Item")
                 return self.request_draw("Unknown item", "#ce7e00")
 
-            res = Filter().should_keep(item_descr)
-
-            if res.keep:
-                color = get_filter_colors().matched
-                if not res.matched:
-                    if item_descr.rarity == ItemRarity.Unique:
-                        text = ["Unique"]
-                    elif item_descr.rarity == ItemRarity.Mythic:
-                        text = ["Mythic (Always Kept)"]
-                    else:
-                        text = []
-                else:
-                    if any(res_matched.profile.endswith(ASPECT_UPGRADES_LABEL) for res_matched in res.matched):
-                        color = get_filter_colors().codex_upgrade
-                    text = create_match_text(reversed(res.matched))
-                return self.request_draw("\n".join(text), color)
-            self.request_clear()
+            text, color = fast_feedback(item_descr, Filter().should_keep(item_descr))
+            return self.request_draw(text, color)
         except Exception:
             LOGGER.exception("Error in vision mode. Please create a bug report")
 
@@ -186,3 +172,24 @@ def create_match_text(matches: Iterable[MatchedFilter]) -> list[str]:
         result.append(f"{match.profile}\n" + "\n".join(match_list))
 
     return result
+
+
+def fast_feedback(item_descr, filter_result) -> tuple[str, str]:
+    """Return the immediate tooltip feedback for a parsed item and its result."""
+    colors = get_filter_colors()
+    if not filter_result.keep:
+        return "Junk", colors.no_match
+
+    if not filter_result.matched:
+        if item_descr.rarity == ItemRarity.Unique:
+            text = ["Unique"]
+        elif item_descr.rarity == ItemRarity.Mythic:
+            text = ["Mythic (Always Kept)"]
+        else:
+            text = []
+        return "\n".join(text), colors.matched
+
+    color = colors.codex_upgrade if any(
+        match.profile.endswith(ASPECT_UPGRADES_LABEL) for match in filter_result.matched
+    ) else colors.matched
+    return "\n".join(create_match_text(reversed(filter_result.matched))), color

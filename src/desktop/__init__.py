@@ -1,0 +1,19 @@
+"""Shared desktop primitives used by capability-owned overlays."""
+
+from ._ui_thread import (
+    call_on_ui_thread,
+    create_overlay_toplevel,
+    get_root,
+    is_alive,
+    join_ui_thread,
+    post_to_ui_thread,
+)
+
+__all__ = [
+    "call_on_ui_thread",
+    "create_overlay_toplevel",
+    "get_root",
+    "is_alive",
+    "join_ui_thread",
+    "post_to_ui_thread",
+]

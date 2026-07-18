@@ -14,12 +14,12 @@ import httpx
 from PyQt6.QtCore import QSettings
 
 from src.automation import WindowSpec, is_self_foreground, is_window_foreground, move_pointer
+from src.desktop import call_on_ui_thread, get_root
 from src.gui.importer.gui_common import ACCENT_BLUE, ACCENT_GOLD, ACCENT_GREEN, CARD_BG, MUTED, TEXT, TRANSPARENT_KEY
+from src.loot import get_filter_colors
 from src.perception import Publisher, abs_window_to_monitor, game_window_roi, monitor_to_window, window_to_monitor
 from src.scripts._singleton import singleton
-from src.scripts.common import get_filter_colors
 from src.settings import get_settings
-from src.ui_thread import call_on_ui_thread, get_root
 
 LOGGER = logging.getLogger(__name__)
 
