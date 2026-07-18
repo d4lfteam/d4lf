@@ -144,3 +144,7 @@ def main() -> int:
         LOGGER.error("Replay configuration error: %s", error)
         return 2
     return 0 if result.reliable else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
