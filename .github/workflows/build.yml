@@ -16,6 +16,8 @@ jobs:
       - name: Build & Zip exe
         id: build_zip
         uses: ./.github/actions/build_zip
+        with:
+          version: ${{ github.sha }}
       - name: Upload zip artifact
         uses: actions/upload-artifact@v4
         with:

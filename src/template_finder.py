@@ -3,8 +3,9 @@ import operator
 import threading
 import time
 from collections.abc import Sequence
+from concurrent.futures import FIRST_COMPLETED, wait
 from dataclasses import dataclass, field
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import cv2
 import numpy as np
@@ -16,7 +17,9 @@ from src.config.ui import ResManager
 from src.utils.image_operations import alpha_to_mask, color_filter, crop
 from src.utils.misc import run_until_condition
 from src.utils.roi_operations import get_center
-from src.utils.window import screenshot
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 Rectangle = tuple[int, int, int, int]
 TemplateReference = str | np.ndarray
@@ -186,6 +189,8 @@ def _get_cv_result(
     if img.shape[0] == 0 or img.shape[1] == 0:
         return None, template_bgr, resolved_roi
     if take_debug_screenshot:
+        from src.utils.window import screenshot  # noqa: PLC0415
+
         screenshot("template_finder", img=img)
 
     # filter for desired color or make grayscale
@@ -214,10 +219,56 @@ def _get_cv_result(
     return res, template_img, resolved_roi
 
 
+def _find_template_matches(
+    template: Template,
+    img: np.ndarray,
+    roi: list[float] | None,
+    color_match: list[np.ndarray] | None,
+    use_grayscale: bool,
+    threshold: float,
+    take_debug_screenshot: bool = False,
+) -> list[TemplateMatch]:
+    """Find all matches for one template without sharing search state between workers."""
+    res, template_img, new_roi = _get_cv_result(template, img, roi, color_match, use_grayscale, take_debug_screenshot)
+    template_matches = []
+
+    while res is not None:
+        _, max_val, _, max_pos = cv2.minMaxLoc(res)
+        if max_val < threshold:
+            break
+
+        rec_x = int(max_pos[0] + new_roi[0])
+        rec_y = int(max_pos[1] + new_roi[1])
+        rec_w = int(template_img.shape[1])
+        rec_h = int(template_img.shape[0])
+
+        region = (rec_x, rec_y, rec_w, rec_h)
+        center = get_center(region)
+        template_match = TemplateMatch(
+            region=list(region),
+            region_monitor=[*Cam().window_to_monitor((rec_x, rec_y)), rec_w, rec_h],
+            center=center,
+            center_monitor=Cam().window_to_monitor(center),
+            name=template.name,
+            score=max_val,
+        )
+        template_matches.append(template_match)
+
+        cv2.rectangle(
+            res,
+            (max_pos[0] - template_img.shape[1] // 2, max_pos[1] - template_img.shape[0] // 2),
+            (max_pos[0] + template_img.shape[1], max_pos[1] + template_img.shape[0]),
+            (0, 0, 0),
+            -1,
+        )
+
+    return template_matches
+
+
 def search(
     ref: TemplateReferences,
     inp_img: np.ndarray | None = None,
-    threshold: float = 0.68,
+    threshold: float = 0.7,
     roi: Sequence[int | float] | str | None = None,
     use_grayscale: bool = False,
     color_match: ColorMatch = None,
@@ -226,6 +277,7 @@ def search(
     suppress_debug: bool = True,
     do_multi_process: bool = True,
     take_debug_screenshot: bool = False,
+    stop_condition: Callable[[list[TemplateMatch]], bool] | None = None,
 ) -> SearchResult:
     """Search for templates in an image.
 
@@ -238,6 +290,7 @@ def search(
     :param mode: search "first" match or "all" matches
     :param timeout: wait for the specified number of seconds before stopping search
     :param do_multi_process: flag if multi process should be used in case there are multiple refs
+    :param stop_condition: Optional predicate for ending an "all" search early once enough matches are collected.
     :return: SearchResult object containing success and matches
     """
     templates = _process_template_refs(ref)
@@ -284,13 +337,18 @@ def search(
     else:
         resolved_color_match = color_match
 
+    stop_search = threading.Event()
+
+    def should_stop() -> bool:
+        return bool((matches and mode == "first") or (stop_condition is not None and stop_condition(matches)))
+
     def _process_cv_result(template: Template, img: np.ndarray, take_debug_screenshot: bool = False) -> bool:
         new_match = False
         res, template_img, new_roi = _get_cv_result(
             template, img, resolved_roi, resolved_color_match, use_grayscale, take_debug_screenshot
         )
 
-        while True and not (matches and mode == "first") and res is not None:
+        while not stop_search.is_set() and not should_stop() and res is not None:
             _, max_val, _, max_pos = cv2.minMaxLoc(res)
 
             if max_val >= threshold:
@@ -313,7 +371,8 @@ def search(
                 )
 
                 matches.append(template_match)
-                if mode == "first":
+                if should_stop():
+                    stop_search.set()
                     break
                 # Remove the matched region from the result
                 cv2.rectangle(
@@ -335,16 +394,52 @@ def search(
     while time_remains and not matches:
         img = Cam().grab() if inp_img is None else inp_img
         if do_multi_process:
-            for template in templates:
-                future = TP.submit(_process_cv_result, template, img, take_debug_screenshot)
-                future_list.append(future)
-
-                for i in future_list:
-                    _ = i.result()
+            if stop_condition is not None:
+                # Worker completion order is nondeterministic. Collect each worker's local results first, then
+                # apply the stop condition in template order so a lower-scoring template cannot win the race.
+                future_list = [
+                    TP.submit(
+                        _find_template_matches,
+                        template,
+                        img,
+                        resolved_roi,
+                        resolved_color_match,
+                        use_grayscale,
+                        threshold,
+                        take_debug_screenshot,
+                    )
+                    for template in templates
+                ]
+                template_matches = [future.result() for future in future_list]
+                for matches_for_template in template_matches:
+                    for template_match in matches_for_template:
+                        matches.append(template_match)
+                        if should_stop():
+                            stop_search.set()
+                            break
+                    if stop_search.is_set():
+                        break
+            elif mode == "first":
+                future_list = [
+                    TP.submit(_process_cv_result, template, img, take_debug_screenshot) for template in templates
+                ]
+                pending = set(future_list)
+                while pending and not should_stop():
+                    done, pending = wait(pending, return_when=FIRST_COMPLETED)
+                    for future in done:
+                        _ = future.result()
+                for future in pending:
+                    future.cancel()
+            else:
+                future_list = [
+                    TP.submit(_process_cv_result, template, img, take_debug_screenshot) for template in templates
+                ]
+                for future in future_list:
+                    _ = future.result()
         else:
             for template in templates:
                 res = _process_cv_result(template, img, take_debug_screenshot)
-                if mode == "first" and res:
+                if stop_search.is_set() or (mode == "first" and res):
                     break
 
         time_remains = time.time() - start < timeout

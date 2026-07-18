@@ -15,7 +15,7 @@ PyYAML, configparser; pytest; Ruff; PyInstaller.
 
 ## Commands
 
-Run these just before finishing work and and make sure it passes.
+Run these when you think you are finished and make sure these pass.
 
 ```bash
 uv run prek run -a
@@ -38,6 +38,10 @@ Item flow:
 - Profile YAML files live under `~/.d4lf/profiles/` and validate through `ProfileModel`.
 - UI coordinates in `src/config/data.py` are defined at 3840x2160 and scaled by `ResManager`.
 - Keep existing comments unless the related code is removed.
+
+### Python 3.14
+
+- from __future__ import annotations aren't needed
 
 ## Agent skills
 

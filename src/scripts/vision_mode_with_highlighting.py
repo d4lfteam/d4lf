@@ -19,8 +19,9 @@ from src.config.ui import ResManager
 from src.gui.importer.gui_common import DARK_GRAY_BG
 from src.item.data.item_type import is_sigil
 from src.item.data.seasonal_attribute import SeasonalAttribute
+from src.item.descr.geometry_locator import LocatorResult, locate_affix_markers
 from src.item.filter import Filter, FilterResult
-from src.item.find_descr import find_descr
+from src.item.find_descr import find_descr, find_descr_with_diagnostics, get_separator_match_in_crop
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item, reset_canvas
 from src.tts import Publisher
 from src.ui.char_inventory import CharInventory
@@ -35,11 +36,12 @@ if TYPE_CHECKING:
     from src.item.models import Item
 
 LOGGER = logging.getLogger(__name__)
+_FRAME_RETRY_DELAY_SECONDS = 0.01
 
 type HighlightTask = (
     tuple[Literal["clear"]]
     | tuple[Literal["empty"], Item, tuple[int, int, int, int], str, str | None]
-    | tuple[Literal["match"], Item, tuple[int, int, int, int], FilterResult, Item]
+    | tuple[Literal["match"], Item, tuple[int, int, int, int], FilterResult, LocatorResult | None]
     | tuple[Literal["no_match"], Item, tuple[int, int, int, int]]
     | tuple[Literal["codex_upgrade"], Item, tuple[int, int, int, int], FilterResult]
 )
@@ -212,7 +214,6 @@ class VisionModeWithHighlighting:
     def draw_empty_outline(self, item_roi, color, text: str | None):
         reset_canvas(self.root, self.canvas)
 
-        # Make the canvas gray for "found the item"
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
         self.canvas.config(height=h, width=w)
         self.create_signal_rect(self.canvas, w, self.thick, color)
@@ -224,8 +225,11 @@ class VisionModeWithHighlighting:
         self.root.update_idletasks()
         self.root.update()
 
-    def draw_match_outline(self, item_roi, should_keep_res, item_descr):
+    def draw_match_outline(self, item_roi, should_keep_res, locator_result: LocatorResult | None):
+        reset_canvas(self.root, self.canvas)
+
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
+        self.canvas.config(height=h, width=w)
         self.create_signal_rect(self.canvas, w, self.thick, get_filter_colors().matched)
 
         # show all info strings of the profiles
@@ -236,26 +240,30 @@ class VisionModeWithHighlighting:
                 text = text + " (incl. Set)"
             text_y = self.draw_text(self.canvas, text, get_filter_colors().matched, text_y, 5, w // 2)
         # Show matched bullets
-        if item_descr and len(should_keep_res.matched) > 0:
+        if locator_result and locator_result.reliable and len(should_keep_res.matched) > 0:
             bullet_width = self.thick * 3
-            for affix in should_keep_res.matched[0].matched_affixes:
-                if affix.loc:
-                    self.draw_rect(self.canvas, bullet_width, affix.loc, off, get_filter_colors().matched)
+            for marker in locator_result.markers:
+                self.draw_rect(self.canvas, bullet_width, marker.center, off, get_filter_colors().matched)
 
-            if item_descr.aspect and item_descr.aspect.loc and any(m.aspect_match for m in should_keep_res.matched):
-                self.draw_rect(self.canvas, bullet_width, item_descr.aspect.loc, off, get_filter_colors().matched)
-
+        self.root.geometry(f"{w}x{h}+{x + self.screen_off_x}+{y + self.screen_off_y}")
         self.root.update_idletasks()
         self.root.update()
 
     def draw_no_match_outline(self, item_roi):
+        reset_canvas(self.root, self.canvas)
+
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
+        self.canvas.config(height=h, width=w)
         self.create_signal_rect(self.canvas, w, self.thick, get_filter_colors().no_match)
+        self.root.geometry(f"{w}x{h}+{x + self.screen_off_x}+{y + self.screen_off_y}")
         self.root.update_idletasks()
         self.root.update()
 
     def draw_codex_upgrade_outline(self, item_roi, should_keep_result: FilterResult):
+        reset_canvas(self.root, self.canvas)
+
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
+        self.canvas.config(height=h, width=w)
 
         self.create_signal_rect(self.canvas, w, self.thick, get_filter_colors().codex_upgrade)
 
@@ -270,6 +278,7 @@ class VisionModeWithHighlighting:
                     self.canvas, match.profile, get_filter_colors().codex_upgrade, text_y, 5, w // 2
                 )
 
+        self.root.geometry(f"{w}x{h}+{x + self.screen_off_x}+{y + self.screen_off_y}")
         self.root.update_idletasks()
         self.root.update()
 
@@ -333,17 +342,23 @@ class VisionModeWithHighlighting:
                 # Before we get the cropped_descr we need to ensure there is no previous overlay on screen
                 while not self.is_cleared:
                     time.sleep(0.10)
-                found, rarity, cropped_descr, item_roi = find_descr(Cam().grab(), item_center)
+                detection = find_descr_with_diagnostics(Cam().grab(), item_center)
+                found = detection.found
+                cropped_descr = detection.cropped_descr
+                item_roi = detection.crop_roi
 
                 top_left_corner = None if not found or item_roi is None else item_roi[:2]
                 if found and item_roi is not None:
                     if not is_confirmed:
-                        found_check, _, cropped_descr_check, _ = find_descr(Cam().grab(), item_center)
-                        if found_check:
-                            score = compare_histograms(cropped_descr, cropped_descr_check)
-                            if score < 0.99:
-                                continue
-                            is_confirmed = True
+                        time.sleep(_FRAME_RETRY_DELAY_SECONDS)
+                        self.check_for_thread_cancellation(cancel_event)
+                        found_check, cropped_descr_check, _ = find_descr(Cam().grab(), item_center)
+                        if not found_check:
+                            continue
+                        score = compare_histograms(cropped_descr, cropped_descr_check)
+                        if score < 0.99:
+                            continue
+                        is_confirmed = True
 
                     self.check_for_thread_cancellation(cancel_event)
 
@@ -355,7 +370,7 @@ class VisionModeWithHighlighting:
                     )
                     if moved_to_new_item:
                         ignored_item = is_ignored_item(item_descr)
-                        # Make the canvas gray for "found the item" or blue for "ignored this item"
+                        # Make the canvas blue for ignored items. Other items wait for the final result.
                         if ignored_item:
                             if item_descr.seasonal_attribute == SeasonalAttribute.sanctified:
                                 self.request_empty_outline(
@@ -363,13 +378,13 @@ class VisionModeWithHighlighting:
                                 )
                             else:
                                 self.request_empty_outline(item_descr, item_roi, get_filter_colors().unhandled)
-                        else:
-                            self.request_empty_outline(item_descr, item_roi, get_filter_colors().processing)
 
+                        # Remove any final drawing if the item is unselected. It is also automatically
+                        # removed if a different TTS item comes in.
+                        self.check_for_thread_cancellation(cancel_event)
                         # Since we've now drawn something we kick off a thread to remove the drawing
                         # if the item is unselected. It is also automatically removed if a different
                         # TTS item comes in.
-                        self.check_for_thread_cancellation(cancel_event)
                         if not self.clear_when_item_not_selected_thread:
                             clear_cancel_event = threading.Event()
                             self.clear_when_item_not_selected_thread_cancel_event = clear_cancel_event
@@ -388,39 +403,53 @@ class VisionModeWithHighlighting:
                         last_center = item_center
 
                         if item_descr == self.current_item:
-                            # We need to get the item_descr again but this time with affix locations
-                            if is_sigil(item_descr.item_type):
-                                # We won't highlight specific affixes for sigils. We'll see if people complain
-                                item_descr_with_loc = item_descr
-                            else:
-                                item_descr_with_loc = None
-                                for _ in range(3):
-                                    try:
-                                        item_descr_with_loc = src.item.descr.read_descr_tts.read_descr_mixed(
-                                            cropped_descr
-                                        )
-                                    except IndexError:
-                                        item_descr_with_loc = None
-                                    if item_descr_with_loc is not None:
-                                        break
-                                    # Bullet point template matching can miss on a single frame
-                                    # (extra tooltip lines on mythics/tempered items are especially prone to this).
-                                    # Re-grab and retry before giving up on this item entirely.
-                                    time.sleep(0.05)
-                                    _, _, cropped_descr, _ = find_descr(Cam().grab(), item_center)
-                            if item_descr_with_loc is None:  # Item was likely mid-transition
-                                continue
-                            res = Filter().should_keep(item_descr_with_loc)
+                            res = Filter().should_keep(item_descr)
                             match = res.keep
 
                             # Adapt colors based on config
                             if match:
+                                locator_result = None
                                 if any(
                                     res_matched.profile.endswith(ASPECT_UPGRADES_LABEL) for res_matched in res.matched
                                 ):
                                     self.request_codex_upgrade_box(item_descr, item_roi, res)
                                 else:
-                                    self.request_match_box(item_descr, item_roi, res, item_descr_with_loc)
+                                    if not is_sigil(item_descr.item_type):
+                                        matched_affixes = res.matched[0].matched_affixes if res.matched else []
+                                        aspect_matched = any(m.aspect_match for m in res.matched)
+
+                                        def locate_markers(
+                                            tooltip_image: np.ndarray,
+                                            *,
+                                            item=item_descr,
+                                            matched_affixes=matched_affixes,
+                                            aspect_matched=aspect_matched,
+                                            short_separator_match=None,
+                                        ) -> LocatorResult:
+                                            return locate_affix_markers(
+                                                tooltip_image=tooltip_image,
+                                                item=item,
+                                                matched_affixes=matched_affixes,
+                                                aspect_matched=aspect_matched,
+                                                short_separator_match=short_separator_match,
+                                            )
+
+                                        def locate_markers_for_detection(detection) -> LocatorResult:
+                                            return locate_markers(
+                                                detection.cropped_descr,
+                                                short_separator_match=get_separator_match_in_crop(detection),
+                                            )
+
+                                        locator_result = locate_markers_for_detection(detection)
+                                        if not locator_result.reliable:
+                                            # Bullet templates may still be fading after the tooltip is confirmed.
+                                            time.sleep(_FRAME_RETRY_DELAY_SECONDS)
+                                            self.check_for_thread_cancellation(cancel_event)
+                                            retry_detection = find_descr_with_diagnostics(Cam().grab(), item_center)
+                                            if retry_detection.found:
+                                                locator_result = locate_markers_for_detection(retry_detection)
+                                                item_roi = retry_detection.crop_roi
+                                    self.request_match_box(item_descr, item_roi, res, locator_result)
                             elif not match:
                                 self.request_no_match_box(item_descr, item_roi)
                 else:
@@ -455,7 +484,7 @@ class VisionModeWithHighlighting:
         try:
             while True:
                 self.check_for_thread_cancellation(cancel_event)
-                found_check, _, _, _ = find_descr(Cam().grab(), item_center)
+                found_check, _, _ = find_descr(Cam().grab(), item_center)
                 if not found_check:
                     self.request_clear()
                     self.clear_when_item_not_selected_thread = None
@@ -479,8 +508,8 @@ class VisionModeWithHighlighting:
     def request_empty_outline(self, item_descr, item_roi, color, text: str | None = None):
         self.queue.put(("empty", item_descr, item_roi, color, text))
 
-    def request_match_box(self, item_descr, item_roi, should_keep_res, item_descr_with_affix):
-        self.queue.put(("match", item_descr, item_roi, should_keep_res, item_descr_with_affix))
+    def request_match_box(self, item_descr, item_roi, should_keep_res, locator_result):
+        self.queue.put(("match", item_descr, item_roi, should_keep_res, locator_result))
 
     def request_no_match_box(self, item_descr, item_roi):
         self.queue.put(("no_match", item_descr, item_roi))

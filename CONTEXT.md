@@ -77,3 +77,18 @@ _Avoid_: Teleporting.
 A user-configured keyboard shortcut stored in a stable, human-readable vocabulary such as `ctrl+shift+f11`, independent of the operating system or input backend.
 It must include at least one non-modifier key; on macOS, `cmd` and `ctrl` identify distinct physical modifiers.
 _Avoid_: Backend key spec.
+
+### Vision mode fast
+
+A vision mode that evaluates the hovered item from TTS and displays a tooltip-level keep or junk result without marking individual affixes.
+_Avoid_: full tooltip level mode.
+
+### Vision mode with highlighting
+
+A vision mode that evaluates the hovered item from TTS and marks the matched affixes on the item tooltip.
+_Avoid_: highlighting mode, old vision mode.
+
+### Affix marker
+
+The on-screen marker drawn by vision mode with highlighting to indicate one matched affix on the item tooltip. The current marker is a square centered on the affix bullet.
+_Avoid_: affix highlight, row highlight.
