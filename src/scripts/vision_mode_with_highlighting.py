@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 import src.perception
+from src.automation import character_inventory, pointer_position, stash_inventory, vendor_inventory
 from src.gui.importer.gui_common import DARK_GRAY_BG
 from src.item import Filter, FilterResult, SeasonalAttribute, is_sigil
 from src.perception import (
@@ -24,16 +25,12 @@ from src.perception import (
     get_separator_match_in_crop,
     locate_affix_markers,
     monitor_to_window,
+    screenshot,
 )
 from src.scripts._singleton import singleton
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item, reset_canvas
 from src.settings import get_settings, get_ui_coordinates
-from src.ui.char_inventory import CharInventory
-from src.ui.stash import Stash
-from src.ui.vendor import Vendor
 from src.ui_thread import call_on_ui_thread, create_overlay_toplevel, get_root
-from src.utils.custom_mouse import Mouse
-from src.utils.window import screenshot
 
 if TYPE_CHECKING:
     from src.item import Item
@@ -80,9 +77,9 @@ class VisionModeWithHighlighting:
 
         self.thick = int(game_window_roi()["height"] * 0.0047)
 
-        inv = CharInventory()
-        stash = Stash()
-        vendor = Vendor()
+        inv = character_inventory()
+        stash = stash_inventory()
+        vendor = vendor_inventory()
         img = capture()
         self.max_slot_size = stash.get_max_slot_size()
         occ_inv, empty_inv = inv.get_item_slots(img)
@@ -333,7 +330,7 @@ class VisionModeWithHighlighting:
             while retry_count < 5 and not is_confirmed:
                 self.check_for_thread_cancellation(cancel_event)
                 retry_count += 1
-                mouse_pos = monitor_to_window(Mouse.get_position())
+                mouse_pos = monitor_to_window(pointer_position())
                 # get closest pos to a item center
                 centers_to_use = self.possible_vendor_centers if item_descr.is_in_shop else self.possible_centers
                 delta = centers_to_use - mouse_pos

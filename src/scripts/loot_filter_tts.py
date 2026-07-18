@@ -3,8 +3,9 @@ import time
 from typing import TYPE_CHECKING
 
 import src.perception
+from src import automation
 from src.item import AffixType, Filter, ItemRarity, ItemType, is_sigil
-from src.perception import capture
+from src.perception import capture, screenshot
 from src.scripts.common import (
     ASPECT_UPGRADES_LABEL,
     drop_item_from_inventory,
@@ -14,17 +15,15 @@ from src.scripts.common import (
     reset_item_status,
 )
 from src.settings import ItemRefreshType, UnfilteredUniquesType, get_settings
-from src.utils.custom_mouse import Mouse
-from src.utils.window import screenshot
 
 if TYPE_CHECKING:
-    from src.ui.inventory_base import InventoryBase
+    from src.automation import Inventory
 
 LOGGER = logging.getLogger(__name__)
 
 
 def check_items(
-    inv: InventoryBase, force_refresh: ItemRefreshType, stash_is_open: bool = False, no_match_action: str = "junk"
+    inv: Inventory, force_refresh: ItemRefreshType, stash_is_open: bool = False, no_match_action: str = "junk"
 ):
     occupied, _ = inv.get_item_slots()
 
@@ -76,7 +75,7 @@ def check_items(
                 and item_descr.item_type == ItemType.TemperManual
                 and get_settings().general.auto_use_temper_manuals
             ):
-                Mouse.click("right")
+                automation.click_pointer("right")
             continue
 
         num_of_affixed_items_checked += 1

@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.utils.window_backend import WindowSpecLike
+    from src.automation._window_backend import WindowSpecLike
 
 
 def list_active_window_ids() -> list[int]:

@@ -19,11 +19,11 @@ from typing import TYPE_CHECKING, Any, TypedDict
 from PIL import Image, ImageDraw, ImageFont
 from PyQt6.QtCore import QSettings
 
+from src.automation import WindowSpec, is_self_foreground, is_window_foreground
 from src.item import Filter
 from src.perception import game_window_roi
 from src.settings import get_settings, get_ui_coordinates
 from src.ui_thread import call_on_ui_thread, get_root, is_alive, post_to_ui_thread
-from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground
 
 from ._transform import GRID, NODES_LEN, nodes_to_grid, parse_rotation
 

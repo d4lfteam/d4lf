@@ -1,9 +1,9 @@
 import cv2
 import pytest
 
+from src.automation import character_inventory
 from src.perception._capture import Cam
 from src.settings import BASE_DIR
-from src.ui.char_inventory import CharInventory
 
 BASE_PATH = BASE_DIR / "tests/assets/ui"
 
@@ -21,7 +21,7 @@ BASE_PATH = BASE_DIR / "tests/assets/ui"
 def test_char_inventory(img_res, input_img):
     Cam().update_window_pos(0, 0, *img_res)
     img = cv2.imread(input_img)
-    inv = CharInventory()
+    inv = character_inventory()
     flag = inv.is_open(img)
     assert flag
 
@@ -39,7 +39,7 @@ def test_get_item_slots(img_res, input_img, occupied, junk, fav):
     img = cv2.imread(input_img)
     if img is None:
         pytest.fail(f"Unable to load test image: {input_img}")
-    inv = CharInventory()
+    inv = character_inventory()
     occupied_slots, is_open = inv.get_item_slots(img)
     num_junk = 0
     num_fav = 0

@@ -13,12 +13,12 @@ if TYPE_CHECKING:
 
 if sys.platform == "win32":
     from src import perception as perception_module
+    from src.automation import WindowSpec, start_detecting_window
     from src.item import Filter
     from src.main import check_for_proper_tts_configuration
     from src.overlay import Overlay
     from src.perception import game_window_ready
     from src.scripts.handler import ScriptHandler
-    from src.utils.window import WindowSpec, start_detecting_window
 else:
     perception_module = None
 

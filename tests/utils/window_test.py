@@ -22,15 +22,15 @@ def window_module(monkeypatch):
     monkeypatch.setitem(sys.modules, "win32gui", win32gui)
     monkeypatch.setitem(sys.modules, "win32process", win32process)
     monkeypatch.setitem(sys.modules, "pywintypes", pywintypes)
-    monkeypatch.delitem(sys.modules, "src.utils.window", raising=False)
-    monkeypatch.delitem(sys.modules, "src.utils.window_backend_windows", raising=False)
+    monkeypatch.delitem(sys.modules, "src.automation._window", raising=False)
+    monkeypatch.delitem(sys.modules, "src.automation._window_backend_windows", raising=False)
 
-    window = importlib.import_module("src.utils.window")
-    backend = importlib.import_module("src.utils.window_backend_windows")
+    window = importlib.import_module("src.automation._window")
+    backend = importlib.import_module("src.automation._window_backend_windows")
     monkeypatch.setattr(window, "_platform_backend", backend)
     yield window
-    monkeypatch.delitem(sys.modules, "src.utils.window", raising=False)
-    monkeypatch.delitem(sys.modules, "src.utils.window_backend_windows", raising=False)
+    monkeypatch.delitem(sys.modules, "src.automation._window", raising=False)
+    monkeypatch.delitem(sys.modules, "src.automation._window_backend_windows", raising=False)
 
 
 def test_skips_window_with_invalid_pid_when_finding_process(window_module, mocker):

@@ -20,11 +20,11 @@ from src.settings import VisionModeType, get_settings
 
 if sys.platform == "win32":
     from src import perception
+    from src.automation import WindowSpec, start_detecting_window
     from src.item import Filter
     from src.overlay import Overlay
     from src.perception import game_window_ready
     from src.scripts.handler import ScriptHandler
-    from src.utils.window import WindowSpec, start_detecting_window
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 

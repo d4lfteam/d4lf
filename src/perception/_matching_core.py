@@ -57,7 +57,7 @@ def get_cv_result(
     if img.shape[0] == 0 or img.shape[1] == 0:
         return None, template_bgr, resolved_roi
     if take_debug_screenshot:
-        from src.utils.window import screenshot  # ruff:ignore[import-outside-top-level]
+        from src.perception import screenshot  # ruff:ignore[import-outside-top-level]
 
         screenshot("template_finder", img=img)
 

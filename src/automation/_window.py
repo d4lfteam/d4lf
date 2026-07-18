@@ -1,25 +1,14 @@
-import logging
-import pathlib
 import sys
 from dataclasses import dataclass
-from datetime import datetime
 from typing import TYPE_CHECKING
 
-import cv2
-
-from src.logger import LOG_DIR
-from src.perception import capture
-from src.utils import window_backend_noop
+from . import _window_backend_noop as window_backend_noop
 
 if TYPE_CHECKING:
-    import numpy as np
-
-    from src.utils.window_backend import WindowBackend, WindowSpecLike
-
-LOGGER = logging.getLogger(__name__)
+    from src.automation._window_backend import WindowBackend, WindowSpecLike
 
 if sys.platform == "win32":
-    from src.utils import window_backend_windows as _platform_backend
+    from . import _window_backend_windows as _platform_backend
 else:
     _platform_backend = window_backend_noop
 
@@ -100,30 +89,6 @@ def is_window_foreground(window_spec: WindowSpec) -> bool:
 
 def is_self_foreground() -> bool:
     return _backend.is_self_foreground()
-
-
-def screenshot(
-    name: str | None = None,
-    path: str = str(LOG_DIR / "screenshots"),
-    img: np.ndarray | None = None,
-    overwrite: bool = True,
-    timestamp: bool = True,
-):
-    name = name if name is not None else "screenshot"
-    img = img if img is not None else capture()
-
-    pathlib.Path(path).mkdir(exist_ok=True, parents=True)
-    file_path = f"{path}/{name}{'_' + datetime.now(tz=None).strftime('%Y%m%d_%H%M%S.%f') if timestamp else ''}.png"  # ruff:ignore[call-datetime-now-without-tzinfo]
-
-    if pathlib.Path(file_path).exists():
-        if overwrite:
-            LOGGER.warning(f"{name} already exists, overwriting.")
-            cv2.imwrite(file_path, img)
-        else:
-            LOGGER.warning(f"{name} already exists, not overwriting because overwrite is set to False.")
-    else:
-        cv2.imwrite(file_path, img)
-        LOGGER.debug(f"Saved screenshot: {file_path}")
 
 
 if __name__ == "__main__":

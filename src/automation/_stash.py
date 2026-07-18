@@ -1,10 +1,10 @@
 import logging
 import time
 
+from src.automation._inventory import InventoryBase
+from src.automation._mouse import Mouse
 from src.perception import TemplateQuery, create_template_query, window_to_monitor
 from src.settings import get_settings, get_ui_coordinates
-from src.ui.inventory_base import InventoryBase
-from src.utils.custom_mouse import Mouse
 
 LOGGER = logging.getLogger(__name__)
 

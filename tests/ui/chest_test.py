@@ -1,9 +1,9 @@
 import cv2
 import pytest
 
+from src.automation import stash_inventory
 from src.perception._capture import Cam
 from src.settings import BASE_DIR
-from src.ui.stash import Stash
 
 BASE_PATH = BASE_DIR / "tests/assets/ui"
 
@@ -12,6 +12,6 @@ BASE_PATH = BASE_DIR / "tests/assets/ui"
 def test_chest(img_res, input_img):
     Cam().update_window_pos(0, 0, *img_res)
     img = cv2.imread(input_img)
-    inv = Stash()
+    inv = stash_inventory()
     flag = inv.is_open(img)
     assert flag

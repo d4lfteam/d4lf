@@ -5,7 +5,7 @@ import time
 
 import psutil
 
-from src.utils.window import get_window_spec_id
+from src.automation._window import get_window_spec_id
 
 LOGGER = logging.getLogger(__name__)
 

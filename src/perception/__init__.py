@@ -36,6 +36,7 @@ from ._geometry import (
     locate_affix_markers_with_diagnostics,
 )
 from ._matching_models import SearchResult, TemplateMatch
+from ._screenshot import screenshot
 from ._text import (
     clean_str,
     closest_match,
@@ -88,6 +89,7 @@ __all__ = [
     "read_latest_item",
     "remove_text_after_first_keyword",
     "reset_window_position",
+    "screenshot",
     "search_templates",
     "start_connection",
     "update_window_position",

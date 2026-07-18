@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.utils.custom_mouse import is_numeric
+from src.automation._mouse import is_numeric
 
 
 def test_is_numeric_accepts_python_and_numpy_numbers() -> None:

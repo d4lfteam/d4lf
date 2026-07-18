@@ -1,6 +1,6 @@
+from src.automation._inventory import InventoryBase
 from src.perception import TemplateQuery, create_template_query
 from src.settings import get_settings, get_ui_coordinates
-from src.ui.inventory_base import InventoryBase
 
 
 class CharInventory(InventoryBase):

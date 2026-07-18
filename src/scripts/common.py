@@ -8,12 +8,11 @@ from src.item import SeasonalAttribute
 if TYPE_CHECKING:
     from tkinter import Canvas
 
-import src.settings as hotkeys
+from src import automation
 from src.gui.importer.gui_common import ACCENT_BLUE, DARK_GRAY_BG
 from src.item import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
 from src.perception import abs_window_to_monitor
 from src.settings import get_settings, get_ui_coordinates
-from src.utils.custom_mouse import Mouse
 
 if TYPE_CHECKING:
     from src.item import Item
@@ -68,15 +67,15 @@ ASPECT_UPGRADES_LABEL = "AspectUpgrades"
 
 
 def mark_as_junk():
-    hotkeys.send("space")
+    automation.send_hotkey("space")
     time.sleep(0.13)
 
 
 def mark_as_favorite():
     LOGGER.info("Mark as favorite")
-    hotkeys.send("space")
+    automation.send_hotkey("space")
     time.sleep(0.17)
-    hotkeys.send("space")
+    automation.send_hotkey("space")
     time.sleep(0.13)
 
 
@@ -92,25 +91,25 @@ def reset_item_status(occupied, inv):
     for item_slot in occupied:
         if item_slot.is_fav:
             inv.hover_item_with_delay(item_slot)
-            hotkeys.send("space")
+            automation.send_hotkey("space")
         if item_slot.is_junk:
             inv.hover_item_with_delay(item_slot)
-            hotkeys.send("space")
+            automation.send_hotkey("space")
             time.sleep(0.15)
-            hotkeys.send("space")
+            automation.send_hotkey("space")
         time.sleep(0.15)
 
     if occupied:
-        Mouse.move(*abs_window_to_monitor((0, 0)))
+        automation.move_pointer(*abs_window_to_monitor((0, 0)))
 
 
 def drop_item_from_inventory() -> None:
     """Drop the currently-hovered inventory item (Ctrl + Left Click in-game)."""
-    hotkeys.press("ctrl")
+    automation.press_key("ctrl")
     time.sleep(0.03)
-    Mouse.click("left")
+    automation.click_pointer("left")
     time.sleep(0.03)
-    hotkeys.release("ctrl")
+    automation.release_key("ctrl")
     time.sleep(0.10)
 
 

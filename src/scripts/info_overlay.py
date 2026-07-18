@@ -13,14 +13,13 @@ if TYPE_CHECKING:
 import httpx
 from PyQt6.QtCore import QSettings
 
+from src.automation import WindowSpec, is_self_foreground, is_window_foreground, move_pointer
 from src.gui.importer.gui_common import ACCENT_BLUE, ACCENT_GOLD, ACCENT_GREEN, CARD_BG, MUTED, TEXT, TRANSPARENT_KEY
 from src.perception import Publisher, abs_window_to_monitor, game_window_roi, monitor_to_window, window_to_monitor
 from src.scripts._singleton import singleton
 from src.scripts.common import get_filter_colors
 from src.settings import get_settings
 from src.ui_thread import call_on_ui_thread, get_root
-from src.utils.custom_mouse import Mouse
-from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground
 
 LOGGER = logging.getLogger(__name__)
 
@@ -174,16 +173,16 @@ def _hover_experience_balance(info_config: dict[str, InfoSettingValue]):
     if pos is not None and len(pos) == 4:
         p1 = (pos[0], pos[1])
         p2 = (pos[2], pos[3])
-        Mouse.move(*window_to_monitor(p1))
+        move_pointer(*window_to_monitor(p1))
         time.sleep(0.1)
-        Mouse.move(*window_to_monitor(p2))
+        move_pointer(*window_to_monitor(p2))
         return
 
     # Default fallback: bottom center
     res = game_window_roi()
     if res:
         target = (res["width"] // 2, res["height"] - 10)
-        Mouse.move(*window_to_monitor(target))
+        move_pointer(*window_to_monitor(target))
 
 
 def request_close():
@@ -366,7 +365,7 @@ class InventoryExpTracker:
                 self.hover_active = True
                 time.sleep(0.5)
                 _hover_experience_balance(info_config)
-                Mouse.move(*abs_window_to_monitor((0, 0)))
+                move_pointer(*abs_window_to_monitor((0, 0)))
             finally:
                 self.hover_active = False
 

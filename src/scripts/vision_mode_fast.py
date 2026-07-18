@@ -7,14 +7,13 @@ from tkinter.font import Font
 from typing import Literal
 
 import src.perception
+from src.automation import pointer_position
 from src.item import Filter, ItemRarity, MatchedFilter
-from src.perception import Publisher, capture, monitor_to_window
+from src.perception import Publisher, capture, monitor_to_window, screenshot
 from src.scripts._singleton import singleton
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item
 from src.settings import get_settings, get_ui_coordinates
 from src.ui_thread import call_on_ui_thread, create_overlay_toplevel, get_root
-from src.utils.custom_mouse import Mouse
-from src.utils.window import screenshot
 
 LOGGER = logging.getLogger(__name__)
 
@@ -57,7 +56,7 @@ class VisionModeFast:
         width = max_line_length * text_font.measure("0")
         height = (line_count + 1) * line_height
 
-        mouse_pos = monitor_to_window(Mouse.get_position())
+        mouse_pos = monitor_to_window(pointer_position())
         self.textbox.place_configure(
             x=mouse_pos[0], y=mouse_pos[1], width=width // 9, height=(height // line_height) - 2
         )

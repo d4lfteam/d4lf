@@ -1,14 +1,14 @@
 import logging
 from typing import TYPE_CHECKING
 
+from src.automation._character_inventory import CharInventory
+from src.automation._mouse import Mouse
+from src.automation._stash import Stash
 from src.perception import abs_window_to_monitor
 from src.settings import MoveItemsType, get_settings
-from src.ui.char_inventory import CharInventory
-from src.ui.stash import Stash
-from src.utils.custom_mouse import Mouse
 
 if TYPE_CHECKING:
-    from src.ui.inventory_base import ItemSlot
+    from src.automation._inventory import ItemSlot
 
 LOGGER = logging.getLogger(__name__)
 

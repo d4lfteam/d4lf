@@ -1,7 +1,7 @@
 import logging
 
+from src.automation._inventory import InventoryBase
 from src.perception import TemplateQuery, create_template_query
-from src.ui.inventory_base import InventoryBase
 
 LOGGER = logging.getLogger(__name__)
 

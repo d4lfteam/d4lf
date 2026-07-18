@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import TYPE_CHECKING
 
-import src.settings as hotkeys
+from src.settings import send
 from src.utils.misc import run_until_condition
 
 if TYPE_CHECKING:
@@ -40,7 +40,7 @@ class Menu:
             return False
         if not (is_open := self.is_open()):
             LOGGER.debug(f"Opening {self.menu_name} using hotkey {self.open_hotkey}")
-            hotkeys.send(self.open_hotkey)
+            send(self.open_hotkey)
         else:
             LOGGER.debug(f"{self.menu_name} already open")
         return is_open or self.wait_until_open()

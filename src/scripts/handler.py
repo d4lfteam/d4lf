@@ -12,12 +12,22 @@ import src.perception
 import src.scripts.loot_filter_tts
 import src.scripts.vision_mode_fast
 import src.scripts.vision_mode_with_highlighting
-import src.settings as hotkeys
+from src import automation
+from src.automation import (
+    WindowSpec,
+    character_inventory,
+    is_window_foreground,
+    kill_thread,
+    move_items_to_inventory,
+    move_items_to_stash,
+    move_pointer,
+    safe_exit,
+    stash_inventory,
+)
 from src.dataloader import Dataloader
-from src.loot_mover import move_items_to_inventory, move_items_to_stash
 from src.paragon import request_close as request_close_paragon
 from src.paragon import run_paragon_overlay
-from src.perception import abs_window_to_monitor, capture
+from src.perception import abs_window_to_monitor, capture, screenshot
 from src.scripts.common import SETUP_INSTRUCTIONS_URL
 from src.scripts.info_overlay import InventoryExpTracker, is_info_overlay_open, open_boss_timer_overlay, request_close
 from src.scripts.info_overlay import set_busy_checker as set_info_busy_checker
@@ -32,11 +42,6 @@ from src.settings import (
     get_settings,
     has_any_changed,
 )
-from src.ui.char_inventory import CharInventory
-from src.ui.stash import Stash
-from src.utils.custom_mouse import Mouse
-from src.utils.process_handler import kill_thread, safe_exit
-from src.utils.window import WindowSpec, is_window_foreground, screenshot
 
 LOGGER = logging.getLogger(__name__)
 
@@ -208,14 +213,14 @@ class ScriptHandler:
         while self._hotkey_handles:
             handle = self._hotkey_handles.pop()
             with suppress(KeyError, ValueError):
-                hotkeys.remove_hotkey(handle)
+                automation.remove_hotkey(handle)
 
     def _register_hotkey(self, hotkey: str, callback: Callable[[], None], check_focus: bool = True) -> None:
         def wrapped_callback():
             if not check_focus or is_window_foreground(self._win_spec):
                 callback()
 
-        self._hotkey_handles.append(hotkeys.add_hotkey(hotkey, wrapped_callback))
+        self._hotkey_handles.append(automation.add_hotkey(hotkey, wrapped_callback))
 
     def setup_key_binds(self):
         config = self._config
@@ -307,18 +312,18 @@ class ScriptHandler:
 
 def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh, no_match_action: str = "junk"):
     LOGGER.info("Running loot filter")
-    Mouse.move(*abs_window_to_monitor((0, 0)))
+    move_pointer(*abs_window_to_monitor((0, 0)))
     check_items = src.scripts.loot_filter_tts.check_items
 
-    inv = CharInventory()
-    stash = Stash()
+    inv = character_inventory()
+    stash = stash_inventory()
 
     if stash.is_open():
         for i in get_settings().general.check_chest_tabs:
             stash.switch_to_tab(i)
             time.sleep(0.3)
             check_items(stash, force_refresh, stash_is_open=True, no_match_action="junk")
-        Mouse.move(*abs_window_to_monitor((0, 0)))
+        move_pointer(*abs_window_to_monitor((0, 0)))
         time.sleep(0.3)
         check_items(inv, force_refresh, stash_is_open=True, no_match_action="junk")
     else:
@@ -327,5 +332,5 @@ def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh,
             LOGGER.error("Inventory did not open up")
             return
         check_items(inv, force_refresh, no_match_action=no_match_action)
-    Mouse.move(*abs_window_to_monitor((0, 0)))
+    move_pointer(*abs_window_to_monitor((0, 0)))
     LOGGER.info("Loot filter done")

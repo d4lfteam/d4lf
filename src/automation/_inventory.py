@@ -3,10 +3,10 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
+from src.automation._menu import Menu
+from src.automation._mouse import Mouse
 from src.perception import capture, center_of_roi, crop_image, grid_rois, search_templates, window_to_monitor
 from src.settings import get_ui_coordinates
-from src.ui.menu import Menu
-from src.utils.custom_mouse import Mouse
 
 
 @dataclass

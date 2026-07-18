@@ -13,7 +13,7 @@ from win32process import GetWindowThreadProcessId
 from src.perception import reset_window_position, update_window_position
 
 if TYPE_CHECKING:
-    from src.utils.window_backend import WindowSpecLike
+    from src.automation._window_backend import WindowSpecLike
 
 LOGGER = logging.getLogger(__name__)
 
