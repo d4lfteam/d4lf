@@ -29,4 +29,4 @@ Focused adapter tests pass (46 passed, 18 deselected), and the complete non-Sele
 physical lines. The repository-wide line hook still reports pre-existing oversized modules, plus
 shared `paragon_export.py` and later-ticket adapter files assigned to subsequent migration slices.
 
-Implemented in commit `70a1674`.
+Implemented in rebased commit `d977159`.

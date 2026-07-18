@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — Deepen item models and filtering; 03 — Deepen profile persistence and sessions; 04 — Deepen settings and configuration.
 
-**Status:** ready-for-agent
+**Status:** complete
 
 - [x] Importers return one normalized result containing the selected variant, profile output, and optional Paragon payload.
 - [x] Profile filename parts and custom profile filenames preserve their glossary-defined behavior.
@@ -25,3 +25,5 @@ importing modules; the former GUI common module retains only shared GUI/source c
 Focused importer tests pass (115 passed, 16 skipped), and the complete non-Selenium suite passes
 (619 passed, 47 skipped). Ruff, ty, Python compilation, and diff checks pass. The repository-wide
 line hook still reports the pre-existing oversized modules assigned to later refactor slices.
+
+Implemented in rebased commit `0149465`.

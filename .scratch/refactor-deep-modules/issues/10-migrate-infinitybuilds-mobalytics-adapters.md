@@ -27,4 +27,4 @@ variant, filename, and Paragon assertions. The complete non-Selenium suite passe
 lines. The repository-wide line hook still reports unrelated pre-existing oversized modules,
 which remain assigned to later refactor slices.
 
-Implemented in commit `0818b6b`.
+Implemented in rebased commit `937a09a`.
