@@ -8,11 +8,11 @@ import cv2
 from src.logger import setup
 from src.perception import DescrDetection, find_descr_with_diagnostics
 from src.settings import get_ui_coordinates
-from src.tools.replay_common import ReplayConfigurationError, load_replay_image, show_replay_result
-from src.tools.replay_common import font_scale as _font_scale
-from src.tools.replay_common import parse_resolution as _parse_resolution
-from src.tools.replay_common import raise_configuration_error as _raise_configuration_error
-from src.tools.replay_common import write_image as _write_image
+from src.tools.replay.common import ReplayConfigurationError, load_replay_image, show_replay_result
+from src.tools.replay.common import font_scale as _font_scale
+from src.tools.replay.common import parse_resolution as _parse_resolution
+from src.tools.replay.common import raise_configuration_error as _raise_configuration_error
+from src.tools.replay.common import write_image as _write_image
 
 if TYPE_CHECKING:
     import numpy as np

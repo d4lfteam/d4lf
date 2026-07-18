@@ -4,8 +4,8 @@ Any manual additions to them will be overwritten the next time that data is upda
 If you want to add data to these files, do the following steps:
 
 1. Download the latest version of d4data: https://github.com/DiabloTools/d4data.git
-1. Run [gen_data.py](/src/tools/gen_data.py). You provide the paths of the above download. For example,
-   you might run: `python gen_data.py C:\Users\you\code\d4data`
+1. Run the data-generation module. You provide the paths of the above download. For example,
+   you might run: `uv run python -m src.tools.data_generation C:\Users\you\code\d4data`
 
 If you do not see the new data you're expecting to see, you need to add it to the custom override file at [src/tools/data/custom_enUS.json](/src/tools/data/custom_enUS.json). This file stores any additional data that we were not able to find in d4data for any reason.
 

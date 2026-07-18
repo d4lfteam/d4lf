@@ -16,7 +16,7 @@ from src.perception import (
     LocatorResult,
     TemplateMatchTrace,
 )
-from src.tools.replay_cropped_tooltip import (
+from src.tools.replay.cropped_tooltip import (
     ReplayConfig,
     ReplayConfigurationError,
     main,
@@ -98,7 +98,7 @@ def test_run_replay_saves_annotated_output_and_logs_all_stages(tmp_path, monkeyp
         LocatorResult([LocatedMarker("affix", 1, (20, 100), 0.91)], reliable=True), diagnostics
     )
     monkeypatch.setattr(
-        "src.tools.replay_cropped_tooltip.locate_affix_markers_with_diagnostics", lambda **_: diagnostic_result
+        "src.tools.replay.cropped_tooltip.locate_affix_markers_with_diagnostics", lambda **_: diagnostic_result
     )
 
     config = make_replay_config(tmp_path, matched_row_indices=[1])
@@ -131,7 +131,7 @@ def test_run_replay_saves_failure_annotation_without_display(tmp_path, monkeypat
         LocatorResult([], reliable=False), LocatorDiagnostics(failure_reason="missing_separator")
     )
     monkeypatch.setattr(
-        "src.tools.replay_cropped_tooltip.locate_affix_markers_with_diagnostics", lambda **_: diagnostic_result
+        "src.tools.replay.cropped_tooltip.locate_affix_markers_with_diagnostics", lambda **_: diagnostic_result
     )
 
     result = run_replay(make_replay_config(tmp_path, matched_row_indices=[1]), display=False)
@@ -155,7 +155,7 @@ def test_run_replay_annotates_all_match_stages_and_resolution_sized_marker(tmp_p
         ),
     )
     monkeypatch.setattr(
-        "src.tools.replay_cropped_tooltip.locate_affix_markers_with_diagnostics", lambda **_: diagnostic_result
+        "src.tools.replay.cropped_tooltip.locate_affix_markers_with_diagnostics", lambda **_: diagnostic_result
     )
 
     result = run_replay(config, display=False)
@@ -171,10 +171,10 @@ def test_run_replay_annotates_all_match_stages_and_resolution_sized_marker(tmp_p
 
 def test_show_result_uses_blocking_window(monkeypatch):
     calls = []
-    monkeypatch.setattr("src.tools.replay_cropped_tooltip.cv2.imshow", lambda *args: calls.append(("show", args)))
-    monkeypatch.setattr("src.tools.replay_cropped_tooltip.cv2.waitKey", lambda *args: calls.append(("wait", args)))
+    monkeypatch.setattr("src.tools.replay.cropped_tooltip.cv2.imshow", lambda *args: calls.append(("show", args)))
+    monkeypatch.setattr("src.tools.replay.cropped_tooltip.cv2.waitKey", lambda *args: calls.append(("wait", args)))
     monkeypatch.setattr(
-        "src.tools.replay_cropped_tooltip.cv2.destroyWindow", lambda *args: calls.append(("destroy", args))
+        "src.tools.replay.cropped_tooltip.cv2.destroyWindow", lambda *args: calls.append(("destroy", args))
     )
 
     show_result(np.zeros((4, 4, 3), dtype=np.uint8))
@@ -186,9 +186,9 @@ def test_show_result_uses_blocking_window(monkeypatch):
 def test_main_returns_reliability_status_without_requiring_window(monkeypatch, reliable, expected_status):
     config = ReplayConfig(False, "3840x2160", Path("tooltip.png"), Item(), [])
     result = type("ReplayResult", (), {"reliable": reliable})()
-    monkeypatch.setattr("src.tools.replay_cropped_tooltip.REPLAY_CONFIG", config)
-    monkeypatch.setattr("src.tools.replay_cropped_tooltip.setup", lambda **_kwargs: None)
-    monkeypatch.setattr("src.tools.replay_cropped_tooltip.run_replay", lambda *_args, **_kwargs: result)
-    monkeypatch.setattr("src.tools.replay_cropped_tooltip.show_result", lambda *_args: None)
+    monkeypatch.setattr("src.tools.replay.cropped_tooltip.REPLAY_CONFIG", config)
+    monkeypatch.setattr("src.tools.replay.cropped_tooltip.setup", lambda **_kwargs: None)
+    monkeypatch.setattr("src.tools.replay.cropped_tooltip.run_replay", lambda *_args, **_kwargs: result)
+    monkeypatch.setattr("src.tools.replay.cropped_tooltip.show_result", lambda *_args: None)
 
     assert main() == expected_status

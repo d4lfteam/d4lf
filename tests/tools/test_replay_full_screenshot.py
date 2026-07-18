@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 from src.perception import DescrDetection, TemplateMatch
-from src.tools.replay_full_screenshot import ReplayConfig, ReplayConfigurationError, run_replay, validate_replay_config
+from src.tools.replay.full_screenshot import ReplayConfig, ReplayConfigurationError, run_replay, validate_replay_config
 
 
 def make_replay_config(tmp_path: Path, **overrides) -> ReplayConfig:
@@ -76,7 +76,7 @@ def test_run_replay_saves_crop_and_composes_full_annotation(tmp_path, monkeypatc
         separator_match=separator_match,
         bottom_match=bottom_match,
     )
-    monkeypatch.setattr("src.tools.replay_full_screenshot.find_descr_with_diagnostics", lambda *_args: detection)
+    monkeypatch.setattr("src.tools.replay.full_screenshot.find_descr_with_diagnostics", lambda *_args: detection)
     with caplog.at_level(logging.INFO, logger="d4lf"):
         result = run_replay(config, display=False)
 
@@ -102,9 +102,9 @@ def test_run_replay_saves_crop_and_composes_full_annotation(tmp_path, monkeypatc
 def test_run_replay_writes_and_displays_full_failure_annotation(tmp_path, monkeypatch):
     config = make_replay_config(tmp_path)
     detection = DescrDetection(found=False, failure_reason="missing_top_left_border")
-    monkeypatch.setattr("src.tools.replay_full_screenshot.find_descr_with_diagnostics", lambda *_args: detection)
+    monkeypatch.setattr("src.tools.replay.full_screenshot.find_descr_with_diagnostics", lambda *_args: detection)
     displayed = []
-    monkeypatch.setattr("src.tools.replay_full_screenshot.show_result", displayed.append)
+    monkeypatch.setattr("src.tools.replay.full_screenshot.show_result", displayed.append)
 
     result = run_replay(config)
 
