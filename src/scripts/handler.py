@@ -20,10 +20,10 @@ from src.automation import (
 )
 from src.dataloader import Dataloader
 from src.loot import VisionMode, create_vision_mode, run_loot_filter
+from src.overlay import InventoryExpTracker, is_info_overlay_open, open_boss_timer_overlay, request_close
+from src.overlay import set_busy_checker as set_info_busy_checker
 from src.paragon import request_close as request_close_paragon
 from src.paragon import run_paragon_overlay
-from src.scripts.info_overlay import InventoryExpTracker, is_info_overlay_open, open_boss_timer_overlay, request_close
-from src.scripts.info_overlay import set_busy_checker as set_info_busy_checker
 from src.settings import (
     HOTKEY_SETTING_KEYS,
     LANGUAGE_SETTING_KEYS,
