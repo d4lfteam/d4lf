@@ -18,11 +18,11 @@ checkmark_checkbox_module = _CheckmarkCheckboxModule("src.gui.models.checkmark_c
 checkmark_checkbox_module.CheckmarkCheckBox = QCheckBox
 sys.modules["src.gui.models.checkmark_checkbox"] = checkmark_checkbox_module
 
-importer_window_module = importlib.import_module("src.gui.importer_window")
-importer_config_module = importlib.import_module("src.importing.config")
-DEFAULT_FILENAME_PARTS = importer_config_module.DEFAULT_FILENAME_PARTS
-FilenamePart = importer_config_module.FilenamePart
-ImportConfig = importer_config_module.ImportConfig
+importer_window_module = importlib.import_module("src.importing.gui.window")
+importing_module = importlib.import_module("src.importing")
+DEFAULT_FILENAME_PARTS = importing_module.DEFAULT_FILENAME_PARTS
+FilenamePart = importing_module.FilenamePart
+ImportRequest = importing_module.ImportRequest
 GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP = importer_window_module.GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP
 ImporterWindow = importer_window_module.ImporterWindow
 
@@ -43,7 +43,7 @@ def importer_settings(monkeypatch):
         def value(self, key, default=None):
             return store.get(key, default)
 
-        def setValue(self, key, value):  # noqa: N802
+        def setValue(self, key, value):  # ruff:ignore[invalid-function-name]
             store[key] = value
 
     monkeypatch.setattr(importer_window_module, "QSettings", FakeSettings)
@@ -59,6 +59,12 @@ def test_filename_part_selector_defaults_to_all_parts(qapp, importer_settings):
     )
 
     window.close()
+
+
+def test_importer_window_is_exposed_by_importing_gui_facade():
+    importing_gui = importlib.import_module("src.importing.gui")
+
+    assert importing_gui.ImporterWindow is ImporterWindow
 
 
 def test_filename_part_selection_persists(qapp, importer_settings):
@@ -91,12 +97,12 @@ def test_generate_requires_url_and_filename_parts_or_custom_name(qapp, importer_
 
 
 def test_generate_passes_selected_filename_parts(qapp, importer_settings, monkeypatch):
-    captured_config: ImportConfig | None = None
+    captured_config: ImportRequest | None = None
 
     class FakeThreadPool:
         def start(self, worker):
             nonlocal captured_config
-            captured_config = worker.kwargs["config"]
+            captured_config = worker.request
 
     monkeypatch.setattr(importer_window_module, "THREADPOOL", FakeThreadPool())
 

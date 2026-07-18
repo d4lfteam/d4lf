@@ -1,117 +1,27 @@
 import logging
 import sys
-import time
-from contextlib import suppress
-from pathlib import Path
-from typing import TYPE_CHECKING, override
 
-from PyQt6.QtCore import QEvent, QObject, QPoint, QSettings, QSize, Qt, QThread, QTimer, QUrl, pyqtSignal
-from PyQt6.QtGui import QAction, QCloseEvent, QDesktopServices, QIcon
-from PyQt6.QtWidgets import (
-    QApplication,
-    QHBoxLayout,
-    QLabel,
-    QMainWindow,
-    QMenu,
-    QPushButton,
-    QSystemTrayIcon,
-    QTabWidget,
-    QWidget,
-)
+from PyQt6.QtCore import QSize, Qt, QThread, QTimer, QUrl
+from PyQt6.QtGui import QDesktopServices, QIcon
+from PyQt6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QPushButton, QTabWidget, QWidget
 
 from src import __version__
-from src.autoupdater import notify_if_update
-from src.gui.importer_window import ImporterWindow
+from src.gui.backend_worker import BackendWorker, tts_module
 from src.gui.models.activity_log_widget import ActivityLogWidget, ANSIConsoleWidget, QtConsoleHandler
 from src.gui.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
+from src.gui.unified_lifecycle import UnifiedWindowLifecycle
+from src.gui.unified_shell import DISCORD_ICON, GITHUB_ICON, ICON_PATH
+from src.importing.gui import ImporterWindow
 from src.logger import apply_log_level, consume_startup_log_records, create_formatter, remove_transient_gui_handlers
 from src.logger import setup as setup_logging
 from src.profiles.editor import ProfileEditorWindow
 from src.scripts.common import get_filter_colors
 from src.settings import LOG_LEVEL_SETTING_KEYS, create_settings_window, get_settings, has_any_changed
 
-if TYPE_CHECKING:
-    from src.scripts.handler import ScriptHandler
-
-if sys.platform == "win32":
-    from src import tts as tts_module
-    from src.cam import Cam
-    from src.item import Filter
-    from src.main import check_for_proper_tts_configuration
-    from src.overlay import Overlay
-    from src.scripts.handler import ScriptHandler
-    from src.utils.window import WindowSpec, start_detecting_window
-else:
-    tts_module = None
-
-BASE_DIR = (
-    Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent.parent
-)
-
-ICON_PATH = BASE_DIR / "assets" / "logo.png"
-
-
-def get_asset_path(filename: str) -> Path:
-    """Resilient helper to find assets in root/assets or src/assets, handling case sensitivity."""
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent / "assets" / filename
-
-    # Search paths: 3 parents (root from gui/) and 2 parents (src from gui/)
-    for parent_level in [2, 3]:
-        base = Path(__file__).resolve().parents[parent_level]
-        # Try exact name, then lowercase version
-        for name in [filename, filename.lower()]:
-            p = base / "assets" / name
-            if p.exists():
-                return p
-    # Fallback to the root path even if not found
-    return Path(__file__).resolve().parents[2] / "assets" / filename
-
-
-DISCORD_ICON = get_asset_path("Discord.png")
-GITHUB_ICON = get_asset_path("Github.png")
-
 LOGGER = logging.getLogger(__name__)
 
 
-class BackendWorker(QObject):
-    finished = pyqtSignal()
-    script_handler: ScriptHandler | None = None
-
-    def run(self):
-        if sys.platform != "win32":
-            LOGGER.info("GUI-only mode is active on non-Windows. Backend runtime is disabled.")
-            self.finished.emit()
-            return
-
-        Filter().load_files()
-
-        running_from_source = not getattr(sys, "frozen", False)
-        if running_from_source:
-            LOGGER.debug("Skipping autoupdate check as code is being run from source.")
-        else:
-            notify_if_update()
-
-        win_spec = WindowSpec(get_settings().advanced_options.process_name)
-        start_detecting_window(win_spec)
-
-        while not Cam().is_offset_set():
-            time.sleep(0.2)
-
-        time.sleep(0.5)
-
-        self.script_handler = ScriptHandler()
-
-        check_for_proper_tts_configuration()
-        tts_module.start_connection()
-
-        overlay = Overlay()
-        overlay.run()
-
-        self.finished.emit()
-
-
-class UnifiedMainWindow(QMainWindow):
+class UnifiedMainWindow(UnifiedWindowLifecycle):
     def __init__(self):
         super().__init__()
         self._child_windows: dict[str, QMainWindow] = {}
@@ -227,7 +137,7 @@ class UnifiedMainWindow(QMainWindow):
         layout.addWidget(github_btn)
         self.tabs.setCornerWidget(container, Qt.Corner.TopRightCorner)
 
-    def _setup_social_button(self, btn: QPushButton, icon_path: Path, url: str):
+    def _setup_social_button(self, btn: QPushButton, icon_path, url: str):
         # Double check existence and check for lowercase fallback on-the-fly
         final_path = icon_path
         if not final_path.exists():
@@ -333,93 +243,6 @@ class UnifiedMainWindow(QMainWindow):
 
     def open_profile_editor(self, profile_name: str | None = None):
         self._show_singleton_modal("editor", ProfileEditorWindow, profile_name=profile_name)
-
-    def restore_geometry(self):
-        settings = QSettings("d4lf", "mainwindow")
-
-        size = settings.value("size", QSize(1000, 800))
-        pos = settings.value("pos", QPoint(100, 100))
-        maximized = settings.value("maximized", "false") == "true"
-
-        self.resize(size)
-        self.move(pos)
-
-        if maximized:
-            self.showMaximized()
-        self.tabs.setCurrentIndex(settings.value("selected_tab", 0, int))
-        # Using False as a positional argument for defaultValue is required by the QSettings API
-        self.activity_tab.minimize_to_tray_cb.setChecked(
-            settings.value("minimize_to_tray", False, type=bool)  # ruff:ignore[boolean-positional-value-in-call]
-        )
-
-    def save_geometry(self):
-        settings = QSettings("d4lf", "mainwindow")
-
-        if not self.isMaximized():
-            settings.setValue("size", self.size())
-            settings.setValue("pos", self.pos())
-
-        settings.setValue("maximized", self.isMaximized())
-        settings.setValue("selected_tab", self.tabs.currentIndex())
-        settings.setValue("minimize_to_tray", self.activity_tab.minimize_to_tray_cb.isChecked())
-
-    def _setup_tray(self):
-        """Initialize the system tray icon and its context menu."""
-        self.tray_icon = QSystemTrayIcon(self)
-        if ICON_PATH.exists():
-            self.tray_icon.setIcon(QIcon(str(ICON_PATH)))
-
-        tray_menu = QMenu()
-        restore_action = QAction("Restore", tray_menu)
-        tray_menu.addAction(restore_action)
-        restore_action.triggered.connect(self._restore_from_tray)
-
-        tray_menu.addSeparator()
-
-        exit_action = QAction("Exit", tray_menu)
-        tray_menu.addAction(exit_action)
-        exit_action.triggered.connect(self.close)
-
-        self.tray_icon.setContextMenu(tray_menu)
-        self.tray_icon.activated.connect(self._on_tray_icon_activated)
-        self.tray_icon.setToolTip("D4 Loot Filter")
-        self.tray_icon.show()
-
-    def _on_tray_icon_activated(self, reason):
-        if reason == QSystemTrayIcon.ActivationReason.Trigger:
-            self._restore_from_tray()
-
-    def _restore_from_tray(self):
-        self.showNormal()
-        self.activateWindow()
-
-    @override
-    def changeEvent(self, a0: QEvent | None):
-        # PyQt exposes `a0` as a keyword, so the override must retain that public name.
-        event = a0
-        if (
-            event is not None
-            and event.type() == QEvent.Type.WindowStateChange
-            and self.isMinimized()
-            and self.activity_tab.minimize_to_tray_cb.isChecked()
-        ):
-            self.hide()
-        super().changeEvent(event)
-
-    @override
-    def closeEvent(self, a0: QCloseEvent | None):
-        # PyQt exposes `a0` as a keyword, so the override must retain that public name.
-        event = a0
-        for win in list(self._child_windows.values()):
-            with suppress(Exception):
-                win.close()
-
-        self.save_geometry()
-        root_logger = logging.getLogger()
-        with suppress(Exception):
-            root_logger.removeHandler(self.console_handler)
-
-        super().closeEvent(event)
 
     def emit_startup_direct_to_console(self):
         banner = (
