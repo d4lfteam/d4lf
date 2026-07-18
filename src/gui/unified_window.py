@@ -6,9 +6,11 @@ from PyQt6.QtGui import QDesktopServices, QIcon
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QPushButton, QTabWidget, QWidget
 
 from src import __version__
+from src.desktop.activity import ANSIConsoleWidget, QtLogHandler
+from src.desktop.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
+from src.desktop.widgets import set_accent_color
 from src.gui.backend_worker import BackendWorker, perception_module
-from src.gui.models.activity_log_widget import ActivityLogWidget, ANSIConsoleWidget, QtConsoleHandler
-from src.gui.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
+from src.gui.models.activity_log_widget import ActivityLogWidget
 from src.gui.unified_lifecycle import UnifiedWindowLifecycle
 from src.gui.unified_shell import DISCORD_ICON, GITHUB_ICON, ICON_PATH
 from src.importing.gui import ImporterWindow
@@ -59,7 +61,7 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
         remove_transient_gui_handlers(root_logger)
 
         # Single unified Qt handler for both Dashboard and Full Logs
-        self.console_handler = QtConsoleHandler()
+        self.console_handler = QtLogHandler()
         self.console_handler.name = "QT_CONSOLE"
         self.console_handler.setFormatter(
             create_formatter(colored=True, technical=adv.technical_log_info, timestamp=adv.log_timestamp)
@@ -235,10 +237,11 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
                 self.console_handler.handle(record)
 
     def open_import_dialog(self):
-        win = self._show_singleton_modal("importer", ImporterWindow)
+        win = self._show_singleton_modal("importer", ImporterWindow, accent_color=get_filter_colors().matched)
         win.import_completed.connect(self.activity_tab.refresh_profiles, Qt.ConnectionType.UniqueConnection)
 
     def open_settings_dialog(self):
+        set_accent_color(get_filter_colors().matched)
         self._show_singleton_modal("config", create_settings_window, theme_changed_callback=self.apply_theme)
 
     def open_profile_editor(self, profile_name: str | None = None):
@@ -256,6 +259,7 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
     def apply_theme(self):
         theme_name = get_settings().general.theme
         accent_color = get_filter_colors().matched
+        set_accent_color(accent_color)
         template = DARK_THEME_TEMPLATE if theme_name == "dark" else LIGHT_THEME_TEMPLATE
         stylesheet = template.replace("{accent}", accent_color)
 

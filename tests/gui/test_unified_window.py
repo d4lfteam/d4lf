@@ -9,7 +9,7 @@ import pytest
 from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QApplication, QMainWindow
 
-from src.gui.models.activity_log_widget import QtConsoleHandler
+from src.desktop.activity import QtLogHandler
 from src.gui.unified_window import UnifiedMainWindow
 from src.profiles.affix import DeleteAffixPool
 from src.profiles.editor import DeleteItem, ProfileEditorWindow
@@ -37,7 +37,7 @@ def test_close_event_preserves_existing_handler_registration(qapp: QApplication,
     monkeypatch.setattr(UnifiedMainWindow, "__init__", QMainWindow.__init__)
     window = UnifiedMainWindow()
     window._child_windows = {}
-    window.console_handler = QtConsoleHandler()
+    window.console_handler = QtLogHandler()
     monkeypatch.setattr(UnifiedMainWindow, "save_geometry", lambda _self: None)
     root_logger = logging.getLogger()
     handler = logging.NullHandler()

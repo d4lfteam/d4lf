@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.gui.models.checkmark_checkbox import CheckmarkCheckBox
+from src.desktop.widgets import CheckmarkCheckBox
 from src.settings.hotkeys import validate_hotkey
 
 if TYPE_CHECKING:

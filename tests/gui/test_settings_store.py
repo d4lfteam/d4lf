@@ -1,12 +1,10 @@
 import importlib
 import os
-import sys
-import types
 from typing import TYPE_CHECKING
 
 import pytest
 from pydantic import BaseModel, Field
-from PyQt6.QtWidgets import QApplication, QCheckBox
+from PyQt6.QtWidgets import QApplication
 
 from src.settings.loader import PARAMS_INI, IniConfigLoader
 from src.settings.store import SettingsStore
@@ -135,13 +133,6 @@ def test_reset_all_restores_defaults(isolated_ini_loader: IniConfigLoader) -> No
 
 
 def test_config_tab_constructs_without_error(qapp, isolated_ini_loader: IniConfigLoader) -> None:
-    class _CheckmarkCheckboxModule(types.ModuleType):
-        CheckmarkCheckBox: type[QCheckBox]
-
-    checkmark_checkbox_module = _CheckmarkCheckboxModule("src.gui.models.checkmark_checkbox")
-    checkmark_checkbox_module.CheckmarkCheckBox = QCheckBox
-    sys.modules["src.gui.models.checkmark_checkbox"] = checkmark_checkbox_module
-
     settings_tab_module = importlib.import_module("src.settings.tab")
     config_tab_class = settings_tab_module.ConfigTab
 

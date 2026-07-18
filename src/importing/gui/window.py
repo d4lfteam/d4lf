@@ -18,9 +18,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.gui.models import CheckmarkCheckBox
+from src.desktop.activity import QtLogHandler
+from src.desktop.widgets import CheckmarkCheckBox, set_accent_color
 from src.importing import DEFAULT_FILENAME_PARTS, FilenamePart, ImportOptions, ImportRequest
-from src.importing.gui._support import GuiLogHandler, ImportWorker
+from src.importing.gui._support import ImportWorker
 from src.settings import get_settings
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[3]
@@ -51,8 +52,10 @@ class ImporterWindow(QMainWindow):
 
     import_completed = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, accent_color: str | None = None):
         super().__init__(parent)
+        if accent_color is not None:
+            set_accent_color(accent_color)
         if ICON_PATH.exists():
             self.setWindowIcon(QIcon(str(ICON_PATH)))
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
@@ -68,7 +71,7 @@ class ImporterWindow(QMainWindow):
             self.showMaximized()
         self._build_ui()
         # Setup logging.
-        self.log_handler = GuiLogHandler(self.log_output)
+        self.log_handler = QtLogHandler(self.log_output)
         for name in IMPORTER_WINDOW_LOGGERS:
             logger = logging.getLogger(name)
             logger.setLevel(logging.DEBUG)

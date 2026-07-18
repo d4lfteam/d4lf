@@ -57,6 +57,17 @@ not become part of the capability-root cross-capability contract. A facade grows
 capability has a concrete use for the new operation. Capability-specific GUI belongs to its
 capability; `src.desktop` retains only primitives with multiple real consumers.
 
+Desktop's deliberately documented UI subpackage seams are the exceptions for reusable presentation
+primitives shared by multiple capabilities:
+
+| Subpackage             | Responsibility                                           | Public interface                              |
+| ---------------------- | -------------------------------------------------------- | --------------------------------------------- |
+| `src.desktop.widgets`  | Reusable Qt widgets and application accent configuration | `CheckmarkCheckBox`, `set_accent_color`       |
+| `src.desktop.activity` | ANSI log presentation and thread-safe Qt log delivery    | `ANSIConsoleWidget`, `QtLogHandler`           |
+| `src.desktop.themes`   | Shared dark/light Qt stylesheet templates                | `DARK_THEME_TEMPLATE`, `LIGHT_THEME_TEMPLATE` |
+
+These subpackages are explicit cross-capability seams; their implementation modules remain private.
+
 ## High-risk seam choices
 
 | Seam       | Rejected design                                                                                                                                           | Chosen design                                                                                                                                                    | Why                                                                                                                                       |

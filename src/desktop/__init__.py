@@ -1,4 +1,4 @@
-"""Shared desktop primitives used by capability-owned overlays."""
+"""Shared Tk-thread primitives used by capability-owned desktop interfaces."""
 
 from ._ui_thread import (
     call_on_ui_thread,

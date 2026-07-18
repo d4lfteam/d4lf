@@ -1,22 +1,12 @@
 import importlib
 import os
-import sys
-import types
 
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt6.QtWidgets import QApplication, QCheckBox
+from PyQt6.QtWidgets import QApplication  # ruff:ignore[unsorted-imports]
 
-
-class _CheckmarkCheckboxModule(types.ModuleType):
-    CheckmarkCheckBox: type[QCheckBox]
-
-
-checkmark_checkbox_module = _CheckmarkCheckboxModule("src.gui.models.checkmark_checkbox")
-checkmark_checkbox_module.CheckmarkCheckBox = QCheckBox
-sys.modules["src.gui.models.checkmark_checkbox"] = checkmark_checkbox_module
 
 importer_window_module = importlib.import_module("src.importing.gui.window")
 importing_module = importlib.import_module("src.importing")
@@ -116,4 +106,14 @@ def test_generate_passes_selected_filename_parts(qapp, importer_settings, monkey
     assert captured_config is not None
     assert captured_config.filename_parts == (FilenamePart.SOURCE, FilenamePart.CLASS, FilenamePart.BUILD_TITLE)
 
+    window.close()
+
+
+def test_importer_window_accepts_the_composed_accent_color(qapp, importer_settings, monkeypatch):
+    received: list[str] = []
+    monkeypatch.setattr(importer_window_module, "set_accent_color", received.append)
+
+    window = ImporterWindow(accent_color="#56B4E9")
+
+    assert received == ["#56B4E9"]
     window.close()
