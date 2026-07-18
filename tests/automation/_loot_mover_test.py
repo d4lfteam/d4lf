@@ -1,12 +1,24 @@
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import Mock
 
 from src import automation
 from src.automation import _loot_mover
+from src.automation._inventory import ItemSlot
+from src.automation._loot_mover import _move_items
 from src.settings import MoveItemsType
 
 
-def test_move_items_to_stash_requires_an_open_stash(monkeypatch) -> None:
+def test_move_items_returns_unhandled_slots_when_type_does_not_match(monkeypatch):
+    inv = type("Inventory", (), {"hover_item": lambda *_: None})()
+    slot = ItemSlot((0, 0, 1, 1), (0, 0))
+    monkeypatch.setattr("src.automation._loot_mover.Mouse.click", lambda *_: None)
+    moved, remaining = _move_items(cast("Any", inv), [slot], 1, [MoveItemsType.favorites])
+    assert moved == 0
+    assert remaining == []
+
+
+def test_move_items_to_stash_requires_an_open_stash(monkeypatch):
     monkeypatch.setattr(_loot_mover, "CharInventory", Mock)
     stash = Mock(is_open=Mock(return_value=False))
     monkeypatch.setattr(_loot_mover, "Stash", lambda: stash)
@@ -16,7 +28,7 @@ def test_move_items_to_stash_requires_an_open_stash(monkeypatch) -> None:
     stash.get_item_slots.assert_not_called()
 
 
-def test_move_items_to_stash_uses_configured_tabs_and_capacity(monkeypatch) -> None:
+def test_move_items_to_stash_uses_configured_tabs_and_capacity(monkeypatch):
     item = SimpleNamespace(is_fav=True, is_junk=False)
     inventory = Mock()
     inventory.get_item_slots.return_value = ([item], [])

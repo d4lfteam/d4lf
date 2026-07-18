@@ -28,8 +28,6 @@ def test_loot_filter_processes_stash_tabs_before_inventory(monkeypatch):
     monkeypatch.setattr(_orchestration, "move_pointer", lambda *pos: calls.append(("pointer", pos)))
     monkeypatch.setattr(_orchestration, "abs_window_to_monitor", lambda pos: pos)
     monkeypatch.setattr(_orchestration, "check_items", lambda *args, **kwargs: calls.append(("check", args, kwargs)))
-
     _orchestration.run_loot_filter(ItemRefreshType.no_refresh)
-
     assert [call[0:2] for call in calls if call[0] == "tab"] == [("tab", 2), ("tab", 4)]
     assert [call[0] for call in calls].count("check") == 3

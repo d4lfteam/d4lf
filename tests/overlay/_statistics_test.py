@@ -3,19 +3,6 @@ import time
 from src.overlay import SessionStats, _statistics
 
 
-def test_gold_updates_only_after_three_monotonic_observations(monkeypatch):
-    stats = SessionStats()
-    stats.reset_gold()
-    monkeypatch.setattr(_statistics, "load_settings", lambda: {"capture_gold_stats": True, "capture_exp_stats": False})
-    monkeypatch.setattr(_statistics, "_notify", lambda **_: None)
-    stats.on_info_stat("1,000 Gold")
-    stats.on_info_stat("1,100 Gold")
-    stats.on_info_stat("1,100 Gold")
-    assert stats.total_gold == 0
-    stats.on_info_stat("1,100 Gold")
-    assert stats.total_gold == 100
-
-
 def test_experience_increments_and_reset_clears_session(monkeypatch):
     stats = SessionStats()
     stats.reset_exp()
@@ -28,6 +15,22 @@ def test_experience_increments_and_reset_clears_session(monkeypatch):
     stats.reset_exp()
     assert stats.total_exp == 0
     assert stats.last_exp is None
+
+
+def test_gold_updates_only_after_three_monotonic_observations(monkeypatch):
+    stats = SessionStats()
+    stats.reset_gold()
+    monkeypatch.setattr(_statistics, "load_settings", lambda: {"capture_gold_stats": True, "capture_exp_stats": False})
+    monkeypatch.setattr(_statistics, "_notify", lambda **_: None)
+
+    stats.on_info_stat("1,000 Gold")
+    stats.on_info_stat("1,100 Gold")
+    stats.on_info_stat("1,100 Gold")
+    assert stats.total_gold == 0
+
+    stats.on_info_stat("1,100 Gold")
+
+    assert stats.total_gold == 100
 
 
 def test_verified_totals_are_saved_and_restored_without_qsettings(monkeypatch):

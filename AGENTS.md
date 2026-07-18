@@ -38,6 +38,7 @@ Item flow:
 - User data lives under `~/.d4lf/` including profiles, params, and logs.
 - Always prefer subpackages over creating files with specific prefixes or suffixes. For example, `src.profiles.affix` and `src.profiles.aspect` are subpackages rather than
   `src.profiles_affix.py` and `src.profiles_aspect.py`.
+- Put the public interface of a package in `__init__.py` and keep implementation details in submodules. For example, `src.item.filter` is the public interface for filtering items, while `src.item.filter_impl` contains the implementation.
 
 ### Python 3.14
 

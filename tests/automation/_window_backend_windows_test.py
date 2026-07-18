@@ -5,6 +5,13 @@ import types
 import pytest
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows WinAPI backend")
+def test_windows_backend_lists_windows():
+    from src.automation import _window_backend_windows as backend  # ruff:ignore[import-outside-top-level]
+
+    assert isinstance(backend.list_active_window_ids(), list)
+
+
 @pytest.fixture
 def window_module(monkeypatch):
     win32gui = types.ModuleType("win32gui")
