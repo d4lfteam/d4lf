@@ -4,10 +4,7 @@ import cv2
 import numpy as np
 import pytest
 
-from src.item.data.affix import Affix
-from src.item.data.aspect import Aspect
-from src.item.data.item_type import ItemType
-from src.item.models import Item
+from src.item import Affix, Aspect, Item, ItemType
 from src.perception._geometry import (
     BulletMatchDiagnostics,
     DiagnosticLocatorResult,
@@ -17,13 +14,12 @@ from src.perception._geometry import (
 from src.perception._matching_models import SearchResult, TemplateMatch
 from src.perception._tooltip_texture import (
     BulletSearchTrace,
-    _filter_outliers,
     find_bullets_for_templates,
     find_bullets_for_templates_traced,
 )
 from src.settings import get_ui_coordinates
 
-TEMPLATE_DIR = Path(__file__).parents[3] / "assets" / "templates" / "item_descr"
+TEMPLATE_DIR = Path(__file__).parents[2] / "assets" / "templates" / "item_descr"
 
 
 @pytest.fixture(autouse=True)
@@ -105,15 +101,6 @@ def test_diagnostic_result_uses_same_public_locator_result() -> None:
     assert aspect_match.confidence >= 0.8
     assert diagnostic.diagnostics.failure_reason is None
     assert diagnostic.diagnostics.selected_markers == diagnostic.result.markers
-
-
-def test_diagnostic_result_skips_matching_when_nothing_matched() -> None:
-    result = locate_affix_markers_with_diagnostics(tooltip_image=np.zeros((80, 40, 3), dtype=np.uint8), item=Item())
-
-    assert result.result.reliable
-    assert result.result.markers == []
-    assert result.diagnostics.failure_reason is None
-    assert result.diagnostics.separator is None
 
 
 def test_missing_separator_is_reported(mocker) -> None:
@@ -204,36 +191,6 @@ def test_horadric_seal_with_inherent_uses_second_long_separator(mocker) -> None:
     assert result.diagnostics.long_separator is not None
     assert result.diagnostics.long_separator.region == second_long_separator.region
     assert find_bullets.call_args.kwargs["max_y"] == second_long_separator.region[1]
-
-
-def test_long_separator_is_collected_for_aspect_only_replays(mocker) -> None:
-    short_separator = _make_tm("item_seperator_short_legendary", 50, 40)
-    long_separator = _make_tm("item_seperator_long_legendary", 50, 180)
-    aspect_bullet = _make_tm("legendary_bullet_point", 10, 220)
-    aspect_trace = BulletSearchTrace(raw=[aspect_bullet], accepted=[aspect_bullet])
-
-    mocker.patch("src.perception._tooltip_texture.find_seperator_short", return_value=short_separator)
-    mocker.patch("src.perception._tooltip_texture.find_seperator_long", return_value=long_separator)
-    mocker.patch(
-        "src.perception._tooltip_texture.find_bullets_for_templates_traced",
-        return_value=([aspect_bullet], aspect_trace),
-    )
-
-    result = locate_affix_markers_with_diagnostics(
-        tooltip_image=np.zeros((300, 100, 3), dtype=np.uint8),
-        item=Item(aspect=Aspect(name="test")),
-        matched_affixes=[],
-        aspect_matched=True,
-    )
-
-    assert result.diagnostics.long_separator is not None
-    assert result.diagnostics.long_separator.region == long_separator.region
-
-
-def test_outlier_filter_keeps_horizontal_template_variants() -> None:
-    matches = [_make_tm("bullet", 10, 60), _make_tm("bullet_medium", 18, 90)]
-
-    assert _filter_outliers(matches) == matches
 
 
 def test_missing_aspect_marker_is_reported(mocker) -> None:

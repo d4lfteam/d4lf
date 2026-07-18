@@ -1,10 +1,12 @@
 from src import perception
-from src.item.data.affix import AffixType
-from src.item.data.aspect import Aspect
-from src.item.data.item_type import ItemType
-from src.item.data.rarity import ItemRarity
-from src.item.models import Item
+from src.item import AffixType, Aspect, Item, ItemRarity, ItemType
 from src.perception import parse_item_text
+
+
+def test_equipment_cases_parse_without_item_description_modules(parser_cases):
+    for input_item, expected_item in parser_cases:
+        assert parse_item_text(input_item) == expected_item
+
 
 LOOT_FILTER_TTS = ["SELECT ALL", "Checkbox Disabled", "Item Power Range", "Left mouse button"]
 

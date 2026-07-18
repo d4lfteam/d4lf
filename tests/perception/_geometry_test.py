@@ -2,8 +2,7 @@ from pathlib import Path
 
 import numpy as np
 
-from src.item.data.affix import Affix
-from src.item.models import Item
+from src.item import Affix, Item
 from src.perception._geometry import (
     _AFFIX_BULLET_TEMPLATE_REFS,
     _ASPECT_BULLET_TEMPLATE_REFS,
@@ -14,7 +13,7 @@ from src.perception._geometry import (
 from src.perception._matching_models import TemplateMatch
 from src.perception._tooltip_texture import _LONG_SEPARATOR_TEMPLATE_REFS
 
-TEMPLATE_DIR = Path(__file__).parents[3] / "assets" / "templates" / "item_descr"
+TEMPLATE_DIR = Path(__file__).parents[2] / "assets" / "templates" / "item_descr"
 ASPECT_BULLET_PREFIXES = ("legendary_bullet_point", "mythic_bullet_point", "unique_bullet_point")
 
 
