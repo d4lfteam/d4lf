@@ -10,7 +10,7 @@ from pywintypes import error as win32_error
 from win32gui import ClientToScreen, EnumWindows, GetClientRect, GetWindowText
 from win32process import GetWindowThreadProcessId
 
-from src.cam import Cam
+from src.perception import reset_window_position, update_window_position
 
 if TYPE_CHECKING:
     from src.utils.window_backend import WindowSpecLike
@@ -76,11 +76,11 @@ def find_and_set_window_position(window_spec: WindowSpecLike) -> None:
             pos = GetClientRect(hwnd)
             top_left = ClientToScreen(hwnd, (pos[0], pos[1]))
             if pos[2] > 0 and pos[3] > 0:
-                Cam().update_window_pos(top_left[0], top_left[1], pos[2], pos[3])
+                update_window_position(top_left[0], top_left[1], pos[2], pos[3])
         except win32_error, OSError:
-            Cam().reset_window_position()
+            reset_window_position()
     else:
-        Cam().reset_window_position()
+        reset_window_position()
     time.sleep(1)
 
 

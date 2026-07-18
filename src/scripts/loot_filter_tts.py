@@ -3,8 +3,8 @@ import time
 from typing import TYPE_CHECKING
 
 import src.perception
-from src.cam import Cam
 from src.item import AffixType, Filter, ItemRarity, ItemType, is_sigil
+from src.perception import capture
 from src.scripts.common import (
     ASPECT_UPGRADES_LABEL,
     drop_item_from_inventory,
@@ -53,7 +53,7 @@ def check_items(
             continue
         inv.hover_item_with_delay(item)
         time.sleep(0.1)
-        img = Cam().grab()
+        img = capture()
         item_descr = None
         retry_count = 0
 

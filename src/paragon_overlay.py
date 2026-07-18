@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING, TypedDict
 from PIL import Image, ImageDraw, ImageFont
 from PyQt6.QtCore import QSettings
 
-from src.cam import Cam
 from src.gui.importer.gui_common import (
     ACCENT_BLUE,
     ACCENT_GOLD,
@@ -33,6 +32,7 @@ from src.gui.importer.gui_common import (
 )
 from src.item import Filter
 from src.paragon_transform import GRID, NODES_LEN, nodes_to_grid, parse_rotation
+from src.perception import game_window_roi
 from src.settings import get_settings, get_ui_coordinates
 from src.ui_thread import call_on_ui_thread, get_root, is_alive, post_to_ui_thread
 from src.utils.window import WindowSpec, is_self_foreground, is_window_foreground
@@ -437,7 +437,6 @@ class ParagonOverlay(tk.Toplevel):
         self._config_loader = get_settings()
         self._config_listener = self._on_config_changed
         self._config_loader.register_change_listener(self._config_listener)
-        self._cam = Cam()
         self._res = get_ui_coordinates()
         self._win_spec = WindowSpec(self._config_loader.advanced_options.process_name)
         self._supports_click_through: bool = sys.platform == "win32"
@@ -1613,7 +1612,7 @@ class ParagonOverlay(tk.Toplevel):
     def _get_cam_roi(self) -> tuple[int, int, int, int] | None:
         """Return the tracked game window ROI when the camera module exposes one."""
         try:
-            r = getattr(self._cam, "window_roi", None)
+            r = game_window_roi()
             if not r or r.get("width", 0) <= 0:
                 return None
             return (int(r["left"]), int(r["top"]), int(r["width"]), int(r["height"]))

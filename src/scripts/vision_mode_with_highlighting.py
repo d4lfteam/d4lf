@@ -11,12 +11,20 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 import src.perception
-from src.cam import Cam
 from src.gui.importer.gui_common import DARK_GRAY_BG
 from src.item import Filter, FilterResult, SeasonalAttribute, is_sigil
-from src.item.descr.geometry_locator import LocatorResult, locate_affix_markers
-from src.item.find_descr import find_descr, find_descr_with_diagnostics, get_separator_match_in_crop
-from src.perception import Publisher
+from src.perception import (
+    LocatorResult,
+    Publisher,
+    capture,
+    compare_image_histograms,
+    find_descr,
+    find_descr_with_diagnostics,
+    game_window_roi,
+    get_separator_match_in_crop,
+    locate_affix_markers,
+    monitor_to_window,
+)
 from src.scripts._singleton import singleton
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item, reset_canvas
 from src.settings import get_settings, get_ui_coordinates
@@ -25,7 +33,6 @@ from src.ui.stash import Stash
 from src.ui.vendor import Vendor
 from src.ui_thread import call_on_ui_thread, create_overlay_toplevel, get_root
 from src.utils.custom_mouse import Mouse
-from src.utils.image_operations import compare_histograms
 from src.utils.window import screenshot
 
 if TYPE_CHECKING:
@@ -71,12 +78,12 @@ class VisionModeWithHighlighting:
         # shared UI thread, not whichever thread constructs this singleton.
         call_on_ui_thread(_build_ui)
 
-        self.thick = int(Cam().window_roi["height"] * 0.0047)
+        self.thick = int(game_window_roi()["height"] * 0.0047)
 
         inv = CharInventory()
         stash = Stash()
         vendor = Vendor()
-        img = Cam().grab()
+        img = capture()
         self.max_slot_size = stash.get_max_slot_size()
         occ_inv, empty_inv = inv.get_item_slots(img)
         occ_stash, empty_stash = stash.get_item_slots(img)
@@ -99,8 +106,9 @@ class VisionModeWithHighlighting:
         self.possible_centers = np.array(possible_centers)
         self.possible_vendor_centers = np.array(possible_vendor_centers)
 
-        self.screen_off_x = Cam().window_roi["left"]
-        self.screen_off_y = Cam().window_roi["top"]
+        window_roi = game_window_roi()
+        self.screen_off_x = window_roi["left"]
+        self.screen_off_y = window_roi["top"]
 
     def draw_rect(self, canvas: tk.Canvas, bullet_width: int, loc: tuple[int, int], off: int, color: str) -> None:
         offset_loc = np.array(loc) + off
@@ -279,7 +287,7 @@ class VisionModeWithHighlighting:
         self.root.update()
 
     def on_tts(self, _):
-        img = Cam().grab()
+        img = capture()
         item_descr = None
         try:
             item_descr = src.perception.read_latest_item()
@@ -325,7 +333,7 @@ class VisionModeWithHighlighting:
             while retry_count < 5 and not is_confirmed:
                 self.check_for_thread_cancellation(cancel_event)
                 retry_count += 1
-                mouse_pos = Cam().monitor_to_window(Mouse.get_position())
+                mouse_pos = monitor_to_window(Mouse.get_position())
                 # get closest pos to a item center
                 centers_to_use = self.possible_vendor_centers if item_descr.is_in_shop else self.possible_centers
                 delta = centers_to_use - mouse_pos
@@ -338,7 +346,7 @@ class VisionModeWithHighlighting:
                 # Before we get the cropped_descr we need to ensure there is no previous overlay on screen
                 while not self.is_cleared:
                     time.sleep(0.10)
-                detection = find_descr_with_diagnostics(Cam().grab(), item_center)
+                detection = find_descr_with_diagnostics(capture(), item_center)
                 found = detection.found
                 cropped_descr = detection.cropped_descr
                 item_roi = detection.crop_roi
@@ -348,10 +356,10 @@ class VisionModeWithHighlighting:
                     if not is_confirmed:
                         time.sleep(_FRAME_RETRY_DELAY_SECONDS)
                         self.check_for_thread_cancellation(cancel_event)
-                        found_check, cropped_descr_check, _ = find_descr(Cam().grab(), item_center)
+                        found_check, cropped_descr_check, _ = find_descr(capture(), item_center)
                         if not found_check:
                             continue
-                        score = compare_histograms(cropped_descr, cropped_descr_check)
+                        score = compare_image_histograms(cropped_descr, cropped_descr_check)
                         if score < 0.99:
                             continue
                         is_confirmed = True
@@ -441,7 +449,7 @@ class VisionModeWithHighlighting:
                                             # Bullet templates may still be fading after the tooltip is confirmed.
                                             time.sleep(_FRAME_RETRY_DELAY_SECONDS)
                                             self.check_for_thread_cancellation(cancel_event)
-                                            retry_detection = find_descr_with_diagnostics(Cam().grab(), item_center)
+                                            retry_detection = find_descr_with_diagnostics(capture(), item_center)
                                             if retry_detection.found:
                                                 locator_result = locate_markers_for_detection(retry_detection)
                                                 item_roi = retry_detection.crop_roi
@@ -480,7 +488,7 @@ class VisionModeWithHighlighting:
         try:
             while True:
                 self.check_for_thread_cancellation(cancel_event)
-                found_check, _, _ = find_descr(Cam().grab(), item_center)
+                found_check, _, _ = find_descr(capture(), item_center)
                 if not found_check:
                     self.request_clear()
                     self.clear_when_item_not_selected_thread = None

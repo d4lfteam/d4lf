@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 import numpy as np
 
-import src.item.find_descr as find_descr_module
-from src.template_finder import SearchResult
+import src.perception._tooltip as find_descr_module
+from src.perception._matching_models import SearchResult
 
 
 def test_find_descr_ignores_successful_search_without_matches(monkeypatch) -> None:

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from src.cam import Cam
+from src.perception._capture import Cam
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ def test_grab_discards_frame_captured_before_window_restart(camera, mocker):
 
     screen_capture = mocker.Mock()
     screen_capture.grab.side_effect = grab
-    mss_factory = mocker.patch("src.cam.mss.mss")
+    mss_factory = mocker.patch("src.perception._capture.mss.mss")
     mss_factory.return_value.__enter__.return_value = screen_capture
 
     image = camera.grab()

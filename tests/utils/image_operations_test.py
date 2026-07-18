@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from src.utils.image_operations import (
+from src.perception._image import (
     ThresholdTypes,
     alpha_to_mask,
     color_filter,

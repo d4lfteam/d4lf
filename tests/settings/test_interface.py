@@ -21,6 +21,7 @@ def test_hotkey_aliases_have_stable_modifier_order() -> None:
 
 def test_resolution_manager_preserves_uhd_reference() -> None:
     manager = settings.get_ui_coordinates()
+    manager.set_resolution("3840x2160")
     assert manager.resolution == (3840, 2160)
     assert manager.offsets.item_descr_line_height == 50
     manager.set_resolution("1920x1080")

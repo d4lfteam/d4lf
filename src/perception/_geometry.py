@@ -1,15 +1,16 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
-from src.item.descr.texture import BULLET_THRESHOLD
+from ._tooltip_texture import BULLET_THRESHOLD
 
 if TYPE_CHECKING:
     import numpy as np
 
     from src.item.data.affix import Affix
-    from src.item.descr.texture import BulletSearchTrace
     from src.item.models import Item
-    from src.template_finder import TemplateMatch
+
+    from ._matching_models import TemplateMatch
+    from ._tooltip_texture import BulletSearchTrace
 
 _AFFIX_BULLET_TEMPLATE_REFS = [
     "affix_bullet_point_1",
@@ -164,7 +165,6 @@ def _locate_affix_markers_core(
     has_requested_markers = _has_requested_markers(item, matched_affixes, aspect_matched, selected_markers)
     above_threshold = all(marker.confidence >= BULLET_THRESHOLD for marker in selected_markers)
     reliable = has_requested_markers and above_threshold
-
     if diagnostics is not None and not reliable:
         if aspect_matched and not any(marker.kind == "aspect" for marker in selected_markers):
             diagnostics.failure_reason = "missing_aspect_marker"
@@ -172,7 +172,6 @@ def _locate_affix_markers_core(
             diagnostics.failure_reason = "insufficient_affix_rows"
         else:
             diagnostics.failure_reason = "marker_below_threshold"
-
     return LocatorResult(markers=selected_markers if reliable else [], reliable=reliable)
 
 
@@ -185,7 +184,7 @@ def _locate_tts_guided_template(
     diagnostics: LocatorDiagnostics | None,
 ) -> list[LocatedMarker] | None:
     # Keep texture imports lazy so non-vision tests do not import Windows-only screenshot dependencies.
-    from src.item.descr.texture import (  # noqa: PLC0415
+    from ._tooltip_texture import (  # ruff:ignore[import-outside-top-level]
         find_bullets_for_templates,
         find_bullets_for_templates_traced,
         find_seperator_long,

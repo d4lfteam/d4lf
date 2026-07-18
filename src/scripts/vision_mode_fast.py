@@ -7,9 +7,8 @@ from tkinter.font import Font
 from typing import Literal
 
 import src.perception
-from src.cam import Cam
 from src.item import Filter, ItemRarity, MatchedFilter
-from src.perception import Publisher
+from src.perception import Publisher, capture, monitor_to_window
 from src.scripts._singleton import singleton
 from src.scripts.common import ASPECT_UPGRADES_LABEL, get_filter_colors, is_ignored_item
 from src.settings import get_settings, get_ui_coordinates
@@ -58,7 +57,7 @@ class VisionModeFast:
         width = max_line_length * text_font.measure("0")
         height = (line_count + 1) * line_height
 
-        mouse_pos = Cam().monitor_to_window(Mouse.get_position())
+        mouse_pos = monitor_to_window(Mouse.get_position())
         self.textbox.place_configure(
             x=mouse_pos[0], y=mouse_pos[1], width=width // 9, height=(height // line_height) - 2
         )
@@ -127,7 +126,7 @@ class VisionModeFast:
                 item_descr = src.perception.read_latest_item()
                 LOGGER.debug(f"Parsed item based on TTS: {item_descr}")
             except Exception:
-                img = Cam().grab()
+                img = capture()
                 screenshot("tts_error", img=img)
                 LOGGER.exception(f"Error in TTS read_descr. {src.perception.latest_item_lines()=}")
             if item_descr is None:

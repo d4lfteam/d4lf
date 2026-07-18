@@ -10,7 +10,8 @@ from src.utils.misc import run_until_condition
 if TYPE_CHECKING:
     import numpy as np
 
-    from src.template_finder import SearchArgs, SearchResult
+    from src.perception import SearchResult, TemplateQuery
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class Menu:
     def __init__(self):
         self.menu_name: str = ""
         self.parent_menu: Menu | None = None
-        self.is_open_search_args: SearchArgs | None = None
+        self.is_open_search_args: TemplateQuery | None = None
         self.open_hotkey: str = ""
         self.delay = 0
 

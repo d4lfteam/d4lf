@@ -19,13 +19,9 @@ def window_module(monkeypatch):
     pywintypes = types.ModuleType("pywintypes")
     pywintypes.__dict__["error"] = OSError
 
-    cam = types.ModuleType("src.cam")
-    cam.__dict__["Cam"] = object
-
     monkeypatch.setitem(sys.modules, "win32gui", win32gui)
     monkeypatch.setitem(sys.modules, "win32process", win32process)
     monkeypatch.setitem(sys.modules, "pywintypes", pywintypes)
-    monkeypatch.setitem(sys.modules, "src.cam", cam)
     monkeypatch.delitem(sys.modules, "src.utils.window", raising=False)
     monkeypatch.delitem(sys.modules, "src.utils.window_backend_windows", raising=False)
 
@@ -53,27 +49,25 @@ def test_skips_window_with_invalid_pid_when_finding_process(window_module, mocke
 
 def test_resets_window_position_when_diablo_window_closes(window_module, mocker):
     backend = window_module._platform_backend
-    camera = mocker.Mock()
-    mocker.patch.object(backend, "Cam", return_value=camera)
+    reset = mocker.patch.object(backend, "reset_window_position")
     mocker.patch.object(backend, "get_window_spec_id", return_value=None)
     mocker.patch.object(backend.time, "sleep")
 
     window_module.find_and_set_window_position(window_module.WindowSpec("Diablo IV.exe"))
 
-    camera.reset_window_position.assert_called_once_with()
+    reset.assert_called_once_with()
 
 
 def test_resets_window_position_when_diablo_window_closes_during_geometry_lookup(window_module, mocker):
     backend = window_module._platform_backend
-    camera = mocker.Mock()
-    mocker.patch.object(backend, "Cam", return_value=camera)
+    reset = mocker.patch.object(backend, "reset_window_position")
     mocker.patch.object(backend, "get_window_spec_id", return_value=1)
     mocker.patch.object(backend, "GetClientRect", side_effect=OSError("invalid window handle"))
     mocker.patch.object(backend.time, "sleep")
 
     window_module.find_and_set_window_position(window_module.WindowSpec("Diablo IV.exe"))
 
-    camera.reset_window_position.assert_called_once_with()
+    reset.assert_called_once_with()
 
 
 def test_backend_adapter_forwards_selected_backend(window_module, mocker):

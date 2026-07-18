@@ -2,11 +2,13 @@ from copy import copy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from src.item.descr.texture import find_seperator_short
 from src.settings import get_ui_coordinates
-from src.template_finder import SearchResult, TemplateMatch, search
-from src.utils.image_operations import crop
-from src.utils.roi_operations import fit_roi_to_window_size, intersect
+
+from ._image import crop
+from ._matching import search
+from ._matching_models import SearchResult, TemplateMatch
+from ._roi import fit_roi_to_window_size, intersect
+from ._tooltip_texture import find_seperator_short
 
 if TYPE_CHECKING:
     import numpy as np

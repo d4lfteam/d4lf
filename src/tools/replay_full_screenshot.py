@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 
 import cv2
 
-from src.item.find_descr import DescrDetection, find_descr_with_diagnostics
 from src.logger import setup
+from src.perception import DescrDetection, find_descr_with_diagnostics
 from src.settings import get_ui_coordinates
 from src.tools.replay_common import ReplayConfigurationError, load_replay_image, show_replay_result
 from src.tools.replay_common import font_scale as _font_scale
@@ -17,7 +17,7 @@ from src.tools.replay_common import write_image as _write_image
 if TYPE_CHECKING:
     import numpy as np
 
-    from src.template_finder import TemplateMatch
+    from src.perception import TemplateMatch
 
 
 LOGGER = logging.getLogger("d4lf")

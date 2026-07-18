@@ -13,10 +13,10 @@ if TYPE_CHECKING:
 
 if sys.platform == "win32":
     from src import perception as perception_module
-    from src.cam import Cam
     from src.item import Filter
     from src.main import check_for_proper_tts_configuration
     from src.overlay import Overlay
+    from src.perception import game_window_ready
     from src.scripts.handler import ScriptHandler
     from src.utils.window import WindowSpec, start_detecting_window
 else:
@@ -46,7 +46,7 @@ class BackendWorker(QObject):
         win_spec = WindowSpec(get_settings().advanced_options.process_name)
         start_detecting_window(win_spec)
 
-        while not Cam().is_offset_set():
+        while not game_window_ready():
             time.sleep(0.2)
 
         time.sleep(0.5)

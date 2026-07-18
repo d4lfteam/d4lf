@@ -1,10 +1,15 @@
 import math
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from src.settings import get_ui_coordinates
-from src.template_finder import TemplateMatch, search
+
+from ._matching import search
+
+if TYPE_CHECKING:
+    from ._matching_models import TemplateMatch
 
 _LONG_SEPARATOR_TEMPLATE_REFS = [
     "item_seperator_long_legendary",

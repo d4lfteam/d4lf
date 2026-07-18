@@ -7,7 +7,8 @@ import pytest
 
 from src.item.data.affix import Affix
 from src.item.data.aspect import Aspect
-from src.item.descr.geometry_locator import (
+from src.item.models import Item
+from src.perception import (
     BulletMatchDiagnostics,
     DiagnosticLocatorResult,
     LocatedMarker,
@@ -15,7 +16,6 @@ from src.item.descr.geometry_locator import (
     LocatorResult,
     TemplateMatchTrace,
 )
-from src.item.models import Item
 from src.tools.replay_cropped_tooltip import (
     ReplayConfig,
     ReplayConfigurationError,

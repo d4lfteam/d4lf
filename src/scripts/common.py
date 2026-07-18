@@ -9,9 +9,9 @@ if TYPE_CHECKING:
     from tkinter import Canvas
 
 import src.settings as hotkeys
-from src.cam import Cam
 from src.gui.importer.gui_common import ACCENT_BLUE, DARK_GRAY_BG
 from src.item import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
+from src.perception import abs_window_to_monitor
 from src.settings import get_settings, get_ui_coordinates
 from src.utils.custom_mouse import Mouse
 
@@ -101,7 +101,7 @@ def reset_item_status(occupied, inv):
         time.sleep(0.15)
 
     if occupied:
-        Mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+        Mouse.move(*abs_window_to_monitor((0, 0)))
 
 
 def drop_item_from_inventory() -> None:

@@ -13,9 +13,8 @@ if TYPE_CHECKING:
 import httpx
 from PyQt6.QtCore import QSettings
 
-from src.cam import Cam
 from src.gui.importer.gui_common import ACCENT_BLUE, ACCENT_GOLD, ACCENT_GREEN, CARD_BG, MUTED, TEXT, TRANSPARENT_KEY
-from src.perception import Publisher
+from src.perception import Publisher, abs_window_to_monitor, game_window_roi, monitor_to_window, window_to_monitor
 from src.scripts._singleton import singleton
 from src.scripts.common import get_filter_colors
 from src.settings import get_settings
@@ -175,16 +174,16 @@ def _hover_experience_balance(info_config: dict[str, InfoSettingValue]):
     if pos is not None and len(pos) == 4:
         p1 = (pos[0], pos[1])
         p2 = (pos[2], pos[3])
-        Mouse.move(*Cam().window_to_monitor(p1))
+        Mouse.move(*window_to_monitor(p1))
         time.sleep(0.1)
-        Mouse.move(*Cam().window_to_monitor(p2))
+        Mouse.move(*window_to_monitor(p2))
         return
 
     # Default fallback: bottom center
-    res = Cam().window_roi
+    res = game_window_roi()
     if res:
         target = (res["width"] // 2, res["height"] - 10)
-        Mouse.move(*Cam().window_to_monitor(target))
+        Mouse.move(*window_to_monitor(target))
 
 
 def request_close():
@@ -367,7 +366,7 @@ class InventoryExpTracker:
                 self.hover_active = True
                 time.sleep(0.5)
                 _hover_experience_balance(info_config)
-                Mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+                Mouse.move(*abs_window_to_monitor((0, 0)))
             finally:
                 self.hover_active = False
 
@@ -448,7 +447,6 @@ class BossTimerOverlay(tk.Toplevel):
         self.configure(bg=TRANSPARENT_KEY)
 
         self._win_spec = WindowSpec(get_settings().advanced_options.process_name)
-        self._cam = Cam()
 
         self.settings = load_info_settings()
         self._apply_loaded_settings()
@@ -492,7 +490,7 @@ class BossTimerOverlay(tk.Toplevel):
 
     def _apply_loaded_settings(self):
         # Transition to relative coordinates: Add the current game window offset to the saved position.
-        roi = self._cam.window_roi
+        roi = game_window_roi()
         offset_x = roi.get("left", 0) if roi else 0
         offset_y = roi.get("top", 0) if roi else 0
         self.x = _setting_int(self.settings, "x", 100) + offset_x
@@ -529,7 +527,7 @@ class BossTimerOverlay(tk.Toplevel):
         self._exp_initialized = self.capture_exp_stats and stats.last_exp is not None
 
     def _save_settings(self):
-        roi = self._cam.window_roi
+        roi = game_window_roi()
         offset_x = roi.get("left", 0) if roi else 0
         offset_y = roi.get("top", 0) if roi else 0
         updates: dict[str, InfoSettingValue] = {
@@ -1397,8 +1395,8 @@ class BossTimerOverlay(tk.Toplevel):
         def on_release(event: tk.Event) -> None:
             if start is None:
                 return
-            win_start = Cam().monitor_to_window(start)
-            win_end = Cam().monitor_to_window((event.x_root, event.y_root))
+            win_start = monitor_to_window(start)
+            win_end = monitor_to_window((event.x_root, event.y_root))
             val = f"({int(win_start[0])}, {int(win_start[1])}, {int(win_end[0])}, {int(win_end[1])})"
             save_info_settings({"exp_bar_pos": val})
             self.settings["exp_bar_pos"] = val

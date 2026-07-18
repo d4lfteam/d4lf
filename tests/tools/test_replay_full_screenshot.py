@@ -8,8 +8,7 @@ import pytest
 if TYPE_CHECKING:
     from pathlib import Path
 
-from src.item.find_descr import DescrDetection
-from src.template_finder import TemplateMatch
+from src.perception import DescrDetection, TemplateMatch
 from src.tools.replay_full_screenshot import ReplayConfig, ReplayConfigurationError, run_replay, validate_replay_config
 
 

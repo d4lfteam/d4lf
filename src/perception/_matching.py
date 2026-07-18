@@ -1,36 +1,28 @@
+from __future__ import annotations
+
 import logging
-import operator
 import threading
 import time
-from collections.abc import Sequence
 from concurrent.futures import FIRST_COMPLETED, wait
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
 
 from src import TP
-from src.cam import Cam
 from src.settings import Template, get_ui_coordinates
-from src.utils.image_operations import alpha_to_mask, color_filter, crop
-from src.utils.misc import run_until_condition
-from src.utils.roi_operations import get_center
+
+from ._capture import Cam
+from ._matching_core import get_cv_result, process_template_refs
+from ._matching_models import ColorMatch, SearchResult, TemplateMatch, TemplateReferences
+from ._roi import get_center
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
-Rectangle = tuple[int, int, int, int]
-TemplateReference = str | np.ndarray
-TemplateReferences = TemplateReference | Sequence[TemplateReference]
-ColorMatch = list[np.ndarray] | str | None
+    from collections.abc import Callable, Sequence
 
 LOGGER = logging.getLogger(__name__)
 
 TEMPLATES_LOCK = threading.Lock()
-_MISSING_BGR_IMAGE = "Template has no BGR image"
-_MISSING_GRAYSCALE_IMAGE = "Template has no grayscale image"
-_INVALID_COLOR_IMAGE = "Color filtering did not produce an image"
 
 
 def _is_finite_real_array(value: object, size: int) -> bool:
@@ -57,165 +49,8 @@ def _is_valid_hsv_range(lower: np.ndarray, upper: np.ndarray) -> bool:
     )
 
 
-@dataclass
-class TemplateMatch:
-    center: tuple[int, int]
-    center_monitor: tuple[int, int]
-    name: str
-    region: list[int]
-    region_monitor: list[int]
-    score: float = -1.0
-
-    @override
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, TemplateMatch):
-            return self.center == other.center and self.score == other.score
-        return False
-
-    @override
-    def __hash__(self) -> int:
-        return hash((self.center, self.score))
-
-
-@dataclass
-class SearchResult:
-    matches: list[TemplateMatch] = field(default_factory=list)
-    success: bool = False
-
-
-@dataclass
-class SearchArgs:
-    _search_args = None
-    ref: TemplateReferences
-    inp_img: np.ndarray | None = None
-    threshold: float = 0.68
-    roi: Sequence[int | float] | str | None = None
-    use_grayscale: bool = False
-    color_match: ColorMatch = None
-    mode: str = "first"
-    timeout: int = 0
-    suppress_debug: bool = True
-    do_multi_process: bool = True
-
-    def __call__(self, cls):
-        cls._search_args = self
-        return cls
-
-    def as_dict(self):
-        return self.__dict__
-
-    def detect(self, img: np.ndarray | None = None) -> SearchResult:
-        if img is not None:
-            self.inp_img = img
-        else:
-            Cam().grab() if self.inp_img is None else self.inp_img
-        return search(**self.as_dict())
-
-    def is_visible(self, img: np.ndarray | None = None) -> bool:
-        return self.detect(img).success
-
-    def wait_until_visible(self, timeout: float = 30, suppress_debug: bool = False) -> SearchResult:
-        raw_result, _ = run_until_condition(lambda: self.detect(), lambda match: match.success, timeout)
-        result = raw_result if isinstance(raw_result, SearchResult) else SearchResult()
-        if not result.success and not suppress_debug:
-            LOGGER.debug(f"{self.ref} not found after {timeout} seconds")
-        return result
-
-    def wait_until_hidden(self, timeout: float = 3, suppress_debug: bool = False) -> bool:
-        if (
-            not (hidden := run_until_condition(lambda: self.detect().success, operator.not_, timeout)[1])
-            and not suppress_debug
-        ):
-            LOGGER.debug(f"{self.ref} still found after {timeout} seconds")
-        return hidden
-
-    @staticmethod
-    def wait_for_update(
-        img: np.ndarray, roi: Rectangle | None = None, timeout: float = 3, suppress_debug: bool = False
-    ) -> bool:
-        resolved_roi = roi if roi is not None else (0, 0, img.shape[0] - 1, img.shape[1] - 1)
-        if (
-            not (
-                change := run_until_condition(
-                    lambda: crop(Cam().grab(), resolved_roi),
-                    lambda res: not np.array_equal(crop(img, resolved_roi), res),
-                    timeout,
-                )[1]
-            )
-            and not suppress_debug
-        ):
-            LOGGER.debug(f"ROI: '{resolved_roi}' unchanged after {timeout} seconds")
-        return change
-
-
-def _process_template_refs(ref: TemplateReferences) -> list[Template]:
-    templates = []
-    refs: list[TemplateReference] = [ref] if isinstance(ref, (str, np.ndarray)) else list(ref)
-    for i in refs:
-        # if the reference is a string, then it's a reference to a named template asset
-        if isinstance(i, str):
-            try:
-                templates.append(get_ui_coordinates().templates[i.lower()])
-            except KeyError:
-                LOGGER.warning(f"Template not defined: {i}")
-        # if the reference is an image, append new Template class object
-        elif isinstance(i, np.ndarray):
-            template = Template(img_bgr=i, img_gray=cv2.cvtColor(i, cv2.COLOR_BGR2GRAY))
-            alpha_mask = alpha_to_mask(i)
-            if alpha_mask is not None:
-                template.alpha_mask = alpha_mask
-            templates.append(template)
-    return templates
-
-
-def _get_cv_result(
-    template: Template,
-    inp_img: np.ndarray,
-    roi: Sequence[int | float] | None = None,
-    color_match: list[np.ndarray] | None = None,
-    use_grayscale: bool = False,
-    take_debug_screenshot: bool = False,
-) -> tuple[np.ndarray | None, np.ndarray, list[int]]:
-    template_bgr = template.img_bgr
-    if not isinstance(template_bgr, np.ndarray):
-        raise RuntimeError(_MISSING_BGR_IMAGE)
-
-    # crop image to roi
-    # if no roi is provided roi = full inp_img
-    resolved_roi = [0, 0, inp_img.shape[1], inp_img.shape[0]] if roi is None else [max(0, int(value)) for value in roi]
-    rx, ry, rw, rh = resolved_roi
-    img = inp_img[ry : ry + rh, rx : rx + rw]
-    if img.shape[0] == 0 or img.shape[1] == 0:
-        return None, template_bgr, resolved_roi
-    if take_debug_screenshot:
-        from src.utils.window import screenshot  # ruff:ignore[import-outside-top-level]
-
-        screenshot("template_finder", img=img)
-
-    # filter for desired color or make grayscale
-    if color_match:
-        _, filtered_template = color_filter(template_bgr, color_match)
-        _, filtered_img = color_filter(img, color_match)
-        if filtered_template is None or filtered_img is None:
-            raise RuntimeError(_INVALID_COLOR_IMAGE)
-        template_img = filtered_template
-        img = filtered_img
-    elif use_grayscale:
-        template_img = template.img_gray
-        if not isinstance(template_img, np.ndarray):
-            raise RuntimeError(_MISSING_GRAYSCALE_IMAGE)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    else:
-        template_img = template_bgr
-    if not (img.shape[0] > template_img.shape[0] and img.shape[1] > template_img.shape[1]):
-        # LOGGER.error(
-        #     f"Image shape and template shape are incompatible: {template.name}. Image: {img.shape}, Template: {template_img.shape}, roi: {roi}"
-        # )
-        res = None
-    else:
-        res = cv2.matchTemplate(img, template_img, cv2.TM_CCOEFF_NORMED, mask=template.alpha_mask)
-        np.nan_to_num(res, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
-    return res, template_img, resolved_roi
+_process_template_refs = process_template_refs
+_get_cv_result = get_cv_result
 
 
 def _find_template_matches(

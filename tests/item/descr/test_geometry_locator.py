@@ -3,16 +3,16 @@ from pathlib import Path
 import numpy as np
 
 from src.item.data.affix import Affix
-from src.item.descr.geometry_locator import (
+from src.item.models import Item
+from src.perception._geometry import (
     _AFFIX_BULLET_TEMPLATE_REFS,
     _ASPECT_BULLET_TEMPLATE_REFS,
     LocatedMarker,
     _select_requested_markers,
     locate_affix_markers,
 )
-from src.item.descr.texture import _LONG_SEPARATOR_TEMPLATE_REFS
-from src.item.models import Item
-from src.template_finder import TemplateMatch
+from src.perception._matching_models import TemplateMatch
+from src.perception._tooltip_texture import _LONG_SEPARATOR_TEMPLATE_REFS
 
 TEMPLATE_DIR = Path(__file__).parents[3] / "assets" / "templates" / "item_descr"
 ASPECT_BULLET_PREFIXES = ("legendary_bullet_point", "mythic_bullet_point", "unique_bullet_point")
@@ -48,13 +48,13 @@ def test_production_locator_uses_untraced_bullet_search(mocker) -> None:
     separator = _make_tm("item_seperator_short_rare", (50, 40))
     long_separator = _make_tm("item_seperator_long_rare", (50, 180))
     bullet = _make_tm("affix_bullet_point_1", (10, 60))
-    plain_search = mocker.patch("src.item.descr.texture.find_bullets_for_templates", return_value=[bullet])
+    plain_search = mocker.patch("src.perception._tooltip_texture.find_bullets_for_templates", return_value=[bullet])
     traced_search = mocker.patch(
-        "src.item.descr.texture.find_bullets_for_templates_traced",
+        "src.perception._tooltip_texture.find_bullets_for_templates_traced",
         side_effect=AssertionError("production must not collect diagnostics"),
     )
-    mocker.patch("src.item.descr.texture.find_seperator_short", return_value=separator)
-    mocker.patch("src.item.descr.texture.find_seperator_long", return_value=long_separator)
+    mocker.patch("src.perception._tooltip_texture.find_seperator_short", return_value=separator)
+    mocker.patch("src.perception._tooltip_texture.find_seperator_long", return_value=long_separator)
     affix = Affix(name="life")
 
     result = locate_affix_markers(
@@ -70,11 +70,11 @@ def test_production_locator_reuses_supplied_short_separator(mocker) -> None:
     separator = _make_tm("item_seperator_short_rare", (50, 40))
     long_separator = _make_tm("item_seperator_long_rare", (50, 180))
     bullet = _make_tm("affix_bullet_point_1", (10, 60))
-    plain_search = mocker.patch("src.item.descr.texture.find_bullets_for_templates", return_value=[bullet])
+    plain_search = mocker.patch("src.perception._tooltip_texture.find_bullets_for_templates", return_value=[bullet])
     separator_search = mocker.patch(
-        "src.item.descr.texture.find_seperator_short", side_effect=AssertionError("separator should be reused")
+        "src.perception._tooltip_texture.find_seperator_short", side_effect=AssertionError("separator should be reused")
     )
-    mocker.patch("src.item.descr.texture.find_seperator_long", return_value=long_separator)
+    mocker.patch("src.perception._tooltip_texture.find_seperator_long", return_value=long_separator)
     affix = Affix(name="life")
 
     result = locate_affix_markers(
@@ -92,9 +92,9 @@ def test_production_locator_reuses_supplied_short_separator(mocker) -> None:
 def test_locator_accepts_duplicate_matches_for_same_affix_row(mocker) -> None:
     separator = _make_tm("item_seperator_short_rare", (50, 40))
     bullet = _make_tm("affix_bullet_point_1", (10, 60))
-    mocker.patch("src.item.descr.texture.find_seperator_short", return_value=separator)
-    mocker.patch("src.item.descr.texture.find_seperator_long", return_value=None)
-    mocker.patch("src.item.descr.texture.find_bullets_for_templates", return_value=[bullet])
+    mocker.patch("src.perception._tooltip_texture.find_seperator_short", return_value=separator)
+    mocker.patch("src.perception._tooltip_texture.find_seperator_long", return_value=None)
+    mocker.patch("src.perception._tooltip_texture.find_bullets_for_templates", return_value=[bullet])
     affix = Affix(name="life")
 
     result = locate_affix_markers(

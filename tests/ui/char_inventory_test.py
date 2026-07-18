@@ -1,7 +1,7 @@
 import cv2
 import pytest
 
-from src.cam import Cam
+from src.perception._capture import Cam
 from src.settings import BASE_DIR
 from src.ui.char_inventory import CharInventory
 

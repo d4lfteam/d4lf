@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 import cv2
 
-from src.cam import Cam
 from src.logger import LOG_DIR
+from src.perception import capture
 from src.utils import window_backend_noop
 
 if TYPE_CHECKING:
@@ -110,10 +110,10 @@ def screenshot(
     timestamp: bool = True,
 ):
     name = name if name is not None else "screenshot"
-    img = img if img is not None else Cam().grab()
+    img = img if img is not None else capture()
 
     pathlib.Path(path).mkdir(exist_ok=True, parents=True)
-    file_path = f"{path}/{name}{'_' + datetime.now(tz=None).strftime('%Y%m%d_%H%M%S.%f') if timestamp else ''}.png"  # noqa: DTZ005
+    file_path = f"{path}/{name}{'_' + datetime.now(tz=None).strftime('%Y%m%d_%H%M%S.%f') if timestamp else ''}.png"  # ruff:ignore[call-datetime-now-without-tzinfo]
 
     if pathlib.Path(file_path).exists():
         if overwrite:

@@ -11,7 +11,6 @@ from src.settings import BASE_DIR
 from src.settings._types import Template
 from src.settings.loader import IniConfigLoader
 from src.settings.models_ui import ColorsModel, HSVRangeModel, UiOffsetsModel, UiPosModel, UiRoiModel
-from src.utils.image_operations import alpha_to_mask
 
 LOGGER = logging.getLogger("d4lf")
 
@@ -78,6 +77,8 @@ POSITIONS = (
 
 @lru_cache
 def load_templates() -> dict[str, Template]:
+    from src.perception import alpha_mask  # ruff:ignore[import-outside-top-level]
+
     result = {}
     template_paths = Path(BASE_DIR / "assets/templates").rglob("*.png")
     for template in template_paths:
@@ -94,6 +95,6 @@ def load_templates() -> dict[str, Template]:
             img_bgra=template_img,
             img_bgr=cv2.cvtColor(template_img, cv2.COLOR_BGRA2BGR),
             img_gray=cv2.cvtColor(template_img, cv2.COLOR_BGRA2GRAY),
-            alpha_mask=alpha_to_mask(template_img),
+            alpha_mask=alpha_mask(template_img),
         )
     return result

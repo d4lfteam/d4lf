@@ -2,7 +2,8 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from src.item.find_descr import (
+from src.perception._matching_models import SearchResult, TemplateMatch
+from src.perception._tooltip import (
     DescrDetection,
     _choose_best_result,
     _find_descr_core,
@@ -10,7 +11,6 @@ from src.item.find_descr import (
     find_descr_with_diagnostics,
     get_separator_match_in_crop,
 )
-from src.template_finder import SearchResult, TemplateMatch
 
 
 def _make_match(
@@ -69,7 +69,7 @@ def test_choose_best_result_returns_no_result_when_preferred_side_is_empty():
 
 def test_find_descr_uses_shared_core_without_diagnostics(mocker):
     detection = DescrDetection(found=True, crop_roi=[1, 2, 3, 4])
-    core = mocker.patch("src.item.find_descr._find_descr_core", return_value=detection)
+    core = mocker.patch("src.perception._tooltip._find_descr_core", return_value=detection)
     image = np.zeros((10, 10, 3), dtype=np.uint8)
 
     result = find_descr(image, (100, 200))
@@ -80,7 +80,7 @@ def test_find_descr_uses_shared_core_without_diagnostics(mocker):
 
 def test_find_descr_with_diagnostics_uses_shared_core_with_diagnostics(mocker):
     detection = DescrDetection(found=False, failure_reason="missing_separator")
-    core = mocker.patch("src.item.find_descr._find_descr_core", return_value=detection)
+    core = mocker.patch("src.perception._tooltip._find_descr_core", return_value=detection)
     image = np.zeros((10, 10, 3), dtype=np.uint8)
 
     result = find_descr_with_diagnostics(image, (100, 200))
@@ -122,7 +122,7 @@ def test_get_separator_match_in_crop_returns_none_for_invalid_crop():
 
 def test_find_descr_clips_crop_to_image_before_translating_separator(mocker):
     mocker.patch(
-        "src.item.find_descr.get_ui_coordinates",
+        "src.perception._tooltip.get_ui_coordinates",
         return_value=SimpleNamespace(
             offsets=SimpleNamespace(item_descr_width=100, item_descr_pad=10, item_descr_off_bottom_edge=0),
             pos=SimpleNamespace(window_dimensions=(100, 100)),
@@ -132,11 +132,11 @@ def test_find_descr_clips_crop_to_image_before_translating_separator(mocker):
     top_left_match = _make_match((80, 10), 0.9, name="item_top_left_legendary", region=[70, 0, 20, 20])
     separator_match = _make_match((85, 30), 0.9, name="separator", region=[80, 25, 10, 10])
     mocker.patch(
-        "src.item.find_descr._template_search",
+        "src.perception._tooltip._template_search",
         side_effect=[SearchResult(success=True, matches=[top_left_match]), SearchResult()],
     )
-    mocker.patch("src.item.find_descr.find_seperator_short", return_value=separator_match)
-    mocker.patch("src.item.find_descr.search", return_value=SearchResult())
+    mocker.patch("src.perception._tooltip.find_seperator_short", return_value=separator_match)
+    mocker.patch("src.perception._tooltip.search", return_value=SearchResult())
 
     detection = _find_descr_core(np.zeros((100, 100, 3), dtype=np.uint8), (0, 0), collect_diagnostics=True)
 

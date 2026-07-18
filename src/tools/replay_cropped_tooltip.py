@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING
 import cv2
 
 from src.item import Affix, Item, ItemType
-from src.item.descr.geometry_locator import (
+from src.logger import setup
+from src.perception import (
     BulletMatchDiagnostics,
     DiagnosticLocatorResult,
     TemplateMatchTrace,
     locate_affix_markers_with_diagnostics,
 )
-from src.logger import setup
 from src.settings import get_ui_coordinates
 from src.tools.replay_common import ReplayConfigurationError, load_replay_image, show_replay_result
 from src.tools.replay_common import font_scale as _font_scale

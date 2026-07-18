@@ -20,9 +20,9 @@ from src.settings import VisionModeType, get_settings
 
 if sys.platform == "win32":
     from src import perception
-    from src.cam import Cam
     from src.item import Filter
     from src.overlay import Overlay
+    from src.perception import game_window_ready
     from src.scripts.handler import ScriptHandler
     from src.utils.window import WindowSpec, start_detecting_window
 
@@ -85,7 +85,7 @@ def main():
 
     win_spec = WindowSpec(get_settings().advanced_options.process_name)
     start_detecting_window(win_spec)
-    while not Cam().is_offset_set():
+    while not game_window_ready():
         time.sleep(0.2)
     # The code gets ahead of itself and seems to try to start scanning the screen when the resolution isn't set yet
     time.sleep(0.5)

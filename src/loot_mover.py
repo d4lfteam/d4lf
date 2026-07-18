@@ -1,7 +1,7 @@
 import logging
 from typing import TYPE_CHECKING
 
-from src.cam import Cam
+from src.perception import abs_window_to_monitor
 from src.settings import MoveItemsType, get_settings
 from src.ui.char_inventory import CharInventory
 from src.ui.stash import Stash
@@ -42,7 +42,7 @@ def move_items_to_stash():
         if not unhandled_slots:
             break
 
-    Mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+    Mouse.move(*abs_window_to_monitor((0, 0)))
     LOGGER.info("Completed move")
 
 
@@ -78,7 +78,7 @@ def move_items_to_inventory():
         if empty_slot_count < 1:
             break
 
-    Mouse.move(*Cam().abs_window_to_monitor((0, 0)))
+    Mouse.move(*abs_window_to_monitor((0, 0)))
     LOGGER.info("Completed move")
 
 
