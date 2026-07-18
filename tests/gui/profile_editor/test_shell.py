@@ -141,7 +141,11 @@ def test_window_passes_initial_profile_and_close_before_construction(monkeypatch
 
 @pytest.mark.parametrize(
     ("reply", "accepted"),
-    [(QMessageBox.StandardButton.Yes, True), (QMessageBox.StandardButton.No, True), (QMessageBox.StandardButton.Cancel, False)],
+    [
+        (QMessageBox.StandardButton.Yes, True),
+        (QMessageBox.StandardButton.No, True),
+        (QMessageBox.StandardButton.Cancel, False),
+    ],
 )
 def test_close_save_yes_no_cancel(monkeypatch, qapp, reply, accepted):
     monkeypatch.setattr(tab_module.QMessageBox, "warning", lambda *_args, **_kwargs: reply)

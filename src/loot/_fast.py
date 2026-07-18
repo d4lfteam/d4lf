@@ -189,7 +189,9 @@ def fast_feedback(item_descr, filter_result) -> tuple[str, str]:
             text = []
         return "\n".join(text), colors.matched
 
-    color = colors.codex_upgrade if any(
-        match.profile.endswith(ASPECT_UPGRADES_LABEL) for match in filter_result.matched
-    ) else colors.matched
+    color = (
+        colors.codex_upgrade
+        if any(match.profile.endswith(ASPECT_UPGRADES_LABEL) for match in filter_result.matched)
+        else colors.matched
+    )
     return "\n".join(create_match_text(reversed(filter_result.matched))), color

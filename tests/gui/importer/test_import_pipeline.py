@@ -83,7 +83,7 @@ def test_run_saves_single_variant_and_attaches_paragon(mock_ini_loader, mocker) 
 def test_run_saves_multiple_variants_and_adds_profiles(mock_ini_loader, mocker) -> None:
     Dataloader()
     profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # noqa: ARG005
+    profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # ruff:ignore[unused-lambda-argument]
     add_to_profiles = mocker.patch("src.importing.pipeline.add_to_profiles")
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
@@ -111,7 +111,7 @@ def test_run_saves_multiple_variants_and_adds_profiles(mock_ini_loader, mocker) 
 def test_run_suffixes_custom_filename_for_multiple_variants(mock_ini_loader, mocker) -> None:
     Dataloader()
     profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # noqa: ARG005
+    profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # ruff:ignore[unused-lambda-argument]
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     saved_file_names = ImportPipeline.run(
@@ -134,7 +134,7 @@ def test_run_uses_selected_filename_parts(mock_ini_loader, mocker) -> None:
     Dataloader()
     saved = {}
     profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = lambda *, file_name, profile, source: (  # noqa: ARG005
+    profile_store.save_new.side_effect = lambda *, file_name, profile, source: (  # ruff:ignore[unused-lambda-argument]
         saved.update({"file_name": file_name}) or SimpleNamespace(file_name=file_name)
     )
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
@@ -150,7 +150,7 @@ def test_run_uses_selected_filename_parts(mock_ini_loader, mocker) -> None:
 def test_run_warns_when_paragon_export_enabled_without_steps(mock_ini_loader, mocker, caplog) -> None:
     Dataloader()
     profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # noqa: ARG005
+    profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # ruff:ignore[unused-lambda-argument]
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     with caplog.at_level("WARNING"):
@@ -166,7 +166,7 @@ def test_run_deduplicates_identical_affix_filters(mock_ini_loader, mocker) -> No
     Dataloader()
     saved = {}
     profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = lambda *, file_name, profile, source: (  # noqa: ARG005
+    profile_store.save_new.side_effect = lambda *, file_name, profile, source: (  # ruff:ignore[unused-lambda-argument]
         saved.update({"profile": profile}) or SimpleNamespace(file_name=file_name)
     )
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)

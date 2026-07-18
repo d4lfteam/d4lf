@@ -10,8 +10,7 @@ The main UI is PyQt6. Game overlays are tkinter windows rendered above the game.
 
 ## Stack
 
-Python 3.14 via uv; C++ for the TTS DLL in `tts/`; PyQt6/tkinter; mss, OpenCV, NumPy; Pydantic,
-PyYAML, configparser; pytest; Ruff; PyInstaller.
+Python 3.14 via uv; C++ for the TTS DLL in `tts/`.
 
 ## Commands
 
@@ -26,22 +25,19 @@ uv run pytest . -m "not selenium" -v -n logical
 
 Item flow:
 
-1. TTS DLL sends named-pipe text to `src/tts.py`.
-1. `src/item/descr/read_descr_tts.py` parses text into `Item` objects.
-1. `src/item/filter.py` matches items against YAML profiles.
-1. Scripts show keep/junk overlays or automate mouse actions.
+- TTS DLL sends named-pipe text to `src/tts.py`.
+- `src/item/descr/read_descr_tts.py` parses text into `Item` objects.
+- `src/item/filter.py` matches items against YAML profiles.
+- Scripts show keep/junk overlays or automate mouse actions.
 
 ## Conventions
 
+- Do not care about any compatibility, do changes as necessary.
 - Runtime target is Windows. Some tests are skipped outside Windows.
 - No more than 300 lines of code in Python files in `src` and `tests`.
 - User data lives under `~/.d4lf/` including profiles, params, and logs.
-- Profile YAML files live under `~/.d4lf/profiles/` and validate through `ProfileModel`.
-- UI coordinates in `src/config/data.py` are defined at 3840x2160 and scaled by `ResManager`.
-- Keep existing comments unless the related code is removed.
-- Capability subdomains use public subpackages with deliberate `__init__.py` facades (for example,
-  `src.profiles.affix` and `src.profiles.aspect`). Callers import from those facades rather than
-  prefixed implementation modules; implementation modules remain internal to their subpackage.
+- Always prefer subpackages over creating files with specific prefixes or suffixes. For example, `src.profiles.affix` and `src.profiles.aspect` are subpackages rather than
+  `src.profiles_affix.py` and `src.profiles_aspect.py`.
 
 ### Python 3.14
 

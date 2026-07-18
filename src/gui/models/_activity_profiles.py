@@ -175,5 +175,5 @@ class ActivityProfileRowsMixin:
                 summary.append("🔱 Paragon Overlay: Data Found")
 
             return "\n".join(summary)
-        except (OSError, ProfileDocumentError):
+        except OSError, ProfileDocumentError:
             return f"Path: {path}\n(Could not parse profile details)"
