@@ -4,6 +4,13 @@ Cross-capability callers import profile models, document persistence, and sessio
 from this module.  The modules beneath this package are implementation details.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from PyQt6.QtWidgets import QWidget
+
 from src.profiles._affixes import (
     AffixAspectFilterModel,
     AffixFilterCountModel,
@@ -48,6 +55,14 @@ from src.profiles._session import (
 )
 from src.profiles._sigils import SigilConditionModel, SigilFilterModel, SigilPriority, TributeFilterModel
 
+
+def create_profile_editor_window(parent: QWidget | None = None, profile_name: str | None = None) -> object:
+    """Create the profile capability's standalone editor window."""
+    from src.profiles.editor import ProfileEditorWindow  # ruff:ignore[import-outside-top-level]
+
+    return ProfileEditorWindow(parent=parent, profile_name=profile_name)
+
+
 __all__ = [
     "AffixAspectFilterModel",
     "AffixFilterCountModel",
@@ -86,6 +101,7 @@ __all__ = [
     "ValidationDiffers",
     "ValidationError",
     "YamlError",
+    "create_profile_editor_window",
     "normalize_profile_file_name",
     "to_yaml_str",
 ]

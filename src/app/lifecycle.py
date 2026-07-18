@@ -1,3 +1,5 @@
+"""Application-owned Qt window lifecycle behavior."""
+
 import logging
 from contextlib import suppress
 from typing import Any, override
@@ -6,7 +8,7 @@ from PyQt6.QtCore import QEvent, QPoint, QSettings, QSize
 from PyQt6.QtGui import QAction, QCloseEvent, QIcon
 from PyQt6.QtWidgets import QMainWindow, QMenu, QSystemTrayIcon, QTabWidget
 
-from src.gui.unified_shell import ICON_PATH
+from .assets import ICON_PATH
 
 
 class UnifiedWindowLifecycle(QMainWindow):
@@ -20,7 +22,6 @@ class UnifiedWindowLifecycle(QMainWindow):
         self.tray_icon = QSystemTrayIcon(self)
         if ICON_PATH.exists():
             self.tray_icon.setIcon(QIcon(str(ICON_PATH)))
-
         tray_menu = QMenu()
         restore_action = QAction("Restore", tray_menu)
         tray_menu.addAction(restore_action)
@@ -52,7 +53,6 @@ class UnifiedWindowLifecycle(QMainWindow):
         if maximized:
             self.showMaximized()
         self.tabs.setCurrentIndex(settings.value("selected_tab", 0, int))
-        # Using False as a positional argument for defaultValue is required by the QSettings API.
         self.activity_tab.minimize_to_tray_cb.setChecked(
             settings.value("minimize_to_tray", False, type=bool)  # ruff:ignore[boolean-positional-value-in-call]
         )
@@ -68,7 +68,6 @@ class UnifiedWindowLifecycle(QMainWindow):
 
     @override
     def changeEvent(self, a0: QEvent | None):
-        # PyQt exposes `a0` as a keyword, so the override must retain that public name.
         event = a0
         if (
             event is not None
@@ -81,7 +80,6 @@ class UnifiedWindowLifecycle(QMainWindow):
 
     @override
     def closeEvent(self, a0: QCloseEvent | None):
-        # PyQt exposes `a0` as a keyword, so the override must retain that public name.
         event = a0
         for win in list(self._child_windows.values()):
             with suppress(Exception):

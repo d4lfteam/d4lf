@@ -4,7 +4,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication, QWidget
 
-from src.gui.models.activity_log_widget import DragHandleButton
+from src.app.dashboard import DragHandleButton
 
 
 def test_drag_handle_forwards_mouse_events():

@@ -8,8 +8,9 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QMessageBox, QPushButton, QVBoxLayout, QWidget
 
 from src.desktop.widgets import CheckmarkCheckBox
-from src.gui.models._activity_drag import DragHandleButton
 from src.profiles import ProfileDocumentError, ProfileDocumentStore
+
+from .dashboard_drag import DragHandleButton
 
 if TYPE_CHECKING:
     from pathlib import Path

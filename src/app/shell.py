@@ -1,3 +1,5 @@
+"""Unified desktop shell composed from public capability interfaces."""
+
 import logging
 import sys
 
@@ -9,18 +11,20 @@ from src import __version__
 from src.desktop.activity import ANSIConsoleWidget, QtLogHandler
 from src.desktop.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.desktop.widgets import set_accent_color
-from src.gui.backend_worker import BackendWorker, perception_module
-from src.gui.models.activity_log_widget import ActivityLogWidget
-from src.gui.unified_lifecycle import UnifiedWindowLifecycle
-from src.gui.unified_shell import DISCORD_ICON, GITHUB_ICON, ICON_PATH
-from src.importing.gui import ImporterWindow
+from src.importing import create_importer_window
 from src.logger import apply_log_level, consume_startup_log_records, create_formatter, remove_transient_gui_handlers
 from src.logger import setup as setup_logging
 from src.loot import get_filter_colors
-from src.profiles.editor import ProfileEditorWindow
+from src.profiles import create_profile_editor_window
 from src.settings import LOG_LEVEL_SETTING_KEYS, create_settings_window, get_settings, has_any_changed
 
+from .assets import DISCORD_ICON, GITHUB_ICON, ICON_PATH
+from .backend import BackendWorker, get_perception_module
+from .dashboard import ActivityLogWidget
+from .lifecycle import UnifiedWindowLifecycle
+
 LOGGER = logging.getLogger(__name__)
+perception_module = get_perception_module()
 
 
 class UnifiedMainWindow(UnifiedWindowLifecycle):
@@ -28,18 +32,14 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
         super().__init__()
         self._child_windows: dict[str, QMainWindow] = {}
         self._config = get_settings()
-
         if ICON_PATH.exists():
             self.setWindowIcon(QIcon(str(ICON_PATH)))
-
         self.apply_theme()
         self._setup_logging()
         self._setup_ui()
         self._setup_tray()
         self._init_backend()
         self.restore_geometry()
-
-        # Polling timer to keep the Dashboard status indicators in sync with the backend
         self._status_timer = QTimer(self)
         self._status_timer.timeout.connect(self._refresh_dashboard_status)
         self._status_timer.start(500)
@@ -48,7 +48,6 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
         running_from_source = not getattr(sys, "frozen", False)
         root_logger = logging.getLogger()
         adv = self._config.advanced_options
-
         if not any(getattr(h, "name", "") == "D4LF_FILE" for h in root_logger.handlers):
             setup_logging(
                 log_level=adv.log_lvl.value,
@@ -57,22 +56,15 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
                 timestamp=adv.log_timestamp,
                 buffer_startup=True,
             )
-
         remove_transient_gui_handlers(root_logger)
-
-        # Single unified Qt handler for both Dashboard and Full Logs
         self.console_handler = QtLogHandler()
         self.console_handler.name = "QT_CONSOLE"
         self.console_handler.setFormatter(
             create_formatter(colored=True, technical=adv.technical_log_info, timestamp=adv.log_timestamp)
         )
         self.console_handler.setLevel(adv.log_lvl.value.upper())
-
         root_logger.addHandler(self.console_handler)
-        # Root is always DEBUG; the handlers above (Console/QT) filter based on user settings
         root_logger.setLevel(logging.DEBUG)
-
-        # Apply log level changes live, independently of the backend's wait-for-D4 loop.
         self._config.register_change_listener(self._on_config_changed_log_level)
 
     def _on_config_changed_log_level(self, changed_keys) -> None:
@@ -89,64 +81,52 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
     def _setup_ui(self):
         self.setWindowTitle(f"D4LF - Diablo 4 Loot Filter v{__version__}")
         self.setMinimumSize(800, 600)
-
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
-
         self.activity_tab = ActivityLogWidget(parent=self)
         self.console_output = ANSIConsoleWidget()
-
         self.tabs.addTab(self.activity_tab, "Dashboard")
         self.tabs.addTab(self.console_output, "Full Logs")
         self._setup_tab_corner_widgets()
-
-        # Both tabs receive the same unified stream
         self.console_handler.log_signal.connect(self.console_output.append_ansi_text)
         self.console_handler.log_signal.connect(self.activity_tab.log_viewer.append_ansi_text)
-
         self.emit_startup_direct_to_console()
         self._emit_startup_logs()
         self._emit_deferred_config_cleanup_logs(self._config)
 
     def _setup_tab_corner_widgets(self):
-        """Add social buttons to the top right of the tab bar."""
+        """Add status indicators and social buttons to the tab bar."""
         container = QWidget()
         layout = QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 15, 0)
         layout.setSpacing(15)
-
-        # System Status Indicators
         if sys.platform == "win32":
             self.vision_indicator = QLabel("Vision Mode: STOPPED")
-            self.vision_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
             self.tts_indicator = QLabel("TTS: Disconnected")
-            self.tts_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
+            style = "color: #ff4d4d; font-weight: bold; font-size: 10pt;"
         else:
             self.vision_indicator = QLabel("Vision Mode: Disabled (GUI-only)")
-            self.vision_indicator.setStyleSheet("color: #b0b0b0; font-weight: bold; font-size: 10pt;")
             self.tts_indicator = QLabel("TTS: Disabled (GUI-only)")
-            self.tts_indicator.setStyleSheet("color: #b0b0b0; font-weight: bold; font-size: 10pt;")
-
+            style = "color: #b0b0b0; font-weight: bold; font-size: 10pt;"
+        self.vision_indicator.setStyleSheet(style)
+        self.tts_indicator.setStyleSheet(style)
         layout.addWidget(self.vision_indicator)
         layout.addWidget(self.tts_indicator)
-
-        discord_btn = QPushButton()
-        self._setup_social_button(discord_btn, DISCORD_ICON, "https://discord.gg/YyzaPhAN6T")
-        github_btn = QPushButton()
-        self._setup_social_button(github_btn, GITHUB_ICON, "https://github.com/d4lfteam/d4lf")
-
-        layout.addWidget(discord_btn)
-        layout.addWidget(github_btn)
+        for icon, url in (
+            (DISCORD_ICON, "https://discord.gg/YyzaPhAN6T"),
+            (GITHUB_ICON, "https://github.com/d4lfteam/d4lf"),
+        ):
+            button = QPushButton()
+            self._setup_social_button(button, icon, url)
+            layout.addWidget(button)
         self.tabs.setCornerWidget(container, Qt.Corner.TopRightCorner)
 
-    def _setup_social_button(self, btn: QPushButton, icon_path, url: str):
-        # Double check existence and check for lowercase fallback on-the-fly
+    def _setup_social_button(self, btn, icon_path, url: str):
         final_path = icon_path
         if not final_path.exists():
             alt_path = icon_path.parent / icon_path.name.lower()
             if alt_path.exists():
                 final_path = alt_path
-
         if final_path.exists():
             btn.setIcon(QIcon(str(final_path)))
             btn.setIconSize(QSize(24, 24))
@@ -161,7 +141,6 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
         btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
 
     def _refresh_dashboard_status(self):
-        """Poll backend states and update the Dashboard labels."""
         self.update_tts_status(perception_module.is_connected() if perception_module is not None else None)
         if self.worker and self.worker.script_handler:
             self.update_vision_status(self.worker.script_handler.vision_mode.running())
@@ -171,24 +150,20 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
             self.vision_indicator.setText("Vision Mode: Disabled (GUI-only)")
             self.vision_indicator.setStyleSheet("color: #b0b0b0; font-weight: bold; font-size: 10pt;")
             return
-        if is_running:
-            self.vision_indicator.setText("Vision Mode: RUNNING")
-            self.vision_indicator.setStyleSheet("color: #23fc5d; font-weight: bold; font-size: 10pt;")
-        else:
-            self.vision_indicator.setText("Vision Mode: STOPPED")
-            self.vision_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
+        self.vision_indicator.setText(f"Vision Mode: {'RUNNING' if is_running else 'STOPPED'}")
+        self.vision_indicator.setStyleSheet(
+            f"color: {'#23fc5d' if is_running else '#ff4d4d'}; font-weight: bold; font-size: 10pt;"
+        )
 
     def update_tts_status(self, connected: bool | None):
         if connected is None:
             self.tts_indicator.setText("TTS: Disabled (GUI-only)")
             self.tts_indicator.setStyleSheet("color: #b0b0b0; font-weight: bold; font-size: 10pt;")
             return
-        if connected:
-            self.tts_indicator.setText("TTS: Connected")
-            self.tts_indicator.setStyleSheet("color: #23fc5d; font-weight: bold; font-size: 10pt;")
-        else:
-            self.tts_indicator.setText("TTS: Disconnected")
-            self.tts_indicator.setStyleSheet("color: #ff4d4d; font-weight: bold; font-size: 10pt;")
+        self.tts_indicator.setText(f"TTS: {'Connected' if connected else 'Disconnected'}")
+        self.tts_indicator.setStyleSheet(
+            f"color: {'#23fc5d' if connected else '#ff4d4d'}; font-weight: bold; font-size: 10pt;"
+        )
 
     def _init_backend(self):
         if sys.platform != "win32":
@@ -197,7 +172,6 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
             self.update_vision_status(None)
             self.update_tts_status(None)
             return
-
         self._backend_thread = QThread()
         self.worker = BackendWorker()
         self.worker.moveToThread(self._backend_thread)
@@ -207,8 +181,6 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
 
     def _show_singleton_modal(self, key: str, window_class, *args, **kwargs):
         existing_window = self._child_windows.get(key)
-
-        # If window exists and is visible, just bring it to front
         if existing_window is not None and existing_window.isVisible():
             existing_window.raise_()
             existing_window.activateWindow()
@@ -218,26 +190,27 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
         win.setWindowModality(Qt.WindowModality.ApplicationModal)
         self._child_windows[key] = win
         win.destroyed.connect(lambda: self._child_windows.pop(key, None))
-
         win.show()
         return win
 
     def _emit_deferred_config_cleanup_logs(self, config):
         for record in config.consume_deferred_cleanup_log_records():
-            if not logging.getLogger(record.name).isEnabledFor(record.levelno):
-                continue
-            if record.levelno >= self.console_handler.level:
+            if (
+                logging.getLogger(record.name).isEnabledFor(record.levelno)
+                and record.levelno >= self.console_handler.level
+            ):
                 self.console_handler.handle(record)
 
     def _emit_startup_logs(self):
         for record in consume_startup_log_records():
-            if not logging.getLogger(record.name).isEnabledFor(record.levelno):
-                continue
-            if record.levelno >= self.console_handler.level:
+            if (
+                logging.getLogger(record.name).isEnabledFor(record.levelno)
+                and record.levelno >= self.console_handler.level
+            ):
                 self.console_handler.handle(record)
 
     def open_import_dialog(self):
-        win = self._show_singleton_modal("importer", ImporterWindow, accent_color=get_filter_colors().matched)
+        win = self._show_singleton_modal("importer", create_importer_window, accent_color=get_filter_colors().matched)
         win.import_completed.connect(self.activity_tab.refresh_profiles, Qt.ConnectionType.UniqueConnection)
 
     def open_settings_dialog(self):
@@ -245,15 +218,14 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
         self._show_singleton_modal("config", create_settings_window, theme_changed_callback=self.apply_theme)
 
     def open_profile_editor(self, profile_name: str | None = None):
-        self._show_singleton_modal("editor", ProfileEditorWindow, profile_name=profile_name)
+        self._show_singleton_modal("editor", create_profile_editor_window, profile_name=profile_name)
 
     def emit_startup_direct_to_console(self):
-        banner = (
+        self.console_output.append_ansi_text(
             "═══════════════════════════════════════════════════════════════════════════════\n"
             "D4LF - Diablo 4 Loot Filter\n"
             "═══════════════════════════════════════════════════════════════════════════════"
         )
-        self.console_output.append_ansi_text(banner)
         self.console_output.append_ansi_text("")
 
     def apply_theme(self):
@@ -261,8 +233,6 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
         accent_color = get_filter_colors().matched
         set_accent_color(accent_color)
         template = DARK_THEME_TEMPLATE if theme_name == "dark" else LIGHT_THEME_TEMPLATE
-        stylesheet = template.replace("{accent}", accent_color)
-
         app = QApplication.instance()
         if isinstance(app, QApplication):
-            app.setStyleSheet(stylesheet)
+            app.setStyleSheet(template.replace("{accent}", accent_color))

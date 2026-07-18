@@ -14,10 +14,11 @@ from PyQt6.QtWidgets import (
 
 from src.desktop.activity import ANSIConsoleWidget
 from src.desktop.widgets import CheckmarkCheckBox
-from src.gui.models._activity_controls import ActivityLogControlsMixin
-from src.gui.models._activity_drag import ActivityProfileDragMixin, DragHandleButton
-from src.gui.models._activity_profiles import ActivityProfileRowsMixin
 from src.settings import IS_HOTKEY_KEY, get_settings
+
+from .dashboard_controls import ActivityLogControlsMixin
+from .dashboard_drag import ActivityProfileDragMixin, DragHandleButton
+from .dashboard_profiles import ActivityProfileRowsMixin
 
 __all__ = ["ActivityLogWidget", "DragHandleButton"]
 

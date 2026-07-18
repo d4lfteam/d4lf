@@ -1,1 +1,0 @@
-"""Application dashboard model widgets."""

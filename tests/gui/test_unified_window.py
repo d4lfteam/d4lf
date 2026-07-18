@@ -9,8 +9,8 @@ import pytest
 from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QApplication, QMainWindow
 
+from src.app.shell import UnifiedMainWindow
 from src.desktop.activity import QtLogHandler
-from src.gui.unified_window import UnifiedMainWindow
 from src.profiles.affix import DeleteAffixPool
 from src.profiles.editor import DeleteItem, ProfileEditorWindow
 
