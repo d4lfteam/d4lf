@@ -202,10 +202,12 @@ dynamic-import, and Windows reachability checks before removal.
 
 ## Baselines and gate
 
-At this decision point, `src` contains 108 Python modules and 26,213 physical lines. That is the
-maximum production-source LOC for the refactor; any increase requires a documented offset before
-the source architecture can freeze. The current 300-line guard reports 29 source and 8 test
-violations. Those violations are intentional migration work, not exemptions.
+At this decision point, the architecture-lock commit (`3fbac7b`) contains 108 Python modules and
+26,229 physical lines under `src`. The planning note recorded 26,213 lines, an undercount of 16;
+26,229 is the reproducible historical source baseline. It is the maximum production-source LOC
+for the refactor; any increase requires a documented offset before the source architecture can
+freeze. The current 300-line guard reports 29 source and 8 test violations. Those violations are
+intentional migration work, not exemptions.
 
 The behavioral baseline on macOS is 586 passed and 47 skipped non-Selenium tests. Existing tests
 are preserved while source modules move; test-tree mirroring is deferred until source architecture
@@ -230,7 +232,8 @@ changes.
 - All capability boundaries are explicit before structural moves begin, so later tickets can
   verify placement against this inventory rather than creating new technical buckets.
 - The source architecture is not frozen until all source files pass the line gate, source LOC is at
-  or below 26,213, and the complete non-Selenium behavioral suite passes.
+  or below the reproducible 26,229-line historical baseline (or a documented offset is approved),
+  and the complete non-Selenium behavioral suite passes.
 - The two modules classified for deletion remain source until their non-Python, dynamic, Windows,
   and PyInstaller reachability has been verified.
 
@@ -252,8 +255,14 @@ later mirrored test tree:
 - Every Python file under `src` is at most 300 physical lines. The complete non-Selenium suite
   passes at 688 passed and 16 skipped, and `ty` passes.
 
-The historical 26,213-line budget is not yet met: the audited source tree measures 27,185 lines.
+The historical 26,229-line budget is not yet met: the audited source tree measures 27,185 lines,
+or 956 lines above the corrected baseline. The additional lines are distributed across the
+capability implementations and facades introduced by the source migration; no dead or compatibility
+source was found by the repository reference audit, Ruff, or Vulture. This is an explicit budget
+reconciliation decision still requiring approval, not an implicit exemption.
+
 The repository-wide `check_lines` hook also continues to report the seven pre-existing oversized
-test files owned by the test-mirroring issues. Consequently, the source structure is not declared
-frozen by this audit; the line-budget reconciliation and test-tree gate remain explicit follow-up
-work rather than undocumented exemptions.
+test files owned by the test-mirroring issues. All other prek hooks pass, and the complete
+non-Selenium suite passes with 688 tests passed and 16 skipped. Consequently, the source structure
+is not declared frozen by this audit; the source-budget decision and test-tree gate remain explicit
+follow-up work rather than undocumented exemptions.
