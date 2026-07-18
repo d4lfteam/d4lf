@@ -22,7 +22,7 @@ from src.item.data.seasonal_attribute import SeasonalAttribute
 from src.item.models import FilterResult, Item, ItemJSONEncoder, MatchedFilter
 
 if TYPE_CHECKING:
-    from src.dataloader import Dataloader
+    from src.item.data.loader import Dataloader
     from src.item.filter.engine import Filter
     from src.item.sigil_rules import (
         SIGIL_RULE_TARGET_TYPES,
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 _LAZY_EXPORTS = {
     "Filter": ("src.item.filter.engine", "Filter"),
-    "Dataloader": ("src.dataloader", "Dataloader"),
+    "Dataloader": ("src.item.data.loader", "Dataloader"),
     "SIGIL_RULE_TARGET_TYPES": ("src.item.sigil_rules", "SIGIL_RULE_TARGET_TYPES"),
     "SigilItem": ("src.item.sigil_rules", "SigilItem"),
     "SigilRuleTarget": ("src.item.sigil_rules", "SigilRuleTarget"),

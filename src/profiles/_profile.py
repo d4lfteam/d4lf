@@ -72,7 +72,7 @@ class ProfileModel(BaseModel):
     @classmethod
     def aspects_must_exist(cls, data: object) -> object:
         # This on module level would be a circular import, so we do it lazy for now
-        from src.dataloader import Dataloader  # ruff:ignore[import-outside-top-level]
+        from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
 
         data_dict = _as_string_keyed_dict(data)
         if data_dict is None:

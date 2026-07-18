@@ -4,25 +4,9 @@ from collections.abc import Iterable
 from enum import Enum
 from numbers import Integral
 
-from src.settings import get_ui_coordinates
-
 LOGGER = logging.getLogger(__name__)
 
 type Rectangle = tuple[int, int, int, int]
-
-
-def compare_tuples(t1, t2, uncertainty):
-    return abs(t1[0] - t2[0]) <= uncertainty and abs(t1[1] - t2[1]) <= uncertainty
-
-
-def create_roi_from_rel(point, rel_roi):
-    if isinstance(rel_roi, str):
-        rel_roi = getattr(get_ui_coordinates().roi, rel_roi)
-    x, y = point
-    rel_x, rel_y, w, h = rel_roi
-    abs_x = x + rel_x
-    abs_y = y + rel_y
-    return abs_x, abs_y, w, h
 
 
 def fit_roi_to_window_size(roi, size):
@@ -250,3 +234,9 @@ def is_in_roi(
         return not (x_min <= x <= x_max) and y_min <= y <= y_max
     msg = "Invalid condition specified"
     raise ValueError(msg)
+
+
+def is_point_in_roi(roi: list[float], pos: tuple[float, float]) -> bool:
+    """Check whether a point lies strictly inside an ``(x, y, width, height)`` ROI."""
+    x, y, width, height = roi
+    return x < pos[0] < x + width and y < pos[1] < y + height

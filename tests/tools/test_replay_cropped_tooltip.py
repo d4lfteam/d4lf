@@ -5,9 +5,7 @@ import cv2
 import numpy as np
 import pytest
 
-from src.item.data.affix import Affix
-from src.item.data.aspect import Aspect
-from src.item.models import Item
+from src.item import Affix, Aspect, Item
 from src.perception import (
     BulletMatchDiagnostics,
     DiagnosticLocatorResult,

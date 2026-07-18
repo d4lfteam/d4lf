@@ -36,11 +36,13 @@ from ._geometry import (
     locate_affix_markers_with_diagnostics,
 )
 from ._matching_models import SearchResult, TemplateMatch
+from ._polling import run_until_condition
 from ._screenshot import screenshot
 from ._text import (
     clean_str,
     closest_match,
     closest_to,
+    correct_name,
     find_number,
     keep_letters_and_spaces,
     remove_text_after_first_keyword,
@@ -67,6 +69,7 @@ __all__ = [
     "closest_match",
     "closest_to",
     "compare_image_histograms",
+    "correct_name",
     "create_template_query",
     "crop_image",
     "filter_data",
@@ -89,6 +92,7 @@ __all__ = [
     "read_latest_item",
     "remove_text_after_first_keyword",
     "reset_window_position",
+    "run_until_condition",
     "screenshot",
     "search_templates",
     "start_connection",

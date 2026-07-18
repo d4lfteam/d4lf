@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from src.importing._filters import get_class_name
 from src.item import Dataloader, ItemRarity
-from src.scripts import correct_name
+from src.perception import correct_name
 
 from .constants import (
     BUILD_DESCRIPTION_XPATH,

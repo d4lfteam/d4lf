@@ -9,7 +9,7 @@ from src.importing._conversion import as_string_keyed_mapping as _as_mapping
 from src.importing._filters import fix_offhand_type, fix_weapon_type, match_to_enum
 from src.importing._web import get_with_retry
 from src.item import ItemType
-from src.scripts import correct_name
+from src.perception import correct_name
 
 from .constants import BUILD_SCRIPT_PREFIX, PLANNER_API_BASE_URL, PLANNER_API_REGEX, PLANNER_BASE_URL, SCRIPT_XPATH
 
@@ -176,26 +176,6 @@ def _resolve_visible_profile_index(profiles: Sequence[Mapping[str, object]], vis
             return profile_index
         visible_index += 1
     return visible_profile_index
-
-
-def _extract_guide_profile_id(embed: lxml.html.HtmlElement) -> int | None:
-    if data_id := embed.get("data-d4-id"):
-        return int(data_id.split(",")[0]) - 1
-    if data_ids := embed.get("data-d4-data"):
-        guide_profile_ids = [int(value) for value in data_ids.split(",") if value]
-        if (active_tab_index := _extract_active_guide_embed_tab_index(embed)) is not None and active_tab_index < len(
-            guide_profile_ids
-        ):
-            return guide_profile_ids[active_tab_index] - 1
-        return guide_profile_ids[0] - 1
-    return None
-
-
-def _extract_active_guide_embed_tab_index(embed: lxml.html.HtmlElement) -> int | None:
-    for index, tab in enumerate(embed.xpath(".//*[contains(@class, 'd4t-tabs')]/li")):
-        if "d4t-active" in (tab.get("class") or ""):
-            return index
-    return None
 
 
 __all__ = [name for name in globals() if not name.startswith("__")]

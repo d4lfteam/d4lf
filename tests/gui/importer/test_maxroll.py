@@ -6,7 +6,6 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.dataloader import Dataloader
 from src.importing import ImportOptions, ImportRequest
 from src.importing.maxroll.adapter import (
     _find_item_affixes,
@@ -14,8 +13,8 @@ from src.importing.maxroll.adapter import (
     _resolve_visible_profile_index,
     import_maxroll,
 )
-from src.importing.paragon_export import extract_maxroll_paragon_steps
-from src.item.data.item_type import ItemType
+from src.importing.paragon import extract_maxroll_paragon_steps
+from src.item import Dataloader, ItemType
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture

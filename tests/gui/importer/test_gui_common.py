@@ -1,4 +1,3 @@
-from src.dataloader import Dataloader
 from src.importing import assemble_profile_file_name
 from src.importing._filters import (
     affix_dict_for_item_type,
@@ -9,9 +8,7 @@ from src.importing._filters import (
     unique_filter_name,
 )
 from src.importing.config import DEFAULT_FILENAME_PARTS, FilenamePart, ImportConfig
-from src.item.data.affix import Affix, AffixType
-from src.item.data.item_type import WEAPON_TYPES, ItemType
-from src.item.data.rarity import ItemRarity
+from src.item import WEAPON_TYPES, Affix, AffixType, Dataloader, ItemRarity, ItemType
 from src.profiles import CharmFilterModel, ItemFilterModel, ProfileModel, to_yaml_str
 
 

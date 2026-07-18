@@ -2,10 +2,10 @@ import json
 import typing
 from types import SimpleNamespace
 
-from src.dataloader import Dataloader
 from src.importing import FilenamePart, ImportOptions, ImportRequest
 from src.importing.infinitybuilds import import_infinitybuilds
-from src.importing.paragon_export import InfinityBuildsParagonCatalog
+from src.importing.paragon import InfinityBuildsParagonCatalog
+from src.item import Dataloader
 
 if typing.TYPE_CHECKING:
     from collections.abc import Mapping, Sequence

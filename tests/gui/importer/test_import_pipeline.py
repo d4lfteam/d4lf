@@ -1,9 +1,8 @@
 from types import SimpleNamespace
 
-from src.dataloader import Dataloader
 from src.importing.config import FilenamePart, ImportConfig
 from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
-from src.item.data.item_type import ItemType
+from src.item import Dataloader, ItemType
 from src.profiles import ItemFilterModel
 
 

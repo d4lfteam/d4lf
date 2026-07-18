@@ -63,7 +63,7 @@ class ItemFilterModel(BaseModel):
     @model_validator(mode="after")
     def affix_names_must_match_item_pool(self) -> ItemFilterModel:
         # This on module level would be a circular import, so we do it lazy for now
-        from src.dataloader import Dataloader  # ruff:ignore[import-outside-top-level]
+        from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
 
         affix_dict = Dataloader().affix_dict
         _validate_affix_pool_names(self.affix_pool, affix_dict, "affixPool")
@@ -130,7 +130,7 @@ class CharmFilterModel(_BaseSealOrCharmFilterModel):
     @model_validator(mode="after")
     def affix_names_must_match_charm_pool(self) -> CharmFilterModel:
         # This on module level would be a circular import, so we do it lazy for now
-        from src.dataloader import Dataloader  # ruff:ignore[import-outside-top-level]
+        from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
 
         _validate_affix_pool_names(self.affix_pool, Dataloader().charm_affix_dict, "affixPool")
         return self
@@ -140,7 +140,7 @@ class SealFilterModel(_BaseSealOrCharmFilterModel):
     @model_validator(mode="after")
     def affix_names_must_match_seal_pool(self) -> SealFilterModel:
         # This on module level would be a circular import, so we do it lazy for now
-        from src.dataloader import Dataloader  # ruff:ignore[import-outside-top-level]
+        from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
 
         _validate_affix_pool_names(self.affix_pool, Dataloader().seal_affix_dict, "affixPool")
         return self

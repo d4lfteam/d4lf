@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from src.scripts.handler import ScriptHandler
+from src.app.handler import ScriptHandler
 
 
 def test_loot_interaction_stops_and_restarts_running_vision_mode():

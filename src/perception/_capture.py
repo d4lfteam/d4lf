@@ -8,7 +8,8 @@ import mss.windows
 import numpy as np
 
 from src.settings import get_ui_coordinates
-from src.utils.misc import convert_args_to_numpy
+
+from ._capture_helpers import convert_args_to_numpy
 
 LOGGER = logging.getLogger(__name__)
 

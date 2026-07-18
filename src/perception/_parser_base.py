@@ -12,12 +12,12 @@ from src.item import (
     Item,
     ItemRarity,
     ItemType,
+    SeasonalAttribute,
     SigilRules,
     is_consumable,
     is_seal_or_charm,
 )
-from src.item.data.seasonal_attribute import SeasonalAttribute
-from src.scripts import correct_name
+from src.perception._text import correct_name
 
 from ._text import find_number, keep_letters_and_spaces
 

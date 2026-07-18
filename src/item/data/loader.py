@@ -4,7 +4,7 @@ import pathlib
 import threading
 from typing import TypeGuard
 
-from src.item import ItemType
+from src.item.data.item_type import ItemType
 from src.settings import BASE_DIR, get_settings
 
 LOGGER = logging.getLogger(__name__)

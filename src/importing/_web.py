@@ -1,7 +1,6 @@
 import functools
 import logging
-import time
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import httpx
 from selenium import webdriver
@@ -9,7 +8,6 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 from seleniumbase import Driver
@@ -17,7 +15,7 @@ from seleniumbase import Driver
 from src.settings import BrowserType, get_settings
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from selenium.webdriver.remote.webelement import WebElement
 
 LOGGER = logging.getLogger(__name__)
 HEADERS = {"User-Agent": "Diablo 4 Loot Filter - Profile Importer"}
@@ -36,20 +34,6 @@ def get_with_retry(url: str, custom_headers: dict[str, str] | None = None) -> ht
         return response
     LOGGER.error(msg := f"Failed to get a successful response after 10 attempts: {url=}")
     raise ConnectionError(msg)
-
-
-def handle_popups[T: WebElement](
-    driver: WebDriver, method: Callable[[WebDriver], Literal[False] | T], timeout: int = 10
-) -> None:
-    LOGGER.info("Handling cookie / adblock popups")
-    wait = WebDriverWait(driver, timeout)
-    for _ in range(3):
-        try:
-            element = wait.until(method)
-        except TimeoutException:
-            break
-        element.click()
-        time.sleep(1)
 
 
 def hover_and_get_tooltip_html(

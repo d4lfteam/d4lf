@@ -11,11 +11,6 @@ LOGGER = logging.getLogger(__name__)
 _lock = threading.RLock()
 
 
-def set_overlay_class(overlay_class: type[BossTimerOverlay]) -> None:
-    global BossTimerOverlay
-    BossTimerOverlay = overlay_class
-
-
 def open_overlay() -> None:
     def create() -> None:
         with _lock:
@@ -43,7 +38,7 @@ def is_open() -> bool:
         return _widget_shared._OVERLAY_INSTANCE is not None
 
 
-def _forget(overlay: BossTimerOverlay | None) -> None:
+def _forget(overlay: object | None) -> None:
     with _lock:
         if _widget_shared._OVERLAY_INSTANCE is overlay:
             _widget_shared._OVERLAY_INSTANCE = None

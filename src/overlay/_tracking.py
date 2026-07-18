@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING
 
 from src.automation import move_pointer
 from src.perception import abs_window_to_monitor, game_window_roi, window_to_monitor
-from src.scripts._singleton import singleton
 from src.settings import get_settings
 
 from ._settings import InfoSettingValue, load_settings, setting_position
+from ._singleton import singleton
 from ._statistics import SessionStats
 
 if TYPE_CHECKING:

@@ -6,6 +6,7 @@ import time
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
+from src.app import create_script_handler
 from src.autoupdater import notify_if_update
 from src.settings import get_settings
 
@@ -13,7 +14,6 @@ if sys.platform == "win32":
     from src import perception as _perception
     from src.automation import WindowSpec, start_detecting_window
     from src.item import Filter
-    from src.loot import create_script_handler
     from src.overlay import Overlay
     from src.perception import game_window_ready
 else:

@@ -9,11 +9,11 @@ from src.importing._filters import (
     update_mingreateraffixcount,
 )
 from src.importing._web import get_with_retry, retry_importer
-from src.importing.paragon_export import extract_maxroll_paragon_steps
+from src.importing.paragon import extract_maxroll_paragon_steps
 from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.item import Dataloader, ItemRarity, ItemType
+from src.perception import correct_name
 from src.profiles import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
-from src.scripts import correct_name
 
 from .constants import BUILD_GUIDE_BASE_URL, PLANNER_API_DATA_URL, PLANNER_BASE_URL
 from .items import _find_item_affixes, _find_item_rarity

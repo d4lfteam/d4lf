@@ -40,7 +40,7 @@ class AffixFilterModel(AffixAspectFilterModel):
     @classmethod
     def name_must_exist(cls, name: str) -> str:
         # This on module level would be a circular import, so we do it lazy for now
-        from src.dataloader import Dataloader  # ruff:ignore[import-outside-top-level]
+        from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
 
         if (
             name not in Dataloader().affix_dict
@@ -102,7 +102,7 @@ class AspectUniqueFilterModel(AffixAspectFilterModel):
     @classmethod
     def name_must_exist(cls, name: str) -> str:
         # This on module level would be a circular import, so we do it lazy for now
-        from src.dataloader import Dataloader  # ruff:ignore[import-outside-top-level]
+        from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
 
         # Ensure name is in format we expect
         name = name.lower().replace("'", "").replace(" ", "_").replace(",", "")

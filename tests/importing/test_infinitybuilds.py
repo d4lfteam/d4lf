@@ -6,7 +6,6 @@ from types import SimpleNamespace
 import lxml.html
 import pytest
 
-from src.dataloader import Dataloader
 from src.importing import ImportOptions, ImportRequest
 from src.importing.infinitybuilds import import_infinitybuilds
 from src.importing.infinitybuilds._extraction import (
@@ -17,6 +16,7 @@ from src.importing.infinitybuilds._extraction import (
     _normalize_aspect_name,
     _resolve_gear_data,
 )
+from src.item import Dataloader
 
 if typing.TYPE_CHECKING:
     from collections.abc import Mapping, Sequence

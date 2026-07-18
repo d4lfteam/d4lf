@@ -18,7 +18,7 @@ from src.automation import (
     move_items_to_stash,
     safe_exit,
 )
-from src.dataloader import Dataloader
+from src.item import Dataloader
 from src.loot import VisionMode, create_vision_mode, run_loot_filter
 from src.overlay import InventoryExpTracker, is_info_overlay_open, open_boss_timer_overlay, request_close
 from src.overlay import set_busy_checker as set_info_busy_checker

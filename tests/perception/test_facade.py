@@ -3,7 +3,7 @@ import sys
 import pytest
 
 from src import perception
-from src.item.data.item_type import ItemType
+from src.item import ItemType
 
 
 def test_parse_item_text_is_typed_facade_for_terminal_items():

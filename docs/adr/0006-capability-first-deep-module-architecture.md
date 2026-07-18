@@ -233,3 +233,27 @@ changes.
   or below 26,213, and the complete non-Selenium behavioral suite passes.
 - The two modules classified for deletion remain source until their non-Python, dynamic, Windows,
   and PyInstaller reachability has been verified.
+
+## Source-freeze audit
+
+The source migration audit on 2026-07-18 completed the structural checks that do not require the
+later mirrored test tree:
+
+- The remaining oversized source module, importer Paragon export, is split into the cohesive
+  `src.importing.paragon` subpackage. Its `__init__.py` is the public seam for source-specific
+  Paragon extraction; generic Paragon transformation and overlay behavior remain owned by
+  `src.paragon`.
+- Data loading is owned by `src.item.data.loader` and exposed from `src.item`; text-name
+  normalization is owned by `src.perception`; the runtime coordinator is owned by `src.app`; and
+  overlay singleton state is owned by `src.overlay`.
+- The obsolete `src.dataloader`, `src.scripts`, `src.utils`, and empty parallel GUI packages were
+  removed after repository-wide import and entry-point searches. Cross-capability production and
+  test callers now use capability or documented subpackage facades.
+- Every Python file under `src` is at most 300 physical lines. The complete non-Selenium suite
+  passes at 688 passed and 16 skipped, and `ty` passes.
+
+The historical 26,213-line budget is not yet met: the audited source tree measures 27,185 lines.
+The repository-wide `check_lines` hook also continues to report the seven pre-existing oversized
+test files owned by the test-mirroring issues. Consequently, the source structure is not declared
+frozen by this audit; the line-budget reconciliation and test-tree gate remain explicit follow-up
+work rather than undocumented exemptions.

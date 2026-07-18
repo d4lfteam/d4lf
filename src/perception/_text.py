@@ -3,7 +3,24 @@ import re
 import rapidfuzz
 import rapidfuzz.distance.Levenshtein
 
-from src.dataloader import Dataloader
+from src.item import Dataloader
+
+
+def correct_name(name: str) -> str | None:
+    if name:
+        return (
+            name
+            .strip()
+            .lower()
+            .replace(" (crucible)", "")
+            .replace("'", "")
+            .replace(" ", "_")
+            .replace("\xa0", "_")
+            .replace(",", "")
+            .replace("(", "")
+            .replace(")", "")
+        )
+    return name
 
 
 def keep_letters_and_spaces(text: str) -> str:

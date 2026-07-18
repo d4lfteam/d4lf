@@ -12,3 +12,17 @@
 - [ ] Every source module has a clear capability owner and no known dead code remains.
 - [ ] All prek checks and the complete non-Selenium test suite pass.
 - [ ] The source package structure is declared frozen before any test-tree restructuring begins.
+
+## Audit
+
+The structural source work is implemented, but this issue remains open until the stated freeze
+gates are actually met. The source tree now has no files over 300 lines, no legacy capability
+paths, and no cross-capability production imports through implementation modules. Importer Paragon
+export is split behind `src.importing.paragon`; Item, Perception, Application, and Overlay now own
+the former shared seams. The non-Selenium suite passes with 688 passed and 16 skipped, and `ty`
+passes.
+
+The measured source total is 27,185 lines versus the 26,213-line ceiling. `uv run prek run -a`
+therefore still fails only its repository-wide test line gate, which reports the seven oversized
+test files assigned to issues 22 and 25; all other hooks pass. The source freeze and status remain
+open until the source budget is reconciled and the test-tree gate is completed.

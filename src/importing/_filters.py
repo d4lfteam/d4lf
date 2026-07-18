@@ -4,8 +4,7 @@ from typing import TYPE_CHECKING, TypeVar
 
 import rapidfuzz
 
-from src.dataloader import Dataloader
-from src.item import WEAPON_TYPES, Affix, AffixType, ItemRarity, ItemType
+from src.item import WEAPON_TYPES, Affix, AffixType, Dataloader, ItemRarity, ItemType
 from src.perception import closest_match
 from src.profiles import (
     AffixFilterCountModel,
@@ -22,10 +21,6 @@ if TYPE_CHECKING:
 E = TypeVar("E", bound=Enum)
 FilterModelT = TypeVar("FilterModelT", bound=ItemFilterModel | CharmFilterModel | SealFilterModel)
 LOGGER = logging.getLogger(__name__)
-
-
-def extract_digits(text: str) -> int:
-    return int("".join(char for char in text if char.isdigit()))
 
 
 def fix_weapon_type(input_str: str) -> ItemType | None:
@@ -69,11 +64,6 @@ def fix_offhand_type(input_str: str, class_str: str) -> ItemType | None:
         if "shield" in input_str:
             return ItemType.Shield
     return None
-
-
-def format_number_as_short_string(n: int) -> str:
-    result = n / 1_000_000
-    return f"{int(result)}M" if result.is_integer() else f"{result:.2f}M"
 
 
 PLAYER_CLASSES = ["barbarian", "druid", "necromancer", "rogue", "sorcerer", "spiritborn", "paladin", "warlock"]

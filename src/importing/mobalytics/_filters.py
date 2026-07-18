@@ -16,9 +16,10 @@ from src.importing._filters import (
     update_mingreateraffixcount,
     weapon_slot_name_hint,
 )
-from src.importing.paragon_export import extract_mobalytics_paragon_steps
+from src.importing.paragon import extract_mobalytics_paragon_steps
 from src.importing.pipeline import Variant
 from src.item import WEAPON_TYPES, Dataloader, ItemType
+from src.perception import correct_name
 from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,
@@ -27,7 +28,6 @@ from src.profiles import (
     ItemFilterModel,
     SealFilterModel,
 )
-from src.scripts import correct_name
 
 from ._extraction import (
     LOGGER,

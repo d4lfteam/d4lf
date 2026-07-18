@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 from src.importing import ImportOptions, ImportRequest, ImportResult, assemble_profile_file_name
 from src.importing._filters import deduplicate_filters, sort_profile_filters
 from src.importing._profiles import add_to_profiles
-from src.importing.paragon_export import build_paragon_profile_payload
+from src.importing.paragon import build_paragon_profile_payload
 from src.profiles import CharmFilterModel, ItemFilterModel, ProfileDocumentStore, ProfileModel, SealFilterModel
 
 LOGGER = logging.getLogger(__name__)

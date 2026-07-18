@@ -12,8 +12,7 @@ from src.importing._conversion import as_text as _as_text  # ruff:ignore[unused-
 from src.importing._filters import affix_dict_for_item_type, fix_weapon_type, match_set_aware_seal_affix
 from src.importing._web import hover_and_get_tooltip_html
 from src.item import Affix, AffixType, Dataloader, ItemType
-from src.perception import clean_str, closest_match
-from src.scripts import correct_name
+from src.perception import clean_str, closest_match, correct_name
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence

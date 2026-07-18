@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import rapidfuzz
 
 from src.item import Affix, AffixType, Aspect, Dataloader, ItemRarity, ItemType, is_armor, is_jewelry, is_weapon
-from src.scripts import correct_name
+from src.perception._text import correct_name
 
 if TYPE_CHECKING:
     from src.item import Item

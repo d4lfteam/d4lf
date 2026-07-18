@@ -19,7 +19,7 @@ from src.importing._filters import (
     weapon_slot_name_hint,
 )
 from src.importing._web import retry_importer
-from src.importing.paragon_export import extract_d4builds_paragon_steps
+from src.importing.paragon import extract_d4builds_paragon_steps
 from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.item import WEAPON_TYPES, Affix, AffixType, ItemType
 from src.perception import clean_str, closest_match

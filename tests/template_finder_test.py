@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 
 import src.perception._matching as matching
+from src.perception._roi import is_point_in_roi
 from src.settings import Template
-from src.utils.misc import is_in_roi
 
 
 def _read_test_image(name: str) -> np.ndarray:
@@ -39,7 +39,7 @@ def test_search_best_match():
     result = matching.search([cross, slash], image, threshold=0.6, mode="all")
     match = result.matches[0]
     assert match.center is not None
-    assert is_in_roi(slash_expected_roi, match.center)
+    assert is_point_in_roi(slash_expected_roi, match.center)
 
 
 def test_search_all():

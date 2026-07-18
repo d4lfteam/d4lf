@@ -1,11 +1,10 @@
 import logging
 import time
 from collections.abc import Sequence
-from enum import Enum
 from typing import TYPE_CHECKING
 
+from src.perception import run_until_condition
 from src.settings import send
-from src.utils.misc import run_until_condition
 
 if TYPE_CHECKING:
     import numpy as np
@@ -14,11 +13,6 @@ if TYPE_CHECKING:
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-class ToggleMethod(Enum):
-    BUTTON = 1
-    HOTKEY = 2
 
 
 class Menu:

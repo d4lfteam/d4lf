@@ -3,14 +3,14 @@ import typing
 
 import pytest
 
-from src.dataloader import Dataloader
 from src.importing import ImportOptions, ImportRequest
 from src.importing.infinitybuilds import import_infinitybuilds
-from src.importing.paragon_export import (
+from src.importing.paragon import (
     InfinityBuildsParagonCatalog,
     extract_infinitybuilds_paragon_steps,
     fetch_infinitybuilds_paragon_catalog,
 )
+from src.item import Dataloader
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -115,7 +115,7 @@ def test_fetch_infinitybuilds_paragon_catalog_builds_label_maps_from_both_datase
         "paragon": {"glyphs": [{"id": "glyph::rare-016-dexterity-side", "label": "Exploit"}]}
     }
     get_with_retry = mocker.patch(
-        "src.importing.paragon_export.get_with_retry", side_effect=[boards_response, glyphs_response]
+        "src.importing.paragon.infinitybuilds.get_with_retry", side_effect=[boards_response, glyphs_response]
     )
     catalog = fetch_infinitybuilds_paragon_catalog()
     assert get_with_retry.call_args_list[0][0][0].endswith("paragon-boards.json")

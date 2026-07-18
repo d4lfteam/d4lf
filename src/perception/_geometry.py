@@ -6,8 +6,7 @@ from ._tooltip_texture import BULLET_THRESHOLD
 if TYPE_CHECKING:
     import numpy as np
 
-    from src.item.data.affix import Affix
-    from src.item.models import Item
+    from src.item import Affix, Item
 
     from ._matching_models import TemplateMatch
     from ._tooltip_texture import BulletSearchTrace

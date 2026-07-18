@@ -18,8 +18,8 @@ from src.importing.mobalytics._extraction import (
     _get_weapon_type_from_slot_tooltip,
     _log_mobalytics_page_diagnostics,
 )
-from src.importing.paragon_export import build_paragon_profile_payload, extract_mobalytics_paragon_steps
-from src.item.data.item_type import ItemType
+from src.importing.paragon import build_paragon_profile_payload, extract_mobalytics_paragon_steps
+from src.item import ItemType
 from src.profiles import ParagonPayloadModel
 
 if typing.TYPE_CHECKING:

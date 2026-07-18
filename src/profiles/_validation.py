@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from src.item import ItemRarity
-from src.scripts import correct_name
+from src.perception import correct_name
 
 if TYPE_CHECKING:
     from src.profiles._affixes import AffixFilterCountModel
@@ -18,7 +18,7 @@ def _validate_set_name(name: str | None, field_name: str) -> str | None:
         return None
 
     # This on module level would be a circular import, so we do it lazy for now
-    from src.dataloader import Dataloader  # ruff:ignore[import-outside-top-level]
+    from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
 
     name = correct_name(name)
     if name not in Dataloader().set_list:
@@ -39,7 +39,7 @@ def _normalize_tribute_names(data: str | list[str] | None) -> list[str]:
     values = [data] if isinstance(data, str) else data
 
     # This on module level would be a circular import, so we do it lazy for now
-    from src.dataloader import Dataloader  # ruff:ignore[import-outside-top-level]
+    from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
 
     tribute_dict = Dataloader().tribute_dict
     normalized_names: list[str] = []

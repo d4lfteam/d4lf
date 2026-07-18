@@ -3,9 +3,9 @@ import re
 import time
 
 from src.perception import Publisher
-from src.scripts._singleton import singleton
 
 from ._settings import load_settings, save_settings
+from ._singleton import singleton
 
 LOGGER = logging.getLogger(__name__)
 

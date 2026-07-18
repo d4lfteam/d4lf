@@ -16,7 +16,7 @@ from src.importing._filters import (
 )
 from src.importing._web import retry_importer
 from src.importing.config import ImportConfig
-from src.importing.paragon_export import (
+from src.importing.paragon import (
     InfinityBuildsParagonCatalog,
     extract_infinitybuilds_paragon_steps,
     fetch_infinitybuilds_paragon_catalog,

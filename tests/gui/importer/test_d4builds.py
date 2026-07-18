@@ -8,15 +8,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
-from src.dataloader import Dataloader
 from src.importing import ImportOptions, ImportRequest
-from src.importing import paragon_export as paragon_export_module
 from src.importing.d4builds import adapter as d4builds_module
 from src.importing.d4builds import constants as d4builds_constants
 from src.importing.d4builds import extraction as _d4builds_helpers
 from src.importing.d4builds import metadata as d4builds_metadata
-from src.importing.paragon_export import build_paragon_profile_payload
-from src.item.data.item_type import ItemType
+from src.importing.paragon import build_paragon_profile_payload
+from src.importing.paragon import d4builds as paragon_module
+from src.item import Dataloader, ItemType
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -418,7 +417,7 @@ def test_parse_d4builds_paragon_boards_produces_valid_typed_payload_input() -> N
             msg = f"unexpected selector: {value}"
             raise AssertionError(msg)
 
-    boards = paragon_export_module._parse_d4builds_paragon_boards(_FakeDriver(), class_slug="barbarian")
+    boards = paragon_module._parse_d4builds_paragon_boards(_FakeDriver(), class_slug="barbarian")
     payload = build_paragon_profile_payload("Build Name", "https://example.invalid", boards)
 
     board = payload.paragon_boards_list[0][0]
@@ -494,7 +493,7 @@ def test_parse_d4builds_paragon_boards_keeps_supported_rotation_transform_behavi
             msg = f"unexpected selector: {value}"
             raise AssertionError(msg)
 
-    boards = paragon_export_module._parse_d4builds_paragon_boards(_FakeDriver(), class_slug="barbarian")
+    boards = paragon_module._parse_d4builds_paragon_boards(_FakeDriver(), class_slug="barbarian")
     board = boards[0][0]
 
     assert board["Rotation"] == f"{rotation_deg}°"
@@ -564,7 +563,7 @@ def test_parse_d4builds_paragon_boards_uses_question_mark_fallback_for_unsupport
             msg = f"unexpected selector: {value}"
             raise AssertionError(msg)
 
-    boards = paragon_export_module._parse_d4builds_paragon_boards(_FakeDriver(), class_slug="barbarian")
+    boards = paragon_module._parse_d4builds_paragon_boards(_FakeDriver(), class_slug="barbarian")
 
     assert boards[0][0]["Rotation"] == "?°"
 

@@ -5,9 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.dataloader import Dataloader
 from src.importing import FilenamePart, ImportOptions, ImportRequest
 from src.importing.mobalytics import import_mobalytics
+from src.item import Dataloader
 
 if typing.TYPE_CHECKING:
     from collections.abc import Mapping, Sequence

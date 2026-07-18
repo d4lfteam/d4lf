@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from src.dataloader import _load_string_map
+from src.item.data.loader import _load_string_map
 
 if TYPE_CHECKING:
     from pathlib import Path

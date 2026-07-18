@@ -8,8 +8,7 @@ from src.importing._conversion import as_string_keyed_mapping as _as_object
 from src.importing._filters import affix_dict_for_item_type
 from src.importing._web import get_with_retry
 from src.item import Affix, AffixType, ItemType
-from src.perception import clean_str, closest_match
-from src.scripts import correct_name
+from src.perception import clean_str, closest_match, correct_name
 
 from ._models import _ResolvedGearData
 

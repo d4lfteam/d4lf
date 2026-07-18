@@ -6,10 +6,9 @@ from typing import override
 
 import numpy as np
 
-from src.utils.misc import run_until_condition
-
 from ._capture import Cam
 from ._image import crop
+from ._polling import run_until_condition
 
 Rectangle = tuple[int, int, int, int]
 TemplateReference = str | np.ndarray
