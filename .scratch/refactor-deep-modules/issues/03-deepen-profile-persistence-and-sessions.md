@@ -11,7 +11,7 @@
 - [x] ProfileSession remains free of PyQt dependencies and preserves its established result behavior.
 - [x] Profile, Paragon payload, and filename terminology matches the domain glossary.
 - [x] No profile implementation file exceeds 300 physical lines.
-- [ ] Focused profile tests and the line guard pass.
+- [x] Focused profile tests and the line guard pass.
 
 ## Answer
 

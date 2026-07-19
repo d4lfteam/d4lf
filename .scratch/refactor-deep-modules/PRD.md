@@ -98,7 +98,8 @@ the Python source and test trees.
   behavior verification. Test relocation, splitting, renaming, and cleanup occur only after the
   source phase is complete and verified.
 - The source phase is complete only when every source Python file is at most 300 physical lines, the
-  behavior suite passes, and source Python LOC does not exceed the 26,213-line baseline.
+  behavior suite passes, and source Python LOC does not exceed the corrected 26,229-line baseline
+  recorded in ADR 0006, unless an explicit offset is approved.
 - The hard 300-line policy applies to Python files in the source and test trees, matching the
   repository guard. It does not expand to C++, hooks, documentation, or configuration in this work.
 - Document the line-limit command alongside the repository's normal validation commands.

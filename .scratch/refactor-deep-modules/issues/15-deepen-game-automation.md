@@ -10,8 +10,8 @@
 - [x] Hotkeys, process discovery, window coordinates, and human-like pointer movement preserve established behavior.
 - [x] Inventory, stash, vendor, and loot-movement actions preserve their ordering and safety checks.
 - [x] Callers no longer coordinate private window, mouse, process, and inventory helpers.
-- [ ] Every touched source Python file is at most 300 physical lines.
-- [ ] Focused automation tests and the line guard pass; focused tests pass, while the repository-wide line guard still reports pre-existing oversized modules, including later-slice callers touched only for import migration.
+- [x] Every touched source Python file is at most 300 physical lines.
+- [x] Focused automation tests and the repository-wide line guard pass.
 
 ## Answer
 

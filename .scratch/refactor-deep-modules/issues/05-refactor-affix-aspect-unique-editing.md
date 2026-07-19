@@ -17,7 +17,7 @@ GUI bucket.
 - [x] Shared editor behavior is cohesive and private to the profile capability rather than a generic GUI bucket.
 - [x] Each affected profile-editor subpackage exposes its intended behavior through `__init__.py`.
 - [x] Every touched source Python file is at most 300 physical lines.
-- [ ] Focused profile-editor tests and the line guard pass.
+- [x] Focused profile-editor tests and the line guard pass.
 
 ## Answer
 

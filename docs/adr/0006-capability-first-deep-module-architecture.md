@@ -266,3 +266,10 @@ test files owned by the test-mirroring issues. All other prek hooks pass, and th
 non-Selenium suite passes with 688 tests passed and 16 skipped. Consequently, the source structure
 is not declared frozen by this audit; the source-budget decision and test-tree gate remain explicit
 follow-up work rather than undocumented exemptions.
+
+## Source-budget reconciliation
+
+On 2026-07-19, the project owner approved the explicit 956-line production-source offset. The
+accepted source budget is therefore 27,185 physical Python lines: the corrected 26,229-line
+architecture-lock baseline plus the approved offset. Tests are accounted for separately and do not
+explain the offset; they decreased from 10,925 to 10,896 physical Python lines over the same period.

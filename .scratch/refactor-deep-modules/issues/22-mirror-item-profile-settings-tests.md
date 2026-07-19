@@ -4,7 +4,7 @@
 
 **Blocked by:** 21 — Freeze and verify the source architecture.
 
-**Status:** ready-for-human
+**Status:** resolved
 
 - [x] Every item, profile, and settings source module has exactly one mirrored `<module>_test.py`.
 - [x] Every package initializer has a mirrored `init_test.py` that exercises meaningful interface behavior.
@@ -22,6 +22,5 @@ shared loader. Shared filter and settings fixtures are centralized in `conftest.
 and module mirrors assert public exports or observable behavior.
 
 Validation passes for the affected manifest (394 tests), Ruff, `ty`, and the complete non-Selenium
-suite (738 passed, 16 skipped). The repository line hook still reports four pre-existing files
-owned by perception/importer follow-up issues 23 and 25; no changed file in this slice exceeds 300
-lines.
+suite (738 passed, 16 skipped at slice completion). The 2026-07-19 final acceptance audit also
+confirms that the repository-wide line hook passes.

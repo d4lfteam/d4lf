@@ -15,7 +15,7 @@ The shell composes the public profile editor subpackage facades (`src.profiles.a
 - [x] Existing tab grouping, dirty-state, and user-notification behavior remain unchanged.
 - [x] Profile-specific GUI code no longer lives in generic desktop or model buckets.
 - [x] Every touched source Python file is at most 300 physical lines.
-- [ ] Focused profile-shell tests and the line guard pass.
+- [x] Focused profile-shell tests and the line guard pass.
 
 ## Answer
 

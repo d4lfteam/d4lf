@@ -10,7 +10,7 @@
 - [x] Item rarity, rarity filter, sigil rule, tribute filter, Mythic equipment, and always-kept behavior remain unchanged.
 - [x] Filtering implementation is split by cohesive behavior, with no Python file over 300 physical lines.
 - [x] Duplicated or unused item behavior is removed without adding forwarding modules.
-- [ ] Focused item tests and the repository-wide line guard pass.
+- [x] Focused item tests and the repository-wide line guard pass.
 - [x] Production LOC for the completed slice does not increase without an explicitly documented offset.
 
 ## Answer

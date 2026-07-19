@@ -12,7 +12,7 @@
 - [x] Callers no longer coordinate private image and geometry helpers across packages.
 - [x] Every new perception source file is at most 300 physical lines.
 - [x] Focused perception tests pass.
-- [ ] The repository-wide line guard passes; pre-existing violations remain outside this slice.
+- [x] The repository-wide line guard passes.
 
 ## Answer
 
