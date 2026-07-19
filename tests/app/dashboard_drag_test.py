@@ -1,13 +1,9 @@
-import os
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 from PyQt6.QtWidgets import QApplication, QWidget
 
-from src.app.dashboard import DragHandleButton
+from src.app.dashboard_drag import DragHandleButton
 
 
-def test_drag_handle_forwards_mouse_events():
+def test_drag_handle_forwards_mouse_events() -> None:
     _app = QApplication.instance() or QApplication([])
     row_widget = QWidget()
     received: list[tuple[object, QWidget, QWidget]] = []

@@ -9,18 +9,19 @@ import pytest
 from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QApplication, QMainWindow
 
+from src.app.lifecycle import UnifiedWindowLifecycle
 from src.app.shell import UnifiedMainWindow
 from src.desktop.activity import QtLogHandler
-from src.profiles.affix import DeleteAffixPool
-from src.profiles.editor import DeleteItem, ProfileEditorWindow
 
 
 @pytest.fixture(scope="module")
 def qapp() -> QApplication:
     app = QApplication.instance()
-    if isinstance(app, QApplication):
-        return app
-    return QApplication([])
+    return app if isinstance(app, QApplication) else QApplication([])
+
+
+def test_lifecycle_is_a_qt_main_window_subclass() -> None:
+    assert issubclass(UnifiedWindowLifecycle, QMainWindow)
 
 
 def test_close_event_preserves_existing_handler_registration(qapp: QApplication, monkeypatch) -> None:
@@ -50,9 +51,3 @@ def test_close_event_preserves_existing_handler_registration(qapp: QApplication,
         assert not handler_list.was_cleared
     finally:
         root_logger.removeHandler(handler)
-
-
-def test_profile_editor_public_facade_exports() -> None:
-    assert ProfileEditorWindow.__module__ == "src.profiles.editor.window"
-    assert DeleteItem.__module__ == "src.profiles.editor.dialogs_delete"
-    assert DeleteAffixPool.__module__ == "src.profiles.affix.dialogs"

@@ -9,7 +9,7 @@ if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
 # Skip Windows-only test modules on non-Windows platforms
-WINDOWS_ONLY_MODULES = ["info_overlay_test.py", "paragon_overlay_test.py", "test_sigils_tab.py", "ui_thread_test.py"]
+WINDOWS_ONLY_MODULES = ["info_overlay_test.py", "paragon_overlay_test.py", "test_sigils_tab.py"]
 
 
 def pytest_ignore_collect(collection_path, config):
