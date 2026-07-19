@@ -15,8 +15,8 @@ Python 3.14 via uv; C++ for the TTS DLL in `tts/`.
 ## Commands
 
 Run these when you think you are finished and make sure these pass.
-Run formatters, type checkers and linters: uv run prek run -a
-Run uniz tests: uv run pytest . -m "not selenium" -v -n logical
+Run formatters, type checkers, line guard and linters: uv run prek run -a
+Run unit tests: uv run pytest . -m "not selenium" -v -n logical
 
 ## Architecture
 

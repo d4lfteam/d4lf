@@ -16,6 +16,7 @@
 .scratch
 .venv
 .vs/
+/d4lf
 /skills-lock.json
 /tts/saapi
 /tts/x64
