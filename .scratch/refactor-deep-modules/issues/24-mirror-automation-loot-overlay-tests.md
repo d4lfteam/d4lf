@@ -21,3 +21,6 @@ the application-handler lifecycle assertion was preserved under `tests/app`. Win
 tests retain explicit WinAPI skips and mocked adapter coverage on non-Windows platforms.
 
 Focused validation passes with 64 tests passed and 5 platform skips, and the 300-line gate passes.
+
+The mirrored tree uses `automation/window` and `overlay/widget` package initializers rather than
+legacy flat test modules.

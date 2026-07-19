@@ -2,11 +2,7 @@ import logging
 import re
 from typing import TYPE_CHECKING
 
-from src.importing._filters import get_class_name
-from src.item import Dataloader, ItemRarity
-from src.perception import correct_name
-
-from .constants import (
+from src.importing.d4builds.constants import (
     BUILD_DESCRIPTION_XPATH,
     BUILD_HEADER_INPUT_XPATH,
     CLASS_XPATH,
@@ -18,6 +14,9 @@ from .constants import (
     SEASON_DROPDOWN_XPATH,
     VARIANT_INPUT_XPATH,
 )
+from src.importing.filters import get_class_name
+from src.item import Dataloader, ItemRarity
+from src.perception import correct_name
 
 LOGGER = logging.getLogger(__name__)
 

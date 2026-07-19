@@ -27,3 +27,8 @@ Focused importer tests pass (115 passed, 16 skipped), and the complete non-Selen
 line hook still reports the pre-existing oversized modules assigned to later refactor slices.
 
 Implemented in rebased commit `0149465`.
+
+### Structural review correction
+
+Importing exposes one common `src.importing.paragon` module; provider-specific Paragon extraction
+belongs in each provider package.

@@ -3,8 +3,8 @@
 from importlib import import_module
 from typing import TYPE_CHECKING
 
-from .assets import DISCORD_ICON, GITHUB_ICON, ICON_PATH, get_asset_path
-from .startup import (
+from src.app.assets import DISCORD_ICON, GITHUB_ICON, ICON_PATH, get_asset_path
+from src.app.startup import (
     SETUP_INSTRUCTIONS_URL,
     check_for_proper_tts_configuration,
     get_d4_local_prefs_file,
@@ -12,7 +12,7 @@ from .startup import (
 )
 
 if TYPE_CHECKING:
-    from .handler import ScriptHandler
+    from src.app.handler import ScriptHandler
 
 __all__ = [
     "DISCORD_ICON",
@@ -36,6 +36,6 @@ def __getattr__(name: str) -> object:
 
 def create_script_handler() -> ScriptHandler:
     """Create the application runtime coordinator."""
-    from .handler import ScriptHandler  # ruff:ignore[import-outside-top-level]
+    from src.app.handler import ScriptHandler  # ruff:ignore[import-outside-top-level]
 
     return ScriptHandler()

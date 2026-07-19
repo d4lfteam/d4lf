@@ -28,3 +28,8 @@ lines. The repository-wide line hook still reports unrelated pre-existing oversi
 which remain assigned to later refactor slices.
 
 Implemented in rebased commit `937a09a`.
+
+### Structural review correction
+
+Provider-specific Paragon extraction remains in the `infinitybuilds` and `mobalytics` packages;
+normalized handling stays in the single common importing module.

@@ -33,3 +33,8 @@ slice, so its checklist item remains open.
 
 The earlier 589-test count was the slice-time result. The profile facade and session boundary remain
 valid after rebasing; the current suite includes target-branch and later-slice coverage.
+
+### Structural review correction
+
+Validation is consolidated under the public `src.profiles.validation` package, replacing the
+split validation/validators arrangement while preserving the resolved behavior and history.

@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from src.settings.coordinates import COLORS, POSITIONS, Template, load_templates
-from src.settings.models_ui import ColorsModel, UiOffsetsModel, UiPosModel, UiRoiModel
+from src.settings.models.ui import ColorsModel, UiOffsetsModel, UiPosModel, UiRoiModel
 from src.settings.validation import singleton
 
 LOGGER = logging.getLogger("d4lf")

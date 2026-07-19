@@ -5,16 +5,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from src import settings as settings_module
-
-from ._character_inventory import CharInventory
-from ._contracts import Inventory, StashInventory
-from ._inventory import ItemSlot
-from ._loot_mover import move_items_to_inventory, move_items_to_stash
-from ._mouse import Mouse
-from ._process import kill_thread, safe_exit, set_process_name
-from ._stash import Stash
-from ._vendor import Vendor
-from ._window import (
+from src.automation.character import CharInventory
+from src.automation.contracts import Inventory, StashInventory
+from src.automation.inventory import ItemSlot
+from src.automation.loot_mover import move_items_to_inventory, move_items_to_stash
+from src.automation.mouse import Mouse
+from src.automation.process import kill_thread, safe_exit, set_process_name
+from src.automation.stash import Stash
+from src.automation.vendor import Vendor
+from src.automation.window import (
     WindowSpec,
     detect_window,
     find_and_set_window_position,

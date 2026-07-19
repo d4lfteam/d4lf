@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from PyQt6.QtWidgets import QWidget
 
-from .contracts import (
+from src.importing.contracts import (
     DEFAULT_FILENAME_PARTS,
     FilenamePart,
     ImportOptions,
@@ -16,7 +16,7 @@ from .contracts import (
     ImportSource,
     assemble_profile_file_name,
 )
-from .service import UnsupportedImportSourceError, import_build, select_source
+from src.importing.service import UnsupportedImportSourceError, import_build, select_source
 
 
 def create_importer_window(parent: QWidget | None = None, accent_color: str | None = None) -> object:

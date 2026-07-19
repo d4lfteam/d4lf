@@ -25,3 +25,8 @@ The focused importer-window and importing tests pass, and all touched source fil
 loot, overlay, desktop, application, and tool slices.
 
 Implemented in rebased commit `2da020a`.
+
+### Structural review correction
+
+The importer consumes the common `src.importing.paragon` module while provider-specific extraction
+is owned by each adapter package.

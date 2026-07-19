@@ -1,6 +1,6 @@
 """Shared Tk-thread primitives used by capability-owned desktop interfaces."""
 
-from ._ui_thread import (
+from src.desktop.ui_thread import (
     call_on_ui_thread,
     create_overlay_toplevel,
     get_root,

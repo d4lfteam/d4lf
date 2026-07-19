@@ -22,3 +22,6 @@ Python fixture modules were removed. The 300-line command is documented in `AGEN
 
 Validation passes with the line guard, all `prek` hooks, 821 non-Selenium tests passed, and 18
 platform skips.
+
+The mirrored tree follows `app/dashboard` and desktop `activity`, `themes`, and `widgets`
+subpackages, including `init_test.py` for each package.

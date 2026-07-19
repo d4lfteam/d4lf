@@ -21,3 +21,8 @@ includes statistics persistence, tracking cooldown, facade behavior, and real li
 Validation: focused overlay tests pass (6 passed, 1 Windows-only test skipped on macOS); the full
 non-Selenium suite passes (674 passed, 16 skipped); Ruff and `ty` pass for the overlay slice. The
 repository-wide line gate still reports the pre-existing oversized files documented by ADR 0006.
+
+### Structural review correction
+
+Widget behavior is finalized under `src.overlay.widget`; lifecycle, statistics, and tracking remain
+separate overlay seams with package facades.

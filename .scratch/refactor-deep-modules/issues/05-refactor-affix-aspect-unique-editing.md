@@ -4,7 +4,7 @@
 
 Profile editor behavior in this slice belongs in the public `src.profiles.affix`,
 `src.profiles.aspect`, `src.profiles.unique`, and `src.profiles.editor` subpackage facades. Do not
-introduce prefixed implementation-module imports or move capability-specific widgets into a generic
+introduce implementation-module imports across package boundaries or move capability-specific widgets into a generic
 GUI bucket.
 
 **Blocked by:** 02 — Deepen item models and filtering; 03 — Deepen profile persistence and sessions; 04 — Deepen settings and configuration.
@@ -32,3 +32,9 @@ unique-aspect threshold modes, aspect upgrades, global uniques, charm/seal behav
 tributes. The complete non-Selenium suite passes: 604 passed and 47 skipped. All touched profile
 source files are below 300 lines. The repository line hook still reports only the pre-existing
 oversized files outside this slice, so its global checkbox remains open for the source-freeze work.
+
+### Structural review correction
+
+The final target nests affix groups under `src.profiles.affix.group` and editor dialogs and profile
+composition under `src.profiles.editor.dialogs` and `.profile`. Implementations remain package-owned
+with descriptive filenames; no underscore-prefixed private modules are required.

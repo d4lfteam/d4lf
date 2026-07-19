@@ -1,5 +1,6 @@
 """Maxroll source adapter for the importing capability."""
 
-from .adapter import import_maxroll
+from src.importing.maxroll.adapter import import_maxroll
+from src.importing.maxroll.paragon import extract_maxroll_paragon_steps
 
-__all__ = ["import_maxroll"]
+__all__ = ["extract_maxroll_paragon_steps", "import_maxroll"]

@@ -30,3 +30,8 @@ physical lines. The repository-wide line hook still reports pre-existing oversiz
 shared `paragon_export.py` and later-ticket adapter files assigned to subsequent migration slices.
 
 Implemented in rebased commit `d977159`.
+
+### Structural review correction
+
+Provider-specific Paragon extraction remains in the `d4builds` and `maxroll` packages; it is not
+duplicated in the common importing module.

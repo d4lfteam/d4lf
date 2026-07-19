@@ -26,3 +26,9 @@ within the 300-line limit. The focused perception tests pass; the repository-wid
 reports pre-existing oversized modules, including legacy callers touched only for import updates
 and unrelated source and test files, so that gate is recorded as pending rather than claimed as
 passed.
+
+### Structural review correction
+
+The final target places capture, matching, and tooltip behavior in their corresponding perception
+subpackages, each exporting from `__init__.py`; implementation filenames are descriptive rather
+than underscore-prefixed.

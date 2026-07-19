@@ -25,3 +25,8 @@ loading, and preserves the current editor when switching or reloading fails. Def
 construction is safe across an early close. Focused shell/profile-editor tests pass, as does the
 full non-Selenium suite (614 passed, 47 skipped), and every touched Python file is within 300 lines.
 The repository-wide line hook remains blocked by pre-existing oversized files outside this slice.
+
+### Structural review correction
+
+Editor dialogs and profile composition are finalized under `src.profiles.editor.dialogs` and
+`src.profiles.editor.profile`, each with an `__init__.py` facade.

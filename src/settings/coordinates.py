@@ -8,9 +8,9 @@ import cv2
 import numpy as np
 
 from src.settings import BASE_DIR
-from src.settings._types import Template
 from src.settings.loader import IniConfigLoader
-from src.settings.models_ui import ColorsModel, HSVRangeModel, UiOffsetsModel, UiPosModel, UiRoiModel
+from src.settings.models.ui import ColorsModel, HSVRangeModel, UiOffsetsModel, UiPosModel, UiRoiModel
+from src.settings.types import Template
 
 LOGGER = logging.getLogger("d4lf")
 

@@ -4,7 +4,8 @@
 
 Continue the public profile-editor subpackage layout established by issue 05. Shared editor
 primitives belong under `src.profiles.editor`; charm/seal and sigil/tribute behavior should expose
-their own cohesive subpackage facades rather than importing prefixed modules or generic GUI buckets.
+their own cohesive subpackage facades rather than importing implementation paths across package
+boundaries or using generic GUI buckets.
 The public capability subpackages are `src.profiles.charm_seal`, `src.profiles.sigil`, and
 `src.profiles.tribute`.
 

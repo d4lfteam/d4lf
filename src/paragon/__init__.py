@@ -2,7 +2,7 @@
 
 # Overlay functions are loaded lazily to keep profile/model imports headless.
 
-from ._transform import (
+from .transform import (
     GRID,
     NODES_LEN,
     class_slug_from_name,
@@ -37,7 +37,7 @@ __all__ = [
 
 def __getattr__(name: str):
     if name in {"format_board_display_text", "load_builds_from_path", "request_close", "run_paragon_overlay"}:
-        from . import _overlay
+        from . import overlay as _overlay
 
         return getattr(_overlay, name)
     message = f"module {__name__!r} has no attribute {name!r}"

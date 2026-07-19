@@ -2,8 +2,9 @@
 
 D4LF is being refactored from technical-layer packages into capability-first deep modules. Each
 capability owns its behavior and exposes a deliberately small package facade through its
-`__init__.py`. A caller in another capability may import only that facade; implementation modules
-are private to their owning package.
+`__init__.py`. A caller in another capability may import only that facade. The final layout uses
+descriptive, non-prefixed implementation names; a leading underscore is not the mechanism for
+privacy. Privacy is enforced by package ownership and facade imports.
 
 ## Decision
 
@@ -27,7 +28,7 @@ The target source layout has these capability packages:
 `src.main` remains the executable entry point. It is not a general-purpose public API. Each
 capability may contain cohesive public subpackages, and each package or subpackage exposes its
 deliberate interface from `__init__.py`. A subpackage may use implementation modules internally,
-but callers do not import prefixed implementation paths. The capability root remains the only
+but callers do not import implementation paths directly. The capability root remains the only
 cross-capability import location unless a subpackage is itself an explicitly documented
 cross-capability seam. Application composition is the runtime place that wires multiple capability
 facades together; cross-capability integration tests may compose those public facades. This rule
@@ -68,6 +69,29 @@ primitives shared by multiple capabilities:
 
 These subpackages are explicit cross-capability seams; their implementation modules remain private.
 
+## Corrected final layout (structural review, 2026-07-19)
+
+The migration inventory below records historical source paths, but the frozen target is the
+following package shape. Every listed package (including nested packages) owns its public interface
+in `__init__.py`; implementation files use ordinary descriptive names and never a leading
+underscore.
+
+| Area        | Final package seams                                                                                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Application | `src.app.dashboard` owns dashboard controls, drag, and profile composition; `src.app` retains shell and lifecycle composition.                                                                                                             |
+| Automation  | `src.automation.window` owns the window contract and real Windows/no-op adapters.                                                                                                                                                          |
+| Overlay     | `src.overlay.widget` owns widget behavior; lifecycle, statistics, and tracking remain sibling seams.                                                                                                                                       |
+| Paragon     | `src.paragon.overlay` owns overlay behavior; transformation and data remain under `src.paragon`.                                                                                                                                           |
+| Perception  | `src.perception.backend`, `.matching`, `.capture`, `.parser`, and `.tooltip` are public subpackages with facades.                                                                                                                          |
+| Profiles    | `src.profiles.affix.group` owns affix-group behavior; `src.profiles.editor.dialogs` and `.profile` own editor dialogs/profile composition. `src.profiles.validation` consolidates validation and validator behavior into cohesive modules. |
+| Settings    | `src.settings.models` is the public model seam; model implementations are beneath that package.                                                                                                                                            |
+| Desktop     | `src.desktop.activity`, `.themes`, and `.widgets` are implementation-bearing subpackages, each exposing its interface from `__init__.py`.                                                                                                  |
+| Importing   | `src.importing.paragon` contains one common module for normalized Paragon handling. Provider-specific Paragon extraction lives in each provider package (`d4builds`, `infinitybuilds`, `maxroll`, and `mobalytics`).                       |
+
+The mirrored unit-test tree follows this package/module shape exactly: package initializers map to
+`init_test.py`, and each implementation module maps to `<module>_test.py`. Tests in one capability
+may import its implementation modules; cross-capability tests use only documented facades.
+
 ## High-risk seam choices
 
 | Seam       | Rejected design                                                                                                                                           | Chosen design                                                                                                                                                    | Why                                                                                                                                       |
@@ -84,7 +108,8 @@ layer.
 ## Source migration inventory
 
 `P` is a future package facade, `X` is a narrow explicit seam re-exported by that facade, `I` is a
-private implementation module, and `E` is an executable entry point. `Keep` retains a cohesive
+implementation module, and `E` is an executable entry point. Implementation modules are
+package-owned rather than name-mangled. `Keep` retains a cohesive
 module in its eventual capability, `Move` relocates it intact, `Split` divides it by cohesive
 behavior before or while relocating it, and `Delete` requires repository-wide, PyInstaller,
 dynamic-import, and Windows reachability checks before removal.
@@ -242,10 +267,9 @@ changes.
 The source migration audit on 2026-07-18 completed the structural checks that do not require the
 later mirrored test tree:
 
-- The remaining oversized source module, importer Paragon export, is split into the cohesive
-  `src.importing.paragon` subpackage. Its `__init__.py` is the public seam for source-specific
-  Paragon extraction; generic Paragon transformation and overlay behavior remain owned by
-  `src.paragon`.
+- The remaining oversized source module, importer Paragon export, is split behind the cohesive
+  `src.importing.paragon` common module. Provider-specific extraction remains in each provider
+  package; generic Paragon transformation and overlay behavior remain owned by `src.paragon`.
 - Data loading is owned by `src.item.data.loader` and exposed from `src.item`; text-name
   normalization is owned by `src.perception`; the runtime coordinator is owned by `src.app`; and
   overlay singleton state is owned by `src.overlay`.

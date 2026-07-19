@@ -7,9 +7,8 @@ widgets are imported only when the corresponding capability operation is used.
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
-from src.settings._types import Template
 from src.settings.models import GeneralModel
-from src.settings.models_core import (
+from src.settings.models.core import (
     CATEGORY_KEY,
     CATEGORY_ORDER,
     HIDE_FROM_GUI_KEY,
@@ -28,7 +27,7 @@ from src.settings.models_core import (
     UnfilteredUniquesType,
     VisionModeType,
 )
-from src.settings.models_ui import ColorsModel, UiOffsetsModel, UiPosModel, UiRoiModel
+from src.settings.models.ui import ColorsModel, UiOffsetsModel, UiPosModel, UiRoiModel
 from src.settings.reload_groups import (
     HOTKEY_SETTING_KEYS,
     LANGUAGE_SETTING_KEYS,
@@ -37,6 +36,7 @@ from src.settings.reload_groups import (
     VISION_MODE_TYPE_SETTING_KEY,
     has_any_changed,
 )
+from src.settings.types import Template
 
 if TYPE_CHECKING:
     import logging

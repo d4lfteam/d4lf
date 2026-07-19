@@ -25,3 +25,9 @@ Focused Paragon/import/profile/filter coverage passes (298 passed, 7 skipped), a
 non-Selenium suite passes (654 passed, 16 skipped). Ruff, `ty`, compilation, and focused lifecycle
 dispatch checks pass. The repository-wide line hook still reports oversized modules assigned to
 later refactor slices; every new Paragon source file passes the 300-line limit.
+
+### Structural review correction
+
+The final Paragon layout exposes `src.paragon.overlay` as a package facade. Importing uses one
+common `src.importing.paragon` module; provider-specific extraction remains in each provider
+package.

@@ -1,4 +1,4 @@
-from ._facade import (
+from .facade import (
     Publisher,
     TemplateQuery,
     abs_window_to_monitor,
@@ -25,7 +25,7 @@ from ._facade import (
     update_window_position,
     window_to_monitor,
 )
-from ._geometry import (
+from .geometry import (
     BulletMatchDiagnostics,
     DiagnosticLocatorResult,
     LocatedMarker,
@@ -35,10 +35,10 @@ from ._geometry import (
     locate_affix_markers,
     locate_affix_markers_with_diagnostics,
 )
-from ._matching_models import SearchResult, TemplateMatch
-from ._polling import run_until_condition
-from ._screenshot import screenshot
-from ._text import (
+from .matching import SearchResult, TemplateMatch
+from .polling import run_until_condition
+from .screenshot import screenshot
+from .text import (
     clean_str,
     closest_match,
     closest_to,
@@ -47,7 +47,7 @@ from ._text import (
     keep_letters_and_spaces,
     remove_text_after_first_keyword,
 )
-from ._tooltip import DescrDetection, find_descr, find_descr_with_diagnostics, get_separator_match_in_crop
+from .tooltip import DescrDetection, find_descr, find_descr_with_diagnostics, get_separator_match_in_crop
 
 __all__ = [
     "BulletMatchDiagnostics",

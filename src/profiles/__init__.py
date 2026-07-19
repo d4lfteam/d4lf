@@ -11,14 +11,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from PyQt6.QtWidgets import QWidget
 
-from src.profiles._affixes import (
+from src.profiles.affixes import (
     AffixAspectFilterModel,
     AffixFilterCountModel,
     AffixFilterModel,
     AspectUniqueFilterModel,
     GlobalUniqueModel,
 )
-from src.profiles._document import (
+from src.profiles.document import (
     EmptyProfileError,
     LoadedProfile,
     ProfileDocumentError,
@@ -29,7 +29,7 @@ from src.profiles._document import (
     normalize_profile_file_name,
     to_yaml_str,
 )
-from src.profiles._equipment import (
+from src.profiles.equipment import (
     CharmFilterModel,
     DynamicCharmFilterModel,
     DynamicItemFilterModel,
@@ -37,9 +37,9 @@ from src.profiles._equipment import (
     ItemFilterModel,
     SealFilterModel,
 )
-from src.profiles._paragon import ParagonBoardModel, ParagonPayloadModel
-from src.profiles._profile import ProfileModel
-from src.profiles._session import (
+from src.profiles.paragon import ParagonBoardModel, ParagonPayloadModel
+from src.profiles.profile import ProfileModel
+from src.profiles.session import (
     EmptyError,
     Failed,
     Loaded,
@@ -53,7 +53,7 @@ from src.profiles._session import (
     ValidationError,
     YamlError,
 )
-from src.profiles._sigils import SigilConditionModel, SigilFilterModel, SigilPriority, TributeFilterModel
+from src.profiles.sigils import SigilConditionModel, SigilFilterModel, SigilPriority, TributeFilterModel
 
 
 def create_profile_editor_window(parent: QWidget | None = None, profile_name: str | None = None) -> object:

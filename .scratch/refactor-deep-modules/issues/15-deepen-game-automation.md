@@ -26,3 +26,8 @@ Focused automation tests pass, the complete non-Selenium suite passes (659 passe
 and Ruff and `ty` pass. The repository-wide line guard remains pending because it reports the
 pre-existing oversized modules assigned to later refactor slices, including automation callers
 touched only for facade import migration.
+
+### Structural review correction
+
+The final window seam is the `src.automation.window` package, including Windows and no-op adapters,
+with its interface exported from `__init__.py`.

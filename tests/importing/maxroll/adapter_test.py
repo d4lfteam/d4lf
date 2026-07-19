@@ -7,13 +7,13 @@ from types import SimpleNamespace
 import pytest
 
 from src.importing import ImportOptions, ImportRequest
+from src.importing.maxroll import extract_maxroll_paragon_steps
 from src.importing.maxroll.adapter import (
     _find_item_affixes,
     _find_item_type,
     _resolve_visible_profile_index,
     import_maxroll,
 )
-from src.importing.paragon import extract_maxroll_paragon_steps
 from src.item import Dataloader, ItemType
 
 if typing.TYPE_CHECKING:

@@ -4,18 +4,7 @@ from typing import TYPE_CHECKING
 import lxml.html
 from selenium.webdriver.common.by import By
 
-from src.importing._filters import (
-    affix_dict_for_item_type,
-    create_seal_charm_filter,
-    fix_weapon_type,
-    match_set_aware_seal_affix,
-)
-from src.importing._web import hover_and_get_tooltip_html
-from src.item import Affix, ItemType
-from src.perception import clean_str, closest_match, correct_name
-from src.profiles import CharmFilterModel, SealFilterModel
-
-from .constants import (
+from src.importing.d4builds.constants import (
     ACTIVE_CHARM_CSS,
     ACTIVE_SEAL_CSS,
     CHARM_TOOLTIP_CSS,
@@ -30,6 +19,16 @@ from .constants import (
     UNIQUE_TOOLTIP_CSS,
     UNIQUE_TOOLTIP_SLOT_XPATH,
 )
+from src.importing.filters import (
+    affix_dict_for_item_type,
+    create_seal_charm_filter,
+    fix_weapon_type,
+    match_set_aware_seal_affix,
+)
+from src.importing.web import hover_and_get_tooltip_html
+from src.item import Affix, ItemType
+from src.perception import clean_str, closest_match, correct_name
+from src.profiles import CharmFilterModel, SealFilterModel
 
 if TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver

@@ -34,3 +34,8 @@ line hook continues to report only the documented pre-existing oversized modules
 The earlier 594-test count was the slice-time result. The settings facade, lazy platform boundaries,
 and coordinate seam remain valid after rebasing; the current suite includes target-branch and later-
 slice coverage.
+
+### Structural review correction
+
+The final settings model seam is the `src.settings.models` package; its initializer is the public
+interface and model implementations are nested beneath it.

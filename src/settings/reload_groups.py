@@ -8,7 +8,7 @@ the app (the script handler, the main window) can react to the same setting chan
 from typing import TYPE_CHECKING, Any
 
 from src.settings.models import GeneralModel
-from src.settings.models_core import IS_HOTKEY_KEY, LIVE_RELOAD_GROUP_KEY, AdvancedOptionsModel
+from src.settings.models.core import IS_HOTKEY_KEY, LIVE_RELOAD_GROUP_KEY, AdvancedOptionsModel
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet

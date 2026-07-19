@@ -8,7 +8,7 @@ from PyQt6.QtCore import QEvent, QPoint, QSettings, QSize
 from PyQt6.QtGui import QAction, QCloseEvent, QIcon
 from PyQt6.QtWidgets import QMainWindow, QMenu, QSystemTrayIcon, QTabWidget
 
-from .assets import ICON_PATH
+from src.app.assets import ICON_PATH
 
 
 class UnifiedWindowLifecycle(QMainWindow):

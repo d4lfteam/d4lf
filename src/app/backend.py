@@ -19,7 +19,7 @@ if sys.platform == "win32":
 else:
     _perception = None
 
-from .startup import check_for_proper_tts_configuration
+from src.app.startup import check_for_proper_tts_configuration
 
 LOGGER = logging.getLogger(__name__)
 

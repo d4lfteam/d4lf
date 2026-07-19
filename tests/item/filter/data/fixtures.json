@@ -1793,7 +1793,7 @@
     },
     "filters": {
         "affix": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [
                     {
@@ -2352,7 +2352,7 @@
                 "sigils": {
                     "blacklist": [],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [],
@@ -2362,7 +2362,7 @@
             }
         },
         "affix_rarity": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [
                     {
@@ -2450,7 +2450,7 @@
                 "sigils": {
                     "blacklist": [],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [],
@@ -2460,7 +2460,7 @@
             }
         },
         "always_keep_mythics": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [],
                 "aspect_upgrades": [],
@@ -2479,7 +2479,7 @@
                 "sigils": {
                     "blacklist": [],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [],
@@ -2489,7 +2489,7 @@
             }
         },
         "aspects_filters": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [],
                 "aspect_upgrades": [
@@ -2504,7 +2504,7 @@
                 "sigils": {
                     "blacklist": [],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [],
@@ -2514,7 +2514,7 @@
             }
         },
         "global_unique": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [],
                 "aspect_upgrades": [],
@@ -2545,7 +2545,7 @@
                 "sigils": {
                     "blacklist": [],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [],
@@ -2555,7 +2555,7 @@
             }
         },
         "seal_charm": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [],
                 "aspect_upgrades": [],
@@ -2701,7 +2701,7 @@
                 "sigils": {
                     "blacklist": [],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [],
@@ -2711,7 +2711,7 @@
             }
         },
         "sigil": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [],
                 "aspect_upgrades": [],
@@ -2732,7 +2732,7 @@
                         }
                     ],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [],
@@ -2753,7 +2753,7 @@
             }
         },
         "sigil_blacklist_only": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [],
                 "aspect_upgrades": [],
@@ -2770,7 +2770,7 @@
                         }
                     ],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [],
@@ -2780,7 +2780,7 @@
             }
         },
         "sigil_priority": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [],
                 "aspect_upgrades": [],
@@ -2797,7 +2797,7 @@
                         }
                     ],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [],
@@ -2814,7 +2814,7 @@
             }
         },
         "sigil_rarity_rare_only": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [],
                 "aspect_upgrades": [],
@@ -2826,7 +2826,7 @@
                 "sigils": {
                     "blacklist": [],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [
@@ -2841,7 +2841,7 @@
             }
         },
         "sigil_rarity_rare_with_blacklist": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [],
                 "aspect_upgrades": [],
@@ -2858,7 +2858,7 @@
                         }
                     ],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [
@@ -2873,7 +2873,7 @@
             }
         },
         "sigil_rarity_rare_with_whitelist": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [],
                 "aspect_upgrades": [],
@@ -2885,7 +2885,7 @@
                 "sigils": {
                     "blacklist": [],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [
@@ -2905,7 +2905,7 @@
             }
         },
         "sigil_whitelist_only": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [],
                 "aspect_upgrades": [],
@@ -2917,7 +2917,7 @@
                 "sigils": {
                     "blacklist": [],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [],
@@ -2932,7 +2932,7 @@
             }
         },
         "tributes": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [],
                 "aspect_upgrades": [],
@@ -2944,7 +2944,7 @@
                 "sigils": {
                     "blacklist": [],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [],
@@ -2965,7 +2965,7 @@
             }
         },
         "unique_affixes": {
-            "__class__": "src.profiles._profile.ProfileModel",
+            "__class__": "src.profiles.profile.ProfileModel",
             "fields": {
                 "affixes": [
                     {
@@ -3198,7 +3198,7 @@
                 "sigils": {
                     "blacklist": [],
                     "priority": {
-                        "__enum__": "src.profiles._sigils.SigilPriority",
+                        "__enum__": "src.profiles.sigils.SigilPriority",
                         "value": "blacklist"
                     },
                     "rarities": [],

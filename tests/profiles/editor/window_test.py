@@ -7,7 +7,7 @@ import pytest
 from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget
 
-import src.profiles.editor.profile_tab as tab_module
+import src.profiles.editor.profile.tab as tab_module
 import src.profiles.editor.window as window_module
 from src.profiles import Loaded, LoadedProfile, ProfileCatalog, ProfileModel, YamlError
 from src.profiles.editor import ProfileTab, QSettingsLastOpenedStore

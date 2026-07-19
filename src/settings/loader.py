@@ -8,7 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from src.settings.models import GeneralModel
-from src.settings.models_core import AdvancedOptionsModel, CharModel
+from src.settings.models.core import AdvancedOptionsModel, CharModel
 from src.settings.validation import singleton
 
 type SectionModel = AdvancedOptionsModel | CharModel | GeneralModel

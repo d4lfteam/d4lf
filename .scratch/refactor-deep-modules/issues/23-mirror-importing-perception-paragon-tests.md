@@ -25,3 +25,6 @@ public facades rather than private Item implementation paths.
 Focused validation passes with 247 tests passed and 17 skipped. The complete non-Selenium suite
 passes with 757 tests passed and 17 skipped. `uv run prek run -a`, `ty`, the line gate, and the
 mirror parity audit pass. Implemented in commit `b9326ca`.
+
+The mirror tracks perception subpackages and the single common importing Paragon module; provider
+Paragon tests remain under their provider packages.

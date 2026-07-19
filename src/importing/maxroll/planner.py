@@ -5,13 +5,18 @@ from typing import TYPE_CHECKING
 
 import lxml.html
 
-from src.importing._conversion import as_string_keyed_mapping as _as_mapping
-from src.importing._filters import fix_offhand_type, fix_weapon_type, match_to_enum
-from src.importing._web import get_with_retry
+from src.importing.conversion import as_string_keyed_mapping as _as_mapping
+from src.importing.filters import fix_offhand_type, fix_weapon_type, match_to_enum
+from src.importing.maxroll.constants import (
+    BUILD_SCRIPT_PREFIX,
+    PLANNER_API_BASE_URL,
+    PLANNER_API_REGEX,
+    PLANNER_BASE_URL,
+    SCRIPT_XPATH,
+)
+from src.importing.web import get_with_retry
 from src.item import ItemType
 from src.perception import correct_name
-
-from .constants import BUILD_SCRIPT_PREFIX, PLANNER_API_BASE_URL, PLANNER_API_REGEX, PLANNER_BASE_URL, SCRIPT_XPATH
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence

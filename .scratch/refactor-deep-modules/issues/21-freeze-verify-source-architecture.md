@@ -19,7 +19,8 @@
 The structural source work is implemented, but this issue remains open until the stated freeze
 gates are actually met. The source tree now has no files over 300 lines, no legacy capability
 paths, and no cross-capability production imports through implementation modules. Importer Paragon
-export is split behind `src.importing.paragon`; Item, Perception, Application, and Overlay now own
+export is split behind the common `src.importing.paragon` module, while provider-specific Paragon
+extraction stays in each provider package; Item, Perception, Application, and Overlay now own
 the former shared seams.
 
 The architecture-lock commit contained 26,229 source lines; the ADR's original 26,213 figure was

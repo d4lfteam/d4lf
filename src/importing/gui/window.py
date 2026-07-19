@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
 from src.desktop.activity import QtLogHandler
 from src.desktop.widgets import CheckmarkCheckBox, set_accent_color
 from src.importing import DEFAULT_FILENAME_PARTS, FilenamePart, ImportOptions, ImportRequest
-from src.importing.gui._support import ImportWorker
+from src.importing.gui.support import ImportWorker
 from src.settings import get_settings
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[3]
@@ -41,7 +41,7 @@ IMPORTER_WINDOW_LOGGERS = (
     "src.importing.maxroll",
     "src.importing.d4builds",
     "src.importing.infinitybuilds",
-    "src.importing.gui._support",
+    "src.importing.gui.support",
     "src.importing.pipeline",
     "src.profiles",
 )

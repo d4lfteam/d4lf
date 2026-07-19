@@ -25,3 +25,9 @@ Parser equivalence coverage now runs on every platform: 40 focused perception/pa
 and the full non-Selenium suite passes (654 passed, 16 skipped). Every new perception source file
 is at most 300 lines, and Ruff, ty, compilation, and diff checks pass. The repository-wide line
 hook still reports pre-existing oversized modules outside this slice.
+
+### Structural review correction
+
+The final perception layout exposes `backend` and `parser` as package facades, with sibling
+`capture`, `matching`, and `tooltip` seams. Implementations use descriptive names, not
+underscore-prefixed privacy markers.

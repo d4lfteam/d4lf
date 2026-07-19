@@ -1,5 +1,5 @@
 from src import overlay
-from src.overlay import _tracking
+from src.overlay import tracking as _tracking
 
 
 def test_overlay_facade_exposes_lifecycle_and_tracking_contract():

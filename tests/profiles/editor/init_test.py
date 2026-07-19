@@ -10,5 +10,5 @@ def test_editor_public_interface() -> None:
 
 def test_editor_facade_exports_profile_editor_dependencies() -> None:
     assert editor.ProfileEditorWindow.__module__ == "src.profiles.editor.window"
-    assert editor.DeleteItem.__module__ == "src.profiles.editor.dialogs_delete"
+    assert editor.DeleteItem.__module__ == "src.profiles.editor.dialogs.delete"
     assert DeleteAffixPool.__module__ == "src.profiles.affix.dialogs"

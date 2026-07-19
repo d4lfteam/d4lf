@@ -16,8 +16,8 @@ introducing compatibility layers, or replacing large files with many shallow pas
 
 ## Solution
 
-Reorganize D4LF into capability-first deep modules with small package interfaces and cohesive private
-implementations. Review every source module, retain well-placed cohesive code, move or split code
+Reorganize D4LF into capability-first deep modules with small package interfaces and cohesive
+package-owned implementations. Review every source module, retain well-placed cohesive code, move or split code
 whose ownership is unclear, deduplicate repeated behavior, and delete code that is unused anywhere
 in the repository.
 
@@ -39,7 +39,7 @@ the Python source and test trees.
 1. As a maintainer, I want code organized by product capability, so that related behavior and knowledge remain local.
 1. As a maintainer, I want each deep module to expose a small interface, so that callers do not need to understand its implementation.
 1. As a maintainer, I want package interfaces to be explicit, so that cross-package dependencies are easy to identify.
-1. As a maintainer, I want implementation modules to remain private across packages, so that internal refactors have limited impact.
+1. As a maintainer, I want implementation modules to remain package-owned and imported through facades across capabilities, so that internal refactors have limited impact without relying on underscore-prefixed filenames.
 1. As a maintainer, I want capability-specific GUI code to live with its capability, so that behavior and presentation do not drift into separate ownership silos.
 1. As a maintainer, I want only genuinely shared desktop code in the desktop module, so that it does not become another generic GUI bucket.
 1. As a maintainer, I want platform variation represented by real adapter seams, so that Windows and no-op behavior remain explicit without hypothetical abstractions.
@@ -78,6 +78,13 @@ the Python source and test trees.
   Qt/Tk widgets, dialogs, themes, UI-thread handling, and shell composition.
 - Each capability package's `__init__.py` is its intentionally small external interface. Cross-package
   callers use this interface rather than importing another package's implementation modules.
+- The corrected final layout uses `app.dashboard`, `automation.window`, `overlay.widget`,
+  `paragon.overlay`, perception subpackages `backend`, `matching`, `capture`, `parser`, and
+  `tooltip`, `profiles.affix.group`, `profiles.editor.dialogs` and `profile`,
+  `profiles.validation`, and `settings.models`. Desktop `activity`, `themes`, and `widgets` are
+  implementation-bearing subpackages. No implementation filename uses a leading underscore.
+- `importing.paragon` is one common module for normalized Paragon handling; provider-specific
+  extraction remains in each provider package.
 - Internal implementation files may be split as needed to remain cohesive and under 300 physical
   lines. Splits based only on line ranges and shallow forwarding modules are not acceptable.
 - Preserve real adapter seams where behavior varies, including Windows and no-op TTS and window
@@ -110,6 +117,8 @@ the Python source and test trees.
 - After the source structure is frozen, map each source module to one unit-test file using
   `<module>_test.py`; map every package initializer, including the root initializer, to
   `init_test.py`.
+- The mirrored test tree follows the final package/module layout exactly, including nested package
+  initializers and implementation modules.
 - Keep only mirrored unit-test files and `conftest.py` files in the unit-test tree. Store reusable
   case data as non-Python fixtures and place cross-capability tests in a separate integration tree.
 - Test LOC may increase where required for missing unit, package-interface, or integration coverage,

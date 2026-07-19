@@ -29,3 +29,8 @@ delivery, and the existing Tk-thread contract.
 
 The non-Selenium suite passes with 684 tests passed and 16 skipped on macOS. The repository-wide
 line hook remains blocked by pre-existing oversized files owned by later source-migration issues.
+
+### Structural review correction
+
+Desktop activity, themes, and widgets are implementation-bearing subpackages with their public
+interfaces in `__init__.py`; the former parallel module/package shape is not part of the target.

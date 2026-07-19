@@ -8,6 +8,10 @@ from PyQt6.QtGui import QDesktopServices, QIcon
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QPushButton, QTabWidget, QWidget
 
 from src import __version__
+from src.app.assets import DISCORD_ICON, GITHUB_ICON, ICON_PATH
+from src.app.backend import BackendWorker, get_perception_module
+from src.app.dashboard import ActivityLogWidget
+from src.app.lifecycle import UnifiedWindowLifecycle
 from src.desktop.activity import ANSIConsoleWidget, QtLogHandler
 from src.desktop.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.desktop.widgets import set_accent_color
@@ -17,11 +21,6 @@ from src.logger import setup as setup_logging
 from src.loot import get_filter_colors
 from src.profiles import create_profile_editor_window
 from src.settings import LOG_LEVEL_SETTING_KEYS, create_settings_window, get_settings, has_any_changed
-
-from .assets import DISCORD_ICON, GITHUB_ICON, ICON_PATH
-from .backend import BackendWorker, get_perception_module
-from .dashboard import ActivityLogWidget
-from .lifecycle import UnifiedWindowLifecycle
 
 LOGGER = logging.getLogger(__name__)
 perception_module = get_perception_module()

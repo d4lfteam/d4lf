@@ -8,24 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
-from src.importing._filters import (
-    affix_dict_for_item_type,
-    create_item_affix_pool,
-    fix_offhand_type,
-    fix_weapon_type,
-    is_unique_like_rarity,
-    match_to_enum,
-    update_mingreateraffixcount,
-    weapon_slot_name_hint,
-)
-from src.importing._web import retry_importer
-from src.importing.paragon import extract_d4builds_paragon_steps
-from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
-from src.item import WEAPON_TYPES, Affix, AffixType, ItemType
-from src.perception import clean_str, closest_match
-from src.profiles import AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel, ItemFilterModel
-
-from .constants import (
+from src.importing.d4builds.constants import (
     BASE_URL,
     BUILD_OVERVIEW_XPATH,
     GA_XPATH,
@@ -35,13 +18,35 @@ from .constants import (
     SANCTIFIED_ICON_XPATH,
     TEMPERING_ICON_XPATH,
 )
-from .extraction import (
+from src.importing.d4builds.extraction import (
     _corrections,
     _extract_d4builds_seal_charm_filters,
     _get_weapon_paperdoll_icons,
     _get_weapon_type_from_paperdoll_tooltip,
 )
-from .metadata import D4BuildsError, _extract_build_metadata, _get_affix_name, _get_item_slots, _get_legendary_aspects
+from src.importing.d4builds.metadata import (
+    D4BuildsError,
+    _extract_build_metadata,
+    _get_affix_name,
+    _get_item_slots,
+    _get_legendary_aspects,
+)
+from src.importing.d4builds.paragon import extract_d4builds_paragon_steps
+from src.importing.filters import (
+    affix_dict_for_item_type,
+    create_item_affix_pool,
+    fix_offhand_type,
+    fix_weapon_type,
+    is_unique_like_rarity,
+    match_to_enum,
+    update_mingreateraffixcount,
+    weapon_slot_name_hint,
+)
+from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
+from src.importing.web import retry_importer
+from src.item import WEAPON_TYPES, Affix, AffixType, ItemType
+from src.perception import clean_str, closest_match
+from src.profiles import AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel, ItemFilterModel
 
 if TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver

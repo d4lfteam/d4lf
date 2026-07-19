@@ -26,3 +26,8 @@ mode, backend updates, TTS connection, and close cleanup remain intact. Focused 
 importer, and profile-editor tests pass, as does the complete non-Selenium suite (688 passed, 16
 skipped on macOS). The repository line hook still reports pre-existing oversized files owned by
 later migration issues.
+
+### Structural review correction
+
+Application dashboard behavior is owned by `src.app.dashboard`; desktop retains only shared
+activity, themes, and widgets subpackages. The dashboard facade is the application seam.

@@ -4,19 +4,18 @@ from importlib import import_module
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.profiles.editor.profile import ProfileEditor, _to_editor_tribute_filter
-    from src.profiles.editor.profile_tab import PROFILE_TABNAME, ProfileTab
+    from src.profiles.editor.profile import PROFILE_TABNAME, ProfileEditor, ProfileTab, _to_editor_tribute_filter
     from src.profiles.editor.window import ProfileEditorWindow
 
 from src.profiles.editor.container import Container
-from src.profiles.editor.dialogs_basic import (
+from src.profiles.editor.dialogs import (
+    DeleteItem,
     IgnoreScrollWheelComboBox,
     IgnoreScrollWheelSpinBox,
     MinGreaterDialog,
     MinPercentDialog,
     MinPowerDialog,
 )
-from src.profiles.editor.dialogs_delete import DeleteItem
 from src.profiles.editor.helpers import create_auto_sync_checkbox, create_readonly_line_edit, refresh_widget_style
 from src.profiles.editor.pickers import CheckboxListDialog, RarityPicker, rarity_summary
 from src.profiles.editor.rule_list import RuleListTab
@@ -50,8 +49,8 @@ __all__ = [
 _LAZY_EXPORTS = {
     "ProfileEditor": ("src.profiles.editor.profile", "ProfileEditor"),
     "_to_editor_tribute_filter": ("src.profiles.editor.profile", "_to_editor_tribute_filter"),
-    "PROFILE_TABNAME": ("src.profiles.editor.profile_tab", "PROFILE_TABNAME"),
-    "ProfileTab": ("src.profiles.editor.profile_tab", "ProfileTab"),
+    "PROFILE_TABNAME": ("src.profiles.editor.profile", "PROFILE_TABNAME"),
+    "ProfileTab": ("src.profiles.editor.profile", "ProfileTab"),
     "ProfileEditorWindow": ("src.profiles.editor.window", "ProfileEditorWindow"),
 }
 

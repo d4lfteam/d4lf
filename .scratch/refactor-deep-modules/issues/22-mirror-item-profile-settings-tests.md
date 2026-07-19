@@ -16,6 +16,7 @@
 ## Answer
 
 The item, profile, and settings unit trees now mirror every source module and package initializer.
+The mirror follows nested package facades such as `profiles.validation` and `settings.models`.
 Legacy tests moved from `config`, `gui`, and `utils` into their owning capability paths, while
 filter cases moved from Python helper modules into `tests/item/filter/data/fixtures.json` with a
 shared loader. Shared filter and settings fixtures are centralized in `conftest.py`, and package
@@ -24,3 +25,6 @@ and module mirrors assert public exports or observable behavior.
 Validation passes for the affected manifest (394 tests), Ruff, `ty`, and the complete non-Selenium
 suite (738 passed, 16 skipped at slice completion). The 2026-07-19 final acceptance audit also
 confirms that the repository-wide line hook passes.
+
+The mirror includes `profiles.validation` and `settings.models` package initializers and follows
+the nested source layout.
