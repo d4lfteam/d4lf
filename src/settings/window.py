@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import QMainWindow
 
 from src.settings.tab import ConfigTab
 
-BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[2]
 
 ICON_PATH = BASE_DIR / "assets" / "logo.png"
 LOGGER = logging.getLogger(__name__)

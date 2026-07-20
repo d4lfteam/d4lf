@@ -7,12 +7,11 @@ from tkinter.font import Font
 from typing import Literal
 
 import src.perception
-from src.automation import pointer_position
 from src.desktop import call_on_ui_thread, create_overlay_toplevel, get_root
 from src.item import ASPECT_UPGRADES_LABEL, Filter, ItemRarity, MatchedFilter
 from src.loot.colors import get_filter_colors, is_ignored_item
 from src.loot.singleton import singleton
-from src.perception import Publisher, capture, monitor_to_window, screenshot
+from src.perception import Publisher, capture, screenshot
 from src.settings import get_settings, get_ui_coordinates
 
 LOGGER = logging.getLogger(__name__)
@@ -27,7 +26,7 @@ class VisionModeFast:
     def __init__(self):
         self.root: tk.Toplevel
         self.canvas: tk.Canvas
-        self.textbox: tk.Text
+        self.textbox: tk.Text | None = None
         self.clear_timer_id: str | None = None
         self.queue: queue.Queue[FastVisionTask] = queue.Queue()
         self.is_running: bool = False
@@ -44,28 +43,30 @@ class VisionModeFast:
         call_on_ui_thread(_build_ui)
 
     def adjust_textbox_size(self):
-        self.textbox.config(state=tk.NORMAL)
-        self.textbox.update_idletasks()
-        text_content = self.textbox.get(1.0, tk.END)
+        textbox = self.textbox
+        if textbox is None:
+            return
+        textbox.config(state=tk.NORMAL)
+        textbox.update_idletasks()
+        text_content = textbox.get(1.0, tk.END)
         line_count = text_content.count("\n")
 
-        text_font = font.Font(font=self.textbox.tag_cget("colored", "font"))
+        text_font = font.Font(font=textbox.cget("font"))
         line_height = text_font.metrics("linespace")
-        max_line_length = max(len(line) for line in text_content.splitlines())
+        lines = text_content.splitlines()
 
-        width = max_line_length * text_font.measure("0")
-        height = (line_count + 1) * line_height
+        width = max(text_font.measure(line) for line in lines) + 4
+        height = max(1, line_count) * line_height
 
-        mouse_pos = monitor_to_window(pointer_position())
-        self.textbox.place_configure(
-            x=mouse_pos[0], y=mouse_pos[1], width=width // 9, height=(height // line_height) - 2
-        )
+        textbox.place_configure(width=width, height=height)
 
-        self.textbox.config(state=tk.DISABLED)
+        textbox.config(state=tk.DISABLED)
 
     def clear_textbox(self):
-        if hasattr(self, "textbox"):
-            self.textbox.destroy()
+        textbox = self.textbox
+        if textbox is not None:
+            textbox.destroy()
+            self.textbox = None
 
     def create_textbox(self):
         self.clear_textbox()
@@ -76,7 +77,7 @@ class VisionModeFast:
         )
         if get_settings().advanced_options.fast_vision_mode_coordinates is None:
             x = get_ui_coordinates().resolution[0] / 2
-            y = get_ui_coordinates().resolution[1] / 5
+            y = get_ui_coordinates().resolution[1] * 2 / 3
         else:
             coordinates = get_settings().advanced_options.fast_vision_mode_coordinates
             if coordinates is None:
@@ -99,12 +100,15 @@ class VisionModeFast:
 
     def insert_colored_text(self, text: str, color: str) -> None:
         self.create_textbox()
-        self.textbox.config(state=tk.NORMAL)
-        self.textbox.insert(tk.END, text + "\n", "colored")
-        self.textbox.tag_configure("colored", foreground=color)
+        textbox = self.textbox
+        if textbox is None:
+            return
+        textbox.config(state=tk.NORMAL)
+        textbox.insert(tk.END, text + "\n", "colored")
+        textbox.tag_configure("colored", foreground=color)
         self.adjust_textbox_size()
         self.refresh_clear_timer()
-        self.textbox.config(state=tk.DISABLED)
+        textbox.config(state=tk.DISABLED)
 
     def refresh_clear_timer(self):
         if self.clear_timer_id is not None:

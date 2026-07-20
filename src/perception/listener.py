@@ -83,6 +83,7 @@ class Publisher:
             local_cache = []
 
     def publish_item(self, data):
+        LOGGER.debug("Raw TTS payload: %s", data)
         with self._subscriber_lock:
             for subscriber in self._item_subscribers:
                 subscriber(data)

@@ -47,7 +47,9 @@ class HighlightingWorker:
             LOGGER.exception(f"Error in TTS read_descr. {src.perception.latest_item_lines()=}")
 
         if item_descr is None:
-            self.request_clear()
+            # Diablo can emit a transient second TTS event for the same tooltip. The
+            # screen watcher is responsible for clearing an overlay when the tooltip
+            # actually disappears, so an unparseable event must not erase valid markers.
             return
 
         self.current_item = item_descr
