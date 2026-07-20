@@ -30,6 +30,7 @@ URLS = [
     "https://maxroll.gg/d4/build-guides/quill-volley-spiritborn-guide",
     "https://maxroll.gg/d4/build-guides/shield-of-retribution-paladin-guide",
     "https://maxroll.gg/d4/build-guides/touch-of-death-spiritborn-guide",
+    "https://maxroll.gg/d4/planner/ce9zox0y#3",
 ]
 
 

@@ -30,6 +30,7 @@ Item flow:
 ## Conventions
 
 - Do not care about any compatibility, do changes as necessary.
+- No overly defense coding. Fringe cases are not worth the complexity.
 - Runtime target is Windows. Some tests are skipped outside Windows.
 - No more than 300 lines of code in Python files in `src` and `tests`.
 - User data lives under `~/.d4lf/` including profiles, params, and logs.

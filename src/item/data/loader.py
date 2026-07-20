@@ -9,7 +9,7 @@ from src.settings import BASE_DIR, get_settings
 
 LOGGER = logging.getLogger(__name__)
 
-DATALOADER_LOCK = threading.Lock()
+DATALOADER_LOCK = threading.RLock()
 
 
 def _is_string_map(value: object) -> TypeGuard[dict[str, str]]:
@@ -47,13 +47,20 @@ class Dataloader:
     data_loaded = False
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            with DATALOADER_LOCK:
-                if not cls._instance.data_loaded:
-                    cls._instance.data_loaded = True
-                    cls._instance.load_data()
-        return cls._instance
+        with DATALOADER_LOCK:
+            if cls._instance is None:
+                instance = super().__new__(cls)
+                instance.data_loaded = False
+                cls._instance = instance
+                try:
+                    instance.load_data()
+                except BaseException:
+                    # Clear failed instances so a later call can retry.
+                    cls._instance = None
+                    instance.data_loaded = False
+                    raise
+                instance.data_loaded = True
+            return cls._instance
 
     def load_data(self):
         language_dir = pathlib.Path(BASE_DIR / f"assets/lang/{get_settings().general.language}")
