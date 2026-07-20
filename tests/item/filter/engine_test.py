@@ -130,3 +130,59 @@ def test_filter_loads_typed_paragon_payload(tmp_path, mocker: MockerFixture) -> 
     test_filter.load_files()
 
     assert isinstance(test_filter.get_paragon_filters()["typed_paragon"], ParagonPayloadModel)
+
+
+def test_filter_skips_invalid_profile_but_keeps_valid_profiles(tmp_path, mocker: MockerFixture) -> None:
+    settings = mocker.Mock(spec=Settings)
+    settings.user_dir = tmp_path
+    settings.general.profiles = ["good", "bad"]
+    mocker.patch("src.item.filter.engine.get_settings", return_value=settings)
+    profile_dir = tmp_path / "profiles"
+    profile_dir.mkdir()
+    (profile_dir / "good.yaml").write_text("{}\n", encoding="utf-8")
+    (profile_dir / "bad.yaml").write_text("[invalid", encoding="utf-8")
+
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.files_loaded = False
+    test_filter.load_files()
+
+    assert "good" in test_filter.affix_filters or test_filter.files_loaded
+    assert "bad" not in test_filter.affix_filters
+    assert test_filter.load_failures == ("bad",)
+
+
+def test_filter_removes_profile_only_after_second_missing_check(tmp_path, mocker: MockerFixture) -> None:
+    settings = mocker.Mock(spec=Settings)
+    settings.user_dir = tmp_path
+    settings.general.profiles = ["missing"]
+    mocker.patch("src.item.filter.engine.get_settings", return_value=settings)
+    (tmp_path / "profiles").mkdir()
+    test_filter = _create_mocked_filter(mocker)
+
+    test_filter.files_loaded = False
+    test_filter.load_files()
+    settings.save_value.assert_not_called()
+    test_filter.load_files()
+    settings.save_value.assert_called_once_with("general", "profiles", "")
+
+
+def test_invalid_profile_edit_emits_one_report_per_file_version(tmp_path, mocker: MockerFixture) -> None:
+    settings = mocker.Mock(spec=Settings)
+    settings.user_dir = tmp_path
+    settings.general.profiles = ["bad"]
+    mocker.patch("src.item.filter.engine.get_settings", return_value=settings)
+    profile_dir = tmp_path / "profiles"
+    profile_dir.mkdir()
+    profile_path = profile_dir / "bad.yaml"
+    profile_path.write_text("[invalid", encoding="utf-8")
+    test_filter = _create_mocked_filter(mocker)
+    reports = []
+    test_filter.register_profile_failure_listener(reports.append)
+
+    test_filter.files_loaded = False
+    test_filter.load_files()
+    test_filter.load_files()
+    profile_path.write_text("[still-invalid", encoding="utf-8")
+    test_filter.load_files()
+
+    assert len(reports) == 2

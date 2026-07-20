@@ -7,6 +7,7 @@ widgets are imported only when the corresponding capability operation is used.
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
+from src.settings.errors import ConfigLoadErrorListener, SettingsLoadError
 from src.settings.models import GeneralModel
 from src.settings.models.core import (
     CATEGORY_KEY,
@@ -73,6 +74,10 @@ class Settings(Protocol):
     def register_change_listener(self, listener: Callable[[frozenset[str]], None]) -> None: ...
 
     def unregister_change_listener(self, listener: Callable[[frozenset[str]], None]) -> None: ...
+
+    def register_load_error_listener(self, listener: ConfigLoadErrorListener) -> None: ...
+
+    def unregister_load_error_listener(self, listener: ConfigLoadErrorListener) -> None: ...
 
     def consume_deferred_cleanup_log_records(self) -> list[logging.LogRecord]: ...
 
@@ -191,6 +196,7 @@ __all__ = [
     "MoveItemsType",
     "Settings",
     "SettingsCategory",
+    "SettingsLoadError",
     "Template",
     "ThemeType",
     "UiCoordinates",

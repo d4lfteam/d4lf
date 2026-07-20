@@ -95,6 +95,11 @@ def apply_log_level(
             handler.setFormatter(formatter)
 
 
+def is_configured() -> bool:
+    """Return whether persistent file logging is active."""
+    return any(getattr(handler, "name", "") == "D4LF_FILE" for handler in logging.getLogger().handlers)
+
+
 def remove_transient_gui_handlers(logger: logging.Logger) -> None:
     for handler in list(logger.handlers):
         if getattr(handler, "name", "") in PERSISTENT_GUI_HANDLER_NAMES:

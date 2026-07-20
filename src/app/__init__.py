@@ -9,6 +9,7 @@ from src.app.startup import (
     check_for_proper_tts_configuration,
     get_d4_local_prefs_file,
     prepare_runtime_directories,
+    show_settings_load_error,
 )
 
 if TYPE_CHECKING:
@@ -24,6 +25,7 @@ __all__ = [
     "get_asset_path",
     "get_d4_local_prefs_file",
     "prepare_runtime_directories",
+    "show_settings_load_error",
 ]
 
 

@@ -1,7 +1,11 @@
 import logging
-import pathlib
 import time
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from src.item import ASPECT_UPGRADES_LABEL
 from src.item.data.item_type import ItemType, is_sigil
@@ -28,6 +32,24 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class ProfileLoadReport:
+    """Summary emitted once when enabled profiles are skipped during a load."""
+
+    skipped: tuple[str, ...]
+    message: str
+
+
+ProfileLoadListener = Callable[[ProfileLoadReport], None]
+
+
+@dataclass(frozen=True)
+class ProfileLoadFailure:
+    name: str
+    reason: Literal["missing", "invalid"]
+    signature: tuple[int, int] | None
+
+
 class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, FilterContext):
     affix_filters: dict[str, list[DynamicItemFilterModel]] = {}
     aspect_upgrade_filters: dict[str, list[str]] = {}
@@ -39,12 +61,23 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
     tribute_filters: dict[str, TributeFilterModel] = {}
 
     files_loaded: bool = False
-    all_file_paths: list[pathlib.Path] = []
+    all_file_paths: list[Path] = []
     last_loaded: float | None = None
     last_profile_list: list[str] | None = None
 
     _initialized: bool = False
     _instance = None
+
+    def __init__(self) -> None:
+        if self._initialized:
+            return
+        self._initialized = True
+        self._profile_signatures: dict[Path, tuple[int, int]] = {}
+        self._missing_profile_checks: dict[str, int] = {}
+        self._missing_recheck_pending = False
+        self._failure_state: tuple[ProfileLoadFailure, ...] = ()
+        self._failure_listeners: list[ProfileLoadListener] = []
+        self.load_failures: tuple[str, ...] = ()
 
     def __new__(cls):
         if cls._instance is None:
@@ -54,12 +87,66 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
     def _did_files_change(self) -> bool:
         if self.last_loaded is None:
             return True
-        get_settings().load()
-        current_profiles = [p.strip() for p in get_settings().general.profiles if p.strip()]
+        settings = get_settings()
+        current_profiles = [p.strip() for p in settings.general.profiles if p.strip()]
         if self.last_profile_list != current_profiles:
             LOGGER.info(f"Profile list changed: {self.last_profile_list} → {current_profiles}")
             return True
-        return any(pathlib.Path(file_path).stat().st_mtime > self.last_loaded for file_path in self.all_file_paths)
+
+        if self._missing_recheck_pending:
+            self._missing_recheck_pending = False
+            return True
+        for profile_name in current_profiles:
+            profile_path = settings.user_dir / "profiles" / f"{profile_name}.yaml"
+            signature = self._profile_signature(profile_path)
+            if signature != self._profile_signatures.get(profile_path):
+                return True
+        return False
+
+    @staticmethod
+    def _profile_signature(path: Path) -> tuple[int, int] | None:
+        try:
+            stat_result = path.stat()
+        except OSError:
+            return None
+        return stat_result.st_mtime_ns, stat_result.st_size
+
+    def register_profile_failure_listener(self, listener: ProfileLoadListener) -> None:
+        if listener not in self._failure_listeners:
+            self._failure_listeners.append(listener)
+
+    def unregister_profile_failure_listener(self, listener: ProfileLoadListener) -> None:
+        self._failure_listeners = [existing for existing in self._failure_listeners if existing != listener]
+
+    def _emit_load_report(self, failures: list[ProfileLoadFailure]) -> None:
+        failure_state = tuple(
+            sorted(failures, key=lambda failure: (failure.name, failure.reason, failure.signature or ()))
+        )
+        self.load_failures = tuple(failure.name for failure in failure_state)
+        if not failure_state or failure_state == self._failure_state:
+            self._failure_state = failure_state
+            return
+        self._failure_state = failure_state
+        names = ", ".join(failure.name for failure in failure_state)
+        message = f"Skipped enabled profiles: {names}."
+        if not any((
+            self.affix_filters,
+            self.aspect_upgrade_filters,
+            self.paragon_filters,
+            self.global_unique_filters,
+            self.seal_filters,
+            self.charm_filters,
+            self.sigil_filters,
+            self.tribute_filters,
+        )):
+            message += " Filtering is running without profile rules."
+        report = ProfileLoadReport(skipped=tuple(failure.name for failure in failure_state), message=message)
+        LOGGER.warning(message)
+        for listener in list(self._failure_listeners):
+            try:
+                listener(report)
+            except Exception:
+                LOGGER.exception("Failed to notify profile load listener")
 
     def load_files(self):
         self.files_loaded = True
@@ -71,29 +158,44 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
         self.sigil_filters = {}
         self.tribute_filters = {}
         self.global_unique_filters = {}
-        profiles = [p.strip() for p in get_settings().general.profiles if p.strip()]
+        settings = get_settings()
+        profiles = [p.strip() for p in settings.general.profiles if p.strip()]
         if not profiles:
             LOGGER.warning(
                 "No profiles are currently loaded. Please load a profile via the Importer, Settings, or Edit Profile sections to begin using the tool."
             )
             self.last_loaded = time.time()
             self.last_profile_list = []
+            self._profile_signatures = {}
+            self._emit_load_report([])
             return
 
-        custom_profile_path = get_settings().user_dir / "profiles"
+        custom_profile_path = settings.user_dir / "profiles"
         self.all_file_paths = []
+        self._profile_signatures = {}
+        failures: list[ProfileLoadFailure] = []
+        missing_names: list[str] = []
         for profile_str in profiles:
             custom_file_path = custom_profile_path / f"{profile_str}.yaml"
             if custom_file_path.is_file():
                 profile_path = custom_file_path
             else:
-                LOGGER.error(f"Could not load profile {profile_str}. Checked: {custom_file_path}")
+                LOGGER.error("Could not load profile %s. Checked: %s", profile_str, custom_file_path)
+                failures.append(ProfileLoadFailure(profile_str, "missing", None))
+                missing_names.append(profile_str)
+                self._missing_profile_checks[profile_str] = self._missing_profile_checks.get(profile_str, 0) + 1
+                self._missing_recheck_pending = self._missing_profile_checks[profile_str] < 2
                 continue
             self.all_file_paths.append(profile_path)
+            signature = self._profile_signature(profile_path)
+            if signature is not None:
+                self._profile_signatures[profile_path] = signature
+            self._missing_profile_checks.pop(profile_str, None)
             try:
                 data = ProfileDocumentStore.default().load(profile_path).profile
-            except ProfileDocumentError as e:
-                LOGGER.error(str(e))
+            except ProfileDocumentError, OSError:
+                LOGGER.exception("Failed to load enabled profile %s", profile_str)
+                failures.append(ProfileLoadFailure(profile_str, "invalid", signature))
                 continue
 
             info_str = f"Loading profile {profile_str}: "
@@ -123,8 +225,16 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
                 self.paragon_filters[profile_path.stem] = data.paragon
                 sections.append("Paragon")
             LOGGER.info((info_str + " ".join(sections)).rstrip())
-            self.last_loaded = time.time()
-            self.last_profile_list = get_settings().general.profiles.copy()
+        if missing_names:
+            still_missing = [name for name in missing_names if self._missing_profile_checks.get(name, 0) >= 2]
+            if still_missing:
+                remaining = [name for name in profiles if name not in still_missing]
+                settings.save_value("general", "profiles", ",".join(remaining))
+                self._missing_recheck_pending = False
+                profiles = remaining
+        self.last_loaded = time.time()
+        self.last_profile_list = profiles.copy()
+        self._emit_load_report(failures)
 
     def get_paragon_filters(self) -> dict[str, ParagonPayloadModel]:
         """Return the loaded Paragon payloads, reloading profiles when needed."""

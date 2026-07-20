@@ -7,6 +7,7 @@ import threading
 from collections.abc import Callable
 from pathlib import Path
 
+from src.settings.errors import ConfigLoadErrorListener, SettingsLoadError, log_load_error, make_cleanup_record
 from src.settings.models import GeneralModel
 from src.settings.models.core import AdvancedOptionsModel, CharModel
 from src.settings.validation import singleton
@@ -31,6 +32,7 @@ class IniConfigLoader:
         self._user_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
         self._change_listeners: list[ConfigChangeListener] = []
+        self._load_error_listeners: list[ConfigLoadErrorListener] = []
         self._last_config_signature: tuple[int, int] | None = None
         self._config_revision = 0
         self._state_snapshot: dict[str, object] = {}
@@ -42,10 +44,10 @@ class IniConfigLoader:
         return self.user_dir / PARAMS_INI
 
     def _get_config_signature(self) -> tuple[int, int] | None:
-        config_path = self._config_path()
-        if not config_path.exists():
+        path = self._config_path()
+        if not path.exists():
             return None
-        stat_result = config_path.stat()
+        stat_result = path.stat()
         return stat_result.st_mtime_ns, stat_result.st_size
 
     def _section_models(self) -> dict[str, SectionModel]:
@@ -93,20 +95,7 @@ class IniConfigLoader:
         return removed_key
 
     def _log_defunct_model_key(self, section: str, key: str) -> None:
-        path_name, line_number, _, _ = LOGGER.findCaller(stacklevel=2)
-        record = LOGGER.makeRecord(
-            LOGGER.name,
-            logging.WARNING,
-            path_name,
-            line_number,
-            "Deprecated key=%s found in [%s]. Removing it from %s.",
-            (key, section, PARAMS_INI),
-            None,
-        )
-        if self._defer_cleanup_log_records:
-            self._deferred_cleanup_log_records.append(record)
-        if LOGGER.isEnabledFor(logging.WARNING):
-            LOGGER.handle(record)
+        self._log_cleanup("Deprecated key=%s found in [%s]. Removing it from %s.", (key, section, PARAMS_INI))
 
     def _remove_defunct_values(self) -> bool:
         if self._parser is None:
@@ -125,16 +114,13 @@ class IniConfigLoader:
         return removed
 
     def _log_defunct_value(self, section: str, key: str, old_value: str, new_value: str) -> None:
-        path_name, line_number, _, _ = LOGGER.findCaller(stacklevel=2)
-        record = LOGGER.makeRecord(
-            LOGGER.name,
-            logging.WARNING,
-            path_name,
-            line_number,
+        self._log_cleanup(
             "Deprecated value=%s found in [%s] %s. Migrating it to %s in %s.",
             (old_value, section, key, new_value, PARAMS_INI),
-            None,
         )
+
+    def _log_cleanup(self, message: str, args: tuple[object, ...]) -> None:
+        record = make_cleanup_record(LOGGER, message, args)
         if self._defer_cleanup_log_records:
             self._deferred_cleanup_log_records.append(record)
         if LOGGER.isEnabledFor(logging.WARNING):
@@ -178,17 +164,48 @@ class IniConfigLoader:
             if listener not in self._change_listeners:
                 self._change_listeners.append(listener)
 
+    def register_load_error_listener(self, listener: ConfigLoadErrorListener) -> None:
+        with self._lock:
+            if listener not in self._load_error_listeners:
+                self._load_error_listeners.append(listener)
+
+    def unregister_load_error_listener(self, listener: ConfigLoadErrorListener) -> None:
+        with self._lock:
+            self._load_error_listeners = [existing for existing in self._load_error_listeners if existing != listener]
+
     def unregister_change_listener(self, listener: ConfigChangeListener) -> None:
         with self._lock:
             self._change_listeners = [existing for existing in self._change_listeners if existing != listener]
 
-    def register_listener(self, listener: ConfigChangeListener) -> None:
-        """Backward-compatible alias for older call sites."""
-        self.register_change_listener(listener)
+    def _load_models(
+        self, config_path: Path
+    ) -> tuple[configparser.ConfigParser, AdvancedOptionsModel, CharModel, GeneralModel, bool]:
+        parser = configparser.ConfigParser()
+        with config_path.open(encoding="utf-8") as config_file:
+            parser.read_file(config_file)
+        previous_parser = self._parser
+        self._parser = parser
+        try:
+            defunct_keys_removed = self._remove_defunct_model_keys()
+            defunct_values_removed = self._remove_defunct_values()
+        finally:
+            self._parser = previous_parser
+        advanced_options = (
+            AdvancedOptionsModel(**parser["advanced_options"])
+            if "advanced_options" in parser
+            else AdvancedOptionsModel()
+        )
+        char = CharModel(**parser["char"]) if "char" in parser else CharModel()
+        general = GeneralModel(**parser["general"]) if "general" in parser else GeneralModel()
+        return parser, advanced_options, char, general, defunct_keys_removed or defunct_values_removed
 
-    def unregister_listener(self, listener: ConfigChangeListener) -> None:
-        """Backward-compatible alias for older call sites."""
-        self.unregister_change_listener(listener)
+    def _notify_load_error(self, error: SettingsLoadError) -> None:
+        log_load_error(error)
+        for listener in list(self._load_error_listeners):
+            try:
+                listener(error)
+            except Exception:
+                LOGGER.exception("Failed to notify settings load error listener")
 
     def load(self, clear: bool = False, notify: bool = True) -> None:
         with self._lock:
@@ -196,24 +213,18 @@ class IniConfigLoader:
             config_path = self._config_path()
             if not config_path.exists() or clear:
                 config_path.write_text("", encoding="utf-8")
-            self._parser = configparser.ConfigParser()
-            self._parser.read(config_path, encoding="utf-8")
-            defunct_keys_removed = self._remove_defunct_model_keys()
-            defunct_values_removed = self._remove_defunct_values()
-            if defunct_keys_removed or defunct_values_removed:
+            try:
+                parser, advanced_options, char, general, cleanup_needed = self._load_models(config_path)
+            except Exception as error:
+                wrapped = SettingsLoadError(config_path, error)
+                self._notify_load_error(wrapped)
+                raise wrapped from error
+            self._parser = parser
+            self._advanced_options = advanced_options
+            self._char = char
+            self._general = general
+            if cleanup_needed:
                 self._write_parser()
-            if "advanced_options" in self._parser:
-                self._advanced_options = AdvancedOptionsModel(**self._parser["advanced_options"])
-            else:
-                self._advanced_options = AdvancedOptionsModel()
-            if "char" in self._parser:
-                self._char = CharModel(**self._parser["char"])
-            else:
-                self._char = CharModel()
-            if "general" in self._parser:
-                self._general = GeneralModel(**self._parser["general"])
-            else:
-                self._general = GeneralModel()
             self._last_config_signature = self._get_config_signature()
             self._config_revision += 1
             self._state_snapshot = self._capture_state_snapshot()
@@ -228,7 +239,13 @@ class IniConfigLoader:
             if current_signature == self._last_config_signature:
                 return False
         LOGGER.debug("Detected external params.ini change. Reloading configuration.")
-        self.load(notify=True)
+        try:
+            self.load(notify=True)
+        except SettingsLoadError:
+            # Treat an invalid signature as observed. A later edit will produce a new
+            # signature and retry, while repeated property access remains quiet.
+            with self._lock:
+                self._last_config_signature = current_signature
         return True
 
     @property
@@ -256,7 +273,6 @@ class IniConfigLoader:
             return self._config_revision
 
     def save_value(self, section: str, key: str, value: object) -> None:
-        changed_keys: set[str] = set()
         with self._lock:
             if self._parser is None:
                 self.load(notify=False)
@@ -282,8 +298,3 @@ class IniConfigLoader:
             changed_keys = self._changed_keys(previous_snapshot, self._state_snapshot)
         self._log_changed_values(changed_keys)
         self._notify_listeners(changed_keys)
-
-
-if __name__ == "__main__":
-    loader = IniConfigLoader()
-    loader.load()

@@ -17,9 +17,10 @@ from src.app import (
     check_for_proper_tts_configuration,
     get_d4_local_prefs_file,
     prepare_runtime_directories,
+    show_settings_load_error,
 )
 from src.autoupdater import start_auto_update
-from src.settings import get_settings
+from src.settings import Settings, SettingsLoadError, get_settings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -87,44 +88,61 @@ def hide_console() -> None:
         ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
 
 
-def _configure_logging(*, stdout: bool, buffer_startup: bool = False) -> None:
-    settings = get_settings().advanced_options
-    src.logger.setup(
-        log_level=settings.log_lvl.value,
-        enable_stdout=stdout,
-        technical=settings.technical_log_info,
-        timestamp=settings.log_timestamp,
-        buffer_startup=buffer_startup,
+def _configure_logging(*, stdout: bool, buffer_startup: bool = False) -> Settings:
+    if not src.logger.is_configured():
+        src.logger.setup(log_level="DEBUG", enable_stdout=stdout, buffer_startup=buffer_startup)
+    settings = get_settings()
+    _apply_configured_logging(settings)
+    return settings
+
+
+def _apply_configured_logging(settings: Settings) -> None:
+    """Apply validated settings to handlers created during early startup."""
+    advanced_options = settings.advanced_options
+    formatter = src.logger.create_formatter(
+        colored=True, technical=advanced_options.technical_log_info, timestamp=advanced_options.log_timestamp
     )
+    src.logger.apply_log_level(advanced_options.log_lvl.value, skip_handler_names={"D4LF_FILE"}, formatter=formatter)
 
 
 def run() -> int:
     """Dispatch CLI update modes and start the Qt shell."""
-    settings = get_settings().advanced_options
     if len(sys.argv) > 1 and sys.argv[1] == "--autoupdate":
-        _configure_logging(stdout=True)
+        try:
+            _configure_logging(stdout=True)
+        except SettingsLoadError as error:
+            print(f"Could not load {error.config_path}; see {error.log_path} for details.", file=sys.stderr)
+            return 1
         start_auto_update()
         return 0
     if len(sys.argv) > 1 and sys.argv[1] == "--autoupdatepost":
-        _configure_logging(stdout=True)
+        try:
+            _configure_logging(stdout=True)
+        except SettingsLoadError as error:
+            print(f"Could not load {error.config_path}; see {error.log_path} for details.", file=sys.stderr)
+            return 1
         start_auto_update(postprocess=True)
         return 0
     if len(sys.argv) > 1 and sys.argv[1] == "--consoleonly":
-        _configure_logging(stdout=True)
+        try:
+            _configure_logging(stdout=True)
+        except SettingsLoadError as error:
+            print(f"Could not load {error.config_path}; see {error.log_path} for details.", file=sys.stderr)
+            return 1
         main()
         return 0
 
     running_from_source = not getattr(sys, "frozen", False)
+    try:
+        _configure_logging(stdout=running_from_source, buffer_startup=True)
+    except SettingsLoadError as error:
+        app = QApplication.instance() or QApplication(sys.argv)
+        show_settings_load_error(error)
+        return 1
+
     if not running_from_source:
         hide_console()
     os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
-    src.logger.setup(
-        log_level=settings.log_lvl.value,
-        enable_stdout=running_from_source,
-        technical=settings.technical_log_info,
-        timestamp=settings.log_timestamp,
-        buffer_startup=True,
-    )
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(str(ICON_PATH)))
     from src.app.shell import UnifiedMainWindow  # ruff:ignore[import-outside-top-level]

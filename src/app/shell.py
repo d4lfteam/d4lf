@@ -2,10 +2,20 @@
 
 import logging
 import sys
+from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import QSize, Qt, QThread, QTimer, QUrl
+from PyQt6.QtCore import QSize, Qt, QThread, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import QDesktopServices, QIcon
-from PyQt6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QPushButton, QTabWidget, QWidget
+from PyQt6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QSystemTrayIcon,
+    QTabWidget,
+    QWidget,
+)
 
 from src import __version__
 from src.app.assets import DISCORD_ICON, GITHUB_ICON, ICON_PATH
@@ -16,19 +26,39 @@ from src.desktop.activity import ANSIConsoleWidget, QtLogHandler
 from src.desktop.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.desktop.widgets import set_accent_color
 from src.importing import create_importer_window
-from src.logger import apply_log_level, consume_startup_log_records, create_formatter, remove_transient_gui_handlers
+from src.logger import (
+    apply_log_level,
+    consume_startup_log_records,
+    create_formatter,
+    is_configured,
+    remove_transient_gui_handlers,
+)
 from src.logger import setup as setup_logging
 from src.loot import get_filter_colors
 from src.profiles import create_profile_editor_window
-from src.settings import LOG_LEVEL_SETTING_KEYS, create_settings_window, get_settings, has_any_changed
+from src.settings import (
+    LOG_LEVEL_SETTING_KEYS,
+    SettingsLoadError,
+    create_settings_window,
+    get_settings,
+    has_any_changed,
+)
+
+if TYPE_CHECKING:
+    from src.item import ProfileLoadReport
 
 LOGGER = logging.getLogger(__name__)
 perception_module = get_perception_module()
 
 
 class UnifiedMainWindow(UnifiedWindowLifecycle):
+    profile_load_report_signal = pyqtSignal(object)
+    settings_load_error_signal = pyqtSignal(object)
+
     def __init__(self):
         super().__init__()
+        self.profile_load_report_signal.connect(self._on_profile_load_report)
+        self.settings_load_error_signal.connect(self._on_settings_load_error)
         self._child_windows: dict[str, QMainWindow] = {}
         self._config = get_settings()
         if ICON_PATH.exists():
@@ -47,7 +77,7 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
         running_from_source = not getattr(sys, "frozen", False)
         root_logger = logging.getLogger()
         adv = self._config.advanced_options
-        if not any(getattr(h, "name", "") == "D4LF_FILE" for h in root_logger.handlers):
+        if not is_configured():
             setup_logging(
                 log_level=adv.log_lvl.value,
                 enable_stdout=running_from_source,
@@ -65,6 +95,20 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
         root_logger.addHandler(self.console_handler)
         root_logger.setLevel(logging.DEBUG)
         self._config.register_change_listener(self._on_config_changed_log_level)
+        self._config.register_load_error_listener(self._queue_settings_load_error)
+
+    def _queue_settings_load_error(self, error: SettingsLoadError) -> None:
+        self.settings_load_error_signal.emit(error)
+
+    def _on_settings_load_error(self, error: SettingsLoadError) -> None:
+        """Report a hot-reload failure without interrupting the game window."""
+        if hasattr(self, "tray_icon"):
+            self.tray_icon.showMessage(
+                "D4LF settings reload failed",
+                f"Could not reload {error.config_path.name}; see the Activity log ({error.log_path}).",
+                QSystemTrayIcon.MessageIcon.Warning,
+                10000,
+            )
 
     def _on_config_changed_log_level(self, changed_keys) -> None:
         if not has_any_changed(changed_keys, LOG_LEVEL_SETTING_KEYS):
@@ -171,12 +215,24 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
             self.update_vision_status(None)
             self.update_tts_status(None)
             return
+        from src.item import Filter  # ruff:ignore[import-outside-top-level]
+
+        Filter().register_profile_failure_listener(self._queue_profile_load_report)
         self._backend_thread = QThread()
         self.worker = BackendWorker()
         self.worker.moveToThread(self._backend_thread)
         self._backend_thread.started.connect(self.worker.run)
         self.worker.finished.connect(self._backend_thread.quit)
         self._backend_thread.start()
+
+    def _queue_profile_load_report(self, report: ProfileLoadReport) -> None:
+        self.profile_load_report_signal.emit(report)
+
+    def _on_profile_load_report(self, report: ProfileLoadReport) -> None:
+        if hasattr(self, "tray_icon"):
+            self.tray_icon.showMessage(
+                "D4LF profile loading", report.message, QSystemTrayIcon.MessageIcon.Warning, 10000
+            )
 
     def _show_singleton_modal(self, key: str, window_class, *args, **kwargs):
         existing_window = self._child_windows.get(key)

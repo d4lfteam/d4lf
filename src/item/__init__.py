@@ -23,7 +23,7 @@ from src.item.models import FilterResult, Item, ItemJSONEncoder, MatchedFilter
 
 if TYPE_CHECKING:
     from src.item.data.loader import Dataloader
-    from src.item.filter.engine import Filter
+    from src.item.filter.engine import Filter, ProfileLoadReport
     from src.item.sigil_rules import (
         SIGIL_RULE_TARGET_TYPES,
         SigilItem,
@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 
 _LAZY_EXPORTS = {
     "Filter": ("src.item.filter.engine", "Filter"),
+    "ProfileLoadReport": ("src.item.filter.engine", "ProfileLoadReport"),
     "Dataloader": ("src.item.data.loader", "Dataloader"),
     "SIGIL_RULE_TARGET_TYPES": ("src.item.sigil_rules", "SIGIL_RULE_TARGET_TYPES"),
     "SigilItem": ("src.item.sigil_rules", "SigilItem"),
@@ -58,6 +59,7 @@ __all__ = [
     "ItemRarity",
     "ItemType",
     "MatchedFilter",
+    "ProfileLoadReport",
     "SeasonalAttribute",
     "SigilItem",
     "SigilRuleTarget",

@@ -1,13 +1,71 @@
 import logging
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from src.settings.loader import PARAMS_INI, IniConfigLoader
+import pytest
 
-if TYPE_CHECKING:
-    import pytest
+from src.settings.loader import PARAMS_INI, IniConfigLoader, SettingsLoadError
 
 
 class TestIniConfigLoader:
+    def test_invalid_reload_keeps_last_good_values_and_does_not_notify(
+        self, isolated_ini_loader: IniConfigLoader
+    ) -> None:
+        loader = isolated_ini_loader
+        loader.save_value("general", "run_vision_mode_on_startup", True)
+        notifications: list[frozenset[str]] = []
+        loader.register_change_listener(notifications.append)
+        config_path = loader.user_dir / PARAMS_INI
+        config_path.write_text("[general\ninvalid", encoding="utf-8")
+
+        assert loader.reload_if_changed() is True
+        assert loader.general.run_vision_mode_on_startup is True
+        assert notifications == []
+        assert loader.reload_if_changed() is False
+
+    def test_initial_invalid_settings_raise_with_paths(self, tmp_path, monkeypatch) -> None:
+        loader = IniConfigLoader()
+        monkeypatch.setattr(loader, "_user_dir", tmp_path)
+        (tmp_path / PARAMS_INI).write_text("[general\ninvalid", encoding="utf-8")
+
+        with pytest.raises(SettingsLoadError) as raised:
+            loader.load()
+
+        assert raised.value.config_path == tmp_path / PARAMS_INI
+
+    def test_settings_open_error_is_reported(self, isolated_ini_loader: IniConfigLoader, monkeypatch) -> None:
+        loader = isolated_ini_loader
+        config_path = loader.user_dir / PARAMS_INI
+        config_path.write_text("[general]\nrun_vision_mode_on_startup = false\n", encoding="utf-8")
+        original_open = Path.open
+
+        def fail_open(path, *args, **kwargs):
+            if path == config_path:
+                msg = "settings unreadable"
+                raise PermissionError(msg)
+            return original_open(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "open", fail_open)
+        with pytest.raises(SettingsLoadError) as raised:
+            loader.load()
+
+        assert isinstance(raised.value.original, PermissionError)
+
+    def test_invalid_reload_reports_once_and_recovers_after_edit(self, isolated_ini_loader: IniConfigLoader) -> None:
+        loader = isolated_ini_loader
+        errors = []
+        loader.register_load_error_listener(errors.append)
+        config_path = loader.user_dir / PARAMS_INI
+        config_path.write_text("[general\ninvalid", encoding="utf-8")
+
+        loader.reload_if_changed()
+        loader.reload_if_changed()
+        assert len(errors) == 1
+
+        config_path.write_text("[general]\nrun_vision_mode_on_startup = false\n", encoding="utf-8")
+        assert loader.reload_if_changed() is True
+        assert loader.general.run_vision_mode_on_startup is False
+        assert len(errors) == 1
+
     def test_reload_if_changed_updates_models_and_revision(self, isolated_ini_loader: IniConfigLoader) -> None:
         loader = isolated_ini_loader
         revision_before_change = loader.config_revision
