@@ -4,6 +4,7 @@ The facade stays lightweight: platform hotkey backends, image resources, and Qt
 widgets are imported only when the corresponding capability operation is used.
 """
 
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
@@ -43,7 +44,7 @@ if TYPE_CHECKING:
     import logging
     from collections.abc import Callable
 
-BASE_DIR = Path(__file__).parent.parent.parent
+BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).parent.parent.parent
 PARAMS_INI = "params.ini"
 
 

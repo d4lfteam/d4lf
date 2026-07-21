@@ -41,3 +41,17 @@ def test_import_is_free_of_platform_and_gui_backends() -> None:
     result = subprocess.run([sys.executable, "-c", code], check=False, capture_output=True, text=True)
 
     assert result.returncode == 0, result.stderr
+
+
+def test_frozen_import_uses_release_executable_parent() -> None:
+    code = """\
+import sys
+from pathlib import Path
+sys.frozen = True
+sys.executable = '/tmp/release/D4LF.exe'
+import src.settings
+assert src.settings.BASE_DIR == Path('/tmp/release')
+"""
+    result = subprocess.run([sys.executable, "-c", code], check=False, capture_output=True, text=True)
+
+    assert result.returncode == 0, result.stderr
