@@ -216,7 +216,7 @@ has a name and can filter for any combination of the following:
 - `affixPool`: A list of multiple different rulesets to filter for. Each ruleset must be fulfilled or the item is
   discarded
   - `count`: Define a list of affixes (see [syntax](#affix--unique-aspect-filter-syntax)) and
-    optionally `minCount`, `maxCount` and `minGreaterAffixCount`
+    optionally `minCount` and `maxCount`
     - `minCount`: specifies the minimum number of affixes that must match the item. defaults to amount of specified
       affixes
     - `maxCount` specifies the maximum number of affixes that must match the item. defaults to amount of specified
@@ -252,6 +252,7 @@ Affixes:
   - NiceArmor:
       itemType: chest armor
       minPower: 900
+      minGreaterAffixCount: 2
       affixPool:
         - count:
             - { name: dexterity }
@@ -260,7 +261,6 @@ Affixes:
             - { name: total_armor }
             - { name: maximum_life }
           minCount: 3
-          minGreaterAffixCount: 2
 
   # Search for boots that have at least 2 of the specified affixes and either max evade charges or reduced evade cooldown as inherent affix
   - GreatBoots:
@@ -279,7 +279,7 @@ Affixes:
           minCount: 2
 
   # Search for boots that have at least 2 of the specified affixes AND are a Penitent Greaves
-  # The Greaves must have at least 19% damage multiplier to chilled enemies (Greaves's range is 15-25)
+  # The Greaves must have at least 50% of the possible roll range for its unique aspect
   # Note this would not match non-unique boots that have movement speed and cold resistance, it will only match a Penitent Greaves
   - GreatUniqueBoots:
       itemType: boots
@@ -388,7 +388,7 @@ These rules also apply for `minPercentOfAspect` on the `uniqueAspect` and in `Gl
 ```yaml
 Affixes:
   # Search for chest armor that is at least item level 925 and have at least 3 affixes of the affixPool.
-  # It must have more than 40 damage_reduction, and armor must be at least 70% of its potential maximum affix value
+  # It must have at least 40 damage_reduction, and armor must be at least 70% of its potential maximum affix value
   - NiceArmor:
       itemType: chest armor
       minPower: 925
@@ -588,7 +588,7 @@ Charms:
 
 </details>
 
-Mythic seals will always be kept, even if they don't match a profile.
+Mythic seals and charms will always be kept, even if they don't match a profile.
 
 ### AspectUpgrades
 
@@ -623,8 +623,8 @@ in [assets/lang/enUS/aspects.json](assets/lang/enUS/aspects.json).
 
 ### Sigils
 
-Sigils are defined by the top-level key `Sigils`. It contains a list of affix or location names that you want to filter
-for. If no Sigil filter is provided, all Sigils will be kept.
+Sigils are defined by the top-level key `Sigils`. It contains a mapping of blacklist and/or whitelist rules for affix or
+location names. If no Sigil filter is provided, all Sigils will be kept.
 
 <details><summary>Config Examples</summary>
 
@@ -735,7 +735,7 @@ Tributes:
 When both keys are provided, a tribute is kept if it matches **either** the name list or the rarity list.
 
 ```yaml
-# Keeps tribute_of_harmony AND all legendary/unique tributes
+# Keeps tribute_of_harmony OR all legendary/unique tributes
 Tributes:
   name: [harmony]
   rarity: [legendary, unique]
@@ -771,7 +771,7 @@ The following global filters are available:
 <details><summary>Config Examples</summary>
 
 ```yaml
-# Take all uniques with item power > 900
+# Take all uniques with item power 900 or higher
 GlobalUniques:
   - minPower: 900
 ```
