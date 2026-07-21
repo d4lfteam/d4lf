@@ -1,9 +1,12 @@
-from unittest.mock import Mock
+import typing
+
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 from src.overlay.widget.ui import _OverlayUI
 
 
-def test_repack_shows_only_enabled_timer_groups():
+def test_repack_shows_only_enabled_timer_groups(mocker: MockerFixture):
     overlay = object.__new__(_OverlayUI)
     overlay.orientation = "horizontal"
     overlay.show_wb = True
@@ -21,12 +24,12 @@ def test_repack_shows_only_enabled_timer_groups():
     overlay.capture_exp_stats = False
     overlay._gold_initialized = False
     overlay._exp_initialized = False
-    overlay.wb_group = Mock()
-    overlay.legion_group = Mock()
-    overlay.ht_group = Mock()
-    overlay.stats_group = Mock()
-    overlay.exp_group = Mock()
-    overlay.t2l_group = Mock()
+    overlay.wb_group = mocker.Mock()
+    overlay.legion_group = mocker.Mock()
+    overlay.ht_group = mocker.Mock()
+    overlay.stats_group = mocker.Mock()
+    overlay.exp_group = mocker.Mock()
+    overlay.t2l_group = mocker.Mock()
 
     overlay._repack()
 

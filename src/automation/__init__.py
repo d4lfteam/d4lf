@@ -1,7 +1,5 @@
 """Platform-neutral game automation interface."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from src import settings as settings_module

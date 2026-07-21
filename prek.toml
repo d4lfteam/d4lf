@@ -26,7 +26,7 @@ repo = "local"
 [[repos]]
 hooks = [{ id = "uv-lock", priority = 4294967294 }]
 repo = "https://github.com/astral-sh/uv-pre-commit"
-rev = "0.11.29"
+rev = "0.11.30"
 
 [[repos]]
 hooks = [
@@ -92,4 +92,4 @@ rev = "v0.15.22"
 [[repos]]
 hooks = [{ id = "tombi-format", exclude = "^uv.lock", priority = 4294967294 }]
 repo = "https://github.com/tombi-toml/tombi-pre-commit"
-rev = "v1.2.2"
+rev = "v1.2.4"

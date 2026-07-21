@@ -1,9 +1,12 @@
 import tkinter as tk
+import typing
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import Mock
 
 import pytest
+
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 import src.loot.fast as fast_module
 from src.item import FilterResult, Item, ItemRarity, MatchedFilter
@@ -55,12 +58,12 @@ def test_fast_mode_preserves_match_details_and_feedback():
     assert fast_feedback(Item(rarity=ItemRarity.Unique), FilterResult(keep=True, matched=[])) == ("Unique", "#23fc5d")
 
 
-def test_fast_mode_clears_unmatched_items_without_drawing(monkeypatch) -> None:
+def test_fast_mode_clears_unmatched_items_without_drawing(monkeypatch, mocker: MockerFixture) -> None:
     wrapped = cast("Any", VisionModeFast)
     mode_type = next(cell.cell_contents for cell in wrapped.__closure__ if isinstance(cell.cell_contents, type))
     mode = object.__new__(mode_type)
-    mode.request_clear = Mock()
-    mode.request_draw = Mock()
+    mode.request_clear = mocker.Mock()
+    mode.request_draw = mocker.Mock()
 
     monkeypatch.setattr(fast_module, "is_ignored_item", lambda _item: False)
     monkeypatch.setattr(fast_module.src.perception, "read_latest_item", lambda: Item())

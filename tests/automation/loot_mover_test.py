@@ -1,6 +1,9 @@
+import typing
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import Mock
+
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 from src import automation
 from src.automation import loot_mover as _loot_mover
@@ -18,9 +21,9 @@ def test_move_items_returns_unhandled_slots_when_type_does_not_match(monkeypatch
     assert remaining == []
 
 
-def test_move_items_to_stash_requires_an_open_stash(monkeypatch):
-    monkeypatch.setattr(_loot_mover, "CharInventory", Mock)
-    stash = Mock(is_open=Mock(return_value=False))
+def test_move_items_to_stash_requires_an_open_stash(monkeypatch, mocker: MockerFixture):
+    monkeypatch.setattr(_loot_mover, "CharInventory", mocker.Mock)
+    stash = mocker.Mock(is_open=mocker.Mock(return_value=False))
     monkeypatch.setattr(_loot_mover, "Stash", lambda: stash)
 
     automation.move_items_to_stash()
@@ -28,11 +31,11 @@ def test_move_items_to_stash_requires_an_open_stash(monkeypatch):
     stash.get_item_slots.assert_not_called()
 
 
-def test_move_items_to_stash_uses_configured_tabs_and_capacity(monkeypatch):
+def test_move_items_to_stash_uses_configured_tabs_and_capacity(monkeypatch, mocker: MockerFixture):
     item = SimpleNamespace(is_fav=True, is_junk=False)
-    inventory = Mock()
+    inventory = mocker.Mock()
     inventory.get_item_slots.return_value = ([item], [])
-    stash = Mock(is_open=Mock(return_value=True))
+    stash = mocker.Mock(is_open=mocker.Mock(return_value=True))
     stash.get_item_slots.return_value = ([], [object()])
     settings = SimpleNamespace(
         general=SimpleNamespace(move_to_stash_item_type=[MoveItemsType.favorites], check_chest_tabs=[2, 4])
@@ -41,7 +44,7 @@ def test_move_items_to_stash_uses_configured_tabs_and_capacity(monkeypatch):
     monkeypatch.setattr(_loot_mover, "Stash", lambda: stash)
     monkeypatch.setattr(_loot_mover, "get_settings", lambda: settings)
     monkeypatch.setattr(_loot_mover, "abs_window_to_monitor", lambda coordinate: coordinate)
-    mouse = Mock()
+    mouse = mocker.Mock()
     monkeypatch.setattr(_loot_mover, "Mouse", mouse)
 
     automation.move_items_to_stash()

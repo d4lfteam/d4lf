@@ -4,8 +4,6 @@ Cross-capability callers import profile models, document persistence, and sessio
 from this module.  The modules beneath this package are implementation details.
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

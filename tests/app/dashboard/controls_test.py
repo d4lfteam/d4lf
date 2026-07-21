@@ -1,14 +1,17 @@
+import typing
 from typing import Any, cast
-from unittest.mock import Mock
+
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 from src.app.dashboard.controls import ActivityLogControlsMixin
 
 
-def test_select_all_checks_every_profile_and_saves_names() -> None:
-    first, second = Mock(), Mock()
+def test_select_all_checks_every_profile_and_saves_names(mocker: MockerFixture) -> None:
+    first, second = mocker.Mock(), mocker.Mock()
     controls = cast("Any", ActivityLogControlsMixin())
     controls._checkboxes = {"alpha": first, "beta": second}
-    controls._save_active_list = Mock()
+    controls._save_active_list = mocker.Mock()
 
     controls._select_all()
 
@@ -17,9 +20,9 @@ def test_select_all_checks_every_profile_and_saves_names() -> None:
     controls._save_active_list.assert_called_once_with(["alpha", "beta"])
 
 
-def test_config_changes_refresh_hotkey_grid_only_for_advanced_settings() -> None:
+def test_config_changes_refresh_hotkey_grid_only_for_advanced_settings(mocker: MockerFixture) -> None:
     controls = cast("Any", ActivityLogControlsMixin())
-    controls._setup_hotkey_grid = Mock()
+    controls._setup_hotkey_grid = mocker.Mock()
 
     controls._on_config_changed(["general.theme"])
     controls._on_config_changed(["advanced_options.hotkey"])

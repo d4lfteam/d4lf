@@ -1,6 +1,9 @@
-import unittest
-from typing import override
-from unittest.mock import patch
+import typing
+
+import pytest
+
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 from pynput import keyboard
 
@@ -47,13 +50,11 @@ class _FakeListener:
         self._on_release(key)
 
 
-class GlobalHotkeyRegistryTest(unittest.TestCase):
-    @override
-    def setUp(self):
+class TestGlobalHotkeyRegistry:
+    @pytest.fixture(autouse=True)
+    def setup(self, mocker: MockerFixture):
         _FakeListener.instances = []
-        self.listener_patch = patch.object(hotkeys.keyboard, "Listener", _FakeListener)
-        self.listener_patch.start()
-        self.addCleanup(self.listener_patch.stop)
+        mocker.patch.object(hotkeys.keyboard, "Listener", _FakeListener)
         self.registry = hotkeys._GlobalHotkeyRegistry()
         self.dispatched = []
 
@@ -184,7 +185,3 @@ class GlobalHotkeyRegistryTest(unittest.TestCase):
 
         assert self.registry._pressed_keys == set()
         assert self.registry._active_hotkeys == set()
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -1,7 +1,10 @@
+import typing
 from threading import Event
-from unittest.mock import Mock
 
 import pytest
+
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 import src.perception
 from src.item import Item
@@ -19,12 +22,12 @@ def test_cancellation_check_raises_for_set_event():
         HighlightingWorker.check_for_thread_cancellation(event)
 
 
-def test_unparsed_tts_does_not_clear_existing_item_overlay(monkeypatch):
+def test_unparsed_tts_does_not_clear_existing_item_overlay(monkeypatch, mocker: MockerFixture):
     worker = object.__new__(HighlightingWorker)
     worker.current_item = Item(name="gohrs_devastating_grips")
-    worker.request_clear = Mock()
+    worker.request_clear = mocker.Mock()
 
-    monkeypatch.setattr("src.loot.highlighting_worker.capture", Mock())
+    monkeypatch.setattr("src.loot.highlighting_worker.capture", mocker.Mock())
     monkeypatch.setattr(src.perception, "read_latest_item", lambda: None)
 
     worker.on_tts([])

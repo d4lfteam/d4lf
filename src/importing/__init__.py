@@ -1,7 +1,5 @@
 """Public contracts and shared behavior for build-guide importing."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

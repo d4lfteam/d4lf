@@ -16,6 +16,7 @@ Python 3.14 via uv; C++ for the TTS DLL in `tts/`.
 
 Run these when you think you are finished and make sure these pass.
 Run formatters, type checkers, line guard and linters: uv run prek run -a
+The formatters are authorative, so don't change formatting manually.
 Run unit tests: uv run pytest . -m "not selenium" -v -n logical
 
 ## Architecture

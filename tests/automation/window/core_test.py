@@ -1,7 +1,10 @@
 import sys
-from unittest.mock import Mock
+import typing
 
 import pytest
+
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 from src import automation
 from src.automation.window import core as _window
@@ -29,8 +32,8 @@ def test_windows_window_adapter_selects_windows_backend():
     assert _window._platform_backend.__name__.endswith("backend_windows")
 
 
-def test_hotkey_interface_delegates_to_configured_input_backend(monkeypatch):
-    send = Mock()
+def test_hotkey_interface_delegates_to_configured_input_backend(monkeypatch, mocker: MockerFixture):
+    send = mocker.Mock()
     monkeypatch.setattr("src.settings.send", send)
 
     automation.send_hotkey("ctrl+f11")
@@ -38,8 +41,8 @@ def test_hotkey_interface_delegates_to_configured_input_backend(monkeypatch):
     send.assert_called_once_with("ctrl+f11")
 
 
-def test_public_window_interface_uses_the_selected_backend(monkeypatch):
-    backend = Mock()
+def test_public_window_interface_uses_the_selected_backend(monkeypatch, mocker: MockerFixture):
+    backend = mocker.Mock()
     backend.get_window_spec_id.return_value = 42
     monkeypatch.setattr(_window, "_backend", backend)
     window = automation.WindowSpec("Diablo IV.exe")
