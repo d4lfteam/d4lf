@@ -53,6 +53,20 @@ def test_sigil_priority(mocker: MockerFixture):
     assert test_filter.should_keep(sigil_priority).matched[0].profile == filters.sigil_priority.name
 
 
+def test_sigil_rarity_whitelist_and_blacklist_respect_priority(mocker: MockerFixture):
+    test_filter = _create_mocked_filter(mocker)
+    profile_filter = filters.sigil_rarity_rare_with_whitelist.sigils.model_copy(deep=True)
+    profile_filter.blacklist = [filters.sigil_rarity_rare_with_blacklist.sigils.blacklist[0]]
+    test_filter.sigil_filters = {filters.sigil_rarity_rare_with_whitelist.name: profile_filter}
+
+    assert test_filter.should_keep(sigil_rare_blacklisted).matched == []
+    profile_filter.priority = SigilPriority.whitelist
+    assert (
+        test_filter.should_keep(sigil_rare_blacklisted).matched[0].profile
+        == filters.sigil_rarity_rare_with_whitelist.name
+    )
+
+
 def test_mythic_sigil_always_kept(mocker: MockerFixture):
     test_filter = _create_mocked_filter(mocker)
     test_filter.sigil_filters = {filters.sigil.name: filters.sigil.sigils}
@@ -163,17 +177,33 @@ def test_sigil_rarity_and_blacklist_drops_blacklisted(mocker: MockerFixture):
     assert test_filter.should_keep(sigil_rare_blacklisted).matched == []
 
 
-def test_sigil_rarity_and_whitelist_drops_whitelisted_wrong_rarity(mocker: MockerFixture):
-    """A whitelisted sigil whose rarity fails the gate is still dropped (rarity ANDs with whitelist)."""
+def test_sigil_rarity_or_whitelist_keeps_whitelisted_wrong_rarity(mocker: MockerFixture):
+    """A whitelist match keeps a sigil even when its derived rarity is not listed."""
     test_filter = _create_mocked_filter(mocker)
     test_filter.sigil_filters = {
         filters.sigil_rarity_rare_with_whitelist.name: filters.sigil_rarity_rare_with_whitelist.sigils
     }
-    # sigil_derived_legendary has jalals_vigil (whitelisted) but is Legendary — rarity gate drops it
-    assert test_filter.should_keep(sigil_derived_legendary).matched == []
-    # sigil_derived_rare has jalals_vigil (whitelisted) and is Rare — passes both
+    # sigil_derived_legendary has jalals_vigil (whitelisted) but is Legendary.
+    assert (
+        test_filter.should_keep(sigil_derived_legendary).matched[0].profile
+        == filters.sigil_rarity_rare_with_whitelist.name
+    )
+    # sigil_derived_rare has jalals_vigil (whitelisted) and is Rare.
     assert (
         test_filter.should_keep(sigil_derived_rare).matched[0].profile == filters.sigil_rarity_rare_with_whitelist.name
+    )
+
+
+def test_sigil_rarity_or_whitelist_keeps_unknown_rarity(mocker: MockerFixture):
+    """A whitelist match also bypasses the fail-closed unknown-rarity gate."""
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.sigil_filters = {
+        filters.sigil_rarity_rare_with_whitelist.name: filters.sigil_rarity_rare_with_whitelist.sigils
+    }
+
+    assert (
+        test_filter.should_keep(sigil_unknown_rarity).matched[0].profile
+        == filters.sigil_rarity_rare_with_whitelist.name
     )
 
 

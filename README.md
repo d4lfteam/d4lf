@@ -684,8 +684,9 @@ You can gate sigils by rarity with top-level `rarity`. Sigil rarity is derived f
 [assets/lang/enUS/sigils.json](assets/lang/enUS/sigils.json).
 
 - If `rarity` is omitted, all sigil rarities pass.
-- The rarity gate is applied before blacklist/whitelist.
-- If rarity cannot be resolved and a rarity gate is active, the sigil is dropped.
+- A sigil matches when its rarity is listed **or** it matches a whitelist rule.
+- Blacklist rules still discard matching sigils, subject to the configured priority.
+- If rarity cannot be resolved, only the whitelist branch can match.
 
 ```yaml
 # Only keep rare sigils, and among those discard armor_breakers / resistance_breakers

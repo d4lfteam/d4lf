@@ -206,7 +206,7 @@ class HighlightingWorker:
                                                 locator_result = locate_markers_for_detection(retry_detection)
                                                 item_roi = retry_detection.crop_roi
                                     self.request_match_box(item_descr, item_roi, res, locator_result)
-                            elif not match:
+                            else:
                                 self.request_no_match_box(item_descr, item_roi)
                 else:
                     self.request_clear()

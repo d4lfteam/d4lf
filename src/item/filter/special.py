@@ -40,16 +40,17 @@ class FilterSpecialMixin:
             res.keep = True
             res.matched.append(MatchedFilter("Sigils not filtered"))
         for profile_name, profile_filter in self.sigil_filters.items():
-            if profile_filter.rarities and (  # unknown sigil rarity fails a configured gate closed
-                sigil_item.rarity is None or sigil_item.rarity not in profile_filter.rarities
-            ):
-                continue
             blacklist_empty = not profile_filter.blacklist
             is_in_blacklist = any(sigil_item.matches(rule) for rule in profile_filter.blacklist)
             blacklist_ok = True if blacklist_empty else not is_in_blacklist
             whitelist_empty = not profile_filter.whitelist
             is_in_whitelist = any(sigil_item.matches(rule) for rule in profile_filter.whitelist)
-            whitelist_ok = True if whitelist_empty else is_in_whitelist
+            rarity_match = bool(profile_filter.rarities) and (
+                sigil_item.rarity is not None and sigil_item.rarity in profile_filter.rarities
+            )
+            if profile_filter.rarities and not rarity_match and not is_in_whitelist:
+                continue
+            whitelist_ok = True if whitelist_empty else is_in_whitelist or rarity_match
             if (blacklist_empty and not whitelist_empty and not whitelist_ok) or (
                 whitelist_empty and not blacklist_empty and not blacklist_ok
             ):

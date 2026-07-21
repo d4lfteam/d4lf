@@ -144,7 +144,11 @@ class VisionModeFast:
                 LOGGER.info("Unknown Item")
                 return self.request_draw("Unknown item", "#ce7e00")
 
-            text, color = fast_feedback(item_descr, Filter().should_keep(item_descr))
+            feedback = fast_feedback(item_descr, Filter().should_keep(item_descr))
+            if feedback is None:
+                self.request_clear()
+                return None
+            text, color = feedback
             return self.request_draw(text, color)
         except Exception:
             LOGGER.exception("Error in vision mode. Please create a bug report")
@@ -177,11 +181,11 @@ def create_match_text(matches: Iterable[MatchedFilter]) -> list[str]:
     return result
 
 
-def fast_feedback(item_descr, filter_result) -> tuple[str, str]:
+def fast_feedback(item_descr, filter_result) -> tuple[str, str] | None:
     """Return the immediate tooltip feedback for a parsed item and its result."""
     colors = get_filter_colors()
     if not filter_result.keep:
-        return "Junk", colors.no_match
+        return None
 
     if not filter_result.matched:
         if item_descr.rarity == ItemRarity.Unique:

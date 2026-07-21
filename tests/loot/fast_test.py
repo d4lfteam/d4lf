@@ -1,6 +1,7 @@
 import tkinter as tk
 from types import SimpleNamespace
 from typing import Any, cast
+from unittest.mock import Mock
 
 import pytest
 
@@ -50,8 +51,29 @@ def test_fast_mode_preserves_match_details_and_feedback():
     assert create_match_text([MatchedFilter("Build", aspect_match=True, set_match=True)]) == [
         "Build\n  - Aspect\n  - Set"
     ]
-    assert fast_feedback(Item(), FilterResult(keep=False, matched=[])) == ("Junk", "#fc2323")
+    assert fast_feedback(Item(), FilterResult(keep=False, matched=[])) is None
     assert fast_feedback(Item(rarity=ItemRarity.Unique), FilterResult(keep=True, matched=[])) == ("Unique", "#23fc5d")
+
+
+def test_fast_mode_clears_unmatched_items_without_drawing(monkeypatch) -> None:
+    wrapped = cast("Any", VisionModeFast)
+    mode_type = next(cell.cell_contents for cell in wrapped.__closure__ if isinstance(cell.cell_contents, type))
+    mode = object.__new__(mode_type)
+    mode.request_clear = Mock()
+    mode.request_draw = Mock()
+
+    monkeypatch.setattr(fast_module, "is_ignored_item", lambda _item: False)
+    monkeypatch.setattr(fast_module.src.perception, "read_latest_item", lambda: Item())
+    monkeypatch.setattr(
+        fast_module,
+        "Filter",
+        lambda: type("_Filter", (), {"should_keep": lambda _self, _item: FilterResult(keep=False, matched=[])})(),
+    )
+
+    mode.on_tts(None)
+
+    mode.request_clear.assert_called_once_with()
+    mode.request_draw.assert_not_called()
 
 
 def test_clearing_before_next_match_does_not_leave_a_dead_textbox() -> None:
