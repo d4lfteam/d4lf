@@ -130,13 +130,12 @@ def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int, bool]:
     if len(planner_suffix) != 2:
         LOGGER.error(msg := "Invalid planner url")
         raise MaxrollError(msg)
-    if "#" in planner_suffix[1]:
-        planner_id, data_id = planner_suffix[1].split("#")
+    planner_id, fragment_separator, fragment = planner_suffix[1].partition("#")
+    if fragment_separator and fragment.isdecimal():
+        data_id = fragment
         data_id = int(data_id) - 1
         build_id_is_visible_position = True
     else:
-        planner_id = planner_suffix[1]
-
         try:
             r = get_with_retry(url=PLANNER_API_BASE_URL + planner_id)
         except ConnectionError as exc:

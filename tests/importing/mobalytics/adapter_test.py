@@ -1,5 +1,4 @@
 import json
-import os
 import typing
 from types import SimpleNamespace
 
@@ -15,7 +14,6 @@ if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
     from selenium.webdriver.remote.webdriver import WebDriver
 
-IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 URLS = [
     "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb",
     "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb?ws-ngf5-1=activeVariantId%2C7a9c6d51-18e9-4090-a804-7b73ff00879d",
@@ -68,13 +66,13 @@ class _MobalyticsImportDriver:
         return None
 
 
-def _mobalytics_page_source(slots: Sequence[Mapping[str, object]], paragon: Mapping[str, object] | None = None) -> str:
-    build_data = {
-        "name": "Pulverize Druid",
-        "buildVariants": {
-            "values": [{"id": "variant-1", "genericBuilder": {"slots": slots}, "paragon": paragon or {}}]
-        },
-    }
+def _mobalytics_page_source(
+    slots: Sequence[Mapping[str, object]], paragon: Mapping[str, object] | None = None, include_paragon: bool = True
+) -> str:
+    variant = {"id": "variant-1", "genericBuilder": {"slots": slots}}
+    if include_paragon:
+        variant["paragon"] = paragon or {}
+    build_data = {"name": "Pulverize Druid", "buildVariants": {"values": [variant]}}
     state = {
         "userGeneratedDocumentBySlug": {
             "data": {
@@ -217,9 +215,50 @@ def test_import_mobalytics_imports_seal_identity_with_or_without_affixes(
     assert golden_epiphany.affix_pool[0].count[0].name == "cooldown_reduction"
 
 
+def test_import_mobalytics_allows_missing_paragon_and_stale_variant_without_export(
+    mock_ini_loader, mocker: MockerFixture
+) -> None:
+    driver = _MobalyticsImportDriver(
+        page_source=_mobalytics_page_source(
+            [_mobalytics_slot("ring-1", "items", "Vulpine's Aspect", {"gearStats": [{"id": "willpower"}]})],
+            include_paragon=False,
+        )
+    )
+    profile_store = mocker.Mock()
+    profile_store.save_new.side_effect = lambda **kwargs: SimpleNamespace(file_name=kwargs["file_name"])
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
+
+    result = import_mobalytics(
+        request=_request(
+            url="https://mobalytics.gg/diablo-4/builds/druid-zaior-pulverize-druid?ws-ngf5-1=activeVariantId%2Cstale-variant",
+            import_aspect_upgrades=False,
+            import_greater_affixes=False,
+            require_greater_affixes=False,
+            add_to_profiles=False,
+            custom_file_name=None,
+        ),
+        driver=typing.cast("WebDriver", driver),
+    )
+
+    assert result is not None
+    assert result.paragon is None
+
+
+def test_import_mobalytics_returns_none_for_archived_build(mock_ini_loader) -> None:
+    state = {"userGeneratedDocumentBySlug": {"data": {}}}
+    driver = _MobalyticsImportDriver(
+        page_source=f"<html><body>The page you are looking for is archived</body><script>window.__PRELOADED_STATE__={json.dumps(state)};</script></html>"
+    )
+
+    result = import_mobalytics(
+        request=_request(url="https://mobalytics.gg/diablo-4/builds/archived-build"),
+        driver=typing.cast("WebDriver", driver),
+    )
+
+    assert result is None
+
+
 @pytest.mark.parametrize("url", URLS)
-@pytest.mark.requests
-@pytest.mark.skipif(not IN_GITHUB_ACTIONS, reason="Importer tests are skipped if not run from Github Actions")
 def test_import_mobalytics(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
     Dataloader()
     mocker.patch("builtins.open", new=mocker.mock_open())

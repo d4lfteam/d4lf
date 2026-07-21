@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import typing
 
 import pytest
@@ -27,8 +26,6 @@ if typing.TYPE_CHECKING:
     from collections.abc import Mapping
 
     from pytest_mock import MockerFixture
-IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
-
 URLS = [
     # No frills and no uniques
     "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb",

@@ -1,4 +1,3 @@
-import os
 import typing
 
 import pytest
@@ -11,12 +10,10 @@ from src.importing.infinitybuilds import (
     import_infinitybuilds,
 )
 from src.item import Dataloader
+from tests.conftest import INFINITYBUILDS_IMPORT_URLS
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
-
-IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
-URLS = ["https://infinitybuilds.gg/en/builds/barbarian-fL8P6vVSqI"]
 
 
 def _request(
@@ -124,9 +121,7 @@ def test_fetch_infinitybuilds_paragon_catalog_builds_label_maps_from_both_datase
     assert catalog.glyph_labels == {"glyph::rare-016-dexterity-side": "Exploit"}
 
 
-@pytest.mark.parametrize("url", URLS)
-@pytest.mark.requests
-@pytest.mark.skipif(not IN_GITHUB_ACTIONS, reason="Importer tests are skipped if not run from Github Actions")
+@pytest.mark.parametrize("url", INFINITYBUILDS_IMPORT_URLS)
 def test_import_infinitybuilds(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
     Dataloader()
     mocker.patch("builtins.open", new=mocker.mock_open())

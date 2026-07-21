@@ -1,5 +1,4 @@
 import json
-import os
 import typing
 from types import SimpleNamespace
 
@@ -23,9 +22,6 @@ if typing.TYPE_CHECKING:
 
     from pytest_mock import MockerFixture
     from selenium.webdriver.remote.webdriver import WebDriver
-IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
-
-URLS = ["https://infinitybuilds.gg/en/builds/barbarian-fL8P6vVSqI"]
 
 
 def _request(

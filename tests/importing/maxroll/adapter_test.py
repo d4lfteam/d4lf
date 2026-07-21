@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import typing
 from types import SimpleNamespace
 
@@ -18,8 +17,6 @@ from src.item import Dataloader, ItemType
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
-IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
-
 URLS = [
     "https://maxroll.gg/d4/build-guides/auradin-guide",
     "https://maxroll.gg/d4/build-guides/blessed-hammer-paladin-guide",
@@ -35,8 +32,6 @@ URLS = [
 
 
 @pytest.mark.parametrize("url", URLS)
-@pytest.mark.requests
-@pytest.mark.skipif(not IN_GITHUB_ACTIONS, reason="Importer tests are skipped if not run from Github Actions")
 def test_import_maxroll(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
     Dataloader()  # need to load data first or the mock will make it impossible
     mocker.patch("builtins.open", new=mocker.mock_open())

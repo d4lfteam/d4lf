@@ -82,6 +82,9 @@ def _import_mobalytics(config: ImportConfig, driver: WebDriver | None = None) ->
         raise MobalyticsError(msg)
     build_data = _as_mapping(_first_jsonpath_result("$..userGeneratedDocumentBySlug.data.data", state))
     if not build_data:
+        if "page you are looking for is archived" in page_source.casefold():
+            LOGGER.warning("Mobalytics build is archived: %s", url)
+            return None
         raise MobalyticsError(msg := "No build data found")
     build_header = _as_text(build_data.get("name"))
     class_name = _as_text(
@@ -91,20 +94,22 @@ def _import_mobalytics(config: ImportConfig, driver: WebDriver | None = None) ->
         raise MobalyticsError(msg := "No build name found")
     if not class_name:
         raise MobalyticsError(msg := "No class name found")
+    items: object | None = None
     if variant_id:
         items = _first_jsonpath_result(
             f"$..buildVariants.values[?@.id=='{variant_id}'].genericBuilder.slots", build_data
         )
-    else:
+        if not items:
+            LOGGER.warning("Mobalytics variant %r was not found; importing the first variant instead.", variant_id)
+            variant_id = None
+    if not variant_id:
         items = _first_jsonpath_result("$..buildVariants.values[0].genericBuilder.slots", build_data)
         variant_id = _first_jsonpath_result("$..buildVariants.values[0].id", build_data)
         if not isinstance(variant_id, str):
             raise MobalyticsError(msg := "No variant id found")
     items = _as_mapping_list(items)
     paragon_value = _first_jsonpath_result(f"$..buildVariants.values[?@.id=='{variant_id}'].paragon", build_data)
-    if paragon_value is None:
-        raise MobalyticsError(msg := "No paragon data found")
-    paragon_data = _as_mapping(paragon_value)
+    paragon_data = _as_mapping(paragon_value) if paragon_value is not None else {}
     variant_name = _as_text(_first_jsonpath_result(f"$..childrenVariants[?@.id=='{variant_id}'].title", state))
     if not items:
         raise MobalyticsError(msg := "No items found")

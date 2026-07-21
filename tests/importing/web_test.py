@@ -31,3 +31,51 @@ def test_retry_importer_preserves_explicit_none_result() -> None:
         return None
 
     assert no_result_import() is None
+
+
+def test_retry_importer_injects_driver_when_config_is_positional(mocker) -> None:
+    owned_driver = mocker.Mock()
+    setup = mocker.patch("src.importing.web.setup_webdriver", return_value=owned_driver)
+    config = object()
+
+    @retry_importer(inject_webdriver=True)
+    def importing(import_config, driver=None):
+        assert import_config is config
+        assert driver is owned_driver
+
+    importing(config)
+
+    setup.assert_called_once_with(uc=False)
+    owned_driver.quit.assert_called_once_with()
+
+
+def test_retry_importer_injects_driver_when_optional_driver_is_none(mocker) -> None:
+    owned_driver = mocker.Mock()
+    setup = mocker.patch("src.importing.web.setup_webdriver", return_value=owned_driver)
+    config = object()
+
+    @retry_importer(inject_webdriver=True)
+    def importing(import_config, driver=None):
+        assert import_config is config
+        assert driver is owned_driver
+
+    importing(config, None)
+
+    setup.assert_called_once_with(uc=False)
+    owned_driver.quit.assert_called_once_with()
+
+
+def test_retry_importer_preserves_explicit_positional_driver(mocker) -> None:
+    setup = mocker.patch("src.importing.web.setup_webdriver")
+    supplied_driver = mocker.Mock()
+    config = object()
+
+    @retry_importer(inject_webdriver=True)
+    def importing(import_config, driver=None):
+        assert import_config is config
+        assert driver is supplied_driver
+
+    importing(config, supplied_driver)
+
+    setup.assert_not_called()
+    supplied_driver.quit.assert_not_called()

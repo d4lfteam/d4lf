@@ -1,4 +1,6 @@
+import annotationlib
 import functools
+import inspect
 import logging
 from typing import TYPE_CHECKING
 
@@ -57,22 +59,42 @@ def hover_and_get_tooltip_html(
 
 def retry_importer(func=None, inject_webdriver: bool = False, uc=False):
     def decorator(wrap_function):
+        signature = inspect.signature(wrap_function, annotation_format=annotationlib.Format.STRING)
+
         @functools.wraps(wrap_function)
         def wrapper(*args, **kwargs):
-            owns_driver = inject_webdriver and "driver" not in kwargs and not args
+            bound = signature.bind_partial(*args, **kwargs)
+            explicit_driver = bound.arguments.get("driver") is not None
+            if not explicit_driver:
+                for parameter_name, parameter in signature.parameters.items():
+                    if (
+                        parameter.kind is inspect.Parameter.VAR_KEYWORD
+                        and bound.arguments.get(parameter_name, {}).get("driver") is not None
+                    ):
+                        explicit_driver = True
+                        break
+            owns_driver = inject_webdriver and not explicit_driver
+            owned_driver = None
+            call_args = args
+            call_kwargs = kwargs
             if owns_driver:
-                kwargs["driver"] = setup_webdriver(uc=uc)
+                owned_driver = setup_webdriver(uc=uc)
+                if "driver" in signature.parameters:
+                    bound.arguments["driver"] = owned_driver
+                    call_args, call_kwargs = bound.args, bound.kwargs
+                else:
+                    call_kwargs = {**kwargs, "driver": owned_driver}
             try:
                 for attempt in range(2):
                     try:
-                        return wrap_function(*args, **kwargs)
+                        return wrap_function(*call_args, **call_kwargs)
                     except Exception:
                         LOGGER.exception("An error occurred while importing. Retrying...")
                         if attempt == 1:
                             raise
             finally:
-                if owns_driver:
-                    kwargs["driver"].quit()
+                if owned_driver is not None:
+                    owned_driver.quit()
 
         return wrapper
 
