@@ -20,6 +20,12 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Info Panel Overlay for tracking world events and session statistics
 - Paragon Overlay with import from supported build planners (Mobalytics, Maxroll, D4Builds)
 
+## Donations
+
+If D4LF is useful to you and you want to support the project, consider supporting the project on [Ko-fi](https://ko-fi.com/d4lfteam).
+The money goes directly to help funding expenses related to the project.
+Also share D4LF with your friends and in your communities.
+
 ## How to Setup
 
 ### Installation and quick start guide (New instructions for season 12 that must be followed!)
@@ -970,11 +976,6 @@ AI usage is not banned for D4LF, but some things need to be kept in mind:
 - Be prepared for a lot of comments on your PR. Everything that's being done needs to be understandable by the maintainer because he has to fix it 3 months later if something goes wrong.
 
 Ultimately, please understand there is only 1 full-time maintainer of D4LF and that maintainer does not use AI. The code needs to remain human readable, and humans are who initially wrote it. If an AI and a human disagree, the human always wins. AIs can be helpful but also very stupid.
-
-## Tip
-
-If you want to support the project, the best way is to share it with your friends and in your communities. If you want to contribute financially, you can do so on [Ko-fi](https://ko-fi.com/d4lf).
-The money goes directly to funding AI tokens or cloud time and helps fund development and other expenses related to the project.
 
 ## Credits
 
