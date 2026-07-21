@@ -3,7 +3,7 @@ from src.item import AffixType, Aspect, Item, ItemRarity, ItemType
 from src.perception import parse_item_text
 
 
-def test_equipment_cases_parse_without_item_description_modules(parser_cases):
+def test_captured_tts_cases_parse_without_item_description_modules(parser_cases):
     for input_item, expected_item in parser_cases:
         assert parse_item_text(input_item) == expected_item
 
@@ -17,6 +17,30 @@ def test_loot_filter_controls_are_not_tts_item_start():
 
 def test_loot_filter_controls_do_not_raise_tts_parser_error():
     assert parse_item_text(LOOT_FILTER_TTS) is None
+
+
+def test_captured_filters_screen_is_not_an_item():
+    assert (
+        parse_item_text([
+            "FILTERS",
+            *("Checkbox Disabled",) * 12,
+            "Search",
+            "&lt;CC&gt; Panoramix | 70 (300)",
+            "Chest 7",
+            "Chest 6",
+            "Chest 5",
+            "Chest 4",
+            "Chest 3",
+            "Consumables",
+            "Chest 1",
+            "Consumables",
+            "Chest 3",
+            "Chest 3",
+            "Stash",
+            "Left mouse button",
+        ])
+        is None
+    )
 
 
 def test_parser_returns_non_equipment_items_without_image_lookup():

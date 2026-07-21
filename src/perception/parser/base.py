@@ -24,7 +24,6 @@ class ItemIdentifiers(enum.Enum):
     COMPASS = "Compass"
     ESCALATION_SIGIL = "Escalation Sigil"
     NIGHTMARE_SIGIL = "Nightmare Sigil"
-    TRIBUTE = "TRIBUTE OF"
     WHISPERING_KEY = "WHISPERING KEY"
 
 
@@ -210,11 +209,12 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         return _update_item_object(item, item_type=ItemType.Sigil)
     if tts_item[0].startswith(ItemIdentifiers.ESCALATION_SIGIL.value):
         return _update_item_object(item, item_type=ItemType.EscalationSigil)
-    if ItemIdentifiers.TRIBUTE.value in tts_item[0]:
+    metadata_parts = tts_item[1].split(" ")
+    descriptor_parts = metadata_parts[1:]
+    if any(part.lower() == ItemType.Tribute.value for part in descriptor_parts):
         item.item_type = ItemType.Tribute
-        search_string_split = tts_item[1].split(" ")
-        item.rarity = _get_item_rarity(search_string_split[0])
-        item.name = correct_name(" ".join(search_string_split[1:]))
+        item.rarity = _get_item_rarity(metadata_parts[0])
+        item.name = correct_name(" ".join(descriptor_parts))
         return item
     if tts_item[0].startswith(ItemIdentifiers.WHISPERING_KEY.value):
         return _update_item_object(item, item_type=ItemType.Consumable)

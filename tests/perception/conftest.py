@@ -64,5 +64,8 @@ def _item(data: object) -> Item:
 
 @pytest.fixture
 def parser_cases() -> list[tuple[list[str], Item]]:
-    cases = json.loads((Path(__file__).parent / "data/parser_cases.json").read_text(encoding="utf-8"))
+    data_dir = Path(__file__).parent / "data"
+    cases = []
+    for path in sorted(data_dir.glob("parser_*.json")):
+        cases.extend(json.loads(path.read_text(encoding="utf-8")))
     return [(case["input"], _item(case["expected"])) for case in cases]

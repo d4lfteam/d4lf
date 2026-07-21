@@ -1,0 +1,160 @@
+[
+    {
+        "expected": {
+            "affixes": [
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "obols_reserve",
+                    "text": "",
+                    "type": 3,
+                    "value": null
+                },
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "profane_aegis",
+                    "text": "",
+                    "type": 3,
+                    "value": null
+                }
+            ],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "nightmare sigil",
+            "name": "uldurs_cave",
+            "original_name": "ULDURS CAVE NIGHTMARE SIGIL",
+            "power": null,
+            "rarity": "rare",
+            "seasonal_attribute": "bloodied",
+            "set": null
+        },
+        "input": [
+            "ULDURS CAVE NIGHTMARE SIGIL",
+            "Bloodied Nightmare Sigil",
+            "Transform this place into a  Bloodied Nightmare Dungeon with greater challenge and greater reward.",
+            "Uldurs Cave in Kehjistan",
+            "DUNGEON AFFIXES",
+            "Obols Reserve",
+            "Many Obols chests have been stashed here.",
+            "Profane Aegis",
+            "Monsters gain 50% of their Maximum Life as a Barrier.",
+            "Bloodstained",
+            "Enemies are much stronger here.",
+            "Relentless Butcher",
+            "The Butcher is relentlessly stalking you...",
+            "Account Bound",
+            "Seasonal Item",
+            "Sell Value: 1 Gold",
+            "Right mouse button"
+        ]
+    },
+    {
+        "expected": {
+            "affixes": [
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "hidden_armory",
+                    "text": "",
+                    "type": 3,
+                    "value": null
+                },
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "deathly_shadows",
+                    "text": "",
+                    "type": 3,
+                    "value": null
+                }
+            ],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "escalation sigil",
+            "name": "haunted_refuge",
+            "original_name": "HAUNTED REFUGE ESCALATION SIGIL",
+            "power": null,
+            "rarity": "legendary",
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "HAUNTED REFUGE ESCALATION SIGIL",
+            "Legendary Escalation Sigil",
+            "Brave a series of dungeons, each one deadlier than the last, in search of Astaroths Lair.",
+            "Haunted Refuge in Hawezar",
+            "Grants Grim Favor for 17m",
+            "AFFIXES",
+            "Hidden Armory",
+            "Exceptional items are kept here, granting elite monsters a powerful loot affix.",
+            "Deathly Shadows",
+            "Killing a monster has a chance to unleash a volatile pulse after a short delay, dealing heavy area damage.",
+            "Account Bound",
+            "Sell Value: 1 Gold",
+            "Right mouse button"
+        ]
+    },
+    {
+        "expected": {
+            "affixes": [
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "hidden_armory",
+                    "text": "",
+                    "type": 3,
+                    "value": null
+                },
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "deathly_shadows",
+                    "text": "",
+                    "type": 3,
+                    "value": null
+                }
+            ],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "nightmare sigil",
+            "name": "mercys_reach",
+            "original_name": null,
+            "power": null,
+            "rarity": "legendary",
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "Nightmare Sigil",
+            "Transform this dungeon into. aNightmare Dungeon",
+            "Mercys Reach in Fractured Peaks",
+            "DUNGEON AFFIXES",
+            "Hidden Armory",
+            "Exceptional items are kept here, granting elite monsters a powerful loot affix.",
+            "Deathly Shadows",
+            "Killing a monster has a chance to unleash a volatile pulse after a short delay, dealing heavy area damage.",
+            "Account Bound",
+            "Sell Value: 1 Gold",
+            "Right mouse button"
+        ]
+    }
+]
