@@ -9,6 +9,54 @@ def test_normalize_version_adds_prefix_and_preserves_missing_values():
     assert D4LFUpdater.normalize_version(None) is None
 
 
+def test_get_latest_release_includes_prereleases_for_beta_versions(monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return [{"tag_name": "v10.0.0-beta7", "prerelease": True}, {"tag_name": "v10.0.0", "prerelease": False}]
+
+    requests = []
+    monkeypatch.setattr("src.autoupdater.__version__", "10.0.0-beta6")
+    monkeypatch.setattr("src.autoupdater.requests.get", lambda url, **_kwargs: requests.append(url) or Response())
+
+    release = D4LFUpdater().get_latest_release()
+
+    assert release["tag_name"] == "v10.0.0-beta7"
+    assert requests == ["https://api.github.com/repos/d4lfteam/d4lf/releases?per_page=100"]
+
+
+def test_get_latest_release_allows_beta_versions_to_update_to_final_release(monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return [{"tag_name": "v10.0.0", "prerelease": False}, {"tag_name": "v10.0.0-beta7", "prerelease": True}]
+
+    monkeypatch.setattr("src.autoupdater.__version__", "10.0.0-beta6")
+    monkeypatch.setattr("src.autoupdater.requests.get", lambda *_args, **_kwargs: Response())
+
+    assert D4LFUpdater().get_latest_release()["tag_name"] == "v10.0.0"
+
+
+def test_get_latest_release_uses_stable_endpoint_for_release_versions(monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"tag_name": "v10.0.0", "prerelease": False}
+
+    requests = []
+    monkeypatch.setattr("src.autoupdater.__version__", "9.9.9")
+    monkeypatch.setattr("src.autoupdater.requests.get", lambda url, **_kwargs: requests.append(url) or Response())
+
+    assert D4LFUpdater().get_latest_release()["tag_name"] == "v10.0.0"
+    assert requests == ["https://api.github.com/repos/d4lfteam/d4lf/releases/latest"]
+
+
 def test_extract_release_writes_version_and_files(tmp_path):
     archive = tmp_path / "release.zip"
     with zipfile.ZipFile(archive, "w") as release:

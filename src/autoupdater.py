@@ -19,6 +19,7 @@ class D4LFUpdater:
         self.repo_owner = "d4lfteam"
         self.repo_name = "d4lf"
         self.api_url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/releases/latest"
+        self.releases_api_url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/releases?per_page=100"
         self.changes_base_url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/compare/"
         self.current_dir = Path.cwd()
         self.temp_dir = self.current_dir / "temp_update"
@@ -36,9 +37,16 @@ class D4LFUpdater:
         if not silent:
             LOGGER.info("Checking for latest release...")
         try:
-            response = requests.get(self.api_url, timeout=10)
+            current_version = self.normalize_version(__version__)
+            api_url = (
+                self.releases_api_url
+                if any(marker in current_version.lower() for marker in ("-alpha", "-beta"))
+                else self.api_url
+            )
+            response = requests.get(api_url, timeout=10)
             response.raise_for_status()
-            return response.json()
+            release_data = response.json()
+            return next(iter(release_data), None) if api_url == self.releases_api_url else release_data
         except requests.exceptions.RequestException as e:
             LOGGER.error(f"Error fetching release info: {e}")
             return None
