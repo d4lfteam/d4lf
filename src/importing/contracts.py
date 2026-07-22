@@ -28,6 +28,8 @@ class ImportOptions:
     """Options that affect conversion and persistence, independent of a URL."""
 
     import_aspect_upgrades: bool = True
+    import_charms: bool = True
+    import_seals: bool = True
     add_to_profiles: bool = False
     import_greater_affixes: bool = False
     require_greater_affixes: bool = False

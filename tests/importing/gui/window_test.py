@@ -109,6 +109,34 @@ def test_generate_passes_selected_filename_parts(qapp, importer_settings, monkey
     window.close()
 
 
+def test_import_category_choices_persist_and_serialize(qapp, importer_settings, monkeypatch):
+    captured_request: ImportRequest | None = None
+
+    class FakeThreadPool:
+        def start(self, worker):
+            nonlocal captured_request
+            captured_request = worker.request
+
+    monkeypatch.setattr(importer_window_module, "THREADPOOL", FakeThreadPool())
+
+    window = ImporterWindow()
+    window.import_charms_checkbox.setChecked(False)
+    window.import_seals_checkbox.setChecked(False)
+    window.input_box.setText("https://maxroll.gg/d4/build-guides/example")
+    window._generate_button_click()
+
+    assert captured_request is not None
+    assert not captured_request.options.import_charms
+    assert not captured_request.options.import_seals
+    window.close()
+
+    restored = ImporterWindow()
+
+    assert not restored.import_charms_checkbox.isChecked()
+    assert not restored.import_seals_checkbox.isChecked()
+    restored.close()
+
+
 def test_importer_window_accepts_the_composed_accent_color(qapp, importer_settings, monkeypatch):
     received: list[str] = []
     monkeypatch.setattr(importer_window_module, "set_accent_color", received.append)

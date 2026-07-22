@@ -31,6 +31,14 @@ The visual presentation of an existing Mythic/Unique equipment item with an anim
 A filter constraint listing the rarities a rule should match. An empty list matches all rarities. Spelled `rarity` (singular) in profiles; `rarities` is accepted only as a back-compat alias on tributes.
 _Avoid_: `rarities` as the canonical key.
 
+### Charm filter
+
+A profile rule that matches charms through their affixes, rarity, unique aspect, or set.
+
+### Seal filter
+
+A profile rule that matches Horadric Seals through their affixes, rarity, or unique aspect.
+
 ### Profile filename
 
 The name used when saving an imported profile file. Its default form is assembled from selectable filename parts.

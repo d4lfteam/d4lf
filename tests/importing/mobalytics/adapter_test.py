@@ -28,6 +28,8 @@ def _request(
     *,
     url: str,
     import_aspect_upgrades: bool = True,
+    import_charms: bool = True,
+    import_seals: bool = True,
     add_to_profiles: bool = False,
     import_greater_affixes: bool = False,
     require_greater_affixes: bool = False,
@@ -39,6 +41,8 @@ def _request(
         url=url,
         options=ImportOptions(
             import_aspect_upgrades=import_aspect_upgrades,
+            import_charms=import_charms,
+            import_seals=import_seals,
             add_to_profiles=add_to_profiles,
             import_greater_affixes=import_greater_affixes,
             require_greater_affixes=require_greater_affixes,
@@ -47,6 +51,17 @@ def _request(
             export_paragon=export_paragon,
         ),
     )
+
+
+def test_import_mobalytics_passes_category_options_to_pipeline_config(mocker: MockerFixture) -> None:
+    run_result = mocker.patch("src.importing.mobalytics.adapter._import_mobalytics", return_value=None)
+    request = _request(url="https://mobalytics.gg/diablo-4/builds/example", import_charms=False, import_seals=False)
+
+    import_mobalytics(request, driver=typing.cast("WebDriver", object()))
+
+    config = run_result.call_args.args[0]
+    assert not config.import_charms
+    assert not config.import_seals
 
 
 class _MobalyticsImportDriver:

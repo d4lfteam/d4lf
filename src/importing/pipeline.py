@@ -1,6 +1,6 @@
 import dataclasses
 import logging
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar
 
 from src.importing import ImportOptions, ImportRequest, ImportResult, assemble_profile_file_name
 from src.importing.filters import deduplicate_filters, sort_profile_filters
@@ -9,6 +9,7 @@ from src.importing.profiles import add_to_profiles
 from src.profiles import CharmFilterModel, ItemFilterModel, ProfileDocumentStore, ProfileModel, SealFilterModel
 
 LOGGER = logging.getLogger(__name__)
+FilterModelT = TypeVar("FilterModelT", CharmFilterModel, SealFilterModel)
 
 if TYPE_CHECKING:
     from src.importing.config import ImportConfig
@@ -50,6 +51,10 @@ class StaticBuildGuideAdapter:
         return self.build
 
 
+def _enabled_category_filters(filters: list[FilterModelT], enabled: bool) -> list[dict[str, FilterModelT]]:
+    return sort_profile_filters(deduplicate_filters(filters)) if enabled else []
+
+
 class ImportPipeline:
     @staticmethod
     def run(
@@ -70,6 +75,8 @@ class ImportPipeline:
                 url=config.url,
                 options=ImportOptions(
                     import_aspect_upgrades=config.import_aspect_upgrades,
+                    import_charms=config.import_charms,
+                    import_seals=config.import_seals,
                     add_to_profiles=config.add_to_profiles,
                     import_greater_affixes=config.import_greater_affixes,
                     require_greater_affixes=config.require_greater_affixes,
@@ -92,8 +99,8 @@ class ImportPipeline:
             profile = ProfileModel(
                 name="imported profile",
                 Affixes=sort_profile_filters(affix_filters),
-                Charms=sort_profile_filters(deduplicate_filters(variant.charm_filters)),
-                Seals=sort_profile_filters(deduplicate_filters(variant.seal_filters)),
+                Charms=_enabled_category_filters(variant.charm_filters, options.import_charms),
+                Seals=_enabled_category_filters(variant.seal_filters, options.import_seals),
             )
             if options.import_aspect_upgrades and variant.aspect_upgrade_filters:
                 profile.aspect_upgrades = variant.aspect_upgrade_filters

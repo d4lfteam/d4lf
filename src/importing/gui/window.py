@@ -151,6 +151,12 @@ class ImporterWindow(QMainWindow):
             "import_aspect_upgrades",
             "If legendary aspects are in the build, do you want an aspect upgrades section generated for them?",
         )
+        self.import_charms_checkbox = self._generate_checkbox(
+            "Import Charms", "import_charms", "If a build has charms, should they be included in the imported profile?"
+        )
+        self.import_seals_checkbox = self._generate_checkbox(
+            "Import Seals", "import_seals", "If a build has seals, should they be included in the imported profile?"
+        )
         self.add_to_profiles_checkbox = self._generate_checkbox(
             "Auto-add To Profiles",
             "import_add_to_profiles",
@@ -181,15 +187,18 @@ class ImporterWindow(QMainWindow):
         grid.setContentsMargins(0, 10, 0, 10)
         grid.setSpacing(10)
         grid.addWidget(self.import_aspect_upgrades_checkbox, 0, 0)
-        grid.addWidget(self.import_gas_checkbox, 0, 1)
-        grid.addWidget(self.require_all_gas_checkbox, 0, 2)
-        grid.addWidget(self.export_paragon_checkbox, 1, 0)
-        grid.addWidget(self.add_to_profiles_checkbox, 1, 1)
+        grid.addWidget(self.import_charms_checkbox, 0, 1)
+        grid.addWidget(self.import_seals_checkbox, 0, 2)
+        grid.addWidget(self.import_gas_checkbox, 1, 0)
+        grid.addWidget(self.require_all_gas_checkbox, 1, 1)
+        grid.addWidget(self.export_paragon_checkbox, 1, 2)
+        grid.addWidget(self.add_to_profiles_checkbox, 2, 0)
         layout.addLayout(grid)
 
     def _generate_checkbox(self, name: str, setting: str, description: str, default: str = "true"):
         checkbox = CheckmarkCheckBox(name)
-        checkbox.setChecked(self.settings.value(setting, default) == "true")
+        value = self.settings.value(setting, default)
+        checkbox.setChecked(value is True or str(value).casefold() == "true")
         checkbox.setToolTip(description)
         checkbox.stateChanged.connect(lambda: self.settings.setValue(setting, checkbox.isChecked()))
         return checkbox
@@ -241,6 +250,8 @@ class ImporterWindow(QMainWindow):
             url=self.input_box.text().strip(),
             options=ImportOptions(
                 import_aspect_upgrades=self.import_aspect_upgrades_checkbox.isChecked(),
+                import_charms=self.import_charms_checkbox.isChecked(),
+                import_seals=self.import_seals_checkbox.isChecked(),
                 add_to_profiles=self.add_to_profiles_checkbox.isChecked(),
                 import_greater_affixes=self.import_gas_checkbox.isChecked(),
                 require_greater_affixes=self.require_all_gas_checkbox.isChecked(),

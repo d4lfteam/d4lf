@@ -53,18 +53,7 @@ class InfinityBuildsError(Exception):
 
 
 def import_infinitybuilds(request: ImportRequest, driver: WebDriver | None = None) -> ImportResult | None:
-    options = request.options
-    config = ImportConfig(
-        url=request.url,
-        import_aspect_upgrades=options.import_aspect_upgrades,
-        add_to_profiles=options.add_to_profiles,
-        import_greater_affixes=options.import_greater_affixes,
-        require_greater_affixes=options.require_greater_affixes,
-        export_paragon=options.export_paragon,
-        custom_file_name=options.custom_file_name,
-        filename_parts=request.filename_parts,
-    )
-    return _import_infinitybuilds(config, driver)
+    return _import_infinitybuilds(ImportConfig.from_request(request), driver)
 
 
 @retry_importer(inject_webdriver=True)

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from src.importing.config import FilenamePart, ImportConfig
 from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.item import Dataloader, ItemType
-from src.profiles import ItemFilterModel
+from src.profiles import CharmFilterModel, ItemFilterModel, SealFilterModel
 
 
 def _config(**overrides) -> ImportConfig:
@@ -35,6 +35,14 @@ def _build(**overrides) -> ExtractedBuild:
     for key, value in overrides.items():
         setattr(build, key, value)
     return build
+
+
+def _charm_filter() -> CharmFilterModel:
+    return CharmFilterModel()
+
+
+def _seal_filter() -> SealFilterModel:
+    return SealFilterModel()
 
 
 def _paragon_steps() -> list[list[dict[str, object]]]:
@@ -184,3 +192,50 @@ def test_run_deduplicates_identical_affix_filters(mock_ini_loader, mocker) -> No
 
     assert len(saved["profile"].affixes) == 1
     assert next(iter(saved["profile"].affixes[0].root)) == "Ring(x2)"
+
+
+def test_run_excludes_disabled_charm_and_seal_filters_for_each_variant(mock_ini_loader, mocker) -> None:
+    Dataloader()
+    saved_profiles = []
+    profile_store = mocker.Mock()
+    profile_store.save_new.side_effect = lambda *, file_name, profile, source: (  # ruff:ignore[unused-lambda-argument]
+        saved_profiles.append(profile) or SimpleNamespace(file_name=file_name)
+    )
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
+
+    ImportPipeline.run(
+        StaticBuildGuideAdapter(
+            url="https://example.invalid/build",
+            build=_build(
+                variants=[
+                    Variant(name="One", charm_filters=[_charm_filter()], seal_filters=[_seal_filter()]),
+                    Variant(name="Two", charm_filters=[_charm_filter()], seal_filters=[_seal_filter()]),
+                ]
+            ),
+        ),
+        config=_config(import_charms=False, import_seals=False),
+    )
+
+    assert len(saved_profiles) == 2
+    assert all(not profile.charms and not profile.seals for profile in saved_profiles)
+
+
+def test_run_maps_import_categories_from_config_fallback(mock_ini_loader, mocker) -> None:
+    Dataloader()
+    saved = {}
+    profile_store = mocker.Mock()
+    profile_store.save_new.side_effect = lambda *, file_name, profile, source: (  # ruff:ignore[unused-lambda-argument]
+        saved.update({"profile": profile}) or SimpleNamespace(file_name=file_name)
+    )
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
+
+    ImportPipeline.run(
+        StaticBuildGuideAdapter(
+            url="https://example.invalid/build",
+            build=_build(variants=[Variant(charm_filters=[_charm_filter()], seal_filters=[_seal_filter()])]),
+        ),
+        config=_config(import_charms=False, import_seals=True),
+    )
+
+    assert not saved["profile"].charms
+    assert saved["profile"].seals

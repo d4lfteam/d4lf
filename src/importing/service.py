@@ -28,19 +28,7 @@ class _SelectedSource:
         else:
             from src.importing.config import ImportConfig  # ruff:ignore[import-outside-top-level]
 
-            options = request.options
-            result = self.importer(
-                config=ImportConfig(
-                    url=request.url,
-                    import_aspect_upgrades=options.import_aspect_upgrades,
-                    add_to_profiles=options.add_to_profiles,
-                    import_greater_affixes=options.import_greater_affixes,
-                    require_greater_affixes=options.require_greater_affixes,
-                    export_paragon=options.export_paragon,
-                    custom_file_name=options.custom_file_name,
-                    filename_parts=options.filename_parts,
-                )
-            )
+            result = self.importer(config=ImportConfig.from_request(request))
         if result is None:
             message = f"The {self.name} importer did not produce a result"
             raise RuntimeError(message)

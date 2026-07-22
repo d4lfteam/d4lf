@@ -29,6 +29,8 @@ class _ImportDriver:
 def _request(
     *,
     url: str,
+    import_charms: bool = True,
+    import_seals: bool = True,
     custom_file_name: str | None = None,
     export_paragon: bool = False,
     filename_parts: tuple[FilenamePart | str, ...] = (FilenamePart.SOURCE, FilenamePart.VARIANT),
@@ -37,6 +39,8 @@ def _request(
         url=url,
         options=ImportOptions(
             import_aspect_upgrades=True,
+            import_charms=import_charms,
+            import_seals=import_seals,
             import_greater_affixes=True,
             require_greater_affixes=False,
             add_to_profiles=False,
@@ -45,6 +49,19 @@ def _request(
             export_paragon=export_paragon,
         ),
     )
+
+
+def test_import_infinitybuilds_passes_category_options_to_pipeline_config(mocker) -> None:
+    run_import = mocker.patch("src.importing.infinitybuilds.adapter._import_infinitybuilds", return_value=None)
+    request = _request(
+        url="https://infinitybuilds.gg/en/builds/barbarian-example", import_charms=False, import_seals=False
+    )
+
+    import_infinitybuilds(request, driver=typing.cast("WebDriver", object()))
+
+    config = run_import.call_args.args[0]
+    assert not config.import_charms
+    assert not config.import_seals
 
 
 def _gear_piece(slot: str, item_id: str, affix_ids: list[str]) -> dict[str, object]:
