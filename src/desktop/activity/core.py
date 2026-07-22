@@ -6,7 +6,7 @@ from html import escape
 from typing import override
 
 from PyQt6.QtCore import QObject, pyqtSignal
-from PyQt6.QtGui import QTextCursor
+from PyQt6.QtGui import QFont, QTextCursor
 from PyQt6.QtWidgets import QTextEdit
 
 
@@ -36,7 +36,10 @@ class ANSIConsoleWidget(QTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setReadOnly(True)
-        self.setStyleSheet("background-color: black; color: white; font-family: Consolas, monospace; font-size: 12px;")
+        font = self.font()
+        font.setStyleHint(QFont.StyleHint.Monospace)
+        self.setFont(font)
+        self.setStyleSheet("background-color: black; color: white; font-size: 12px;")
 
     def append_ansi_text(self, text: str) -> None:
         self.append(self._ansi_to_html(text))

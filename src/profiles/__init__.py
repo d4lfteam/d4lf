@@ -54,11 +54,13 @@ from src.profiles.session import (
 from src.profiles.sigils import SigilConditionModel, SigilFilterModel, SigilPriority, TributeFilterModel
 
 
-def create_profile_editor_window(parent: QWidget | None = None, profile_name: str | None = None) -> object:
+def create_profile_editor_window(
+    parent: QWidget | None = None, profile_name: str | None = None, force_maximized: bool = False
+) -> object:
     """Create the profile capability's standalone editor window."""
     from src.profiles.editor import ProfileEditorWindow  # ruff:ignore[import-outside-top-level]
 
-    return ProfileEditorWindow(parent=parent, profile_name=profile_name)
+    return ProfileEditorWindow(parent=parent, profile_name=profile_name, force_maximized=force_maximized)
 
 
 __all__ = [

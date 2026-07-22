@@ -273,7 +273,9 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
         self._show_singleton_modal("config", create_settings_window, theme_changed_callback=self.apply_theme)
 
     def open_profile_editor(self, profile_name: str | None = None):
-        self._show_singleton_modal("editor", create_profile_editor_window, profile_name=profile_name)
+        self._show_singleton_modal(
+            "editor", create_profile_editor_window, profile_name=profile_name, force_maximized=self.isMaximized()
+        )
 
     def emit_startup_direct_to_console(self):
         self.console_output.append_ansi_text(

@@ -139,6 +139,24 @@ def test_window_passes_initial_profile_and_close_before_construction(monkeypatch
     assert calls == []
 
 
+def test_window_can_be_forced_maximized_by_parent(monkeypatch, qapp):
+    class FakeSettings:
+        def __init__(self, *_args):
+            pass
+
+        def value(self, key, default=None):
+            return False if key == "maximized" else default
+
+    monkeypatch.setattr(window_module, "QSettings", FakeSettings)
+    maximized = []
+    monkeypatch.setattr(window_module.QMainWindow, "showMaximized", lambda window: maximized.append(window))
+    monkeypatch.setattr(window_module.QTimer, "singleShot", lambda *_args: None)
+
+    window = window_module.ProfileEditorWindow(force_maximized=True)
+
+    assert maximized == [window]
+
+
 @pytest.mark.parametrize(
     ("reply", "accepted"),
     [

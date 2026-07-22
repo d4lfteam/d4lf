@@ -47,7 +47,7 @@ class UnifiedWindowLifecycle(QMainWindow):
         settings = QSettings("d4lf", "mainwindow")
         size = settings.value("size", QSize(1000, 800))
         pos = settings.value("pos", QPoint(100, 100))
-        maximized = settings.value("maximized", "false") == "true"
+        maximized = settings.value("maximized", defaultValue=True, type=bool)
         self.resize(size)
         self.move(pos)
         if maximized:

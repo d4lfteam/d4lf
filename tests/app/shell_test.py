@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from PyQt6.QtWidgets import QApplication, QMainWindow
 
+import src.app.shell as shell_module
 from src.app.lifecycle import UnifiedWindowLifecycle
 from src.app.shell import UnifiedMainWindow
 from src.item import ProfileLoadReport
@@ -45,3 +46,20 @@ def test_settings_error_from_worker_is_delivered_on_gui_thread() -> None:
 
     assert notification_threads == [gui_thread]
     window.deleteLater()
+
+
+def test_profile_editor_inherits_main_window_maximized_state(monkeypatch) -> None:
+    window = UnifiedMainWindow.__new__(UnifiedMainWindow)
+    window.isMaximized = lambda: True
+    calls = []
+    monkeypatch.setattr(
+        window,
+        "_show_singleton_modal",
+        lambda key, window_factory, **kwargs: calls.append((key, window_factory, kwargs)),
+    )
+
+    window.open_profile_editor("beta")
+
+    assert calls == [
+        ("editor", shell_module.create_profile_editor_window, {"profile_name": "beta", "force_maximized": True})
+    ]

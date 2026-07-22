@@ -18,6 +18,14 @@ def test_theme_templates_keep_the_shared_application_selectors() -> None:
         assert "{accent}" in template
 
 
+def test_theme_key_badge_does_not_declare_a_font_family() -> None:
+    for template in (DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE):
+        assert "QLabel#key-badge" in template
+        assert "font-family" not in template
+        assert "Consolas" not in template
+        assert "Monospace" not in template
+
+
 def test_theme_templates_can_be_applied_with_the_runtime_accent() -> None:
     for template in (DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE):
         stylesheet = template.replace("{accent}", "#56B4E9")

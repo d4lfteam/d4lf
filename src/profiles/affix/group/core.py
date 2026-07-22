@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any
 
-from PyQt6.QtCore import QSettings, Qt, QTimer
+from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFormLayout,
@@ -187,6 +187,3 @@ class AffixGroupEditor(_AffixGroupPoolsMixin, _AffixGroupControlsMixin, QWidget)
         main_layout = QVBoxLayout(self)
         main_layout.addWidget(scroll_area)
         self.setLayout(main_layout)
-
-        QTimer.singleShot(100, self.affix_pool_container.expand)
-        QTimer.singleShot(100, self.inherent_pool_container.expand)

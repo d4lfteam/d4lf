@@ -23,7 +23,7 @@ LOGGER = logging.getLogger(__name__)
 class ProfileEditorWindow(QMainWindow):
     """Standalone window for Profile Editor."""
 
-    def __init__(self, parent=None, profile_name: str | None = None):
+    def __init__(self, parent=None, profile_name: str | None = None, force_maximized: bool = False):
         super().__init__(parent)
         self.settings = QSettings("d4lf", "profile_editor")
         self._initial_profile = profile_name
@@ -38,7 +38,7 @@ class ProfileEditorWindow(QMainWindow):
         self.resize(self.settings.value("size", QSize(650, 800)))
         self.move(self.settings.value("pos", QPoint(0, 0)))
 
-        if self.settings.value("maximized", "true") == "true":
+        if force_maximized or self.settings.value("maximized", "true") == "true":
             self.showMaximized()
 
         # Defer heavy construction

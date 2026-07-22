@@ -151,6 +151,7 @@ class _AffixGroupPoolsMixin:
             QTimer.singleShot(50, container.expand)
 
     def add_affix_pool(self: Any):
+        self.affix_pool_container.expand()
         default_affix = AffixFilterModel(
             name=next(iter(Dataloader().affix_dict.keys()), ""),  # First valid affix name
             value=None,
@@ -161,6 +162,7 @@ class _AffixGroupPoolsMixin:
         self.add_affix_pool_item(new_pool)
 
     def add_inherent_pool(self: Any):
+        self.inherent_pool_container.expand()
         default_affix = AffixFilterModel(
             name=next(iter(Dataloader().affix_dict.keys()), ""),  # First valid affix name
             value=None,
@@ -171,6 +173,8 @@ class _AffixGroupPoolsMixin:
         self.add_affix_pool_item(new_pool, inherent=True)
 
     def remove_selected(self: Any, layout_widget: QVBoxLayout, inherent: bool = False):
+        container = self.inherent_pool_container if inherent else self.affix_pool_container
+        container.expand()
         nb_pool = layout_widget.count()
         dialog = DeleteAffixPool(nb_pool, inherent)
         if dialog.exec() == QDialog.DialogCode.Accepted:

@@ -183,7 +183,7 @@ QSpinBox[autoSyncSpin="true"] {{ background-color: @auto_sync@; color: @auto_syn
 QLabel[affixHeaderLabel="true"] {{ color: @label@; }}
 QCheckBox[greaterCheckbox="true"] {{ background-color: transparent; }}
 QPushButton[hotkeyButton="true"] {{ text-align: left; padding-left: 5px; }}
-QLabel#key-badge {{ background-color: @badge_bg@; color: @badge_text@; border: 1px solid @badge_border@; border-radius: 4px; padding: 2px 6px; font-family: 'Consolas', 'Monospace'; }}
+QLabel#key-badge {{ background-color: @badge_bg@; color: @badge_text@; border: 1px solid @badge_border@; border-radius: 4px; padding: 2px 6px; }}
 QPlainTextEdit#log-viewer, QTextEdit#log-viewer {{ background-color: @log_bg@; color: @text@; border: 1px solid @log_border@; }}
 QWidget#segmented-container {{ background-color: @segment_container@; border: 1px solid @border@; border-radius: 6px; }}
 QPushButton#segment-btn {{ background-color: @segment_button@; border: 1px solid @segment_border@; border-radius: 4px; padding: 4px 12px; font-size: 13px; font-weight: normal; }}

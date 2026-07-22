@@ -4,6 +4,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QApplication, QTextEdit
 
 from src.desktop.activity import ANSIConsoleWidget, QtLogHandler
@@ -24,6 +25,17 @@ def test_ansi_console_escapes_text_and_renders_colors(qapp: QApplication) -> Non
 
     assert "red &lt;item&gt;" in widget.toHtml()
     assert "#aa0000" in widget.toHtml()
+    widget.close()
+
+
+def test_ansi_console_uses_qt_monospace_style_hint(qapp: QApplication) -> None:
+    widget = ANSIConsoleWidget()
+
+    stylesheet = widget.styleSheet()
+    assert "font-family" not in stylesheet
+    assert "Consolas" not in stylesheet
+    assert "Monospace" not in stylesheet
+    assert widget.font().styleHint() == QFont.StyleHint.Monospace
     widget.close()
 
 

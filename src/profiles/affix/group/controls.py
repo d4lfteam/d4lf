@@ -107,16 +107,7 @@ class _AffixGroupControlsMixin:
                     yield affix_widget
 
     def count_want_greater_affixes(self: Any):
-        want_greater_count = 0
-
-        if not hasattr(self, "affix_pool_layout") or not hasattr(self, "inherent_pool_layout"):
-            return 0
-
-        for affix_widget in self.iter_affix_widgets():
-            if affix_widget.greater_checkbox.isChecked():
-                want_greater_count += 1
-
-        return want_greater_count
+        return sum(affix.want_greater for pool in self.config.affix_pool for affix in pool.count)
 
     def update_greater_count_label(self: Any):
         count = self.count_want_greater_affixes()
