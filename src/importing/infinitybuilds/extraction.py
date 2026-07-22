@@ -116,8 +116,16 @@ def _canonical_catalog_id(raw_id: str | None) -> str | None:
 
 def _resolve_gear_data(class_name: str, gear: Sequence[Mapping[str, object]]) -> _ResolvedGearData:
     normalized_gear = [_parse_gear_piece(_as_object(piece)) for piece in gear]
-    item_ids = sorted({_canonical_catalog_id(g["itemId"]) for g in normalized_gear if g.get("itemId")})
-    aspect_ids = sorted({_canonical_catalog_id(g["aspectId"]) for g in normalized_gear if g.get("aspectId")})
+    item_ids = sorted(
+        item_id
+        for gear_piece in normalized_gear
+        if (item_id := _canonical_catalog_id(gear_piece.get("itemId"))) is not None
+    )
+    aspect_ids = sorted(
+        aspect_id
+        for gear_piece in normalized_gear
+        if (aspect_id := _canonical_catalog_id(gear_piece.get("aspectId"))) is not None
+    )
     affix_ids = sorted({
         affix["affixId"] for g in normalized_gear for affix in (g.get("affixes") or []) if affix.get("affixId")
     })

@@ -5,7 +5,7 @@ import numpy as np
 from src.perception.matching.models import SearchResult, TemplateMatch
 from src.perception.tooltip.core import (
     DescrDetection,
-    _choose_best_result,
+    _choose_best_match,
     _find_descr_core,
     find_descr,
     find_descr_with_diagnostics,
@@ -35,51 +35,81 @@ def test_find_descr_ignores_successful_search_without_matches(monkeypatch):
             rel_descr_search_left=np.array([0, 0, 10, 10]), rel_descr_search_right=np.array([0, 0, 10, 10])
         ),
     )
-    search_results = iter([SearchResult(success=True), SearchResult()])
     monkeypatch.setattr("src.perception.tooltip.core.get_ui_coordinates", lambda: resources)
-    monkeypatch.setattr("src.perception.tooltip.core._template_search", lambda *_args, **_kwargs: next(search_results))
+    monkeypatch.setattr(
+        "src.perception.tooltip.core._template_search", lambda *_args, **_kwargs: SearchResult(success=True)
+    )
 
     assert find_descr(np.zeros((20, 20, 3), dtype=np.uint8), (0, 0)) == (False, None, None)
 
 
-def test_choose_best_result_on_left_half_selects_closest_match_to_right():
+def test_choose_best_match_selects_closest_match():
     closest_from_left_result = _make_match((90, 70), 0.99)
     closest_from_right_result = _make_match((125, 60), 0.70)
 
-    result = _choose_best_result(
-        SearchResult(success=True, matches=[closest_from_left_result]),
-        SearchResult(success=True, matches=[closest_from_right_result]),
-        anchor_x=120,
-        screen_width=400,
+    result = _choose_best_match(
+        SearchResult(success=True, matches=[closest_from_left_result, closest_from_right_result]), anchor_x=120
     )
 
-    assert result.success
-    assert result.matches == [closest_from_right_result]
+    assert result == closest_from_right_result
 
 
-def test_choose_best_result_on_right_half_selects_closest_match_to_left():
+def test_choose_best_match_does_not_filter_matches_by_screen_side():
     closest_from_left_result = _make_match((275, 70), 0.70)
     closest_from_right_result = _make_match((310, 60), 0.99)
 
-    result = _choose_best_result(
-        SearchResult(success=True, matches=[closest_from_left_result]),
-        SearchResult(success=True, matches=[closest_from_right_result]),
-        anchor_x=300,
-        screen_width=400,
+    result = _choose_best_match(
+        SearchResult(success=True, matches=[closest_from_left_result, closest_from_right_result]), anchor_x=300
     )
 
-    assert result.success
-    assert result.matches == [closest_from_left_result]
+    assert result == closest_from_right_result
 
 
-def test_choose_best_result_returns_no_result_when_preferred_side_is_empty():
-    only_match = _make_match((90, 70), 0.70)
+def test_choose_best_match_returns_no_match_for_unsuccessful_search():
+    result = _choose_best_match(SearchResult(success=False), anchor_x=120)
 
-    result = _choose_best_result(
-        SearchResult(success=True, matches=[only_match]), SearchResult(success=False), anchor_x=120, screen_width=400
+    assert result is None
+
+
+def test_choose_best_match_uses_score_to_break_distance_tie():
+    lower_score = _make_match((110, 70), 0.70)
+    higher_score = _make_match((130, 60), 0.90)
+
+    result = _choose_best_match(SearchResult(success=True, matches=[lower_score, higher_score]), anchor_x=120)
+
+    assert result == higher_score
+
+
+def test_find_descr_searches_right_roi_for_left_half_anchor(mocker):
+    resources = SimpleNamespace(
+        offsets=SimpleNamespace(item_descr_width=100, item_descr_pad=10),
+        pos=SimpleNamespace(window_dimensions=(400, 200)),
+        roi=SimpleNamespace(
+            rel_descr_search_left=np.array([-10, 0, 10, 10]), rel_descr_search_right=np.array([10, 0, 10, 10])
+        ),
     )
+    mocker.patch("src.perception.tooltip.core.get_ui_coordinates", return_value=resources)
+    template_search = mocker.patch("src.perception.tooltip.core._template_search", return_value=SearchResult())
 
-    assert not result.success
+    _find_descr_core(np.zeros((20, 20, 3), dtype=np.uint8), (100, 0), collect_diagnostics=False)
+
+    template_search.assert_called_once_with(mocker.ANY, 100, resources.roi.rel_descr_search_right)
+
+
+def test_find_descr_searches_left_roi_for_right_half_anchor(mocker):
+    resources = SimpleNamespace(
+        offsets=SimpleNamespace(item_descr_width=100, item_descr_pad=10),
+        pos=SimpleNamespace(window_dimensions=(400, 200)),
+        roi=SimpleNamespace(
+            rel_descr_search_left=np.array([-10, 0, 10, 10]), rel_descr_search_right=np.array([10, 0, 10, 10])
+        ),
+    )
+    mocker.patch("src.perception.tooltip.core.get_ui_coordinates", return_value=resources)
+    template_search = mocker.patch("src.perception.tooltip.core._template_search", return_value=SearchResult())
+
+    _find_descr_core(np.zeros((20, 20, 3), dtype=np.uint8), (300, 0), collect_diagnostics=False)
+
+    template_search.assert_called_once_with(mocker.ANY, 300, resources.roi.rel_descr_search_left)
 
 
 def test_find_descr_uses_shared_core_without_diagnostics(mocker):
@@ -148,7 +178,7 @@ def test_find_descr_clips_crop_to_image_before_translating_separator(mocker):
     separator_match = _make_match((85, 30), 0.9, name="separator", region=[80, 25, 10, 10])
     mocker.patch(
         "src.perception.tooltip.core._template_search",
-        side_effect=[SearchResult(success=True, matches=[top_left_match]), SearchResult()],
+        return_value=SearchResult(success=True, matches=[top_left_match]),
     )
     mocker.patch("src.perception.tooltip.core.find_seperator_short", return_value=separator_match)
     mocker.patch("src.perception.tooltip.core.search", return_value=SearchResult())

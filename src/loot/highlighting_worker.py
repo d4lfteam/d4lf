@@ -108,7 +108,7 @@ class HighlightingWorker:
                     if not is_confirmed:
                         time.sleep(_FRAME_RETRY_DELAY_SECONDS)
                         self.check_for_thread_cancellation(cancel_event)
-                        found_check, cropped_descr_check, _ = find_descr(capture(), item_center)
+                        found_check, cropped_descr_check, _ = find_descr(capture(force_new=True), item_center)
                         if not found_check:
                             continue
                         score = compare_image_histograms(cropped_descr, cropped_descr_check)

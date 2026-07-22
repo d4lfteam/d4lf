@@ -40,22 +40,11 @@ class DescrDetection:
     failure_reason: str | None = None
 
 
-def _choose_best_result(
-    res_left: SearchResult, res_right: SearchResult, anchor_x: int, screen_width: int
-) -> SearchResult:
-    candidates = [match for result in (res_left, res_right) if result.success for match in result.matches]
-    if not candidates:
-        return SearchResult(success=False)
+def _choose_best_match(result: SearchResult, anchor_x: int) -> TemplateMatch | None:
+    if not result.success or not result.matches:
+        return None
 
-    if anchor_x < screen_width / 2:
-        preferred_candidates = [candidate for candidate in candidates if candidate.center[0] > anchor_x]
-    else:
-        preferred_candidates = [candidate for candidate in candidates if candidate.center[0] < anchor_x]
-    if not preferred_candidates:
-        return SearchResult(success=False)
-
-    match = min(preferred_candidates, key=lambda candidate: (abs(candidate.center[0] - anchor_x), -candidate.score))
-    return SearchResult(success=True, matches=[match])
+    return min(result.matches, key=lambda candidate: (abs(candidate.center[0] - anchor_x), -candidate.score))
 
 
 def _template_search(img: np.ndarray, anchor: int, roi: np.ndarray, take_debug_screenshot: bool = False):
@@ -119,17 +108,17 @@ def get_separator_match_in_crop(detection: DescrDetection) -> TemplateMatch | No
 
 
 def _find_descr_core(img: np.ndarray, anchor: tuple[int, int], *, collect_diagnostics: bool) -> DescrDetection:
-    item_descr_width = get_ui_coordinates().offsets.item_descr_width
-    item_descr_pad = get_ui_coordinates().offsets.item_descr_pad
-    window_width, window_height = get_ui_coordinates().pos.window_dimensions
+    ui_coordinates = get_ui_coordinates()
+    item_descr_width = ui_coordinates.offsets.item_descr_width
+    item_descr_pad = ui_coordinates.offsets.item_descr_pad
+    window_width, window_height = ui_coordinates.pos.window_dimensions
 
-    res_left = _template_search(img, anchor[0], get_ui_coordinates().roi.rel_descr_search_left)
-    res_right = _template_search(img, anchor[0], get_ui_coordinates().roi.rel_descr_search_right)
-
-    res = _choose_best_result(res_left, res_right, anchor[0], window_width)
-    if res.success and res.matches:
-        match = res.matches[0]
-        # find equipe template
+    if anchor[0] < window_width / 2:
+        search_roi = ui_coordinates.roi.rel_descr_search_right
+    else:
+        search_roi = ui_coordinates.roi.rel_descr_search_left
+    match = _choose_best_match(_template_search(img, anchor[0], search_roi), anchor[0])
+    if match is not None:
         offset_top = int(window_height * 0.03)
         roi_y = match.region[1] + offset_top
         search_height = window_height - roi_y - offset_top

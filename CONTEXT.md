@@ -22,6 +22,10 @@ One node grid within a Paragon progression step, identified by a name and an opt
 
 The quality tier of a droppable object: common, magic, rare, legendary, unique, or mythic. The canonical values are lowercase. For sigils the rarity is not provided by the game and is instead derived from the object's affixes. For equipment, Mythic is functionally identical to Unique — same affix pool shape (one unique aspect plus a handful of normal affixes) — differing only in the rarity value itself; filters and importers must not special-case Mythic separately from Unique for equipment. Mythic seals, charms, tributes, and sigils keep their own separate handling (e.g. always-kept-regardless-of-match rules) and are unaffected by this equivalence.
 
+### Ancestral Mythic Unique
+
+The visual presentation of an existing Mythic/Unique equipment item with an animated tooltip border. It is not a separate item type or rarity in D4LF.
+
 ### Rarity filter
 
 A filter constraint listing the rarities a rule should match. An empty list matches all rarities. Spelled `rarity` (singular) in profiles; `rarities` is accepted only as a back-compat alias on tributes.
