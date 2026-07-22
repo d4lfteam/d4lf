@@ -25,7 +25,7 @@ TEXT_COLOR = (255, 255, 255)
 BACKGROUND_COLOR = (30, 30, 30)
 
 TEMPLATES = [
-    x.stem for x in (Path(__file__).parents[3] / "assets/templates/item_descr").glob("*.png") if "seal" in x.stem
+    x.stem for x in (Path(__file__).parents[3] / "assets/templates/item_descr").glob("*.png") if "item_top" in x.stem
 ]
 
 
@@ -50,7 +50,10 @@ class ReplayResult:
 # BEGIN EDITABLE REPLAY CONFIGURATION
 # Replace the screenshot path, template names, and minimum confidence as needed.
 REPLAY_CONFIG = ReplayConfig(
-    image_path=Path(r"E:\Downloads\test6.png"), templates=TEMPLATES.copy(), threshold=0.4, game_resolution="1920x1080"
+    image_path=Path(r"/Users/chris/Downloads/asd.png"),
+    templates=TEMPLATES.copy(),
+    threshold=0.8,
+    game_resolution="3840x2160",
 )
 # END EDITABLE REPLAY CONFIGURATION
 
