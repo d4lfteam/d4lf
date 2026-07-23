@@ -3,7 +3,11 @@ import typing
 from types import SimpleNamespace
 
 from src.importing import FilenamePart, ImportOptions, ImportRequest
-from src.importing.infinitybuilds import InfinityBuildsParagonCatalog, import_infinitybuilds
+from src.importing.infinitybuilds import (
+    InfinityBuildsParagonCatalog,
+    fetch_variants_infinitybuilds,
+    import_infinitybuilds,
+)
 from src.item import Dataloader
 
 if typing.TYPE_CHECKING:
@@ -61,9 +65,9 @@ def test_import_infinitybuilds_passes_category_options_to_pipeline_config(mocker
 
     import_infinitybuilds(request, driver=typing.cast("WebDriver", object()))
 
-    config = run_import.call_args.args[0]
-    assert not config.import_charms
-    assert not config.import_seals
+    captured_request = run_import.call_args.args[0]
+    assert not captured_request.options.import_charms
+    assert not captured_request.options.import_seals
 
 
 def _gear_piece(slot: str, item_id: str, affix_ids: list[str]) -> dict[str, object]:
@@ -79,6 +83,22 @@ def _page_source(class_id: str, variants: Sequence[Mapping[str, object]]) -> str
     payload = json.dumps({"classId": class_id, "variants": variants}, separators=(",", ":"))
     chunk = f"self.__next_f.push([1,{json.dumps(payload)}])"
     return f"<html><script>{chunk}</script></html>"
+
+
+def test_fetch_variants_assigns_fallback_ids_after_skipping_empty_variants() -> None:
+    driver = _ImportDriver(
+        _page_source(
+            "barbarian",
+            [{"name": "Empty", "gear": []}, {"name": "Unnamed", "gear": [_gear_piece("chest", "item-chest-1", [])]}],
+        )
+    )
+
+    variants = fetch_variants_infinitybuilds(
+        request=ImportRequest("https://infinitybuilds.gg/en/builds/barbarian-example"),
+        driver=typing.cast("WebDriver", driver),
+    )
+
+    assert [(variant.id, variant.name) for variant in variants] == [("0", "Unnamed")]
 
 
 def test_import_infinitybuilds_saves_one_profile_per_variant_and_resolves_gear_once(
@@ -117,9 +137,7 @@ def test_import_infinitybuilds_saves_one_profile_per_variant_and_resolves_gear_o
     profile_store.save_new.side_effect = lambda **kwargs: SimpleNamespace(file_name=kwargs["file_name"])
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
     result = import_infinitybuilds(
-        request=_request(
-            url="https://infinitybuilds.gg/en/builds/barbarian-example", export_paragon=True, multi_build=True
-        ),
+        request=_request(url="https://infinitybuilds.gg/en/builds/barbarian-example", export_paragon=True),
         driver=typing.cast("WebDriver", driver),
     )
     assert result is not None
@@ -127,8 +145,6 @@ def test_import_infinitybuilds_saves_one_profile_per_variant_and_resolves_gear_o
     assert result.selected_variant == "Variant One"
     assert result.saved_file_names == ("infinitybuilds_variant_one", "infinitybuilds_variant_two")
     assert result.paragon is not None
-    assert result.extracted_build is not None
-    assert len(result.extracted_build.variants) == 2
     assert get_with_retry.call_count == 1
     assert "itemIds=item-chest-1%2Citem-chest-2" in get_with_retry.call_args[0][0]
     assert profile_store.save_new.call_count == 2

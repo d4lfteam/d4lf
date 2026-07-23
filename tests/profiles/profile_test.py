@@ -98,7 +98,10 @@ class TestProfileModel:
         assert len(model.global_uniques) == 1
 
     def test_tributes_list_shape_is_migrated_to_single_object(self) -> None:
-        model = ProfileModel(name="tributes_profile", Tributes=[{"name": ["harmony"]}, {"rarity": ["legendary"]}])
+        model = ProfileModel.model_validate({
+            "name": "tributes_profile",
+            "Tributes": [{"name": ["harmony"]}, {"rarity": ["legendary"]}],
+        })
         assert isinstance(model.tributes, TributeFilterModel)
         assert model.tributes.name == ["tribute_of_harmony"]
         assert model.tributes.rarities == [ItemRarity.Legendary]

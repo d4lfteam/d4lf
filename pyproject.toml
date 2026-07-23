@@ -33,7 +33,6 @@ dynamic = ["version"]
 
 [dependency-groups]
 dev = [
-  "prek>=0.4.10",
   "pyinstaller",
   "pytest",
   "pytest-cov",

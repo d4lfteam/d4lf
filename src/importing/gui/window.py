@@ -21,14 +21,16 @@ from PyQt6.QtWidgets import (
 from src.desktop.activity import QtLogHandler
 from src.desktop.widgets import CheckmarkCheckBox, set_accent_color
 from src.importing import DEFAULT_FILENAME_PARTS, FilenamePart, ImportOptions, ImportRequest
+from src.importing.contracts import VariantSelection
 from src.importing.gui.constants import (
+    _CHECKBOX_CONFIGS,
     FILENAME_PART_LABELS,
     GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP,
     IMPORTER_WINDOW_LOGGERS,
     INSTRUCTIONS_TEXT,
 )
-from src.importing.gui.dialogs import select_variants_dialog
 from src.importing.gui.support import FetchVariantsWorker, ImportWorker
+from src.importing.gui.variant_dialog import select_variants_dialog
 from src.settings import get_settings
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[3]
@@ -136,20 +138,12 @@ class ImporterWindow(QMainWindow):
         self._update_generate_button_state()
 
     def _build_options(self, layout: QVBoxLayout):
-        # fmt: off
-        checkboxes = [
-            ("import_aspect_upgrades_checkbox", "Import Aspect Upgrades", "import_aspect_upgrades", "If legendary aspects are in the build, do you want an aspect upgrades section generated for them?", "true", ()),
-            ("import_charms_checkbox", "Import Charms", "import_charms", "If a build has charms, should they be included in the imported profile?", "true", ()),
-            ("import_seals_checkbox", "Import Seals", "import_seals", "If a build has seals, should they be included in the imported profile?", "true", ()),
-            ("add_to_profiles_checkbox", "Add to profiles", "add_to_profiles", "Do you want to add this build to your active profiles upon generating?", "false", ("import_add_to_profiles",)),
-            ("import_gas_checkbox", "Include GAs", "import_greater_affixes", "Include the greater affix tags from the build, making it look for GAs?", "false", ("import_gas",)),
-            ("require_all_gas_checkbox", "Require all GAs", "require_all_greater_affixes", "Are the GAs required to match the item?", "false", ("require_all_gas",)),
-            ("export_paragon_checkbox", "Export Paragon", "export_paragon", "Export paragon boards for the paragon overlay?", "false", ()),
-            ("multi_build_checkbox", "Multi Build Import", "multi_build_import", "Import multiple builds from the link?", "false", ()),
-        ]
-        # fmt: on
-        for name, label, setting, tooltip, default, fallbacks in checkboxes:
-            setattr(self, name, self._generate_checkbox(label, setting, tooltip, default, fallbacks))
+        for config in _CHECKBOX_CONFIGS:
+            setattr(
+                self,
+                config.name,
+                self._generate_checkbox(config.label, config.setting, config.tooltip, config.default, config.fallbacks),
+            )
 
         self.require_all_gas_checkbox.setEnabled(self.import_gas_checkbox.isChecked())
         if not self.import_gas_checkbox.isChecked():
@@ -272,9 +266,9 @@ class ImporterWindow(QMainWindow):
 
         LOGGER.info(f"User selected {len(selected_ids)} variant(s). Generating...")
         self.generate_button.setText("Saving...")
-        worker = ImportWorker(
-            request=self._current_request, finished=self._on_persist_finished, selected_variant_ids=selected_ids
-        )
+        selection = VariantSelection.from_ids(tuple(selected_ids))
+        request = self._current_request.with_variant_selection(selection)
+        worker = ImportWorker(request=request, finished=self._on_persist_finished)
         THREADPOOL.start(worker)
 
     def _on_persist_finished(self):

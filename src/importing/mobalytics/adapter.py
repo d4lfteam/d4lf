@@ -7,7 +7,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
-from src.importing.config import ImportConfig
 from src.importing.contracts import VariantMetadata
 from src.importing.conversion import as_string_keyed_mapping as _as_mapping
 from src.importing.conversion import as_string_keyed_mapping_list as _as_mapping_list
@@ -40,24 +39,41 @@ class MobalyticsError(Exception):
     """Raised when Mobalytics page data cannot be extracted."""
 
 
-@retry_importer(inject_webdriver=True)
-def fetch_variants_mobalytics(request: ImportRequest, driver: WebDriver | None = None) -> list[VariantMetadata]:
+def _validated_url(request, driver: WebDriver | None, *, reject_profile: bool = False) -> tuple[str, WebDriver] | None:
     if driver is None:
         msg = "A Selenium WebDriver is required for Mobalytics imports"
         raise RuntimeError(msg)
     url = request.url.strip().replace("\n", "")
     if BUILD_GUIDE_BASE_URL not in url:
         LOGGER.error("Invalid url, please use a mobalytics build guide")
-        return []
-    url = _fix_input_url(url=url)
-    LOGGER.info("Loading %s for variants", url)
-    driver.get(url)
+        return None
+    if reject_profile and PROFILE_GUIDE_BASE_URL in url:
+        LOGGER.error("Builds from user profiles are not supported at this time.")
+        return None
+    return url, driver
+
+
+def _load_build_page(url: str, driver: WebDriver) -> tuple[str, str, _JsonPathValue, int]:
+    """Load the preloaded state shared by variant discovery and import."""
+    normalized_url = _fix_input_url(url=url)
+    driver.get(normalized_url)
     wait = WebDriverWait(driver, 10)
     wait.until(ec.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
     page_source = driver.page_source
     raw_html_data = lxml.html.fromstring(page_source)
     scripts = raw_html_data.xpath(SCRIPT_XPATH)
     state = _load_preloaded_state(scripts)
+    return normalized_url, page_source, state, len(scripts)
+
+
+@retry_importer(inject_webdriver=True)
+def fetch_variants_mobalytics(request: ImportRequest, driver: WebDriver | None = None) -> list[VariantMetadata]:
+    validated = _validated_url(request, driver)
+    if validated is None:
+        return []
+    url, driver = validated
+    url, _, state, _ = _load_build_page(url, driver)
+    LOGGER.info("Loading %s for variants", url)
     if not state:
         return []
 
@@ -85,42 +101,25 @@ def fetch_variants_mobalytics(request: ImportRequest, driver: WebDriver | None =
     return variants
 
 
-def import_mobalytics(
-    request: ImportRequest, driver: WebDriver | None = None, selected_variant_ids: list[str] | None = None
-) -> ImportResult | None:
-    return _import_mobalytics(ImportConfig.from_request(request), driver, selected_variant_ids)
+def import_mobalytics(request: ImportRequest, driver: WebDriver | None = None) -> ImportResult | None:
+    return _import_mobalytics(request, driver)
 
 
 @retry_importer(inject_webdriver=True)
-def _import_mobalytics(
-    config: ImportConfig, driver: WebDriver | None = None, selected_variant_ids: list[str] | None = None
-) -> ImportResult | None:
-    if driver is None:
-        msg = "A Selenium WebDriver is required for Mobalytics imports"
-        raise RuntimeError(msg)
-    url = config.url.strip().replace("\n", "")
-    if BUILD_GUIDE_BASE_URL not in url:
-        LOGGER.error("Invalid url, please use a mobalytics build guide")
+def _import_mobalytics(request: ImportRequest, driver: WebDriver | None = None) -> ImportResult | None:
+    validated = _validated_url(request, driver, reject_profile=True)
+    if validated is None:
         return None
-    if PROFILE_GUIDE_BASE_URL in url:
-        LOGGER.error("Builds from user profiles are not supported at this time.")
-        return None
-    url = _fix_input_url(url=url)
+    url, driver = validated
+    url, page_source, state, script_count = _load_build_page(url, driver)
     LOGGER.info("Loading %s", url)
-    driver.get(url)
-    wait = WebDriverWait(driver, 10)
-    wait.until(ec.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
     variant_id_from_url = None
     if "?variant=" in url:
         variant_id_from_url = url.split("?variant=")[1].split("&")[0]
     elif "activeVariantId," in url:
         variant_id_from_url = url.split("activeVariantId,")[1].split("&")[0]
-    page_source = driver.page_source
-    raw_html_data = lxml.html.fromstring(page_source)
-    scripts = raw_html_data.xpath(SCRIPT_XPATH)
-    state = _load_preloaded_state(scripts)
     if not state:
-        _log_mobalytics_page_diagnostics(driver=driver, page_source=page_source, script_count=len(scripts))
+        _log_mobalytics_page_diagnostics(driver=driver, page_source=page_source, script_count=script_count)
         msg = "No script containing build data was found. This means Mobalytics has changed how they present data, please submit a bug."
         raise MobalyticsError(msg)
 
@@ -139,17 +138,24 @@ def _import_mobalytics(
         raise MobalyticsError(msg := "No build name found")
     if not class_name:
         raise MobalyticsError(msg := "No class name found")
+    build_variants = _as_mapping_list(_as_mapping(_as_mapping(build_data).get("buildVariants")).get("values", []))
+    available_variant_ids = [
+        variant_value
+        for variant in build_variants
+        if isinstance(variant_value := _first_jsonpath_result("id", variant), str)
+    ]
+    # URLs can retain an id for a variant that was deleted or made private.  In that
+    # case import the first available variant rather than failing the whole build.
+    if variant_id not in available_variant_ids:
+        variant_id = available_variant_ids[0] if available_variant_ids else None
     variants_to_extract = []
-    if config.multi_build:
-        for val in _as_mapping_list(_as_mapping(_as_mapping(build_data).get("buildVariants")).get("values", [])):
+    selection = request.variant_selection
+    if request.options.multi_build:
+        for val in build_variants:
             v_id = _first_jsonpath_result("id", val)
-            if isinstance(v_id, str) and (selected_variant_ids is None or v_id in selected_variant_ids):
+            if isinstance(v_id, str) and (selection is None or v_id in selection):
                 variants_to_extract.append(v_id)
-        if (
-            not variants_to_extract
-            and variant_id
-            and (selected_variant_ids is None or variant_id in selected_variant_ids)
-        ):
+        if not variants_to_extract and variant_id and (selection is None or variant_id in selection):
             variants_to_extract.append(variant_id)
     else:
         if not variant_id:
@@ -169,7 +175,7 @@ def _import_mobalytics(
         variant = build_variant(
             items=items,
             class_name=class_name,
-            config=config,
+            request=request,
             driver=driver,
             variant_name=v_name,
             build_name=f"{build_header} {v_name}".strip() if v_name else build_header,
@@ -191,7 +197,7 @@ def _import_mobalytics(
                 variants=extracted_variants,
             ),
         ),
-        config=config,
+        request=request,
     )
 
 

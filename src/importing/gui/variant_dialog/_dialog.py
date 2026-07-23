@@ -1,6 +1,8 @@
 from typing import TYPE_CHECKING
 
-from PyQt6.QtWidgets import QCheckBox, QDialog, QDialogButtonBox, QLabel, QVBoxLayout
+from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
+
+from src.desktop.widgets import CheckmarkCheckBox
 
 if TYPE_CHECKING:
     from src.importing.contracts import VariantMetadata
@@ -15,7 +17,7 @@ def select_variants_dialog(parent, variants: list[VariantMetadata], source_name:
     layout.addWidget(label)
     checkboxes = []
     for i, variant in enumerate(variants):
-        cb = QCheckBox(variant.name or f"Variant {i + 1}")
+        cb = CheckmarkCheckBox(variant.name or f"Variant {i + 1}")
         cb.setChecked(True)
         checkboxes.append((variant.id, cb))
         layout.addWidget(cb)

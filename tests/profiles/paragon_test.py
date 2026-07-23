@@ -114,29 +114,32 @@ class TestParagonModels:
         assert profile.paragon.name == "Build Name"
 
     def test_legacy_empty_paragon_list_normalizes_to_none(self) -> None:
-        profile = ProfileModel(name="test", Paragon=[])
+        profile = ProfileModel.model_validate({"name": "test", "Paragon": []})
         assert profile.paragon is None
 
     def test_legacy_single_payload_list_normalizes_to_one_payload(self) -> None:
-        profile = ProfileModel(name="test", Paragon=[{"Name": "Build Name", "ParagonBoardsList": [self._board_data()]}])
+        profile = ProfileModel.model_validate({
+            "name": "test",
+            "Paragon": [{"Name": "Build Name", "ParagonBoardsList": [self._board_data()]}],
+        })
         assert profile.paragon is not None
         assert profile.paragon.name == "Build Name"
         assert len(profile.paragon.paragon_boards_list) == 1
 
     def test_legacy_multi_payload_list_is_rejected(self) -> None:
         with pytest.raises(ValidationError, match="Paragon must contain at most one payload"):
-            ProfileModel(
-                name="test",
-                Paragon=[
+            ProfileModel.model_validate({
+                "name": "test",
+                "Paragon": [
                     {"Name": "Build One", "ParagonBoardsList": [self._board_data()]},
                     {"Name": "Build Two", "ParagonBoardsList": [self._board_data()]},
                 ],
-            )
+            })
 
     def test_profile_serialization_preserves_paragon_aliases(self) -> None:
-        profile = ProfileModel(
-            name="test",
-            Paragon=[
+        profile = ProfileModel.model_validate({
+            "name": "test",
+            "Paragon": [
                 {
                     "Name": "Build Name",
                     "Source": "https://example.invalid",
@@ -145,7 +148,7 @@ class TestParagonModels:
                     "ParagonBoardsList": [self._board_data()],
                 }
             ],
-        )
+        })
 
         exported = json.loads(profile.model_dump_json(by_alias=True))
         assert exported["Paragon"]["Name"] == "Build Name"

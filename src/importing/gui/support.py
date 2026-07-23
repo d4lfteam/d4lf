@@ -9,16 +9,15 @@ from src.importing import ImportRequest, ImportResult, import_build
 LOGGER = logging.getLogger(__name__)
 
 
-def run_import(*, request: ImportRequest, selected_variant_ids: list[str] | None = None) -> ImportResult:
-    return import_build(request, selected_variant_ids=selected_variant_ids)
+def run_import(*, request: ImportRequest) -> ImportResult:
+    return import_build(request)
 
 
 class ImportWorker(QRunnable):
-    def __init__(self, request: ImportRequest, finished, selected_variant_ids: list[str] | None = None):
+    def __init__(self, request: ImportRequest, finished):
         super().__init__()
         self.request = request
         self.finished = finished
-        self.selected_variant_ids = selected_variant_ids
         self.signals = WorkerSignals()
         self.signals.finished.connect(finished)
 
@@ -27,7 +26,7 @@ class ImportWorker(QRunnable):
     def run(self):
         threading.current_thread().name = "import"
         try:
-            run_import(request=self.request, selected_variant_ids=self.selected_variant_ids)
+            run_import(request=self.request)
         except Exception:
             LOGGER.exception("Import worker failed")
         finally:

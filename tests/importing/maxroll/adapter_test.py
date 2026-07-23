@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.importing import ImportOptions, ImportRequest
+from src.importing import ImportOptions, ImportRequest, VariantSelection
 from src.importing.maxroll import extract_maxroll_paragon_steps
 from src.importing.maxroll.adapter import (
     _find_item_affixes,
@@ -133,6 +133,44 @@ def test_import_maxroll_keeps_mythic_item_without_affixes(mock_ini_loader, mocke
     helm_filter = next(entry.root["Helm"] for entry in profile.affixes if "Helm" in entry.root)
     assert helm_filter.unique_aspect[0].name == "harlequin_crest"
     assert helm_filter.affix_pool == []
+
+
+def test_import_maxroll_extracts_the_selected_profile(mock_ini_loader, mocker: MockerFixture) -> None:
+    Dataloader()
+    planner_response = mocker.Mock()
+    planner_response.json.return_value = {
+        "season": "14",
+        "name": "Test Build",
+        "class": "Barbarian",
+        "data": json.dumps({
+            "profiles": [{"name": "Default", "items": {"helm": 1}}, {"name": "Pit Push", "items": {"helm": 1}}],
+            "items": {"1": {"id": "item-mythic-helm", "explicits": []}},
+        }),
+    }
+    mapping_response = mocker.Mock()
+    mapping_response.json.return_value = {
+        "items": {"item-mythic-helm": {"magicType": 4, "name": "Harlequin Crest", "type": "Helm"}},
+        "attributeDescriptions": {},
+        "affixes": {},
+        "skills": {},
+    }
+    mocker.patch("src.importing.maxroll.adapter.get_with_retry", side_effect=[planner_response, mapping_response])
+    profile_store = mocker.Mock()
+    profile_store.save_new.side_effect = lambda *, file_name, **_: SimpleNamespace(file_name=file_name)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
+
+    result = import_maxroll(
+        request=ImportRequest(
+            url="https://maxroll.gg/d4/planner/test-profile#1",
+            options=ImportOptions(multi_build=True, custom_file_name="test"),
+            variant_selection=VariantSelection(("1",)),
+        )
+    )
+
+    assert result is not None
+    assert result.selected_variant == "Pit Push"
+    assert result.saved_file_names == ("test",)
+    assert profile_store.save_new.call_count == 1
 
 
 def test_find_item_affixes_resolves_skill_rank_category_from_affix_key() -> None:
