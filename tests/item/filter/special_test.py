@@ -9,7 +9,10 @@ from src.profiles import SigilPriority, TributeFilterModel
 
 from .conftest import (
     _create_mocked_filter,
+    _patch_override_settings,
+    charms,
     filters,
+    seals,
     sigil_derived_legendary,
     sigil_derived_rare,
     sigil_jalal,
@@ -23,6 +26,55 @@ from .conftest import (
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
+
+
+FILTERED_SPECIAL_CASES = (
+    ("filter_sigils", "sigil_filters", {"profile": filters.sigil.sigils}, sigil_jalal, sigil_rare_blacklisted),
+    (
+        "filter_tributes",
+        "tribute_filters",
+        {"profile": TributeFilterModel(name=["tribute_of_harmony"])},
+        Item(name="tribute_of_harmony", item_type=ItemType.Tribute, rarity=ItemRarity.Magic),
+        Item(name="tribute_of_fake", item_type=ItemType.Tribute, rarity=ItemRarity.Magic),
+    ),
+    (
+        "filter_seals",
+        "seal_filters",
+        {"profile": filters.seal_charm.seals},
+        seals[0][2],
+        Item(item_type=ItemType.HoradricSeal, rarity=ItemRarity.Rare),
+    ),
+    (
+        "filter_charms",
+        "charm_filters",
+        {"profile": filters.seal_charm.charms},
+        charms[0][2],
+        Item(item_type=ItemType.Charm, rarity=ItemRarity.Rare),
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("setting", "filter_attribute", "profile_filters", "matching", "non_matching"), FILTERED_SPECIAL_CASES
+)
+def test_enabled_special_categories_keep_matches_and_reject_non_matches(
+    setting, filter_attribute, profile_filters, matching, non_matching, mocker
+):
+    settings = _patch_override_settings(mocker)
+    test_filter = _create_mocked_filter(mocker)
+    setattr(test_filter, filter_attribute, profile_filters)
+
+    enabled_match = test_filter.should_keep(matching)
+    enabled_non_match = test_filter.should_keep(non_matching)
+
+    assert enabled_match.keep
+    assert not enabled_match.skipped
+    assert not enabled_non_match.keep
+    assert not enabled_non_match.skipped
+
+    setattr(settings.general, setting, False)
+    assert test_filter.should_keep(matching).skipped
+    assert test_filter.should_keep(non_matching).skipped
 
 
 @pytest.mark.parametrize(("_name", "result", "item"), natsorted(sigils), ids=[name for name, _, _ in natsorted(sigils)])

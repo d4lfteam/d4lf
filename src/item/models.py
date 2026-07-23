@@ -84,6 +84,7 @@ class MatchedFilter:
 class FilterResult:
     keep: bool
     matched: list[MatchedFilter]
+    skipped: bool = False
 
 
 class ItemJSONEncoder(json.JSONEncoder):

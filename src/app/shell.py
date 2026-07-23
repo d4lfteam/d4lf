@@ -270,7 +270,12 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
 
     def open_settings_dialog(self):
         set_accent_color(get_filter_colors().matched)
-        self._show_singleton_modal("config", create_settings_window, theme_changed_callback=self.apply_theme)
+        self._show_singleton_modal(
+            "config",
+            create_settings_window,
+            theme_changed_callback=self.apply_theme,
+            force_maximized=self.isMaximized(),
+        )
 
     def open_profile_editor(self, profile_name: str | None = None):
         self._show_singleton_modal(

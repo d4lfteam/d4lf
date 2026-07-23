@@ -7,6 +7,37 @@ from src.settings.loader import PARAMS_INI, IniConfigLoader, SettingsLoadError
 
 
 class TestIniConfigLoader:
+    def test_loot_filter_overrides_persist_false_values_across_reload(
+        self, isolated_ini_loader: IniConfigLoader
+    ) -> None:
+        loader = isolated_ini_loader
+        override_keys = ["filter_equipment", "filter_sigils", "filter_tributes", "filter_seals", "filter_charms"]
+
+        for key in override_keys:
+            loader.save_value("general", key, False)
+
+        config_text = (loader.user_dir / PARAMS_INI).read_text(encoding="utf-8")
+        assert all(f"{key} = False" in config_text for key in override_keys)
+
+        loader.load()
+
+        assert all(getattr(loader.general, key) is False for key in override_keys)
+
+    def test_old_settings_file_defaults_missing_loot_filter_overrides_to_true(
+        self, isolated_ini_loader: IniConfigLoader
+    ) -> None:
+        loader = isolated_ini_loader
+        (loader.user_dir / PARAMS_INI).write_text("[general]\nrun_vision_mode_on_startup = false\n", encoding="utf-8")
+
+        loader.load()
+
+        assert loader.general.run_vision_mode_on_startup is False
+        assert loader.general.filter_equipment is True
+        assert loader.general.filter_sigils is True
+        assert loader.general.filter_tributes is True
+        assert loader.general.filter_seals is True
+        assert loader.general.filter_charms is True
+
     def test_invalid_reload_keeps_last_good_values_and_does_not_notify(
         self, isolated_ini_loader: IniConfigLoader
     ) -> None:

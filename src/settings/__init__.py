@@ -119,10 +119,14 @@ def get_ui_coordinates() -> UiCoordinates:
     return ResManager()
 
 
-def create_settings_window(*args: object, **kwargs: object) -> object:
+def create_settings_window(
+    parent: object | None = None,
+    theme_changed_callback: Callable[[], None] | None = None,
+    force_maximized: bool = False,
+) -> object:
     from src.settings.window import ConfigWindow  # ruff:ignore[import-outside-top-level]
 
-    return ConfigWindow(*args, **kwargs)
+    return ConfigWindow(parent=parent, theme_changed_callback=theme_changed_callback, force_maximized=force_maximized)
 
 
 def validate_hotkey(value: str) -> str:

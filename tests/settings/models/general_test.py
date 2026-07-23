@@ -1,10 +1,31 @@
 import pytest
 from pydantic import ValidationError
 
+from src.settings.models.core import CATEGORY_KEY, SettingsCategory
 from src.settings.models.general import GeneralModel
 
 
 class TestGeneralModel:
+    def test_loot_filter_overrides_default_to_enabled_with_loot_metadata(self) -> None:
+        expected = {
+            "filter_equipment": "Filter Equipment",
+            "filter_sigils": "Filter Sigils",
+            "filter_tributes": "Filter Tributes",
+            "filter_seals": "Filter Seals",
+            "filter_charms": "Filter Charms",
+        }
+
+        model = GeneralModel()
+
+        assert {key: getattr(model, key) for key in expected} == dict.fromkeys(expected, True)
+        for key, title in expected.items():
+            field = GeneralModel.model_fields[key]
+            assert field.title == title
+            assert field.json_schema_extra[CATEGORY_KEY] == SettingsCategory.LOOT
+            assert "non-Mythic" in field.description
+            assert "left untouched" in field.description
+            assert "always kept" in field.description
+
     def test_profiles_empty_entries_are_removed(self) -> None:
         assert GeneralModel(profiles="alpha, , beta,   ,").profiles == ["alpha", "beta"]
 

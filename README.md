@@ -135,11 +135,23 @@ Some commonly modified setting sections:
 
 This is where you activate/deactivate your profiles. You can change the order of the profiles as well by dragging on the
 6 dot icon. The top listed profile is what Vision Mode With Highlighting will show squares for when hovering over an
-item so the order can matter. However, if an item matches any profile at all it will be kept.
+item so the order can matter. However, a matching rule produces a keep only when the item's filterable item category is
+enabled; the Mythic always-keep rule still applies.
 
 #### Loot Behavior
 
-Here you can change how we handle items that don't match a filter at all, for example uniques or codex upgrades.
+Here you can change how we handle items that don't match a filter at all, for example uniques or codex upgrades. The
+following loot filter overrides independently control whether D4LF applies profile rules to each filterable item
+category:
+
+- Filter Equipment
+- Filter Sigils
+- Filter Tributes
+- Filter Seals
+- Filter Charms
+
+When an override is disabled, non-Mythic items in that category are left untouched while the active profile rules are
+preserved. Mythic items are always kept by the Mythic always-keep rule.
 
 #### Stash & Transfer
 
@@ -171,7 +183,8 @@ The Profile Editor allows you to edit your profiles. It is still in beta. The Si
 
 ## How to filter / Profiles
 
-All profiles define whitelist filters. If no filter included in your profiles matches the item, it will be discarded.
+All profiles define whitelist filters. If no filter included in your profiles matches an item in an enabled filterable
+item category, it will be discarded. Disabled categories are left untouched, except that Mythics are always kept.
 
 Your config files will be validated on startup and will prevent the program from starting if the structure or syntax is
 incorrect. The error message will provide hints about the specific problem.
@@ -179,9 +192,9 @@ incorrect. The error message will provide hints about the specific problem.
 The following sections will explain each type of filter that you can specify in your profiles. How you define them in
 your YAML files is up to you; you can put all of these into just one file or have a dedicated file for each type of
 filter, or even split the same type of filter over multiple files. Ultimately, all profiles specified in
-the Profiles section of Settings will be used to determine if an item should be kept. If one of the profiles wants to keep the item, it
-will be kept regardless of the other profiles. Similarly, if a filter is missing in all profiles (e.g., there is
-no `Sigils` section in any profile), all corresponding items (in this case, sigils) will be kept.
+the Profiles section of Settings will be used to determine if an item should be kept when its category is enabled. If one
+of the profiles wants to keep the item, it will be kept regardless of the other profiles. Similarly, if a filter is missing in all profiles (e.g., there is
+no `Sigils` section in any profile), all corresponding items (in this case, sigils) will be kept when Sigils filtering is enabled.
 
 ### Affix / Unique Aspect Filter Syntax
 

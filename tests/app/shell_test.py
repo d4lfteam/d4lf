@@ -63,3 +63,27 @@ def test_profile_editor_inherits_main_window_maximized_state(monkeypatch) -> Non
     assert calls == [
         ("editor", shell_module.create_profile_editor_window, {"profile_name": "beta", "force_maximized": True})
     ]
+
+
+def test_settings_window_inherits_main_window_maximized_state(monkeypatch) -> None:
+    window = UnifiedMainWindow.__new__(UnifiedMainWindow)
+    window.isMaximized = lambda: True
+    window.apply_theme = lambda: None
+    calls = []
+    monkeypatch.setattr(
+        window,
+        "_show_singleton_modal",
+        lambda key, window_factory, **kwargs: calls.append((key, window_factory, kwargs)),
+    )
+    monkeypatch.setattr(shell_module, "set_accent_color", lambda _color: None)
+    monkeypatch.setattr(shell_module, "get_filter_colors", lambda: SimpleNamespace(matched="#fff"))
+
+    window.open_settings_dialog()
+
+    assert calls == [
+        (
+            "config",
+            shell_module.create_settings_window,
+            {"theme_changed_callback": window.apply_theme, "force_maximized": True},
+        )
+    ]

@@ -1,5 +1,8 @@
 import logging
+import sys
 from types import SimpleNamespace
+
+import pytest
 
 import src.app.backend as backend_module
 from src.app.backend import BackendWorker
@@ -18,6 +21,7 @@ def test_backend_worker_finishes_in_gui_only_mode(monkeypatch, caplog) -> None:
     assert "GUI-only mode" in caplog.text
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="The game backend runtime is Windows-only.")
 def test_backend_starts_tts_listener_before_waiting_for_game_window(monkeypatch) -> None:
     calls = []
 

@@ -6,6 +6,18 @@
 
 A user-defined loot filtering configuration for one Diablo 4 build. A profile may include at most one stored Paragon payload for the Paragon overlay.
 
+### Loot filter override
+
+A persistent, profile-independent user setting that disables profile-based and ordinary built-in filtering for an item category without changing the active profile. Changes apply to the next evaluated item; non-Mythic items in a disabled category are left untouched and produce no keep, junk, or filtering-statistics outcome. Built-in Mythic always-keep behavior remains active in every category. The profile's rules resume applying when the category is enabled again. Every category is enabled by default.
+
+### Filterable item category
+
+One of the item groups controlled by a loot filter override: Equipment, Sigils, Tributes, Seals, or Charms. Categories are based on the encountered item, not on individual sections of a profile.
+
+### Mythic always-keep rule
+
+The built-in rule that gives Mythic items a keep outcome independently of profile rules. It remains active when the item's filterable item category is disabled and produces the normal keep statistics and actions.
+
 ### Paragon payload
 
 The stored Paragon overlay data attached to a profile. It represents one imported Paragon build, not a collection of alternative builds. A payload may contain multiple progression steps for that build.
