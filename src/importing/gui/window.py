@@ -99,7 +99,6 @@ class ImporterWindow(QMainWindow):
         layout.addWidget(instructions)
 
     def _build_url_row(self, layout: QVBoxLayout):
-        # URL input.
         row = QHBoxLayout()
         row.addWidget(QLabel("URL:"))
         self.input_box = QLineEdit()
@@ -112,7 +111,6 @@ class ImporterWindow(QMainWindow):
         layout.addLayout(row)
 
     def _build_filename_row(self, layout: QVBoxLayout):
-        # Filename input.
         row = QHBoxLayout()
         row.addWidget(QLabel("Custom file name:"))
         self.filename_input_box = QLineEdit()
@@ -140,18 +138,18 @@ class ImporterWindow(QMainWindow):
     def _build_options(self, layout: QVBoxLayout):
         # fmt: off
         checkboxes = [
-            ("import_aspect_upgrades_checkbox", "Import Aspect Upgrades", "import_aspect_upgrades", "If legendary aspects are in the build, do you want an aspect upgrades section generated for them?", "true"),
-            ("import_charms_checkbox", "Import Charms", "import_charms", "If a build has charms, should they be included in the imported profile?", "true"),
-            ("import_seals_checkbox", "Import Seals", "import_seals", "If a build has seals, should they be included in the imported profile?", "true"),
-            ("add_to_profiles_checkbox", "Add to profiles", "add_to_profiles", "Do you want to add this build to your active profiles upon generating?", "false"),
-            ("import_gas_checkbox", "Include GAs", "import_greater_affixes", "Include the greater affix tags from the build, making it look for GAs?", "false"),
-            ("require_all_gas_checkbox", "Require all GAs", "require_all_greater_affixes", "Are the GAs required to match the item?", "false"),
-            ("export_paragon_checkbox", "Export Paragon", "export_paragon", "Export paragon boards for the paragon overlay?", "false"),
-            ("multi_build_checkbox", "Multi Build Import", "multi_build_import", "Import multiple builds from the link?", "false"),
+            ("import_aspect_upgrades_checkbox", "Import Aspect Upgrades", "import_aspect_upgrades", "If legendary aspects are in the build, do you want an aspect upgrades section generated for them?", "true", ()),
+            ("import_charms_checkbox", "Import Charms", "import_charms", "If a build has charms, should they be included in the imported profile?", "true", ()),
+            ("import_seals_checkbox", "Import Seals", "import_seals", "If a build has seals, should they be included in the imported profile?", "true", ()),
+            ("add_to_profiles_checkbox", "Add to profiles", "add_to_profiles", "Do you want to add this build to your active profiles upon generating?", "false", ("import_add_to_profiles",)),
+            ("import_gas_checkbox", "Include GAs", "import_greater_affixes", "Include the greater affix tags from the build, making it look for GAs?", "false", ("import_gas",)),
+            ("require_all_gas_checkbox", "Require all GAs", "require_all_greater_affixes", "Are the GAs required to match the item?", "false", ("require_all_gas",)),
+            ("export_paragon_checkbox", "Export Paragon", "export_paragon", "Export paragon boards for the paragon overlay?", "false", ()),
+            ("multi_build_checkbox", "Multi Build Import", "multi_build_import", "Import multiple builds from the link?", "false", ()),
         ]
         # fmt: on
-        for name, label, setting, tooltip, default in checkboxes:
-            setattr(self, name, self._generate_checkbox(label, setting, tooltip, default))
+        for name, label, setting, tooltip, default, fallbacks in checkboxes:
+            setattr(self, name, self._generate_checkbox(label, setting, tooltip, default, fallbacks))
 
         self.require_all_gas_checkbox.setEnabled(self.import_gas_checkbox.isChecked())
         if not self.import_gas_checkbox.isChecked():
@@ -170,10 +168,12 @@ class ImporterWindow(QMainWindow):
         grid.addWidget(self.multi_build_checkbox, 2, 1)
         layout.addLayout(grid)
 
-    def _generate_checkbox(self, name: str, setting: str, description: str, default: str = "true"):
+    def _generate_checkbox(
+        self, name: str, setting: str, description: str, default: str = "true", fallbacks: tuple[str, ...] = ()
+    ):
         checkbox = CheckmarkCheckBox(name)
-        value = self.settings.value(setting, default)
-        checkbox.setChecked(value is True or str(value).casefold() == "true")
+        val = next((self.settings.value(k) for k in (setting, *fallbacks) if self.settings.contains(k)), default)
+        checkbox.setChecked(val is True or str(val).casefold() == "true")
         checkbox.setToolTip(description)
         checkbox.stateChanged.connect(lambda: self.settings.setValue(setting, checkbox.isChecked()))
         return checkbox
