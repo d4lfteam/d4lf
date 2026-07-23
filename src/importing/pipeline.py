@@ -81,6 +81,7 @@ class ImportPipeline:
                     import_greater_affixes=config.import_greater_affixes,
                     require_greater_affixes=config.require_greater_affixes,
                     export_paragon=config.export_paragon,
+                    multi_build=config.multi_build if hasattr(config, "multi_build") else False,
                     custom_file_name=config.custom_file_name,
                     filename_parts=config.filename_parts,
                 ),
@@ -154,4 +155,5 @@ class ImportPipeline:
             paragon=selected_paragon,
             saved_file_name=saved_file_names[0] if saved_file_names else None,
             saved_file_names=tuple(saved_file_names),
+            extracted_build=build,
         )

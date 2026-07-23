@@ -7,6 +7,7 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
 from src.importing.config import ImportConfig
+from src.importing.contracts import VariantMetadata
 from src.importing.conversion import as_string_keyed_mapping as _as_object
 from src.importing.filters import (
     create_item_affix_pool,
@@ -39,7 +40,7 @@ if TYPE_CHECKING:
 
     from selenium.webdriver.remote.webdriver import WebDriver
 
-    from src.importing import ImportRequest, ImportResult
+    from src.importing.contracts import ImportRequest, ImportResult
     from src.importing.infinitybuilds.models import _ResolvedGearData
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
@@ -52,12 +53,44 @@ class InfinityBuildsError(Exception):
     pass
 
 
-def import_infinitybuilds(request: ImportRequest, driver: WebDriver | None = None) -> ImportResult | None:
-    return _import_infinitybuilds(ImportConfig.from_request(request), driver)
+@retry_importer(inject_webdriver=True)
+def fetch_variants_infinitybuilds(request: ImportRequest, driver: WebDriver | None = None) -> list[VariantMetadata]:
+    if driver is None:
+        msg = "A Selenium WebDriver is required for InfinityBuilds imports"
+        raise RuntimeError(msg)
+    url = request.url.strip().replace("\n", "")
+    if BUILD_GUIDE_BASE_URL not in url:
+        LOGGER.error("Invalid url, please use an infinitybuilds.gg build link")
+        return []
+    LOGGER.info(f"Loading {url} for variants")
+    driver.get(url)
+    wait = WebDriverWait(driver, 15)
+    wait.until(ec.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
+    wait.until(lambda d: "classId" in d.page_source and "variants" in d.page_source)
+    page_source = driver.page_source
+    raw_html_data = lxml.html.fromstring(page_source)
+    build_data = _extract_build_data(raw_html_data)
+    if build_data is None:
+        return []
+    variants_data = build_data.get("variants") or []
+    variants = []
+    for i, v in enumerate(variants_data):
+        if v.get("gear"):
+            v_id = v.get("id") or str(i)
+            variants.append(VariantMetadata(id=v_id, name=v.get("name") or f"Variant {v_id}"))
+    return variants
+
+
+def import_infinitybuilds(
+    request: ImportRequest, driver: WebDriver | None = None, selected_variant_ids: list[str] | None = None
+) -> ImportResult | None:
+    return _import_infinitybuilds(ImportConfig.from_request(request), driver, selected_variant_ids)
 
 
 @retry_importer(inject_webdriver=True)
-def _import_infinitybuilds(config: ImportConfig, driver: WebDriver | None = None) -> ImportResult | None:
+def _import_infinitybuilds(
+    config: ImportConfig, driver: WebDriver | None = None, selected_variant_ids: list[str] | None = None
+) -> ImportResult | None:
     if driver is None:
         msg = "A Selenium WebDriver is required for InfinityBuilds imports"
         raise RuntimeError(msg)
@@ -92,9 +125,11 @@ def _import_infinitybuilds(config: ImportConfig, driver: WebDriver | None = None
     if not variants:
         LOGGER.error(msg := "No gear found for this build")
         raise InfinityBuildsError(msg)
-    # InfinityBuilds URLs don't let you pick a specific variant, so import all of them
-    if len(variants) > 1:
-        LOGGER.info(f"This build has {len(variants)} variants, importing all of them.")
+    if not config.multi_build:
+        variants = variants[:1]
+    elif selected_variant_ids is not None:
+        # Filter variants by selected IDs if provided (fallback to index string if ID missing)
+        variants = [v for i, v in enumerate(variants) if (v.get("id") or str(i)) in selected_variant_ids]
     # Resolve all variants' gear in a single API call to avoid redundant round trips.
     resolved = _resolve_gear_data(class_name, [piece for variant in variants for piece in variant["gear"]])
     paragon_catalog: InfinityBuildsParagonCatalog | None = None

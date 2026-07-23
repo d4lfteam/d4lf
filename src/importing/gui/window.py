@@ -21,36 +21,40 @@ from PyQt6.QtWidgets import (
 from src.desktop.activity import QtLogHandler
 from src.desktop.widgets import CheckmarkCheckBox, set_accent_color
 from src.importing import DEFAULT_FILENAME_PARTS, FilenamePart, ImportOptions, ImportRequest
-from src.importing.gui.support import ImportWorker
+from src.importing.gui.constants import (
+    FILENAME_PART_LABELS,
+    GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP,
+    IMPORTER_WINDOW_LOGGERS,
+    INSTRUCTIONS_TEXT,
+)
+from src.importing.gui.dialogs import select_variants_dialog
+from src.importing.gui.support import FetchVariantsWorker, ImportWorker
 from src.settings import get_settings
 
 BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[3]
 ICON_PATH = BASE_DIR / "assets" / "logo.png"
 LOGGER = logging.getLogger(__name__)
 THREADPOOL = QThreadPool()
-FILENAME_PART_LABELS = {
-    FilenamePart.SOURCE: "Source",
-    FilenamePart.SEASON: "Season",
-    FilenamePart.CLASS: "Class",
-    FilenamePart.BUILD_TITLE: "Build title",
-    FilenamePart.VARIANT: "Variant",
-}
-GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP = "Select at least one filename part or enter a custom file name."
-IMPORTER_WINDOW_LOGGERS = (
-    "src.importing.mobalytics",
-    "src.importing.maxroll",
-    "src.importing.d4builds",
-    "src.importing.infinitybuilds",
-    "src.importing.gui.support",
-    "src.importing.pipeline",
-    "src.profiles",
-)
 
 
 class ImporterWindow(QMainWindow):
     """Standalone window for importing profiles from supported build guides."""
 
     import_completed = pyqtSignal()
+
+    import_aspect_upgrades_checkbox: CheckmarkCheckBox
+    import_charms_checkbox: CheckmarkCheckBox
+    import_seals_checkbox: CheckmarkCheckBox
+    add_to_profiles_checkbox: CheckmarkCheckBox
+    import_gas_checkbox: CheckmarkCheckBox
+    require_all_gas_checkbox: CheckmarkCheckBox
+    export_paragon_checkbox: CheckmarkCheckBox
+    multi_build_checkbox: CheckmarkCheckBox
+    input_box: QLineEdit
+    filename_input_box: QLineEdit
+    filename_parts_summary_label: QLabel
+    generate_button: QPushButton
+    log_output: QTextEdit
 
     def __init__(self, parent=None, accent_color: str | None = None):
         super().__init__(parent)
@@ -59,12 +63,10 @@ class ImporterWindow(QMainWindow):
         if ICON_PATH.exists():
             self.setWindowIcon(QIcon(str(ICON_PATH)))
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        # Settings for persistent window geometry and importer options.
         self.settings = QSettings("d4lf", "ImporterWindow")
         self.is_generating = False
         self.setWindowTitle("Profile Importer - Maxroll / D4Builds / Mobalytics / InfinityBuilds")
         self.setMinimumSize(700, 600)
-        # Restore window geometry.
         self.resize(self.settings.value("size", QSize(700, 600)))
         self.move(self.settings.value("pos", QPoint(100, 100)))
         if self.settings.value("maximized", "false") == "true":
@@ -90,17 +92,7 @@ class ImporterWindow(QMainWindow):
         layout.addWidget(self.log_output)
         layout.addWidget(QLabel("Instructions:"))
         instructions = QTextEdit()
-        instructions.setText(
-            "You can link either the build guide or a direct link to the specific planner.\n\n"
-            "https://maxroll.gg/d4/build-guides/tornado-druid-guide\n"
-            "or\nhttps://maxroll.gg/d4/planner/cm6pf0xa#5\n"
-            "or\nhttps://d4builds.gg/builds/ef414fbd-81cd-49d1-9c8d-4938b278e2ee\n"
-            "or\nhttps://mobalytics.gg/diablo-4/builds/barbarian/bash\n"
-            "or\nhttps://infinitybuilds.gg/en/builds/barbarian-fL8P6vVSqI\n\n"
-            f"It will create a file based on the label of the build in the planner in: "
-            f"{get_settings().user_dir / 'profiles'}\n\n"
-            "For d4builds you need to specify your browser in the Settings window"
-        )
+        instructions.setText(INSTRUCTIONS_TEXT.format(user_dir=get_settings().user_dir))
         instructions.setReadOnly(True)
         instructions.setMaximumHeight(200)
         instructions.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -146,39 +138,21 @@ class ImporterWindow(QMainWindow):
         self._update_generate_button_state()
 
     def _build_options(self, layout: QVBoxLayout):
-        self.import_aspect_upgrades_checkbox = self._generate_checkbox(
-            "Import Aspect Upgrades",
-            "import_aspect_upgrades",
-            "If legendary aspects are in the build, do you want an aspect upgrades section generated for them?",
-        )
-        self.import_charms_checkbox = self._generate_checkbox(
-            "Import Charms", "import_charms", "If a build has charms, should they be included in the imported profile?"
-        )
-        self.import_seals_checkbox = self._generate_checkbox(
-            "Import Seals", "import_seals", "If a build has seals, should they be included in the imported profile?"
-        )
-        self.add_to_profiles_checkbox = self._generate_checkbox(
-            "Auto-add To Profiles",
-            "import_add_to_profiles",
-            "After import, should the imported file be automatically added to your active profiles?",
-        )
-        self.import_gas_checkbox = self._generate_checkbox(
-            "Import GAs",
-            "import_gas",
-            "If a build has greater affixes, should they be included in the imported profile?",
-        )
-        self.require_all_gas_checkbox = self._generate_checkbox(
-            "Require all GAs",
-            "require_all_gas",
-            "If a build has greater affixes, should an item have all of them to be kept?",
-            "false",
-        )
-        self.export_paragon_checkbox = self._generate_checkbox(
-            "Import Paragon",
-            "export_paragon",
-            "Import Paragon boards into your profile for the integrated Paragon overlay.",
-            "false",
-        )
+        # fmt: off
+        checkboxes = [
+            ("import_aspect_upgrades_checkbox", "Import Aspect Upgrades", "import_aspect_upgrades", "If legendary aspects are in the build, do you want an aspect upgrades section generated for them?", "true"),
+            ("import_charms_checkbox", "Import Charms", "import_charms", "If a build has charms, should they be included in the imported profile?", "true"),
+            ("import_seals_checkbox", "Import Seals", "import_seals", "If a build has seals, should they be included in the imported profile?", "true"),
+            ("add_to_profiles_checkbox", "Add to profiles", "add_to_profiles", "Do you want to add this build to your active profiles upon generating?", "false"),
+            ("import_gas_checkbox", "Include GAs", "import_greater_affixes", "Include the greater affix tags from the build, making it look for GAs?", "false"),
+            ("require_all_gas_checkbox", "Require all GAs", "require_all_greater_affixes", "Are the GAs required to match the item?", "false"),
+            ("export_paragon_checkbox", "Export Paragon", "export_paragon", "Export paragon boards for the paragon overlay?", "false"),
+            ("multi_build_checkbox", "Multi Build Import", "multi_build_import", "Import multiple builds from the link?", "false"),
+        ]
+        # fmt: on
+        for name, label, setting, tooltip, default in checkboxes:
+            setattr(self, name, self._generate_checkbox(label, setting, tooltip, default))
+
         self.require_all_gas_checkbox.setEnabled(self.import_gas_checkbox.isChecked())
         if not self.import_gas_checkbox.isChecked():
             self.require_all_gas_checkbox.setChecked(False)
@@ -193,6 +167,7 @@ class ImporterWindow(QMainWindow):
         grid.addWidget(self.require_all_gas_checkbox, 1, 1)
         grid.addWidget(self.export_paragon_checkbox, 1, 2)
         grid.addWidget(self.add_to_profiles_checkbox, 2, 0)
+        grid.addWidget(self.multi_build_checkbox, 2, 1)
         layout.addLayout(grid)
 
     def _generate_checkbox(self, name: str, setting: str, description: str, default: str = "true"):
@@ -256,22 +231,55 @@ class ImporterWindow(QMainWindow):
                 import_greater_affixes=self.import_gas_checkbox.isChecked(),
                 require_greater_affixes=self.require_all_gas_checkbox.isChecked(),
                 export_paragon=self.export_paragon_checkbox.isChecked(),
+                multi_build=self.multi_build_checkbox.isChecked(),
                 custom_file_name=custom_filename,
                 filename_parts=self._selected_filename_parts(),
             ),
         )
-        worker = ImportWorker(request=request, finished=self._on_worker_finished)
+        # Store the current request so we can re-use it for persistence if multi_build is used
+        self._current_request = request
+        if request.options.multi_build:
+            worker = FetchVariantsWorker(request=request, finished=self._on_worker_finished)
+            worker.signals.variants_extracted.connect(self._on_variants_extracted)
+        else:
+            worker = ImportWorker(request=request, finished=self._on_worker_finished)
+
         self.is_generating = True
         self.generate_button.setEnabled(False)
         self.generate_button.setText("Generating...")
         THREADPOOL.start(worker)
 
     def _on_worker_finished(self):
+        if hasattr(self, "_waiting_for_user_selection") and self._waiting_for_user_selection:
+            return
         self.is_generating = False
         self.generate_button.setText("Generate")
         self.filename_input_box.clear()
         self._update_generate_button_state()
         self.import_completed.emit()
+
+    def _on_variants_extracted(self, variants):
+        self._waiting_for_user_selection = True
+        # variants is a list of VariantMetadata
+        # We need the source_name, but we don't have it explicitly. Let's just pass "the build guide"
+        source_name = "the build guide"
+        selected_ids = select_variants_dialog(self, variants, source_name)
+        if selected_ids is None or not selected_ids:
+            LOGGER.info("No variants selected or dialog cancelled, aborting import.")
+            self._waiting_for_user_selection = False
+            self._on_worker_finished()
+            return
+
+        LOGGER.info(f"User selected {len(selected_ids)} variant(s). Generating...")
+        self.generate_button.setText("Saving...")
+        worker = ImportWorker(
+            request=self._current_request, finished=self._on_persist_finished, selected_variant_ids=selected_ids
+        )
+        THREADPOOL.start(worker)
+
+    def _on_persist_finished(self):
+        self._waiting_for_user_selection = False
+        self._on_worker_finished()
 
     @staticmethod
     def _filename_part_setting_key(part: FilenamePart) -> str:

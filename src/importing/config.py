@@ -19,6 +19,7 @@ class ImportConfig:
     filename_parts: tuple[FilenamePart | str, ...] = DEFAULT_FILENAME_PARTS
     import_charms: bool = True
     import_seals: bool = True
+    multi_build: bool = False
 
     @classmethod
     def from_request(cls, request: ImportRequest) -> ImportConfig:
@@ -32,6 +33,7 @@ class ImportConfig:
             import_greater_affixes=options.import_greater_affixes,
             require_greater_affixes=options.require_greater_affixes,
             export_paragon=options.export_paragon,
+            multi_build=options.multi_build,
             custom_file_name=options.custom_file_name,
             filename_parts=request.filename_parts,
         )

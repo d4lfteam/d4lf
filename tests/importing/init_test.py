@@ -4,6 +4,7 @@ from src.importing import (
     ImportRequest,
     ImportResult,
     UnsupportedImportSourceError,
+    VariantMetadata,
     assemble_profile_file_name,
     import_build,
     select_source,
@@ -48,7 +49,10 @@ def test_import_build_passes_one_normalized_request_to_source() -> None:
     class FakeSource:
         name = "fixture"
 
-        def import_build(self, request: ImportRequest) -> ImportResult:
+        def fetch_variants(self, request: ImportRequest) -> list[VariantMetadata]:
+            return []
+
+        def import_build(self, request: ImportRequest, selected_variant_ids: list[str] | None = None) -> ImportResult:
             captured.append(request)
             return ImportResult(source_name=self.name, selected_variant="Default", profile=ProfileModel(name="profile"))
 

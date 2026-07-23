@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 from src.profiles import ParagonPayloadModel, ProfileModel, normalize_profile_file_name
 
@@ -34,6 +34,7 @@ class ImportOptions:
     import_greater_affixes: bool = False
     require_greater_affixes: bool = False
     export_paragon: bool = False
+    multi_build: bool = False
     custom_file_name: str | None = None
     filename_parts: tuple[FilenamePart | str, ...] = DEFAULT_FILENAME_PARTS
 
@@ -66,13 +67,22 @@ class ImportResult:
     paragon: ParagonPayloadModel | None = None
     saved_file_name: str | None = None
     saved_file_names: tuple[str, ...] = ()
+    extracted_build: Any | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class VariantMetadata:
+    id: str
+    name: str
 
 
 class ImportSource(Protocol):
     @property
     def name(self) -> str: ...
 
-    def import_build(self, request: ImportRequest) -> ImportResult: ...
+    def fetch_variants(self, request: ImportRequest) -> list[VariantMetadata]: ...
+
+    def import_build(self, request: ImportRequest, selected_variant_ids: list[str] | None = None) -> ImportResult: ...
 
 
 def assemble_profile_file_name(

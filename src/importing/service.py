@@ -5,11 +5,12 @@ composition needed to select one and translate the normalized request into the
 adapter's internal options, including its retry and browser behavior.
 """
 
+import sys
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 if TYPE_CHECKING:
-    from src.importing.contracts import ImportRequest, ImportResult, ImportSource
+    from src.importing.contracts import ImportRequest, ImportResult, ImportSource, VariantMetadata
 
 
 class UnsupportedImportSourceError(ValueError):
@@ -22,9 +23,14 @@ class _SelectedSource:
         self.importer = importer
         self.normalized_request = normalized_request
 
-    def import_build(self, request: ImportRequest) -> ImportResult:
+    def fetch_variants(self, request: ImportRequest) -> list[VariantMetadata]:
+        # Call a new `fetch_variants` method exposed by the adapter module
+        module = sys.modules[self.importer.__module__]
+        return getattr(module, f"fetch_variants_{self.name}")(request)
+
+    def import_build(self, request: ImportRequest, selected_variant_ids: list[str] | None = None) -> ImportResult:
         if self.normalized_request:
-            result = self.importer(request)
+            result = self.importer(request, selected_variant_ids=selected_variant_ids)
         else:
             from src.importing.config import ImportConfig  # ruff:ignore[import-outside-top-level]
 
@@ -58,6 +64,8 @@ def select_source(url: str) -> ImportSource:
     raise UnsupportedImportSourceError(message)
 
 
-def import_build(request: ImportRequest, source: ImportSource | None = None) -> ImportResult:
+def import_build(
+    request: ImportRequest, source: ImportSource | None = None, selected_variant_ids: list[str] | None = None
+) -> ImportResult:
     """Import a build through one source-independent request/result seam."""
-    return (source or select_source(request.url)).import_build(request)
+    return (source or select_source(request.url)).import_build(request, selected_variant_ids=selected_variant_ids)

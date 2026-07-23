@@ -8,6 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
+from src.importing.contracts import VariantMetadata
 from src.importing.d4builds.constants import (
     BASE_URL,
     BUILD_OVERVIEW_XPATH,
@@ -59,7 +60,44 @@ LOGGER.propagate = True
 
 
 @retry_importer(inject_webdriver=True)
-def import_d4builds(request: ImportRequest, driver: WebDriver | None = None) -> ImportResult | None:
+def fetch_variants_d4builds(request: ImportRequest, driver: WebDriver | None = None) -> list[VariantMetadata]:
+    if driver is None:
+        msg = "A Selenium WebDriver is required for D4Builds imports"
+        raise RuntimeError(msg)
+    url = request.url
+    if BASE_URL not in url:
+        LOGGER.error("Invalid url, please use a d4builds url")
+        return []
+
+    variants = []
+    seen_variant_names: set[str] = set()
+    var_index = 0
+
+    while True:
+        url_variant = url if "?" not in url else re.sub(r"var=\d+", f"var={var_index}", url)
+        if "var=" not in url_variant:
+            url_variant += f"&var={var_index}" if "?" in url_variant else f"?var={var_index}"
+
+        LOGGER.info(f"Loading metadata for {url_variant}")
+        driver.get(url_variant)
+        wait = WebDriverWait(driver, 10)
+        wait.until(ec.presence_of_element_located((By.XPATH, BUILD_OVERVIEW_XPATH)))
+        data = lxml.html.fromstring(driver.page_source)
+        _, _, _, variant_name = _extract_build_metadata(data=data)
+
+        if variant_name in seen_variant_names:
+            break
+        seen_variant_names.add(variant_name)
+        variants.append(VariantMetadata(id=str(var_index), name=variant_name or f"Variant {var_index + 1}"))
+        var_index += 1
+
+    return variants
+
+
+@retry_importer(inject_webdriver=True)
+def import_d4builds(
+    request: ImportRequest, driver: WebDriver | None = None, selected_variant_ids: list[str] | None = None
+) -> ImportResult | None:
     if driver is None:
         msg = "A Selenium WebDriver is required for D4Builds imports"
         raise RuntimeError(msg)
@@ -67,140 +105,189 @@ def import_d4builds(request: ImportRequest, driver: WebDriver | None = None) -> 
     if BASE_URL not in url:
         LOGGER.error("Invalid url, please use a d4builds url")
         return None
-    LOGGER.info(f"Loading {url}")
-    driver.get(url)
-    wait = WebDriverWait(driver, 10)
-    wait.until(ec.presence_of_element_located((By.XPATH, BUILD_OVERVIEW_XPATH)))
-    wait.until(ec.presence_of_element_located((By.XPATH, PAPERDOLL_XPATH)))
-    time.sleep(
-        5
-    )  # super hacky but I didn't find anything else. The page is not fully loaded when the above wait is done
-    data = lxml.html.fromstring(driver.page_source)
-    class_name, build_header, season_number, variant_name = _extract_build_metadata(data=data)
-    if not (items := data.xpath(BUILD_OVERVIEW_XPATH)):
-        LOGGER.error(msg := "No items found")
-        raise D4BuildsError(msg)
-    slot_to_unique_name_map = _get_item_slots(data=data)
-    weapon_paperdoll_icons = _get_weapon_paperdoll_icons(driver=driver)
-    finished_filters: list[ItemFilterModel] = []
-    finished_filter_name_hints: list[str | None] = []
-    charm_filters, seal_filters = _extract_d4builds_seal_charm_filters(driver=driver, request=request)
-    aspect_upgrade_filters = _get_legendary_aspects(data=data)
-    for item in items[0]:
-        item_filter = ItemFilterModel()
-        if not (slot := item.xpath(ITEM_SLOT_XPATH)[1].tail):
-            LOGGER.error("No item_type found")
+    variants: list[Variant] = []
+    seen_variant_names: set[str] = set()
+    var_index = 0
+
+    # These are extracted from the first variant and remain constant (or we take the last ones)
+    final_class_name = ""
+    final_build_header = ""
+    final_season_number = ""
+
+    while True:
+        if request.options.multi_build:
+            if selected_variant_ids is not None and str(var_index) not in selected_variant_ids:
+                var_index += 1
+                # If we skipped it, how do we know when to stop?
+                # We can stop if var_index is greater than the max selected ID.
+                # Assuming selected_variant_ids contains string representations of integers.
+                if selected_variant_ids and var_index > max(int(i) for i in selected_variant_ids):
+                    break
+                continue
+
+            url_variant = url if "?" not in url else re.sub(r"var=\d+", f"var={var_index}", url)
+            if "var=" not in url_variant:
+                url_variant += f"&var={var_index}" if "?" in url_variant else f"?var={var_index}"
+        else:
+            url_variant = url
+
+        LOGGER.info(f"Loading {url_variant}")
+        driver.get(url_variant)
+        wait = WebDriverWait(driver, 10)
+        wait.until(ec.presence_of_element_located((By.XPATH, BUILD_OVERVIEW_XPATH)))
+        wait.until(ec.presence_of_element_located((By.XPATH, PAPERDOLL_XPATH)))
+        time.sleep(
+            5
+        )  # super hacky but I didn't find anything else. The page is not fully loaded when the above wait is done
+        data = lxml.html.fromstring(driver.page_source)
+        class_name, build_header, season_number, variant_name = _extract_build_metadata(data=data)
+
+        # If not using selected_variant_ids, we stop when we see a duplicate name
+        if request.options.multi_build and selected_variant_ids is None and variant_name in seen_variant_names:
+            break
+        seen_variant_names.add(variant_name)
+
+        final_class_name = class_name
+        final_build_header = build_header
+        final_season_number = season_number
+
+        if not (items := data.xpath(BUILD_OVERVIEW_XPATH)):
+            LOGGER.error(msg := "No items found")
+            if not request.options.multi_build:
+                raise D4BuildsError(msg)
+            var_index += 1
             continue
-        if slot not in slot_to_unique_name_map:
-            LOGGER.warning(f"Empty slots are not supported. Skipping: {slot}")
-            continue
-
-        stats = item.xpath(ITEM_STATS_XPATH)
-        if not stats:
-            LOGGER.error(f"No stats found for {slot=}")
-            continue
-
-        item_type = None
-        rarity = None
-        affixes = []
-        inherents = []
-
-        unique_item = slot_to_unique_name_map[slot]
-        if unique_item is not None:
-            unique_name, rarity = unique_item
-            try:
-                item_filter.unique_aspect = [AspectUniqueFilterModel(name=unique_name)]
-            except Exception:
-                LOGGER.exception(
-                    f"Unexpected error adding unique aspect for {unique_name}, please report a bug and include a link to the build you were trying to import."
-                )
-        is_unique_like = is_unique_like_rarity(rarity)
-
-        is_weapon = "weapon" in slot.lower()
-        affix_dict = affix_dict_for_item_type(item_type=item_type)
-        for stat in stats:
-            if stat.xpath(TEMPERING_ICON_XPATH) or stat.xpath(SANCTIFIED_ICON_XPATH):
+        slot_to_unique_name_map = _get_item_slots(data=data)
+        weapon_paperdoll_icons = _get_weapon_paperdoll_icons(driver=driver)
+        finished_filters: list[ItemFilterModel] = []
+        finished_filter_name_hints: list[str | None] = []
+        charm_filters, seal_filters = _extract_d4builds_seal_charm_filters(driver=driver, request=request)
+        aspect_upgrade_filters = _get_legendary_aspects(data=data)
+        for item in items[0]:
+            item_filter = ItemFilterModel()
+            if not (slot := item.xpath(ITEM_SLOT_XPATH)[1].tail):
+                LOGGER.error("No item_type found")
                 continue
-            if "filled" not in stat.xpath("../..")[0].attrib["class"]:
+            if slot not in slot_to_unique_name_map:
+                LOGGER.warning(f"Empty slots are not supported. Skipping: {slot}")
                 continue
-            affix_name = _get_affix_name(stat)
-            if not affix_name:
-                LOGGER.warning(f"Slot {slot} is missing an affix, skipping import of that affix.")
+
+            stats = item.xpath(ITEM_STATS_XPATH)
+            if not stats:
+                LOGGER.error(f"No stats found for {slot=}")
                 continue
-            if is_weapon and (x := fix_weapon_type(input_str=affix_name)) is not None:
-                item_type = x
-                continue
-            if (
-                "offhand" in slot.lower()
-                and (x := fix_offhand_type(input_str=affix_name, class_str=class_name)) is not None
-            ):
-                item_type = x
-                if any(
-                    substring in affix_name.lower() for substring in ["focus", "offhand", "shield", "totem"]
-                ):  # special line indicating the item type
+
+            item_type = None
+            rarity = None
+            affixes = []
+            inherents = []
+
+            unique_item = slot_to_unique_name_map[slot]
+            if unique_item is not None:
+                unique_name, rarity = unique_item
+                try:
+                    item_filter.unique_aspect = [AspectUniqueFilterModel(name=unique_name)]
+                except Exception:
+                    LOGGER.exception(
+                        f"Unexpected error adding unique aspect for {unique_name}, please report a bug and include a link to the build you were trying to import."
+                    )
+            is_unique_like = is_unique_like_rarity(rarity)
+
+            is_weapon = "weapon" in slot.lower()
+            affix_dict = affix_dict_for_item_type(item_type=item_type)
+            for stat in stats:
+                if stat.xpath(TEMPERING_ICON_XPATH) or stat.xpath(SANCTIFIED_ICON_XPATH):
                     continue
-            affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=affix_name)), affix_dict))
-            if affix_obj.name is None:
-                LOGGER.error(f"Couldn't match {affix_name=}")
-                continue
-            if request.options.import_greater_affixes and stat.xpath("../../../..")[0].xpath(GA_XPATH):
-                affix_obj.type = AffixType.greater
-            affixes.append(affix_obj)
+                if "filled" not in stat.xpath("../..")[0].attrib["class"]:
+                    continue
+                affix_name = _get_affix_name(stat)
+                if not affix_name:
+                    LOGGER.warning(f"Slot {slot} is missing an affix, skipping import of that affix.")
+                    continue
+                if is_weapon and (x := fix_weapon_type(input_str=affix_name)) is not None:
+                    item_type = x
+                    continue
+                if (
+                    "offhand" in slot.lower()
+                    and (x := fix_offhand_type(input_str=affix_name, class_str=class_name)) is not None
+                ):
+                    item_type = x
+                    if any(
+                        substring in affix_name.lower() for substring in ["focus", "offhand", "shield", "totem"]
+                    ):  # special line indicating the item type
+                        continue
+                affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=affix_name)), affix_dict))
+                if affix_obj.name is None:
+                    LOGGER.error(f"Couldn't match {affix_name=}")
+                    continue
+                if request.options.import_greater_affixes and stat.xpath("../../../..")[0].xpath(GA_XPATH):
+                    affix_obj.type = AffixType.greater
+                affixes.append(affix_obj)
 
-        item_type = (
-            match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot.replace(" ", "")))
-            if item_type is None
-            else item_type
+            item_type = (
+                match_to_enum(enum_class=ItemType, target_string=re.sub(r"\d+", "", slot.replace(" ", "")))
+                if item_type is None
+                else item_type
+            )
+
+            if not affixes and not item_filter.unique_aspect:
+                continue
+
+            if item_type is None and is_weapon and (icon := weapon_paperdoll_icons.get(slot)) is not None:
+                item_type = _get_weapon_type_from_paperdoll_tooltip(driver=driver, icon=icon)
+
+            if item_type is None:
+                if is_weapon:
+                    LOGGER.warning(
+                        f"Couldn't find an item_type for weapon slot {slot}, defaulting to all weapon types instead."
+                    )
+                    item_filter.item_type = WEAPON_TYPES
+                else:
+                    item_filter.item_type = []
+                    LOGGER.warning(f"Couldn't match item_type: {slot}. Please edit manually")
+            else:
+                item_filter.item_type = [item_type]
+
+            if affixes:
+                item_filter.affix_pool = create_item_affix_pool(affixes=affixes, unique_like=is_unique_like)
+                update_mingreateraffixcount(item_filter, request.options.require_greater_affixes)
+                if inherents:
+                    item_filter.inherent_pool = [
+                        AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
+                    ]
+            item_filter.min_power = 100
+            finished_filters.append(item_filter)
+            finished_filter_name_hints.append(weapon_slot_name_hint(item_filter, slot))
+
+        variants.append(
+            Variant(
+                name=variant_name,
+                affix_filters=finished_filters,
+                affix_filter_name_hints=finished_filter_name_hints,
+                charm_filters=charm_filters,
+                seal_filters=seal_filters,
+                aspect_upgrade_filters=aspect_upgrade_filters,
+                paragon_steps=extract_d4builds_paragon_steps(driver, class_name=class_name),
+                paragon_build_name=build_header or class_name,
+            )
         )
 
-        if not affixes and not item_filter.unique_aspect:
-            continue
+        if not request.options.multi_build:
+            break
+        var_index += 1
 
-        if item_type is None and is_weapon and (icon := weapon_paperdoll_icons.get(slot)) is not None:
-            item_type = _get_weapon_type_from_paperdoll_tooltip(driver=driver, icon=icon)
+    if not variants:
+        raise D4BuildsError(msg := "No variants could be extracted")
 
-        if item_type is None:
-            if is_weapon:
-                LOGGER.warning(
-                    f"Couldn't find an item_type for weapon slot {slot}, defaulting to all weapon types instead."
-                )
-                item_filter.item_type = WEAPON_TYPES
-            else:
-                item_filter.item_type = []
-                LOGGER.warning(f"Couldn't match item_type: {slot}. Please edit manually")
-        else:
-            item_filter.item_type = [item_type]
-
-        if affixes:
-            item_filter.affix_pool = create_item_affix_pool(affixes=affixes, unique_like=is_unique_like)
-            update_mingreateraffixcount(item_filter, request.options.require_greater_affixes)
-            if inherents:
-                item_filter.inherent_pool = [
-                    AffixFilterCountModel(count=[AffixFilterModel(name=x.name) for x in inherents])
-                ]
-        item_filter.min_power = 100
-        finished_filters.append(item_filter)
-        finished_filter_name_hints.append(weapon_slot_name_hint(item_filter, slot))
     return ImportPipeline.run_result(
         adapter=StaticBuildGuideAdapter(
             url=url,
             build=ExtractedBuild(
                 source_name="d4builds",
-                class_name=class_name,
-                build_header=build_header,
-                season_number=season_number,
-                variants=[
-                    Variant(
-                        name=variant_name,
-                        affix_filters=finished_filters,
-                        affix_filter_name_hints=finished_filter_name_hints,
-                        charm_filters=charm_filters,
-                        seal_filters=seal_filters,
-                        aspect_upgrade_filters=aspect_upgrade_filters,
-                        paragon_steps=extract_d4builds_paragon_steps(driver, class_name=class_name),
-                        paragon_build_name=build_header or class_name,
-                    )
-                ],
+                class_name=final_class_name,
+                build_header=final_build_header,
+                season_number=final_season_number,
+                variants=variants,
             ),
         ),
         request=request,
