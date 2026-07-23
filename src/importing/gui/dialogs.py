@@ -11,10 +11,7 @@ def select_variants_dialog(parent, variants: list[VariantMetadata], source_name:
     dialog.setWindowTitle("Select variants to import")
     dialog.setMinimumWidth(300)
     layout = QVBoxLayout(dialog)
-    label = QLabel(
-        f"Found {len(variants)} variants in {source_name.title()}.\n"
-        "Select which variants to keep:"
-    )
+    label = QLabel(f"Found {len(variants)} variants in {source_name.title()}.\nSelect which variants to keep:")
     layout.addWidget(label)
     checkboxes = []
     for i, variant in enumerate(variants):
