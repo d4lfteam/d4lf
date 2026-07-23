@@ -113,8 +113,8 @@ def _import_mobalytics(
     variant_id_from_url = None
     if "?variant=" in url:
         variant_id_from_url = url.split("?variant=")[1].split("&")[0]
-    elif "activeVariantId%2C" in url:
-        variant_id_from_url = url.split("activeVariantId%2C")[1].split("&")[0]
+    elif "activeVariantId," in url:
+        variant_id_from_url = url.split("activeVariantId,")[1].split("&")[0]
     page_source = driver.page_source
     raw_html_data = lxml.html.fromstring(page_source)
     scripts = raw_html_data.xpath(SCRIPT_XPATH)
