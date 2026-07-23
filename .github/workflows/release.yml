@@ -24,11 +24,6 @@ jobs:
       - name: Build & Zip exe
         id: build_zip
         uses: ./.github/actions/build_zip
-      - name: Create Tag
-        shell: powershell
-        run: |
-          git tag "v${{ steps.build_zip.outputs.version }}"
-          git push origin "v${{ steps.build_zip.outputs.version }}"
       - name: Check if beta
         id: check_beta
         shell: powershell
@@ -40,6 +35,7 @@ jobs:
             echo "IS_BETA=false" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
           }
       - uses: softprops/action-gh-release@v3
+        id: create_release
         with:
           files: ${{ steps.build_zip.outputs.zip_path }}
           generate_release_notes: ${{ env.IS_BETA == 'false' }}
@@ -47,3 +43,23 @@ jobs:
           prerelease: ${{ env.IS_BETA == 'true' }}
           tag_name: "v${{ steps.build_zip.outputs.version }}"
           token: "${{ secrets.RELEASE_TOKEN }}"
+      - name: Fetch release meta data
+        uses: actions/github-script@v7
+        id: release_metadata
+        with:
+          github-token: ${{ secrets.RELEASE_TOKEN }}
+          script: |
+            const { data } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: 'v${{ steps.build_zip.outputs.version }}',
+            });
+            core.setOutput('body', data.body ?? '');
+      - uses: SethCohen/github-releases-to-discord@v1.20
+        with:
+          color: "2105893"
+          release_body: ${{ steps.release_metadata.outputs.body }}
+          release_html_url: ${{ steps.create_release.outputs.url }}
+          release_name: "v${{ steps.build_zip.outputs.version }}"
+          username: "D4LF Release"
+          webhook_url: ${{ secrets.DISCORD_WEBHOOK }}
