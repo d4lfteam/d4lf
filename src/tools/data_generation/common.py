@@ -24,6 +24,7 @@ class AffixGenerationContext(TypedDict):
     skill_tags_by_sno: dict[int, list[str]]
     ui_tooltips: dict[str, str]
     weapon_types_by_sno: dict[int, str]
+    power_names_by_id: dict[str, str]
 
 
 class AffixFormula(TypedDict):

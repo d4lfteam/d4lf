@@ -100,6 +100,10 @@ _Avoid_: full tooltip level mode.
 A vision mode that evaluates the hovered item from TTS and marks the matched affixes on the item tooltip.
 _Avoid_: highlighting mode, old vision mode.
 
+### Localized dataset generation
+
+A run that builds D4LF's localized JSON data assets from a `d4data` source checkout.
+
 ### Affix marker
 
 The on-screen marker drawn by vision mode with highlighting to indicate one matched affix on the item tooltip. The current marker is a square centered on the affix bullet.

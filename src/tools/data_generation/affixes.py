@@ -27,6 +27,18 @@ from src.tools.data_generation.constants import EXPECTED_MISSING_AFFIX_LOCALISAT
 DataT = TypeVar("DataT")
 
 
+def _power_index(core_toc: dict[str, dict[str, str]], d4data_dir: Path) -> dict[int, str]:
+    indexed_powers = core_toc.get("29")
+    if indexed_powers:
+        return {int(sno): power_name for sno, power_name in indexed_powers.items()}
+    return {
+        int(power_data["__snoID__"]): power_data["__fileName__"]
+        for power_data in (
+            load_json_file(power_file) for power_file in sorted((d4data_dir / "json/base/meta/Power").glob("*.json"))
+        )
+    }
+
+
 def companion_style_affix_description(
     affix_data: AffixData, context: AffixGenerationContext, d4data_dir: Path, language: str
 ) -> str:
@@ -104,8 +116,45 @@ def affix_string_description(
     return description
 
 
+def _generate_affix(
+    affix_file: Path, context: AffixGenerationContext, d4data_dir: Path, language: str
+) -> tuple[str, str, str] | None:
+    affix_data = load_json_file(affix_file)
+    affix_name = Path(affix_data["__fileName__"]).stem
+    is_seal_affix = affix_name.startswith("Talisman_SealAffix_")
+    is_charm_affix = affix_name.startswith("Talisman_Charm_")
+    if affix_data.get("eMagicType") != 0 and not is_seal_affix:
+        return None
+    if affix_name.startswith("zz"):
+        return None
+    if "_Resistance_" in affix_name and "_Dual_" in affix_name:
+        return None
+    if affix_name.casefold() == "2HStaff_Unique_AF_001_Int_Decrease".casefold():
+        return None
+    description = None
+    string_list_dir = d4data_dir / f"json/{language}_Text/meta/StringList"
+    if is_seal_affix or is_charm_affix:
+        description = affix_string_description(affix_name, string_list_dir)
+    if description is None:
+        if affix_data.get("eMagicType") != 0 or not affix_data.get("ptItemAffixAttributes"):
+            return None
+        description = companion_style_affix_description(affix_data, context, d4data_dir, language)
+    normalised = normalise_affix_description(description)
+    if normalised is None:
+        return None
+    key, value = normalised
+    if is_seal_affix and (
+        key in EXCLUDED_SEAL_AFFIX_KEYS
+        or (key.startswith("while_at_least_") and "_charms_equipped_" in key)
+        or "_charm_equipped_" in key
+    ):
+        return None
+    category = "seals" if is_seal_affix else "charms" if is_charm_affix else "affixes"
+    return category, key, value
+
+
 def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None = None):
-    print(f"Gen Affixes for {language} (This one takes a while)")
+    print(f"Gen Affixes for {language}")
     core_toc = load_json_file(d4data_dir / "json/base/CoreTOC.dat.json")
     gbid = load_json_file(d4data_dir / "json/GBID.json")
     string_list_dir = d4data_dir / f"json/{language}_Text/meta/StringList"
@@ -117,15 +166,10 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
         "necromancer_army": string_list_map(string_list_dir / "NecromancerArmy.stl.json"),
         "skill_tags": string_list_map(string_list_dir / "SkillTags.stl.json"),
         "ui_tooltips": string_list_map(string_list_dir / "UIToolTips.stl.json"),
-        "power_by_sno": {
-            int(power_data["__snoID__"]): power_data["__fileName__"]
-            for power_data in (
-                load_json_file(power_file)
-                for power_file in sorted((d4data_dir / "json/base/meta/Power").glob("*.json"))
-            )
-        },
+        "power_by_sno": _power_index(core_toc, d4data_dir),
         "skill_tags_by_sno": {int(key) % (2**32): value for key, value in core_toc.get("56", {}).items()},
         "weapon_types_by_sno": {int(key) % (2**32): value for key, value in core_toc.get("116", {}).items()},
+        "power_names_by_id": {},
     }
     if not context["skill_tags_by_sno"]:
         context["skill_tags_by_sno"] = {int(key) % (2**32): value for key, value in gbid.get("56", {}).items()}
@@ -136,41 +180,11 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
     affix_pattern = "json/base/meta/Affix/*.json"
     affix_files = sorted(d4data_dir.glob(affix_pattern, case_sensitive=False))
     for affix_file in affix_files:
-        affix_data = load_json_file(affix_file)
-        affix_name = Path(affix_data["__fileName__"]).stem
-        is_seal_affix = affix_name.startswith("Talisman_SealAffix_")
-        is_charm_affix = affix_name.startswith("Talisman_Charm_")
-        if affix_data.get("eMagicType") != 0 and not is_seal_affix:
+        result = _generate_affix(affix_file, context, d4data_dir, language)
+        if result is None:
             continue
-        if affix_name.startswith("zz"):
-            continue
-        if "_Resistance_" in affix_name and "_Dual_" in affix_name:
-            continue
-        if affix_name.casefold() == "2HStaff_Unique_AF_001_Int_Decrease".casefold():
-            continue
-        description = None
-        if is_seal_affix or is_charm_affix:
-            description = affix_string_description(affix_name, string_list_dir)
-        if description is None:
-            if affix_data.get("eMagicType") != 0 or not affix_data.get("ptItemAffixAttributes"):
-                continue
-            description = companion_style_affix_description(affix_data, context, d4data_dir, language)
-        normalised = normalise_affix_description(description)
-        if normalised is None:
-            continue
-        key, value = normalised
-        if is_seal_affix and (
-            key in EXCLUDED_SEAL_AFFIX_KEYS
-            or (key.startswith("while_at_least_") and "_charms_equipped_" in key)
-            or "_charm_equipped_" in key
-        ):
-            continue
-        if is_seal_affix:
-            seal_dict[key] = value
-        elif is_charm_affix:
-            charm_dict[key] = value
-        else:
-            affix_dict[key] = value
+        category, key, value = result
+        {"affixes": affix_dict, "seals": seal_dict, "charms": charm_dict}[category][key] = value
 
     merge_custom_data(affix_dict, "affixes", language)
     merge_custom_data(seal_dict, "seals_affixes", language)
@@ -190,6 +204,7 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
     with charm_output_path.open("w", encoding="utf-8") as json_file:
         json.dump(charm_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
         json_file.write("\n")
+    return len(affix_files)
 
 
 def merge_custom_data(data: list[DataT] | dict[str, DataT], name: str, language: str) -> None:

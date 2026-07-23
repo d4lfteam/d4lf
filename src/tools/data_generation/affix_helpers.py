@@ -98,21 +98,24 @@ def replace_from_label_map(description: str, label_map: dict[str, str], label: s
 
 
 def replace_power_placeholder(
-    description: str, parameter: int, d4data_dir: Path, language: str, power_by_sno: dict[int, str]
+    description: str, parameter: int, d4data_dir: Path, language: str, context: AffixGenerationContext
 ) -> str:
     if "{" not in description and "}" not in description:
         return description
 
-    power_id = get_power_id(power_by_sno, parameter)
+    power_id = get_power_id(context["power_by_sno"], parameter)
     if not power_id:
         return description
 
-    power_string_file = d4data_dir / f"json/{language}_Text/meta/StringList/Power_{power_id}.stl.json"
-    if not power_string_file.exists():
-        print(f"WARNING: Could not find file named {power_string_file} in d4data.")
-        return description
-
-    skill_name = string_list_map(power_string_file).get("name", "")
+    if power_id in context["power_names_by_id"]:
+        skill_name = context["power_names_by_id"][power_id]
+    else:
+        power_string_file = d4data_dir / f"json/{language}_Text/meta/StringList/Power_{power_id}.stl.json"
+        if not power_string_file.exists():
+            print(f"WARNING: Could not find file named {power_string_file} in d4data.")
+            return description
+        skill_name = string_list_map(power_string_file).get("name", "")
+        context["power_names_by_id"][power_id] = skill_name
     if not skill_name:
         return description
     return description.replace("{VALUE1}", skill_name).replace("{vALUE1}", skill_name)
@@ -128,7 +131,7 @@ def replace_parameter_placeholder(
 ) -> str:
     base_id = localisation_id.split("#", maxsplit=1)[0]
     if base_id in POWER_LOCALISATION_IDS:
-        return replace_power_placeholder(description, parameter, d4data_dir, language, context["power_by_sno"])
+        return replace_power_placeholder(description, parameter, d4data_dir, language, context)
     if base_id in SKILL_TAG_LOCALISATION_IDS:
         skill_category = get_first_gbid_name(context["skill_tags_by_sno"], parameter)
         return replace_from_label_map(description, context["skill_tags"], f"{skill_category}_TagName")
