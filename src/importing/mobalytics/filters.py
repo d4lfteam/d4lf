@@ -43,14 +43,14 @@ if TYPE_CHECKING:
 
     from selenium.webdriver.remote.webdriver import WebDriver
 
-    from src.importing.config import ImportConfig
+    from src.importing.contracts import ImportRequest
 
 
 def build_variant(
     *,
     items: Sequence[Mapping[str, object]],
     class_name: str,
-    config: ImportConfig,
+    request: ImportRequest,
     driver: WebDriver,
     variant_name: str,
     build_name: str,
@@ -125,7 +125,7 @@ def build_variant(
         elif item_type is None:
             LOGGER.warning(f"Couldn't match item_type: {slot_type}. Please edit manually")
         affixes = _convert_raw_to_affixes(
-            raw_affixes, config.import_greater_affixes, item_type, guessed_set_name=guessed_set_name
+            raw_affixes, request.options.import_greater_affixes, item_type, guessed_set_name=guessed_set_name
         )
         inherents = _convert_raw_to_affixes(raw_inherents, item_type=item_type, guessed_set_name=guessed_set_name)
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
@@ -138,7 +138,7 @@ def build_variant(
                 continue
             filter_model = create_seal_charm_filter(
                 affixes=affixes,
-                require_gas=config.require_greater_affixes,
+                require_gas=request.options.require_greater_affixes,
                 model_type=CharmFilterModel if item_type == ItemType.Charm else SealFilterModel,
                 unique_name=unique_name,
                 set_name=set_name,
@@ -153,7 +153,7 @@ def build_variant(
         if affixes:
             affixes = sorted(affixes, key=lambda affix: (affix.name, affix.type.value))
             item_filter.affix_pool = create_item_affix_pool(affixes=affixes, unique_like=is_unique)
-            update_mingreateraffixcount(item_filter, config.require_greater_affixes)
+            update_mingreateraffixcount(item_filter, request.options.require_greater_affixes)
         item_filter.min_power = 100
         if inherents:
             inherents = sorted(inherents, key=lambda affix: (affix.name, affix.type.value))

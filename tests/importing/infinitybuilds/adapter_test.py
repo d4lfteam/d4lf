@@ -3,7 +3,11 @@ import typing
 from types import SimpleNamespace
 
 from src.importing import FilenamePart, ImportOptions, ImportRequest
-from src.importing.infinitybuilds import InfinityBuildsParagonCatalog, import_infinitybuilds
+from src.importing.infinitybuilds import (
+    InfinityBuildsParagonCatalog,
+    fetch_variants_infinitybuilds,
+    import_infinitybuilds,
+)
 from src.item import Dataloader
 
 if typing.TYPE_CHECKING:
@@ -34,6 +38,7 @@ def _request(
     custom_file_name: str | None = None,
     export_paragon: bool = False,
     filename_parts: tuple[FilenamePart | str, ...] = (FilenamePart.SOURCE, FilenamePart.VARIANT),
+    multi_build: bool = False,
 ) -> ImportRequest:
     return ImportRequest(
         url=url,
@@ -47,6 +52,7 @@ def _request(
             custom_file_name=custom_file_name,
             filename_parts=filename_parts,
             export_paragon=export_paragon,
+            multi_build=multi_build,
         ),
     )
 
@@ -59,9 +65,9 @@ def test_import_infinitybuilds_passes_category_options_to_pipeline_config(mocker
 
     import_infinitybuilds(request, driver=typing.cast("WebDriver", object()))
 
-    config = run_import.call_args.args[0]
-    assert not config.import_charms
-    assert not config.import_seals
+    captured_request = run_import.call_args.args[0]
+    assert not captured_request.options.import_charms
+    assert not captured_request.options.import_seals
 
 
 def _gear_piece(slot: str, item_id: str, affix_ids: list[str]) -> dict[str, object]:
@@ -77,6 +83,22 @@ def _page_source(class_id: str, variants: Sequence[Mapping[str, object]]) -> str
     payload = json.dumps({"classId": class_id, "variants": variants}, separators=(",", ":"))
     chunk = f"self.__next_f.push([1,{json.dumps(payload)}])"
     return f"<html><script>{chunk}</script></html>"
+
+
+def test_fetch_variants_assigns_fallback_ids_after_skipping_empty_variants() -> None:
+    driver = _ImportDriver(
+        _page_source(
+            "barbarian",
+            [{"name": "Empty", "gear": []}, {"name": "Unnamed", "gear": [_gear_piece("chest", "item-chest-1", [])]}],
+        )
+    )
+
+    variants = fetch_variants_infinitybuilds(
+        request=ImportRequest("https://infinitybuilds.gg/en/builds/barbarian-example"),
+        driver=typing.cast("WebDriver", driver),
+    )
+
+    assert [(variant.id, variant.name) for variant in variants] == [("0", "Unnamed")]
 
 
 def test_import_infinitybuilds_saves_one_profile_per_variant_and_resolves_gear_once(

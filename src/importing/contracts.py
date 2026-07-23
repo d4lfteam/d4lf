@@ -1,5 +1,5 @@
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Protocol, cast
 
@@ -34,6 +34,7 @@ class ImportOptions:
     import_greater_affixes: bool = False
     require_greater_affixes: bool = False
     export_paragon: bool = False
+    multi_build: bool = False
     custom_file_name: str | None = None
     filename_parts: tuple[FilenamePart | str, ...] = DEFAULT_FILENAME_PARTS
 
@@ -44,16 +45,42 @@ class ImportOptions:
 
 
 @dataclass(frozen=True, slots=True)
+class VariantSelection:
+    """Immutable provider selection carried by an import request."""
+
+    ids: tuple[str, ...]
+
+    @classmethod
+    def from_ids(cls, ids: VariantSelection | tuple[str, ...]) -> VariantSelection:
+        if isinstance(ids, cls):
+            return ids
+        return cls(cast("tuple[str, ...]", ids))
+
+    def __contains__(self, value: object) -> bool:
+        return value in self.ids
+
+    def __bool__(self) -> bool:
+        return bool(self.ids)
+
+
+@dataclass(frozen=True, slots=True)
 class ImportRequest:
     url: str
     options: ImportOptions = field(default_factory=ImportOptions)
+    variant_selection: VariantSelection | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "url", self.url.strip().replace("\n", ""))
+        if self.variant_selection is not None and not isinstance(self.variant_selection, VariantSelection):
+            message = "variant_selection must be a VariantSelection"
+            raise TypeError(message)
 
     @property
     def filename_parts(self) -> tuple[FilenamePart, ...]:
         return cast("tuple[FilenamePart, ...]", self.options.filename_parts)
+
+    def with_variant_selection(self, selection: VariantSelection | tuple[str, ...]) -> ImportRequest:
+        return replace(self, variant_selection=VariantSelection.from_ids(selection))
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,9 +95,17 @@ class ImportResult:
     saved_file_names: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True, slots=True)
+class VariantMetadata:
+    id: str
+    name: str
+
+
 class ImportSource(Protocol):
     @property
     def name(self) -> str: ...
+
+    def fetch_variants(self, request: ImportRequest) -> list[VariantMetadata]: ...
 
     def import_build(self, request: ImportRequest) -> ImportResult: ...
 

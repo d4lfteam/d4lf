@@ -12,6 +12,8 @@ from src.importing.contracts import (
     ImportRequest,
     ImportResult,
     ImportSource,
+    VariantMetadata,
+    VariantSelection,
     assemble_profile_file_name,
 )
 from src.importing.service import UnsupportedImportSourceError, import_build, select_source
@@ -32,6 +34,8 @@ __all__ = [
     "ImportResult",
     "ImportSource",
     "UnsupportedImportSourceError",
+    "VariantMetadata",
+    "VariantSelection",
     "assemble_profile_file_name",
     "create_importer_window",
     "import_build",

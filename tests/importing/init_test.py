@@ -4,6 +4,8 @@ from src.importing import (
     ImportRequest,
     ImportResult,
     UnsupportedImportSourceError,
+    VariantMetadata,
+    VariantSelection,
     assemble_profile_file_name,
     import_build,
     select_source,
@@ -17,6 +19,12 @@ def test_import_request_normalizes_filename_parts() -> None:
     )
 
     assert request.options.filename_parts == (FilenamePart.SOURCE, FilenamePart.VARIANT)
+
+
+def test_facade_exports_variant_selection_contract() -> None:
+    selection = VariantSelection.from_ids(("variant-1",))
+
+    assert selection.ids == ("variant-1",)
 
 
 def test_filename_assembly_preserves_selected_order_and_title_cleanup() -> None:
@@ -47,6 +55,9 @@ def test_import_build_passes_one_normalized_request_to_source() -> None:
 
     class FakeSource:
         name = "fixture"
+
+        def fetch_variants(self, request: ImportRequest) -> list[VariantMetadata]:
+            return []
 
         def import_build(self, request: ImportRequest) -> ImportResult:
             captured.append(request)

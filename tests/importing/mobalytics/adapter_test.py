@@ -59,9 +59,9 @@ def test_import_mobalytics_passes_category_options_to_pipeline_config(mocker: Mo
 
     import_mobalytics(request, driver=typing.cast("WebDriver", object()))
 
-    config = run_result.call_args.args[0]
-    assert not config.import_charms
-    assert not config.import_seals
+    captured_request = run_result.call_args.args[0]
+    assert not captured_request.options.import_charms
+    assert not captured_request.options.import_seals
 
 
 class _MobalyticsImportDriver:

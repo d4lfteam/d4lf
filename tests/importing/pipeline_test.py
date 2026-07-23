@@ -1,23 +1,17 @@
+import dataclasses
 from types import SimpleNamespace
 
-from src.importing.config import FilenamePart, ImportConfig
+from src.importing import FilenamePart, ImportOptions, ImportRequest
 from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.item import Dataloader, ItemType
 from src.profiles import CharmFilterModel, ItemFilterModel, SealFilterModel
 
 
-def _config(**overrides) -> ImportConfig:
-    config = ImportConfig(
-        url="https://example.invalid/build",
-        import_aspect_upgrades=True,
-        add_to_profiles=False,
-        import_greater_affixes=False,
-        require_greater_affixes=False,
-        export_paragon=False,
-    )
+def _config(**overrides) -> ImportRequest:
+    options = ImportOptions()
     for key, value in overrides.items():
-        setattr(config, key, value)
-    return config
+        options = dataclasses.replace(options, **{key: value})
+    return ImportRequest(url="https://example.invalid/build", options=options)
 
 
 def _item_filter(item_type: ItemType) -> ItemFilterModel:
@@ -75,7 +69,7 @@ def test_run_saves_single_variant_and_attaches_paragon(mock_ini_loader, mocker) 
                 ]
             ),
         ),
-        config=_config(export_paragon=True),
+        request=_config(export_paragon=True),
     )
 
     assert saved_file_names == ["maxroll_s12_spiritborn_touch_of_death_pit_push"]
@@ -104,7 +98,7 @@ def test_run_saves_multiple_variants_and_adds_profiles(mock_ini_loader, mocker) 
                 ]
             ),
         ),
-        config=_config(add_to_profiles=True),
+        request=_config(add_to_profiles=True),
     )
 
     assert saved_file_names == [
@@ -131,7 +125,7 @@ def test_run_suffixes_custom_filename_for_multiple_variants(mock_ini_loader, moc
                 ]
             ),
         ),
-        config=_config(custom_file_name="custom-name"),
+        request=_config(custom_file_name="custom-name"),
     )
 
     assert saved_file_names == ["custom-name_1", "custom-name_2"]
@@ -148,7 +142,7 @@ def test_run_uses_selected_filename_parts(mock_ini_loader, mocker) -> None:
 
     ImportPipeline.run(
         StaticBuildGuideAdapter(url="https://example.invalid/build", build=_build()),
-        config=_config(filename_parts=(FilenamePart.SOURCE, FilenamePart.BUILD_TITLE)),
+        request=_config(filename_parts=(FilenamePart.SOURCE, FilenamePart.BUILD_TITLE)),
     )
 
     assert saved["file_name"] == "maxroll_touch_of_death"
@@ -163,7 +157,7 @@ def test_run_warns_when_paragon_export_enabled_without_steps(mock_ini_loader, mo
     with caplog.at_level("WARNING"):
         ImportPipeline.run(
             StaticBuildGuideAdapter(url="https://example.invalid/build", build=_build()),
-            config=_config(export_paragon=True),
+            request=_config(export_paragon=True),
         )
 
     assert "Paragon export enabled, but no paragon data was found" in caplog.text
@@ -187,7 +181,7 @@ def test_run_deduplicates_identical_affix_filters(mock_ini_loader, mocker) -> No
                 ]
             ),
         ),
-        config=_config(),
+        request=_config(),
     )
 
     assert len(saved["profile"].affixes) == 1
@@ -213,7 +207,7 @@ def test_run_excludes_disabled_charm_and_seal_filters_for_each_variant(mock_ini_
                 ]
             ),
         ),
-        config=_config(import_charms=False, import_seals=False),
+        request=_config(import_charms=False, import_seals=False),
     )
 
     assert len(saved_profiles) == 2
@@ -234,7 +228,7 @@ def test_run_maps_import_categories_from_config_fallback(mock_ini_loader, mocker
             url="https://example.invalid/build",
             build=_build(variants=[Variant(charm_filters=[_charm_filter()], seal_filters=[_seal_filter()])]),
         ),
-        config=_config(import_charms=False, import_seals=True),
+        request=_config(import_charms=False, import_seals=True),
     )
 
     assert not saved["profile"].charms

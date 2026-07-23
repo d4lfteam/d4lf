@@ -16,7 +16,7 @@ Python 3.14 via uv; C++ for the TTS DLL in `tts/`.
 
 Run these when you think you are finished and make sure these pass.
 Run formatters, type checkers, line guard and linters: prek run -a
-The formatters are authorative, so don't change formatting manually.
+Don't change formatting changes done by the hooks, they are authorative.
 Run unit tests: uv run pytest . -m "not selenium" -n logical
 
 ## Architecture
@@ -30,10 +30,11 @@ Item flow:
 
 ## Conventions
 
-- Do not care about any compatibility, do changes as necessary.
-- No overly defense coding. Fringe cases are not worth the complexity.
+- This is a standalone tool, not a library. Do not care about any compatibility, do changes as necessary.
+- Don't investigate super edge cases, especially during testing. Bring up the concern during planning stages and let the user decide.
 - Runtime target is Windows. Some tests are skipped outside Windows.
 - No more than 300 lines of code in Python files in `src` and `tests`.
+- The unit tests should mirror the structure of the code, so a test file should correspond to a source file.
 - User data lives under `~/.d4lf/` including profiles, params, and logs.
 - Always prefer subpackages over creating files with specific prefixes or suffixes. For example, `src.profiles.affix` and `src.profiles.aspect` are subpackages rather than
   `src.profiles_affix.py` and `src.profiles_aspect.py`.
@@ -41,7 +42,8 @@ Item flow:
 
 ### Python 3.14
 
-- from __future__ import annotations aren't needed
+- Don't use from __future__ imports.
+- Prefer from imports to full qualified.
 
 ## Agent skills
 

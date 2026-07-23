@@ -30,6 +30,9 @@ def importer_settings(monkeypatch):
         def __init__(self, *args, **kwargs):
             pass
 
+        def contains(self, key):
+            return key in store
+
         def value(self, key, default=None):
             return store.get(key, default)
 

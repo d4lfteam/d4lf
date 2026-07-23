@@ -1,8 +1,8 @@
 import dataclasses
 import logging
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar
 
-from src.importing import ImportOptions, ImportRequest, ImportResult, assemble_profile_file_name
+from src.importing import ImportRequest, ImportResult, assemble_profile_file_name
 from src.importing.filters import deduplicate_filters, sort_profile_filters
 from src.importing.paragon import build_paragon_profile_payload
 from src.importing.profiles import add_to_profiles
@@ -10,9 +10,6 @@ from src.profiles import CharmFilterModel, ItemFilterModel, ProfileDocumentStore
 
 LOGGER = logging.getLogger(__name__)
 FilterModelT = TypeVar("FilterModelT", CharmFilterModel, SealFilterModel)
-
-if TYPE_CHECKING:
-    from src.importing.config import ImportConfig
 
 
 @dataclasses.dataclass(slots=True)
@@ -57,36 +54,14 @@ def _enabled_category_filters(filters: list[FilterModelT], enabled: bool) -> lis
 
 class ImportPipeline:
     @staticmethod
-    def run(
-        adapter: BuildGuideAdapter, request: ImportRequest | None = None, *, config: ImportConfig | None = None
-    ) -> list[str]:
-        return list(ImportPipeline.run_result(adapter, request, config=config).saved_file_names)
+    def run(adapter: BuildGuideAdapter, request: ImportRequest) -> list[str]:
+        return list(ImportPipeline.run_result(adapter, request).saved_file_names)
 
     @staticmethod
-    def run_result(
-        adapter: BuildGuideAdapter, request: ImportRequest | None = None, *, config: ImportConfig | None = None
-    ) -> ImportResult:
+    def run_result(adapter: BuildGuideAdapter, request: ImportRequest) -> ImportResult:
         """Normalize, persist, and return the result of an extracted build."""
-        if request is None:
-            if config is None:
-                message = "An ImportRequest is required"
-                raise TypeError(message)
-            request = ImportRequest(
-                url=config.url,
-                options=ImportOptions(
-                    import_aspect_upgrades=config.import_aspect_upgrades,
-                    import_charms=config.import_charms,
-                    import_seals=config.import_seals,
-                    add_to_profiles=config.add_to_profiles,
-                    import_greater_affixes=config.import_greater_affixes,
-                    require_greater_affixes=config.require_greater_affixes,
-                    export_paragon=config.export_paragon,
-                    custom_file_name=config.custom_file_name,
-                    filename_parts=config.filename_parts,
-                ),
-            )
         build = adapter.extract()
-        options: ImportOptions = request.options
+        options = request.options
         saved_file_names: list[str] = []
         selected_profile = ProfileModel(name="imported profile")
         selected_variant = ""

@@ -1,5 +1,4 @@
-from src.importing import assemble_profile_file_name
-from src.importing.config import DEFAULT_FILENAME_PARTS, FilenamePart, ImportConfig
+from src.importing import DEFAULT_FILENAME_PARTS, FilenamePart, ImportOptions, ImportRequest, assemble_profile_file_name
 from src.importing.filters import (
     affix_dict_for_item_type,
     create_item_affix_pool,
@@ -92,28 +91,15 @@ def test_build_default_profile_file_name_falls_back_when_no_parts_selected() -> 
 
 
 def test_import_config_defaults_to_all_filename_parts() -> None:
-    config = ImportConfig(
-        url="https://example.invalid",
-        import_aspect_upgrades=True,
-        add_to_profiles=False,
-        import_greater_affixes=True,
-        require_greater_affixes=False,
-    )
+    request = ImportRequest("https://example.invalid", ImportOptions(import_greater_affixes=True))
 
-    assert config.filename_parts == DEFAULT_FILENAME_PARTS
+    assert request.filename_parts == DEFAULT_FILENAME_PARTS
 
 
 def test_import_config_normalizes_filename_parts() -> None:
-    config = ImportConfig(
-        url="https://example.invalid",
-        import_aspect_upgrades=True,
-        add_to_profiles=False,
-        import_greater_affixes=True,
-        require_greater_affixes=False,
-        filename_parts=("source", "variant"),
-    )
+    request = ImportRequest("https://example.invalid", ImportOptions(filename_parts=("source", "variant")))
 
-    assert config.filename_parts == (FilenamePart.SOURCE, FilenamePart.VARIANT)
+    assert request.filename_parts == (FilenamePart.SOURCE, FilenamePart.VARIANT)
 
 
 def test_unique_filter_name_adds_suffix_for_existing_filter_names() -> None:

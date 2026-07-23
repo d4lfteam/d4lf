@@ -16,7 +16,10 @@ def test_imported_profile_round_trips_typed_paragon_and_transforms_board(tmp_pat
     class FakeSource:
         name: str = "fixture"
 
-        def import_build(self, request):
+        def fetch_variants(self, request) -> list[importing.VariantMetadata]:
+            return []
+
+        def import_build(self, request, selected_variant_ids=None):
             return importing.ImportResult(
                 source_name=self.name,
                 selected_variant="default",

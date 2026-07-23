@@ -6,7 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
-from src.importing.config import ImportConfig
+from src.importing.contracts import VariantMetadata
 from src.importing.conversion import as_string_keyed_mapping as _as_object
 from src.importing.filters import (
     create_item_affix_pool,
@@ -39,8 +39,8 @@ if TYPE_CHECKING:
 
     from selenium.webdriver.remote.webdriver import WebDriver
 
-    from src.importing import ImportRequest, ImportResult
-    from src.importing.infinitybuilds.models import _ResolvedGearData
+    from src.importing.contracts import ImportRequest, ImportResult
+    from src.importing.infinitybuilds.models import BuildData, _ResolvedGearData
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://infinitybuilds.gg/"
@@ -52,37 +52,64 @@ class InfinityBuildsError(Exception):
     pass
 
 
-def import_infinitybuilds(request: ImportRequest, driver: WebDriver | None = None) -> ImportResult | None:
-    return _import_infinitybuilds(ImportConfig.from_request(request), driver)
-
-
-@retry_importer(inject_webdriver=True)
-def _import_infinitybuilds(config: ImportConfig, driver: WebDriver | None = None) -> ImportResult | None:
+def _validated_url(request, driver: WebDriver | None) -> tuple[str, WebDriver] | None:
     if driver is None:
         msg = "A Selenium WebDriver is required for InfinityBuilds imports"
         raise RuntimeError(msg)
-    url = config.url.strip().replace("\n", "")
+    url = request.url.strip().replace("\n", "")
     if BUILD_GUIDE_BASE_URL not in url:
         LOGGER.error("Invalid url, please use an infinitybuilds.gg build link")
         return None
-    LOGGER.info(f"Loading {url}")
+    return url, driver
+
+
+def _load_build_page(url: str, driver: WebDriver) -> tuple[lxml.html.HtmlElement, BuildData]:
     driver.get(url)
     wait = WebDriverWait(driver, 15)
     wait.until(ec.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
-    # The build data is streamed in via React Server Components after initial hydration, so wait
-    # for it to actually show up in the page source instead of just the first script tag. Note the
-    # embedded JSON is itself JSON-string-encoded, so quotes appear escaped (\"classId\") here.
     wait.until(lambda d: "classId" in d.page_source and "variants" in d.page_source)
-    page_source = driver.page_source
-    raw_html_data = lxml.html.fromstring(page_source)
+    raw_html_data = lxml.html.fromstring(driver.page_source)
+    if (build_data := _extract_build_data(raw_html_data)) is None:
+        message = "No build data found in the InfinityBuilds page"
+        raise InfinityBuildsError(message)
+    return raw_html_data, build_data
+
+
+@retry_importer(inject_webdriver=True)
+def fetch_variants_infinitybuilds(request: ImportRequest, driver: WebDriver | None = None) -> list[VariantMetadata]:
+    validated = _validated_url(request, driver)
+    if validated is None:
+        return []
+    url, driver = validated
+    LOGGER.info(f"Loading {url} for variants")
+    try:
+        raw_html_data, build_data = _load_build_page(url, driver)
+    except InfinityBuildsError:
+        return []
+    variants_data = build_data.get("variants") or []
+    variants = []
+    for variant in variants_data:
+        if variant.get("gear"):
+            variant_id = str(variant.get("id") or len(variants))
+            variants.append(VariantMetadata(id=variant_id, name=variant.get("name") or f"Variant {variant_id}"))
+    return variants
+
+
+def import_infinitybuilds(request: ImportRequest, driver: WebDriver | None = None) -> ImportResult | None:
+    return _import_infinitybuilds(request, driver)
+
+
+@retry_importer(inject_webdriver=True)
+def _import_infinitybuilds(request: ImportRequest, driver: WebDriver | None = None) -> ImportResult | None:
+    validated = _validated_url(request, driver)
+    if validated is None:
+        return None
+    url, driver = validated
+    LOGGER.info(f"Loading {url}")
+    # The build data is streamed in via React Server Components after initial hydration; the
+    # shared loader waits for the hydrated payload before parsing it.
+    raw_html_data, build_data = _load_build_page(url, driver)
     build_header = _extract_build_title(raw_html_data)
-    build_data = _extract_build_data(raw_html_data)
-    if build_data is None:
-        LOGGER.error(
-            msg := "No script containing build data was found. This means InfinityBuilds has changed how they "
-            "present data, please submit a bug."
-        )
-        raise InfinityBuildsError(msg)
     class_name = build_data.get("classId", "")
     if not class_name:
         LOGGER.error(msg := "No class name found")
@@ -92,13 +119,17 @@ def _import_infinitybuilds(config: ImportConfig, driver: WebDriver | None = None
     if not variants:
         LOGGER.error(msg := "No gear found for this build")
         raise InfinityBuildsError(msg)
-    # InfinityBuilds URLs don't let you pick a specific variant, so import all of them
-    if len(variants) > 1:
-        LOGGER.info(f"This build has {len(variants)} variants, importing all of them.")
+    if request.options.multi_build and request.variant_selection is not None:
+        # Filter variants by selected IDs if provided (fallback to index string if ID missing)
+        variants = [
+            variant
+            for index, variant in enumerate(variants)
+            if str(variant.get("id") or index) in request.variant_selection
+        ]
     # Resolve all variants' gear in a single API call to avoid redundant round trips.
     resolved = _resolve_gear_data(class_name, [piece for variant in variants for piece in variant["gear"]])
     paragon_catalog: InfinityBuildsParagonCatalog | None = None
-    if config.export_paragon:
+    if request.options.export_paragon:
         try:
             paragon_catalog = fetch_infinitybuilds_paragon_catalog()
         except TypeError, ValueError:
@@ -107,7 +138,7 @@ def _import_infinitybuilds(config: ImportConfig, driver: WebDriver | None = None
             )
     extracted_variants = []
     for variant in variants:
-        extracted_variant = _build_variant_for_gear(gear=variant["gear"], resolved=resolved, config=config)
+        extracted_variant = _build_variant_for_gear(gear=variant["gear"], resolved=resolved, request=request)
         extracted_variant.name = variant.get("name", "")
         if paragon_catalog is not None:
             extracted_variant.paragon_steps = extract_infinitybuilds_paragon_steps(
@@ -125,12 +156,12 @@ def _import_infinitybuilds(config: ImportConfig, driver: WebDriver | None = None
                 variants=extracted_variants,
             ),
         ),
-        config=config,
+        request=request,
     )
 
 
 def _build_variant_for_gear(
-    gear: Sequence[Mapping[str, object]], resolved: _ResolvedGearData, config: ImportConfig
+    gear: Sequence[Mapping[str, object]], resolved: _ResolvedGearData, request: ImportRequest
 ) -> Variant:
     finished_filters: list[ItemFilterModel] = []
     charm_filters: list[CharmFilterModel] = []
@@ -154,7 +185,7 @@ def _build_variant_for_gear(
             LOGGER.warning(f"Couldn't match item_type for slot {catalog_slot!r}. Please edit manually")
         aspect_id = _canonical_catalog_id(gear_piece.get("aspectId"))
         aspect_name = resolved.aspects.get(aspect_id, {}).get("label") if aspect_id else None
-        if aspect_name and rarity in ASPECT_UPGRADE_RARITIES and config.import_aspect_upgrades:
+        if aspect_name and rarity in ASPECT_UPGRADE_RARITIES and request.options.import_aspect_upgrades:
             normalized_aspect_name = _normalize_aspect_name(aspect_name)
             if normalized_aspect_name in Dataloader().aspect_list:
                 aspect_upgrade_filters.append(normalized_aspect_name)
@@ -163,7 +194,10 @@ def _build_variant_for_gear(
                     f"Legendary aspect '{aspect_name}' that is not in our aspect data, unable to add to AspectUpgrades."
                 )
         affixes = _convert_raw_to_affixes(
-            gear_piece.get("affixes") or [], resolved.affixes, config.import_greater_affixes, item_type=item_type
+            gear_piece.get("affixes") or [],
+            resolved.affixes,
+            request.options.import_greater_affixes,
+            item_type=item_type,
         )
         if item_type == ItemType.Charm:
             unique_name = item_name if is_unique_like else None
@@ -173,7 +207,7 @@ def _build_variant_for_gear(
             charm_filters.append(
                 create_seal_charm_filter(
                     affixes=affixes,
-                    require_gas=config.require_greater_affixes,
+                    require_gas=request.options.require_greater_affixes,
                     model_type=CharmFilterModel,
                     unique_name=unique_name,
                 )
@@ -187,7 +221,7 @@ def _build_variant_for_gear(
             seal_filters.append(
                 create_seal_charm_filter(
                     affixes=affixes,
-                    require_gas=config.require_greater_affixes,
+                    require_gas=request.options.require_greater_affixes,
                     model_type=SealFilterModel,
                     unique_name=unique_name,
                 )
@@ -203,7 +237,7 @@ def _build_variant_for_gear(
         if affixes:
             affixes = sorted(affixes, key=lambda affix: (affix.name, affix.type.value))
             item_filter.affix_pool = create_item_affix_pool(affixes=affixes, unique_like=is_unique_like)
-            update_mingreateraffixcount(item_filter, config.require_greater_affixes)
+            update_mingreateraffixcount(item_filter, request.options.require_greater_affixes)
         item_filter.min_power = 100
         finished_filters.append(item_filter)
     return Variant(
