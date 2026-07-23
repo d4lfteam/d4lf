@@ -155,6 +155,9 @@ split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["FBT003", "PLC2701", "PLR2004", "S101", "S311", "SLF001"]
+"src/paragon/__init__.py" = ["F822", "PLC0415"]
+"src/paragon/_*.py" = ["F403", "F405"]
+"src/paragon/_shared.py" = ["ANN401", "F401"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

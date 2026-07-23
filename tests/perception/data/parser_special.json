@@ -1,0 +1,149 @@
+[
+    {
+        "expected": {
+            "affixes": [],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "lairbosskey",
+            "name": null,
+            "original_name": "CRUX OF THE FALSE PROPHET",
+            "power": null,
+            "rarity": null,
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "CRUX OF THE FALSE PROPHET",
+            "Mythic Lair Boss Key",
+            "Used to open  Mephistos Hoard.. Rarely found in Torment X or higher from:. Greater Lair Bosses. Very Rarely found from:Reward: Dungeon Keys. Key Spoils in  War Plans . Initiate Lair Bosses. World Bosses. Elite monsters",
+            "Let all illusions burn from your eyes.",
+            "Cannot Salvage. Lord of Hatred Item",
+            "Sell Value: Cannot Be Sold",
+            "Right mouse button"
+        ]
+    },
+    {
+        "expected": {
+            "affixes": [],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "rune",
+            "name": null,
+            "original_name": "QUE",
+            "power": null,
+            "rarity": "rare",
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "QUE",
+            "Rare Rune of Invocation",
+            "Requires: 300 Offering. (Overflow: Increased Duration)",
+            "Cooldown: 1 second",
+            "Invoke the Druids Earthen Bulwark Skill for 3 seconds, granting yourself a Barrier.",
+            "Link with a Rune of Ritual in equipment with two Sockets to form a Runeword. Only two Runewords may be active at a time.",
+            "Cannot Salvage. Vessel of Hatred Item",
+            "Sell Value: 2,000 Gold",
+            "Shift key",
+            "Left mouse button"
+        ]
+    },
+    {
+        "expected": {
+            "affixes": [],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "rune",
+            "name": null,
+            "original_name": "TEB",
+            "power": null,
+            "rarity": "magic",
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "TEB",
+            "Magic Rune of Invocation",
+            "Requires: 100 Offering. (Overflow: Increase damage by 1% per Offering)",
+            "Cooldown: 1 second",
+            "Invoke the Necromancers Iron Maiden Skill, dealing damage over time and counterattacking damage from enemies.",
+            "Link with a Rune of Ritual in equipment with two Sockets to form a Runeword. Only two Runewords may be active at a time.",
+            "Cannot Salvage. Vessel of Hatred Item",
+            "Sell Value: 200 Gold",
+            "Shift key",
+            "Left mouse button"
+        ]
+    },
+    {
+        "expected": {
+            "affixes": [],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "rune",
+            "name": null,
+            "original_name": "TZIC",
+            "power": null,
+            "rarity": "magic",
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "TZIC",
+            "Magic Rune of Invocation",
+            "Requires: 200 Offering. (Overflow: Increase damage by 1% per Offering)",
+            "Cooldown: 1 second",
+            "Invoke the Spiritborns Concussive Stomp Skill, dealing damage and Knocking Down enemies.",
+            "Link with a Rune of Ritual in equipment with two Sockets to form a Runeword. Only two Runewords may be active at a time.",
+            "Cannot Salvage. Vessel of Hatred Item",
+            "Sell Value: 2,000 Gold",
+            "Shift key",
+            "Left mouse button"
+        ]
+    },
+    {
+        "expected": {
+            "affixes": [],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "rune",
+            "name": null,
+            "original_name": "TZIC (8)",
+            "power": null,
+            "rarity": "magic",
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "TZIC (8)",
+            "Magic Rune of Invocation",
+            "Requires: 200 Offering. (Overflow: Increase damage by 1% per Offering)",
+            "Cooldown: 1 second",
+            "Invoke the Spiritborns Concussive Stomp Skill, dealing damage and Knocking Down enemies.",
+            "Link with a Rune of Ritual in equipment with two Sockets to form a Runeword. Only two Runewords may be active at a time.",
+            "Vessel of Hatred Item",
+            "Sell Value: 16,000 Gold",
+            "In bags: 1",
+            "Left mouse button"
+        ]
+    }
+]

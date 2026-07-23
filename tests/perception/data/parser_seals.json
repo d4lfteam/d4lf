@@ -1,0 +1,474 @@
+[
+    {
+        "expected": {
+            "affixes": [
+                {
+                    "loc": null,
+                    "max_value": 10.0,
+                    "min_value": 7.5,
+                    "name": "critical_strike_chance",
+                    "text": "+10.0% Critical Strike Chance [7.5 - 10.0]%",
+                    "type": 3,
+                    "value": 10.0
+                },
+                {
+                    "loc": null,
+                    "max_value": 10.0,
+                    "min_value": 7.0,
+                    "name": "arms_of_arreat_damage_when_swapping_weapons",
+                    "text": "Arms of Arreat:. +8% [7 - 10]% Damage when swapping weapons",
+                    "type": 3,
+                    "value": 8.0
+                },
+                {
+                    "loc": null,
+                    "max_value": 6.0,
+                    "min_value": 4.0,
+                    "name": "bulkathos_pride_ancient_skill_cost_reduction",
+                    "text": "Bul-Kathos Pride:. +4% [4 - 6]% Ancient Skill Cost Reduction",
+                    "type": 3,
+                    "value": 4.0
+                }
+            ],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "charm_slot",
+                    "text": "Unlocks 5 Charm Slots",
+                    "type": 2,
+                    "value": 5.0
+                }
+            ],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "horadric seal",
+            "name": "adept_horadric_seal_of_ancient_haste",
+            "original_name": "ADEPT HORADRIC SEAL OF ANCIENT HASTE",
+            "power": 850,
+            "rarity": "legendary",
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "ADEPT HORADRIC SEAL OF ANCIENT HASTE",
+            "Legendary Horadric Seal",
+            "850 Item Power",
+            "Unlocks 5 Charm Slots",
+            "+10.0% Critical Strike Chance [7.5 - 10.0]%",
+            "Arms of Arreat:. +8% [7 - 10]% Damage when swapping weapons",
+            "Bul-Kathos Pride:. +4% [4 - 6]% Ancient Skill Cost Reduction",
+            "Requires Level 50. Lord of Hatred Item",
+            "Sell Value: 13,386,186 Gold",
+            "Right mouse button"
+        ]
+    },
+    {
+        "expected": {
+            "affixes": [
+                {
+                    "loc": null,
+                    "max_value": 25.0,
+                    "min_value": 13.0,
+                    "name": "critical_strike_damage",
+                    "text": "18.0%[x] Critical Strike Damage [13.0 - 25.0]%[x]",
+                    "type": 3,
+                    "value": 18.0
+                },
+                {
+                    "loc": null,
+                    "max_value": 3.0,
+                    "min_value": 2.0,
+                    "name": "arms_of_arreat_maximum_resolve",
+                    "text": "Arms of Arreat:. +2 [2 - 3] maximum Resolve",
+                    "type": 3,
+                    "value": 2.0
+                },
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "charm_slot",
+                    "text": "+1 Charm Slot",
+                    "type": 3,
+                    "value": 1.0
+                }
+            ],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "charm_slot",
+                    "text": "Unlocks 6 Charm Slots",
+                    "type": 2,
+                    "value": 6.0
+                }
+            ],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "horadric seal",
+            "name": "focused_horadric_seal_of_determination",
+            "original_name": "FOCUSED HORADRIC SEAL OF DETERMINATION",
+            "power": 850,
+            "rarity": "legendary",
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "FOCUSED HORADRIC SEAL OF DETERMINATION",
+            "Legendary Horadric Seal",
+            "850 Item Power",
+            "Unlocks 6 Charm Slots",
+            "18.0%[x] Critical Strike Damage [13.0 - 25.0]%[x]",
+            "Arms of Arreat:. +2 [2 - 3] maximum Resolve",
+            "+1 Charm Slot",
+            "Requires Level 50. Lord of Hatred Item",
+            "Sell Value: 13,386,186 Gold",
+            "Right mouse button"
+        ]
+    },
+    {
+        "expected": {
+            "affixes": [
+                {
+                    "loc": null,
+                    "max_value": 8.0,
+                    "min_value": 5.0,
+                    "name": "attack_speed",
+                    "text": "+5.4% Attack Speed [5.0 - 8.0]%",
+                    "type": 3,
+                    "value": 5.4
+                },
+                {
+                    "loc": null,
+                    "max_value": 3.0,
+                    "min_value": 2.0,
+                    "name": "legacy_of_the_sightless_ultimate_skills",
+                    "text": "Legacy of the Sightless:. +2 [2 - 3] Ultimate Skills",
+                    "type": 3,
+                    "value": 2.0
+                },
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "charm_slot",
+                    "text": "+1 Charm Slot",
+                    "type": 3,
+                    "value": 1.0
+                }
+            ],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "charm_slot",
+                    "text": "Unlocks 6 Charm Slots",
+                    "type": 2,
+                    "value": 6.0
+                }
+            ],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "horadric seal",
+            "name": "keen_horadric_seal_of_glory",
+            "original_name": "KEEN HORADRIC SEAL OF GLORY",
+            "power": 850,
+            "rarity": "legendary",
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "KEEN HORADRIC SEAL OF GLORY",
+            "Legendary Horadric Seal",
+            "850 Item Power",
+            "Armory Loadout",
+            "Unlocks 6 Charm Slots",
+            "+5.4% Attack Speed [5.0 - 8.0]%",
+            "Legacy of the Sightless:. +2 [2 - 3] Ultimate Skills",
+            "+1 Charm Slot",
+            "Requires Level 50. Lord of Hatred Item",
+            "Sell Value: 13,383,510 Gold",
+            "Right mouse button"
+        ]
+    },
+    {
+        "expected": {
+            "affixes": [
+                {
+                    "loc": null,
+                    "max_value": 10.0,
+                    "min_value": 7.5,
+                    "name": "resistance_to_all_elements",
+                    "text": "+8.5% Resistance to All Elements [7.5 - 10.0]%",
+                    "type": 3,
+                    "value": 8.5
+                },
+                {
+                    "loc": null,
+                    "max_value": 4.0,
+                    "min_value": 3.0,
+                    "name": "cains_wild_lightning_mana_per_second",
+                    "text": "Cains Wild Lighting:. +3 [3 - 4] Mana per Second",
+                    "type": 3,
+                    "value": 3.0
+                },
+                {
+                    "loc": null,
+                    "max_value": 3.0,
+                    "min_value": 2.0,
+                    "name": "tal_rashas_threefold_way_to_ball_lightning",
+                    "text": "Tal Rashas Threefold Way:. +3 [2 - 3] to Ball Lightning",
+                    "type": 3,
+                    "value": 3.0
+                }
+            ],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "charm_slot",
+                    "text": "Unlocks 5 Charm Slots",
+                    "type": 2,
+                    "value": 5.0
+                }
+            ],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "horadric seal",
+            "name": "resistant_horadric_seal_of_current",
+            "original_name": "RESISTANT HORADRIC SEAL OF CURRENT",
+            "power": 850,
+            "rarity": "legendary",
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "RESISTANT HORADRIC SEAL OF CURRENT",
+            "Legendary Horadric Seal",
+            "850 Item Power",
+            "Unlocks 5 Charm Slots",
+            "+8.5% Resistance to All Elements [7.5 - 10.0]%",
+            "Cains Wild Lighting:. +3 [3 - 4] Mana per Second",
+            "Tal Rashas Threefold Way:. +3 [2 - 3] to Ball Lightning",
+            "Requires Level 50. Lord of Hatred Item",
+            "Sell Value: 13,380,834 Gold",
+            "Right mouse button"
+        ]
+    },
+    {
+        "expected": {
+            "affixes": [
+                {
+                    "loc": null,
+                    "max_value": 10.0,
+                    "min_value": 7.5,
+                    "name": "resistance_to_all_elements",
+                    "text": "+7.5% Resistance to All Elements [7.5 - 10.0]%",
+                    "type": 3,
+                    "value": 7.5
+                },
+                {
+                    "loc": null,
+                    "max_value": 11.0,
+                    "min_value": 7.0,
+                    "name": "sescherons_fury_damage_reduction",
+                    "text": "Sescherons Fury:. +8% [7 - 11]% Damage Reduction",
+                    "type": 3,
+                    "value": 8.0
+                },
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "charm_slot",
+                    "text": "+1 Charm Slot",
+                    "type": 3,
+                    "value": 1.0
+                }
+            ],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "charm_slot",
+                    "text": "Unlocks 6 Charm Slots",
+                    "type": 2,
+                    "value": 6.0
+                }
+            ],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "horadric seal",
+            "name": "resistant_horadric_seal_of_glory",
+            "original_name": "RESISTANT HORADRIC SEAL OF GLORY",
+            "power": 850,
+            "rarity": "legendary",
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "RESISTANT HORADRIC SEAL OF GLORY",
+            "Legendary Horadric Seal",
+            "850 Item Power",
+            "Unlocks 6 Charm Slots",
+            "+7.5% Resistance to All Elements [7.5 - 10.0]%",
+            "Sescherons Fury:. +8% [7 - 11]% Damage Reduction",
+            "+1 Charm Slot",
+            "Requires Level 50. Lord of Hatred Item",
+            "Sell Value: 13,386,186 Gold",
+            "Right mouse button"
+        ]
+    },
+    {
+        "expected": {
+            "affixes": [
+                {
+                    "loc": null,
+                    "max_value": 12.0,
+                    "min_value": 8.0,
+                    "name": "barrier_generation",
+                    "text": "+11.6% Barrier Generation [8.0 - 12.0]%",
+                    "type": 3,
+                    "value": 11.6
+                },
+                {
+                    "loc": null,
+                    "max_value": 11.0,
+                    "min_value": 8.0,
+                    "name": "sescherons_fury_fury_generation",
+                    "text": "Sescherons Fury:. +9% [8 - 11]% Fury Generation",
+                    "type": 3,
+                    "value": 9.0
+                },
+                {
+                    "loc": null,
+                    "max_value": 9.0,
+                    "min_value": 7.0,
+                    "name": "berserkers_crucible_lucky_hit_up_to_a_chance_to_become_berserking",
+                    "text": "Berserkers Crucible:. Lucky Hit: Up to a 7% [7 - 9]% chance to Become Berserking",
+                    "type": 3,
+                    "value": 7.0
+                }
+            ],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "charm_slot",
+                    "text": "Unlocks 5 Charm Slots",
+                    "type": 2,
+                    "value": 5.0
+                }
+            ],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "horadric seal",
+            "name": "shielding_horadric_seal_of_ill-temperance",
+            "original_name": "SHIELDING HORADRIC SEAL OF ILL-TEMPERANCE",
+            "power": 850,
+            "rarity": "legendary",
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "SHIELDING HORADRIC SEAL OF ILL-TEMPERANCE",
+            "Legendary Horadric Seal",
+            "850 Item Power",
+            "Unlocks 5 Charm Slots",
+            "+11.6% Barrier Generation [8.0 - 12.0]%",
+            "Sescherons Fury:. +9% [8 - 11]% Fury Generation",
+            "Berserkers Crucible:. Lucky Hit: Up to a 7% [7 - 9]% chance to Become Berserking",
+            "Requires Level 50. Lord of Hatred Item",
+            "Sell Value: 13,386,186 Gold",
+            "Right mouse button"
+        ]
+    },
+    {
+        "expected": {
+            "affixes": [
+                {
+                    "loc": null,
+                    "max_value": 8.0,
+                    "min_value": 6.5,
+                    "name": "maximum_life",
+                    "text": "8.0% Maximum Life [6.5 - 8.0]% (+8.0%)",
+                    "type": 3,
+                    "value": 8.0
+                },
+                {
+                    "loc": null,
+                    "max_value": 3.0,
+                    "min_value": 2.0,
+                    "name": "arms_of_arreat_maximum_resolve",
+                    "text": "Arms of Arreat:. +3 [2 - 3] maximum Resolve",
+                    "type": 3,
+                    "value": 3.0
+                }
+            ],
+            "aspect": null,
+            "codex_upgrade": false,
+            "cosmetic_upgrade": false,
+            "inherent": [
+                {
+                    "loc": null,
+                    "max_value": null,
+                    "min_value": null,
+                    "name": "charm_slot",
+                    "text": "Unlocks 4 Charm Slots",
+                    "type": 2,
+                    "value": 4.0
+                }
+            ],
+            "is_ancestral": false,
+            "is_in_shop": false,
+            "item_type": "horadric seal",
+            "name": "vigorous_horadric_seal_of_determination",
+            "original_name": "VIGOROUS HORADRIC SEAL OF DETERMINATION",
+            "power": 850,
+            "rarity": "rare",
+            "seasonal_attribute": null,
+            "set": null
+        },
+        "input": [
+            "VIGOROUS HORADRIC SEAL OF DETERMINATION",
+            "Rare Horadric Seal",
+            "850 Item Power",
+            "Unlocks 4 Charm Slots",
+            "8.0% Maximum Life [6.5 - 8.0]% (+8.0%)",
+            "Arms of Arreat:. +3 [2 - 3] maximum Resolve",
+            "Properties lost when equipped:",
+            "Unlocks 2 Charm Slots",
+            "+7.5% Resistance to All Elements",
+            "Seal Power",
+            "Seal Power",
+            "Requires Level 70. Lord of Hatred Item",
+            "Sell Value: 1,340,759 Gold",
+            "Right mouse button"
+        ]
+    }
+]

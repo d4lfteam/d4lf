@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Literal, override
 import colorama
 
 from src import __version__
-from src.config import BASE_DIR
+from src.settings import BASE_DIR
 
 if TYPE_CHECKING:
     from collections.abc import Container
@@ -93,6 +93,11 @@ def apply_log_level(
         handler.setLevel(level)
         if formatter is not None:
             handler.setFormatter(formatter)
+
+
+def is_configured() -> bool:
+    """Return whether persistent file logging is active."""
+    return any(getattr(handler, "name", "") == "D4LF_FILE" for handler in logging.getLogger().handlers)
 
 
 def remove_transient_gui_handlers(logger: logging.Logger) -> None:

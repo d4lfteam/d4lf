@@ -1,0 +1,53 @@
+import logging
+import os
+from collections import UserList
+from typing import override
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+import pytest
+from PyQt6.QtGui import QCloseEvent
+from PyQt6.QtWidgets import QApplication, QMainWindow
+
+from src.app.lifecycle import UnifiedWindowLifecycle
+from src.app.shell import UnifiedMainWindow
+from src.desktop.activity import QtLogHandler
+
+
+@pytest.fixture(scope="module")
+def qapp() -> QApplication:
+    app = QApplication.instance()
+    return app if isinstance(app, QApplication) else QApplication([])
+
+
+def test_lifecycle_is_a_qt_main_window_subclass() -> None:
+    assert issubclass(UnifiedWindowLifecycle, QMainWindow)
+
+
+def test_close_event_preserves_existing_handler_registration(qapp: QApplication, monkeypatch) -> None:
+    class TrackingHandlerList(UserList[object]):
+        was_cleared = False
+
+        @override
+        def clear(self) -> None:
+            self.was_cleared = True
+            super().clear()
+
+    handler_list = TrackingHandlerList()
+    monkeypatch.setattr(logging, "_handlerList", handler_list)
+    monkeypatch.setattr(UnifiedMainWindow, "__init__", QMainWindow.__init__)
+    window = UnifiedMainWindow()
+    window._child_windows = {}
+    window.console_handler = QtLogHandler()
+    monkeypatch.setattr(UnifiedMainWindow, "save_geometry", lambda _self: None)
+    root_logger = logging.getLogger()
+    handler = logging.NullHandler()
+    root_logger.addHandler(handler)
+
+    try:
+        window.closeEvent(QCloseEvent())
+
+        assert handler in root_logger.handlers
+        assert not handler_list.was_cleared
+    finally:
+        root_logger.removeHandler(handler)

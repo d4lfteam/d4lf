@@ -10,34 +10,34 @@ The main UI is PyQt6. Game overlays are tkinter windows rendered above the game.
 
 ## Stack
 
-Python 3.14 via uv; C++ for the TTS DLL in `tts/`; PyQt6/tkinter; mss, OpenCV, NumPy; Pydantic,
-PyYAML, configparser; pytest; Ruff; PyInstaller.
+Python 3.14 via uv; C++ for the TTS DLL in `tts/`.
 
 ## Commands
 
 Run these when you think you are finished and make sure these pass.
-
-```bash
-uv run prek run -a
-uv run pytest . -m "not selenium" -v -n logical
-```
+Run formatters, type checkers, line guard and linters: prek run -a
+The formatters are authorative, so don't change formatting manually.
+Run unit tests: uv run pytest . -m "not selenium" -n logical
 
 ## Architecture
 
 Item flow:
 
-1. TTS DLL sends named-pipe text to `src/tts.py`.
-1. `src/item/descr/read_descr_tts.py` parses text into `Item` objects.
-1. `src/item/filter.py` matches items against YAML profiles.
-1. Scripts show keep/junk overlays or automate mouse actions.
+- TTS DLL sends named-pipe text to `src/tts.py`.
+- `src/item/descr/read_descr_tts.py` parses text into `Item` objects.
+- `src/item/filter.py` matches items against YAML profiles.
+- Scripts show keep/junk overlays or automate mouse actions.
 
 ## Conventions
 
+- Do not care about any compatibility, do changes as necessary.
+- No overly defense coding. Fringe cases are not worth the complexity.
 - Runtime target is Windows. Some tests are skipped outside Windows.
+- No more than 300 lines of code in Python files in `src` and `tests`.
 - User data lives under `~/.d4lf/` including profiles, params, and logs.
-- Profile YAML files live under `~/.d4lf/profiles/` and validate through `ProfileModel`.
-- UI coordinates in `src/config/data.py` are defined at 3840x2160 and scaled by `ResManager`.
-- Keep existing comments unless the related code is removed.
+- Always prefer subpackages over creating files with specific prefixes or suffixes. For example, `src.profiles.affix` and `src.profiles.aspect` are subpackages rather than
+  `src.profiles_affix.py` and `src.profiles_aspect.py`.
+- Put the public interface of a package in `__init__.py` and keep implementation details in submodules. For example, `src.item.filter` is the public interface for filtering items, while `src.item.filter_impl` contains the implementation.
 
 ### Python 3.14
 
