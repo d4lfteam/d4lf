@@ -42,7 +42,7 @@ jobs:
       - uses: softprops/action-gh-release@v3
         with:
           files: ${{ steps.build_zip.outputs.zip_path }}
-          generate_release_notes: true
+          generate_release_notes: ${{ env.IS_BETA == 'false' }}
           name: "v${{ steps.build_zip.outputs.version }}"
           prerelease: ${{ env.IS_BETA == 'true' }}
           tag_name: "v${{ steps.build_zip.outputs.version }}"
