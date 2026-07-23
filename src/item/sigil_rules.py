@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from functools import cache
 from typing import TYPE_CHECKING, Literal, Protocol
 
-from src.dataloader import Dataloader
+from src.item import Dataloader
 from src.item.data.rarity import ItemRarity
 
 if TYPE_CHECKING:

@@ -1,5 +1,4 @@
 import json
-import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, override
 
@@ -9,8 +8,6 @@ if TYPE_CHECKING:
     from src.item.data.item_type import ItemType
     from src.item.data.rarity import ItemRarity
     from src.item.data.seasonal_attribute import SeasonalAttribute
-
-LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -73,6 +70,20 @@ class Item:
         if self.set != other.set:
             res = False
         return res
+
+
+@dataclass
+class MatchedFilter:
+    profile: str
+    matched_affixes: list[Affix] = field(default_factory=list)
+    aspect_match: bool = False
+    set_match: bool = False
+
+
+@dataclass
+class FilterResult:
+    keep: bool
+    matched: list[MatchedFilter]
 
 
 class ItemJSONEncoder(json.JSONEncoder):

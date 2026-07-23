@@ -20,6 +20,12 @@ feature request or issue reports join the [discord](https://discord.gg/YyzaPhAN6
 - Info Panel Overlay for tracking world events and session statistics
 - Paragon Overlay with import from supported build planners (Mobalytics, Maxroll, D4Builds)
 
+## Donations
+
+If D4LF is useful to you and you want to support the project, consider supporting the project on [Ko-fi](https://ko-fi.com/d4lfteam).
+The money goes directly to help funding expenses related to the project.
+Also share D4LF with your friends and in your communities.
+
 ## How to Setup
 
 ### Installation and quick start guide (New instructions for season 12 that must be followed!)
@@ -216,7 +222,7 @@ has a name and can filter for any combination of the following:
 - `affixPool`: A list of multiple different rulesets to filter for. Each ruleset must be fulfilled or the item is
   discarded
   - `count`: Define a list of affixes (see [syntax](#affix--unique-aspect-filter-syntax)) and
-    optionally `minCount`, `maxCount` and `minGreaterAffixCount`
+    optionally `minCount` and `maxCount`
     - `minCount`: specifies the minimum number of affixes that must match the item. defaults to amount of specified
       affixes
     - `maxCount` specifies the maximum number of affixes that must match the item. defaults to amount of specified
@@ -252,6 +258,7 @@ Affixes:
   - NiceArmor:
       itemType: chest armor
       minPower: 900
+      minGreaterAffixCount: 2
       affixPool:
         - count:
             - { name: dexterity }
@@ -260,7 +267,6 @@ Affixes:
             - { name: total_armor }
             - { name: maximum_life }
           minCount: 3
-          minGreaterAffixCount: 2
 
   # Search for boots that have at least 2 of the specified affixes and either max evade charges or reduced evade cooldown as inherent affix
   - GreatBoots:
@@ -279,7 +285,7 @@ Affixes:
           minCount: 2
 
   # Search for boots that have at least 2 of the specified affixes AND are a Penitent Greaves
-  # The Greaves must have at least 19% damage multiplier to chilled enemies (Greaves's range is 15-25)
+  # The Greaves must have at least 50% of the possible roll range for its unique aspect
   # Note this would not match non-unique boots that have movement speed and cold resistance, it will only match a Penitent Greaves
   - GreatUniqueBoots:
       itemType: boots
@@ -388,7 +394,7 @@ These rules also apply for `minPercentOfAspect` on the `uniqueAspect` and in `Gl
 ```yaml
 Affixes:
   # Search for chest armor that is at least item level 925 and have at least 3 affixes of the affixPool.
-  # It must have more than 40 damage_reduction, and armor must be at least 70% of its potential maximum affix value
+  # It must have at least 40 damage_reduction, and armor must be at least 70% of its potential maximum affix value
   - NiceArmor:
       itemType: chest armor
       minPower: 925
@@ -588,7 +594,7 @@ Charms:
 
 </details>
 
-Mythic seals will always be kept, even if they don't match a profile.
+Mythic seals and charms will always be kept, even if they don't match a profile.
 
 ### AspectUpgrades
 
@@ -623,8 +629,8 @@ in [assets/lang/enUS/aspects.json](assets/lang/enUS/aspects.json).
 
 ### Sigils
 
-Sigils are defined by the top-level key `Sigils`. It contains a list of affix or location names that you want to filter
-for. If no Sigil filter is provided, all Sigils will be kept.
+Sigils are defined by the top-level key `Sigils`. It contains a mapping of blacklist and/or whitelist rules for affix or
+location names. If no Sigil filter is provided, all Sigils will be kept.
 
 <details><summary>Config Examples</summary>
 
@@ -684,8 +690,9 @@ You can gate sigils by rarity with top-level `rarity`. Sigil rarity is derived f
 [assets/lang/enUS/sigils.json](assets/lang/enUS/sigils.json).
 
 - If `rarity` is omitted, all sigil rarities pass.
-- The rarity gate is applied before blacklist/whitelist.
-- If rarity cannot be resolved and a rarity gate is active, the sigil is dropped.
+- A sigil matches when its rarity is listed **or** it matches a whitelist rule.
+- Blacklist rules still discard matching sigils, subject to the configured priority.
+- If rarity cannot be resolved, only the whitelist branch can match.
 
 ```yaml
 # Only keep rare sigils, and among those discard armor_breakers / resistance_breakers
@@ -734,7 +741,7 @@ Tributes:
 When both keys are provided, a tribute is kept if it matches **either** the name list or the rarity list.
 
 ```yaml
-# Keeps tribute_of_harmony AND all legendary/unique tributes
+# Keeps tribute_of_harmony OR all legendary/unique tributes
 Tributes:
   name: [harmony]
   rarity: [legendary, unique]
@@ -770,7 +777,7 @@ The following global filters are available:
 <details><summary>Config Examples</summary>
 
 ```yaml
-# Take all uniques with item power > 900
+# Take all uniques with item power 900 or higher
 GlobalUniques:
   - minPower: 900
 ```
@@ -942,7 +949,8 @@ Just use [prek](https://prek.j178.dev/).
 Then run:
 
 ```bash
-prek run -a
+uv run prek run -a
+uv run pytest . -m "not selenium" -v -n logical
 ```
 
 To automatically run prek before every push, you can install it as a git hook with:
@@ -968,11 +976,6 @@ AI usage is not banned for D4LF, but some things need to be kept in mind:
 - Be prepared for a lot of comments on your PR. Everything that's being done needs to be understandable by the maintainer because he has to fix it 3 months later if something goes wrong.
 
 Ultimately, please understand there is only 1 full-time maintainer of D4LF and that maintainer does not use AI. The code needs to remain human readable, and humans are who initially wrote it. If an AI and a human disagree, the human always wins. AIs can be helpful but also very stupid.
-
-## Tip
-
-If you want to support the project, the best way is to share it with your friends and in your communities. If you want to contribute financially, you can do so on [Ko-fi](https://ko-fi.com/d4lf).
-The money goes directly to funding AI tokens or cloud time and helps fund development and other expenses related to the project.
 
 ## Credits
 

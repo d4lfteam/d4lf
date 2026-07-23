@@ -3,7 +3,13 @@ import logging
 import pytest
 
 import src.logger as logger_module
-from src.logger import apply_log_level, consume_startup_log_records, create_formatter, remove_transient_gui_handlers
+from src.logger import (
+    apply_log_level,
+    consume_startup_log_records,
+    create_formatter,
+    is_configured,
+    remove_transient_gui_handlers,
+)
 
 
 @pytest.fixture
@@ -37,6 +43,14 @@ def test_apply_log_level_updates_root_and_handlers(isolated_root_logger):
     assert isolated_root_logger.level == logging.DEBUG
     assert file_handler.level == logging.DEBUG
     assert console_handler.level == logging.DEBUG
+
+
+def test_is_configured_requires_file_handler(isolated_root_logger):
+    isolated_root_logger.addHandler(_make_handler("D4LF_CONSOLE", logging.INFO))
+    assert is_configured() is False
+
+    isolated_root_logger.addHandler(_make_handler("D4LF_FILE", logging.DEBUG))
+    assert is_configured() is True
 
 
 def test_apply_log_level_skips_named_handlers(isolated_root_logger):
@@ -77,10 +91,10 @@ def test_remove_transient_gui_handlers_keeps_file_and_console_output(isolated_ro
 
 def _record() -> logging.LogRecord:
     return logging.LogRecord(
-        name="src.item.filter",
+        name="src.item.filter.engine",
         level=logging.INFO,
         pathname=__file__,
-        lineno=556,
+        lineno=1,
         msg="item marked junk",
         args=(),
         exc_info=None,
@@ -94,7 +108,7 @@ def test_default_gui_log_formatter_hides_technical_information_and_timestamp():
 def test_technical_gui_log_formatter_restores_technical_information():
     formatted = create_formatter(technical=True, timestamp=False).format(_record())
 
-    assert formatted.endswith(" | INFO | src.item.filter:556 | item marked junk")
+    assert formatted.endswith(" | INFO | src.item.filter.engine:1 | item marked junk")
 
 
 def test_timestamp_gui_log_formatter_restores_timestamp():
