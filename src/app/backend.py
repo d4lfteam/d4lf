@@ -41,6 +41,7 @@ class BackendWorker(QObject):
             self.finished.emit()
             return
 
+        _perception.start_connection()
         Filter().load_files()
         if getattr(sys, "frozen", False):
             notify_if_update()
@@ -55,7 +56,6 @@ class BackendWorker(QObject):
 
         self.script_handler = create_script_handler()
         check_for_proper_tts_configuration()
-        _perception.start_connection()
         Overlay().run()
         self.finished.emit()
 

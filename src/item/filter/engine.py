@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     from pathlib import Path
 
-from src.item import ASPECT_UPGRADES_LABEL
+from src.item import ASPECT_UPGRADES_LABEL, MYTHICS_ALWAYS_KEPT_LABEL
 from src.item.data.item_type import ItemType, is_sigil
 from src.item.data.rarity import ItemRarity
 from src.item.filter.equipment import FilterEquipmentMixin
@@ -264,7 +264,7 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
         elif item.rarity == ItemRarity.Unique:
             res = self._check_global_unique_filter(item)
         elif item.rarity == ItemRarity.Mythic:  # mythics are always kept
-            res = FilterResult(keep=True, matched=[MatchedFilter(profile="Mythics always kept", aspect_match=True)])
+            res = FilterResult(keep=True, matched=[MatchedFilter(profile=MYTHICS_ALWAYS_KEPT_LABEL, aspect_match=True)])
         if not res.keep:  # then check for a cosmetic upgrade
             return self._check_cosmetic(item)
         return res

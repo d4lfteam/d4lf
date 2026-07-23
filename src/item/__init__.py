@@ -46,6 +46,7 @@ _LAZY_EXPORTS = {
 __all__ = [
     "ASPECT_UPGRADES_LABEL",
     "MAX_POWER",
+    "MYTHICS_ALWAYS_KEPT_LABEL",
     "SIGIL_RULE_TARGET_TYPES",
     "WEAPON_TYPES",
     "Affix",
@@ -77,6 +78,7 @@ __all__ = [
 
 MAX_POWER = 900
 ASPECT_UPGRADES_LABEL = "AspectUpgrades"
+MYTHICS_ALWAYS_KEPT_LABEL = "Mythics always kept"
 
 
 def __getattr__(name: str) -> object:

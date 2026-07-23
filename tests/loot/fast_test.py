@@ -58,6 +58,13 @@ def test_fast_mode_preserves_match_details_and_feedback():
     assert fast_feedback(Item(rarity=ItemRarity.Unique), FilterResult(keep=True, matched=[])) == ("Unique", "#23fc5d")
 
 
+def test_fast_mode_omits_redundant_aspect_for_always_kept_mythics():
+    assert fast_feedback(
+        Item(rarity=ItemRarity.Mythic),
+        FilterResult(keep=True, matched=[MatchedFilter("Mythics always kept", aspect_match=True)]),
+    ) == ("Mythics always kept", "#23fc5d")
+
+
 def test_fast_mode_clears_unmatched_items_without_drawing(monkeypatch, mocker: MockerFixture) -> None:
     wrapped = cast("Any", VisionModeFast)
     mode_type = next(cell.cell_contents for cell in wrapped.__closure__ if isinstance(cell.cell_contents, type))

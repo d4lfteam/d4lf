@@ -8,7 +8,7 @@ from typing import Literal
 
 import src.perception
 from src.desktop import call_on_ui_thread, create_overlay_toplevel, get_root
-from src.item import ASPECT_UPGRADES_LABEL, Filter, ItemRarity, MatchedFilter
+from src.item import ASPECT_UPGRADES_LABEL, MYTHICS_ALWAYS_KEPT_LABEL, Filter, ItemRarity, MatchedFilter
 from src.loot.colors import get_filter_colors, is_ignored_item
 from src.loot.singleton import singleton
 from src.perception import Publisher, capture, screenshot
@@ -172,11 +172,11 @@ def create_match_text(matches: Iterable[MatchedFilter]) -> list[str]:
     result: list[str] = []
     for match in matches:
         match_list = [f"  - {ma.name}" for ma in match.matched_affixes]
-        if match.aspect_match:
+        if match.aspect_match and match.profile != MYTHICS_ALWAYS_KEPT_LABEL:
             match_list.append("  - Aspect")
         if match.set_match:
             match_list.append("  - Set")
-        result.append(f"{match.profile}\n" + "\n".join(match_list))
+        result.append("\n".join([match.profile, *match_list]))
 
     return result
 
