@@ -15,6 +15,7 @@ from src.importing.filters import (
     match_to_enum,
     update_mingreateraffixcount,
 )
+from src.importing.infinitybuilds._talisman import _charm_set_name
 from src.importing.infinitybuilds.extraction import (
     _canonical_catalog_id,
     _convert_raw_to_affixes,
@@ -31,7 +32,7 @@ from src.importing.infinitybuilds.paragon import (
 )
 from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.importing.web import retry_importer
-from src.item import Dataloader, ItemType
+from src.item import Dataloader, ItemRarity, ItemType
 from src.profiles import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
 
 if TYPE_CHECKING:
@@ -127,7 +128,8 @@ def _import_infinitybuilds(request: ImportRequest, driver: WebDriver | None = No
             if str(variant.get("id") or index) in request.variant_selection
         ]
     # Resolve all variants' gear in a single API call to avoid redundant round trips.
-    resolved = _resolve_gear_data(class_name, [piece for variant in variants for piece in variant["gear"]])
+    variant_gear = [variant["gear"] + variant.get("talisman", []) for variant in variants]
+    resolved = _resolve_gear_data(class_name, [piece for gear in variant_gear for piece in gear])
     paragon_catalog: InfinityBuildsParagonCatalog | None = None
     if request.options.export_paragon:
         try:
@@ -137,8 +139,8 @@ def _import_infinitybuilds(request: ImportRequest, driver: WebDriver | None = No
                 "Could not fetch InfinityBuilds paragon catalog data, skipping paragon export.", exc_info=True
             )
     extracted_variants = []
-    for variant in variants:
-        extracted_variant = _build_variant_for_gear(gear=variant["gear"], resolved=resolved, request=request)
+    for variant, gear in zip(variants, variant_gear, strict=True):
+        extracted_variant = _build_variant_for_gear(gear=gear, resolved=resolved, request=request)
         extracted_variant.name = variant.get("name", "")
         if paragon_catalog is not None:
             extracted_variant.paragon_steps = extract_infinitybuilds_paragon_steps(
@@ -201,31 +203,37 @@ def _build_variant_for_gear(
         )
         if item_type == ItemType.Charm:
             unique_name = item_name if is_unique_like else None
-            if not affixes and not unique_name:
-                LOGGER.warning(f"Skipping {item_name} because it had no supported affixes or unique aspect.")
-                continue
-            charm_filters.append(
-                create_seal_charm_filter(
-                    affixes=affixes,
-                    require_gas=request.options.require_greater_affixes,
-                    model_type=CharmFilterModel,
-                    unique_name=unique_name,
+            set_name = _charm_set_name(item_name)
+            charm_rarity = match_to_enum(ItemRarity, "common" if rarity == "normal" else rarity)
+            if not affixes and not unique_name and not set_name and charm_rarity is None:
+                LOGGER.warning(
+                    f"Skipping {item_name} because it had no supported affixes, unique aspect, set, or rarity."
                 )
+                continue
+            charm_filter = create_seal_charm_filter(
+                affixes=affixes,
+                require_gas=request.options.require_greater_affixes,
+                model_type=CharmFilterModel,
+                unique_name=unique_name,
+                set_name=set_name,
             )
+            charm_filter.rarities = [charm_rarity] if charm_rarity else []
+            charm_filters.append(charm_filter)
             continue
         if item_type == ItemType.HoradricSeal:
             unique_name = item_name if is_unique_like else None
-            if not affixes and not unique_name:
-                LOGGER.warning(f"Skipping {item_name} because it had no supported affixes or unique aspect.")
+            seal_rarity = match_to_enum(ItemRarity, rarity)
+            if not affixes and not unique_name and seal_rarity is None:
+                LOGGER.warning(f"Skipping {item_name} because it had no supported affixes, unique aspect, or rarity.")
                 continue
-            seal_filters.append(
-                create_seal_charm_filter(
-                    affixes=affixes,
-                    require_gas=request.options.require_greater_affixes,
-                    model_type=SealFilterModel,
-                    unique_name=unique_name,
-                )
+            seal_filter = create_seal_charm_filter(
+                affixes=affixes,
+                require_gas=request.options.require_greater_affixes,
+                model_type=SealFilterModel,
+                unique_name=unique_name,
             )
+            seal_filter.rarities = [seal_rarity] if seal_rarity else []
+            seal_filters.append(seal_filter)
             continue
         item_filter = ItemFilterModel()
         item_filter.item_type = [item_type] if item_type else []
