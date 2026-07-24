@@ -1,17 +1,19 @@
+from typing import TYPE_CHECKING
+
 from src.importing.infinitybuilds._talisman import _catalog_items_by_id, _charm_set_name, _parse_talisman_gear
-from src.importing.infinitybuilds.models import _CatalogItem
+
+if TYPE_CHECKING:
+    from src.importing.infinitybuilds.models import _CatalogItem
 
 
 def test_talisman_payload_becomes_catalog_gear() -> None:
-    gear = _parse_talisman_gear(
-        {
-            "seal": "item-1128-seal",
-            "charms": [None, "Talisman_Charm_Set_Barb_01_03"],
-            "charmAffixes": [["unused"], ["affix-all-stats", None]],
-            "charmAffixValues": [[None], [100, None]],
-            "charmAffixGreater": [[None], [True, None]],
-        }
-    )
+    gear = _parse_talisman_gear({
+        "seal": "item-1128-seal",
+        "charms": [None, "Talisman_Charm_Set_Barb_01_03"],
+        "charmAffixes": [["unused"], ["affix-all-stats", None]],
+        "charmAffixValues": [[None], [100, None]],
+        "charmAffixGreater": [[None], [True, None]],
+    })
 
     assert gear == [
         {"kind": "talisman", "slot": "seal", "itemId": "item-1128-seal"},

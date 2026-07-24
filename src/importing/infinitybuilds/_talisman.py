@@ -22,14 +22,12 @@ def _parse_talisman_gear(value: object) -> list[_GearPiece]:
     for index, charm_id in enumerate(charms if isinstance(charms, list) else []):
         if not isinstance(charm_id, str):
             continue
-        gear.append(
-            {
-                "kind": "talisman",
-                "slot": f"charm{index + 1}",
-                "itemId": charm_id,
-                "affixes": _parse_charm_affixes(raw, index),
-            }
-        )
+        gear.append({
+            "kind": "talisman",
+            "slot": f"charm{index + 1}",
+            "itemId": charm_id,
+            "affixes": _parse_charm_affixes(raw, index),
+        })
     return gear
 
 
