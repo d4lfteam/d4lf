@@ -71,13 +71,13 @@ def check_items(
                 automation.click_pointer("right")
             continue
 
-        res = Filter().should_keep(item_descr)
-        if res.skipped:
-            continue
-
         num_of_affixed_items_checked += 1
         if item_descr.affixes and all(affix.type == AffixType.greater for affix in item_descr.affixes):
             num_of_items_with_all_ga += 1
+
+        res = Filter().should_keep(item_descr)
+        if res.skipped:
+            continue
 
         matched_any_affixes = len(res.matched) > 0 and len(res.matched[0].matched_affixes) > 0
         matched_profile_legendary_aspect = any(

@@ -23,7 +23,7 @@ def test_force_without_filter_only_refreshes_item_status(monkeypatch, mocker: Mo
     inventory.hover_item_with_delay.assert_not_called()
 
 
-def test_skipped_items_trigger_no_actions_or_filter_statistics(monkeypatch, mocker: MockerFixture, caplog):
+def test_skipped_items_trigger_no_actions_but_still_check_advanced_tooltips(monkeypatch, mocker: MockerFixture, caplog):
     inventory = mocker.Mock()
     slots = [SimpleNamespace(is_junk=False, is_fav=False) for _ in range(3)]
     inventory.get_item_slots.return_value = (slots, [])
@@ -45,7 +45,7 @@ def test_skipped_items_trigger_no_actions_or_filter_statistics(monkeypatch, mock
 
     for action in actions:
         action.assert_not_called()
-    assert "all greater affixes" not in caplog.text
+    assert "3 out of 3 non-junk rarity items checked had all greater affixes" in caplog.text
 
 
 def test_mythic_items_are_skipped_when_filter_category_is_disabled(monkeypatch, mocker: MockerFixture):
