@@ -16,6 +16,10 @@ from src.settings.models.core import (
     _IniBaseModel,
 )
 
+FILTER_OVERRIDE_DESCRIPTION = (
+    "When disabled, all {category} are skipped, including Mythic items. When enabled, Mythic items are always kept."
+)
+
 
 class GeneralModel(_IniBaseModel):
     @model_validator(mode="before")
@@ -60,6 +64,36 @@ class GeneralModel(_IniBaseModel):
         default=False,
         description="Do not mark ancestral legendaries as junk",
         title="Protective Ancestral Filter",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
+    )
+    filter_equipment: bool = Field(
+        default=True,
+        description=FILTER_OVERRIDE_DESCRIPTION.format(category="equipment"),
+        title="Filter Equipment",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
+    )
+    filter_sigils: bool = Field(
+        default=True,
+        description=FILTER_OVERRIDE_DESCRIPTION.format(category="sigils"),
+        title="Filter Sigils",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
+    )
+    filter_tributes: bool = Field(
+        default=True,
+        description=FILTER_OVERRIDE_DESCRIPTION.format(category="tributes"),
+        title="Filter Tributes",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
+    )
+    filter_seals: bool = Field(
+        default=True,
+        description=FILTER_OVERRIDE_DESCRIPTION.format(category="seals"),
+        title="Filter Seals",
+        json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
+    )
+    filter_charms: bool = Field(
+        default=True,
+        description=FILTER_OVERRIDE_DESCRIPTION.format(category="charms"),
+        title="Filter Charms",
         json_schema_extra={CATEGORY_KEY: SettingsCategory.LOOT},
     )
     full_dump: bool = Field(

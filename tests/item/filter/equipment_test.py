@@ -3,12 +3,20 @@ import typing
 import pytest
 from natsort import natsorted
 
-from .conftest import _create_mocked_filter, affixes, filters, global_uniques, simple_mythics, uniques_with_affixes
+from src.item import Affix, Item, ItemRarity, ItemType
+
+from .conftest import (
+    _create_mocked_filter,
+    _patch_override_settings,
+    affixes,
+    filters,
+    global_uniques,
+    simple_mythics,
+    uniques_with_affixes,
+)
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
-
-    from src.item import Item
 
 
 @pytest.mark.parametrize(
@@ -47,3 +55,33 @@ def test_mythic_always_kept(_name: str, result: bool, item: Item, mocker: Mocker
     test_filter = _create_mocked_filter(mocker)
     test_filter.global_unique_filters = {filters.always_keep_mythics.name: filters.always_keep_mythics.global_uniques}
     assert test_filter.should_keep(item).keep == result
+
+
+def test_enabled_equipment_keeps_matches_and_rejects_non_matches(mocker: MockerFixture):
+    settings = _patch_override_settings(mocker)
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.affix_filters = {"profile": filters.affix.affixes}
+    matching = Item(
+        item_type=ItemType.Helm,
+        power=725,
+        rarity=ItemRarity.Rare,
+        affixes=[
+            Affix(name="intelligence", value=10),
+            Affix(name="cooldown_reduction", value=10),
+            Affix(name="maximum_life", value=700),
+            Affix(name="total_armor", value=10),
+        ],
+    )
+    non_matching = Item(item_type=ItemType.Helm, power=725, rarity=ItemRarity.Rare)
+
+    enabled_match = test_filter.should_keep(matching)
+    enabled_non_match = test_filter.should_keep(non_matching)
+
+    assert enabled_match.keep
+    assert not enabled_match.skipped
+    assert not enabled_non_match.keep
+    assert not enabled_non_match.skipped
+
+    settings.general.filter_equipment = False
+    assert test_filter.should_keep(matching).skipped
+    assert test_filter.should_keep(non_matching).skipped

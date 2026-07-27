@@ -61,9 +61,9 @@ _CHECKBOX_CONFIGS = (
     ),
     _CheckboxConfig(
         name="export_paragon_checkbox",
-        label="Export Paragon",
+        label="Import Paragon",
         setting="export_paragon",
-        tooltip="Export paragon boards for the paragon overlay?",
+        tooltip="Import paragon boards for the paragon overlay?",
         default="false",
     ),
     _CheckboxConfig(

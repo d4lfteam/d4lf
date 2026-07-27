@@ -75,8 +75,10 @@ def check_items(
         if item_descr.affixes and all(affix.type == AffixType.greater for affix in item_descr.affixes):
             num_of_items_with_all_ga += 1
 
-        # Check if we want to keep the item
         res = Filter().should_keep(item_descr)
+        if res.skipped:
+            continue
+
         matched_any_affixes = len(res.matched) > 0 and len(res.matched[0].matched_affixes) > 0
         matched_profile_legendary_aspect = any(
             match.profile.endswith(f".{ASPECT_UPGRADES_LABEL}") for match in res.matched

@@ -242,9 +242,26 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
             self.load_files()
         return self.paragon_filters
 
+    def _skipped_by_filter_override(self, item: Item) -> bool:
+        settings = get_settings().general
+        if is_sigil(item.item_type):
+            return not settings.filter_sigils
+        if item.item_type == ItemType.Tribute:
+            return not settings.filter_tributes
+        if item.item_type == ItemType.HoradricSeal:
+            return not settings.filter_seals
+        if item.item_type == ItemType.Charm:
+            return not settings.filter_charms
+        if item.item_type is None or item.power is None:
+            return False
+        return not settings.filter_equipment
+
     def should_keep(self, item: Item) -> FilterResult:
         if not self.files_loaded or self._did_files_change():
             self.load_files()
+        if self._skipped_by_filter_override(item):
+            LOGGER.debug("%s -- Skipped by loot filter override", item.original_name)
+            return FilterResult(keep=False, matched=[], skipped=True)
         res = FilterResult(keep=False, matched=[])
         if is_sigil(item.item_type):
             return self._check_sigil(item)

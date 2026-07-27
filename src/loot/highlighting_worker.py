@@ -160,6 +160,8 @@ class HighlightingWorker:
 
                         if item_descr == self.current_item:
                             res = Filter().should_keep(item_descr)
+                            if res.skipped:
+                                return
                             match = res.keep
 
                             # Adapt colors based on config

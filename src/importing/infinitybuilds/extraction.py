@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 
 from src.importing.conversion import as_string_keyed_mapping as _as_object
 from src.importing.filters import affix_dict_for_item_type
+from src.importing.infinitybuilds._talisman import _catalog_items_by_id, _parse_talisman_gear
 from src.importing.infinitybuilds.models import _ResolvedGearData
 from src.importing.web import get_with_retry
 from src.item import Affix, AffixType, ItemType
@@ -106,11 +107,7 @@ def _extract_balanced(text: str, start_idx: int, open_ch: str, close_ch: str) ->
 
 
 def _canonical_catalog_id(raw_id: str | None) -> str | None:
-    """Strip extra numeric value from catalog id.
-
-    Some build variants embed gear with an extra numeric instance id spliced into the item/aspect
-    which the catalog returned by the API doesn't have. Strip it before lookups.
-    """
+    """Strip the numeric instance value absent from catalog item and aspect IDs."""
     return CATALOG_ID_INSTANCE_PREFIX.sub(r"\1-", raw_id) if raw_id else raw_id
 
 
@@ -140,7 +137,7 @@ def _resolve_gear_data(class_name: str, gear: Sequence[Mapping[str, object]]) ->
     dataset = _as_object(_as_object(response.json()).get("dataset"))
     gear_data = _as_object(dataset.get("gear"))
     return _ResolvedGearData(
-        items=_catalog_by_id(_parse_catalog_items(gear_data.get("items"))),
+        items=_catalog_items_by_id(_parse_catalog_items(gear_data.get("items"))),
         aspects=_catalog_by_id(_parse_catalog_aspects(gear_data.get("aspects"))),
         affixes=_catalog_by_id(_parse_catalog_affixes(gear_data.get("affixes"))),
     )
@@ -177,7 +174,9 @@ def _convert_raw_to_affixes(
             LOGGER.error(f"Couldn't match {resolved_affix['label']=}")
             continue
         affix_obj = Affix(name=matched_name)
-        if import_greater_affixes and resolved_affix.get("greaterAffixEligible") is True:
+        if import_greater_affixes and raw_affix.get("greater") is True:
+            affix_obj.type = AffixType.greater
+        elif import_greater_affixes and resolved_affix.get("greaterAffixEligible") is True:
             value_range = _as_object(resolved_affix.get("valueRange"))
             max_value = value_range.get("max")
             raw_roll = raw_affix.get("value", 0)
@@ -205,6 +204,9 @@ def _parse_variant_data(value: dict[str, object]) -> _VariantData:
     paragon = value.get("paragon")
     if isinstance(paragon, dict):
         variant["paragon"] = _as_object(paragon)
+    talisman = value.get("talisman")
+    if isinstance(talisman, dict):
+        variant["talisman"] = _parse_talisman_gear(talisman)
     return variant
 
 
@@ -233,6 +235,9 @@ def _parse_raw_affix(value: dict[str, object]) -> _RawAffix:
     swapped = value.get("swapped")
     if isinstance(swapped, bool):
         affix["swapped"] = swapped
+    greater = value.get("greater")
+    if isinstance(greater, bool):
+        affix["greater"] = greater
     raw_value = value.get("value")
     if isinstance(raw_value, (int, float)) and not isinstance(raw_value, bool):
         affix["value"] = raw_value
@@ -247,7 +252,7 @@ def _parse_catalog_items(value: object) -> list[_CatalogItem]:
         if not isinstance(entry_id, str):
             continue
         item: _CatalogItem = {"id": entry_id}
-        for key in ("label", "rarity", "slot"):
+        for key in ("sourceId", "label", "rarity", "slot"):
             item_value = entry_object.get(key)
             if isinstance(item_value, str):
                 item[key] = item_value

@@ -18,7 +18,7 @@ LOGGER = logging.getLogger(__name__)
 class ConfigWindow(QMainWindow):
     """Standalone window for Config/Settings."""
 
-    def __init__(self, parent=None, theme_changed_callback=None):
+    def __init__(self, parent=None, theme_changed_callback=None, force_maximized: bool = False):
         super().__init__(parent)
 
         if ICON_PATH.exists():
@@ -33,7 +33,7 @@ class ConfigWindow(QMainWindow):
         self.resize(self.settings.value("size", QSize(650, 800)))
         self.move(self.settings.value("pos", QPoint(0, 0)))
 
-        if self.settings.value("maximized", "false") == "true":
+        if force_maximized or self.settings.value("maximized", defaultValue=False, type=bool):
             self.showMaximized()
 
         # Create initial config tab

@@ -235,6 +235,9 @@ class ConfigTabMixin:
             checkbox = CheckmarkCheckBox()
             checkbox.setObjectName("switch")
             checkbox.setChecked(config_value)
+            if config_key in {"filter_equipment", "filter_sigils", "filter_tributes", "filter_seals", "filter_charms"}:
+                description = type(model).model_json_schema()["properties"].get(config_key, {}).get("description", "")
+                checkbox.setToolTip(description)
 
             def on_bool_changed():
                 self._save_setting_value(

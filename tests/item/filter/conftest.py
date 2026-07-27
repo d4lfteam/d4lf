@@ -2,8 +2,12 @@ import importlib
 import json
 import typing
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, cast
 
+import src.item.filter.engine as engine_module
+import src.item.filter.equipment as equipment_module
+import src.item.filter.special as special_module
 from src.item import Filter
 
 if typing.TYPE_CHECKING:
@@ -35,6 +39,27 @@ def _create_mocked_filter(mocker: MockerFixture) -> Filter:
     filter_obj.files_loaded = True
     mocker.patch.object(filter_obj, "_did_files_change", return_value=False)
     return filter_obj
+
+
+def _patch_override_settings(mocker, **overrides):
+    general = SimpleNamespace(
+        filter_equipment=True,
+        filter_sigils=True,
+        filter_tributes=True,
+        filter_seals=True,
+        filter_charms=True,
+        handle_cosmetics="ignore",
+        keep_aspects="upgrade",
+        handle_uniques="favorite",
+        ignore_escalation_sigils=True,
+    )
+    for key, value in overrides.items():
+        setattr(general, key, value)
+    settings = SimpleNamespace(general=general)
+    mocker.patch.object(engine_module, "get_settings", return_value=settings)
+    mocker.patch.object(equipment_module, "get_settings", return_value=settings)
+    mocker.patch.object(special_module, "get_settings", return_value=settings)
+    return settings
 
 
 def _decode(value: object) -> object:

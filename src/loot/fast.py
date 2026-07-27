@@ -184,7 +184,7 @@ def create_match_text(matches: Iterable[MatchedFilter]) -> list[str]:
 def fast_feedback(item_descr, filter_result) -> tuple[str, str] | None:
     """Return the immediate tooltip feedback for a parsed item and its result."""
     colors = get_filter_colors()
-    if not filter_result.keep:
+    if filter_result.skipped or not filter_result.keep:
         return None
 
     if not filter_result.matched:
