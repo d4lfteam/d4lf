@@ -14,7 +14,6 @@ from src.item.filter.equipment import FilterEquipmentMixin
 from src.item.filter.matching import FilterContext, FilterMatchingMixin
 from src.item.filter.special import FilterSpecialMixin
 from src.item.models import FilterResult, MatchedFilter
-from src.item.sigil_rules import SigilRules
 from src.profiles import ProfileDocumentError, ProfileDocumentStore
 from src.settings import get_settings
 
@@ -243,23 +242,19 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
             self.load_files()
         return self.paragon_filters
 
-    @staticmethod
-    def _is_mythic_sigil(item: Item) -> bool:
-        return SigilRules.default().for_item(item).rarity == ItemRarity.Mythic
-
     def _skipped_by_filter_override(self, item: Item) -> bool:
         settings = get_settings().general
         if is_sigil(item.item_type):
-            return not settings.filter_sigils and not self._is_mythic_sigil(item)
+            return not settings.filter_sigils
         if item.item_type == ItemType.Tribute:
-            return not settings.filter_tributes and item.rarity != ItemRarity.Mythic
+            return not settings.filter_tributes
         if item.item_type == ItemType.HoradricSeal:
-            return not settings.filter_seals and item.rarity != ItemRarity.Mythic
+            return not settings.filter_seals
         if item.item_type == ItemType.Charm:
-            return not settings.filter_charms and item.rarity != ItemRarity.Mythic
+            return not settings.filter_charms
         if item.item_type is None or item.power is None:
             return False
-        return not settings.filter_equipment and item.rarity != ItemRarity.Mythic
+        return not settings.filter_equipment
 
     def should_keep(self, item: Item) -> FilterResult:
         if not self.files_loaded or self._did_files_change():

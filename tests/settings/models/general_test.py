@@ -22,8 +22,9 @@ class TestGeneralModel:
             field = GeneralModel.model_fields[key]
             assert field.title == title
             assert field.json_schema_extra[CATEGORY_KEY] == SettingsCategory.LOOT
-            assert "non-Mythic" in field.description
-            assert "left untouched" in field.description
+            assert "all" in field.description
+            assert "skipped" in field.description
+            assert "including Mythic" in field.description
             assert "always kept" in field.description
 
     def test_profiles_empty_entries_are_removed(self) -> None:

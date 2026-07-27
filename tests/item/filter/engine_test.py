@@ -218,9 +218,7 @@ CASES = (
 
 
 @pytest.mark.parametrize(("setting", "item", "enabled_keep", "mythic"), CASES)
-def test_filterable_item_category_override_skips_non_mythics_but_not_mythics(
-    setting, item, enabled_keep, mythic, mocker
-):
+def test_filterable_item_category_override_skips_all_items_when_disabled(setting, item, enabled_keep, mythic, mocker):
     settings = _patch_override_settings(mocker, **{setting: False})
     test_filter = _create_mocked_filter(mocker)
 
@@ -239,8 +237,15 @@ def test_filterable_item_category_override_skips_non_mythics_but_not_mythics(
     setattr(settings.general, setting, False)
     mythic_result = test_filter.should_keep(mythic)
 
-    assert mythic_result.skipped is False
-    assert mythic_result.keep
+    assert mythic_result.skipped
+    assert not mythic_result.keep
+    assert mythic_result.matched == []
+
+    setattr(settings.general, setting, True)
+    enabled_mythic = test_filter.should_keep(mythic)
+
+    assert not enabled_mythic.skipped
+    assert enabled_mythic.keep
 
 
 def test_disabled_sigils_skip_escalation_before_sigil_behavior(mocker):

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
-from src.item import Affix, AffixType, FilterResult, Item, ItemRarity, ItemType, MatchedFilter
+from src.item import Affix, AffixType, FilterResult, Item, ItemRarity, ItemType
 from src.loot import filter as _filter
 from src.loot.filter import check_items
 from src.settings import ItemRefreshType
@@ -48,7 +48,7 @@ def test_skipped_items_trigger_no_actions_or_filter_statistics(monkeypatch, mock
     assert "all greater affixes" not in caplog.text
 
 
-def test_mythic_keep_still_favorites_when_filter_category_is_disabled(monkeypatch, mocker: MockerFixture):
+def test_mythic_items_are_skipped_when_filter_category_is_disabled(monkeypatch, mocker: MockerFixture):
     inventory = mocker.Mock()
     inventory.get_item_slots.return_value = ([SimpleNamespace(is_junk=False, is_fav=False)], [])
     inventory.menu_name = "inventory"
@@ -67,12 +67,10 @@ def test_mythic_keep_still_favorites_when_filter_category_is_disabled(monkeypatc
     monkeypatch.setattr(_filter.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(_filter, "is_ignored_item", lambda _item: False)
     monkeypatch.setattr(
-        _filter,
-        "Filter",
-        lambda: SimpleNamespace(should_keep=lambda _item: FilterResult(True, [MatchedFilter("Mythics always kept")])),
+        _filter, "Filter", lambda: SimpleNamespace(should_keep=lambda _item: FilterResult(False, [], skipped=True))
     )
     favorite = mocker.patch.object(_filter, "mark_as_favorite")
 
     check_items(inventory, ItemRefreshType.no_refresh)
 
-    favorite.assert_called_once_with()
+    favorite.assert_not_called()

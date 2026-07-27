@@ -16,7 +16,9 @@ from src.settings.models.core import (
     _IniBaseModel,
 )
 
-FILTER_OVERRIDE_DESCRIPTION = "When disabled, non-Mythic {category} are left untouched; Mythic items are always kept."
+FILTER_OVERRIDE_DESCRIPTION = (
+    "When disabled, all {category} are skipped, including Mythic items. When enabled, Mythic items are always kept."
+)
 
 
 class GeneralModel(_IniBaseModel):
