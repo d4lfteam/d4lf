@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.item import ItemType, is_weapon
+from src.game_data import ItemType, is_weapon
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"

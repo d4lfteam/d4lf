@@ -1,10 +1,9 @@
 import sys
 from typing import TYPE_CHECKING, NoReturn
 
+from src.game_data import ItemRarity, ItemType
 from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect  # ruff:ignore[typing-only-first-party-import]
-from src.item.data.item_type import ItemType  # ruff:ignore[typing-only-first-party-import]
-from src.item.data.rarity import ItemRarity
 
 if TYPE_CHECKING:
     from src.item.models import Item

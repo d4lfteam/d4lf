@@ -4,7 +4,8 @@ import cv2
 import numpy as np
 import pytest
 
-from src.item import Affix, Aspect, Item, ItemType
+from src.game_data import ItemType
+from src.item import Affix, Aspect, Item
 from src.perception.geometry import (
     BulletMatchDiagnostics,
     DiagnosticLocatorResult,

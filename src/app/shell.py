@@ -35,18 +35,16 @@ from src.logger import (
 )
 from src.logger import setup as setup_logging
 from src.loot import get_filter_colors
-from src.profiles import create_profile_editor_window
-from src.settings import (
-    LOG_LEVEL_SETTING_KEYS,
-    SettingsLoadError,
-    create_settings_window,
-    get_settings,
-    has_any_changed,
-)
+from src.profiles.ui import ProfileEditorWindow
+from src.settings import LOG_LEVEL_SETTING_KEYS, SettingsLoadError, get_settings, has_any_changed
+from src.settings.ui import ConfigWindow
 
+if sys.platform == "win32":
+    from src.item.filter import Filter
+else:
+    Filter = None
 if TYPE_CHECKING:
-    from src.item import ProfileLoadReport
-
+    from src.item.filter import ProfileLoadReport
 LOGGER = logging.getLogger(__name__)
 perception_module = get_perception_module()
 
@@ -215,8 +213,8 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
             self.update_vision_status(None)
             self.update_tts_status(None)
             return
-        from src.item import Filter  # ruff:ignore[import-outside-top-level]
-
+        if Filter is None:
+            return
         Filter().register_profile_failure_listener(self._queue_profile_load_report)
         self._backend_thread = QThread()
         self.worker = BackendWorker()
@@ -271,15 +269,12 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
     def open_settings_dialog(self):
         set_accent_color(get_filter_colors().matched)
         self._show_singleton_modal(
-            "config",
-            create_settings_window,
-            theme_changed_callback=self.apply_theme,
-            force_maximized=self.isMaximized(),
+            "config", ConfigWindow, theme_changed_callback=self.apply_theme, force_maximized=self.isMaximized()
         )
 
     def open_profile_editor(self, profile_name: str | None = None):
         self._show_singleton_modal(
-            "editor", create_profile_editor_window, profile_name=profile_name, force_maximized=self.isMaximized()
+            "editor", ProfileEditorWindow, profile_name=profile_name, force_maximized=self.isMaximized()
         )
 
     def emit_startup_direct_to_console(self):

@@ -8,7 +8,9 @@ from typing import Literal
 
 import src.perception
 from src.desktop import call_on_ui_thread, create_overlay_toplevel, get_root
-from src.item import ASPECT_UPGRADES_LABEL, MYTHICS_ALWAYS_KEPT_LABEL, Filter, ItemRarity, MatchedFilter
+from src.game_data import ItemRarity
+from src.item import ASPECT_UPGRADES_LABEL, MYTHICS_ALWAYS_KEPT_LABEL, MatchedFilter
+from src.item.filter import Filter
 from src.loot.colors import get_filter_colors, is_ignored_item
 from src.loot.singleton import singleton
 from src.perception import Publisher, capture, screenshot

@@ -1,13 +1,21 @@
-import typing
-
-if typing.TYPE_CHECKING:
-    from pytest_mock import MockerFixture
-
-from src.overlay.widget.ui import _OverlayUI
+from src.overlay.widget.widget import BossTimerOverlay
 
 
-def test_repack_shows_only_enabled_timer_groups(mocker: MockerFixture):
-    overlay = object.__new__(_OverlayUI)
+class _Packable:
+    pack_calls: list[dict[str, object]]
+
+    def __init__(self) -> None:
+        self.pack_calls = []
+
+    def pack(self, **kwargs: object) -> None:
+        self.pack_calls.append(kwargs)
+
+    def pack_forget(self) -> None:
+        pass
+
+
+def test_repack_shows_only_enabled_timer_groups(monkeypatch):
+    overlay = object.__new__(BossTimerOverlay)
     overlay.orientation = "horizontal"
     overlay.show_wb = True
     overlay.show_legion = False
@@ -24,15 +32,14 @@ def test_repack_shows_only_enabled_timer_groups(mocker: MockerFixture):
     overlay.capture_exp_stats = False
     overlay._gold_initialized = False
     overlay._exp_initialized = False
-    overlay.wb_group = mocker.Mock()
-    overlay.legion_group = mocker.Mock()
-    overlay.ht_group = mocker.Mock()
-    overlay.stats_group = mocker.Mock()
-    overlay.exp_group = mocker.Mock()
-    overlay.t2l_group = mocker.Mock()
+    groups = {
+        name: _Packable() for name in ("wb_group", "legion_group", "ht_group", "stats_group", "exp_group", "t2l_group")
+    }
+    for name, group in groups.items():
+        monkeypatch.setattr(BossTimerOverlay, name, group, raising=False)
 
     overlay._repack()
 
-    overlay.wb_group.pack.assert_called_once_with(side="left", padx=2)
-    overlay.legion_group.pack.assert_not_called()
-    overlay.ht_group.pack.assert_not_called()
+    assert groups["wb_group"].pack_calls == [{"side": "left", "padx": 2}]
+    assert groups["legion_group"].pack_calls == []
+    assert groups["ht_group"].pack_calls == []

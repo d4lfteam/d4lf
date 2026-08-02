@@ -4,7 +4,7 @@ from typing import TypeVar
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QCheckBox, QDialog, QDialogButtonBox, QGroupBox, QLabel, QScrollArea, QVBoxLayout, QWidget
 
-from src.item import ItemRarity
+from src.game_data import ItemRarity
 
 OptionT = TypeVar("OptionT", bound=Hashable)
 

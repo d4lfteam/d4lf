@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING, TypeVar
 
 import rapidfuzz
 
-from src.item import WEAPON_TYPES, Affix, AffixType, Dataloader, ItemRarity, ItemType
+from src.game_data import WEAPON_TYPES, GameCatalog, ItemRarity, ItemType
+from src.item import Affix, AffixType
 from src.perception import closest_match
 from src.profiles import (
     AffixFilterCountModel,
@@ -85,10 +86,10 @@ def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool)
 
 def affix_dict_for_item_type(item_type: ItemType | None) -> dict[str, str]:
     if item_type == ItemType.HoradricSeal:
-        return Dataloader().seal_affix_dict
+        return GameCatalog().seal_affix_dict
     if item_type == ItemType.Charm:
-        return Dataloader().charm_affix_dict
-    return Dataloader().affix_dict
+        return GameCatalog().charm_affix_dict
+    return GameCatalog().affix_dict
 
 
 def match_set_aware_seal_affix(stat_clean: str, affix_dict: dict[str, str], guessed_set_name: str) -> str | None:
@@ -96,18 +97,18 @@ def match_set_aware_seal_affix(stat_clean: str, affix_dict: dict[str, str], gues
     if best_global_key and best_global_key != "damage":
         global_display = affix_dict[best_global_key]
         if rapidfuzz.distance.Levenshtein.distance(stat_clean, global_display) <= 2:
-            is_set_specific = any(best_global_key.startswith(f"{set_name}_") for set_name in Dataloader().set_list)
+            is_set_specific = any(best_global_key.startswith(f"{set_name}_") for set_name in GameCatalog().set_list)
             if not is_set_specific:
                 return best_global_key
     set_affixes = {
-        key: value for key, value in Dataloader().seal_affix_dict.items() if key.startswith(f"{guessed_set_name}_")
+        key: value for key, value in GameCatalog().seal_affix_dict.items() if key.startswith(f"{guessed_set_name}_")
     }
     if not set_affixes:
         return None
     potential_match = closest_match(stat_clean, set_affixes)
     if potential_match is None:
         return None
-    display_name = Dataloader().seal_affix_dict[potential_match]
+    display_name = GameCatalog().seal_affix_dict[potential_match]
     return potential_match if rapidfuzz.fuzz.token_set_ratio(stat_clean, display_name) >= 50 else None
 
 

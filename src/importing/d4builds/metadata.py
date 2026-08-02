@@ -2,6 +2,8 @@ import logging
 import re
 from typing import TYPE_CHECKING
 
+from src.game_data import GameCatalog, ItemRarity
+from src.importing.contracts import ImportSourceError
 from src.importing.d4builds.constants import (
     BUILD_DESCRIPTION_XPATH,
     BUILD_HEADER_INPUT_XPATH,
@@ -15,7 +17,6 @@ from src.importing.d4builds.constants import (
     VARIANT_INPUT_XPATH,
 )
 from src.importing.filters import get_class_name
-from src.item import Dataloader, ItemRarity
 from src.perception import correct_name
 
 LOGGER = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
     import lxml.html
 
 
-class D4BuildsError(Exception):
+class D4BuildsError(ImportSourceError):
     pass
 
 
@@ -100,7 +101,7 @@ def _get_legendary_aspects(data: lxml.html.HtmlElement) -> list[str]:
         if aspect_name is None:
             continue
 
-        if aspect_name not in Dataloader().aspect_list:
+        if aspect_name not in GameCatalog().aspect_list:
             LOGGER.warning(
                 f"Legendary aspect '{aspect_name}' that is not in our aspect data, unable to add to AspectUpgrades."
             )

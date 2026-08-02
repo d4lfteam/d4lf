@@ -9,7 +9,7 @@ from src.importing.filters import affix_dict_for_item_type
 from src.importing.infinitybuilds._talisman import _catalog_items_by_id, _parse_talisman_gear
 from src.importing.infinitybuilds.models import _ResolvedGearData
 from src.importing.web import get_with_retry
-from src.item import Affix, AffixType, ItemType
+from src.item import Affix, AffixType
 from src.perception import clean_str, closest_match, correct_name
 
 if TYPE_CHECKING:
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
     import lxml.html
 
+    from src.game_data import ItemType
     from src.importing.infinitybuilds.models import (
         BuildData,
         CatalogT,

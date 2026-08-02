@@ -4,7 +4,9 @@ from typing import TYPE_CHECKING
 
 import src.perception
 from src import automation
-from src.item import ASPECT_UPGRADES_LABEL, AffixType, Filter, ItemRarity, ItemType, is_sigil
+from src.game_data import ItemRarity, ItemType, is_sigil
+from src.item import ASPECT_UPGRADES_LABEL, AffixType
+from src.item.filter import Filter
 from src.loot.colors import drop_item_from_inventory, is_ignored_item, mark_as_favorite, mark_as_junk, reset_item_status
 from src.perception import capture, screenshot
 from src.settings import ItemRefreshType, UnfilteredUniquesType, get_settings

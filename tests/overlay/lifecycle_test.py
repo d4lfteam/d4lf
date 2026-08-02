@@ -6,12 +6,13 @@ from typing import override
 import pytest
 
 from src.overlay import lifecycle as _lifecycle
+from src.overlay import state as _state
 
 
 class _FakeOverlay:
     instances_created = 0
 
-    def __init__(self, _parent):
+    def __init__(self, _parent, **_kwargs):
         type(self).instances_created += 1
         self.destroyed = False
 
@@ -27,7 +28,7 @@ def test_close_clears_shared_instance_and_allows_reopen(monkeypatch):
     monkeypatch.setattr(_lifecycle, "BossTimerOverlay", _FakeOverlay)
     monkeypatch.setattr(_lifecycle, "get_root", lambda: object())
     monkeypatch.setattr(_lifecycle, "call_on_ui_thread", lambda callback: callback())
-    _lifecycle._widget_shared._OVERLAY_INSTANCE = None
+    _state.clear_overlay()
     _lifecycle.open_overlay()
     _lifecycle.request_close()
     _lifecycle.open_overlay()
@@ -39,7 +40,7 @@ def test_close_clears_shared_instance_and_allows_reopen(monkeypatch):
 class _WindowsFakeOverlay(tk.Toplevel):
     instances_created = 0
 
-    def __init__(self, parent):
+    def __init__(self, parent, **_kwargs):
         super().__init__(parent)
         self.withdraw()
         type(self).instances_created += 1

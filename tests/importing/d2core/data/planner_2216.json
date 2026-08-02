@@ -1,0 +1,69 @@
+{
+    "_id": "2216",
+    "char": "Druid",
+    "deleted": false,
+    "is_public": true,
+    "season": "unfamiliar-season",
+    "title": "Fixture 2216",
+    "variants": [
+        {
+            "gear": {
+                "0": {
+                    "itemType": "Helm",
+                    "mods": [
+                        {
+                            "name": "abyss_damage"
+                        }
+                    ],
+                    "type": "rare"
+                }
+            },
+            "name": "Full"
+        },
+        {
+            "gear": {
+                "0": {
+                    "itemType": "Helm",
+                    "mods": [
+                        {
+                            "name": "abyss_damage"
+                        }
+                    ],
+                    "type": "rare"
+                }
+            },
+            "name": "Partial"
+        },
+        {
+            "gear": {},
+            "name": "Narrative"
+        },
+        {
+            "gear": {
+                "0": {
+                    "itemType": "Helm",
+                    "mods": [
+                        {
+                            "name": "abyss_damage"
+                        }
+                    ],
+                    "type": "rare"
+                }
+            },
+            "name": "Paragon",
+            "paragon": {
+                "fixture-board": {
+                    "data": [
+                        "0_0_fixture-node"
+                    ],
+                    "index": 2,
+                    "rotate": 1
+                }
+            }
+        },
+        {
+            "gear": {},
+            "name": "Narrative two"
+        }
+    ]
+}

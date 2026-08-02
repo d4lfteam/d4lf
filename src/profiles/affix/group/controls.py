@@ -6,7 +6,9 @@ from src.profiles.affix.helpers import _item_type_summary
 from src.profiles.affix.picker import ItemTypePicker
 from src.profiles.affix.pool import AffixPoolWidget
 from src.profiles.affix.widget import AffixWidget
-from src.profiles.editor import Container, RarityPicker, rarity_summary, refresh_widget_style
+from src.profiles.editor.container import Container
+from src.profiles.editor.helpers import refresh_widget_style
+from src.profiles.editor.pickers import RarityPicker, rarity_summary
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"

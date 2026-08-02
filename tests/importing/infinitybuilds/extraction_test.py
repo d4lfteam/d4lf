@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import lxml.html
 import pytest
 
+from src.game_data import GameCatalog
 from src.importing import ImportOptions, ImportRequest
 from src.importing.infinitybuilds import import_infinitybuilds
 from src.importing.infinitybuilds.extraction import (
@@ -15,7 +16,6 @@ from src.importing.infinitybuilds.extraction import (
     _normalize_aspect_name,
     _resolve_gear_data,
 )
-from src.item import Dataloader
 
 if typing.TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -138,7 +138,7 @@ def test_normalize_aspect_name_strips_the_word_aspect(name: str, expected: str) 
 def test_convert_raw_to_affixes_skips_tempered_affixes() -> None:
     # Tempered affixes (e.g. a tempered "Physical Damage" roll) are applied via the Tempering
     # system, not innate item rolls, so they must not be treated as filterable gear affixes.
-    Dataloader()  # ensure real affix data is loaded before we assert against it
+    GameCatalog()  # ensure real affix data is loaded before we assert against it
     raw_affixes = [
         {"affixId": "affix-strength", "value": 100},
         {"affixId": "affix-physical-damage-tempered", "value": 50, "tempered": True},
@@ -184,7 +184,7 @@ def test_resolve_gear_data_queries_view_endpoint_with_unique_sorted_ids(mocker: 
 
 
 def test_import_infinitybuilds_maps_gear_and_aspect_upgrades(mock_ini_loader, mocker: MockerFixture) -> None:
-    Dataloader()  # ensure real affix/aspect data is loaded before we assert against it
+    GameCatalog()  # ensure real affix/aspect data is loaded before we assert against it
     variants = [
         {
             "id": "v-1",

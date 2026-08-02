@@ -14,7 +14,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from src.item import ItemRarity
+from src.game_data import ItemRarity
 from src.profiles import (
     DynamicCharmFilterModel,
     DynamicSealFilterModel,

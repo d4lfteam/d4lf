@@ -2,9 +2,9 @@ import typing
 
 import pytest
 
+from src.game_data import GameCatalog
 from src.importing import ImportOptions, ImportRequest
 from src.importing.d4builds import adapter as d4builds_module
-from src.item import Dataloader
 from tests.conftest import D4BUILDS_IMPORT_URLS
 
 if typing.TYPE_CHECKING:
@@ -14,7 +14,7 @@ if typing.TYPE_CHECKING:
 
 @pytest.mark.parametrize("url", D4BUILDS_IMPORT_URLS)
 def test_import_d4builds(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
-    Dataloader()  # need to load data first or the mock will make it impossible
+    GameCatalog()  # need to load data first or the mock will make it impossible
     mocker.patch("builtins.open", new=mocker.mock_open())
     request = ImportRequest(
         url=url,

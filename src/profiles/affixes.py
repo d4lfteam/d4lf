@@ -2,6 +2,7 @@ import sys
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from src.game_data import GameCatalog
 from src.profiles.validation.constraints import check_greater_than_zero, validate_greater_affix_count, validate_percent
 
 
@@ -39,13 +40,10 @@ class AffixFilterModel(AffixAspectFilterModel):
     @field_validator("name")
     @classmethod
     def name_must_exist(cls, name: str) -> str:
-        # This on module level would be a circular import, so we do it lazy for now
-        from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
-
         if (
-            name not in Dataloader().affix_dict
-            and name not in Dataloader().charm_affix_dict
-            and name not in Dataloader().seal_affix_dict
+            name not in GameCatalog().affix_dict
+            and name not in GameCatalog().charm_affix_dict
+            and name not in GameCatalog().seal_affix_dict
         ):
             msg = f"affix {name} does not exist"
             raise ValueError(msg)
@@ -101,13 +99,10 @@ class AspectUniqueFilterModel(AffixAspectFilterModel):
     @field_validator("name")
     @classmethod
     def name_must_exist(cls, name: str) -> str:
-        # This on module level would be a circular import, so we do it lazy for now
-        from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
-
         # Ensure name is in format we expect
         name = name.lower().replace("'", "").replace(" ", "_").replace(",", "")
 
-        if name not in Dataloader().aspect_unique_dict:
+        if name not in GameCatalog().aspect_unique_dict:
             msg = f"aspect {name} does not exist"
             raise ValueError(msg)
         return name

@@ -21,7 +21,7 @@ from src.profiles import (
     ValidationError,
     YamlError,
 )
-from src.profiles.editor import ProfileTab
+from src.profiles.editor.profile import ProfileTab
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -32,7 +32,7 @@ def qapp():
     return QApplication.instance() or QApplication([])
 
 
-class _FakeDataloader:
+class _FakeGameCatalog:
     item_types_dict = {}
     affix_dict = {}
 
@@ -79,7 +79,7 @@ def _catalog(tmp_path: Path) -> ProfileCatalog:
 
 
 def _patch_tab_dependencies(monkeypatch, fake_session, tmp_path: Path) -> None:
-    monkeypatch.setattr(profile_tab_module, "Dataloader", _FakeDataloader)
+    monkeypatch.setattr(profile_tab_module, "GameCatalog", _FakeGameCatalog)
     monkeypatch.setattr(profile_tab_module, "ProfileEditor", _FakeEditor)
     monkeypatch.setattr(profile_tab_module, "ProfileSession", lambda **_kwargs: fake_session)
 

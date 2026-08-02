@@ -75,7 +75,7 @@ def test_run_replay_matches_all_templates_logs_confidence_and_saves_annotation(t
         search_calls.append((args, kwargs))
         return SearchResult(matches=matches, success=True)
 
-    monkeypatch.setattr("src.tools.replay.template_matching.search_templates", fake_search)
+    monkeypatch.setattr("src.tools.replay.template_matching.search", fake_search)
     with caplog.at_level(logging.INFO, logger="d4lf"):
         result = run_replay(config, display=False)
 

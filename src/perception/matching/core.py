@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 
 from src.perception.image import alpha_to_mask, color_filter
+from src.perception.screenshot import screenshot
 from src.settings import Template, get_ui_coordinates
 
 LOGGER = logging.getLogger(__name__)
@@ -54,8 +55,6 @@ def get_cv_result(
     if img.shape[0] == 0 or img.shape[1] == 0:
         return None, template_bgr, resolved_roi
     if take_debug_screenshot:
-        from src.perception import screenshot  # ruff:ignore[import-outside-top-level]
-
         screenshot("template_finder", img=img)
 
     if color_match:

@@ -3,10 +3,9 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, override
 
 if TYPE_CHECKING:
+    from src.game_data import ItemRarity, ItemType
     from src.item.data.affix import Affix
     from src.item.data.aspect import Aspect
-    from src.item.data.item_type import ItemType
-    from src.item.data.rarity import ItemRarity
     from src.item.data.seasonal_attribute import SeasonalAttribute
 
 

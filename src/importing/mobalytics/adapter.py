@@ -2,12 +2,13 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
+import jsonpath
 import lxml.html
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
-from src.importing.contracts import VariantMetadata
+from src.importing.contracts import ImportSourceError, VariantMetadata
 from src.importing.conversion import as_string_keyed_mapping as _as_mapping
 from src.importing.conversion import as_string_keyed_mapping_list as _as_mapping_list
 from src.importing.conversion import as_text as _as_text
@@ -35,7 +36,7 @@ SCRIPT_XPATH = "//script"
 type _JsonPathValue = str | int | float | bool | list[object] | dict[str, object] | None
 
 
-class MobalyticsError(Exception):
+class MobalyticsError(ImportSourceError):
     """Raised when Mobalytics page data cannot be extracted."""
 
 
@@ -76,8 +77,6 @@ def fetch_variants_mobalytics(request: ImportRequest, driver: WebDriver | None =
     LOGGER.info("Loading %s for variants", url)
     if not state:
         return []
-
-    import jsonpath  # ruff:ignore[import-outside-top-level]
 
     variant_titles: dict[str, str] = {}
     for cv_list in jsonpath.findall("$..childrenVariants", state) or []:

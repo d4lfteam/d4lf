@@ -9,7 +9,7 @@ from PyQt6.QtCore import QSize
 from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QApplication, QDialog
 
-from src.item import SigilRules
+from src.game_data import SigilRules
 from src.profiles import SigilConditionModel, SigilFilterModel
 from src.profiles.sigil import CreateSigil, SigilsTab, SigilWidget
 from src.profiles.sigil import dialogs as dialog_module

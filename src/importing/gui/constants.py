@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from src.importing import FilenamePart
+from src.importing.contracts import FilenamePart
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +95,7 @@ FILENAME_PART_LABELS = {
 }
 GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP = "Select at least one filename part or enter a custom file name."
 IMPORTER_WINDOW_LOGGERS = (
+    "src.importing.d2core",
     "src.importing.mobalytics",
     "src.importing.maxroll",
     "src.importing.d4builds",

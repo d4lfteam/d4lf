@@ -18,7 +18,7 @@ from src.profiles import CharmFilterModel, DynamicCharmFilterModel, DynamicSealF
 from src.profiles.charm_seal.dialogs import SetPicker
 from src.profiles.charm_seal.general import _CharmSealGeneralMixin
 from src.profiles.charm_seal.pools import _CharmSealPoolsMixin
-from src.profiles.editor import create_readonly_line_edit
+from src.profiles.editor.helpers import create_readonly_line_edit
 
 if TYPE_CHECKING:
     from pydantic import RootModel

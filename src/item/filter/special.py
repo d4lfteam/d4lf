@@ -1,9 +1,8 @@
 import logging
 from typing import TYPE_CHECKING
 
-from src.item.data.rarity import ItemRarity
+from src.game_data import ItemRarity, SigilRules
 from src.item.models import FilterResult, MatchedFilter
-from src.item.sigil_rules import SigilRules
 from src.profiles import CharmFilterModel, SigilPriority
 from src.settings import CosmeticFilterType, get_settings
 

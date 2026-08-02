@@ -1,10 +1,9 @@
 from typing import TYPE_CHECKING
 
-from src.item import (
-    Dataloader,
+from src.game_data import (
+    GameCatalog,
     ItemRarity,
     ItemType,
-    SeasonalAttribute,
     is_armor,
     is_consumable,
     is_jewelry,
@@ -14,6 +13,7 @@ from src.item import (
     is_socketable,
     is_weapon,
 )
+from src.item import SeasonalAttribute
 
 if TYPE_CHECKING:
     from src.item import Item
@@ -80,14 +80,14 @@ class _TtsItemParser:
 
     def _validate_unique(self) -> None:
         item = self._current_item
-        if item.rarity == ItemRarity.Unique and item.name not in Dataloader().aspect_unique_dict:
+        if item.rarity == ItemRarity.Unique and item.name not in GameCatalog().aspect_unique_dict:
             msg = (
                 f"Unrecognized unique {item.name}. This most likely means the name of it reported "
                 f"from Diablo 4 is wrong. Please report a bug with this message."
                 f" TTS: {self.tts_section}"
             )
             raise IndexError(msg)
-        if item.rarity == ItemRarity.Mythic and item.name not in Dataloader().aspect_unique_dict:
+        if item.rarity == ItemRarity.Mythic and item.name not in GameCatalog().aspect_unique_dict:
             msg = f"Unrecognized unique {item.name}. This most likely means the name of it reported from Diablo 4 is wrong. Please report a bug with this message. TTS: {self.tts_section}"
             raise IndexError(msg)
 

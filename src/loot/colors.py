@@ -5,7 +5,8 @@ import time
 from dataclasses import dataclass
 
 from src import automation
-from src.item import ItemType, SeasonalAttribute, is_consumable, is_non_sigil_mapping, is_socketable
+from src.game_data import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
+from src.item import SeasonalAttribute
 from src.perception import abs_window_to_monitor
 from src.settings import get_settings
 

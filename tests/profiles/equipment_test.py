@@ -14,7 +14,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from src.item import ItemRarity, ItemType
+from src.game_data import ItemRarity, ItemType
 from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,

@@ -10,12 +10,14 @@ import numpy as np
 
 import src.perception
 from src.automation import pointer_position
-from src.item import ASPECT_UPGRADES_LABEL, Filter, SeasonalAttribute, is_sigil
+from src.game_data import is_sigil
+from src.item import ASPECT_UPGRADES_LABEL, SeasonalAttribute
+from src.item.filter import Filter
 from src.loot.colors import get_filter_colors, is_ignored_item
 from src.perception import (
     LocatorResult,
     capture,
-    compare_image_histograms,
+    compare_histograms,
     find_descr,
     find_descr_with_diagnostics,
     get_separator_match_in_crop,
@@ -111,7 +113,7 @@ class HighlightingWorker:
                         found_check, cropped_descr_check, _ = find_descr(capture(force_new=True), item_center)
                         if not found_check:
                             continue
-                        score = compare_image_histograms(cropped_descr, cropped_descr_check)
+                        score = compare_histograms(cropped_descr, cropped_descr_check)
                         if score < 0.99:
                             continue
                         is_confirmed = True

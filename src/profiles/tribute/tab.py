@@ -13,9 +13,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.item import Dataloader
+from src.game_data import GameCatalog
 from src.profiles import TributeFilterModel
-from src.profiles.editor import RarityPicker, rarity_summary
+from src.profiles.editor.pickers import RarityPicker, rarity_summary
 from src.profiles.tribute.dialogs import CreateTribute
 
 TRIBUTES_TABNAME = "Tributes"
@@ -77,7 +77,7 @@ class TributesTab(QWidget):
     def _reload_list_widget(self):
         self.list_widget.clear()
         for tribute_name in self.tributes.name:
-            display_name = Dataloader().tribute_dict.get(tribute_name, tribute_name)
+            display_name = GameCatalog().tribute_dict.get(tribute_name, tribute_name)
             self.list_widget.addItem(f"{_TRIBUTE_PREFIX}{display_name}")
 
     def _add_tribute(self):
@@ -111,7 +111,7 @@ class TributesTab(QWidget):
             text = item.text()
             if text.startswith(_TRIBUTE_PREFIX):
                 selected_name = text.removeprefix(_TRIBUTE_PREFIX)
-                reverse_dict = {value: key for key, value in Dataloader().tribute_dict.items()}
+                reverse_dict = {value: key for key, value in GameCatalog().tribute_dict.items()}
                 normalized_name = reverse_dict.get(selected_name, selected_name)
                 if normalized_name in self.tributes.name:
                     self.tributes.name.remove(normalized_name)

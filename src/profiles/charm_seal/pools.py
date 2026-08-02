@@ -3,10 +3,12 @@ from typing import Any, cast
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QWidget
 
-from src.item import Dataloader
+from src.game_data import GameCatalog
 from src.profiles import AffixFilterCountModel, AffixFilterModel
 from src.profiles.affix import AffixPoolWidget, AffixWidget, DeleteAffixPool
-from src.profiles.editor import Container, RarityPicker, rarity_summary, refresh_widget_style
+from src.profiles.editor.container import Container
+from src.profiles.editor.helpers import refresh_widget_style
+from src.profiles.editor.pickers import RarityPicker, rarity_summary
 
 CHARMS_TABNAME = "Charms"
 SEALS_TABNAME = "Seals"
@@ -20,7 +22,7 @@ def _set_summary(sets: list[str]) -> str:
 
 class _CharmSealPoolsMixin:
     def add_affix_pool(self: Any):
-        affix_dict = Dataloader().charm_affix_dict if self.is_charm else Dataloader().seal_affix_dict
+        affix_dict = GameCatalog().charm_affix_dict if self.is_charm else GameCatalog().seal_affix_dict
         default_affix_name = next(iter(affix_dict.keys()), "")
         default_affix = AffixFilterModel(name=default_affix_name, value=None)
         new_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)

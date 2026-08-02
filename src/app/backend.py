@@ -6,14 +6,14 @@ import time
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
-from src.app import create_script_handler
 from src.autoupdater import notify_if_update
 from src.settings import get_settings
 
 if sys.platform == "win32":
     from src import perception as _perception
+    from src.app.handler import ScriptHandler
     from src.automation import WindowSpec, start_detecting_window
-    from src.item import Filter
+    from src.item.filter import Filter
     from src.overlay import Overlay
     from src.perception import game_window_ready
 else:
@@ -54,7 +54,7 @@ class BackendWorker(QObject):
             time.sleep(0.2)
         time.sleep(0.5)
 
-        self.script_handler = create_script_handler()
+        self.script_handler = ScriptHandler()
         check_for_proper_tts_configuration()
         Overlay().run()
         self.finished.emit()

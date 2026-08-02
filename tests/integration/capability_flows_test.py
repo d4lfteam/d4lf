@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 
 from src import importing, paragon, perception
-from src.item import Filter, ItemType
+from src.game_data import ItemType
+from src.item.filter import Filter
 from src.profiles import ProfileDocumentStore, ProfileModel
 
 

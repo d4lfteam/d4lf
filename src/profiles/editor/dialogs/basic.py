@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, override
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QComboBox, QDialog, QFormLayout, QHBoxLayout, QLabel, QPushButton, QSpinBox, QVBoxLayout
 
-from src.item import MAX_POWER
+from src.game_data import MAX_POWER
 
 if TYPE_CHECKING:
     from PyQt6.QtGui import QWheelEvent

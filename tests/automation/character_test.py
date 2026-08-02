@@ -14,7 +14,7 @@ def test_character_inventory_uses_character_menu_name(monkeypatch):
         "src.automation.character.get_ui_coordinates",
         lambda: type("C", (), {"roi": type("R", (), {"sort_icon": (1, 2, 3, 4)})()})(),
     )
-    monkeypatch.setattr("src.automation.character.create_template_query", lambda **kwargs: kwargs)
+    monkeypatch.setattr("src.automation.character.SearchArgs", lambda **kwargs: kwargs)
     monkeypatch.setattr(
         "src.automation.character.get_settings", lambda: type("S", (), {"char": type("C", (), {"inventory": "i"})()})()
     )

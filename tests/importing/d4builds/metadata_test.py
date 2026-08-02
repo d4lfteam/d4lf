@@ -1,6 +1,11 @@
 import lxml.html
 
+from src.importing import ImportSourceError
 from src.importing.d4builds import metadata as d4builds_metadata
+
+
+def test_d4builds_errors_are_import_source_errors() -> None:
+    assert issubclass(d4builds_metadata.D4BuildsError, ImportSourceError)
 
 
 def test_extract_build_metadata_from_planner_header() -> None:

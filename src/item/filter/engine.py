@@ -7,9 +7,8 @@ from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     from pathlib import Path
 
+from src.game_data import ItemRarity, ItemType, is_sigil
 from src.item import ASPECT_UPGRADES_LABEL, MYTHICS_ALWAYS_KEPT_LABEL
-from src.item.data.item_type import ItemType, is_sigil
-from src.item.data.rarity import ItemRarity
 from src.item.filter.equipment import FilterEquipmentMixin
 from src.item.filter.matching import FilterContext, FilterMatchingMixin
 from src.item.filter.special import FilterSpecialMixin

@@ -5,7 +5,8 @@ from PyQt6.QtWidgets import QCheckBox, QDialog, QLineEdit, QMessageBox, QPushBut
 from src.profiles import CharmFilterModel, DynamicCharmFilterModel, DynamicSealFilterModel, SealFilterModel
 from src.profiles.charm_seal.dialogs import CreateCharmOrSeal
 from src.profiles.charm_seal.group import BaseGroupEditor, CharmGroupEditor, SealGroupEditor
-from src.profiles.editor import MinGreaterDialog, MinPercentDialog, TabGroupWidget
+from src.profiles.editor.dialogs import MinGreaterDialog, MinPercentDialog
+from src.profiles.editor.tabs import TabGroupWidget
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable

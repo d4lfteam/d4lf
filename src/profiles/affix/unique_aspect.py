@@ -4,8 +4,8 @@ from PyQt6.QtCore import QSignalBlocker, Qt
 from PyQt6.QtGui import QDoubleValidator, QIntValidator
 from PyQt6.QtWidgets import QComboBox, QCompleter, QHBoxLayout, QLineEdit, QMessageBox, QWidget
 
-from src.item import Dataloader
-from src.profiles.editor import IgnoreScrollWheelComboBox
+from src.game_data import GameCatalog
+from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
 
 if TYPE_CHECKING:
     from src.profiles import AspectUniqueFilterModel
@@ -50,11 +50,13 @@ class UniqueAspectWidget(QWidget):
             name_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
             name_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         aspects = (
-            self.allowed_aspects if self.allowed_aspects is not None else sorted(Dataloader().aspect_unique_dict.keys())
+            self.allowed_aspects
+            if self.allowed_aspects is not None
+            else sorted(GameCatalog().aspect_unique_dict.keys())
         )
         self.name_combo.addItems(aspects)
         self.name_combo.setMaximumWidth(600)
-        if self.unique_aspect.name in Dataloader().aspect_unique_dict:
+        if self.unique_aspect.name in GameCatalog().aspect_unique_dict:
             self.name_combo.setCurrentText(self.unique_aspect.name)
         self.name_combo.currentTextChanged.connect(self.update_name)
 
@@ -75,7 +77,7 @@ class UniqueAspectWidget(QWidget):
     def update_name(self, current_text=None):
         aspect_name = current_text or self.name_combo.currentText()
         aspect_name = aspect_name.strip()
-        if aspect_name not in Dataloader().aspect_unique_dict:
+        if aspect_name not in GameCatalog().aspect_unique_dict:
             return
         self.unique_aspect.name = aspect_name
         self.update_parent_unique_aspects_title()

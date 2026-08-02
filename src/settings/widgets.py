@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.desktop.widgets import CheckmarkCheckBox
-from src.settings.hotkeys import validate_hotkey
+from src.settings.binding import validate_hotkey
 
 if TYPE_CHECKING:
     from collections.abc import Callable

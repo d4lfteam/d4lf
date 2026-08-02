@@ -16,10 +16,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.item import MAX_POWER, ItemType, is_armor, is_jewelry, is_weapon
+from src.game_data import MAX_POWER, ItemType, is_armor, is_jewelry, is_weapon
 from src.profiles.affix.group.controls import _AffixGroupControlsMixin
 from src.profiles.affix.group.pools import _AffixGroupPoolsMixin
-from src.profiles.editor import Container, IgnoreScrollWheelSpinBox, refresh_widget_style
+from src.profiles.editor.container import Container
+from src.profiles.editor.dialogs import IgnoreScrollWheelSpinBox
+from src.profiles.editor.helpers import refresh_widget_style
 
 if TYPE_CHECKING:
     from src.profiles import DynamicItemFilterModel

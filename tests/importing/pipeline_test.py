@@ -1,9 +1,9 @@
 import dataclasses
 from types import SimpleNamespace
 
+from src.game_data import GameCatalog, ItemType
 from src.importing import FilenamePart, ImportOptions, ImportRequest
 from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
-from src.item import Dataloader, ItemType
 from src.profiles import CharmFilterModel, ItemFilterModel, SealFilterModel
 
 
@@ -44,7 +44,7 @@ def _paragon_steps() -> list[list[dict[str, object]]]:
 
 
 def test_run_saves_single_variant_and_attaches_paragon(mock_ini_loader, mocker) -> None:
-    Dataloader()
+    GameCatalog()
     saved = {}
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = lambda *, file_name, profile, source: (
@@ -82,9 +82,9 @@ def test_run_saves_single_variant_and_attaches_paragon(mock_ini_loader, mocker) 
 
 
 def test_run_saves_multiple_variants_and_adds_profiles(mock_ini_loader, mocker) -> None:
-    Dataloader()
+    GameCatalog()
     profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # ruff:ignore[unused-lambda-argument]
+    profile_store.save_new.side_effect = lambda *, file_name, **_kwargs: SimpleNamespace(file_name=file_name)
     add_to_profiles = mocker.patch("src.importing.pipeline.add_to_profiles")
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
@@ -109,10 +109,37 @@ def test_run_saves_multiple_variants_and_adds_profiles(mock_ini_loader, mocker) 
     assert [call.args[0] for call in add_to_profiles.call_args_list] == saved_file_names
 
 
-def test_run_suffixes_custom_filename_for_multiple_variants(mock_ini_loader, mocker) -> None:
-    Dataloader()
+def test_run_disambiguates_duplicate_generated_variant_names(mock_ini_loader, mocker) -> None:
+    GameCatalog()
     profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # ruff:ignore[unused-lambda-argument]
+    profile_store.save_new.side_effect = lambda *, file_name, **_kwargs: SimpleNamespace(file_name=file_name)
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
+
+    saved_file_names = ImportPipeline.run(
+        StaticBuildGuideAdapter(
+            url="https://example.invalid/build",
+            build=_build(
+                variants=[
+                    Variant(name="Pit Push", affix_filters=[_item_filter(ItemType.Ring)]),
+                    Variant(name="Pit Push", affix_filters=[_item_filter(ItemType.Amulet)]),
+                ]
+            ),
+        ),
+        request=_config(),
+    )
+
+    expected_file_names = [
+        "maxroll_s12_spiritborn_touch_of_death_pit_push",
+        "maxroll_s12_spiritborn_touch_of_death_pit_push_2",
+    ]
+    assert saved_file_names == expected_file_names
+    assert [call.kwargs["file_name"] for call in profile_store.save_new.call_args_list] == expected_file_names
+
+
+def test_run_suffixes_custom_filename_for_multiple_variants(mock_ini_loader, mocker) -> None:
+    GameCatalog()
+    profile_store = mocker.Mock()
+    profile_store.save_new.side_effect = lambda *, file_name, **_kwargs: SimpleNamespace(file_name=file_name)
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     saved_file_names = ImportPipeline.run(
@@ -132,10 +159,10 @@ def test_run_suffixes_custom_filename_for_multiple_variants(mock_ini_loader, moc
 
 
 def test_run_uses_selected_filename_parts(mock_ini_loader, mocker) -> None:
-    Dataloader()
+    GameCatalog()
     saved = {}
     profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = lambda *, file_name, profile, source: (  # ruff:ignore[unused-lambda-argument]
+    profile_store.save_new.side_effect = lambda *, file_name, **_kwargs: (
         saved.update({"file_name": file_name}) or SimpleNamespace(file_name=file_name)
     )
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
@@ -149,9 +176,9 @@ def test_run_uses_selected_filename_parts(mock_ini_loader, mocker) -> None:
 
 
 def test_run_warns_when_paragon_export_enabled_without_steps(mock_ini_loader, mocker, caplog) -> None:
-    Dataloader()
+    GameCatalog()
     profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = lambda *, file_name, profile, source: SimpleNamespace(file_name=file_name)  # ruff:ignore[unused-lambda-argument]
+    profile_store.save_new.side_effect = lambda *, file_name, **_kwargs: SimpleNamespace(file_name=file_name)
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     with caplog.at_level("WARNING"):
@@ -164,10 +191,10 @@ def test_run_warns_when_paragon_export_enabled_without_steps(mock_ini_loader, mo
 
 
 def test_run_deduplicates_identical_affix_filters(mock_ini_loader, mocker) -> None:
-    Dataloader()
+    GameCatalog()
     saved = {}
     profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = lambda *, file_name, profile, source: (  # ruff:ignore[unused-lambda-argument]
+    profile_store.save_new.side_effect = lambda *, file_name, profile, **_kwargs: (
         saved.update({"profile": profile}) or SimpleNamespace(file_name=file_name)
     )
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
@@ -189,10 +216,10 @@ def test_run_deduplicates_identical_affix_filters(mock_ini_loader, mocker) -> No
 
 
 def test_run_excludes_disabled_charm_and_seal_filters_for_each_variant(mock_ini_loader, mocker) -> None:
-    Dataloader()
+    GameCatalog()
     saved_profiles = []
     profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = lambda *, file_name, profile, source: (  # ruff:ignore[unused-lambda-argument]
+    profile_store.save_new.side_effect = lambda *, file_name, profile, **_kwargs: (
         saved_profiles.append(profile) or SimpleNamespace(file_name=file_name)
     )
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
@@ -215,10 +242,10 @@ def test_run_excludes_disabled_charm_and_seal_filters_for_each_variant(mock_ini_
 
 
 def test_run_maps_import_categories_from_config_fallback(mock_ini_loader, mocker) -> None:
-    Dataloader()
+    GameCatalog()
     saved = {}
     profile_store = mocker.Mock()
-    profile_store.save_new.side_effect = lambda *, file_name, profile, source: (  # ruff:ignore[unused-lambda-argument]
+    profile_store.save_new.side_effect = lambda *, file_name, profile, **_kwargs: (
         saved.update({"profile": profile}) or SimpleNamespace(file_name=file_name)
     )
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)

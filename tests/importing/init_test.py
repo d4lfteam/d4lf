@@ -1,13 +1,17 @@
+from src import importing
 from src.importing import (
     FilenamePart,
     ImportOptions,
     ImportRequest,
     ImportResult,
+    ImportSession,
+    ImportSourceError,
     UnsupportedImportSourceError,
     VariantMetadata,
     VariantSelection,
     assemble_profile_file_name,
     import_build,
+    open_session,
     select_source,
 )
 from src.profiles import ProfileModel
@@ -25,6 +29,19 @@ def test_facade_exports_variant_selection_contract() -> None:
     selection = VariantSelection.from_ids(("variant-1",))
 
     assert selection.ids == ("variant-1",)
+
+
+def test_facade_exposes_source_error_without_leaking_provider_contracts() -> None:
+    assert importing.ImportSourceError is ImportSourceError
+    assert "D2CoreImportError" not in importing.__all__
+    assert "D2CoreImportSource" not in importing.__all__
+    assert "canonicalize_d2core_url" not in importing.__all__
+    assert not hasattr(importing, "D2CoreImportError")
+
+
+def test_facade_exports_import_session_lifecycle_contract() -> None:
+    assert ImportSession.__name__ == "ImportSession"
+    assert open_session.__name__ == "open_session"
 
 
 def test_filename_assembly_preserves_selected_order_and_title_cleanup() -> None:

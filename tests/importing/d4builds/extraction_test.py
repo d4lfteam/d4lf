@@ -6,9 +6,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
+from src.game_data import ItemType
 from src.importing.d4builds import constants as d4builds_constants
 from src.importing.d4builds import extraction as _d4builds_helpers
-from src.item import ItemType
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture

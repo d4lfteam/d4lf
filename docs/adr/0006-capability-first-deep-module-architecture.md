@@ -10,20 +10,21 @@ privacy. Privacy is enforced by package ownership and facade imports.
 
 The target source layout has these capability packages:
 
-| Capability  | Package facade   | External contract                                                                               |
-| ----------- | ---------------- | ----------------------------------------------------------------------------------------------- |
-| Item        | `src.item`       | Item values, rules, and keep/junk evaluation.                                                   |
-| Profiles    | `src.profiles`   | Profile documents and `ProfileSession` load, save, validation, and result types.                |
-| Settings    | `src.settings`   | Typed settings, persistence, reload decisions, coordinates, and hotkey bindings.                |
-| Importing   | `src.importing`  | A normalized import request and result, source selection, and filename assembly.                |
-| Perception  | `src.perception` | Item-text acquisition and parsing, screenshot capture, tooltip location, and image diagnostics. |
-| Paragon     | `src.paragon`    | Paragon payload transformation, selection, and overlay control.                                 |
-| Automation  | `src.automation` | Game-window access, hotkeys, pointer movement, and inventory, stash, and vendor actions.        |
-| Loot        | `src.loot`       | Filtering-mode lifecycle and orchestration through capability interfaces.                       |
-| Overlay     | `src.overlay`    | Session statistics, boss-overlay lifecycle, updates, and positioning.                           |
-| Desktop     | `src.desktop`    | Shared Qt/Tk primitives, dialogs, themes, activity logging, and UI-thread dispatch.             |
-| Application | `src.app`        | Composition, startup, logging, update checks, and shutdown.                                     |
-| Tools       | `src.tools`      | Replay and data-generation entry points.                                                        |
+| Capability   | Package facade                | External contract                                                                                |
+| ------------ | ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| Game catalog | `src.game_data`               | Localized Diablo 4 reference values and lookup data shared by Items and Profiles.                |
+| Item         | `src.item`, `src.item.filter` | Encountered Item values and rules at the root; keep/junk evaluation at the explicit filter seam. |
+| Profiles     | `src.profiles`                | Profile documents and `ProfileSession` load, save, validation, and result types.                 |
+| Settings     | `src.settings`                | Typed settings, persistence, reload decisions, coordinates, and hotkey bindings.                 |
+| Importing    | `src.importing`               | A normalized import request and result, source selection, and filename assembly.                 |
+| Perception   | `src.perception`              | Item-text acquisition and parsing, screenshot capture, tooltip location, and image diagnostics.  |
+| Paragon      | `src.paragon`                 | Paragon payload transformation, selection, and overlay control.                                  |
+| Automation   | `src.automation`              | Game-window access, hotkeys, pointer movement, and inventory, stash, and vendor actions.         |
+| Loot         | `src.loot`                    | Filtering-mode lifecycle and orchestration through capability interfaces.                        |
+| Overlay      | `src.overlay`                 | Session statistics, boss-overlay lifecycle, updates, and positioning.                            |
+| Desktop      | `src.desktop`                 | Shared Qt/Tk primitives, dialogs, themes, activity logging, and UI-thread dispatch.              |
+| Application  | `src.app`                     | Composition, startup, logging, update checks, and shutdown.                                      |
+| Tools        | `src.tools`                   | Replay and data-generation entry points.                                                         |
 
 `src.main` remains the executable entry point. It is not a general-purpose public API. Each
 capability may contain cohesive public subpackages, and each package or subpackage exposes its
@@ -47,9 +48,11 @@ Profile editor behavior is organized by public subpackage rather than a technica
 | `src.profiles.sigil`      | Sigil tabs, widgets, and dialogs                                                       | `src.profiles.sigil.__init__`      |
 | `src.profiles.tribute`    | Tribute tabs and dialogs                                                               | `src.profiles.tribute.__init__`    |
 | `src.profiles.editor`     | Shared profile-editor primitives and profile editor composition                        | `src.profiles.editor.__init__`     |
+| `src.profiles.ui`         | Profile editor window composition                                                      | `src.profiles.ui.__init__`         |
 
-These subpackage facades are public within the Profiles capability and do not make Qt widgets part
-of the top-level `src.profiles` cross-capability contract.
+These subpackage facades are public within the Profiles capability. `src.profiles.ui` is the
+explicit cross-capability composition seam used by the Application; Qt widgets do not become part
+of the top-level `src.profiles` contract.
 
 Capability-root facades export behavior and domain result types, not implementation classes, GUI
 widgets, or generic service locators. Capability-owned UI subpackage facades may export their
@@ -69,6 +72,21 @@ primitives shared by multiple capabilities:
 
 These subpackages are explicit cross-capability seams; their implementation modules remain private.
 
+Settings also exposes two deliberate cross-capability subpackage seams so importing its root remains
+headless and free of input-device side effects:
+
+| Subpackage             | Responsibility                                       | Public interface                |
+| ---------------------- | ---------------------------------------------------- | ------------------------------- |
+| `src.settings.hotkeys` | Runtime registration and delivery of Hotkey bindings | `src.settings.hotkeys.__init__` |
+| `src.settings.ui`      | Settings-window construction                         | `src.settings.ui.__init__`      |
+
+Pure Hotkey binding parsing remains available from `src.settings`; importing the root does not load
+Qt or construct a platform input adapter.
+
+Item evaluation is exposed from `src.item.filter` rather than the Item root. This keeps encountered
+Item values usable by Perception without importing Profiles, while callers that evaluate keep/junk
+decisions cross the explicit filter subpackage seam.
+
 ## Corrected final layout (structural review, 2026-07-19)
 
 The migration inventory below records historical source paths, but the frozen target is the
@@ -76,17 +94,18 @@ following package shape. Every listed package (including nested packages) owns i
 in `__init__.py`; implementation files use ordinary descriptive names and never a leading
 underscore.
 
-| Area        | Final package seams                                                                                                                                                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Application | `src.app.dashboard` owns dashboard controls, drag, and profile composition; `src.app` retains shell and lifecycle composition.                                                                                                             |
-| Automation  | `src.automation.window` owns the window contract and real Windows/no-op adapters.                                                                                                                                                          |
-| Overlay     | `src.overlay.widget` owns widget behavior; lifecycle, statistics, and tracking remain sibling seams.                                                                                                                                       |
-| Paragon     | `src.paragon.overlay` owns overlay behavior; transformation and data remain under `src.paragon`.                                                                                                                                           |
-| Perception  | `src.perception.backend`, `.matching`, `.capture`, `.parser`, and `.tooltip` are public subpackages with facades.                                                                                                                          |
-| Profiles    | `src.profiles.affix.group` owns affix-group behavior; `src.profiles.editor.dialogs` and `.profile` own editor dialogs/profile composition. `src.profiles.validation` consolidates validation and validator behavior into cohesive modules. |
-| Settings    | `src.settings.models` is the public model seam; model implementations are beneath that package.                                                                                                                                            |
-| Desktop     | `src.desktop.activity`, `.themes`, and `.widgets` are implementation-bearing subpackages, each exposing its interface from `__init__.py`.                                                                                                  |
-| Importing   | `src.importing.paragon` contains one common module for normalized Paragon handling. Provider-specific Paragon extraction lives in each provider package (`d4builds`, `infinitybuilds`, `maxroll`, and `mobalytics`).                       |
+| Area         | Final package seams                                                                                                                                                                                                                                               |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Application  | `src.app.dashboard` owns dashboard controls, drag, and profile composition; `src.app` retains shell and lifecycle composition.                                                                                                                                    |
+| Automation   | `src.automation.window` owns the window contract and real Windows/no-op adapters.                                                                                                                                                                                 |
+| Overlay      | `src.overlay.widget` owns widget behavior; lifecycle, statistics, and tracking remain sibling seams.                                                                                                                                                              |
+| Paragon      | `src.paragon.overlay` owns overlay behavior; transformation and data remain under `src.paragon`.                                                                                                                                                                  |
+| Perception   | `src.perception.backend`, `.matching`, `.capture`, `.parser`, and `.tooltip` are public subpackages with facades.                                                                                                                                                 |
+| Profiles     | `src.profiles.affix.group` owns affix-group behavior; `src.profiles.editor.dialogs` and `.profile` own editor primitives/profile composition; `src.profiles.ui` owns the editor window. `src.profiles.validation` consolidates validation and validator behavior. |
+| Settings     | `src.settings.models`, `.hotkeys`, and `.ui` are public seams; model implementations are beneath `models`, while runtime input and Qt remain outside the headless root facade.                                                                                    |
+| Game catalog | `src.game_data` owns localized reference values and lookup data shared by Item, Profiles, Importing, Perception, and Application.                                                                                                                                 |
+| Desktop      | `src.desktop.activity`, `.themes`, and `.widgets` are implementation-bearing subpackages, each exposing its interface from `__init__.py`.                                                                                                                         |
+| Importing    | `src.importing.paragon` contains one common module for normalized Paragon handling. Provider-specific Paragon extraction lives in each provider package (`d4builds`, `infinitybuilds`, `maxroll`, and `mobalytics`).                                              |
 
 The mirrored unit-test tree follows this package/module shape exactly: package initializers map to
 `init_test.py`, and each implementation module maps to `<module>_test.py`. Tests in one capability

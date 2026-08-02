@@ -8,10 +8,10 @@ import lxml.html
 from selenium.common.exceptions import NoSuchElementException, WebDriverException
 from selenium.webdriver.common.by import By
 
-from src.importing.conversion import as_text as _as_text  # ruff:ignore[unused-import]
+from src.game_data import GameCatalog, ItemType
 from src.importing.filters import affix_dict_for_item_type, fix_weapon_type, match_set_aware_seal_affix
 from src.importing.web import hover_and_get_tooltip_html
-from src.item import Affix, AffixType, Dataloader, ItemType
+from src.item import Affix, AffixType
 from src.perception import clean_str, closest_match, correct_name
 
 if TYPE_CHECKING:
@@ -132,7 +132,7 @@ def _get_legendary_aspect(name: str) -> str:
         aspect_name = correct_name(name.lower().replace("aspect", "").strip())
         if aspect_name is None:
             return ""
-        if aspect_name not in Dataloader().aspect_list:
+        if aspect_name not in GameCatalog().aspect_list:
             LOGGER.warning(
                 f"Legendary aspect '{aspect_name}' that is not in our aspect data, unable to add to AspectUpgrades."
             )
@@ -149,13 +149,13 @@ def _extract_mobalytics_charm_set_name(item: Mapping[str, object]) -> str | None
     set_candidate = correct_name(match.group("slug").replace("-", " "))
     if set_candidate is None:
         return None
-    if set_candidate in Dataloader().set_list:
+    if set_candidate in GameCatalog().set_list:
         return set_candidate
     compact_candidate = set_candidate.replace("_", "").replace("-", "")
     return next(
         (
             set_name
-            for set_name in Dataloader().set_list
+            for set_name in GameCatalog().set_list
             if set_name.replace("_", "").replace("-", "") == compact_candidate
         ),
         None,
@@ -183,10 +183,10 @@ def _convert_raw_to_affixes(
                 )
             if matched_name is None:
                 matched_name = closest_match(stat_clean, affix_dict)
-            affix_obj = Affix(name=matched_name)
-            if affix_obj.name is None:
+            if matched_name is None:
                 LOGGER.error(f"Couldn't match {stat=}")
                 continue
+            affix_obj = Affix(name=matched_name)
             if import_greater_affixes and stat.get("isGreater", False):
                 affix_obj.type = AffixType.greater
             result.append(affix_obj)

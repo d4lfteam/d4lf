@@ -29,7 +29,7 @@ from src.desktop import call_on_ui_thread as call_on_ui_thread
 from src.desktop import get_root as get_root
 from src.desktop import is_alive as is_alive
 from src.desktop import post_to_ui_thread as post_to_ui_thread
-from src.item import Filter as Filter
+from src.item.filter import Filter as Filter
 from src.paragon.transform import GRID as GRID
 from src.paragon.transform import NODES_LEN as NODES_LEN
 from src.paragon.transform import nodes_to_grid as nodes_to_grid

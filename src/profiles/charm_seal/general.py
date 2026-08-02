@@ -15,10 +15,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.item import Dataloader
+from src.game_data import GameCatalog
 from src.profiles import AffixFilterCountModel, AspectUniqueFilterModel, CharmFilterModel
 from src.profiles.affix import UNIQUE_ASPECTS_TITLE, AffixPoolWidget, UniqueAspectWidget
-from src.profiles.editor import Container, create_auto_sync_checkbox, create_readonly_line_edit, refresh_widget_style
+from src.profiles.editor.container import Container
+from src.profiles.editor.helpers import create_auto_sync_checkbox, create_readonly_line_edit, refresh_widget_style
 
 CHARMS_TABNAME = "Charms"
 SEALS_TABNAME = "Seals"
@@ -144,7 +145,7 @@ class _CharmSealGeneralMixin:
 
     def add_unique_aspect_item(self: Any, unique_aspect: AspectUniqueFilterModel):
         item = QListWidgetItem()
-        allowed = sorted([k for k in Dataloader().aspect_unique_dict if k.startswith(f"{self.type_prefix}_of")])
+        allowed = sorted([k for k in GameCatalog().aspect_unique_dict if k.startswith(f"{self.type_prefix}_of")])
         widget = UniqueAspectWidget(unique_aspect, allowed_aspects=allowed, parent=self)
         item_size = widget.sizeHint()
         item_size.setWidth(850)
@@ -163,7 +164,7 @@ class _CharmSealGeneralMixin:
                 )
                 return
         existing_names = {unique_aspect.name for unique_aspect in self.config.unique_aspect}
-        allowed = [k for k in Dataloader().aspect_unique_dict if k.startswith(f"{self.type_prefix}_of")]
+        allowed = [k for k in GameCatalog().aspect_unique_dict if k.startswith(f"{self.type_prefix}_of")]
         for aspect_name in allowed:
             if aspect_name in existing_names:
                 continue

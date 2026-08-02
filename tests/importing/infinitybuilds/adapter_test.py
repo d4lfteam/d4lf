@@ -2,13 +2,13 @@ import json
 import typing
 from types import SimpleNamespace
 
+from src.game_data import GameCatalog
 from src.importing import FilenamePart, ImportOptions, ImportRequest
 from src.importing.infinitybuilds import (
     InfinityBuildsParagonCatalog,
     fetch_variants_infinitybuilds,
     import_infinitybuilds,
 )
-from src.item import Dataloader
 
 if typing.TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -104,7 +104,7 @@ def test_fetch_variants_assigns_fallback_ids_after_skipping_empty_variants() -> 
 def test_import_infinitybuilds_saves_one_profile_per_variant_and_resolves_gear_once(
     mock_ini_loader, mocker: MockerFixture
 ) -> None:
-    Dataloader()
+    GameCatalog()
     variants = [
         {
             "id": "v-1",
@@ -151,7 +151,7 @@ def test_import_infinitybuilds_saves_one_profile_per_variant_and_resolves_gear_o
 
 
 def test_import_infinitybuilds_imports_talisman_charms_and_seal(mock_ini_loader, mocker: MockerFixture) -> None:
-    Dataloader()
+    GameCatalog()
     variants = [
         {
             "id": "v-1",

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import QSettings
 
-from src.item import Filter
+from src.item.filter import Filter
 from src.paragon import shared as _shared
 from src.paragon.shared import BUILD_SOURCES, LOGGER, PLAYER_CLASSES, BuildRow, OverlaySettings
 from src.paragon.transform import parse_rotation

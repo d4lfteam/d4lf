@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 
 import cv2  # ruff:ignore[unused-import]
 
-from src.item import Affix, Item, ItemType
+from src.game_data import ItemType
+from src.item import Affix, Item
 from src.logger import setup
 from src.perception import locate_affix_markers_with_diagnostics
 from src.settings import get_ui_coordinates

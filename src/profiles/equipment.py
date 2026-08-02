@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 
-from src.item import ItemRarity, ItemType  # ruff:ignore[typing-only-first-party-import]
+from src.game_data import GameCatalog, ItemRarity, ItemType
 from src.profiles.affixes import (  # ruff:ignore[typing-only-first-party-import]
     AffixFilterCountModel,
     AspectUniqueFilterModel,
@@ -62,10 +62,7 @@ class ItemFilterModel(BaseModel):
 
     @model_validator(mode="after")
     def affix_names_must_match_item_pool(self) -> ItemFilterModel:
-        # This on module level would be a circular import, so we do it lazy for now
-        from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
-
-        affix_dict = Dataloader().affix_dict
+        affix_dict = GameCatalog().affix_dict
         _validate_affix_pool_names(self.affix_pool, affix_dict, "affixPool")
         _validate_affix_pool_names(self.inherent_pool, affix_dict, "inherentPool")
         return self
@@ -129,20 +126,14 @@ class CharmFilterModel(_BaseSealOrCharmFilterModel):
 
     @model_validator(mode="after")
     def affix_names_must_match_charm_pool(self) -> CharmFilterModel:
-        # This on module level would be a circular import, so we do it lazy for now
-        from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
-
-        _validate_affix_pool_names(self.affix_pool, Dataloader().charm_affix_dict, "affixPool")
+        _validate_affix_pool_names(self.affix_pool, GameCatalog().charm_affix_dict, "affixPool")
         return self
 
 
 class SealFilterModel(_BaseSealOrCharmFilterModel):
     @model_validator(mode="after")
     def affix_names_must_match_seal_pool(self) -> SealFilterModel:
-        # This on module level would be a circular import, so we do it lazy for now
-        from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
-
-        _validate_affix_pool_names(self.affix_pool, Dataloader().seal_affix_dict, "affixPool")
+        _validate_affix_pool_names(self.affix_pool, GameCatalog().seal_affix_dict, "affixPool")
         return self
 
 

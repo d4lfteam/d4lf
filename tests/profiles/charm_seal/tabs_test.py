@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import QApplication, QDialog
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from src.item import ItemRarity
+from src.game_data import ItemRarity
 from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,

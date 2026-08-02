@@ -2,6 +2,7 @@ import json
 import logging
 from typing import TYPE_CHECKING, cast
 
+from src.game_data import GameCatalog, ItemRarity, ItemType
 from src.importing.contracts import ImportRequest, ImportResult, VariantMetadata
 from src.importing.filters import (
     create_item_affix_pool,
@@ -22,7 +23,6 @@ from src.importing.maxroll.planner import (
 )
 from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.importing.web import get_with_retry, retry_importer
-from src.item import Dataloader, ItemRarity, ItemType
 from src.perception import correct_name
 from src.profiles import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
 
@@ -174,7 +174,7 @@ def _extract_profile_variant(
                 ),
             )
             if legendary_aspect:
-                if legendary_aspect not in Dataloader().aspect_list:
+                if legendary_aspect not in GameCatalog().aspect_list:
                     LOGGER.warning(
                         f"Found legendary aspect '{legendary_aspect}' that is not in our aspect data, unable to add "
                         f"to AspectUpgrades. Please report a bug."

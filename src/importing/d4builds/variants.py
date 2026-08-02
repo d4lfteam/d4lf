@@ -2,6 +2,7 @@ import logging
 import re
 from typing import TYPE_CHECKING
 
+from src.game_data import WEAPON_TYPES, ItemType
 from src.importing.d4builds.constants import (
     BUILD_OVERVIEW_XPATH,
     GA_XPATH,
@@ -29,7 +30,7 @@ from src.importing.filters import (
     weapon_slot_name_hint,
 )
 from src.importing.pipeline import Variant
-from src.item import WEAPON_TYPES, Affix, AffixType, ItemType
+from src.item import Affix, AffixType
 from src.perception import clean_str, closest_match
 from src.profiles import AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel, ItemFilterModel
 
@@ -114,10 +115,11 @@ def extract_variant(
                 item_type = x
                 if any(substring in affix_name.lower() for substring in ["focus", "offhand", "shield", "totem"]):
                     continue
-            affix_obj = Affix(name=closest_match(clean_str(_corrections(input_str=affix_name)), affix_dict))
-            if affix_obj.name is None:
+            matched_name = closest_match(clean_str(_corrections(input_str=affix_name)), affix_dict)
+            if matched_name is None:
                 LOGGER.error(f"Couldn't match {affix_name=}")
                 continue
+            affix_obj = Affix(name=matched_name)
             if request.options.import_greater_affixes and stat.xpath("../../../..")[0].xpath(GA_XPATH):
                 affix_obj.type = AffixType.greater
             affixes.append(affix_obj)

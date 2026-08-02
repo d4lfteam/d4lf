@@ -1,7 +1,7 @@
 import json
 
+from src.game_data import ItemType
 from src.item.data.affix import Affix
-from src.item.data.item_type import ItemType
 from src.item.models import FilterResult, Item, ItemJSONEncoder, MatchedFilter
 
 

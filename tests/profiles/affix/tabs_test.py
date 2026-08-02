@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import QApplication, QWidget
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from src.item import Dataloader, ItemType
+from src.game_data import GameCatalog, ItemType
 from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,
@@ -115,7 +115,7 @@ def test_affix_group_editor_updates_power_and_greater_count(qapp, mock_ini_loade
 
 
 def test_unique_aspect_widget_value_and_percent_are_mutually_exclusive(qapp, mock_ini_loader):
-    aspect_name = next(iter(Dataloader().aspect_unique_dict))
+    aspect_name = next(iter(GameCatalog().aspect_unique_dict))
     model = AspectUniqueFilterModel(name=aspect_name, value=1.5)
     widget = UniqueAspectWidget(model)
 

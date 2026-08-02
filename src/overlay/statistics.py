@@ -1,12 +1,45 @@
 import logging
 import re
+import threading
 import time
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from src.overlay.settings import load_settings, save_settings
 from src.overlay.singleton import singleton
 from src.perception import Publisher
 
 LOGGER = logging.getLogger(__name__)
+StatsListener = Callable[["StatsSnapshot"], None]
+
+
+@dataclass(frozen=True, slots=True)
+class StatsSnapshot:
+    """A UI-neutral partial update produced by session-statistics processing."""
+
+    gph: int | None = None
+    total_gained: int | None = None
+    eph: int | None = None
+    total_exp: int | None = None
+    t2l: str | None = None
+
+
+_LISTENER_LOCK = threading.RLock()
+_LISTENERS: list[StatsListener] = []
+
+
+def subscribe_stats(listener: StatsListener) -> None:
+    """Subscribe to statistics snapshots emitted by the session tracker."""
+    with _LISTENER_LOCK:
+        if listener not in _LISTENERS:
+            _LISTENERS.append(listener)
+
+
+def unsubscribe_stats(listener: StatsListener) -> None:
+    """Stop delivering statistics snapshots to ``listener``."""
+    with _LISTENER_LOCK:
+        if listener in _LISTENERS:
+            _LISTENERS.remove(listener)
 
 
 def _notify(
@@ -17,10 +50,14 @@ def _notify(
     total_exp: int | None = None,
     t2l: str | None = None,
 ) -> None:
-    # ruff:ignore[import-outside-top-level] - breaks the lifecycle/statistics import cycle
-    from src.overlay.lifecycle import update_stats
-
-    update_stats(gph=gph, total_gained=total_gained, eph=eph, total_exp=total_exp, t2l=t2l)
+    snapshot = StatsSnapshot(gph=gph, total_gained=total_gained, eph=eph, total_exp=total_exp, t2l=t2l)
+    with _LISTENER_LOCK:
+        listeners = tuple(_LISTENERS)
+    for listener in listeners:
+        try:
+            listener(snapshot)
+        except Exception:
+            LOGGER.exception("Failed to notify overlay statistics listener")
 
 
 class _SessionStats:

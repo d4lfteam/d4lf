@@ -3,7 +3,8 @@ import typing
 import pytest
 from natsort import natsorted
 
-from src.item import Affix, Item, ItemRarity, ItemType
+from src.game_data import ItemRarity, ItemType
+from src.item import Affix, Item
 
 from .conftest import (
     _create_mocked_filter,
