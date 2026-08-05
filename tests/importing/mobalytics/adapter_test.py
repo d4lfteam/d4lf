@@ -4,9 +4,9 @@ from types import SimpleNamespace
 
 import pytest
 
+from src.game_data import GameCatalog
 from src.importing import FilenamePart, ImportOptions, ImportRequest
 from src.importing.mobalytics import import_mobalytics
-from src.item import Dataloader
 
 if typing.TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -275,7 +275,7 @@ def test_import_mobalytics_returns_none_for_archived_build(mock_ini_loader) -> N
 
 @pytest.mark.parametrize("url", URLS)
 def test_import_mobalytics(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
-    Dataloader()
+    GameCatalog()
     mocker.patch("builtins.open", new=mocker.mock_open())
     import_mobalytics(
         request=_request(

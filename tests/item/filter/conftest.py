@@ -8,7 +8,7 @@ from typing import Any, cast
 import src.item.filter.engine as engine_module
 import src.item.filter.equipment as equipment_module
 import src.item.filter.special as special_module
-from src.item import Filter
+from src.item.filter import Filter
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture

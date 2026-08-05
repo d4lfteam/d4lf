@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QDialog, QMessageBox, QPushButton, QTabWidget, QTool
 
 from src.profiles.affix.dialogs import CreateItem
 from src.profiles.affix.group import AffixGroupEditor
-from src.profiles.editor import DeleteItem, MinGreaterDialog, MinPercentDialog, MinPowerDialog
+from src.profiles.editor.dialogs import DeleteItem, MinGreaterDialog, MinPercentDialog, MinPowerDialog
 
 if TYPE_CHECKING:
     from src.profiles import DynamicItemFilterModel

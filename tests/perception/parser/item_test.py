@@ -1,5 +1,6 @@
 from src import perception
-from src.item import AffixType, Aspect, Item, ItemRarity, ItemType
+from src.game_data import ItemRarity, ItemType
+from src.item import AffixType, Aspect, Item
 from src.perception import parse_item_text
 
 

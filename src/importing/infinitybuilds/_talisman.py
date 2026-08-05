@@ -2,8 +2,8 @@
 
 from typing import TYPE_CHECKING, cast
 
+from src.game_data import GameCatalog
 from src.importing.conversion import as_string_keyed_mapping as _as_object
-from src.item import Dataloader
 from src.perception import correct_name
 
 if TYPE_CHECKING:
@@ -61,7 +61,7 @@ def _catalog_items_by_id(items: Sequence[_CatalogItem]) -> dict[str, _CatalogIte
 def _charm_set_name(label: str) -> str | None:
     _, separator, suffix = label.partition(" of ")
     candidate = correct_name(suffix) if separator else None
-    return candidate if candidate in Dataloader().set_list else None
+    return candidate if candidate in GameCatalog().set_list else None
 
 
 def _nested_row(rows: object, index: int) -> list[object]:

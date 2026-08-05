@@ -1,14 +1,8 @@
 import logging
-import threading
 import tkinter as tk
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from src.overlay.widget.widget import BossTimerOverlay
+from typing import Any
 
 LOGGER = logging.getLogger(__name__)
-_OVERLAY_INSTANCE: BossTimerOverlay | None = None
-_OVERLAY_LOCK = threading.RLock()
 
 TRANSPARENT_KEY = "#ff00ff"
 CARD_BG = "#151515"

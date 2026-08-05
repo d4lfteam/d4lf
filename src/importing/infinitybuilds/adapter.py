@@ -6,7 +6,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
-from src.importing.contracts import VariantMetadata
+from src.game_data import GameCatalog, ItemRarity, ItemType
+from src.importing.contracts import ImportSourceError, VariantMetadata
 from src.importing.conversion import as_string_keyed_mapping as _as_object
 from src.importing.filters import (
     create_item_affix_pool,
@@ -32,7 +33,6 @@ from src.importing.infinitybuilds.paragon import (
 )
 from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.importing.web import retry_importer
-from src.item import Dataloader, ItemRarity, ItemType
 from src.profiles import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
 
 if TYPE_CHECKING:
@@ -49,7 +49,7 @@ SCRIPT_XPATH = "//script"
 ASPECT_UPGRADE_RARITIES = {"legendary"}
 
 
-class InfinityBuildsError(Exception):
+class InfinityBuildsError(ImportSourceError):
     pass
 
 
@@ -189,7 +189,7 @@ def _build_variant_for_gear(
         aspect_name = resolved.aspects.get(aspect_id, {}).get("label") if aspect_id else None
         if aspect_name and rarity in ASPECT_UPGRADE_RARITIES and request.options.import_aspect_upgrades:
             normalized_aspect_name = _normalize_aspect_name(aspect_name)
-            if normalized_aspect_name in Dataloader().aspect_list:
+            if normalized_aspect_name in GameCatalog().aspect_list:
                 aspect_upgrade_filters.append(normalized_aspect_name)
             else:
                 LOGGER.warning(

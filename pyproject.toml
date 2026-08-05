@@ -71,82 +71,82 @@ skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
 ignore = [
-  "ANN001",  # fix more in the future, this is typing
-  "ANN002",  # fix more in the future, this is typing
-  "ANN003",  # fix more in the future, this is typing
-  "ANN201",  # fix more in the future, this is typing
-  "ANN202",  # fix more in the future, this is typing
-  "ANN204",  # fix more in the future, this is typing
-  "ANN205",  # fix more in the future, this is typing
-  "ARG001",  # fix more in the future
-  "ARG002",  # fix more in the future
-  "C901",  # fix more in the future
-  "COM812",
   "CPY",
-  "D100",
-  "D101",
-  "D102",
-  "D103",
-  "D104",
-  "D105",
-  "D106",
-  "D107",
-  "DOC201",  # fix more in the future, this is doc
-  "DOC501",  # fix more in the future, this is docs
-  "DOC502",  # fix more in the future, this is docs
-  "E501",
-  "ERA001",  # fix more in the future
-  "FBT001",
-  "FBT002",
-  "FIX002",  # fix more in the future
-  "FIX004",  # fix more in the future
-  "G004",
-  "LOG014",
-  "NPY002",  # fix more in the future
-  "PLC0206",  # fix more in the future
-  "PLR0904",  # fix more in the future
-  "PLR0911",  # fix more in the future
-  "PLR0912",  # fix more in the future
-  "PLR0913",
-  "PLR0914",  # fix more in the future
-  "PLR0915",  # fix more in the future
-  "PLR0916",  # fix more in the future
-  "PLR0917",
-  "PLR1702",  # fix more in the future
-  "PLR1704",  # fix more in the future
-  "PLR2004",  # fix more in the future
-  "PLR6104",  # fix more in the future
-  "PLR6201",  # fix more in the future
-  "PLR6301",  # fix more in the future, staticmethods
-  "PLW0108",  # fix more in the future
-  "PLW0602",  # fix more in the future
-  "PLW0603",  # fix more in the future
-  "PLW0717",  # fix more in the future
-  "RUF001",  # fix more in the future
-  "RUF005",  # fix more in the future
-  "RUF012",  # fix more in the future
-  "RUF043",  # fix more in the future
-  "RUF045",  # fix more in the future
-  "RUF059",  # fix more in the future
-  "RUF067",  # fix more in the future
-  "S101",  # fix more in the future
-  "S311",  # fix more in the future
-  "S404",
-  "S506",  # fix more in the future
-  "S603",
-  "S605",  # fix more in the future
-  "S606",  # fix more in the future
-  "S607",
-  "SLF001",  # fix more in the future
-  "T201",  # fix more in the future
-  "TD002",  # fix more in the future
-  "TD003",  # fix more in the future
-  "TD004",  # fix more in the future
-  "TRY002",  # fix more in the future
-  "TRY003",  # fix more in the future
-  "TRY004",  # fix more in the future
-  "TRY400",  # fix more in the future
-  "UP047"  # fix more in the future
+  "ambiguous-unicode-character-string",  # fix more in the future
+  "assert",  # fix more in the future
+  "boolean-default-value-positional-argument",
+  "boolean-type-hint-positional-argument",
+  "collection-literal-concatenation",  # fix more in the future
+  "commented-out-code",  # fix more in the future
+  "complex-structure",  # fix more in the future
+  "dict-index-missing-items",  # fix more in the future
+  "docstring-extraneous-exception",  # fix more in the future, this is docs
+  "docstring-missing-exception",  # fix more in the future, this is docs
+  "docstring-missing-returns",  # fix more in the future, this is doc
+  "error-instead-of-exception",  # fix more in the future
+  "exc-info-outside-except-handler",
+  "global-statement",  # fix more in the future
+  "global-variable-not-assigned",  # fix more in the future
+  "implicit-class-var-in-dataclass",  # fix more in the future
+  "line-contains-hack",  # fix more in the future
+  "line-contains-todo",  # fix more in the future
+  "line-too-long",
+  "literal-membership",  # fix more in the future
+  "logging-f-string",
+  "magic-value-comparison",  # fix more in the future
+  "missing-return-type-private-function",  # fix more in the future, this is typing
+  "missing-return-type-special-method",  # fix more in the future, this is typing
+  "missing-return-type-static-method",  # fix more in the future, this is typing
+  "missing-return-type-undocumented-public-function",  # fix more in the future, this is typing
+  "missing-todo-author",  # fix more in the future
+  "missing-todo-colon",  # fix more in the future
+  "missing-todo-link",  # fix more in the future
+  "missing-trailing-comma",
+  "missing-type-args",  # fix more in the future, this is typing
+  "missing-type-function-argument",  # fix more in the future, this is typing
+  "missing-type-kwargs",  # fix more in the future, this is typing
+  "mutable-class-default",  # fix more in the future
+  "no-self-use",  # fix more in the future, staticmethods
+  "non-augmented-assignment",  # fix more in the future
+  "non-empty-init-module",  # fix more in the future
+  "non-pep695-generic-function",  # fix more in the future
+  "numpy-legacy-random",  # fix more in the future
+  "print",  # fix more in the future
+  "private-member-access",  # fix more in the future
+  "pytest-raises-ambiguous-pattern",  # fix more in the future
+  "raise-vanilla-args",  # fix more in the future
+  "raise-vanilla-class",  # fix more in the future
+  "redefined-argument-from-local",  # fix more in the future
+  "start-process-with-a-shell",  # fix more in the future
+  "start-process-with-no-shell",  # fix more in the future
+  "start-process-with-partial-path",
+  "subprocess-without-shell-equals-true",
+  "suspicious-non-cryptographic-random-usage",  # fix more in the future
+  "suspicious-subprocess-import",
+  "too-many-arguments",
+  "too-many-boolean-expressions",  # fix more in the future
+  "too-many-branches",  # fix more in the future
+  "too-many-locals",  # fix more in the future
+  "too-many-nested-blocks",  # fix more in the future
+  "too-many-positional-arguments",
+  "too-many-public-methods",  # fix more in the future
+  "too-many-return-statements",  # fix more in the future
+  "too-many-statements",  # fix more in the future
+  "too-many-statements-in-try-clause",  # fix more in the future
+  "type-check-without-type-error",  # fix more in the future
+  "undocumented-magic-method",
+  "undocumented-public-class",
+  "undocumented-public-function",
+  "undocumented-public-init",
+  "undocumented-public-method",
+  "undocumented-public-module",
+  "undocumented-public-nested-class",
+  "undocumented-public-package",
+  "unnecessary-lambda",  # fix more in the future
+  "unsafe-yaml-load",  # fix more in the future
+  "unused-function-argument",  # fix more in the future
+  "unused-method-argument",  # fix more in the future
+  "unused-unpacked-variable",  # fix more in the future
 ]
 select = ["ALL"]
 
@@ -154,10 +154,23 @@ select = ["ALL"]
 split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["FBT003", "PLC2701", "PLR2004", "S101", "S311", "SLF001"]
-"src/paragon/__init__.py" = ["F822", "PLC0415"]
-"src/paragon/_*.py" = ["F403", "F405"]
-"src/paragon/_shared.py" = ["ANN401", "F401"]
+"tests/*" = [
+  "assert",
+  "boolean-positional-value-in-call",
+  "import-private-name",
+  "magic-value-comparison",
+  "private-member-access",
+  "suspicious-non-cryptographic-random-usage",
+]
+"src/paragon/__init__.py" = [
+  "import-outside-top-level",
+  "undefined-export",
+]
+"src/paragon/_*.py" = [
+  "undefined-local-with-import-star",
+  "undefined-local-with-import-star-usage"
+]
+"src/paragon/_shared.py" = ["any-type", "unused-import"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 import lxml.html
 from selenium.webdriver.common.by import By
 
+from src.game_data import ItemType
 from src.importing.d4builds.constants import (
     ACTIVE_CHARM_CSS,
     ACTIVE_SEAL_CSS,
@@ -26,7 +27,7 @@ from src.importing.filters import (
     match_set_aware_seal_affix,
 )
 from src.importing.web import hover_and_get_tooltip_html
-from src.item import Affix, ItemType
+from src.item import Affix
 from src.perception import clean_str, closest_match, correct_name
 from src.profiles import CharmFilterModel, SealFilterModel
 

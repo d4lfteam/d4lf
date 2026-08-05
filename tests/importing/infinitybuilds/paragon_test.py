@@ -2,6 +2,7 @@ import typing
 
 import pytest
 
+from src.game_data import GameCatalog
 from src.importing import ImportOptions, ImportRequest
 from src.importing.infinitybuilds import (
     InfinityBuildsParagonCatalog,
@@ -9,7 +10,6 @@ from src.importing.infinitybuilds import (
     fetch_infinitybuilds_paragon_catalog,
     import_infinitybuilds,
 )
-from src.item import Dataloader
 from tests.conftest import INFINITYBUILDS_IMPORT_URLS
 
 if typing.TYPE_CHECKING:
@@ -123,7 +123,7 @@ def test_fetch_infinitybuilds_paragon_catalog_builds_label_maps_from_both_datase
 
 @pytest.mark.parametrize("url", INFINITYBUILDS_IMPORT_URLS)
 def test_import_infinitybuilds(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
-    Dataloader()
+    GameCatalog()
     mocker.patch("builtins.open", new=mocker.mock_open())
     import_infinitybuilds(
         request=_request(

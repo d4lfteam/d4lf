@@ -14,8 +14,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.item import SigilRules, SigilRuleTargetType
-from src.profiles.editor import Container, IgnoreScrollWheelComboBox
+from src.game_data import SigilRules, SigilRuleTargetType
+from src.profiles.editor.container import Container
+from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
 
 if TYPE_CHECKING:
     from src.profiles import SigilConditionModel

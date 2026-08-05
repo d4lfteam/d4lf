@@ -1,4 +1,4 @@
-from src.item import Dataloader, ItemType
+from src.game_data import GameCatalog, ItemType
 
 
 def _item_type_summary(item_types: list[ItemType]) -> str:
@@ -33,8 +33,8 @@ def affix_dict_for_widget(widget) -> dict[str, str]:
     while current:
         config = getattr(current, "config", None)
         if config.__class__.__name__ == "SealFilterModel":
-            return Dataloader().seal_affix_dict
+            return GameCatalog().seal_affix_dict
         if config.__class__.__name__ == "CharmFilterModel":
-            return Dataloader().charm_affix_dict
+            return GameCatalog().charm_affix_dict
         current = current.parent()
-    return Dataloader().affix_dict
+    return GameCatalog().affix_dict

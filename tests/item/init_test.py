@@ -1,4 +1,5 @@
-from src.item import Affix, AffixType, FilterResult, Item, ItemRarity, ItemType, SeasonalAttribute
+from src.game_data import ItemRarity, ItemType
+from src.item import Affix, AffixType, FilterResult, Item, SeasonalAttribute
 
 
 def test_public_item_exports_are_available():

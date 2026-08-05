@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 import lxml.html
 
+from src.game_data import ItemType
+from src.importing.contracts import ImportSourceError
 from src.importing.conversion import as_string_keyed_mapping as _as_mapping
 from src.importing.filters import fix_offhand_type, fix_weapon_type, match_to_enum
 from src.importing.maxroll.constants import (
@@ -15,7 +17,6 @@ from src.importing.maxroll.constants import (
     SCRIPT_XPATH,
 )
 from src.importing.web import get_with_retry
-from src.item import ItemType
 from src.perception import correct_name
 
 if TYPE_CHECKING:
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-class MaxrollError(Exception):
+class MaxrollError(ImportSourceError):
     pass
 
 

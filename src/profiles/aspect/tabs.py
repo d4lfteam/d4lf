@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Protocol, override, runtime_checkable
 
 from src.profiles.aspect.dialogs import AddAspectUpgrade
-from src.profiles.editor import RuleListTab
+from src.profiles.editor.rule_list import RuleListTab
 
 if TYPE_CHECKING:
     from PyQt6.QtWidgets import QDialog

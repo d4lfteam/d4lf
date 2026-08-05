@@ -13,12 +13,13 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.item import Dataloader
+from src.game_data import GameCatalog
 from src.profiles import AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel
 from src.profiles.affix.dialogs import DeleteAffixPool
 from src.profiles.affix.pool import AffixPoolWidget
 from src.profiles.affix.unique_aspect import UniqueAspectWidget
-from src.profiles.editor import Container, refresh_widget_style
+from src.profiles.editor.container import Container
+from src.profiles.editor.helpers import refresh_widget_style
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
@@ -101,7 +102,7 @@ class _AffixGroupPoolsMixin:
 
     def add_unique_aspect(self: Any):
         existing_names = {unique_aspect.name for unique_aspect in self.config.unique_aspect}
-        for aspect_name in Dataloader().aspect_unique_dict:
+        for aspect_name in GameCatalog().aspect_unique_dict:
             if aspect_name in existing_names:
                 continue
             new_unique_aspect = AspectUniqueFilterModel(name=aspect_name, value=None)
@@ -153,7 +154,7 @@ class _AffixGroupPoolsMixin:
     def add_affix_pool(self: Any):
         self.affix_pool_container.expand()
         default_affix = AffixFilterModel(
-            name=next(iter(Dataloader().affix_dict.keys()), ""),  # First valid affix name
+            name=next(iter(GameCatalog().affix_dict.keys()), ""),  # First valid affix name
             value=None,
         )
 
@@ -164,7 +165,7 @@ class _AffixGroupPoolsMixin:
     def add_inherent_pool(self: Any):
         self.inherent_pool_container.expand()
         default_affix = AffixFilterModel(
-            name=next(iter(Dataloader().affix_dict.keys()), ""),  # First valid affix name
+            name=next(iter(GameCatalog().affix_dict.keys()), ""),  # First valid affix name
             value=None,
         )
 

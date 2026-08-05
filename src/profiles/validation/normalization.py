@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from src.item import ItemRarity
+from src.game_data import GameCatalog, ItemRarity
 from src.perception import correct_name
 
 if TYPE_CHECKING:
@@ -17,11 +17,8 @@ def _validate_set_name(name: str | None, field_name: str) -> str | None:
     if not name:
         return None
 
-    # This on module level would be a circular import, so we do it lazy for now
-    from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
-
     name = correct_name(name)
-    if name not in Dataloader().set_list:
+    if name not in GameCatalog().set_list:
         msg = f"{field_name} {name} does not exist"
         raise ValueError(msg)
     return name
@@ -38,10 +35,7 @@ def _normalize_tribute_names(data: str | list[str] | None) -> list[str]:
         return []
     values = [data] if isinstance(data, str) else data
 
-    # This on module level would be a circular import, so we do it lazy for now
-    from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
-
-    tribute_dict = Dataloader().tribute_dict
+    tribute_dict = GameCatalog().tribute_dict
     normalized_names: list[str] = []
     for name in values:
         if not name:

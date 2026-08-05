@@ -1,10 +1,16 @@
 import json
 
+from src.importing import ImportSourceError
 from src.importing.maxroll.constants import PLANNER_API_BASE_URL, PLANNER_BASE_URL
 from src.importing.maxroll.planner import (
+    MaxrollError,
     _extract_planner_url_and_id_from_planner,
     _normalize_item_type_str_for_import_helpers,
 )
+
+
+def test_maxroll_errors_are_import_source_errors() -> None:
+    assert issubclass(MaxrollError, ImportSourceError)
 
 
 def test_maxroll_planner_normalizes_weapon_hands() -> None:

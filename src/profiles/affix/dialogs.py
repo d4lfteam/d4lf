@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.item import Dataloader, ItemType
+from src.game_data import GameCatalog, ItemType
 from src.profiles import AffixFilterCountModel, AffixFilterModel, DynamicItemFilterModel, ItemFilterModel
 
 
@@ -59,7 +59,7 @@ class CreateItem(QDialog):
         item = ItemFilterModel()
         item.item_type = [ItemType.Amulet]
         item.affix_pool = [
-            AffixFilterCountModel(count=[AffixFilterModel(name=next(iter(Dataloader().affix_dict), ""))], min_count=2)
+            AffixFilterCountModel(count=[AffixFilterModel(name=next(iter(GameCatalog().affix_dict), ""))], min_count=2)
         ]
         item.min_power = 100
         return DynamicItemFilterModel(root={self.name_input.text(): item})

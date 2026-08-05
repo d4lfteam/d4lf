@@ -1,8 +1,8 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QComboBox, QCompleter, QDialog, QFormLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 
-from src.item import Dataloader
-from src.profiles.editor import IgnoreScrollWheelComboBox
+from src.game_data import GameCatalog
+from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
 
 
 class AddAspectUpgrade(QDialog):
@@ -21,7 +21,7 @@ class AddAspectUpgrade(QDialog):
         if completer is not None:
             completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
             completer.setFilterMode(Qt.MatchFlag.MatchContains)
-        self.name_input.addItems([name for name in Dataloader().aspect_list if name not in aspect_upgrades])
+        self.name_input.addItems([name for name in GameCatalog().aspect_list if name not in aspect_upgrades])
         self.form_layout.addRow(self.name_label, self.name_input)
         button_layout = QHBoxLayout()
         self.ok_button = QPushButton("OK")

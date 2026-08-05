@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import jsonpath
 
+from src.game_data import WEAPON_TYPES, GameCatalog, ItemType
 from src.importing.conversion import as_string_keyed_mapping_list as _as_mapping_list
 from src.importing.conversion import as_text as _as_text
 from src.importing.filters import (
@@ -27,7 +28,6 @@ from src.importing.mobalytics.extraction import (
 )
 from src.importing.mobalytics.paragon import extract_mobalytics_paragon_steps
 from src.importing.pipeline import Variant
-from src.item import WEAPON_TYPES, Dataloader, ItemType
 from src.perception import correct_name
 from src.profiles import (
     AffixFilterCountModel,
@@ -130,7 +130,7 @@ def build_variant(
         inherents = _convert_raw_to_affixes(raw_inherents, item_type=item_type, guessed_set_name=guessed_set_name)
         if item_type in [ItemType.HoradricSeal, ItemType.Charm]:
             unique_name = (
-                correct_name(item_name) if correct_name(item_name) in Dataloader().aspect_unique_dict else None
+                correct_name(item_name) if correct_name(item_name) in GameCatalog().aspect_unique_dict else None
             )
             set_name = _extract_mobalytics_charm_set_name(item) if item_type == ItemType.Charm else None
             if not affixes and not unique_name and not set_name:

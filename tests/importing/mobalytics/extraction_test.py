@@ -7,10 +7,11 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.remote.webdriver import WebDriver
 
 import src.importing.mobalytics.extraction as mobalytics_module
+from src.game_data import ItemType
 from src.importing import ImportOptions, ImportRequest
+from src.importing.conversion import as_text as _as_text
 from src.importing.mobalytics import extract_mobalytics_paragon_steps
 from src.importing.mobalytics.extraction import (
-    _as_text,
     _convert_raw_to_affixes,
     _extract_mobalytics_charm_set_name,
     _first_jsonpath_result,
@@ -19,7 +20,6 @@ from src.importing.mobalytics.extraction import (
     _log_mobalytics_page_diagnostics,
 )
 from src.importing.paragon import build_paragon_profile_payload
-from src.item import ItemType
 from src.profiles import ParagonPayloadModel
 
 if typing.TYPE_CHECKING:

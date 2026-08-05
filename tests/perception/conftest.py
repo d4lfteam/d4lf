@@ -4,7 +4,8 @@ from typing import cast
 
 import pytest
 
-from src.item import Affix, AffixType, Aspect, Item, ItemRarity, ItemType, SeasonalAttribute
+from src.game_data import ItemRarity, ItemType
+from src.item import Affix, AffixType, Aspect, Item, SeasonalAttribute
 
 
 def _enum_value(enum_type, value):

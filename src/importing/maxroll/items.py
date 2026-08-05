@@ -2,6 +2,7 @@ import logging
 import re
 from typing import TYPE_CHECKING
 
+from src.game_data import ItemRarity, ItemType
 from src.importing.conversion import as_string_keyed_mapping as _as_mapping
 from src.importing.conversion import as_string_keyed_mapping_list as _as_mapping_list
 from src.importing.conversion import as_text as _as_text
@@ -11,7 +12,7 @@ from src.importing.maxroll.constants import (
     SKILL_RANK_BONUS_FORMULAS,
     SKILL_RANK_DESC_LABEL_REGEX,
 )
-from src.item import Affix, AffixType, ItemRarity, ItemType
+from src.item import Affix, AffixType
 from src.perception import clean_str, closest_match
 
 if TYPE_CHECKING:
@@ -162,10 +163,11 @@ def _find_item_affixes(
                 continue
 
             affix_dict = affix_dict_for_item_type(item_type=item_type)
-            affix_obj = Affix(name=closest_match(clean_str(clean_desc), affix_dict))
-            if import_greater_affixes and affix_id.get("greater") is True:
-                affix_obj.type = AffixType.greater
-            if affix_obj.name is not None:
+            matched_name = closest_match(clean_str(clean_desc), affix_dict)
+            if matched_name is not None:
+                affix_obj = Affix(name=matched_name)
+                if import_greater_affixes and affix_id.get("greater") is True:
+                    affix_obj.type = AffixType.greater
                 res.append(affix_obj)
             elif (
                 attributes_list

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import cv2
 
 from src.logger import setup
-from src.perception import TemplateMatch, search_templates
+from src.perception import TemplateMatch, search
 from src.settings import get_ui_coordinates
 from src.tools.replay.common import ReplayConfigurationError, load_replay_image, show_replay_result
 from src.tools.replay.common import font_scale as _font_scale
@@ -151,7 +151,7 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
     previous_resolution = "x".join(str(value) for value in resolution_manager.resolution)
     try:
         resolution_manager.set_resolution(config.game_resolution)
-        search_result = search_templates(
+        search_result = search(
             config.templates,
             inp_img=image,
             threshold=config.threshold,

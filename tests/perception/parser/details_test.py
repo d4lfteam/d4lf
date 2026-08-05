@@ -1,4 +1,4 @@
-from src.item import ItemRarity, ItemType
+from src.game_data import ItemRarity, ItemType
 from src.perception.parser.details import _get_item_rarity, _get_item_type
 
 

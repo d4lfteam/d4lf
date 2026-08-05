@@ -1,0 +1,24 @@
+{
+    "_id": "2268",
+    "char": "Druid",
+    "deleted": false,
+    "is_public": true,
+    "season": "14",
+    "title": "Fixture 2268",
+    "variants": [
+        {
+            "gear": {
+                "0": {
+                    "itemType": "Helm",
+                    "mods": [
+                        {
+                            "name": "abyss_damage"
+                        }
+                    ],
+                    "type": "rare"
+                }
+            },
+            "name": "Compact"
+        }
+    ]
+}

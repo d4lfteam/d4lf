@@ -2,19 +2,8 @@ import enum
 import logging
 import re
 
-from src.item import (
-    Affix,
-    AffixType,
-    Aspect,
-    Dataloader,
-    Item,
-    ItemRarity,
-    ItemType,
-    SeasonalAttribute,
-    SigilRules,
-    is_consumable,
-    is_seal_or_charm,
-)
+from src.game_data import GameCatalog, ItemRarity, ItemType, SigilRules, is_consumable, is_seal_or_charm
+from src.item import Affix, AffixType, Aspect, Item, SeasonalAttribute
 from src.perception.text import correct_name, find_number, keep_letters_and_spaces
 
 
@@ -85,9 +74,9 @@ def _get_affix_counts(tts_section: list[str], item: Item, start: int) -> tuple[i
 
     if item.rarity in [ItemRarity.Unique, ItemRarity.Mythic] and item.name is not None:
         # Uniques can have variable amounts of inherents.
-        unique_data = Dataloader().aspect_unique_dict.get(item.name)
-        if unique_data is not None and unique_data["num_inherents"] is not None:
-            inherent_num = unique_data["num_inherents"]
+        unique_data = GameCatalog().aspect_unique_dict.get(item.name)
+        if isinstance(unique_data, dict) and isinstance(inherent_value := unique_data.get("num_inherents"), int):
+            inherent_num = inherent_value
 
     # Rares have either 3 or 4 affixes so we have to do special handling to figure out where exactly the affixes end.
     # This will also grab up slotted gems but we really don't have much choice
@@ -267,8 +256,8 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         starting_item_type_index = 0
     item.item_type = _get_item_type(" ".join(search_string_split[starting_item_type_index:]))
     item.name = correct_name(tts_item[0])
-    if item.name in Dataloader().bad_tts_uniques:
-        item.name = Dataloader().bad_tts_uniques[item.name]
+    if item.name in GameCatalog().bad_tts_uniques:
+        item.name = GameCatalog().bad_tts_uniques[item.name]
     for line in tts_item:
         if "item power" in line.lower():
             item_power = find_number(line)

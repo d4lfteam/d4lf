@@ -3,7 +3,7 @@ import sys
 import pytest
 
 from src import perception
-from src.item import ItemType
+from src.game_data import ItemType
 
 
 def test_perception_facade_exposes_typed_item_and_geometry_operations() -> None:
@@ -11,7 +11,7 @@ def test_perception_facade_exposes_typed_item_and_geometry_operations() -> None:
 
     assert item is not None
     assert item.original_name == "MALIGNANT HEART"
-    assert perception.center_of_roi((0, 0, 10, 10)) == (5, 5)
+    assert perception.get_center((0, 0, 10, 10)) == (5, 5)
 
 
 def test_parse_item_text_is_typed_facade_for_terminal_items():

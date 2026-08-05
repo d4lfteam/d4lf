@@ -8,7 +8,7 @@ def test_automation_facade_exposes_inventory_and_window_operations():
 
 def test_automation_facade_delegates_hotkeys(monkeypatch):
     sent = []
-    monkeypatch.setattr("src.settings.send", sent.append)
+    monkeypatch.setattr("src.settings.hotkeys.send", sent.append)
 
     automation.send_hotkey("ctrl+f11")
 

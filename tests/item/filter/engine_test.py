@@ -2,7 +2,8 @@ import typing
 
 import pytest
 
-from src.item import Affix, AffixType, Item, ItemRarity, ItemType
+from src.game_data import ItemRarity, ItemType
+from src.item import Affix, AffixType, Item
 from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,

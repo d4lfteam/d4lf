@@ -18,12 +18,12 @@ from src.automation import (
     move_items_to_stash,
     safe_exit,
 )
-from src.item import Dataloader
+from src.game_data import GameCatalog
 from src.loot import VisionMode, create_vision_mode, run_loot_filter
-from src.overlay import InventoryExpTracker, is_info_overlay_open, open_boss_timer_overlay, request_close
+from src.overlay import InventoryExpTracker, is_open, open_overlay, request_close
 from src.overlay import set_busy_checker as set_info_busy_checker
-from src.paragon import request_close as request_close_paragon
-from src.paragon import run_paragon_overlay
+from src.paragon.overlay import request_close as request_close_paragon
+from src.paragon.overlay import run_paragon_overlay
 from src.settings import (
     HOTKEY_SETTING_KEYS,
     LANGUAGE_SETTING_KEYS,
@@ -111,7 +111,7 @@ class ScriptHandler:
         if config.general.language == self._language:
             return
 
-        Dataloader().load_data()
+        GameCatalog().load_data()
         self._language = config.general.language
         LOGGER.info("Reloaded language assets for %s", self._language)
 
@@ -180,7 +180,7 @@ class ScriptHandler:
             return
         self._info_overlay_last_toggle_time = now
 
-        if is_info_overlay_open():
+        if is_open():
             LOGGER.info("Closing Info Panel overlay")
             with suppress(Exception):
                 request_close()
@@ -188,7 +188,7 @@ class ScriptHandler:
 
         LOGGER.info("Opening Info Panel overlay")
         try:
-            open_boss_timer_overlay()
+            open_overlay()
         except Exception:
             LOGGER.exception("Info Panel overlay crashed")
 

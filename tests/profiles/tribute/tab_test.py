@@ -7,9 +7,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication, QDialog, QPushButton
 
-from src.item import ItemRarity
+from src.game_data import ItemRarity
 from src.profiles import TributeFilterModel
-from src.profiles.editor import _to_editor_tribute_filter
+from src.profiles.editor.profile import _to_editor_tribute_filter
 from src.profiles.tribute import CreateTribute, TributesTab
 
 
@@ -53,7 +53,7 @@ def _button(tab: TributesTab, text: str) -> QPushButton:
 
 
 def test_add_tribute_adds_name_rule_with_expected_display_text(qapp, monkeypatch):
-    monkeypatch.setattr("src.profiles.tribute.tab.Dataloader", _FakeLoader)
+    monkeypatch.setattr("src.profiles.tribute.tab.GameCatalog", _FakeLoader)
     monkeypatch.setattr(
         "src.profiles.tribute.tab.CreateTribute",
         lambda *_args, **_kwargs: _AcceptedDialog(
@@ -74,7 +74,7 @@ def test_add_tribute_adds_name_rule_with_expected_display_text(qapp, monkeypatch
 
 
 def test_edit_rarities_updates_summary_and_model(qapp, monkeypatch):
-    monkeypatch.setattr("src.profiles.tribute.tab.Dataloader", _FakeLoader)
+    monkeypatch.setattr("src.profiles.tribute.tab.GameCatalog", _FakeLoader)
     monkeypatch.setattr(
         "src.profiles.tribute.tab.RarityPicker", lambda *_args, **_kwargs: _AcceptedRarityPicker([ItemRarity.Rare])
     )

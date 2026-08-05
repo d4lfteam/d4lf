@@ -2,9 +2,10 @@ import datetime
 import time
 import tkinter as tk
 from contextlib import suppress
-from typing import override
+from typing import Protocol, override
 
 from src.automation import WindowSpec
+from src.overlay import state as _state
 from src.overlay.settings import InfoSettingValue
 from src.overlay.settings import load_settings as load_info_settings
 from src.overlay.settings import save_settings as save_info_settings
@@ -13,15 +14,19 @@ from src.overlay.settings import setting_datetime as _setting_datetime
 from src.overlay.settings import setting_int as _setting_int
 from src.overlay.settings import setting_str as _setting_str
 from src.overlay.statistics import SessionStats
-from src.overlay.widget import shared as _widget_shared
 from src.overlay.widget.shared import TRANSPARENT_KEY, OverlayContract
 from src.perception import game_window_roi
 from src.settings import get_settings
 
 
+class _OverlayClosed(Protocol):
+    def __call__(self, overlay: object | None) -> None: ...
+
+
 class _OverlayCore(OverlayContract):
-    def __init__(self, parent):
+    def __init__(self, parent, on_closed: _OverlayClosed | None = None):
         super().__init__(parent)
+        self._on_closed = on_closed
         self._after_ids: list[str] = []
         self._closing: bool = False
         self._gold_initialized: bool = False
@@ -102,9 +107,10 @@ class _OverlayCore(OverlayContract):
         # only destroy this Toplevel.
         super().destroy()
 
-        with _widget_shared._OVERLAY_LOCK:
-            if _widget_shared._OVERLAY_INSTANCE is self:
-                _widget_shared._OVERLAY_INSTANCE = None
+        if self._on_closed is not None:
+            self._on_closed(self)
+        else:
+            _state.clear_overlay(self)
 
     def _apply_loaded_settings(self):
         # Transition to relative coordinates: Add the current game window offset to the saved position.

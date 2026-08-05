@@ -3,7 +3,7 @@ import time
 
 from src.automation.inventory import InventoryBase
 from src.automation.mouse import Mouse
-from src.perception import TemplateQuery, create_template_query, window_to_monitor
+from src.perception import SearchArgs, window_to_monitor
 from src.settings import get_settings, get_ui_coordinates
 
 LOGGER = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ class Stash(InventoryBase):
     def __init__(self):
         super().__init__(5, 10, is_stash=True)
         self.menu_name = "Stash"
-        self.is_open_search_args: TemplateQuery = create_template_query(
+        self.is_open_search_args = SearchArgs(
             ref=["stash_menu_icon", "stash_menu_icon_medium"], threshold=0.8, roi="stash_menu_icon", use_grayscale=True
         )
         self.curr_tab = 0

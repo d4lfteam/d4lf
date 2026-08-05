@@ -18,8 +18,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.item import SIGIL_RULE_TARGET_TYPES, SigilRules, SigilRuleTargetType
-from src.profiles.editor import IgnoreScrollWheelComboBox
+from src.game_data import SIGIL_RULE_TARGET_TYPES, SigilRules, SigilRuleTargetType
+from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
 
 if TYPE_CHECKING:
     from PyQt6.QtGui import QCloseEvent

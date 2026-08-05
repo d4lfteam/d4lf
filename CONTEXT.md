@@ -2,6 +2,13 @@
 
 ## Glossary
 
+### Game catalog
+
+The localized reference data D4LF uses to recognize Diablo 4 affixes, aspects, item types, sets,
+sigil rule targets, tributes, and tooltip terms. It describes what the game can contain; it is
+independent of both encountered Items and user-authored Profiles.
+_Avoid_: Dataloader, item data.
+
 ### Profile
 
 A user-defined loot filtering configuration for one Diablo 4 build. A profile may include at most one stored Paragon payload for the Paragon overlay.
@@ -37,6 +44,11 @@ The quality tier of a droppable object: common, magic, rare, legendary, unique, 
 ### Ancestral Mythic Unique
 
 The visual presentation of an existing Mythic/Unique equipment item with an animated tooltip border. It is not a separate item type or rarity in D4LF.
+
+### Transfiguration
+
+A crafting transformation applied to an item after it drops. It is not the item's intrinsic loot
+identity and does not define a profile's loot-filter target.
 
 ### Rarity filter
 
@@ -75,6 +87,16 @@ _Avoid_: Filename box, build name selector.
 
 A named alternative within an imported build. Use this term for source-specific labels such as subbuilds.
 _Avoid_: Subbuild.
+
+### Variant identifier
+
+A source-relative, stable identity used to select a Variant independently of its user-facing name.
+Variant names may be empty or duplicated and are never identities.
+
+### Importable Variant
+
+A Variant containing at least one supported equipment item. A partial equipment loadout may be
+importable; a narrative-only Variant is not.
 
 ### Sigil rule
 

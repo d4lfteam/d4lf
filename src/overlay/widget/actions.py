@@ -7,6 +7,12 @@ from src.perception import monitor_to_window
 
 
 class _OverlayActions(OverlayContract):
+    def _close_overlay(self) -> None:
+        """Close the overlay from its own UI without importing lifecycle code."""
+        self._destroy_settings_popup()
+        self._close_all_submenus()
+        self.destroy()
+
     def _close_all_submenus(self):
         for key, existing_popup in list(self._open_submenus.items()):
             if existing_popup.winfo_exists():

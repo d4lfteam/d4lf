@@ -63,6 +63,7 @@ class ImportPipeline:
         build = adapter.extract()
         options = request.options
         saved_file_names: list[str] = []
+        used_file_names: set[str] = set()
         selected_profile = ProfileModel(name="imported profile")
         selected_variant = ""
         selected_paragon = None
@@ -80,16 +81,24 @@ class ImportPipeline:
             if options.import_aspect_upgrades and variant.aspect_upgrade_filters:
                 profile.aspect_upgrades = variant.aspect_upgrade_filters
 
-            file_name = options.custom_file_name or assemble_profile_file_name(
-                source_name=build.source_name,
-                class_name=build.class_name,
-                season_number=build.season_number,
-                build_header=build.build_header,
-                variant_name=variant.name,
-                filename_parts=options.filename_parts,
-            )
-            if options.custom_file_name and len(build.variants) > 1:
-                file_name = f"{file_name}_{index + 1}"
+            if options.custom_file_name:
+                file_name = options.custom_file_name
+                if len(build.variants) > 1:
+                    file_name = f"{file_name}_{index + 1}"
+            else:
+                base_file_name = assemble_profile_file_name(
+                    source_name=build.source_name,
+                    class_name=build.class_name,
+                    season_number=build.season_number,
+                    build_header=build.build_header,
+                    variant_name=variant.name,
+                    filename_parts=options.filename_parts,
+                )
+                file_name = base_file_name
+                suffix = 2
+                while file_name in used_file_names:
+                    file_name = f"{base_file_name}_{suffix}"
+                    suffix += 1
 
             if options.export_paragon:
                 if variant.paragon_steps:
@@ -112,6 +121,7 @@ class ImportPipeline:
                 .file_name
             )
             saved_file_names.append(corrected_file_name)
+            used_file_names.add(corrected_file_name)
             if index == 0:
                 selected_profile = profile
                 selected_variant = variant.name

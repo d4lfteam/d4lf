@@ -34,7 +34,7 @@ def test_windows_window_adapter_selects_windows_backend():
 
 def test_hotkey_interface_delegates_to_configured_input_backend(monkeypatch, mocker: MockerFixture):
     send = mocker.Mock()
-    monkeypatch.setattr("src.settings.send", send)
+    monkeypatch.setattr("src.settings.hotkeys.send", send)
 
     automation.send_hotkey("ctrl+f11")
 

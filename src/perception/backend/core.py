@@ -1,7 +1,17 @@
+import sys
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+if sys.platform == "win32":
+    from .windows import WindowsTTSBackend
+
+    _Backend = WindowsTTSBackend
+else:
+    from .noop import NoopTTSBackend
+
+    _Backend = NoopTTSBackend
 
 
 class TTSBackend(Protocol):
@@ -17,10 +27,4 @@ class TTSBackend(Protocol):
 
 
 def load_backend() -> TTSBackend:
-    if __import__("sys").platform == "win32":
-        from src.perception.backend.windows import WindowsTTSBackend  # ruff:ignore[import-outside-top-level]
-
-        return WindowsTTSBackend()
-    from src.perception.backend.noop import NoopTTSBackend  # ruff:ignore[import-outside-top-level]
-
-    return NoopTTSBackend()
+    return _Backend()

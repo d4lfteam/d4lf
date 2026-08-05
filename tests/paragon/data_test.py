@@ -1,4 +1,5 @@
-from src.paragon import NODES_LEN, format_board_display_text
+from src.paragon import NODES_LEN
+from src.paragon.overlay import format_board_display_text
 from src.profiles import ParagonBoardModel
 
 

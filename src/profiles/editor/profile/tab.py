@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.item import Dataloader
+from src.game_data import GameCatalog
 from src.profiles import (
     EmptyError,
     Failed,
@@ -27,7 +27,8 @@ from src.profiles import (
     ValidationError,
     YamlError,
 )
-from src.profiles.editor import ProfileEditor, QSettingsLastOpenedStore
+from src.profiles.editor.profile.core import ProfileEditor
+from src.profiles.editor.session_store import QSettingsLastOpenedStore
 
 LOGGER = logging.getLogger(__name__)
 PROFILE_TABNAME = "edit profile (beta)"
@@ -69,8 +70,8 @@ class ProfileTab(QWidget):
         tools_groupbox.setLayout(tools_groupbox_layout)
         info_layout.addWidget(tools_groupbox)
         self.main_layout.addLayout(info_layout)
-        self.itemTypes = Dataloader().item_types_dict
-        self.affixesNames = Dataloader().affix_dict
+        self.itemTypes = GameCatalog().item_types_dict
+        self.affixesNames = GameCatalog().affix_dict
         scroll_widget.setLayout(self.scrollable_layout)
         scroll_area.setWidget(scroll_widget)
         self.main_layout.addWidget(scroll_area)

@@ -1,15 +1,18 @@
 import tkinter as tk
 import typing
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Protocol
 
 import pytest
 
 if typing.TYPE_CHECKING:
+    from collections.abc import Callable
+
     from pytest_mock import MockerFixture
 
 import src.loot.fast as fast_module
-from src.item import FilterResult, Item, ItemRarity, MatchedFilter
+from src.game_data import ItemRarity
+from src.item import FilterResult, Item, MatchedFilter
 from src.loot.fast import VisionModeFast, create_match_text, fast_feedback
 
 
@@ -50,6 +53,33 @@ class _MeasuredText:
         self.placements.append(kwargs)
 
 
+class _FastMode(Protocol):
+    textbox: object | None
+    root: object
+    request_clear: Callable[[], object]
+    request_draw: Callable[[str, str], object]
+
+    def on_tts(self, value: object) -> object: ...
+
+    def clear_textbox(self) -> None: ...
+
+    def adjust_textbox_size(self) -> None: ...
+
+    def create_textbox(self) -> None: ...
+
+
+def _new_fast_mode() -> _FastMode:
+    closure = getattr(VisionModeFast, "__closure__", None)
+    if not isinstance(closure, tuple):
+        raise AssertionError
+    for cell in closure:
+        implementation = cell.cell_contents
+        if isinstance(implementation, type):
+            implementation_type: type[_FastMode] = implementation
+            return object.__new__(implementation_type)
+    raise AssertionError
+
+
 def test_fast_mode_preserves_match_details_and_feedback():
     assert create_match_text([MatchedFilter("Build", aspect_match=True, set_match=True)]) == [
         "Build\n  - Aspect\n  - Set"
@@ -70,9 +100,7 @@ def test_fast_mode_omits_redundant_aspect_for_always_kept_mythics():
 
 
 def test_fast_mode_clears_unmatched_items_without_drawing(monkeypatch, mocker: MockerFixture) -> None:
-    wrapped = cast("Any", VisionModeFast)
-    mode_type = next(cell.cell_contents for cell in wrapped.__closure__ if isinstance(cell.cell_contents, type))
-    mode = object.__new__(mode_type)
+    mode = _new_fast_mode()
     mode.request_clear = mocker.Mock()
     mode.request_draw = mocker.Mock()
 
@@ -91,9 +119,7 @@ def test_fast_mode_clears_unmatched_items_without_drawing(monkeypatch, mocker: M
 
 
 def test_clearing_before_next_match_does_not_leave_a_dead_textbox() -> None:
-    wrapped = cast("Any", VisionModeFast)
-    mode_type = next(cell.cell_contents for cell in wrapped.__closure__ if isinstance(cell.cell_contents, type))
-    mode = object.__new__(mode_type)
+    mode = _new_fast_mode()
     mode.textbox = _DestroyableText()
 
     mode.clear_textbox()
@@ -104,9 +130,7 @@ def test_clearing_before_next_match_does_not_leave_a_dead_textbox() -> None:
 
 
 def test_fast_match_textbox_gets_content_sized_geometry(monkeypatch) -> None:
-    wrapped = cast("Any", VisionModeFast)
-    mode_type = next(cell.cell_contents for cell in wrapped.__closure__ if isinstance(cell.cell_contents, type))
-    mode = object.__new__(mode_type)
+    mode = _new_fast_mode()
     textbox = _MeasuredText()
     mode.textbox = textbox
 
@@ -127,9 +151,7 @@ def test_fast_match_textbox_gets_content_sized_geometry(monkeypatch) -> None:
 
 @pytest.mark.parametrize(("configured", "expected"), [(None, (1920.0, 1440.0)), ((300, 500), (300, 500))])
 def test_fast_textbox_uses_configured_position_or_centered_default(monkeypatch, configured, expected) -> None:
-    wrapped = cast("Any", VisionModeFast)
-    mode_type = next(cell.cell_contents for cell in wrapped.__closure__ if isinstance(cell.cell_contents, type))
-    mode = object.__new__(mode_type)
+    mode = _new_fast_mode()
     textbox = _MeasuredText()
     mode.root = object()
     mode.textbox = None

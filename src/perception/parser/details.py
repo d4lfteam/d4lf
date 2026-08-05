@@ -3,7 +3,8 @@ from typing import TYPE_CHECKING
 
 import rapidfuzz
 
-from src.item import Affix, AffixType, Aspect, Dataloader, ItemRarity, ItemType, is_armor, is_jewelry, is_weapon
+from src.game_data import GameCatalog, ItemRarity, ItemType, is_armor, is_jewelry, is_weapon
+from src.item import Affix, AffixType, Aspect
 from src.perception.text import correct_name
 
 if TYPE_CHECKING:
@@ -98,9 +99,9 @@ def _get_aspect_or_set_from_tts_section(tts_section: list[str], item: Item, star
 
 def _get_set_from_text(set_text: str) -> str | None:
     set_name = correct_name(set_text)
-    if set_name in Dataloader().bad_tts_uniques:
-        set_name = Dataloader().bad_tts_uniques[set_name]
-    if set_name in Dataloader().set_list:
+    if set_name in GameCatalog().bad_tts_uniques:
+        set_name = GameCatalog().bad_tts_uniques[set_name]
+    if set_name in GameCatalog().set_list:
         return set_name
     return None
 
@@ -173,10 +174,10 @@ def _clean_value_text(text: str) -> str:
 
 def _get_affix_dictionary(item_type: ItemType | None) -> dict[str, str]:
     if item_type == ItemType.HoradricSeal:
-        return Dataloader().affix_dict | Dataloader().seal_affix_dict
+        return GameCatalog().affix_dict | GameCatalog().seal_affix_dict
     if item_type == ItemType.Charm:
-        return Dataloader().affix_dict | Dataloader().charm_affix_dict
-    return Dataloader().affix_dict
+        return GameCatalog().affix_dict | GameCatalog().charm_affix_dict
+    return GameCatalog().affix_dict
 
 
 def _is_known_affix_text(text: str, item_type: ItemType | None) -> bool:
@@ -211,7 +212,7 @@ def _get_aspect_from_text(text: str, name: str) -> Aspect:
 
 # For legendary aspects
 def _get_aspect_from_name(text: str, name: str) -> Aspect | None:
-    for aspect_name in Dataloader().aspect_list:
+    for aspect_name in GameCatalog().aspect_list:
         if aspect_name in name:
             return Aspect(text=text, name=aspect_name)
 

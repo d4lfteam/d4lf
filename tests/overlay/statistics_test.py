@@ -2,6 +2,21 @@ import time
 
 from src.overlay import SessionStats
 from src.overlay import statistics as _statistics
+from src.overlay.statistics import StatsSnapshot, subscribe_stats, unsubscribe_stats
+
+
+def test_statistics_publishes_a_snapshot_without_lifecycle(monkeypatch) -> None:
+    monkeypatch.setattr(_statistics, "load_settings", lambda: {"capture_gold_stats": False, "capture_exp_stats": True})
+    stats = SessionStats()
+    received: list[StatsSnapshot] = []
+    subscribe_stats(received.append)
+
+    try:
+        stats.on_info_stat("Level 10 Experience: 100 / 500")
+    finally:
+        unsubscribe_stats(received.append)
+
+    assert received == [StatsSnapshot(total_exp=0, t2l="-")]
 
 
 def test_experience_increments_and_reset_clears_session(monkeypatch):

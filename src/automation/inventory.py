@@ -5,7 +5,7 @@ import numpy as np
 
 from src.automation.menu import Menu
 from src.automation.mouse import Mouse
-from src.perception import capture, center_of_roi, crop_image, grid_rois, search_templates, window_to_monitor
+from src.perception import capture, crop, get_center, search, to_grid, window_to_monitor
 from src.settings import get_ui_coordinates
 
 
@@ -52,22 +52,22 @@ class InventoryBase(Menu):
         if img is None:
             img = capture()
         slots_roi = (int(self.slots_roi[0]), int(self.slots_roi[1]), int(self.slots_roi[2]), int(self.slots_roi[3]))
-        grid = grid_rois(slots_roi, self.rows, self.columns)
+        grid = to_grid(slots_roi, self.rows, self.columns)
         occupied_slots = []
         empty_slots = []
 
         for slot_roi in grid:
-            item_slot = ItemSlot(bounding_box=slot_roi, center=center_of_roi(slot_roi))
-            slot_img = crop_image(img, slot_roi)
+            item_slot = ItemSlot(bounding_box=slot_roi, center=get_center(slot_roi))
+            slot_img = crop(img, slot_roi)
 
             hsv_img = cv2.cvtColor(slot_img, cv2.COLOR_BGR2HSV)
             mean_value_overall = np.mean(hsv_img[:, :, 2])
             rel_fav_flag = get_ui_coordinates().roi.rel_fav_flag
             fav_roi = (int(rel_fav_flag[0]), int(rel_fav_flag[1]), int(rel_fav_flag[2]), int(rel_fav_flag[3]))
-            fav_flag_crop = crop_image(hsv_img, fav_roi)
+            fav_flag_crop = crop(hsv_img, fav_roi)
             mean_value_fav = cv2.mean(fav_flag_crop)[2]
 
-            res_junk = search_templates(self.junk_template, slot_img, threshold=0.65, use_grayscale=True)
+            res_junk = search(self.junk_template, slot_img, threshold=0.65, use_grayscale=True)
 
             if mean_value_fav > 212:
                 item_slot.is_fav = True

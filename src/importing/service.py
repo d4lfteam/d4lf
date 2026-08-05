@@ -8,7 +8,12 @@ adapter's internal options, including its retry and browser behavior.
 from collections.abc import Callable
 from urllib.parse import urlparse
 
-from src.importing.contracts import ImportRequest, ImportResult, ImportSource, VariantMetadata
+from src.importing.contracts import ImportRequest, ImportResult, ImportSession, ImportSource, VariantMetadata
+from src.importing.d2core import D2CoreImportSource, parse_d2core_url
+from src.importing.d4builds import fetch_variants_d4builds, import_d4builds
+from src.importing.infinitybuilds import fetch_variants_infinitybuilds, import_infinitybuilds
+from src.importing.maxroll import fetch_variants_maxroll, import_maxroll
+from src.importing.mobalytics import fetch_variants_mobalytics, import_mobalytics
 
 ImportCallable = Callable[[ImportRequest], ImportResult | None]
 VariantFetcher = Callable[[ImportRequest], list[VariantMetadata]]
@@ -35,41 +40,42 @@ class _SelectedSource:
         return result
 
 
+def open_session(url: str, source: ImportSource | None = None) -> ImportSession:
+    """Open one explicit source session for discovery and import.
+
+    A caller may pass a selected source to keep source construction at its
+    boundary.
+    """
+    selected_source = source if source is not None else select_source(url)
+    return ImportSession(selected_source)
+
+
 def select_source(url: str) -> ImportSource:
     """Select the source adapter for a normalized build-guide URL."""
     host = (urlparse(url.strip()).hostname or "").casefold()
+    if host in {"d2core.com", "www.d2core.com"}:
+        parse_d2core_url(url)
+        return D2CoreImportSource()
     if host == "maxroll.gg" or host.endswith(".maxroll.gg"):
-        from src.importing.maxroll import (  # ruff:ignore[import-outside-top-level]
-            fetch_variants_maxroll,
-            import_maxroll,
-        )
-
         return _SelectedSource("maxroll", import_maxroll, fetch_variants_maxroll)
     if host == "d4builds.gg" or host.endswith(".d4builds.gg"):
-        from src.importing.d4builds import (  # ruff:ignore[import-outside-top-level]
-            fetch_variants_d4builds,
-            import_d4builds,
-        )
-
         return _SelectedSource("d4builds", import_d4builds, fetch_variants_d4builds)
     if host == "infinitybuilds.gg" or host.endswith(".infinitybuilds.gg"):
-        from src.importing.infinitybuilds import (  # ruff:ignore[import-outside-top-level]
-            fetch_variants_infinitybuilds,
-            import_infinitybuilds,
-        )
-
         return _SelectedSource("infinitybuilds", import_infinitybuilds, fetch_variants_infinitybuilds)
     if host == "mobalytics.gg" or host.endswith(".mobalytics.gg"):
-        from src.importing.mobalytics import (  # ruff:ignore[import-outside-top-level]
-            fetch_variants_mobalytics,
-            import_mobalytics,
-        )
-
         return _SelectedSource("mobalytics", import_mobalytics, fetch_variants_mobalytics)
     message = f"Unsupported build-guide URL: {url}"
     raise UnsupportedImportSourceError(message)
 
 
-def import_build(request: ImportRequest, source: ImportSource | None = None) -> ImportResult:
+def import_build(
+    request: ImportRequest, source: ImportSource | None = None, *, session: ImportSession | None = None
+) -> ImportResult:
     """Import a build through one source-independent request/result seam."""
-    return (source or select_source(request.url)).import_build(request)
+    active_session = session or open_session(request.url, source)
+    owns_session = session is None
+    try:
+        return active_session.import_build(request)
+    finally:
+        if owns_session:
+            active_session.close()

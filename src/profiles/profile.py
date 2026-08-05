@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
 
+from src.game_data import GameCatalog
 from src.profiles.affixes import GlobalUniqueModel  # ruff:ignore[typing-only-first-party-import]
 from src.profiles.equipment import (  # ruff:ignore[typing-only-first-party-import]
     DynamicCharmFilterModel,
@@ -71,9 +72,6 @@ class ProfileModel(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def aspects_must_exist(cls, data: object) -> object:
-        # This on module level would be a circular import, so we do it lazy for now
-        from src.item import Dataloader  # ruff:ignore[import-outside-top-level]
-
         data_dict = _as_string_keyed_dict(data)
         if data_dict is None:
             return data
@@ -83,7 +81,7 @@ class ProfileModel(BaseModel):
         if aspect_key not in data_dict:
             return data
 
-        all_aspects_list = Dataloader().aspect_list
+        all_aspects_list = GameCatalog().aspect_list
         raw_aspects = data_dict[aspect_key]
         if not isinstance(raw_aspects, list):
             return data

@@ -1,4 +1,4 @@
-from src.importing.contracts import FilenamePart, ImportOptions, ImportRequest
+from src.importing.contracts import FilenamePart, ImportOptions, ImportRequest, ImportSession
 
 
 def test_import_request_strips_url_and_normalizes_options() -> None:
@@ -35,3 +35,28 @@ def test_variant_selection_is_immutable_and_normalizes_ids() -> None:
     assert selection.ids == ("1", "2")
     assert "1" in selection
     assert bool(selection)
+
+
+def test_import_session_retains_source_and_closes_idempotently() -> None:
+    class FakeSource:
+        name = "fixture"
+        close_calls = 0
+
+        def fetch_variants(self, request):
+            return []
+
+        def import_build(self, request):
+            raise AssertionError
+
+        def close(self):
+            self.close_calls += 1
+
+    source = FakeSource()
+    session = ImportSession(source)
+
+    assert session.source is source
+    session.close()
+    session.close()
+
+    assert source.close_calls == 1
+    assert session.closed

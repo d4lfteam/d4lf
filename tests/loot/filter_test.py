@@ -5,7 +5,8 @@ from types import SimpleNamespace
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
-from src.item import Affix, AffixType, FilterResult, Item, ItemRarity, ItemType
+from src.game_data import ItemRarity, ItemType
+from src.item import Affix, AffixType, FilterResult, Item
 from src.loot import filter as _filter
 from src.loot.filter import check_items
 from src.settings import ItemRefreshType

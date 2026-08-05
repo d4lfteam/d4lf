@@ -8,10 +8,6 @@ from src.overlay.widget.shared import ACCENT, ACTIVE_GREEN, CARD_BG, MUTED, TEXT
 class _OverlayMenu(OverlayContract):
     def _show_context_menu(self, event):
         """Create and display a persistent settings popup."""
-        # Import lazily because lifecycle construction imports this widget.
-        # ruff:ignore[import-outside-top-level] - breaks the lifecycle/widget import cycle
-        from src.overlay.lifecycle import request_close
-
         self._destroy_settings_popup()
 
         if event:
@@ -264,7 +260,7 @@ class _OverlayMenu(OverlayContract):
         for label, cmd in [
             ("Refresh Timers Now", self._auto_sync),
             ("Lock Position", self._toggle_lock),
-            ("Close Overlay", request_close),
+            ("Close Overlay", self._close_overlay),
         ]:
             fg_color = TEXT
             if label == "Lock Position" and self.locked:

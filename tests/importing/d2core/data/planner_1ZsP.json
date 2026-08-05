@@ -1,0 +1,167 @@
+{
+    "_id": "1ZsP",
+    "char": "Druid",
+    "deleted": false,
+    "is_public": true,
+    "season": "14",
+    "title": "Fixture 1ZsP",
+    "variants": [
+        {
+            "gear": {
+                "0": {
+                    "itemType": "Helm",
+                    "mods": [
+                        {
+                            "name": "abyss_damage"
+                        }
+                    ],
+                    "type": "rare"
+                }
+            },
+            "name": "Rare"
+        },
+        {
+            "gear": {
+                "0": {
+                    "itemType": "Helm",
+                    "key": "fixture-aspect",
+                    "mods": [
+                        {
+                            "name": "abyss_damage"
+                        }
+                    ],
+                    "type": "legendary"
+                }
+            },
+            "name": "Legendary"
+        },
+        {
+            "gear": {
+                "0": {
+                    "itemType": "Helm",
+                    "key": "fixture-unique",
+                    "mods": [],
+                    "type": "uniqueItem"
+                }
+            },
+            "name": "Unique"
+        },
+        {
+            "charms": [
+                {
+                    "key": "fixture-charm",
+                    "mods": [
+                        {
+                            "name": "all_stats"
+                        }
+                    ],
+                    "set": "fixture-set",
+                    "type": "Charm"
+                }
+            ],
+            "gear": {
+                "0": {
+                    "itemType": "Helm",
+                    "mods": [
+                        {
+                            "name": "abyss_damage"
+                        }
+                    ],
+                    "type": "rare"
+                }
+            },
+            "name": "Charm"
+        },
+        {
+            "charms": [
+                {
+                    "key": "fixture-seal",
+                    "mods": [
+                        {
+                            "name": "adept_action_damage_reduction_while_moving"
+                        }
+                    ],
+                    "type": "HoradricSeal"
+                }
+            ],
+            "gear": {
+                "0": {
+                    "itemType": "Helm",
+                    "mods": [
+                        {
+                            "name": "abyss_damage"
+                        }
+                    ],
+                    "type": "rare"
+                }
+            },
+            "name": "Seal"
+        },
+        {
+            "gear": {
+                "0": {
+                    "itemType": "Helm",
+                    "mods": [
+                        {
+                            "greater": true,
+                            "name": "abyss_damage"
+                        }
+                    ],
+                    "type": "rare"
+                }
+            },
+            "name": "Greater"
+        },
+        {
+            "gear": {
+                "0": {
+                    "itemType": "Helm",
+                    "mods": [
+                        {
+                            "name": "abyss_damage"
+                        }
+                    ],
+                    "type": "rare"
+                }
+            },
+            "name": "Paragon",
+            "paragon": {
+                "fixture-board": {
+                    "data": [
+                        "0_0_fixture-node"
+                    ],
+                    "index": 1,
+                    "rotate": 0
+                }
+            }
+        },
+        {
+            "gear": {
+                "0": {
+                    "itemType": "Helm",
+                    "mods": [
+                        {
+                            "name": "abyss_damage"
+                        }
+                    ],
+                    "type": "rare"
+                }
+            },
+            "name": "Alternative"
+        },
+        {
+            "gear": {
+                "0": {
+                    "itemType": "Helm",
+                    "mods": [
+                        {
+                            "name": "abyss_damage"
+                        }
+                    ],
+                    "type": "rare"
+                }
+            },
+            "name": "Alternative two"
+        }
+    ]
+}

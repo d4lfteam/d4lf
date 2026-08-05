@@ -15,14 +15,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Amulet"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -44,14 +44,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Helm"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 724,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -134,14 +134,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -209,14 +209,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -301,14 +301,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -361,14 +361,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -438,14 +438,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -528,14 +528,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Helm"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -622,14 +622,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -715,14 +715,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -809,14 +809,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -871,14 +871,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -931,14 +931,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -1040,14 +1040,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -1150,14 +1150,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -1195,14 +1195,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Helm"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -1234,14 +1234,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Helm"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -1275,14 +1275,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Helm"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -1326,14 +1326,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Charm"
                         },
                         "name": "skillful_charm",
                         "original_name": "SKILLFUL CHARM",
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Magic"
                         },
                         "seasonal_attribute": null,
@@ -1388,14 +1388,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Charm"
                         },
                         "name": "speedy_charm_of_greed",
                         "original_name": "SPEEDY CHARM OF GREED",
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Rare"
                         },
                         "seasonal_attribute": null,
@@ -1450,14 +1450,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Charm"
                         },
                         "name": "mlor_of_sescherons_fury",
                         "original_name": "MLOR OF SESCHERONS FURY",
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Set"
                         },
                         "seasonal_attribute": null,
@@ -1522,14 +1522,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Charm"
                         },
                         "name": "tuskhelm_of_joritz_the_mighty",
                         "original_name": "TUSKHELM OF JORITZ THE MIGHTY",
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -1577,14 +1577,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Charm"
                         },
                         "name": "tuskhelm_of_joritz_the_mighty",
                         "original_name": "TUSKHELM OF JORITZ THE MIGHTY",
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -1622,14 +1622,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Charm"
                         },
                         "name": "speedy_charm_of_greed",
                         "original_name": "SPEEDY CHARM OF GREED",
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Rare"
                         },
                         "seasonal_attribute": null,
@@ -1682,14 +1682,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Charm"
                         },
                         "name": "fer_of_sescherons_fury",
                         "original_name": "FER OF SESCHERONS FURY",
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Set"
                         },
                         "seasonal_attribute": null,
@@ -1727,14 +1727,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Charm"
                         },
                         "name": "skillful_charm",
                         "original_name": "SKILLFUL CHARM",
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Rare"
                         },
                         "seasonal_attribute": null,
@@ -1774,14 +1774,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Charm"
                         },
                         "name": "tuskhelm_of_joritz_the_mighty",
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Mythic"
                         },
                         "seasonal_attribute": null,
@@ -1833,7 +1833,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Helm"
                                 }
                             ],
@@ -1898,7 +1898,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Boots"
                                 }
                             ],
@@ -1963,7 +1963,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Boots"
                                 }
                             ],
@@ -2023,7 +2023,7 @@
                             ],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Boots"
                                 }
                             ],
@@ -2070,11 +2070,11 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "ChestArmor"
                                 },
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Legs"
                                 }
                             ],
@@ -2133,7 +2133,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Boots"
                                 }
                             ],
@@ -2168,7 +2168,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Boots"
                                 }
                             ],
@@ -2238,7 +2238,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Boots"
                                 }
                             ],
@@ -2285,7 +2285,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Boots"
                                 }
                             ],
@@ -2332,7 +2332,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Boots"
                                 }
                             ],
@@ -2390,7 +2390,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Boots"
                                 }
                             ],
@@ -2398,7 +2398,7 @@
                             "min_power": 0,
                             "rarities": [
                                 {
-                                    "__enum__": "src.item.data.rarity.ItemRarity",
+                                    "__enum__": "src.game_data.rarity.ItemRarity",
                                     "value": "Rare"
                                 }
                             ],
@@ -2430,7 +2430,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Boots"
                                 }
                             ],
@@ -2579,7 +2579,7 @@
                             "min_greater_affix_count": 0,
                             "rarities": [
                                 {
-                                    "__enum__": "src.item.data.rarity.ItemRarity",
+                                    "__enum__": "src.game_data.rarity.ItemRarity",
                                     "value": "Rare"
                                 }
                             ],
@@ -2606,7 +2606,7 @@
                             "min_greater_affix_count": 0,
                             "rarities": [
                                 {
-                                    "__enum__": "src.item.data.rarity.ItemRarity",
+                                    "__enum__": "src.game_data.rarity.ItemRarity",
                                     "value": "Magic"
                                 }
                             ],
@@ -2664,7 +2664,7 @@
                             "min_greater_affix_count": 0,
                             "rarities": [
                                 {
-                                    "__enum__": "src.item.data.rarity.ItemRarity",
+                                    "__enum__": "src.game_data.rarity.ItemRarity",
                                     "value": "Legendary"
                                 }
                             ],
@@ -2690,7 +2690,7 @@
                             "min_greater_affix_count": 1,
                             "rarities": [
                                 {
-                                    "__enum__": "src.item.data.rarity.ItemRarity",
+                                    "__enum__": "src.game_data.rarity.ItemRarity",
                                     "value": "Legendary"
                                 }
                             ],
@@ -2831,7 +2831,7 @@
                     },
                     "rarities": [
                         {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Rare"
                         }
                     ],
@@ -2863,7 +2863,7 @@
                     },
                     "rarities": [
                         {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Rare"
                         }
                     ],
@@ -2890,7 +2890,7 @@
                     },
                     "rarities": [
                         {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Rare"
                         }
                     ],
@@ -2957,7 +2957,7 @@
                     ],
                     "rarities": [
                         {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         }
                     ]
@@ -3005,7 +3005,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Helm"
                                 }
                             ],
@@ -3046,7 +3046,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Boots"
                                 }
                             ],
@@ -3111,7 +3111,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Boots"
                                 }
                             ],
@@ -3155,7 +3155,7 @@
                             "inherent_pool": [],
                             "item_type": [
                                 {
-                                    "__enum__": "src.item.data.item_type.ItemType",
+                                    "__enum__": "src.game_data.item_type.ItemType",
                                     "value": "Shield"
                                 }
                             ],
@@ -3299,14 +3299,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Legs"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 844,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Rare"
                         },
                         "seasonal_attribute": null,
@@ -3381,14 +3381,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "HoradricSeal"
                         },
                         "name": "resistant_horadric_seal_of_glory",
                         "original_name": "RESISTANT HORADRIC SEAL OF GLORY",
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -3459,14 +3459,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "HoradricSeal"
                         },
                         "name": "resistant_horadric_seal_of_current",
                         "original_name": "RESISTANT HORADRIC SEAL OF CURRENT",
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -3506,14 +3506,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "HoradricSeal"
                         },
                         "name": "resistant_horadric_seal_of_glory",
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Mythic"
                         },
                         "seasonal_attribute": null,
@@ -3582,7 +3582,7 @@
                 "is_ancestral": false,
                 "is_in_shop": false,
                 "item_type": {
-                    "__enum__": "src.item.data.item_type.ItemType",
+                    "__enum__": "src.game_data.item_type.ItemType",
                     "value": "Sigil"
                 },
                 "name": null,
@@ -3651,7 +3651,7 @@
                 "is_ancestral": false,
                 "is_in_shop": false,
                 "item_type": {
-                    "__enum__": "src.item.data.item_type.ItemType",
+                    "__enum__": "src.game_data.item_type.ItemType",
                     "value": "Sigil"
                 },
                 "name": null,
@@ -3689,14 +3689,14 @@
                 "is_ancestral": false,
                 "is_in_shop": false,
                 "item_type": {
-                    "__enum__": "src.item.data.item_type.ItemType",
+                    "__enum__": "src.game_data.item_type.ItemType",
                     "value": "Sigil"
                 },
                 "name": null,
                 "original_name": null,
                 "power": null,
                 "rarity": {
-                    "__enum__": "src.item.data.rarity.ItemRarity",
+                    "__enum__": "src.game_data.rarity.ItemRarity",
                     "value": "Common"
                 },
                 "seasonal_attribute": null,
@@ -3761,14 +3761,14 @@
                 "is_ancestral": false,
                 "is_in_shop": false,
                 "item_type": {
-                    "__enum__": "src.item.data.item_type.ItemType",
+                    "__enum__": "src.game_data.item_type.ItemType",
                     "value": "Sigil"
                 },
                 "name": null,
                 "original_name": null,
                 "power": null,
                 "rarity": {
-                    "__enum__": "src.item.data.rarity.ItemRarity",
+                    "__enum__": "src.game_data.rarity.ItemRarity",
                     "value": "Mythic"
                 },
                 "seasonal_attribute": null,
@@ -3833,14 +3833,14 @@
                 "is_ancestral": false,
                 "is_in_shop": false,
                 "item_type": {
-                    "__enum__": "src.item.data.item_type.ItemType",
+                    "__enum__": "src.game_data.item_type.ItemType",
                     "value": "Sigil"
                 },
                 "name": null,
                 "original_name": null,
                 "power": null,
                 "rarity": {
-                    "__enum__": "src.item.data.rarity.ItemRarity",
+                    "__enum__": "src.game_data.rarity.ItemRarity",
                     "value": "Common"
                 },
                 "seasonal_attribute": null,
@@ -3905,7 +3905,7 @@
                 "is_ancestral": false,
                 "is_in_shop": false,
                 "item_type": {
-                    "__enum__": "src.item.data.item_type.ItemType",
+                    "__enum__": "src.game_data.item_type.ItemType",
                     "value": "Sigil"
                 },
                 "name": null,
@@ -3959,7 +3959,7 @@
                 "is_ancestral": false,
                 "is_in_shop": false,
                 "item_type": {
-                    "__enum__": "src.item.data.item_type.ItemType",
+                    "__enum__": "src.game_data.item_type.ItemType",
                     "value": "Sigil"
                 },
                 "name": null,
@@ -4016,14 +4016,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Sigil"
                         },
                         "name": null,
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Common"
                         },
                         "seasonal_attribute": null,
@@ -4061,14 +4061,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Sigil"
                         },
                         "name": null,
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Common"
                         },
                         "seasonal_attribute": null,
@@ -4106,14 +4106,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Sigil"
                         },
                         "name": null,
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Common"
                         },
                         "seasonal_attribute": null,
@@ -4151,14 +4151,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Sigil"
                         },
                         "name": null,
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Common"
                         },
                         "seasonal_attribute": null,
@@ -4274,14 +4274,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Sigil"
                         },
                         "name": null,
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Common"
                         },
                         "seasonal_attribute": null,
@@ -4397,14 +4397,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Sigil"
                         },
                         "name": null,
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Common"
                         },
                         "seasonal_attribute": null,
@@ -4520,14 +4520,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Sigil"
                         },
                         "name": null,
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Common"
                         },
                         "seasonal_attribute": null,
@@ -4643,14 +4643,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Sigil"
                         },
                         "name": null,
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Common"
                         },
                         "seasonal_attribute": null,
@@ -4690,14 +4690,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Sigil"
                         },
                         "name": null,
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Mythic"
                         },
                         "seasonal_attribute": null,
@@ -4768,14 +4768,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Sigil"
                         },
                         "name": null,
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Mythic"
                         },
                         "seasonal_attribute": null,
@@ -4803,14 +4803,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Tribute"
                         },
                         "name": "tribute_of_andariel",
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Magic"
                         },
                         "seasonal_attribute": null,
@@ -4834,14 +4834,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Tribute"
                         },
                         "name": "tribute_of_ascendance_resolute",
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -4865,14 +4865,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Tribute"
                         },
                         "name": "tribute_of_harmony",
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Legendary"
                         },
                         "seasonal_attribute": null,
@@ -4894,14 +4894,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Tribute"
                         },
                         "name": "tribute_of_ascendance_resolute",
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Magic"
                         },
                         "seasonal_attribute": null,
@@ -4925,14 +4925,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Tribute"
                         },
                         "name": "tribute_of_andariel",
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Mythic"
                         },
                         "seasonal_attribute": null,
@@ -4956,14 +4956,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Tribute"
                         },
                         "name": "tribute_of_fake",
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Mythic"
                         },
                         "seasonal_attribute": null,
@@ -4985,14 +4985,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Tribute"
                         },
                         "name": "tribute_of_fake",
                         "original_name": null,
                         "power": null,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Common"
                         },
                         "seasonal_attribute": null,
@@ -5031,14 +5031,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Shield"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 925,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -5071,14 +5071,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Shield"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 800,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -5113,14 +5113,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Shield"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 925,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -5153,14 +5153,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Shield"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -5194,14 +5194,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Shield"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 800,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -5296,14 +5296,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Shield"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 800,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -5337,14 +5337,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Shield"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 800,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -5378,14 +5378,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Shield"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 925,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Mythic"
                         },
                         "seasonal_attribute": null,
@@ -5417,14 +5417,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Shield"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 800,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Mythic"
                         },
                         "seasonal_attribute": null,
@@ -5458,14 +5458,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Amulet"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -5503,14 +5503,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Helm"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Rare"
                         },
                         "seasonal_attribute": null,
@@ -5560,14 +5560,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Helm"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -5615,14 +5615,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Helm"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -5687,14 +5687,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -5757,14 +5757,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -5860,14 +5860,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -5960,14 +5960,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Boots"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -6001,14 +6001,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Shield"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -6040,14 +6040,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Shield"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,
@@ -6081,14 +6081,14 @@
                         "is_ancestral": false,
                         "is_in_shop": false,
                         "item_type": {
-                            "__enum__": "src.item.data.item_type.ItemType",
+                            "__enum__": "src.game_data.item_type.ItemType",
                             "value": "Shield"
                         },
                         "name": null,
                         "original_name": null,
                         "power": 910,
                         "rarity": {
-                            "__enum__": "src.item.data.rarity.ItemRarity",
+                            "__enum__": "src.game_data.rarity.ItemRarity",
                             "value": "Unique"
                         },
                         "seasonal_attribute": null,

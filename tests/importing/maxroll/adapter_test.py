@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from src.game_data import GameCatalog, ItemType
 from src.importing import ImportOptions, ImportRequest, VariantSelection
 from src.importing.maxroll import extract_maxroll_paragon_steps
 from src.importing.maxroll.adapter import (
@@ -13,7 +14,6 @@ from src.importing.maxroll.adapter import (
     _resolve_visible_profile_index,
     import_maxroll,
 )
-from src.item import Dataloader, ItemType
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -33,7 +33,7 @@ URLS = [
 
 @pytest.mark.parametrize("url", URLS)
 def test_import_maxroll(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
-    Dataloader()  # need to load data first or the mock will make it impossible
+    GameCatalog()  # need to load data first or the mock will make it impossible
     mocker.patch("builtins.open", new=mocker.mock_open())
     request = ImportRequest(
         url=url,
@@ -80,7 +80,7 @@ def test_resolve_visible_profile_index_skips_hidden_profiles() -> None:
 
 
 def test_import_maxroll_keeps_mythic_item_without_affixes(mock_ini_loader, mocker: MockerFixture) -> None:
-    Dataloader()
+    GameCatalog()
     planner_response = mocker.Mock()
     planner_response.json.return_value = {
         "season": "14",
@@ -136,7 +136,7 @@ def test_import_maxroll_keeps_mythic_item_without_affixes(mock_ini_loader, mocke
 
 
 def test_import_maxroll_extracts_the_selected_profile(mock_ini_loader, mocker: MockerFixture) -> None:
-    Dataloader()
+    GameCatalog()
     planner_response = mocker.Mock()
     planner_response.json.return_value = {
         "season": "14",
@@ -221,7 +221,7 @@ def test_find_item_affixes_resolves_skill_rank_category_from_related_description
     ],
 )
 def test_find_item_affixes_skips_transfiguration_affixes(affix_key, attribute, caplog) -> None:
-    Dataloader()
+    GameCatalog()
     mapping_data = {"affixes": {affix_key: {"id": 1, "magicType": 0, "attributes": [attribute]}}, "skills": {}}
 
     with caplog.at_level(logging.INFO):

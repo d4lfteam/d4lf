@@ -111,18 +111,21 @@ def setup_webdriver(uc: bool = False) -> WebDriver:
     match get_settings().general.browser:
         case BrowserType.edge:
             options = webdriver.EdgeOptions()
+            options.enable_bidi = True
             options.add_argument("--headless=new")
             options.add_argument("log-level=3")
             options.add_argument(f"--user-agent={HEADERS['User-Agent']}")
             return webdriver.Edge(options=options)
         case BrowserType.chrome:
             options = webdriver.ChromeOptions()
+            options.enable_bidi = True
             options.add_argument("--headless=new")
             options.add_argument("log-level=3")
             options.add_argument(f"--user-agent={HEADERS['User-Agent']}")
             return webdriver.Chrome(options=options)
         case BrowserType.firefox:
             options = webdriver.FirefoxOptions()
+            options.enable_bidi = True
             options.add_argument("--headless")
             options.set_preference("general.useragent.override", HEADERS["User-Agent"])
             return webdriver.Firefox(options=options)

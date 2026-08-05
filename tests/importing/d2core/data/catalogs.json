@@ -1,0 +1,80 @@
+{
+    "affix": {
+        "affix": [
+            {
+                "desc": "abyss damage",
+                "key": "abyss_damage",
+                "name": "abyss damage"
+            },
+            {
+                "desc": "all stats",
+                "key": "all_stats",
+                "name": "all stats"
+            }
+        ]
+    },
+    "aspect": [
+        {
+            "key": "fixture-aspect",
+            "name": "accelerating"
+        }
+    ],
+    "paragon": {
+        "Druid": {
+            "board": {
+                "fixture-board": {
+                    "data": [
+                        "fixture-node"
+                    ],
+                    "name": "Fixture Board"
+                }
+            },
+            "glyph": {},
+            "node": {}
+        }
+    },
+    "talisman": {
+        "affixes": {
+            "charm": [
+                {
+                    "desc": "all stats",
+                    "key": "all_stats",
+                    "name": "all stats"
+                }
+            ],
+            "seal": [
+                {
+                    "desc": "adept action damage reduction while moving",
+                    "key": "adept_action_damage_reduction_while_moving",
+                    "name": "adept action damage reduction while moving"
+                }
+            ]
+        },
+        "charm": [
+            {
+                "key": "fixture-charm",
+                "name": "Fixture Charm",
+                "set": "fixture-set"
+            }
+        ],
+        "itemSets": {
+            "fixture-set": {
+                "key": "fixture-set",
+                "name": "survival"
+            }
+        },
+        "seal": [
+            {
+                "key": "fixture-seal",
+                "name": "Fixture Seal"
+            }
+        ]
+    },
+    "uniqueItem": [
+        {
+            "equipTypeName": "Helm",
+            "key": "fixture-unique",
+            "name": "100000_steps"
+        }
+    ]
+}

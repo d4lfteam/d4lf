@@ -4,10 +4,10 @@ from PyQt6.QtCore import QSignalBlocker, Qt
 from PyQt6.QtGui import QDoubleValidator, QIntValidator
 from PyQt6.QtWidgets import QCheckBox, QComboBox, QCompleter, QHBoxLayout, QLineEdit, QMessageBox, QWidget
 
-from src.item import Dataloader
+from src.game_data import GameCatalog
 from src.profiles import AffixFilterModel, SealFilterModel
 from src.profiles.affix.helpers import affix_dict_for_widget, get_affixes_for_set, get_set_and_base_for_key
-from src.profiles.editor import IgnoreScrollWheelComboBox
+from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
@@ -69,9 +69,9 @@ class AffixWidget(QWidget):
     def create_set_name_combobox(self):
         self.set_combo = IgnoreScrollWheelComboBox()
         self.set_combo.setFixedWidth(200)
-        self.set_combo.addItems(["(No Set Selected)"] + sorted(Dataloader().set_list))
+        self.set_combo.addItems(["(No Set Selected)"] + sorted(GameCatalog().set_list))
 
-        curr_set, _ = get_set_and_base_for_key(self.affix.name, Dataloader().set_list)
+        curr_set, _ = get_set_and_base_for_key(self.affix.name, GameCatalog().set_list)
         if curr_set:
             self.set_combo.setCurrentText(curr_set)
         else:
@@ -96,10 +96,10 @@ class AffixWidget(QWidget):
             selected_set = self.set_combo.currentText()
             target_set = None if selected_set == "(No Set Selected)" else selected_set
 
-            self.filtered_affixes = get_affixes_for_set(affix_dict, Dataloader().set_list, target_set)
+            self.filtered_affixes = get_affixes_for_set(affix_dict, GameCatalog().set_list, target_set)
             self.name_combo.addItems(sorted(self.filtered_affixes.values()))
 
-            curr_set, _ = get_set_and_base_for_key(self.affix.name, Dataloader().set_list)
+            curr_set, _ = get_set_and_base_for_key(self.affix.name, GameCatalog().set_list)
             if curr_set == target_set and self.affix.name in self.filtered_affixes:
                 self.name_combo.setCurrentText(self.filtered_affixes[self.affix.name])
             else:

@@ -1,14 +1,16 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
-from src.perception.tooltip.texture import BULLET_THRESHOLD
+from src.perception.tooltip import texture
+
+BULLET_THRESHOLD = texture.BULLET_THRESHOLD
+BulletSearchTrace = texture.BulletSearchTrace
 
 if TYPE_CHECKING:
     import numpy as np
 
     from src.item import Affix, Item
     from src.perception.matching.models import TemplateMatch
-    from src.perception.tooltip.texture import BulletSearchTrace
 
 _AFFIX_BULLET_TEMPLATE_REFS = [
     "affix_bullet_point_1",
@@ -181,21 +183,13 @@ def _locate_tts_guided_template(
     short_separator_match: TemplateMatch | None,
     diagnostics: LocatorDiagnostics | None,
 ) -> list[LocatedMarker] | None:
-    # Keep texture imports lazy so non-vision tests do not import Windows-only screenshot dependencies.
-    from src.perception.tooltip.texture import (  # ruff:ignore[import-outside-top-level]
-        find_bullets_for_templates,
-        find_bullets_for_templates_traced,
-        find_seperator_long,
-        find_seperator_short,
-    )
-
     if tooltip_image is None:
         if diagnostics is not None:
             diagnostics.failure_reason = "missing_separator"
         return None
 
     separator_match = (
-        short_separator_match if short_separator_match is not None else find_seperator_short(tooltip_image)
+        short_separator_match if short_separator_match is not None else texture.find_seperator_short(tooltip_image)
     )
     if separator_match is None:
         if diagnostics is not None:
@@ -206,7 +200,9 @@ def _locate_tts_guided_template(
         diagnostics.separator = _to_template_match_trace(separator_match)
     markers: list[LocatedMarker] = []
 
-    long_separator_match = find_seperator_long(tooltip_image, separator_match, match_index=1 if item.inherent else 0)
+    long_separator_match = texture.find_seperator_long(
+        tooltip_image, separator_match, match_index=1 if item.inherent else 0
+    )
     if diagnostics is not None and long_separator_match is not None:
         diagnostics.long_separator = _to_template_match_trace(long_separator_match)
 
@@ -216,11 +212,11 @@ def _locate_tts_guided_template(
             "max_y": long_separator_match.region[1] if long_separator_match is not None else None,
         }
         if diagnostics is None:
-            affix_bullets = find_bullets_for_templates(
+            affix_bullets = texture.find_bullets_for_templates(
                 tooltip_image, separator_match, _AFFIX_BULLET_TEMPLATE_REFS, **bullet_search_kwargs
             )
         else:
-            affix_bullets, affix_trace = find_bullets_for_templates_traced(
+            affix_bullets, affix_trace = texture.find_bullets_for_templates_traced(
                 tooltip_image, separator_match, _AFFIX_BULLET_TEMPLATE_REFS, **bullet_search_kwargs
             )
             diagnostics.affix_bullets = _to_bullet_match_diagnostics(affix_trace)
@@ -237,11 +233,11 @@ def _locate_tts_guided_template(
 
     if aspect_matched and item.aspect is not None:
         if diagnostics is None:
-            aspect_bullets = find_bullets_for_templates(
+            aspect_bullets = texture.find_bullets_for_templates(
                 tooltip_image, separator_match, _ASPECT_BULLET_TEMPLATE_REFS, expected_count=1
             )
         else:
-            aspect_bullets, aspect_trace = find_bullets_for_templates_traced(
+            aspect_bullets, aspect_trace = texture.find_bullets_for_templates_traced(
                 tooltip_image, separator_match, _ASPECT_BULLET_TEMPLATE_REFS, expected_count=1
             )
             diagnostics.aspect_bullets = _to_bullet_match_diagnostics(aspect_trace)

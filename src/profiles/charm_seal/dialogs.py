@@ -2,7 +2,7 @@ from typing import override
 
 from PyQt6.QtWidgets import QDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout
 
-from src.item import Dataloader
+from src.game_data import GameCatalog
 from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,
@@ -11,7 +11,7 @@ from src.profiles import (
     DynamicSealFilterModel,
     SealFilterModel,
 )
-from src.profiles.editor import CheckboxListDialog
+from src.profiles.editor.pickers import CheckboxListDialog
 
 
 class CreateCharmOrSeal(QDialog):
@@ -55,7 +55,7 @@ class CreateCharmOrSeal(QDialog):
 
     def get_value(self):
         item_name = self.name_input.text()
-        affix_dict = Dataloader().charm_affix_dict if self.is_charm else Dataloader().seal_affix_dict
+        affix_dict = GameCatalog().charm_affix_dict if self.is_charm else GameCatalog().seal_affix_dict
         default_affix = AffixFilterModel(name=next(iter(affix_dict.keys()), ""))
         default_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
         if self.is_charm:
@@ -71,7 +71,7 @@ class SetPicker(CheckboxListDialog[str]):
             parent,
             window_title="Select Sets",
             group_title="Sets",
-            options=sorted(Dataloader().set_list),
+            options=sorted(GameCatalog().set_list),
             selected=selected_sets,
             note_text="Select which sets this charm filter should match.",
         )

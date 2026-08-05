@@ -1,30 +1,42 @@
 import logging
-import threading
+from typing import cast
 
 from src.desktop import call_on_ui_thread, get_root
+from src.overlay import state as _state
 from src.overlay.settings import InfoSettingValue, load_settings
-from src.overlay.widget import shared as _widget_shared
+from src.overlay.statistics import StatsSnapshot, subscribe_stats, unsubscribe_stats
 from src.overlay.widget.widget import BossTimerOverlay
 
 LOGGER = logging.getLogger(__name__)
-_lock = threading.RLock()
+
+
+def _on_stats(snapshot: StatsSnapshot) -> None:
+    """Compose the UI update at the lifecycle boundary."""
+    update_stats(
+        gph=snapshot.gph,
+        total_gained=snapshot.total_gained,
+        eph=snapshot.eph,
+        total_exp=snapshot.total_exp,
+        t2l=snapshot.t2l,
+    )
 
 
 def open_overlay() -> None:
     def create() -> None:
-        with _lock:
-            if _widget_shared._OVERLAY_INSTANCE is None:
-                _widget_shared._OVERLAY_INSTANCE = BossTimerOverlay(get_root())
+        with _state._OVERLAY_LOCK:
+            if _state.get_overlay() is None:
+                overlay = BossTimerOverlay(get_root(), on_closed=_forget)
+                _state.set_overlay(overlay)
+                subscribe_stats(_on_stats)
 
     call_on_ui_thread(create)
 
 
 def request_close() -> None:
-    with _lock:
-        overlay = _widget_shared._OVERLAY_INSTANCE
+    overlay = cast("BossTimerOverlay | None", _state.get_overlay())
     if overlay is not None:
 
-        def close() -> None:
+        def close(overlay: BossTimerOverlay = overlay) -> None:
             if overlay.winfo_exists():
                 overlay.destroy()
             _forget(overlay)
@@ -33,14 +45,13 @@ def request_close() -> None:
 
 
 def is_open() -> bool:
-    with _lock:
-        return _widget_shared._OVERLAY_INSTANCE is not None
+    return _state.is_open()
 
 
 def _forget(overlay: object | None) -> None:
-    with _lock:
-        if _widget_shared._OVERLAY_INSTANCE is overlay:
-            _widget_shared._OVERLAY_INSTANCE = None
+    if overlay is None or _state.get_overlay() is overlay:
+        _state.clear_overlay(overlay)
+        unsubscribe_stats(_on_stats)
 
 
 def update_stats(
@@ -51,11 +62,13 @@ def update_stats(
     total_exp: int | None = None,
     t2l: str | None = None,
 ) -> None:
-    with _lock:
-        overlay = _widget_shared._OVERLAY_INSTANCE
+    overlay = cast("BossTimerOverlay | None", _state.get_overlay())
     if overlay is not None:
+        visible_overlay = overlay
         call_on_ui_thread(
-            lambda: overlay.update_stats(gph=gph, total_gained=total_gained, eph=eph, total_exp=total_exp, t2l=t2l)
+            lambda: visible_overlay.update_stats(
+                gph=gph, total_gained=total_gained, eph=eph, total_exp=total_exp, t2l=t2l
+            )
         )
 
 

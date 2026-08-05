@@ -1,3 +1,4 @@
+from src.game_data import WEAPON_TYPES, GameCatalog, ItemRarity, ItemType
 from src.importing import DEFAULT_FILENAME_PARTS, FilenamePart, ImportOptions, ImportRequest, assemble_profile_file_name
 from src.importing.filters import (
     affix_dict_for_item_type,
@@ -7,7 +8,7 @@ from src.importing.filters import (
     match_set_aware_seal_affix,
     unique_filter_name,
 )
-from src.item import WEAPON_TYPES, Affix, AffixType, Dataloader, ItemRarity, ItemType
+from src.item import Affix, AffixType
 from src.profiles import CharmFilterModel, ItemFilterModel, ProfileModel, to_yaml_str
 
 
@@ -109,14 +110,14 @@ def test_unique_filter_name_adds_suffix_for_existing_filter_names() -> None:
 
 
 def test_affix_dict_for_item_type_uses_context_specific_dict() -> None:
-    assert affix_dict_for_item_type(ItemType.Charm) is Dataloader().charm_affix_dict
-    assert affix_dict_for_item_type(ItemType.HoradricSeal) is Dataloader().seal_affix_dict
-    assert affix_dict_for_item_type(ItemType.Ring) is Dataloader().affix_dict
-    assert affix_dict_for_item_type(None) is Dataloader().affix_dict
+    assert affix_dict_for_item_type(ItemType.Charm) is GameCatalog().charm_affix_dict
+    assert affix_dict_for_item_type(ItemType.HoradricSeal) is GameCatalog().seal_affix_dict
+    assert affix_dict_for_item_type(ItemType.Ring) is GameCatalog().affix_dict
+    assert affix_dict_for_item_type(None) is GameCatalog().affix_dict
 
 
 def test_match_set_aware_seal_affix_returns_none_for_unknown_set() -> None:
-    assert match_set_aware_seal_affix("maximum resolve", Dataloader().seal_affix_dict, "unknown_set") is None
+    assert match_set_aware_seal_affix("maximum resolve", GameCatalog().seal_affix_dict, "unknown_set") is None
 
 
 def test_is_unique_like_rarity_handles_enum_and_string_values() -> None:

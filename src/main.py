@@ -19,6 +19,8 @@ from src.app import (
     prepare_runtime_directories,
     show_settings_load_error,
 )
+from src.app.backend import run_backend
+from src.app.shell import UnifiedMainWindow
 from src.autoupdater import start_auto_update
 from src.settings import Settings, SettingsLoadError, get_settings
 
@@ -47,8 +49,6 @@ def main() -> None:
         return
 
     prepare_runtime_directories()
-    from src.app.backend import run_backend  # ruff:ignore[import-outside-top-level]
-
     settings = get_settings()
     adv = settings.advanced_options
     LOGGER.info("============ D4 Loot Filter %s ============", __version__)
@@ -145,8 +145,6 @@ def run() -> int:
     os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(str(ICON_PATH)))
-    from src.app.shell import UnifiedMainWindow  # ruff:ignore[import-outside-top-level]
-
     window = UnifiedMainWindow()
     window.show()
     return app.exec()

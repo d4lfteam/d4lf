@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QHBoxLayout, QLabel, QListWidget, QListWidgetItem, Q
 from src.profiles import AffixFilterCountModel, AffixFilterModel
 from src.profiles.affix.helpers import affix_dict_for_widget
 from src.profiles.affix.widget import AffixWidget
-from src.profiles.editor import IgnoreScrollWheelSpinBox
+from src.profiles.editor.dialogs import IgnoreScrollWheelSpinBox
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"

@@ -7,7 +7,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from src.settings import BASE_DIR
+from src.settings.constants import BASE_DIR
 from src.settings.loader import IniConfigLoader
 from src.settings.models.ui import ColorsModel, HSVRangeModel, UiOffsetsModel, UiPosModel, UiRoiModel
 from src.settings.types import Template
@@ -77,8 +77,6 @@ POSITIONS = (
 
 @lru_cache
 def load_templates() -> dict[str, Template]:
-    from src.perception import alpha_mask  # ruff:ignore[import-outside-top-level]
-
     result = {}
     template_paths = Path(BASE_DIR / "assets/templates").rglob("*.png")
     for template in template_paths:
@@ -95,6 +93,14 @@ def load_templates() -> dict[str, Template]:
             img_bgra=template_img,
             img_bgr=cv2.cvtColor(template_img, cv2.COLOR_BGRA2BGR),
             img_gray=cv2.cvtColor(template_img, cv2.COLOR_BGRA2GRAY),
-            alpha_mask=alpha_mask(template_img),
+            alpha_mask=_alpha_to_mask(template_img),
         )
     return result
+
+
+def _alpha_to_mask(image: np.ndarray) -> np.ndarray | None:
+    """Build the template mask without depending on Perception."""
+    if image.shape[2] == 4 and np.min(image[:, :, 3]) == 0:
+        _, mask = cv2.threshold(image[:, :, 3], 1, 255, cv2.THRESH_BINARY)
+        return mask
+    return None
