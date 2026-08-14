@@ -24,17 +24,17 @@ SIGILS_TABNAME = "Sigils"
 
 
 class SigilsTab(QWidget):
-    def __init__(self, sigil_model: SigilFilterModel, parent=None):
+    def __init__(self, sigil_model: SigilFilterModel, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.sigil_model = sigil_model
         self.loaded = False
 
-    def load(self):
+    def load(self) -> None:
         if not self.loaded:
             self.setup_ui()
             self.loaded = True
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         """Populate the grid layout with existing groups."""
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 20, 0, 20)
@@ -43,7 +43,7 @@ class SigilsTab(QWidget):
         self.create_form()
         self.create_containers()
 
-    def create_button_layout(self):
+    def create_button_layout(self) -> None:
         btn_layout = QHBoxLayout()
 
         add_sigil_btn = QPushButton("Add Sigil")
@@ -60,7 +60,7 @@ class SigilsTab(QWidget):
         btn_layout.addWidget(remove_blacklist_sigil_btn)
         self.main_layout.addLayout(btn_layout)
 
-    def create_form(self):
+    def create_form(self) -> None:
         self.general_form = QFormLayout()
         self.priority_combobox = IgnoreScrollWheelComboBox()
         self.priority_combobox.setEditable(True)
@@ -88,7 +88,7 @@ class SigilsTab(QWidget):
 
         self.main_layout.addLayout(self.general_form)
 
-    def create_containers(self):
+    def create_containers(self) -> None:
         # Blacklist
         self.blacklist_container = Container("Blacklist")
         self.blacklist_layout = QVBoxLayout(self.blacklist_container.content_widget)
@@ -110,7 +110,7 @@ class SigilsTab(QWidget):
         self.main_layout.addWidget(self.whitelist_container)
         self.main_layout.addWidget(self.blacklist_container)
 
-    def add_sigil(self, sigil_condition: SigilConditionModel, whitelist: bool = False):
+    def add_sigil(self, sigil_condition: SigilConditionModel, whitelist: bool = False) -> None:
         target = SigilRules.default().target(sigil_condition.name)
         kind = target.target_type
         name = target.display
@@ -123,7 +123,7 @@ class SigilsTab(QWidget):
             widget.dungeon_changed.connect(lambda: self.on_dungeon_changed(widget))
             self.blacklist_layout.addWidget(widget)
 
-    def create_sigil(self):
+    def create_sigil(self) -> None:
         dialog = CreateSigil(self.whitelist_sigils, self.blacklist_sigils)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             sigil_name, type_name, kind = dialog.get_value()
@@ -142,7 +142,7 @@ class SigilsTab(QWidget):
                 self.blacklist_sigils.append(target.name)
                 self.sigil_model.blacklist.append(sigil_condition)
 
-    def remove_sigil(self, blacklist: bool = False):
+    def remove_sigil(self, blacklist: bool = False) -> None:
         sigils = self.blacklist_sigils if blacklist else self.whitelist_sigils
         layout = self.blacklist_layout if blacklist else self.whitelist_layout
         rules = self.sigil_model.blacklist if blacklist else self.sigil_model.whitelist
@@ -159,19 +159,19 @@ class SigilsTab(QWidget):
                 widget.setParent(None)
                 rules.remove(widget.sigil)
 
-    def update_priority(self):
+    def update_priority(self) -> None:
         self.sigil_model.priority = SigilPriority(self.priority_combobox.currentText())
 
-    def refresh_rarity_summary(self):
+    def refresh_rarity_summary(self) -> None:
         self.rarity_line_edit.setText(rarity_summary(self.sigil_model.rarities))
 
-    def edit_rarities(self):
+    def edit_rarities(self) -> None:
         picker = RarityPicker(self, self.sigil_model.rarities)
         if picker.exec() == QDialog.DialogCode.Accepted:
             self.sigil_model.rarities = picker.get_selected_rarities()
             self.refresh_rarity_summary()
 
-    def on_dungeon_changed(self, sigil_widget: SigilWidget):
+    def on_dungeon_changed(self, sigil_widget: SigilWidget) -> None:
         whitelist = sigil_widget.whitelist
         new_name = sigil_widget.sigil.name
         old_name = sigil_widget.old_sigil_name

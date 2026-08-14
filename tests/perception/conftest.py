@@ -1,25 +1,28 @@
 import json
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
 from src.game_data import ItemRarity, ItemType
 from src.item import Affix, AffixType, Aspect, Item, SeasonalAttribute
 
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
+
 
 def _enum_value(enum_type, value):
     return None if value is None else enum_type(value)
 
 
-def _loc(value: object) -> tuple[int, int] | None:
+def _loc(value: JsonValue) -> tuple[int, int] | None:
     if not isinstance(value, list) or len(value) != 2:
         return None
     return cast("int", value[0]), cast("int", value[1])
 
 
-def _affix(data: object) -> Affix:
-    values = cast("dict[str, object]", data)
+def _affix(data: JsonValue) -> Affix:
+    values = cast("dict[str, JsonValue]", data)
     return Affix(
         loc=_loc(values["loc"]),
         max_value=cast("float | None", values["max_value"]),
@@ -31,12 +34,12 @@ def _affix(data: object) -> Affix:
     )
 
 
-def _item(data: object) -> Item:
-    values = cast("dict[str, object]", data)
+def _item(data: JsonValue) -> Item:
+    values = cast("dict[str, JsonValue]", data)
     aspect_data = values["aspect"]
     aspect = None
     if aspect_data:
-        aspect_values = cast("dict[str, object]", aspect_data)
+        aspect_values = cast("dict[str, JsonValue]", aspect_data)
         aspect = Aspect(
             name=cast("str", aspect_values["name"]),
             loc=_loc(aspect_values["loc"]),
@@ -46,11 +49,11 @@ def _item(data: object) -> Item:
             value=cast("float | None", aspect_values["value"]),
         )
     return Item(
-        affixes=[_affix(affix) for affix in cast("list[object]", values["affixes"])],
+        affixes=[_affix(affix) for affix in cast("list[JsonValue]", values["affixes"])],
         aspect=aspect,
         codex_upgrade=cast("bool", values["codex_upgrade"]),
         cosmetic_upgrade=cast("bool", values["cosmetic_upgrade"]),
-        inherent=[_affix(affix) for affix in cast("list[object]", values["inherent"])],
+        inherent=[_affix(affix) for affix in cast("list[JsonValue]", values["inherent"])],
         is_ancestral=cast("bool", values["is_ancestral"]),
         is_in_shop=cast("bool", values["is_in_shop"]),
         item_type=_enum_value(ItemType, cast("str | None", values["item_type"])),

@@ -22,7 +22,7 @@ LOGGER = logging.getLogger(__name__)
 TEMPLATES_LOCK = threading.Lock()
 
 
-def _is_finite_real_array(value: object, size: int) -> bool:
+def _is_finite_real_array(value: np.ndarray | list[float], size: int) -> bool:
     if not isinstance(value, np.ndarray) or value.ndim != 1 or value.size != size:
         return False
     if not np.issubdtype(value.dtype, np.number) or np.issubdtype(value.dtype, np.complexfloating):
@@ -44,6 +44,11 @@ def _is_valid_hsv_range(lower: np.ndarray, upper: np.ndarray) -> bool:
         and all(0 <= item <= 255 for item in (*lower_values[1:], *upper_values[1:]))
         and all(lower_value <= upper_value for lower_value, upper_value in zip(lower_values, upper_values, strict=True))
     )
+
+
+def _monitor_center(center: tuple[int, int]) -> tuple[int, int]:
+    monitor_center = Cam().window_to_monitor(center)
+    return int(monitor_center[0]), int(monitor_center[1])
 
 
 _process_template_refs = process_template_refs
@@ -79,7 +84,7 @@ def _find_template_matches(
             region=list(region),
             region_monitor=[*Cam().window_to_monitor((rec_x, rec_y)), rec_w, rec_h],
             center=center,
-            center_monitor=Cam().window_to_monitor(center),
+            center_monitor=_monitor_center(center),
             name=template.name,
             score=max_val,
         )
@@ -196,7 +201,7 @@ def search(
                     region=list(region),
                     region_monitor=[*Cam().window_to_monitor((rec_x, rec_y)), rec_w, rec_h],
                     center=center,
-                    center_monitor=Cam().window_to_monitor(center),
+                    center_monitor=_monitor_center(center),
                     name=template.name,
                     score=max_val,
                 )

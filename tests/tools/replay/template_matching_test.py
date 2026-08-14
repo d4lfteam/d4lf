@@ -44,12 +44,12 @@ def _read_output(path: Path) -> np.ndarray:
         ({"threshold": 1.1}, "between 0 and 1"),
     ],
 )
-def test_validate_replay_config_rejects_invalid_inputs(tmp_path, overrides, message):
+def test_validate_replay_config_rejects_invalid_inputs(tmp_path, overrides, message) -> None:
     with pytest.raises(ReplayConfigurationError, match=message):
         validate_replay_config(make_replay_config(tmp_path, **overrides))
 
 
-def test_run_replay_matches_all_templates_logs_confidence_and_saves_annotation(tmp_path, monkeypatch, caplog):
+def test_run_replay_matches_all_templates_logs_confidence_and_saves_annotation(tmp_path, monkeypatch, caplog) -> None:
     config = make_replay_config(tmp_path, templates=["rerolled_bullet_point_1", "rerolled_bullet_point_2"])
     matches = [
         TemplateMatch(

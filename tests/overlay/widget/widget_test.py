@@ -1,7 +1,7 @@
 from src.overlay.widget.widget import BossTimerOverlay
 
 
-def test_boss_timer_overlay_composes_actions_and_timer_behavior(monkeypatch):
+def test_boss_timer_overlay_composes_actions_and_timer_behavior(monkeypatch) -> None:
     overlay = object.__new__(BossTimerOverlay)
     overlay.locked = False
     lock_changed_calls: list[bool] = []

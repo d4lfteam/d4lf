@@ -4,6 +4,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from src.game_data import ItemRarity, SigilRules
 from src.profiles.validation.normalization import _normalize_rarities, _normalize_tribute_names
+from src.type_aliases import JsonObject  # ruff:ignore[typing-only-first-party-import]
 
 
 class SigilPriority(enum.StrEnum):
@@ -18,7 +19,7 @@ class SigilConditionModel(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def parse_data(cls, data: str | list[str] | dict[str, object]) -> dict[str, object]:
+    def parse_data(cls, data: str | list[str] | JsonObject) -> JsonObject:
         if isinstance(data, dict):
             return data
         if isinstance(data, str):

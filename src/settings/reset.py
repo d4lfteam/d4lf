@@ -11,6 +11,8 @@ from src.settings.widgets import (
 )
 
 if TYPE_CHECKING:
+    from pydantic import BaseModel
+
     from src.settings.store import SettingsStore
 
 CONFIG_TABNAME = "config"
@@ -24,12 +26,12 @@ class ConfigResetMixin:
     nav_list: QListWidget
     search_input: QLineEdit
 
-    def show_tab(self):
+    def show_tab(self) -> None:
         self._reset_values_for_model(self._settings_store.model_for_section("general"), "general")
         self._reset_values_for_model(self._settings_store.model_for_section("char"), "char")
         self._reset_values_for_model(self._settings_store.model_for_section("advanced_options"), "advanced_options")
 
-    def reset_button_click(self):
+    def reset_button_click(self) -> None:
         """Handle the reset button by offering tab-specific or global reset."""
         current_item = self.nav_list.currentItem()
         if not current_item or self.search_input.text():
@@ -50,7 +52,7 @@ class ConfigResetMixin:
         elif clicked == btn_tab:
             self._reset_current_category(tab_name)
 
-    def _perform_global_reset(self, confirm: bool = False):
+    def _perform_global_reset(self, confirm: bool = False) -> None:
         if confirm:
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Icon.Warning)
@@ -61,7 +63,7 @@ class ConfigResetMixin:
         self._settings_store.reset_all()
         self.show_tab()
 
-    def _reset_current_category(self, category_name: str):
+    def _reset_current_category(self, category_name: str) -> None:
         """Reset only the settings belonging to the active category."""
         target_gb = self._group_boxes.get(category_name)
         if not target_gb:
@@ -82,7 +84,7 @@ class ConfigResetMixin:
         for section in {section for section, _, _ in changes}:
             self._reset_values_for_model(self._settings_store.model_for_section(section), section)
 
-    def _reset_values_for_model(self, model, section_config_header):
+    def _reset_values_for_model(self, model: BaseModel, section_config_header: str) -> None:
         for parameter in model:
             config_key, config_value = parameter
             parameter_value_widget = self.model_to_parameter_value_map.get(section_config_header + "." + config_key)
@@ -99,9 +101,11 @@ class ConfigResetMixin:
                 else:
                     parameter_value_widget.reset_values(config_value)
             elif isinstance(parameter_value_widget, QCheckBox):
-                parameter_value_widget.setChecked(config_value)
+                if isinstance(config_value, bool):
+                    parameter_value_widget.setChecked(config_value)
             elif isinstance(parameter_value_widget, QSpinBox):
-                parameter_value_widget.setValue(config_value)
+                if isinstance(config_value, int) and not isinstance(config_value, bool):
+                    parameter_value_widget.setValue(config_value)
             elif isinstance(parameter_value_widget, QLineEdit):
                 parameter_value_widget.setText(str(config_value))
 

@@ -26,18 +26,18 @@ def qapp():
 class MockGroupEditor(QWidget):
     """Mock group editor to act as a parent with a config attribute."""
 
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         super().__init__()
         self.config = config
 
-    def update_greater_count_label(self):
+    def update_greater_count_label(self) -> None:
         pass
 
-    def sync_min_greater_from_checkboxes(self):
+    def sync_min_greater_from_checkboxes(self) -> None:
         pass
 
 
-def test_affix_widget_parent_config(qapp, mock_ini_loader):
+def test_affix_widget_parent_config(qapp, mock_ini_loader) -> None:
     # Test that only SealFilterModel is recognized as a parent seal config
     seal_config = SealFilterModel(affix_pool=[])
     charm_config = CharmFilterModel(affix_pool=[])
@@ -53,7 +53,7 @@ def test_affix_widget_parent_config(qapp, mock_ini_loader):
     assert widget_charm.get_parent_seal_config() is None
 
 
-def test_affix_widget_clears_on_empty_filter(qapp, mock_ini_loader):
+def test_affix_widget_clears_on_empty_filter(qapp, mock_ini_loader) -> None:
     # Test that if name_combo has no items, update_name clears self.affix.name (for seals)
     affix = AffixFilterModel(name="adept_action_damage_reduction_while_moving", value=None)
     seal_config = SealFilterModel(affix_pool=[])
@@ -75,7 +75,7 @@ def test_affix_widget_clears_on_empty_filter(qapp, mock_ini_loader):
     assert not widget.affix.name
 
 
-def test_affix_pool_add_and_remove_lifecycle(qapp, mock_ini_loader):
+def test_affix_pool_add_and_remove_lifecycle(qapp, mock_ini_loader) -> None:
     affix = AffixFilterModel(name="movement_speed")
     pool = AffixFilterCountModel(count=[affix], min_count=1, max_count=3)
     widget = AffixPoolWidget(pool)
@@ -93,7 +93,7 @@ def test_affix_pool_add_and_remove_lifecycle(qapp, mock_ini_loader):
     assert widget.affix_list.count() == 1
 
 
-def test_item_type_picker_selection_and_clear(qapp, mock_ini_loader):
+def test_item_type_picker_selection_and_clear(qapp, mock_ini_loader) -> None:
     item_types = [ItemType.Sword, ItemType.Helm]
     picker = ItemTypePicker(None, item_types, [ItemType.Sword])
 
@@ -104,7 +104,7 @@ def test_item_type_picker_selection_and_clear(qapp, mock_ini_loader):
     assert picker.get_selected_item_types() == []
 
 
-def test_affix_group_editor_updates_power_and_greater_count(qapp, mock_ini_loader):
+def test_affix_group_editor_updates_power_and_greater_count(qapp, mock_ini_loader) -> None:
     config = ItemFilterModel()
     editor = AffixGroupEditor(DynamicItemFilterModel(root={"sword": config}))
 
@@ -114,7 +114,7 @@ def test_affix_group_editor_updates_power_and_greater_count(qapp, mock_ini_loade
     assert config.min_greater_affix_count == 2
 
 
-def test_unique_aspect_widget_value_and_percent_are_mutually_exclusive(qapp, mock_ini_loader):
+def test_unique_aspect_widget_value_and_percent_are_mutually_exclusive(qapp, mock_ini_loader) -> None:
     aspect_name = next(iter(GameCatalog().aspect_unique_dict))
     model = AspectUniqueFilterModel(name=aspect_name, value=1.5)
     widget = UniqueAspectWidget(model)

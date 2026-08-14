@@ -6,7 +6,7 @@ import pytest
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows WinAPI backend")
-def test_windows_backend_lists_windows():
+def test_windows_backend_lists_windows() -> None:
     from src.automation.window import backend_windows as backend  # ruff:ignore[import-outside-top-level]
 
     assert isinstance(backend.list_active_window_ids(), list)
@@ -40,7 +40,7 @@ def window_module(monkeypatch):
     monkeypatch.delitem(sys.modules, "src.automation.window.backend_windows", raising=False)
 
 
-def test_skips_window_with_invalid_pid_when_finding_process(window_module, mocker):
+def test_skips_window_with_invalid_pid_when_finding_process(window_module, mocker) -> None:
     backend = window_module._platform_backend
     mocker.patch.object(backend, "list_active_window_ids", return_value=[1, 2])
     mocker.patch.object(backend, "GetWindowThreadProcessId", side_effect=[(0, -12865840), (0, 42)])
@@ -54,7 +54,7 @@ def test_skips_window_with_invalid_pid_when_finding_process(window_module, mocke
     assert hwnd == 2
 
 
-def test_resets_window_position_when_diablo_window_closes(window_module, mocker):
+def test_resets_window_position_when_diablo_window_closes(window_module, mocker) -> None:
     backend = window_module._platform_backend
     reset = mocker.patch.object(backend, "reset_window_position")
     mocker.patch.object(backend, "get_window_spec_id", return_value=None)
@@ -65,7 +65,7 @@ def test_resets_window_position_when_diablo_window_closes(window_module, mocker)
     reset.assert_called_once_with()
 
 
-def test_resets_window_position_when_diablo_window_closes_during_geometry_lookup(window_module, mocker):
+def test_resets_window_position_when_diablo_window_closes_during_geometry_lookup(window_module, mocker) -> None:
     backend = window_module._platform_backend
     reset = mocker.patch.object(backend, "reset_window_position")
     mocker.patch.object(backend, "get_window_spec_id", return_value=1)
@@ -77,7 +77,7 @@ def test_resets_window_position_when_diablo_window_closes_during_geometry_lookup
     reset.assert_called_once_with()
 
 
-def test_backend_adapter_forwards_selected_backend(window_module, mocker):
+def test_backend_adapter_forwards_selected_backend(window_module, mocker) -> None:
     adapter = window_module._WindowBackendAdapter()
     mocker.patch.object(window_module._platform_backend, "is_self_foreground", return_value=True)
 

@@ -17,7 +17,7 @@ class HSVRangeModel(_IniBaseModel):
     h_s_v_min: Np1DArray
     h_s_v_max: Np1DArray
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Np1DArray:
         # TODO added this to not have to change much of the other code. should be fixed some time
         if index == 0:
             return self.h_s_v_min

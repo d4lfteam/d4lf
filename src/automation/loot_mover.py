@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-def move_items_to_stash():
+def move_items_to_stash() -> None:
     LOGGER.info("Move inventory items to stash")
 
     inv = CharInventory()
@@ -46,7 +46,7 @@ def move_items_to_stash():
     LOGGER.info("Completed move")
 
 
-def move_items_to_inventory():
+def move_items_to_inventory() -> None:
     LOGGER.info("Move stash items to inventory")
 
     inv = CharInventory()

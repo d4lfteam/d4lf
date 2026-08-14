@@ -1,24 +1,26 @@
 from dataclasses import dataclass
+from typing import cast
 
 from pydantic import BaseModel, ValidationError
 from pydantic_core import PydanticUndefined
 
-from src.settings.loader import IniConfigLoader
+from src.settings.loader import IniConfigLoader, IniConfigLoaderType
+from src.settings.types import SettingValue
 
 type CategorySetting = tuple[BaseModel, str, str]
 type SectionModel = tuple[BaseModel, str]
-type ResetChange = tuple[str, str, object]
+type ResetChange = tuple[str, str, SettingValue]
 
 
 @dataclass(frozen=True)
 class SetValueResult:
     success: bool
-    previous_value: object
+    previous_value: SettingValue
     validation_error: str | None
 
 
 class SettingsStore:
-    def __init__(self, loader: IniConfigLoader | None = None) -> None:
+    def __init__(self, loader: IniConfigLoaderType | None = None) -> None:
         self._loader = loader or IniConfigLoader()
 
     def models_with_sections(self) -> tuple[SectionModel, ...]:
@@ -35,7 +37,7 @@ class SettingsStore:
             raise KeyError(msg)
         return section_models[section]
 
-    def set_value(self, model: BaseModel, section: str, key: str, value: object) -> SetValueResult:
+    def set_value(self, model: BaseModel, section: str, key: str, value: SettingValue) -> SetValueResult:
         previous_value = getattr(model, key)
         validated_values = model.model_dump(mode="python")
         validated_values[key] = value
@@ -47,12 +49,12 @@ class SettingsStore:
         self._loader.save_value(section, key, value)
         return SetValueResult(success=True, previous_value=previous_value, validation_error=None)
 
-    def default_value_for(self, model: BaseModel, key: str) -> object:
+    def default_value_for(self, model: BaseModel, key: str) -> SettingValue:
         field = type(model).model_fields[key]
         if field.default is not PydanticUndefined:
-            return field.default
+            return cast("SettingValue", field.default)
         if field.default_factory is not None:
-            return field.default_factory()
+            return cast("SettingValue", field.default_factory())
         return None
 
     def reset_category(self, settings: list[CategorySetting]) -> list[ResetChange]:

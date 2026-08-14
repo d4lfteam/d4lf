@@ -19,7 +19,7 @@ LOGGER = logging.getLogger(__name__)
 
 def check_items(
     inv: Inventory, force_refresh: ItemRefreshType, stash_is_open: bool = False, no_match_action: str = "junk"
-):
+) -> None:
     occupied, _ = inv.get_item_slots()
 
     def _handle_no_match() -> None:

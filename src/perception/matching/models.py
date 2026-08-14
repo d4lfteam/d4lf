@@ -19,8 +19,8 @@ class TemplateMatch:
     region_monitor: list[int]
     score: float = -1.0
 
-    @override
-    def __eq__(self, other: object) -> bool:
+    # ty: ignore[invalid-method-override, missing-override-decorator] - this project intentionally uses a same-type equality contract
+    def __eq__(self, other: TemplateMatch) -> bool:
         if isinstance(other, TemplateMatch):
             return self.center == other.center and self.score == other.score
         return False

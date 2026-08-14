@@ -21,13 +21,14 @@ from src.importing.pipeline import ExtractedBuild
 if TYPE_CHECKING:
     from src.importing.contracts import ImportRequest
     from src.importing.d2core.catalog import CatalogStore
+    from src.type_aliases import JsonValue
 
 Warn = Callable[[str, str, str, str], None]
 
 
 def normalize_build(
-    raw_build: Mapping[str, object],
-    selected: list[tuple[int, Mapping[str, object]]],
+    raw_build: Mapping[str, JsonValue],
+    selected: list[tuple[int, Mapping[str, JsonValue]]],
     request: ImportRequest,
     catalogs: CatalogStore,
     *,
@@ -119,7 +120,7 @@ def normalize_build(
     )
 
 
-def _has_base_aspect_attempt(raw_variant: Mapping[str, object]) -> bool:
+def _has_base_aspect_attempt(raw_variant: Mapping[str, JsonValue]) -> bool:
     gear = raw_variant.get("gear")
     if not isinstance(gear, Mapping):
         return False

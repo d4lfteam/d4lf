@@ -1,15 +1,20 @@
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, cast, override
 
 from PyQt6.QtCore import QSettings, Qt, QTimer
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QFormLayout,
     QFrame,
     QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
     QMessageBox,
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -22,6 +27,9 @@ from src.profiles.editor.helpers import create_readonly_line_edit
 
 if TYPE_CHECKING:
     from pydantic import RootModel
+
+    from src.profiles.charm_seal.general import CharmSealEditor
+    from src.profiles.editor.container import Container
 
 CHARMS_TABNAME = "Charms"
 SEALS_TABNAME = "Seals"
@@ -36,24 +44,26 @@ def _set_summary(sets: list[str]) -> str:
 class BaseGroupEditor[ConfigT: CharmFilterModel | SealFilterModel](
     _CharmSealGeneralMixin, _CharmSealPoolsMixin, QWidget
 ):
-    config: Any
-    content_layout: Any
-    item_name: Any
-    type_prefix: Any
-    is_charm: Any
-    settings: Any
-    rarity_line_edit: Any
-    min_greater: Any
-    auto_sync_checkbox: Any
-    greater_count_label: Any
-    affix_pool_container: Any
-    affix_pool_layout: Any
-    unique_aspect_container: Any
-    unique_aspect_list: Any
+    config: ConfigT
+    content_layout: QVBoxLayout
+    item_name: str
+    type_prefix: str
+    is_charm: bool
+    settings: QSettings
+    rarity_line_edit: QLineEdit
+    min_greater: QSpinBox
+    auto_sync_checkbox: QCheckBox
+    greater_count_label: QLabel
+    affix_pool_container: Container
+    affix_pool_layout: QVBoxLayout
+    unique_aspect_container: Container
+    unique_aspect_list: QListWidget
 
     """Shared base editor class for single-named filters (Charms and Seals)."""
 
-    def __init__(self, dynamic_filter: RootModel[dict[str, ConfigT]], is_charm: bool, parent=None):
+    def __init__(
+        self, dynamic_filter: RootModel[dict[str, ConfigT]], is_charm: bool, parent: QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self.is_charm = is_charm
         self.type_prefix = "charm" if is_charm else "seal"
@@ -65,7 +75,7 @@ class BaseGroupEditor[ConfigT: CharmFilterModel | SealFilterModel](
 
         self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         """Build the common UI layout structure."""
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
@@ -76,21 +86,22 @@ class BaseGroupEditor[ConfigT: CharmFilterModel | SealFilterModel](
         self.content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         general_form = QFormLayout()
+        editor = cast("CharmSealEditor", self)
 
         # Rarities (Common)
-        self.add_rarity_row(general_form)
+        editor.add_rarity_row(general_form)
 
         # Custom fields (Subclass hook - e.g. Sets for Charms)
-        self.add_custom_general_fields(general_form)
+        editor.add_custom_general_fields(general_form)
 
         # Min Greater Affixes & Auto Sync (Common)
-        self.add_min_greater_row(general_form)
+        editor.add_min_greater_row(general_form)
 
         self.content_layout.addLayout(general_form)
-        self.create_unique_aspect_container()
+        editor.create_unique_aspect_container()
 
         # Affix Pool container (Common)
-        self.add_affix_pool_section()
+        editor.add_affix_pool_section()
 
         scroll_area.setWidget(content_widget)
 
@@ -104,7 +115,7 @@ class BaseGroupEditor[ConfigT: CharmFilterModel | SealFilterModel](
 class CharmGroupEditor(BaseGroupEditor[CharmFilterModel]):
     """Editor widget for a single named charm filter."""
 
-    def __init__(self, dynamic_filter: DynamicCharmFilterModel, parent=None):
+    def __init__(self, dynamic_filter: DynamicCharmFilterModel, parent: QWidget | None = None) -> None:
         super().__init__(dynamic_filter, is_charm=True, parent=parent)
         self.setup_ui()
 
@@ -123,7 +134,7 @@ class CharmGroupEditor(BaseGroupEditor[CharmFilterModel]):
         set_layout.addStretch()
         general_form.addRow("Sets:", set_layout)
 
-    def edit_sets(self):
+    def edit_sets(self) -> None:
         if self.config.unique_aspect:
             QMessageBox.warning(self, "Warning", "Cannot select sets when unique aspects are defined.")
             return
@@ -132,13 +143,13 @@ class CharmGroupEditor(BaseGroupEditor[CharmFilterModel]):
             self.config.set = dialog.get_selected_sets()
             self.refresh_set_summary()
 
-    def refresh_set_summary(self):
+    def refresh_set_summary(self) -> None:
         self.set_line_edit.setText(_set_summary(self.config.set))
 
 
 class SealGroupEditor(BaseGroupEditor[SealFilterModel]):
     """Editor widget for a single named seal filter."""
 
-    def __init__(self, dynamic_filter: DynamicSealFilterModel, parent=None):
+    def __init__(self, dynamic_filter: DynamicSealFilterModel, parent: QWidget | None = None) -> None:
         super().__init__(dynamic_filter, is_charm=False, parent=parent)
         self.setup_ui()

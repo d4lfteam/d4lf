@@ -2,15 +2,21 @@ import ctypes
 import logging
 import os
 import time
+from typing import TYPE_CHECKING
 
 import psutil
 
 from src.automation.window.core import get_window_spec_id
 
+if TYPE_CHECKING:
+    import threading
+
+    from src.automation.window.backend import WindowSpecLike
+
 LOGGER = logging.getLogger(__name__)
 
 
-def kill_thread(thread):
+def kill_thread(thread: threading.Thread) -> None:
     thread_id = thread.ident
     res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, ctypes.py_object(SystemExit))
     if res > 1:
@@ -18,7 +24,7 @@ def kill_thread(thread):
         LOGGER.error("Exception raise failure")
 
 
-def safe_exit(error_code=0):
+def safe_exit(error_code: int = 0) -> None:
     """Shutdown ALL D4LF instances."""
     # Find and terminate all D4LF processes
     current_pid = os.getpid()
@@ -56,7 +62,7 @@ def safe_exit(error_code=0):
     os._exit(error_code)
 
 
-def set_process_name(name, window_spec):
+def set_process_name(name: str, window_spec: WindowSpecLike) -> None:
     try:
         hwnd = get_window_spec_id(window_spec)
         kernel32 = ctypes.WinDLL("kernel32")

@@ -2,7 +2,7 @@
 
 import datetime
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QMessageBox, QPushButton, QVBoxLayout, QWidget
@@ -14,11 +14,13 @@ from src.profiles import ProfileDocumentError, ProfileDocumentStore
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from src.app.dashboard.core import ActivityLogWidget
+
 LOGGER = logging.getLogger(__name__)
 
 
 class ActivityProfileRowsMixin:
-    def refresh_profiles(self: Any):
+    def refresh_profiles(self: ActivityLogWidget) -> None:
         """Scan the profiles folder and update the list."""
         for i in reversed(range(self.profile_layout.count())):
             child = self.profile_layout.takeAt(i)
@@ -103,7 +105,7 @@ class ActivityProfileRowsMixin:
         else:
             self._update_zebra_striping()
 
-    def _create_row_btn(self: Any, text: str) -> QPushButton:
+    def _create_row_btn(self: ActivityLogWidget, text: str) -> QPushButton:
         btn = QPushButton(text)
         btn.setObjectName("row-action-btn")
         btn.setFlat(True)
@@ -111,16 +113,16 @@ class ActivityProfileRowsMixin:
         # Styling is handled by the shared theme.
         return btn
 
-    def _toggle_row(self: Any, label: QLabel, button: QPushButton):
+    def _toggle_row(self: ActivityLogWidget, label: QLabel, button: QPushButton) -> None:
         is_visible = not label.isVisible()
         label.setVisible(is_visible)
         button.setText("▼" if is_visible else "▶")
 
-    def _edit_profile(self: Any, name: str):
+    def _edit_profile(self: ActivityLogWidget, name: str) -> None:
         if self._main_window:
             self._main_window.open_profile_editor(profile_name=name)
 
-    def _delete_profile(self: Any, name: str):
+    def _delete_profile(self: ActivityLogWidget, name: str) -> None:
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Icon.Warning)
         msg.setWindowTitle("Delete Profile")
@@ -142,7 +144,7 @@ class ActivityProfileRowsMixin:
                     except Exception:
                         LOGGER.exception("Failed to delete profile %s", name)
 
-    def _get_profile_summary(self: Any, path: Path) -> str:
+    def _get_profile_summary(self: ActivityLogWidget, path: Path) -> str:
         """Build a summary tooltip from the profile document."""
         try:
             stat = path.stat()

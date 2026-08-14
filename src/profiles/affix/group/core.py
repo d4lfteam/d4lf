@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtWidgets import (
@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -24,7 +25,7 @@ from src.profiles.editor.dialogs import IgnoreScrollWheelSpinBox
 from src.profiles.editor.helpers import refresh_widget_style
 
 if TYPE_CHECKING:
-    from src.profiles import DynamicItemFilterModel
+    from src.profiles import DynamicItemFilterModel, ItemFilterModel
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
@@ -33,25 +34,25 @@ UNIQUE_ASPECTS_TITLE = "Unique Aspects"
 
 
 class AffixGroupEditor(_AffixGroupPoolsMixin, _AffixGroupControlsMixin, QWidget):
-    config: Any
-    item_type_line_edit: Any
-    item_types: Any
-    rarity_line_edit: Any
-    min_power: Any
-    min_greater: Any
-    auto_sync_checkbox: Any
-    settings: Any
-    item_name: Any
-    affix_pool_container: Any
-    inherent_pool_container: Any
-    greater_count_label: Any
-    affix_pool_layout: Any
-    inherent_pool_layout: Any
-    unique_aspect_container: Any
-    unique_aspect_layout: Any
-    unique_aspect_list: Any
+    config: ItemFilterModel
+    item_type_line_edit: QLineEdit
+    item_types: list[ItemType]
+    rarity_line_edit: QLineEdit
+    min_power: QSpinBox
+    min_greater: QSpinBox
+    auto_sync_checkbox: QCheckBox
+    settings: QSettings
+    item_name: str
+    affix_pool_container: Container
+    inherent_pool_container: Container
+    greater_count_label: QLabel
+    affix_pool_layout: QVBoxLayout
+    inherent_pool_layout: QVBoxLayout
+    unique_aspect_container: Container
+    unique_aspect_layout: QVBoxLayout
+    unique_aspect_list: QListWidget
 
-    def __init__(self, dynamic_filter: DynamicItemFilterModel, parent=None):
+    def __init__(self, dynamic_filter: DynamicItemFilterModel, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.settings = QSettings("d4lf", "profile_editor")
         for item_name, config in dynamic_filter.root.items():
@@ -61,7 +62,7 @@ class AffixGroupEditor(_AffixGroupPoolsMixin, _AffixGroupControlsMixin, QWidget)
         self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
         self.setup_ui()
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)

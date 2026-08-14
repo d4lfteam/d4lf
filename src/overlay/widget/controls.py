@@ -2,6 +2,7 @@ import tkinter as tk
 from typing import TYPE_CHECKING
 
 from src.loot import get_filter_colors
+from src.overlay.settings import InfoSettingValue
 from src.overlay.settings import save_settings as save_info_settings
 from src.overlay.widget.shared import ACCENT, CARD_BG, MUTED, TEXT, OverlayContract
 
@@ -10,13 +11,15 @@ if TYPE_CHECKING:
 
 
 class _OverlayControls(OverlayContract):
-    def _toggle_orientation(self):
+    def _toggle_orientation(self) -> None:
         self.orientation = "vertical" if self.orientation == "horizontal" else "horizontal"
         self.overlay_frame.config(highlightbackground=get_filter_colors().matched)
         self._repack()
         self._save_settings()
 
-    def _create_toggle_btn(self, parent, label_text, attr_name, callback=None):
+    def _create_toggle_btn(
+        self, parent: tk.Misc, label_text: str, attr_name: str, callback: Callable[[], None] | None = None
+    ) -> tk.Button:
         """Creates a toggle button that updates state and color immediately."""
         is_active = getattr(self, attr_name)
         colors = get_filter_colors()
@@ -35,7 +38,7 @@ class _OverlayControls(OverlayContract):
             anchor="w",
         )
 
-        def _on_click():
+        def _on_click() -> None:
             new_val = not getattr(self, attr_name)
             setattr(self, attr_name, new_val)
             btn.config(fg=colors.matched if new_val else MUTED)
@@ -48,7 +51,9 @@ class _OverlayControls(OverlayContract):
         btn.pack(fill="x")
         return btn
 
-    def _create_config_toggle_btn(self, parent, label_text, config_key, callback=None):
+    def _create_config_toggle_btn(
+        self, parent: tk.Misc, label_text: str, config_key: str, callback: Callable[[], None] | None = None
+    ) -> tk.Button:
         """Creates a toggle button for settings stored in QSettings."""
         is_active = self.settings.get(config_key, False)
         colors = get_filter_colors()
@@ -67,7 +72,7 @@ class _OverlayControls(OverlayContract):
             anchor="w",
         )
 
-        def _on_click():
+        def _on_click() -> None:
             new_val = not self.settings.get(config_key, False)
             save_info_settings({config_key: new_val})
             self.settings[config_key] = new_val
@@ -83,8 +88,14 @@ class _OverlayControls(OverlayContract):
         return btn
 
     def _create_radio_button(
-        self, parent, label_text, current_value, target_value, on_select_callback, config_key=None
-    ):
+        self,
+        parent: tk.Misc,
+        label_text: str,
+        current_value: InfoSettingValue,
+        target_value: InfoSettingValue,
+        on_select_callback: Callable[[InfoSettingValue], None],
+        config_key: str | None = None,
+    ) -> tk.Button:
         """Creates a radio-style button that visually indicates selection."""
         is_selected = current_value == target_value
         colors = get_filter_colors()
@@ -104,7 +115,7 @@ class _OverlayControls(OverlayContract):
             anchor="w",
         )
 
-        def _on_click():
+        def _on_click() -> None:
             on_select_callback(target_value)
             if config_key:
                 save_info_settings({config_key: target_value})
@@ -121,7 +132,7 @@ class _OverlayControls(OverlayContract):
 
     def _create_submenu_button(
         self, parent: tk.Misc, label_text: str, submenu_id: str, content_builder: Callable[[tk.Toplevel], None]
-    ):
+    ) -> tk.Button:
         """Creates a button that opens a cascading Toplevel submenu to its side."""
         btn = tk.Button(
             parent,
@@ -140,12 +151,12 @@ class _OverlayControls(OverlayContract):
         btn.pack(fill="x")
         return btn
 
-    def _on_popup_focus_out(self, event):
+    def _on_popup_focus_out(self, event: tk.Event) -> None:
         """Delayed check to see if focus left the entire settings UI family."""
         # Tiny delay to allow the new focus widget to be determined by the system
         self.after(100, self._check_popup_focus)
 
-    def _check_popup_focus(self):
+    def _check_popup_focus(self) -> None:
         """Destroy popups only if focus has moved entirely out of the settings window family."""
         if not self._settings_popup or not self._settings_popup.winfo_exists():
             return
@@ -164,7 +175,9 @@ class _OverlayControls(OverlayContract):
         self._close_all_submenus()
         self._destroy_settings_popup()
 
-    def _open_submenu(self, parent_btn: tk.Button, submenu_id: str, content_builder: Callable[[tk.Toplevel], None]):
+    def _open_submenu(
+        self, parent_btn: tk.Button, submenu_id: str, content_builder: Callable[[tk.Toplevel], None]
+    ) -> None:
         """Opens a cascading Toplevel submenu to the side of the parent button."""
         # Close any other open submenus at this level
         for key, existing_popup in list(self._open_submenus.items()):

@@ -1,7 +1,7 @@
 from src.overlay.widget.widget import BossTimerOverlay
 
 
-def test_toggle_lock_changes_state_and_persists_settings(monkeypatch):
+def test_toggle_lock_changes_state_and_persists_settings(monkeypatch) -> None:
     overlay = object.__new__(BossTimerOverlay)
     overlay.locked = False
     lock_changed_calls: list[bool] = []

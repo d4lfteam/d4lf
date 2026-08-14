@@ -56,11 +56,11 @@ class VariantSelection:
 
     @classmethod
     def from_ids(cls, ids: VariantSelection | tuple[str, ...]) -> VariantSelection:
-        if isinstance(ids, cls):
+        if isinstance(ids, VariantSelection):
             return ids
-        return cls(cast("tuple[str, ...]", ids))
+        return cls(ids)
 
-    def __contains__(self, value: object) -> bool:
+    def __contains__(self, value: str) -> bool:
         return value in self.ids
 
     def __bool__(self) -> bool:

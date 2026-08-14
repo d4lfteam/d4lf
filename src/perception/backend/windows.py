@@ -1,20 +1,26 @@
 import sys
 import threading
+from typing import TYPE_CHECKING
 
 import pywintypes
 import win32file
 import win32pipe
 import win32security
 
+if TYPE_CHECKING:
+    import logging
+    import queue
+    from collections.abc import Callable
 
-def _require_message_size(value: object) -> int:
+
+def _require_message_size(value: int | str | None) -> int:
     if not isinstance(value, int):
         message = "Named pipe returned an invalid message size"
         raise TypeError(message)
     return value
 
 
-def _require_message_bytes(value: object) -> bytes:
+def _require_message_bytes(value: bytes | str | None) -> bytes:
     if not isinstance(value, bytes):
         message = "Named pipe returned a non-byte message"
         raise TypeError(message)
@@ -35,7 +41,7 @@ class WindowsTTSBackend:
             win32security.SECURITY_ATTRIBUTES(),
         )
 
-    def create_pipe(self, logger):
+    def create_pipe(self, logger: logging.Logger) -> int:
         try:
             return self._create_named_pipe()
         except pywintypes.error as error:
@@ -52,7 +58,13 @@ class WindowsTTSBackend:
                 sys.exit(1)
             raise
 
-    def read_pipe(self, create_pipe, data_queue, logger, set_connected) -> None:
+    def read_pipe(
+        self,
+        create_pipe: Callable[[], int],
+        data_queue: queue.Queue[str],
+        logger: logging.Logger,
+        set_connected: Callable[[bool], None],
+    ) -> None:
         while True:
             handle = create_pipe()
             logger.debug("Waiting for TTS client to connect")
@@ -76,7 +88,9 @@ class WindowsTTSBackend:
             logger.info("TTS client disconnected")
             set_connected(False)
 
-    def start_connection(self, start_find_item, start_read_pipe, logger) -> None:
+    def start_connection(
+        self, start_find_item: Callable[[], None], start_read_pipe: Callable[[], None], logger: logging.Logger
+    ) -> None:
         logger.info("Starting TTS listener. Hover over an item or button to perform the TTS connection.")
         threading.Thread(target=start_find_item, daemon=True).start()
         threading.Thread(target=start_read_pipe, daemon=True).start()

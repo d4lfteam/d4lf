@@ -15,7 +15,7 @@ if typing.TYPE_CHECKING:
 @pytest.mark.parametrize(
     ("_name", "result", "item"), natsorted(aspects), ids=[name for name, _, _ in natsorted(aspects)]
 )
-def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixture):
+def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixture) -> None:
     test_filter = _create_mocked_filter(mocker)
     mocker.patch.object(get_settings().general, "keep_aspects", AspectFilterType.upgrade)
     mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
@@ -24,7 +24,7 @@ def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixtur
 
 
 @pytest.mark.parametrize(("_name", "result", "item"), natsorted(seals), ids=[name for name, _, _ in natsorted(seals)])
-def test_seals(_name: str, result: list[str], item: Item, mocker: MockerFixture):
+def test_seals(_name: str, result: list[str], item: Item, mocker: MockerFixture) -> None:
     test_filter = _create_mocked_filter(mocker)
     test_filter.seal_filters = {filters.seal_charm.name: filters.seal_charm.seals}
     matches = test_filter.should_keep(item).matched
@@ -35,7 +35,7 @@ def test_seals(_name: str, result: list[str], item: Item, mocker: MockerFixture)
 
 
 @pytest.mark.parametrize(("_name", "result", "item"), natsorted(charms), ids=[name for name, _, _ in natsorted(charms)])
-def test_charms(_name: str, result: list[str], item: Item, mocker: MockerFixture):
+def test_charms(_name: str, result: list[str], item: Item, mocker: MockerFixture) -> None:
     test_filter = _create_mocked_filter(mocker)
     test_filter.charm_filters = {filters.seal_charm.name: filters.seal_charm.charms}
     matches = test_filter.should_keep(item).matched

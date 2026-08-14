@@ -22,13 +22,13 @@ _TESTS = [
 
 
 @pytest.mark.parametrize("res", natsorted([x[0] for x in _TESTS]), ids=natsorted([x[0] for x in _TESTS]))
-def test_set_resolution(res):
+def test_set_resolution(res) -> None:
     ResManager().set_resolution(res)
     assert ResManager().pos
 
 
 @pytest.mark.parametrize("result", _TESTS, ids=[x[0] for x in _TESTS])
-def test_transformation(result):
+def test_transformation(result) -> None:
     for pixel in _PIXELS:
         new_pixel = _ResTransformer(result[0])._transform_array(pixel)
         expected = next(result[1])
@@ -36,9 +36,9 @@ def test_transformation(result):
         assert new_pixel[1] == expected[1]
 
 
-def test_colors():
+def test_colors() -> None:
     assert COLORS is not None
 
 
-def test_templates():
+def test_templates() -> None:
     assert len(ResManager().templates) == 74

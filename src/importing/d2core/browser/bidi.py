@@ -1,28 +1,31 @@
 """Selenium BiDi response-body capture for configured browser acquisition."""
 
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Protocol, cast
+from typing import TYPE_CHECKING, Protocol
 
 from selenium.common.exceptions import WebDriverException
 
 from src.importing.d2core.browser.capture import body_has_planner_error, body_matches_build, is_catalog_url
 from src.importing.d2core.errors import INITIALIZATION_TIMEOUT, D2CoreBrowserError
 
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
+
 RESPONSE_STARTED = "response_started"
 
 
 class BidiNetwork(Protocol):
-    def add_data_collector(self, **kwargs: object) -> object: ...
+    def add_data_collector(self, **kwargs: JsonValue) -> JsonValue: ...
 
-    def add_event_handler(self, event: str, callback: object) -> object: ...
+    def add_event_handler(self, event: str, callback: Callable[[JsonValue], None]) -> JsonValue: ...
 
-    def get_data(self, **kwargs: object) -> object: ...
+    def get_data(self, **kwargs: JsonValue) -> JsonValue: ...
 
-    def remove_event_handler(self, event: str, handler: object) -> None: ...
+    def remove_event_handler(self, event: str, handler: JsonValue) -> None: ...
 
-    def remove_data_collector(self, collector: object) -> None: ...
+    def remove_data_collector(self, collector: JsonValue) -> None: ...
 
 
 class BidiDriver(Protocol):
@@ -37,9 +40,11 @@ class BidiSnapshot:
 
 
 class BidiNetworkObserver:
-    def __init__(self, *, clock=time.monotonic, sleeper=time.sleep) -> None:
-        self._handler: object | None = None
-        self._collector: object | None = None
+    def __init__(
+        self, *, clock: Callable[[], float] = time.monotonic, sleeper: Callable[[float], None] = time.sleep
+    ) -> None:
+        self._handler: JsonValue | None = None
+        self._collector: JsonValue | None = None
         self._network: BidiNetwork | None = None
         self._request_ids: list[str] = []
         self._candidates: list[str] = []
@@ -48,9 +53,9 @@ class BidiNetworkObserver:
         self._sleeper = sleeper
         self._build_id = ""
 
-    def attach(self, driver: object, build_id: str) -> None:
+    def attach(self, driver: BidiDriver, build_id: str) -> None:
         self._build_id = build_id
-        network = cast("BidiDriver", driver).network
+        network = driver.network
         self._network = network
         collector = network.add_data_collector(
             data_types=["response"], max_encoded_data_size=100_000_000, collector_type="blob"
@@ -69,8 +74,8 @@ class BidiNetworkObserver:
             self._sleeper(0.05)
         raise D2CoreBrowserError(INITIALIZATION_TIMEOUT, "d2core BiDi traffic was not observed", retryable=True)
 
-    def detach(self, driver: object) -> None:
-        network = cast("BidiDriver", driver).network
+    def detach(self, driver: BidiDriver) -> None:
+        network = driver.network
         removal_error: Exception | None = None
         try:
             if self._handler is not None:
@@ -93,8 +98,8 @@ class BidiNetworkObserver:
         if removal_error is not None:
             raise removal_error
 
-    def _response_handler(self):
-        def handle(event: object) -> None:
+    def _response_handler(self) -> Callable[[JsonValue], None]:
+        def handle(event: JsonValue) -> None:
             if not isinstance(event, Mapping):
                 return
             response = event.get("response")
@@ -128,7 +133,7 @@ class BidiNetworkObserver:
                 self._candidates.append(body)
 
     @staticmethod
-    def _body_from_data(data: object) -> str | None:
+    def _body_from_data(data: JsonValue) -> str | None:
         body = data.get("bytes") if isinstance(data, Mapping) else None
         if isinstance(body, bytes):
             return body.decode("utf-8", errors="replace")

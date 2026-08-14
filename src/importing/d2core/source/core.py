@@ -5,7 +5,7 @@ import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from threading import Lock
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from src.importing.contracts import ImportRequest, ImportResult, VariantMetadata
 from src.importing.d2core.browser import (
@@ -26,6 +26,9 @@ from src.importing.d2core.source.workflow import resolve_variants
 from src.importing.d2core.url import D2CoreUrl, parse_d2core_url
 from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter
 
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -33,7 +36,7 @@ LOGGER = logging.getLogger(__name__)
 class PlannerSnapshot:
     """Immutable source payload plus its browser-observed catalog deployment."""
 
-    build: Mapping[str, object]
+    build: Mapping[str, JsonValue]
     catalog_url: str
 
     @property
@@ -80,7 +83,7 @@ class D2CoreImportSource:
             _, snapshot = self._ensure_snapshot(request)
             self._ensure_open()
             variants = snapshot.build.get("variants", [])
-            variant_list = cast("list[object]", variants)
+            variant_list = cast("list[JsonValue]", variants)
             result = [
                 VariantMetadata(id=str(index), name=select_variant_name(value, index))
                 for index, value in enumerate(variant_list, start=1)
@@ -174,9 +177,9 @@ class D2CoreImportSource:
 
     def _build_normalized(
         self,
-        raw_build: Mapping[str, object],
+        raw_build: Mapping[str, JsonValue],
         version: str,
-        selected: list[tuple[int, Mapping[str, object]]],
+        selected: list[tuple[int, Mapping[str, JsonValue]]],
         request: ImportRequest,
     ) -> ExtractedBuild:
         catalogs = self._catalog_store(version)
@@ -209,7 +212,8 @@ class D2CoreImportSource:
         if isinstance(snapshot, PlannerSnapshot):
             return PlannerSnapshot(build=copy.deepcopy(snapshot.build), catalog_url=snapshot.catalog_url)
         return PlannerSnapshot(
-            build=cast("Mapping[str, object]", copy.deepcopy(snapshot.response_body)), catalog_url=snapshot.catalog_url
+            build=cast("Mapping[str, JsonValue]", copy.deepcopy(snapshot.response_body)),
+            catalog_url=snapshot.catalog_url,
         )
 
     @staticmethod

@@ -10,9 +10,10 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from src.importing.infinitybuilds.models import _CatalogItem, _GearPiece, _RawAffix
+    from src.type_aliases import JsonObject, JsonValue
 
 
-def _parse_talisman_gear(value: object) -> list[_GearPiece]:
+def _parse_talisman_gear(value: JsonValue) -> list[_GearPiece]:
     raw = _as_object(value)
     gear: list[_GearPiece] = []
     seal = raw.get("seal")
@@ -31,7 +32,7 @@ def _parse_talisman_gear(value: object) -> list[_GearPiece]:
     return gear
 
 
-def _parse_charm_affixes(raw: dict[str, object], charm_index: int) -> list[_RawAffix]:
+def _parse_charm_affixes(raw: JsonObject, charm_index: int) -> list[_RawAffix]:
     result: list[_RawAffix] = []
     affix_ids = _nested_row(raw.get("charmAffixes"), charm_index)
     values = _nested_row(raw.get("charmAffixValues"), charm_index)
@@ -64,12 +65,12 @@ def _charm_set_name(label: str) -> str | None:
     return candidate if candidate in GameCatalog().set_list else None
 
 
-def _nested_row(rows: object, index: int) -> list[object]:
+def _nested_row(rows: JsonValue, index: int) -> list[JsonValue]:
     if not isinstance(rows, list) or index >= len(rows):
         return []
     row = rows[index]
-    return cast("list[object]", row) if isinstance(row, list) else []
+    return [cast("JsonValue", value) for value in row] if isinstance(row, list) else []
 
 
-def _optional_value_at(row: list[object], index: int) -> object:
+def _optional_value_at(row: list[JsonValue], index: int) -> JsonValue:
     return row[index] if index < len(row) else None

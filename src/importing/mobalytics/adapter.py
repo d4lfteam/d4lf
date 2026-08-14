@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import jsonpath
 import lxml.html
@@ -8,7 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
-from src.importing.contracts import ImportSourceError, VariantMetadata
+from src.importing.contracts import ImportRequest, ImportResult, ImportSourceError, VariantMetadata
 from src.importing.conversion import as_string_keyed_mapping as _as_mapping
 from src.importing.conversion import as_string_keyed_mapping_list as _as_mapping_list
 from src.importing.conversion import as_text as _as_text
@@ -23,9 +23,12 @@ from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGu
 from src.importing.web import retry_importer
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from selenium.webdriver.remote.webdriver import WebDriver
 
-    from src.importing.contracts import ImportRequest, ImportResult
+    from src.type_aliases import JsonValue
+
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
@@ -33,14 +36,15 @@ BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
 BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
 PROFILE_GUIDE_BASE_URL = f"{BUILD_GUIDE_BASE_URL}profile"
 SCRIPT_XPATH = "//script"
-type _JsonPathValue = str | int | float | bool | list[object] | dict[str, object] | None
 
 
 class MobalyticsError(ImportSourceError):
     """Raised when Mobalytics page data cannot be extracted."""
 
 
-def _validated_url(request, driver: WebDriver | None, *, reject_profile: bool = False) -> tuple[str, WebDriver] | None:
+def _validated_url(
+    request: ImportRequest, driver: WebDriver | None, *, reject_profile: bool = False
+) -> tuple[str, WebDriver] | None:
     if driver is None:
         msg = "A Selenium WebDriver is required for Mobalytics imports"
         raise RuntimeError(msg)
@@ -54,15 +58,15 @@ def _validated_url(request, driver: WebDriver | None, *, reject_profile: bool = 
     return url, driver
 
 
-def _load_build_page(url: str, driver: WebDriver) -> tuple[str, str, _JsonPathValue, int]:
+def _load_build_page(url: str, driver: WebDriver) -> tuple[str, str, JsonValue | None, int]:
     """Load the preloaded state shared by variant discovery and import."""
     normalized_url = _fix_input_url(url=url)
     driver.get(normalized_url)
     wait = WebDriverWait(driver, 10)
     wait.until(ec.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
     page_source = driver.page_source
-    raw_html_data = lxml.html.fromstring(page_source)
-    scripts = raw_html_data.xpath(SCRIPT_XPATH)
+    raw_html_data = lxml.html.fromstring(page_source, parser=lxml.html.HTMLParser())
+    scripts = list(raw_html_data.iter("script"))
     state = _load_preloaded_state(scripts)
     return normalized_url, page_source, state, len(scripts)
 
@@ -200,13 +204,14 @@ def _import_mobalytics(request: ImportRequest, driver: WebDriver | None = None) 
     )
 
 
-def _load_preloaded_state(scripts: list[object]) -> _JsonPathValue:
+def _load_preloaded_state(scripts: Iterable[lxml.html.HtmlElement]) -> JsonValue | None:
     for script in scripts:
         script_text = getattr(script, "text", None)
-        if script_text and script_text.strip().startswith(BUILD_SCRIPT_PREFIX):
-            try:
-                return json.loads(script_text.strip().replace(BUILD_SCRIPT_PREFIX, "")[:-1])
-            except json.JSONDecodeError as exc:
-                message = "Mobalytics build data was not valid JSON"
-                raise MobalyticsError(message) from exc
+        if not isinstance(script_text, str) or not script_text.strip().startswith(BUILD_SCRIPT_PREFIX):
+            continue
+        try:
+            return cast("JsonValue", json.loads(script_text.strip().replace(BUILD_SCRIPT_PREFIX, "")[:-1]))
+        except json.JSONDecodeError as exc:
+            message = "Mobalytics build data was not valid JSON"
+            raise MobalyticsError(message) from exc
     return None

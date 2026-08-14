@@ -3,7 +3,7 @@ from src.paragon.overlay import format_board_display_text, load_builds_from_path
 from src.profiles import ParagonPayloadModel
 
 
-def test_load_builds_from_path_uses_typed_paragon_payloads(monkeypatch):
+def test_load_builds_from_path_uses_typed_paragon_payloads(monkeypatch) -> None:
     payload = ParagonPayloadModel.model_validate({
         "Name": "Build Name",
         "ParagonBoardsList": [
@@ -24,11 +24,11 @@ def test_load_builds_from_path_uses_typed_paragon_payloads(monkeypatch):
     )
 
 
-def test_request_close_dispatches_to_overlay_ui_thread(monkeypatch):
+def test_request_close_dispatches_to_overlay_ui_thread(monkeypatch) -> None:
     class FakeOverlay:
         closed = False
 
-        def close(self):
+        def close(self) -> None:
             self.closed = True
 
     overlay = FakeOverlay()
@@ -45,7 +45,7 @@ def test_request_close_dispatches_to_overlay_ui_thread(monkeypatch):
     overlay_module._CLOSE_REQUESTED.clear()
 
 
-def test_request_close_without_an_open_overlay_is_a_no_op(monkeypatch):
+def test_request_close_without_an_open_overlay_is_a_no_op(monkeypatch) -> None:
     callbacks = []
     monkeypatch.setattr(overlay_module, "_CURRENT_OVERLAY", None)
     monkeypatch.setattr(overlay_module, "post_to_ui_thread", callbacks.append)

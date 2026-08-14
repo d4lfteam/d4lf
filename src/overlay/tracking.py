@@ -40,7 +40,7 @@ def _hover_experience_balance(config: dict[str, InfoSettingValue]) -> None:
 
 @singleton
 class InventoryExpTracker:
-    def __init__(self):
+    def __init__(self) -> None:
         self.last_hover_time = 0.0
         self.hover_active = False
 

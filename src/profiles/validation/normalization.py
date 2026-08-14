@@ -5,6 +5,7 @@ from src.perception import correct_name
 
 if TYPE_CHECKING:
     from src.profiles.affixes import AffixFilterCountModel
+    from src.type_aliases import YamlValue
 
 
 def _parse_item_type_or_rarities(data: str | list[str]) -> list[str]:
@@ -52,11 +53,11 @@ def _normalize_tribute_names(data: str | list[str] | None) -> list[str]:
     return normalized_names
 
 
-def _as_string_keyed_dict(data: object) -> dict[str, object] | None:
+def _as_string_keyed_dict(data: YamlValue) -> dict[str, YamlValue] | None:
     if not isinstance(data, dict):
         return None
 
-    normalized: dict[str, object] = {}
+    normalized: dict[str, YamlValue] = {}
     for key, value in data.items():
         if not isinstance(key, str):
             return None
@@ -64,7 +65,7 @@ def _as_string_keyed_dict(data: object) -> dict[str, object] | None:
     return normalized
 
 
-def _legacy_filter_values(value: object) -> list[object]:
+def _legacy_filter_values(value: YamlValue) -> list[YamlValue]:
     if isinstance(value, str) or value is None:
         return [value]
     if isinstance(value, list):

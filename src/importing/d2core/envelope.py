@@ -12,6 +12,7 @@ from src.importing.d2core.errors import (
     SIGNED_REQUEST,
     D2CoreImportError,
 )
+from src.type_aliases import JsonObject, JsonValue
 
 _TERMINAL_CODES = {
     "captcha_required": INTERACTIVE_ACCESS,
@@ -26,11 +27,11 @@ _TERMINAL_DETAILS = {
     MISSING_PLANNER: "The d2core planner was not found or was deleted",
 }
 
-type _EnvelopeLevel = dict[str, object] | None
-type _Envelope = tuple[dict[str, object], _EnvelopeLevel, _EnvelopeLevel, str | None, Exception | None]
+type _EnvelopeLevel = JsonObject | None
+type _Envelope = tuple[JsonObject, _EnvelopeLevel, _EnvelopeLevel, str | None, Exception | None]
 
 
-def decode_build_envelope(body: object, build_id: str) -> dict[str, object]:
+def decode_build_envelope(body: str | Mapping[str, JsonValue], build_id: str) -> JsonObject:
     """Decode and validate the redacted shape needed by the importer."""
     outer, response, build, terminal, response_error = _parse_envelope(body)
     if not outer:
@@ -49,7 +50,7 @@ def decode_build_envelope(body: object, build_id: str) -> dict[str, object]:
     return validate_build(build, build_id)
 
 
-def validate_build(value: object, build_id: str) -> dict[str, object]:
+def validate_build(value: JsonValue, build_id: str) -> JsonObject:
     """Validate a decoded planner build, including offline source snapshots."""
     build = _mapping(value)
     if not build:
@@ -68,24 +69,24 @@ def validate_build(value: object, build_id: str) -> dict[str, object]:
     return dict(build)
 
 
-def _mapping(value: object) -> dict[str, object]:
+def _mapping(value: JsonValue) -> JsonObject:
     if not isinstance(value, Mapping):
         return {}
-    source = cast("Mapping[object, object]", value)
+    source = cast("Mapping[str, JsonValue]", value)
     return {str(key): item for key, item in source.items()}
 
 
-def _valid_variant(value: object) -> bool:
+def _valid_variant(value: JsonValue) -> bool:
     if not isinstance(value, Mapping):
         return False
-    source = cast("Mapping[str, object]", value)
+    source = cast("Mapping[str, JsonValue]", value)
     return all(
         field not in source or isinstance(source[field], expected)
         for field, expected in (("gear", Mapping), ("charms", list), ("paragon", Mapping))
     )
 
 
-def _terminal_code(value: object) -> str | None:
+def _terminal_code(value: JsonValue) -> str | None:
     """Classify one CloudBase response object without traversing arbitrary payloads."""
     parsed = _mapping(value)
     if not parsed:
@@ -101,14 +102,14 @@ def _terminal_code(value: object) -> str | None:
     return None
 
 
-def terminal_envelope_code(value: object) -> str | None:
+def terminal_envelope_code(value: JsonValue) -> str | None:
     """Return a terminal planner error in the CloudBase response wrapper."""
     return _parse_envelope(value)[3]
 
 
-def _parse_envelope(value: object) -> _Envelope:
+def _parse_envelope(value: JsonValue) -> _Envelope:
     """Parse and classify only the observed outer/data/response_data/build levels."""
-    parsed: object = value
+    parsed: JsonValue = value
     if isinstance(parsed, str):
         try:
             parsed = json.loads(parsed)

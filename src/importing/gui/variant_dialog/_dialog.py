@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
+from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QWidget
 
 from src.desktop.widgets import CheckmarkCheckBox
 
@@ -8,7 +8,9 @@ if TYPE_CHECKING:
     from src.importing.contracts import VariantMetadata
 
 
-def select_variants_dialog(parent, variants: list[VariantMetadata], source_name: str) -> list[str] | None:
+def select_variants_dialog(
+    parent: QWidget | None, variants: list[VariantMetadata], source_name: str
+) -> list[str] | None:
     dialog = QDialog(parent)
     dialog.setWindowTitle("Select variants to import")
     dialog.setMinimumWidth(300)

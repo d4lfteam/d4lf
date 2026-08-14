@@ -2,9 +2,13 @@
 
 import json
 from collections.abc import Mapping
+from typing import TYPE_CHECKING, Protocol
 from urllib.parse import urlsplit
 
 from src.importing.d2core.envelope import terminal_envelope_code
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
 
 CATALOG_HOST = "cloudstorage.d2core.com"
 
@@ -22,7 +26,11 @@ def is_catalog_url(url: str) -> bool:
     )
 
 
-def set_page_load_timeout(driver: object, timeout: float) -> None:
+class PageLoadDriver(Protocol):
+    def set_page_load_timeout(self, timeout: float) -> None: ...
+
+
+def set_page_load_timeout(driver: PageLoadDriver, timeout: float) -> None:
     setter = getattr(driver, "set_page_load_timeout", None)
     if callable(setter):
         setter(timeout)
@@ -30,7 +38,7 @@ def set_page_load_timeout(driver: object, timeout: float) -> None:
 
 def body_matches_build(body: str, build_id: str) -> bool:
     try:
-        value: object = json.loads(body)
+        value: JsonValue = json.loads(body)
         if isinstance(value, Mapping):
             data = value.get("data")
             response_data = data.get("response_data") if isinstance(data, Mapping) else None
@@ -42,6 +50,6 @@ def body_matches_build(body: str, build_id: str) -> bool:
     return False
 
 
-def body_has_planner_error(body: object) -> bool:
+def body_has_planner_error(body: JsonValue) -> bool:
     """Recognize terminal CloudBase responses before catalog capture."""
     return terminal_envelope_code(body) is not None

@@ -20,7 +20,7 @@ UNIQUE_ASPECTS_TITLE = "Unique Aspects"
 
 
 class ItemTypePicker(QDialog):
-    def __init__(self, parent: QWidget | None, item_types: list[ItemType], selected_item_types: list[ItemType]):
+    def __init__(self, parent: QWidget | None, item_types: list[ItemType], selected_item_types: list[ItemType]) -> None:
         super().__init__(parent)
         self.setWindowTitle("Select Item Types")
         self.resize(650, 500)
@@ -75,7 +75,7 @@ class ItemTypePicker(QDialog):
         group_layout.addWidget(scroll_area)
         return group_box
 
-    def clear_selection(self):
+    def clear_selection(self) -> None:
         for checkbox in self.checkboxes.values():
             checkbox.setChecked(False)
 

@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import TYPE_CHECKING, cast
 
 from PyQt6.QtWidgets import QDialog, QWidget
 
@@ -10,6 +10,11 @@ from src.profiles.editor.container import Container
 from src.profiles.editor.helpers import refresh_widget_style
 from src.profiles.editor.pickers import RarityPicker, rarity_summary
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from src.profiles.affix.group.core import AffixGroupEditor
+
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
 AFFIX_PERCENT_MODE = "Min %"
@@ -17,31 +22,31 @@ UNIQUE_ASPECTS_TITLE = "Unique Aspects"
 
 
 class _AffixGroupControlsMixin:
-    def refresh_item_type_summary(self: Any):
+    def refresh_item_type_summary(self: AffixGroupEditor) -> None:
         self.item_type_line_edit.setText(_item_type_summary(self.config.item_type))
 
-    def edit_item_types(self: Any):
+    def edit_item_types(self: AffixGroupEditor) -> None:
         item_type_picker = ItemTypePicker(cast("QWidget", self), self.item_types, self.config.item_type)
         if item_type_picker.exec() == QDialog.DialogCode.Accepted:
             self.config.item_type = item_type_picker.get_selected_item_types()
             self.refresh_item_type_summary()
 
-    def refresh_rarity_summary(self: Any):
+    def refresh_rarity_summary(self: AffixGroupEditor) -> None:
         self.rarity_line_edit.setText(rarity_summary(self.config.rarities))
 
-    def edit_rarities(self: Any):
+    def edit_rarities(self: AffixGroupEditor) -> None:
         rarity_picker = RarityPicker(cast("QWidget", self), self.config.rarities)
         if rarity_picker.exec() == QDialog.DialogCode.Accepted:
             self.config.rarities = rarity_picker.get_selected_rarities()
             self.refresh_rarity_summary()
 
-    def update_min_power(self: Any):
+    def update_min_power(self: AffixGroupEditor) -> None:
         self.config.min_power = self.min_power.value()
 
-    def update_min_greater_affix(self: Any):
+    def update_min_greater_affix(self: AffixGroupEditor) -> None:
         self.config.min_greater_affix_count = self.min_greater.value()
 
-    def toggle_auto_sync(self: Any):
+    def toggle_auto_sync(self: AffixGroupEditor) -> None:
         is_auto_sync = self.auto_sync_checkbox.isChecked()
 
         # Save UI-only state (replaces writing to config)
@@ -64,17 +69,17 @@ class _AffixGroupControlsMixin:
             self.min_greater.setProperty("autoSyncSpin", False)  # ruff:ignore[boolean-positional-value-in-call]
             refresh_widget_style(self.min_greater)
 
-    def _update_auto_sync_count(self: Any):
+    def _update_auto_sync_count(self: AffixGroupEditor) -> None:
         count = self.count_want_greater_affixes()
         self.min_greater.setValue(count)
         self.update_greater_count_label()
 
-    def sync_min_greater_from_checkboxes(self: Any):
+    def sync_min_greater_from_checkboxes(self: AffixGroupEditor) -> None:
         if self.auto_sync_checkbox.isChecked():
             count = self.count_want_greater_affixes()
             self.min_greater.setValue(count)
 
-    def _ensure_pool_widgets_initialized(self: Any):
+    def _ensure_pool_widgets_initialized(self: AffixGroupEditor) -> None:
         for container in (self.affix_pool_container, self.inherent_pool_container):
             was_visible = container.content_widget.isVisible()
             if container.header.first_expansion:
@@ -82,7 +87,7 @@ class _AffixGroupControlsMixin:
                 if not was_visible:
                     container.collapse()
 
-    def iter_affix_widgets(self: Any):
+    def iter_affix_widgets(self: AffixGroupEditor) -> Iterator[AffixWidget]:
         self._ensure_pool_widgets_initialized()
 
         # Inherents do not participate in Greater Affix auto-sync or bulk Min % updates.
@@ -108,10 +113,10 @@ class _AffixGroupControlsMixin:
                 if isinstance(affix_widget, AffixWidget):
                     yield affix_widget
 
-    def count_want_greater_affixes(self: Any):
+    def count_want_greater_affixes(self: AffixGroupEditor) -> int:
         return sum(affix.want_greater for pool in self.config.affix_pool for affix in pool.count)
 
-    def update_greater_count_label(self: Any):
+    def update_greater_count_label(self: AffixGroupEditor) -> None:
         count = self.count_want_greater_affixes()
         if count == 0:
             self.greater_count_label.setText("(no greater affixes marked)")
@@ -120,6 +125,6 @@ class _AffixGroupControlsMixin:
         else:
             self.greater_count_label.setText(f"({count} greater affixes marked)")
 
-    def convert_all_to_min_percent_of_affix(self: Any, percent: int):
+    def convert_all_to_min_percent_of_affix(self: AffixGroupEditor, percent: int) -> None:
         for affix_widget in self.iter_affix_widgets():
             affix_widget.set_min_percent(percent, convert_mode=True)

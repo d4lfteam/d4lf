@@ -1,17 +1,22 @@
+from typing import TYPE_CHECKING
+
 from src.overlay.widget.widget import BossTimerOverlay
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
 
 
 class _Frame:
-    config_calls: list[dict[str, object]]
+    config_calls: list[dict[str, JsonValue]]
 
     def __init__(self) -> None:
         self.config_calls = []
 
-    def config(self, **kwargs: object) -> None:
+    def config(self, **kwargs: JsonValue) -> None:
         self.config_calls.append(kwargs)
 
 
-def test_toggle_orientation_repackages_and_persists(monkeypatch):
+def test_toggle_orientation_repackages_and_persists(monkeypatch) -> None:
     overlay = object.__new__(BossTimerOverlay)
     overlay.orientation = "horizontal"
     frame = _Frame()

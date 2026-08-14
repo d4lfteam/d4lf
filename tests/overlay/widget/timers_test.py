@@ -1,9 +1,13 @@
 import datetime
+from typing import TYPE_CHECKING
 
 from src.overlay.widget.widget import BossTimerOverlay
 
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
 
-def test_fetch_schedule_selects_next_world_boss(monkeypatch):
+
+def test_fetch_schedule_selects_next_world_boss(monkeypatch) -> None:
     now = datetime.datetime.now(datetime.UTC)
     start = (now + datetime.timedelta(hours=1)).isoformat()
 
@@ -32,7 +36,7 @@ def test_fetch_schedule_selects_next_world_boss(monkeypatch):
     def update_timers(_overlay: BossTimerOverlay) -> None:
         pass
 
-    def after(_overlay: BossTimerOverlay, *_args: object, **_kwargs: object) -> str:
+    def after(_overlay: BossTimerOverlay, *_args: JsonValue, **_kwargs: JsonValue) -> str:
         return "after-id"
 
     monkeypatch.setattr(BossTimerOverlay, "_save_settings", save_settings)

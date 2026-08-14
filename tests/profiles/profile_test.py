@@ -1,15 +1,5 @@
-"""Comprehensive tests for pydantic models including dual naming support.
-
-This file contains:
-1. Integration tests for ProfileModel (sigils, uniques, general profiles)
-2. Comprehensive unit tests for dual naming support (camelCase and snake_case)
-   - Both naming conventions work for input
-   - Export works correctly with by_alias parameter
-   - Mixed naming in same input works
-   - All validators work with both naming styles
-"""
-
 import json
+from typing import TYPE_CHECKING
 
 import pytest
 from pydantic import ValidationError
@@ -22,6 +12,20 @@ from src.profiles import (
     ProfileModel,
     TributeFilterModel,
 )
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
+
+"""Comprehensive tests for pydantic models including dual naming support.
+
+This file contains:
+1. Integration tests for ProfileModel (sigils, uniques, general profiles)
+2. Comprehensive unit tests for dual naming support (camelCase and snake_case)
+   - Both naming conventions work for input
+   - Export works correctly with by_alias parameter
+   - Mixed naming in same input works
+   - All validators work with both naming styles
+"""
 
 
 class TestProfileModel:
@@ -116,7 +120,7 @@ class TestProfileModel:
             [123],
         ],
     )
-    def test_invalid_legacy_tribute_entries_are_rejected(self, tributes: list[object]) -> None:
+    def test_invalid_legacy_tribute_entries_are_rejected(self, tributes: list[JsonValue]) -> None:
         with pytest.raises(ValidationError):
             ProfileModel.model_validate({"name": "invalid_tributes", "Tributes": tributes})
 
@@ -219,7 +223,7 @@ class TestProfileModel:
 
     def test_dict_construction_camelcase(self) -> None:
         """Test constructing from dict with camelCase keys."""
-        data: dict[str, object] = {"name": "dict_test", "GlobalUniques": [{"minPower": 800}]}
+        data: dict[str, JsonValue] = {"name": "dict_test", "GlobalUniques": [{"minPower": 800}]}
         model = ProfileModel.model_validate(data)
         assert model.name == "dict_test"
         assert len(model.global_uniques) == 1
@@ -227,7 +231,7 @@ class TestProfileModel:
 
     def test_dict_construction_snake_case(self) -> None:
         """Test constructing from dict with snake_case keys."""
-        data: dict[str, object] = {"name": "dict_test", "global_uniques": [{"min_power": 900}]}
+        data: dict[str, JsonValue] = {"name": "dict_test", "global_uniques": [{"min_power": 900}]}
         model = ProfileModel.model_validate(data)
         assert model.name == "dict_test"
         assert len(model.global_uniques) == 1

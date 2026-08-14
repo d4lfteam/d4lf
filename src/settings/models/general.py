@@ -15,6 +15,7 @@ from src.settings.models.core import (
     VisionModeType,
     _IniBaseModel,
 )
+from src.settings.types import SettingInput  # ruff:ignore[typing-only-first-party-import]
 
 FILTER_OVERRIDE_DESCRIPTION = (
     "When disabled, all {category} are skipped, including Mythic items. When enabled, Mythic items are always kept."
@@ -24,7 +25,7 @@ FILTER_OVERRIDE_DESCRIPTION = (
 class GeneralModel(_IniBaseModel):
     @model_validator(mode="before")
     @classmethod
-    def check_move_items_deprecation(cls, data: object) -> object:
+    def check_move_items_deprecation(cls, data: SettingInput) -> SettingInput:
         if not isinstance(data, dict):
             return data
         migrated_data = dict(data)
@@ -198,7 +199,7 @@ class GeneralModel(_IniBaseModel):
 
     @field_validator("check_chest_tabs", mode="before")
     @classmethod
-    def check_chest_tabs_index(cls, v: object) -> list[int]:
+    def check_chest_tabs_index(cls, v: SettingInput) -> list[int]:
         if isinstance(v, str):
             return sorted([int(x.strip()) - 1 for x in v.split(",") if x.strip()])
         if isinstance(v, list):
@@ -234,7 +235,7 @@ class GeneralModel(_IniBaseModel):
 
     @field_validator("profiles", mode="before")
     @classmethod
-    def check_profiles_is_list(cls, v: object) -> list[str]:
+    def check_profiles_is_list(cls, v: SettingInput) -> list[str]:
         if isinstance(v, str):
             values = v.split(",")
         elif isinstance(v, list):
@@ -266,7 +267,7 @@ class GeneralModel(_IniBaseModel):
 
     @field_validator("move_to_inv_item_type", "move_to_stash_item_type", mode="before")
     @classmethod
-    def convert_move_item_type(cls, v: object) -> list[MoveItemsType]:
+    def convert_move_item_type(cls, v: SettingInput) -> list[MoveItemsType]:
         if isinstance(v, str):
             values = v.split(",")
         elif isinstance(v, list):

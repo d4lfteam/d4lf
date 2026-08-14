@@ -3,7 +3,7 @@
 import json
 import re
 from pathlib import Path
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar, cast
 
 from src.tools.data_generation.affix_helpers import (
     replace_numeric_value_placeholders,
@@ -24,6 +24,9 @@ from src.tools.data_generation.common import (
 )
 from src.tools.data_generation.constants import EXPECTED_MISSING_AFFIX_LOCALISATIONS
 
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
+
 DataT = TypeVar("DataT")
 
 
@@ -32,9 +35,10 @@ def _power_index(core_toc: dict[str, dict[str, str]], d4data_dir: Path) -> dict[
     if indexed_powers:
         return {int(sno): power_name for sno, power_name in indexed_powers.items()}
     return {
-        int(power_data["__snoID__"]): power_data["__fileName__"]
+        int(power_data["__snoID__"]): str(power_data["__fileName__"])
         for power_data in (
-            load_json_file(power_file) for power_file in sorted((d4data_dir / "json/base/meta/Power").glob("*.json"))
+            cast("dict[str, str | int]", load_json_file(power_file))
+            for power_file in sorted((d4data_dir / "json/base/meta/Power").glob("*.json"))
         )
     }
 
@@ -119,7 +123,7 @@ def affix_string_description(
 def _generate_affix(
     affix_file: Path, context: AffixGenerationContext, d4data_dir: Path, language: str
 ) -> tuple[str, str, str] | None:
-    affix_data = load_json_file(affix_file)
+    affix_data = cast("AffixData", load_json_file(affix_file))
     affix_name = Path(affix_data["__fileName__"]).stem
     is_seal_affix = affix_name.startswith("Talisman_SealAffix_")
     is_charm_affix = affix_name.startswith("Talisman_Charm_")
@@ -153,10 +157,12 @@ def _generate_affix(
     return category, key, value
 
 
-def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None = None):
+def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None = None) -> int:
     print(f"Gen Affixes for {language}")
-    core_toc = load_json_file(d4data_dir / "json/base/CoreTOC.dat.json")
-    gbid = load_json_file(d4data_dir / "json/GBID.json")
+    core_toc = cast(
+        "dict[str, dict[str, str] | dict[str, list[str]]]", load_json_file(d4data_dir / "json/base/CoreTOC.dat.json")
+    )
+    gbid = cast("dict[str, dict[str, list[str]]]", load_json_file(d4data_dir / "json/GBID.json"))
     string_list_dir = d4data_dir / f"json/{language}_Text/meta/StringList"
     attribute_descriptions = string_list_map(string_list_dir / "AttributeDescriptions.stl.json")
     context: AffixGenerationContext = {
@@ -166,9 +172,13 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
         "necromancer_army": string_list_map(string_list_dir / "NecromancerArmy.stl.json"),
         "skill_tags": string_list_map(string_list_dir / "SkillTags.stl.json"),
         "ui_tooltips": string_list_map(string_list_dir / "UIToolTips.stl.json"),
-        "power_by_sno": _power_index(core_toc, d4data_dir),
-        "skill_tags_by_sno": {int(key) % (2**32): value for key, value in core_toc.get("56", {}).items()},
-        "weapon_types_by_sno": {int(key) % (2**32): value for key, value in core_toc.get("116", {}).items()},
+        "power_by_sno": _power_index(cast("dict[str, dict[str, str]]", core_toc), d4data_dir),
+        "skill_tags_by_sno": {
+            int(key) % (2**32): value for key, value in cast("dict[str, list[str]]", core_toc.get("56", {})).items()
+        },
+        "weapon_types_by_sno": {
+            int(key) % (2**32): value for key, value in cast("dict[str, str]", core_toc.get("116", {})).items()
+        },
         "power_names_by_id": {},
     }
     if not context["skill_tags_by_sno"]:
@@ -233,8 +243,8 @@ def merge_custom_data(data: list[DataT] | dict[str, DataT], name: str, language:
 
     if isinstance(data, list):
         _merge_list(data, custom, name)
-    elif _is_nested_data(data) and _is_nested_data(custom) and custom:
-        _merge_nested_dict(data, custom, name)
+    elif _is_nested_data(cast("JsonValue", data)) and _is_nested_data(cast("JsonValue", custom)) and custom:
+        _merge_nested_dict(cast("dict[str, dict[str, DataT]]", data), cast("dict[str, dict[str, DataT]]", custom), name)
     elif isinstance(data, dict):
         _merge_flat_dict(data, custom, name)
 

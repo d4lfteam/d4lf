@@ -26,6 +26,7 @@ from src.importing.contracts import (
     ImportRequest,
     ImportSession,
     ImportSourceError,
+    VariantMetadata,
     VariantSelection,
 )
 from src.importing.gui.constants import (
@@ -61,14 +62,11 @@ class ImporterWindow(QMainWindow):
     require_all_gas_checkbox: CheckmarkCheckBox
     export_paragon_checkbox: CheckmarkCheckBox
     multi_build_checkbox: CheckmarkCheckBox
-    input_box: QLineEdit
     filename_input_box: QLineEdit
     filename_part_actions: dict[FilenamePart, QAction]
     filename_parts_summary_label: QLabel
-    generate_button: QPushButton
-    log_output: QTextEdit
 
-    def __init__(self, parent=None, accent_color: str | None = None):
+    def __init__(self, parent: QWidget | None = None, accent_color: str | None = None) -> None:
         super().__init__(parent)
         if accent_color is not None:
             set_accent_color(accent_color)
@@ -92,12 +90,12 @@ class ImporterWindow(QMainWindow):
             logger.setLevel(logging.DEBUG)
             logger.addHandler(self.log_handler)
 
-    def _build_ui(self):
+    def _build_ui(self) -> None:
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         layout = QVBoxLayout(main_widget)
         self._build_url_row(layout)
-        build_filename_row(self, layout)
+        build_filename_row(self, layout)  # ty: ignore[invalid-argument-type]
         self._build_options(layout)
         layout.addWidget(QLabel("Log:"))
         self.log_output = QTextEdit()
@@ -111,7 +109,7 @@ class ImporterWindow(QMainWindow):
         instructions.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         layout.addWidget(instructions)
 
-    def _build_url_row(self, layout: QVBoxLayout):
+    def _build_url_row(self, layout: QVBoxLayout) -> None:
         row = QHBoxLayout()
         row.addWidget(QLabel("URL:"))
         self.input_box = QLineEdit()
@@ -145,7 +143,7 @@ class ImporterWindow(QMainWindow):
     def _filename_part_setting_key(part: FilenamePart) -> str:
         return f"filename_part_{part.value}"
 
-    def _build_options(self, layout: QVBoxLayout):
+    def _build_options(self, layout: QVBoxLayout) -> None:
         for config in _CHECKBOX_CONFIGS:
             setattr(
                 self,
@@ -170,7 +168,7 @@ class ImporterWindow(QMainWindow):
 
     def _generate_checkbox(
         self, name: str, setting: str, description: str, default: str = "true", fallbacks: tuple[str, ...] = ()
-    ):
+    ) -> CheckmarkCheckBox:
         checkbox = CheckmarkCheckBox(name)
         val = next((self.settings.value(k) for k in (setting, *fallbacks) if self.settings.contains(k)), default)
         checkbox.setChecked(val is True or str(val).casefold() == "true")
@@ -178,13 +176,13 @@ class ImporterWindow(QMainWindow):
         checkbox.stateChanged.connect(lambda: self.settings.setValue(setting, checkbox.isChecked()))
         return checkbox
 
-    def _update_greater_affix_dependency(self):
+    def _update_greater_affix_dependency(self) -> None:
         enabled = self.import_gas_checkbox.isChecked()
         self.require_all_gas_checkbox.setEnabled(enabled)
         if not enabled:
             self.require_all_gas_checkbox.setChecked(False)
 
-    def _update_generate_button_state(self):
+    def _update_generate_button_state(self) -> None:
         if self.is_generating:
             self.generate_button.setEnabled(False)
             return
@@ -198,7 +196,7 @@ class ImporterWindow(QMainWindow):
         else:
             self.generate_button.setToolTip("")
 
-    def _generate_button_click(self):
+    def _generate_button_click(self) -> None:
         if not self.generate_button.isEnabled():
             return
         self.log_output.clear()
@@ -246,7 +244,7 @@ class ImporterWindow(QMainWindow):
         self._on_worker_finished()
         return None
 
-    def _on_worker_finished(self):
+    def _on_worker_finished(self) -> None:
         if self._closing:
             return
         if getattr(self, "_waiting_for_user_selection", False):
@@ -258,7 +256,7 @@ class ImporterWindow(QMainWindow):
         self._update_generate_button_state()
         self.import_completed.emit()
 
-    def _on_variants_extracted(self, variants):
+    def _on_variants_extracted(self, variants: list[VariantMetadata]) -> None:
         if self._closing or self._active_import_session is None:
             return
         self._waiting_for_user_selection = True
@@ -275,7 +273,7 @@ class ImporterWindow(QMainWindow):
         worker = ImportWorker(request, self._on_persist_finished, self._active_import_session)
         THREADPOOL.start(worker)
 
-    def _on_persist_finished(self):
+    def _on_persist_finished(self) -> None:
         if self._closing:
             return
         self._waiting_for_user_selection = False
@@ -287,7 +285,7 @@ class ImporterWindow(QMainWindow):
             session.close()
 
     @override
-    def closeEvent(self, a0: QCloseEvent | None):
+    def closeEvent(self, a0: QCloseEvent | None) -> None:
         self._closing = True
         if not self.isMaximized():
             self.settings.setValue("size", self.size())

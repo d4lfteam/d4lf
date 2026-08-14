@@ -1,31 +1,35 @@
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from src.overlay.widget import menu as _widget_menu
 from src.overlay.widget.widget import BossTimerOverlay
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
 
 
 class _FakeWidget:
     geometry_value: str | None
 
-    def __init__(self, *_args: object, **_kwargs: object) -> None:
+    def __init__(self, *_args: JsonValue, **_kwargs: JsonValue) -> None:
         self.geometry_value = None
 
     def overrideredirect(self, *, boolean: bool) -> None:
         pass
 
-    def attributes(self, *_args: object, **_kwargs: object) -> None:
+    def attributes(self, *_args: JsonValue, **_kwargs: JsonValue) -> None:
         pass
 
-    def configure(self, **_kwargs: object) -> None:
+    def configure(self, **_kwargs: JsonValue) -> None:
         pass
 
     def geometry(self, value: str) -> None:
         self.geometry_value = value
 
-    def pack(self, **_kwargs: object) -> _FakeWidget:
+    def pack(self, **_kwargs: JsonValue) -> _FakeWidget:
         return self
 
-    def bind(self, *_args: object, **_kwargs: object) -> None:
+    def bind(self, *_args: JsonValue, **_kwargs: JsonValue) -> None:
         pass
 
     def focus_set(self) -> None:
@@ -38,18 +42,18 @@ class _PointerEvent:
     y_root: int
 
 
-def test_context_menu_records_pointer_position(monkeypatch):
+def test_context_menu_records_pointer_position(monkeypatch) -> None:
     created_popups: list[_FakeWidget] = []
 
-    def widget_factory(*_args: object, **_kwargs: object) -> _FakeWidget:
+    def widget_factory(*_args: JsonValue, **_kwargs: JsonValue) -> _FakeWidget:
         return _FakeWidget()
 
-    def toplevel_factory(*_args: object, **_kwargs: object) -> _FakeWidget:
+    def toplevel_factory(*_args: JsonValue, **_kwargs: JsonValue) -> _FakeWidget:
         popup = _FakeWidget()
         created_popups.append(popup)
         return popup
 
-    def noop(*_args: object, **_kwargs: object) -> None:
+    def noop(*_args: JsonValue, **_kwargs: JsonValue) -> None:
         pass
 
     monkeypatch.setattr(_widget_menu.tk, "Toplevel", toplevel_factory)

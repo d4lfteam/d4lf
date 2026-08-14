@@ -15,6 +15,9 @@ if typing.TYPE_CHECKING:
 
     from pytest_mock import MockerFixture
     from selenium.webdriver.remote.webdriver import WebDriver
+    from selenium.webdriver.remote.webelement import WebElement
+
+    from src.type_aliases import JsonValue
 
 
 class _ImportDriver:
@@ -26,8 +29,8 @@ class _ImportDriver:
     def get(self, _url: str) -> None:
         return None
 
-    def find_element(self, *_args, **_kwargs) -> object:
-        return object()
+    def find_element(self, *_args, **_kwargs) -> WebElement:
+        return typing.cast("WebElement", object())
 
 
 def _request(
@@ -70,7 +73,7 @@ def test_import_infinitybuilds_passes_category_options_to_pipeline_config(mocker
     assert not captured_request.options.import_seals
 
 
-def _gear_piece(slot: str, item_id: str, affix_ids: list[str]) -> dict[str, object]:
+def _gear_piece(slot: str, item_id: str, affix_ids: list[str]) -> dict[str, JsonValue]:
     return {
         "kind": "custom_legendary",
         "slot": slot,
@@ -79,7 +82,7 @@ def _gear_piece(slot: str, item_id: str, affix_ids: list[str]) -> dict[str, obje
     }
 
 
-def _page_source(class_id: str, variants: Sequence[Mapping[str, object]]) -> str:
+def _page_source(class_id: str, variants: Sequence[Mapping[str, JsonValue]]) -> str:
     payload = json.dumps({"classId": class_id, "variants": variants}, separators=(",", ":"))
     chunk = f"self.__next_f.push([1,{json.dumps(payload)}])"
     return f"<html><script>{chunk}</script></html>"

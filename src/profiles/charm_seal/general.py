@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import TYPE_CHECKING, cast
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
@@ -16,10 +16,15 @@ from PyQt6.QtWidgets import (
 )
 
 from src.game_data import GameCatalog
-from src.profiles import AffixFilterCountModel, AspectUniqueFilterModel, CharmFilterModel
+from src.profiles import AffixFilterCountModel, AspectUniqueFilterModel, CharmFilterModel, SealFilterModel
 from src.profiles.affix import UNIQUE_ASPECTS_TITLE, AffixPoolWidget, UniqueAspectWidget
 from src.profiles.editor.container import Container
 from src.profiles.editor.helpers import create_auto_sync_checkbox, create_readonly_line_edit, refresh_widget_style
+
+if TYPE_CHECKING:
+    from src.profiles.charm_seal.group import BaseGroupEditor
+
+type CharmSealEditor = BaseGroupEditor[CharmFilterModel] | BaseGroupEditor[SealFilterModel]
 
 CHARMS_TABNAME = "Charms"
 SEALS_TABNAME = "Seals"
@@ -32,7 +37,7 @@ def _set_summary(sets: list[str]) -> str:
 
 
 class _CharmSealGeneralMixin:
-    def add_rarity_row(self: Any, general_form: QFormLayout):
+    def add_rarity_row(self: CharmSealEditor, general_form: QFormLayout) -> None:
         """Add the rarity picker row to the form."""
         self.rarity_line_edit = create_readonly_line_edit()
         self.refresh_rarity_summary()
@@ -46,7 +51,7 @@ class _CharmSealGeneralMixin:
         rarity_layout.addStretch()
         general_form.addRow("Rarities:", rarity_layout)
 
-    def add_min_greater_row(self: Any, general_form: QFormLayout):
+    def add_min_greater_row(self: CharmSealEditor, general_form: QFormLayout) -> None:
         """Add the Min Greater Affixes and Auto Sync controls to the form."""
         min_greater_layout = QHBoxLayout()
 
@@ -86,7 +91,7 @@ class _CharmSealGeneralMixin:
 
         general_form.addRow("Min Greater Affixes:", min_greater_layout)
 
-    def add_affix_pool_section(self: Any):
+    def add_affix_pool_section(self: CharmSealEditor) -> None:
         """Add the affix pool section to the layout."""
         pool_btn_layout = QHBoxLayout()
         add_affix_pool_btn = QPushButton("Add Affix Pool")
@@ -104,19 +109,19 @@ class _CharmSealGeneralMixin:
         self.content_layout.addWidget(self.affix_pool_container)
         self.content_layout.addLayout(pool_btn_layout)
 
-    def add_custom_general_fields(self: Any, general_form: QFormLayout) -> None:
+    def add_custom_general_fields(self: CharmSealEditor, general_form: QFormLayout) -> None:
         """Stub method for subclasses to add their unique general fields."""
 
     # --- Unique Aspects ---
 
-    def _unique_aspects_title(self: Any) -> str:
+    def _unique_aspects_title(self: CharmSealEditor) -> str:
         aspect_names = ", ".join(unique_aspect.name for unique_aspect in self.config.unique_aspect) or "None"
         return f"{UNIQUE_ASPECTS_TITLE} - {aspect_names}"
 
-    def refresh_unique_aspects_title(self: Any):
+    def refresh_unique_aspects_title(self: CharmSealEditor) -> None:
         self.unique_aspect_container.header.set_name(self._unique_aspects_title())
 
-    def create_unique_aspect_container(self: Any):
+    def create_unique_aspect_container(self: CharmSealEditor) -> None:
         container = Container(UNIQUE_ASPECTS_TITLE)
         layout = QVBoxLayout(container.content_widget)
 
@@ -139,11 +144,11 @@ class _CharmSealGeneralMixin:
         self.unique_aspect_container = container
         self.content_layout.addWidget(container)
 
-    def init_unique_aspects(self: Any):
+    def init_unique_aspects(self: CharmSealEditor) -> None:
         for unique_aspect in self.config.unique_aspect:
             self.add_unique_aspect_item(unique_aspect)
 
-    def add_unique_aspect_item(self: Any, unique_aspect: AspectUniqueFilterModel):
+    def add_unique_aspect_item(self: CharmSealEditor, unique_aspect: AspectUniqueFilterModel) -> None:
         item = QListWidgetItem()
         allowed = sorted([k for k in GameCatalog().aspect_unique_dict if k.startswith(f"{self.type_prefix}_of")])
         widget = UniqueAspectWidget(unique_aspect, allowed_aspects=allowed, parent=self)
@@ -153,7 +158,7 @@ class _CharmSealGeneralMixin:
         self.unique_aspect_list.addItem(item)
         self.unique_aspect_list.setItemWidget(item, widget)
 
-    def add_unique_aspect(self: Any):
+    def add_unique_aspect(self: CharmSealEditor) -> None:
         if self.is_charm:
             if not isinstance(self.config, CharmFilterModel):
                 msg = "Charm editors require a charm filter model."
@@ -174,7 +179,7 @@ class _CharmSealGeneralMixin:
             break
         self.refresh_unique_aspects_title()
 
-    def remove_unique_aspect(self: Any):
+    def remove_unique_aspect(self: CharmSealEditor) -> None:
         row = self.unique_aspect_list.currentRow()
         if row != -1:
             self.unique_aspect_list.takeItem(row)
@@ -183,13 +188,13 @@ class _CharmSealGeneralMixin:
 
     # --- Affix Pool ---
 
-    def init_affix_pool(self: Any):
+    def init_affix_pool(self: CharmSealEditor) -> None:
         """Initialize affix pool content on first expansion."""
         for pool in self.config.affix_pool:
             self.add_affix_pool_item(pool)
         QTimer.singleShot(50, self.update_greater_count_label)
 
-    def add_affix_pool_item(self: Any, pool: AffixFilterCountModel):
+    def add_affix_pool_item(self: CharmSealEditor, pool: AffixFilterCountModel) -> None:
         nb_count = self.affix_pool_layout.count()
         container = Container(f"Count {nb_count}", color_background=True)
         container_layout = QVBoxLayout(container.content_widget)

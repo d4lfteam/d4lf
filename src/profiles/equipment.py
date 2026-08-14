@@ -12,6 +12,7 @@ from src.profiles.validation.normalization import (
     _validate_affix_pool_names,
     _validate_set_name,
 )
+from src.type_aliases import JsonObject  # ruff:ignore[typing-only-first-party-import]
 
 
 class ItemFilterModel(BaseModel):
@@ -46,7 +47,7 @@ class ItemFilterModel(BaseModel):
 
     @field_validator("unique_aspect", mode="before")
     @classmethod
-    def parse_unique_aspect(cls, data: dict[str, object] | list[dict[str, object]] | None) -> list[dict[str, object]]:
+    def parse_unique_aspect(cls, data: JsonObject | list[JsonObject] | None) -> list[JsonObject]:
         if not data:
             return []
         if isinstance(data, dict):

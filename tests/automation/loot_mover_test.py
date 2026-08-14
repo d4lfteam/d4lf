@@ -1,9 +1,11 @@
 import typing
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import cast
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
+
+    from src.automation.character import CharInventory
 
 from src import automation
 from src.automation import loot_mover as _loot_mover
@@ -12,16 +14,16 @@ from src.automation.loot_mover import _move_items
 from src.settings import MoveItemsType
 
 
-def test_move_items_returns_unhandled_slots_when_type_does_not_match(monkeypatch):
+def test_move_items_returns_unhandled_slots_when_type_does_not_match(monkeypatch) -> None:
     inv = type("Inventory", (), {"hover_item": lambda *_: None})()
     slot = ItemSlot((0, 0, 1, 1), (0, 0))
     monkeypatch.setattr("src.automation.loot_mover.Mouse.click", lambda *_: None)
-    moved, remaining = _move_items(cast("Any", inv), [slot], 1, [MoveItemsType.favorites])
+    moved, remaining = _move_items(cast("CharInventory", inv), [slot], 1, [MoveItemsType.favorites])
     assert moved == 0
     assert remaining == []
 
 
-def test_move_items_to_stash_requires_an_open_stash(monkeypatch, mocker: MockerFixture):
+def test_move_items_to_stash_requires_an_open_stash(monkeypatch, mocker: MockerFixture) -> None:
     monkeypatch.setattr(_loot_mover, "CharInventory", mocker.Mock)
     stash = mocker.Mock(is_open=mocker.Mock(return_value=False))
     monkeypatch.setattr(_loot_mover, "Stash", lambda: stash)
@@ -31,7 +33,7 @@ def test_move_items_to_stash_requires_an_open_stash(monkeypatch, mocker: MockerF
     stash.get_item_slots.assert_not_called()
 
 
-def test_move_items_to_stash_uses_configured_tabs_and_capacity(monkeypatch, mocker: MockerFixture):
+def test_move_items_to_stash_uses_configured_tabs_and_capacity(monkeypatch, mocker: MockerFixture) -> None:
     item = SimpleNamespace(is_fav=True, is_junk=False)
     inventory = mocker.Mock()
     inventory.get_item_slots.return_value = ([item], [])

@@ -6,7 +6,7 @@ if typing.TYPE_CHECKING:
 from src.overlay.base import Overlay
 
 
-def test_overlay_builds_canvas_on_shared_ui_thread(monkeypatch, mocker: MockerFixture):
+def test_overlay_builds_canvas_on_shared_ui_thread(monkeypatch, mocker: MockerFixture) -> None:
     root = mocker.Mock()
     canvas = mocker.Mock()
     root.winfo_screenheight.return_value = 900

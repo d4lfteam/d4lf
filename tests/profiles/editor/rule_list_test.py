@@ -11,7 +11,7 @@ from src.profiles.editor import RuleListTab
 
 
 class _AcceptedDialog(QDialog):
-    def __init__(self, value: str):
+    def __init__(self, value: str) -> None:
         super().__init__()
         self._value = value
 
@@ -55,7 +55,7 @@ def _button(tab: _StubRuleListTab, label: str) -> QPushButton:
     return next(btn for btn in tab.findChildren(QPushButton) if btn.text() == label)
 
 
-def test_add_action_appends_to_backing_list_and_list_widget(qapp):
+def test_add_action_appends_to_backing_list_and_list_widget(qapp) -> None:
     items = ["alpha"]
     tab = _StubRuleListTab(items)
     tab.load()
@@ -69,7 +69,7 @@ def test_add_action_appends_to_backing_list_and_list_widget(qapp):
     assert item.text() == "Item: beta"
 
 
-def test_remove_selected_removes_rows_from_backing_list_and_widget(qapp):
+def test_remove_selected_removes_rows_from_backing_list_and_widget(qapp) -> None:
     items = ["alpha", "beta", "gamma"]
     tab = _StubRuleListTab(items)
     tab.load()
@@ -89,13 +89,13 @@ def test_remove_selected_removes_rows_from_backing_list_and_widget(qapp):
     assert item.text() == "Item: beta"
 
 
-def test_remove_selected_warns_when_nothing_is_selected(qapp, monkeypatch):
+def test_remove_selected_warns_when_nothing_is_selected(qapp, monkeypatch) -> None:
     items = ["alpha"]
     tab = _StubRuleListTab(items)
     tab.load()
     warnings: list[tuple[str, str]] = []
 
-    def _warning(parent, title: str, message: str):
+    def _warning(parent, title: str, message: str) -> None:
         warnings.append((title, message))
 
     monkeypatch.setattr(QMessageBox, "warning", _warning)

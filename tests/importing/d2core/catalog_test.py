@@ -1,10 +1,13 @@
-from typing import cast, override
+from typing import TYPE_CHECKING, cast, override
 
 import httpx
 import pytest
 
 from src.importing.d2core.catalog import CatalogStore, CatalogTransport, validate_catalog
 from src.importing.d2core.errors import D2CoreCatalogError
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
 
 
 def test_talisman_catalog_indexes_nested_affixes() -> None:
@@ -17,8 +20,8 @@ def test_talisman_catalog_indexes_nested_affixes() -> None:
             "affixes": {"charm": [{"key": "charm-affix"}], "seal": [{"key": "seal-affix"}]},
         },
     )
-    charms = cast("dict[str, dict[str, object]]", catalog["charm"])
-    affixes = cast("dict[str, dict[str, dict[str, object]]]", catalog["affixes"])
+    charms = cast("dict[str, dict[str, JsonValue]]", catalog["charm"])
+    affixes = cast("dict[str, dict[str, dict[str, JsonValue]]]", catalog["affixes"])
     assert charms["charm-key"]["key"] == "charm-key"
     assert affixes["seal"]["seal-affix"]["key"] == "seal-affix"
 
@@ -28,7 +31,7 @@ def test_catalog_schema_failure_is_not_retried() -> None:
         calls = 0
 
         @override
-        def get(self, url: str, *, timeout: float) -> object:
+        def get(self, url: str, *, timeout: float) -> JsonValue:
             del url, timeout
             self.calls += 1
             return {"not": "an affix catalog"}
@@ -46,7 +49,7 @@ def test_catalog_requests_are_bounded_to_three_attempts_and_ten_seconds() -> Non
         timeouts: list[float] = []
 
         @override
-        def get(self, url: str, *, timeout: float) -> object:
+        def get(self, url: str, *, timeout: float) -> JsonValue:
             del url
             self.calls += 1
             self.timeouts.append(timeout)

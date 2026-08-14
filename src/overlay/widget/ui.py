@@ -18,7 +18,7 @@ from src.settings import get_settings
 
 
 class _OverlayUI(OverlayContract):
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         self.labels_to_resize = []
         stats = SessionStats()
         colors = get_filter_colors()
@@ -189,7 +189,7 @@ class _OverlayUI(OverlayContract):
         self._repack()
         self.geometry(f"+{self.x}+{self.y}")
 
-    def _repack(self):
+    def _repack(self) -> None:
         """Recalculate component packing based on current settings."""
         LOGGER.debug(
             "Repacking overlay. "
@@ -233,7 +233,7 @@ class _OverlayUI(OverlayContract):
                 self._repack_t2l_group()
                 pack_group(self.t2l_group)
 
-    def _repack_gold_group(self):
+    def _repack_gold_group(self) -> None:
         self.lbl_gph_title.pack_forget()
         self.gph_value_label.pack_forget()
         self.lbl_total_gained_title.pack_forget()
@@ -253,7 +253,7 @@ class _OverlayUI(OverlayContract):
             self.total_gained_value_label.config(text=self.total_gained_value_label.cget("text"))
             self.total_gained_value_label.pack(side="left")
 
-    def _repack_exp_group(self):
+    def _repack_exp_group(self) -> None:
         self.lbl_eph_title.pack_forget()
         self.eph_value_label.pack_forget()
         self.lbl_total_exp_title.pack_forget()
@@ -274,7 +274,7 @@ class _OverlayUI(OverlayContract):
             self.total_exp_value_label.pack(side="left")
             count += 1
 
-    def _repack_t2l_group(self):
+    def _repack_t2l_group(self) -> None:
         self.lbl_t2l_title.pack_forget()
         self.t2l_value_label.pack_forget()
         self.lbl_next_scan_title.pack_forget()

@@ -27,7 +27,7 @@ def _make_match(
     )
 
 
-def test_find_descr_ignores_successful_search_without_matches(monkeypatch):
+def test_find_descr_ignores_successful_search_without_matches(monkeypatch) -> None:
     resources = SimpleNamespace(
         offsets=SimpleNamespace(item_descr_width=100, item_descr_pad=10),
         pos=SimpleNamespace(window_dimensions=(3840, 2160)),
@@ -43,7 +43,7 @@ def test_find_descr_ignores_successful_search_without_matches(monkeypatch):
     assert find_descr(np.zeros((20, 20, 3), dtype=np.uint8), (0, 0)) == (False, None, None)
 
 
-def test_choose_best_match_selects_closest_match():
+def test_choose_best_match_selects_closest_match() -> None:
     closest_from_left_result = _make_match((90, 70), 0.99)
     closest_from_right_result = _make_match((125, 60), 0.70)
 
@@ -54,7 +54,7 @@ def test_choose_best_match_selects_closest_match():
     assert result == closest_from_right_result
 
 
-def test_choose_best_match_does_not_filter_matches_by_screen_side():
+def test_choose_best_match_does_not_filter_matches_by_screen_side() -> None:
     closest_from_left_result = _make_match((275, 70), 0.70)
     closest_from_right_result = _make_match((310, 60), 0.99)
 
@@ -65,13 +65,13 @@ def test_choose_best_match_does_not_filter_matches_by_screen_side():
     assert result == closest_from_right_result
 
 
-def test_choose_best_match_returns_no_match_for_unsuccessful_search():
+def test_choose_best_match_returns_no_match_for_unsuccessful_search() -> None:
     result = _choose_best_match(SearchResult(success=False), anchor_x=120)
 
     assert result is None
 
 
-def test_choose_best_match_uses_score_to_break_distance_tie():
+def test_choose_best_match_uses_score_to_break_distance_tie() -> None:
     lower_score = _make_match((110, 70), 0.70)
     higher_score = _make_match((130, 60), 0.90)
 
@@ -80,7 +80,7 @@ def test_choose_best_match_uses_score_to_break_distance_tie():
     assert result == higher_score
 
 
-def test_find_descr_searches_right_roi_for_left_half_anchor(mocker):
+def test_find_descr_searches_right_roi_for_left_half_anchor(mocker) -> None:
     resources = SimpleNamespace(
         offsets=SimpleNamespace(item_descr_width=100, item_descr_pad=10),
         pos=SimpleNamespace(window_dimensions=(400, 200)),
@@ -96,7 +96,7 @@ def test_find_descr_searches_right_roi_for_left_half_anchor(mocker):
     template_search.assert_called_once_with(mocker.ANY, 100, resources.roi.rel_descr_search_right)
 
 
-def test_find_descr_searches_left_roi_for_right_half_anchor(mocker):
+def test_find_descr_searches_left_roi_for_right_half_anchor(mocker) -> None:
     resources = SimpleNamespace(
         offsets=SimpleNamespace(item_descr_width=100, item_descr_pad=10),
         pos=SimpleNamespace(window_dimensions=(400, 200)),
@@ -112,7 +112,7 @@ def test_find_descr_searches_left_roi_for_right_half_anchor(mocker):
     template_search.assert_called_once_with(mocker.ANY, 300, resources.roi.rel_descr_search_left)
 
 
-def test_find_descr_uses_shared_core_without_diagnostics(mocker):
+def test_find_descr_uses_shared_core_without_diagnostics(mocker) -> None:
     detection = DescrDetection(found=True, crop_roi=[1, 2, 3, 4])
     core = mocker.patch("src.perception.tooltip.core._find_descr_core", return_value=detection)
     image = np.zeros((10, 10, 3), dtype=np.uint8)
@@ -123,7 +123,7 @@ def test_find_descr_uses_shared_core_without_diagnostics(mocker):
     core.assert_called_once_with(image, (100, 200), collect_diagnostics=False)
 
 
-def test_find_descr_with_diagnostics_uses_shared_core_with_diagnostics(mocker):
+def test_find_descr_with_diagnostics_uses_shared_core_with_diagnostics(mocker) -> None:
     detection = DescrDetection(found=False, failure_reason="missing_separator")
     core = mocker.patch("src.perception.tooltip.core._find_descr_core", return_value=detection)
     image = np.zeros((10, 10, 3), dtype=np.uint8)
@@ -134,7 +134,7 @@ def test_find_descr_with_diagnostics_uses_shared_core_with_diagnostics(mocker):
     core.assert_called_once_with(image, (100, 200), collect_diagnostics=True)
 
 
-def test_get_separator_match_in_crop_translates_full_image_coordinates():
+def test_get_separator_match_in_crop_translates_full_image_coordinates() -> None:
     detection = DescrDetection(
         found=True,
         cropped_descr=np.zeros((100, 100, 3), dtype=np.uint8),
@@ -154,7 +154,7 @@ def test_get_separator_match_in_crop_translates_full_image_coordinates():
     assert result.score == separator_match.score
 
 
-def test_get_separator_match_in_crop_returns_none_for_invalid_crop():
+def test_get_separator_match_in_crop_returns_none_for_invalid_crop() -> None:
     detection = DescrDetection(
         found=True,
         cropped_descr=None,
@@ -165,7 +165,7 @@ def test_get_separator_match_in_crop_returns_none_for_invalid_crop():
     assert get_separator_match_in_crop(detection) is None
 
 
-def test_find_descr_clips_crop_to_image_before_translating_separator(mocker):
+def test_find_descr_clips_crop_to_image_before_translating_separator(mocker) -> None:
     mocker.patch(
         "src.perception.tooltip.core.get_ui_coordinates",
         return_value=SimpleNamespace(

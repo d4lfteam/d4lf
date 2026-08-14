@@ -14,18 +14,19 @@ from src.importing.d2core.errors import (
 if TYPE_CHECKING:
     from src.importing.contracts import ImportRequest
     from src.importing.d2core.catalog import CatalogStore
+    from src.type_aliases import JsonValue
 
 Warn = Callable[[str, str, str, str], None]
 
 
 def resolve_variants(
-    variants: object, planner_variant: int | None, request: ImportRequest, warn: Warn
-) -> list[tuple[int, Mapping[str, object]]]:
+    variants: JsonValue, planner_variant: int | None, request: ImportRequest, warn: Warn
+) -> list[tuple[int, Mapping[str, JsonValue]]]:
     if not isinstance(variants, list):
         raise D2CoreImportError(SCHEMA_DRIFT, "The d2core Variant list was malformed")
     available = [
-        (index, cast("Mapping[str, object]", value))
-        for index, value in enumerate(cast("list[object]", variants), start=1)
+        (index, cast("Mapping[str, JsonValue]", value))
+        for index, value in enumerate(variants, start=1)
         if isinstance(value, Mapping)
     ]
     if request.options.multi_build:
@@ -41,7 +42,7 @@ def resolve_variants(
 
 
 def load_optional_catalog(
-    catalogs: CatalogStore, kind: str, enabled: bool, selected: list[tuple[int, Mapping[str, object]]], warn: Warn
+    catalogs: CatalogStore, kind: str, enabled: bool, selected: list[tuple[int, Mapping[str, JsonValue]]], warn: Warn
 ) -> bool:
     if not enabled:
         return False

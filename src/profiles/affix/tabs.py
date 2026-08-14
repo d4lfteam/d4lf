@@ -16,17 +16,17 @@ UNIQUE_ASPECTS_TITLE = "Unique Aspects"
 
 
 class AffixesTab(QWidget):
-    def __init__(self, affixes_model: list[DynamicItemFilterModel], parent=None):
+    def __init__(self, affixes_model: list[DynamicItemFilterModel], parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.affixes_model = affixes_model
         self.loaded = False
 
-    def load(self):
+    def load(self) -> None:
         if not self.loaded:
             self.setup_ui()
             self.loaded = True
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         """Populate the grid layout with existing groups."""
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 20, 0, 20)
@@ -76,10 +76,10 @@ class AffixesTab(QWidget):
         self.main_layout.addWidget(self.toolbar)
         self.main_layout.addWidget(self.tab_widget)
 
-    def show_message(self, text):
+    def show_message(self, text: str) -> None:
         QMessageBox.information(self, "Info", text)
 
-    def add_item_type(self):
+    def add_item_type(self) -> None:
         dialog = CreateItem(self.item_names, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             item = dialog.get_value()
@@ -90,12 +90,12 @@ class AffixesTab(QWidget):
                 self.affixes_model.append(item)
             return
 
-    def close_tab(self, index):
+    def close_tab(self, index: int) -> None:
         self.item_names.pop(index)
         self.tab_widget.removeTab(index)
         self.affixes_model.pop(index)
 
-    def remove_item_type(self):
+    def remove_item_type(self) -> None:
         dialog = DeleteItem(self.item_names, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             item_names_to_delete = dialog.get_value()
@@ -106,7 +106,7 @@ class AffixesTab(QWidget):
                 self.affixes_model.pop(index)
             return
 
-    def set_all_min_greater_affix(self):
+    def set_all_min_greater_affix(self) -> None:
         dialog = MinGreaterDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             min_greater_affix = dialog.get_value()
@@ -117,14 +117,14 @@ class AffixesTab(QWidget):
                 tab.min_greater.setValue(min_greater_affix)
                 tab.update_min_greater_affix()
 
-    def convert_all_to_min_percent_of_affix(self):
+    def convert_all_to_min_percent_of_affix(self) -> None:
         current_tab = self.tab_widget.currentWidget()
         if isinstance(current_tab, AffixGroupEditor):
             dialog = MinPercentDialog(self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 current_tab.convert_all_to_min_percent_of_affix(dialog.get_value())
 
-    def set_all_min_power(self):
+    def set_all_min_power(self) -> None:
         dialog = MinPowerDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             min_power = dialog.get_value()

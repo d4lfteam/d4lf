@@ -27,12 +27,13 @@ dependencies = [
   "selenium",
   "seleniumbase",
   "tk",
-  "webdriver-manager"
+  "webdriver-manager",
 ]
 dynamic = ["version"]
 
 [dependency-groups]
 dev = [
+  "lxml-stubs",
   "pyinstaller",
   "pytest",
   "pytest-cov",
@@ -42,6 +43,7 @@ dev = [
   "pytest-xdist",
   "ruff",
   "ty",
+  "types-psutil",
   "types-pywin32",
   "typing-extensions",
 ]
@@ -71,7 +73,6 @@ skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
 ignore = [
-  "CPY",
   "ambiguous-unicode-character-string",  # fix more in the future
   "assert",  # fix more in the future
   "boolean-default-value-positional-argument",
@@ -94,17 +95,11 @@ ignore = [
   "literal-membership",  # fix more in the future
   "logging-f-string",
   "magic-value-comparison",  # fix more in the future
-  "missing-return-type-private-function",  # fix more in the future, this is typing
-  "missing-return-type-special-method",  # fix more in the future, this is typing
-  "missing-return-type-static-method",  # fix more in the future, this is typing
-  "missing-return-type-undocumented-public-function",  # fix more in the future, this is typing
+  "missing-copyright-notice",
   "missing-todo-author",  # fix more in the future
   "missing-todo-colon",  # fix more in the future
   "missing-todo-link",  # fix more in the future
   "missing-trailing-comma",
-  "missing-type-args",  # fix more in the future, this is typing
-  "missing-type-function-argument",  # fix more in the future, this is typing
-  "missing-type-kwargs",  # fix more in the future, this is typing
   "mutable-class-default",  # fix more in the future
   "no-self-use",  # fix more in the future, staticmethods
   "non-augmented-assignment",  # fix more in the future
@@ -159,6 +154,13 @@ split-on-trailing-comma = false
   "boolean-positional-value-in-call",
   "import-private-name",
   "magic-value-comparison",
+  "missing-return-type-private-function",
+  "missing-return-type-special-method",
+  "missing-return-type-static-method",
+  "missing-return-type-undocumented-public-function",
+  "missing-type-args",
+  "missing-type-function-argument",
+  "missing-type-kwargs",
   "private-member-access",
   "suspicious-non-cryptographic-random-usage",
 ]
@@ -168,7 +170,7 @@ split-on-trailing-comma = false
 ]
 "src/paragon/_*.py" = [
   "undefined-local-with-import-star",
-  "undefined-local-with-import-star-usage"
+  "undefined-local-with-import-star-usage",
 ]
 "src/paragon/_shared.py" = ["any-type", "unused-import"]
 

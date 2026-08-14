@@ -37,12 +37,12 @@ def _read_output(path: Path) -> np.ndarray:
         ({"game_resolution": "3840"}, "WIDTHxHEIGHT"),
     ],
 )
-def test_validate_replay_config_rejects_invalid_inputs(tmp_path, overrides, message):
+def test_validate_replay_config_rejects_invalid_inputs(tmp_path, overrides, message) -> None:
     with pytest.raises(ReplayConfigurationError, match=message):
         validate_replay_config(make_replay_config(tmp_path, **overrides))
 
 
-def test_run_replay_saves_crop_and_composes_full_annotation(tmp_path, monkeypatch, caplog):
+def test_run_replay_saves_crop_and_composes_full_annotation(tmp_path, monkeypatch, caplog) -> None:
     config = make_replay_config(tmp_path)
     top_left_match = TemplateMatch(
         center=(180, 100),
@@ -99,7 +99,7 @@ def test_run_replay_saves_crop_and_composes_full_annotation(tmp_path, monkeypatc
         assert expected in caplog.text
 
 
-def test_run_replay_writes_and_displays_full_failure_annotation(tmp_path, monkeypatch):
+def test_run_replay_writes_and_displays_full_failure_annotation(tmp_path, monkeypatch) -> None:
     config = make_replay_config(tmp_path)
     detection = DescrDetection(found=False, failure_reason="missing_top_left_border")
     monkeypatch.setattr("src.tools.replay.full_screenshot.find_descr_with_diagnostics", lambda *_args: detection)

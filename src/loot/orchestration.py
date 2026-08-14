@@ -11,7 +11,7 @@ from src.settings import ItemRefreshType, get_settings
 LOGGER = logging.getLogger(__name__)
 
 
-def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh, no_match_action: str = "junk"):
+def run_loot_filter(force_refresh: ItemRefreshType = ItemRefreshType.no_refresh, no_match_action: str = "junk") -> None:
     LOGGER.info("Running loot filter")
     move_pointer(*abs_window_to_monitor((0, 0)))
     inv = character_inventory()

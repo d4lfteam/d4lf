@@ -12,7 +12,7 @@ class _LoaderFailure(BaseException):
     pass
 
 
-def test_load_string_map_returns_string_values(tmp_path):
+def test_load_string_map_returns_string_values(tmp_path) -> None:
     path = tmp_path / "strings.json"
     path.write_text(json.dumps({"first": "one", "second": "two"}), encoding="utf-8")
 
@@ -20,7 +20,7 @@ def test_load_string_map_returns_string_values(tmp_path):
 
 
 @pytest.mark.parametrize("payload", [[], {"first": 1}, {"first": None}])
-def test_load_string_map_rejects_non_string_maps(tmp_path, payload):
+def test_load_string_map_rejects_non_string_maps(tmp_path, payload) -> None:
     path = tmp_path / "strings.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
 
@@ -28,17 +28,17 @@ def test_load_string_map_rejects_non_string_maps(tmp_path, payload):
         _load_string_map(path)
 
 
-def test_catalog_has_expected_data_containers():
+def test_catalog_has_expected_data_containers() -> None:
     assert isinstance(GameCatalog.affix_dict, dict)
     assert isinstance(GameCatalog.aspect_list, list)
 
 
-def test_catalog_retries_after_failed_initialization(monkeypatch):
+def test_catalog_retries_after_failed_initialization(monkeypatch) -> None:
     monkeypatch.setattr(GameCatalog, "_instance", None)
     monkeypatch.setattr(GameCatalog, "data_loaded", False)
     attempts = 0
 
-    def load_data(instance):
+    def load_data(instance) -> None:
         nonlocal attempts
         attempts += 1
         if attempts == 1:
@@ -57,14 +57,14 @@ def test_catalog_retries_after_failed_initialization(monkeypatch):
     assert instance.affix_dict == {"ready": "yes"}
 
 
-def test_catalog_initialization_is_serialized(monkeypatch):
+def test_catalog_initialization_is_serialized(monkeypatch) -> None:
     monkeypatch.setattr(GameCatalog, "_instance", None)
     monkeypatch.setattr(GameCatalog, "data_loaded", False)
     started = threading.Event()
     release = threading.Event()
     instances = []
 
-    def load_data(instance):
+    def load_data(instance) -> None:
         started.set()
         assert release.wait(timeout=2)
         instance.aspect_list = ["ready"]

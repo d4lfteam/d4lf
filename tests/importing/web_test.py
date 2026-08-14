@@ -1,3 +1,5 @@
+from typing import Never
+
 import pytest
 
 from src.importing.web import retry_importer
@@ -10,7 +12,7 @@ def test_retry_importer_closes_an_owned_browser_after_exhausting_retries(mocker)
     errors = [RuntimeError("initial fixture failure"), RuntimeError("final Maxroll schema failure")]
 
     @retry_importer(inject_webdriver=True)
-    def failing_import(*, driver):
+    def failing_import(*, driver) -> Never:
         nonlocal attempts
         attempts += 1
         raise errors[attempts - 1]
@@ -39,7 +41,7 @@ def test_retry_importer_injects_driver_when_config_is_positional(mocker) -> None
     config = object()
 
     @retry_importer(inject_webdriver=True)
-    def importing(import_config, driver=None):
+    def importing(import_config, driver=None) -> None:
         assert import_config is config
         assert driver is owned_driver
 
@@ -55,7 +57,7 @@ def test_retry_importer_injects_driver_when_optional_driver_is_none(mocker) -> N
     config = object()
 
     @retry_importer(inject_webdriver=True)
-    def importing(import_config, driver=None):
+    def importing(import_config, driver=None) -> None:
         assert import_config is config
         assert driver is owned_driver
 
@@ -71,7 +73,7 @@ def test_retry_importer_preserves_explicit_positional_driver(mocker) -> None:
     config = object()
 
     @retry_importer(inject_webdriver=True)
-    def importing(import_config, driver=None):
+    def importing(import_config, driver=None) -> None:
         assert import_config is config
         assert driver is supplied_driver
 

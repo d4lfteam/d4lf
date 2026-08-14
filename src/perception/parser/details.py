@@ -16,7 +16,7 @@ from src.perception.text import keep_letters_and_spaces
 LOGGER = logging.getLogger(__name__)
 
 
-def _update_item_object(item: Item, rarity=None, item_type=None) -> Item:
+def _update_item_object(item: Item, rarity: ItemRarity | None = None, item_type: ItemType | None = None) -> Item:
     if rarity:
         item.rarity = rarity
     if item_type:
@@ -77,11 +77,11 @@ def _get_index_after_item_power(tts_section: list[str], fallback: int) -> int:
     return fallback
 
 
-def _get_affixes_from_tts_section(tts_section: list[str], start: int, length: int):
+def _get_affixes_from_tts_section(tts_section: list[str], start: int, length: int) -> list[str]:
     return tts_section[start : start + length]
 
 
-def _get_aspect_or_set_from_tts_section(tts_section: list[str], item: Item, start: int, num_affixes: int):
+def _get_aspect_or_set_from_tts_section(tts_section: list[str], item: Item, start: int, num_affixes: int) -> str | None:
     if item.item_type == ItemType.HoradricSeal and item.rarity == ItemRarity.Legendary:
         return None
     # Grab the aspect/set as well in this case
@@ -161,7 +161,7 @@ def _get_affix_from_text(text: str, item_type: ItemType | None = None) -> Affix:
     return result
 
 
-def _has_numbers(affix_text):
+def _has_numbers(affix_text: str) -> bool:
     return any(char.isdigit() for char in affix_text)
 
 
@@ -224,7 +224,7 @@ def _get_item_rarity(data: str) -> ItemRarity | None:
     return next((rar for rar in ItemRarity if rar.value == data.lower()), ItemRarity.Common)
 
 
-def _get_item_type(data: str):
+def _get_item_type(data: str) -> ItemType | None:
     return next((it for it in ItemType if it.value == data.lower()), None)
 
 
@@ -235,5 +235,5 @@ def _is_codex_upgrade(tts_section: list[str]) -> bool:
     )
 
 
-def _is_cosmetic_upgrade(tts_section: list[str]):
+def _is_cosmetic_upgrade(tts_section: list[str]) -> bool:
     return any("unlocks new look on salvage" in line.lower() for line in tts_section)

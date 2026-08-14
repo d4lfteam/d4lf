@@ -1,3 +1,5 @@
+from typing import Never
+
 from src.importing import ImportRequest, ImportResult
 from src.importing.contracts import ImportSession
 from src.importing.d2core.errors import NO_USABLE_VARIANT, D2CoreImportError
@@ -47,10 +49,10 @@ def test_fetch_worker_uses_explicit_session_without_opening_another() -> None:
         def fetch_variants(self, request):
             return []
 
-        def import_build(self, request):
+        def import_build(self, request) -> Never:
             raise AssertionError
 
-        def close(self):
+        def close(self) -> None:
             pass
 
     session = ImportSession(FakeSession())
@@ -67,13 +69,13 @@ def test_workers_do_not_replay_expected_d2core_terminal_errors(caplog) -> None:
     class FailedSession:
         name = "d2core"
 
-        def fetch_variants(self, request):
+        def fetch_variants(self, request) -> Never:
             raise D2CoreImportError(NO_USABLE_VARIANT, "No selected d2core Variant could be resolved")
 
-        def import_build(self, request):
+        def import_build(self, request) -> Never:
             raise D2CoreImportError(NO_USABLE_VARIANT, "No selected d2core Variant could be resolved")
 
-        def close(self):
+        def close(self) -> None:
             pass
 
     caplog.set_level("ERROR")
@@ -88,15 +90,15 @@ def test_workers_do_not_log_expected_provider_errors(caplog) -> None:
     class FailedSession:
         name = "d4builds"
 
-        def fetch_variants(self, request):
+        def fetch_variants(self, request) -> Never:
             message = "No variants could be extracted"
             raise D4BuildsError(message)
 
-        def import_build(self, request):
+        def import_build(self, request) -> Never:
             message = "No variants could be extracted"
             raise D4BuildsError(message)
 
-        def close(self):
+        def close(self) -> None:
             pass
 
     caplog.set_level("ERROR")

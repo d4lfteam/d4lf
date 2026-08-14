@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import lxml.html
+from lxml import etree
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
@@ -28,7 +29,7 @@ MAX_VARIANTS = 50
 
 @dataclass(frozen=True, slots=True)
 class _LoadedVariantPage:
-    data: lxml.html.HtmlElement
+    data: etree._Element
     class_name: str
     build_header: str
     season_number: str
@@ -53,7 +54,7 @@ def _load_variant_page(url: str, driver: WebDriver, *, wait_for_paperdoll: bool 
     if wait_for_paperdoll:
         wait.until(ec.presence_of_element_located((By.XPATH, PAPERDOLL_XPATH)))
         time.sleep(5)
-    data = lxml.html.fromstring(driver.page_source)
+    data = lxml.html.fromstring(driver.page_source, parser=lxml.html.HTMLParser())
     class_name, build_header, season_number, variant_name = _extract_build_metadata(data=data)
     return _LoadedVariantPage(data, class_name, build_header, season_number, variant_name)
 
@@ -68,7 +69,7 @@ def _variant_url(url: str, variant_index: int) -> str:
 def _variant_key(loaded_page: _LoadedVariantPage) -> str:
     if loaded_page.variant_name:
         return loaded_page.variant_name
-    return lxml.html.tostring(loaded_page.data, encoding="unicode")
+    return etree.tostring(loaded_page.data, encoding="unicode")
 
 
 def _iter_variant_pages(

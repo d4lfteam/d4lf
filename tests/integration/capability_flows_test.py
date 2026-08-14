@@ -6,7 +6,7 @@ from src.item.filter import Filter
 from src.profiles import ProfileDocumentStore, ProfileModel
 
 
-def test_imported_profile_round_trips_typed_paragon_and_transforms_board(tmp_path):
+def test_imported_profile_round_trips_typed_paragon_and_transforms_board(tmp_path) -> None:
     payload = {
         "Name": "Imported build",
         "Source": "fixture",
@@ -38,7 +38,7 @@ def test_imported_profile_round_trips_typed_paragon_and_transforms_board(tmp_pat
     assert paragon.transform_flat_index(1, rotation // 90) == 41
 
 
-def test_perception_item_is_evaluated_by_public_filter_facade():
+def test_perception_item_is_evaluated_by_public_filter_facade() -> None:
     item = perception.parse_item_text(["GREATER MATERIALS CACHE", "Legendary Cache"])
     assert item is not None
     assert item.item_type == ItemType.Cache

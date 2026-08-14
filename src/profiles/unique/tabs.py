@@ -12,13 +12,13 @@ UNIQUES_TABNAME = "GlobalUniques"
 
 
 class UniqueWidget(QWidget):
-    def __init__(self, unique_model: GlobalUniqueModel, parent=None):
+    def __init__(self, unique_model: GlobalUniqueModel, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.unique_model = unique_model
 
         self.setup_ui()
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         scroll_area = QScrollArea(self)
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)
@@ -35,7 +35,7 @@ class UniqueWidget(QWidget):
         self.main_layout.addWidget(scroll_area)
         self.setLayout(self.main_layout)
 
-    def create_general_groupbox(self):
+    def create_general_groupbox(self) -> None:
         self.general_groupbox = QGroupBox()
         self.general_groupbox.setTitle("Global Unique Rule")
         self.general_form = QFormLayout()
@@ -70,21 +70,21 @@ class UniqueWidget(QWidget):
         self.general_groupbox.setLayout(self.general_form)
         self.content_layout.addWidget(self.general_groupbox)
 
-    def update_profile_alias(self, value: str):
+    def update_profile_alias(self, value: str) -> None:
         self.unique_model.profile_alias = value.strip()
 
-    def update_min_power(self):
+    def update_min_power(self) -> None:
         self.unique_model.min_power = self.min_power.value()
 
-    def update_min_greater_affix(self):
+    def update_min_greater_affix(self) -> None:
         self.unique_model.min_greater_affix_count = self.min_greater.value()
 
-    def update_min_percent(self):
+    def update_min_percent(self) -> None:
         self.unique_model.min_percent_of_aspect = self.min_percent.value()
 
 
 class UniquesTab(TabGroupWidget[GlobalUniqueModel]):
-    def __init__(self, unique_model_list: list[GlobalUniqueModel], parent=None):
+    def __init__(self, unique_model_list: list[GlobalUniqueModel], parent: QWidget | None = None) -> None:
         super().__init__(unique_model_list, parent)
 
     @override

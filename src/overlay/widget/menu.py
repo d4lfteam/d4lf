@@ -1,12 +1,18 @@
 import tkinter as tk
+from typing import Protocol
 
 from src.loot import get_filter_colors
 from src.overlay.settings import setting_int as _setting_int
 from src.overlay.widget.shared import ACCENT, ACTIVE_GREEN, CARD_BG, MUTED, TEXT, OverlayContract
 
 
+class _ContextMenuEvent(Protocol):
+    x_root: int
+    y_root: int
+
+
 class _OverlayMenu(OverlayContract):
-    def _show_context_menu(self, event):
+    def _show_context_menu(self, event: _ContextMenuEvent | None) -> None:
         """Create and display a persistent settings popup."""
         self._destroy_settings_popup()
 
@@ -33,8 +39,8 @@ class _OverlayMenu(OverlayContract):
         tk.Frame(popup, height=1, bg=ACCENT).pack(fill="x", pady=2)
 
         # Gold Stats Submenu (Cascading)
-        def build_gold_submenu_content(submenu_frame):
-            def update_dependent_widgets():
+        def build_gold_submenu_content(submenu_frame: tk.Misc) -> None:
+            def update_dependent_widgets() -> None:
                 is_tracking = self.capture_gold_stats
                 state = tk.NORMAL if is_tracking else tk.DISABLED
                 btn_gph.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.show_gph) else MUTED)
@@ -56,8 +62,8 @@ class _OverlayMenu(OverlayContract):
         )
 
         # Exp Config Submenu (Cascading)
-        def build_exp_submenu_content(submenu_frame):
-            def update_dependent_widgets():
+        def build_exp_submenu_content(submenu_frame: tk.Misc) -> None:
+            def update_dependent_widgets() -> None:
                 is_tracking = self.capture_exp_stats
                 state = tk.NORMAL if is_tracking else tk.DISABLED
 
@@ -94,7 +100,7 @@ class _OverlayMenu(OverlayContract):
                 submenu_frame, "Auto-Capture Exp When Inventory Opened", "check_exp_on_inventory_open"
             )
 
-            def build_exp_age_sub_submenu_content(sub_submenu_frame):
+            def build_exp_age_sub_submenu_content(sub_submenu_frame: tk.Misc) -> None:
                 for label, val in [
                     ("Never", -1),
                     ("0m", 0),
@@ -156,7 +162,7 @@ class _OverlayMenu(OverlayContract):
         self._create_submenu_button(popup, "Exp Config", "exp_stats_submenu", build_exp_submenu_content).pack(fill="x")
 
         # Reset Stats Submenu (Cascading)
-        def build_reset_submenu_content(submenu_frame):
+        def build_reset_submenu_content(submenu_frame: tk.Misc) -> None:
             tk.Button(
                 submenu_frame,
                 text="Reset Gold",
@@ -245,7 +251,7 @@ class _OverlayMenu(OverlayContract):
         ).pack(fill="x")
 
         # Font Submenu
-        def build_font_submenu_content(submenu_frame):
+        def build_font_submenu_content(submenu_frame: tk.Misc) -> None:
             for font_name in self.FONT_CHOICES:
                 self._create_radio_button(
                     submenu_frame, font_name, self.font_family, font_name, self._change_font_family

@@ -23,19 +23,19 @@ _TRIBUTE_PREFIX = "Tribute: "
 
 
 class TributesTab(QWidget):
-    def __init__(self, tributes: TributeFilterModel | None, parent=None):
+    def __init__(self, tributes: TributeFilterModel | None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.tributes = tributes if tributes is not None else TributeFilterModel()
         self.list_widget = QListWidget()
         self.rarity_line_edit = QLineEdit()
         self.loaded = False
 
-    def load(self):
+    def load(self) -> None:
         if not self.loaded:
             self.setup_ui()
             self.loaded = True
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 20, 0, 20)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -74,13 +74,13 @@ class TributesTab(QWidget):
         main_layout.addWidget(self.list_widget)
         self.setLayout(main_layout)
 
-    def _reload_list_widget(self):
+    def _reload_list_widget(self) -> None:
         self.list_widget.clear()
         for tribute_name in self.tributes.name:
             display_name = GameCatalog().tribute_dict.get(tribute_name, tribute_name)
             self.list_widget.addItem(f"{_TRIBUTE_PREFIX}{display_name}")
 
-    def _add_tribute(self):
+    def _add_tribute(self) -> None:
         dialog = CreateTribute(self.tributes.name)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             value = dialog.get_value()
@@ -89,16 +89,16 @@ class TributesTab(QWidget):
                     self.tributes.name.append(tribute_name)
             self._reload_list_widget()
 
-    def refresh_rarity_summary(self):
+    def refresh_rarity_summary(self) -> None:
         self.rarity_line_edit.setText(rarity_summary(self.tributes.rarities))
 
-    def edit_rarities(self):
+    def edit_rarities(self) -> None:
         picker = RarityPicker(self, self.tributes.rarities)
         if picker.exec() == QDialog.DialogCode.Accepted:
             self.tributes.rarities = picker.get_selected_rarities()
             self.refresh_rarity_summary()
 
-    def remove_selected(self):
+    def remove_selected(self) -> None:
         rows = sorted({self.list_widget.row(item) for item in self.list_widget.selectedItems()}, reverse=True)
         if not rows:
             QMessageBox.warning(self, "Warning", "Select at least one tribute rule to remove.")

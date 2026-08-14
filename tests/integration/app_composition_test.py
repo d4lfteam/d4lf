@@ -3,7 +3,7 @@ import sys
 import src.main as main_module
 
 
-def test_update_dispatch_does_not_load_the_desktop_shell(monkeypatch):
+def test_update_dispatch_does_not_load_the_desktop_shell(monkeypatch) -> None:
     sys.modules.pop("src.app.shell", None)
     monkeypatch.setattr(main_module.sys, "argv", ["d4lf", "--autoupdate"])
     monkeypatch.setattr(main_module, "_configure_logging", lambda **_: None)

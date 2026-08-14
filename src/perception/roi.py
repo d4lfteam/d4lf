@@ -3,13 +3,20 @@ import operator
 from collections.abc import Iterable
 from enum import Enum
 from numbers import Integral
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
 type Rectangle = tuple[int, int, int, int]
+type RoiCoordinate = int | np.integer
+type RoiValues = tuple[RoiCoordinate | Iterable[RoiCoordinate], ...]
+type RoiInput = RoiCoordinate | Iterable[RoiCoordinate] | Iterable[Iterable[RoiCoordinate]] | RoiValues
 
 
-def fit_roi_to_window_size(roi, size):
+def fit_roi_to_window_size(roi: Rectangle | np.ndarray, size: tuple[int, int]) -> tuple[bool, Rectangle | None]:
     ww, wh = size
     x, y, w, h = roi
 
@@ -30,7 +37,7 @@ def fit_roi_to_window_size(roi, size):
         return False, None
 
     updated_roi = (x, y, w, h)
-    return success, updated_roi
+    return success, (int(updated_roi[0]), int(updated_roi[1]), int(updated_roi[2]), int(updated_roi[3]))
 
 
 def get_center(roi: tuple[int, int, int, int]) -> tuple[int, int]:
@@ -43,16 +50,16 @@ def get_center(roi: tuple[int, int, int, int]) -> tuple[int, int]:
     return round(x + w / 2), round(y + h / 2)
 
 
-def _as_values(value: object) -> tuple[object, ...] | None:
+def _as_values(value: RoiInput) -> RoiValues | None:
     if not isinstance(value, Iterable):
         return None
     try:
-        return tuple(value)
+        return cast("RoiValues", tuple(value))
     except TypeError:
         return None
 
 
-def _as_rectangle(value: object) -> Rectangle | None:
+def _as_rectangle(value: RoiInput | RoiValues) -> Rectangle | None:
     values = _as_values(value)
     if values is None:
         return None
@@ -69,7 +76,7 @@ def _as_rectangle(value: object) -> Rectangle | None:
     return int(x), int(y), int(width), int(height)
 
 
-def intersect(*rects: Iterable[object]) -> Rectangle | None:
+def intersect(*rects: RoiInput) -> Rectangle | None:
     """Finds the intersection of multiple rectangles.
 
     :param rects: The rectangles to intersect. Each rectangle is represented as a tuple of four integers (x_min, y_min, width, height).
@@ -84,6 +91,8 @@ def intersect(*rects: Iterable[object]) -> Rectangle | None:
             normalized_rects.append(direct_rect)
             continue
         for nested_rect in rect_values:
+            if not isinstance(nested_rect, Iterable):
+                return None
             normalized_rect = _as_rectangle(nested_rect)
             if normalized_rect is None:
                 return None
@@ -102,7 +111,7 @@ def intersect(*rects: Iterable[object]) -> Rectangle | None:
     return None
 
 
-def bounding_box(*args: Iterable[object]) -> Rectangle | None:
+def bounding_box(*args: RoiInput) -> Rectangle | None:
     """Finds the bounding rectangle of a set of rectangles or coordinates.
 
     :param args: The rectangles or coordinates to bound.
@@ -129,6 +138,8 @@ def bounding_box(*args: Iterable[object]) -> Rectangle | None:
     max_y: int | None = None
 
     for arg in normalized_args:
+        if not isinstance(arg, Iterable):
+            return None
         values = _as_values(arg)
         if values is None:
             return None
@@ -142,10 +153,10 @@ def bounding_box(*args: Iterable[object]) -> Rectangle | None:
             min_y = y if min_y is None else min(min_y, y)
             max_y = y if max_y is None else max(max_y, y)
         elif len(values) == 4 and all(isinstance(value, Integral) for value in values):  # if it's a rectangle
-            x_value: object = values[0]
-            y_value: object = values[1]
-            w_value: object = values[2]
-            h_value: object = values[3]
+            x_value: RoiCoordinate | Iterable[RoiCoordinate] = values[0]
+            y_value: RoiCoordinate | Iterable[RoiCoordinate] = values[1]
+            w_value: RoiCoordinate | Iterable[RoiCoordinate] = values[2]
+            h_value: RoiCoordinate | Iterable[RoiCoordinate] = values[3]
             if (
                 not isinstance(x_value, Integral)
                 or not isinstance(y_value, Integral)

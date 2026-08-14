@@ -1,6 +1,12 @@
 import threading
+from typing import TYPE_CHECKING, TypeVar
 
 from src.settings.binding import validate_hotkey as validate_hotkey_binding
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from src.type_aliases import JsonValue
 
 
 def check_greater_than_zero(v: int) -> int:
@@ -29,11 +35,14 @@ def validate_hotkey(k: str) -> str:
     return validate_hotkey_binding(k)
 
 
-def singleton(cls):
-    instances = {}
+T = TypeVar("T")
+
+
+def singleton(cls: type[T]) -> Callable[..., T]:
+    instances: dict[type[T], T] = {}
     lock = threading.Lock()
 
-    def get_instance(*args, **kwargs):
+    def get_instance(*args: JsonValue, **kwargs: JsonValue) -> T:
         with lock:
             if cls not in instances:
                 instances[cls] = cls(*args, **kwargs)

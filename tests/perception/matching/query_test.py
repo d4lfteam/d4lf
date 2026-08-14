@@ -1,7 +1,12 @@
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 
 from src.perception.matching import SearchArgs, SearchResult
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
 
 
 def test_search_args_accepts_numpy_images() -> None:
@@ -12,7 +17,7 @@ def test_search_args_accepts_numpy_images() -> None:
 
 def test_search_args_detects_through_the_matching_facade(monkeypatch) -> None:
     image = np.zeros((2, 2, 3), dtype=np.uint8)
-    observed: dict[str, object] = {}
+    observed: dict[str, JsonValue] = {}
 
     def fake_search(**kwargs):
         observed.update(kwargs)

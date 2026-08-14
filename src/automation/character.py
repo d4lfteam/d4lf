@@ -4,7 +4,7 @@ from src.settings import get_settings, get_ui_coordinates
 
 
 class CharInventory(InventoryBase):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.menu_name = "Char_Inventory"
         sort_icon_roi = [int(value) for value in get_ui_coordinates().roi.sort_icon]

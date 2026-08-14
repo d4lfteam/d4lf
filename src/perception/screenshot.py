@@ -1,11 +1,15 @@
 import logging
 import pathlib
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import cv2
 
 from src.logger import LOG_DIR
 from src.perception.capture.core import Cam
+
+if TYPE_CHECKING:
+    import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
@@ -13,7 +17,7 @@ LOGGER = logging.getLogger(__name__)
 def screenshot(
     name: str | None = None,
     path: str = str(LOG_DIR / "screenshots"),
-    img=None,
+    img: np.ndarray | None = None,
     overwrite: bool = True,
     timestamp: bool = True,
 ) -> None:

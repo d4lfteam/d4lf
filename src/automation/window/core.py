@@ -59,7 +59,7 @@ class WindowSpec:
         return _backend.get_process_from_window_name(hwnd).casefold() == self.process_name.casefold() and window_name_ok
 
 
-def get_window_spec_id(window_spec: WindowSpec) -> int | None:
+def get_window_spec_id(window_spec: WindowSpecLike) -> int | None:
     return _backend.get_window_spec_id(window_spec)
 
 

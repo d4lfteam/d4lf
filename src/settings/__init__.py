@@ -36,7 +36,7 @@ from src.settings.reload_groups import (
     has_any_changed,
 )
 from src.settings.scaling import ResManager
-from src.settings.types import Template
+from src.settings.types import SettingValue, Template
 
 if TYPE_CHECKING:
     import logging
@@ -66,7 +66,7 @@ class Settings(Protocol):
 
     def reload_if_changed(self) -> bool: ...
 
-    def save_value(self, section: str, key: str, value: object) -> None: ...
+    def save_value(self, section: str, key: str, value: SettingValue) -> None: ...
 
     def register_change_listener(self, listener: Callable[[frozenset[str]], None]) -> None: ...
 
@@ -133,6 +133,7 @@ __all__ = [
     "ItemRefreshType",
     "LogLevels",
     "MoveItemsType",
+    "SettingValue",
     "Settings",
     "SettingsCategory",
     "SettingsLoadError",

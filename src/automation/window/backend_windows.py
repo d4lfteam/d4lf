@@ -103,6 +103,8 @@ def is_window_foreground(window_spec: WindowSpecLike) -> bool:
     hwnd = get_window_spec_id(window_spec)
     if hwnd is not None:
         active_window_handle = ctypes.windll.user32.GetForegroundWindow()
+        if not isinstance(active_window_handle, int):
+            return False
         return active_window_handle == hwnd
     return False
 

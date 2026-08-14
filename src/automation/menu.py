@@ -16,7 +16,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Menu:
-    def __init__(self):
+    def __init__(self) -> None:
         self.menu_name: str = ""
         self.parent_menu: Menu | None = None
         self.is_open_search_args: SearchArgs | None = None

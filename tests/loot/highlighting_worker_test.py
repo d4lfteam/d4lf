@@ -1,6 +1,7 @@
 import typing
 from threading import Event, Thread
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -9,6 +10,9 @@ if typing.TYPE_CHECKING:
 
     import numpy as np
     from pytest_mock import MockerFixture
+
+    from src.loot.highlighting import VisionModeWithHighlighting
+    from src.perception import LocatorResult
 
 import src.loot.highlighting_worker as worker_module
 import src.perception
@@ -33,31 +37,33 @@ class _WorkerHarness(HighlightingWorker):
     def request_clear(self) -> None:
         self.request_clear_mock()
 
-    def request_match_box(self, *args: object) -> None:
+    def request_match_box(
+        self, *args: Item | FilterResult | tuple[int, int, int, int] | LocatorResult | str | None
+    ) -> None:
         self.request_match_box_mock(*args)
 
-    def request_no_match_box(self, *args: object) -> None:
+    def request_no_match_box(self, *args: Item | tuple[int, int, int, int]) -> None:
         self.request_no_match_box_mock(*args)
 
-    def request_empty_outline(self, *args: object) -> None:
+    def request_empty_outline(self, *args: Item | tuple[int, int, int, int] | str | None) -> None:
         self.request_empty_outline_mock(*args)
 
-    def request_codex_upgrade_box(self, *args: object) -> None:
+    def request_codex_upgrade_box(self, *args: Item | FilterResult | tuple[int, int, int, int]) -> None:
         self.request_codex_upgrade_box_mock(*args)
 
 
-def test_cancellation_error_is_public_within_worker_module():
+def test_cancellation_error_is_public_within_worker_module() -> None:
     assert issubclass(CancellationRequestedError, Exception)
 
 
-def test_cancellation_check_raises_for_set_event():
+def test_cancellation_check_raises_for_set_event() -> None:
     event = Event()
     event.set()
     with pytest.raises(CancellationRequestedError):
         HighlightingWorker.check_for_thread_cancellation(event)
 
 
-def test_unparsed_tts_does_not_clear_existing_item_overlay(monkeypatch, mocker: MockerFixture):
+def test_unparsed_tts_does_not_clear_existing_item_overlay(monkeypatch, mocker: MockerFixture) -> None:
     worker = _WorkerHarness()
     worker.current_item = Item(name="gohrs_devastating_grips")
     worker.request_clear_mock = mocker.Mock()
@@ -65,7 +71,7 @@ def test_unparsed_tts_does_not_clear_existing_item_overlay(monkeypatch, mocker: 
     monkeypatch.setattr("src.loot.highlighting_worker.capture", mocker.Mock())
     monkeypatch.setattr(src.perception, "read_latest_item", lambda: None)
 
-    worker.on_tts([])
+    cast("VisionModeWithHighlighting", worker).on_tts([])
 
     worker.request_clear_mock.assert_not_called()
 
@@ -76,7 +82,7 @@ def test_unparsed_tts_does_not_clear_existing_item_overlay(monkeypatch, mocker: 
 )
 def test_filter_result_queues_only_normal_highlighting_results(
     monkeypatch, mocker: MockerFixture, filter_result, should_queue_match
-):
+) -> None:
     worker = _WorkerHarness()
     item = Item(name="helm", item_type=ItemType.Sigil, rarity=ItemRarity.Mythic if should_queue_match else None)
     worker.current_item = item
@@ -109,7 +115,7 @@ def test_filter_result_queues_only_normal_highlighting_results(
 
     checks = 0
 
-    def stop_after_first_evaluation(_worker, _event):
+    def stop_after_first_evaluation(_worker, _event) -> None:
         nonlocal checks
         checks += 1
         if checks > 5:
@@ -117,7 +123,7 @@ def test_filter_result_queues_only_normal_highlighting_results(
 
     monkeypatch.setattr(HighlightingWorker, "check_for_thread_cancellation", stop_after_first_evaluation)
 
-    worker.evaluate_item_and_queue_draw(item, Event())
+    cast("VisionModeWithHighlighting", worker).evaluate_item_and_queue_draw(item, Event())
 
     if should_queue_match:
         worker.request_match_box_mock.assert_called_once()

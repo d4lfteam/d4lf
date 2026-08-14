@@ -1,9 +1,13 @@
 import re
+from typing import TYPE_CHECKING
 
 import rapidfuzz
 import rapidfuzz.distance.Levenshtein
 
 from src.game_data import GameCatalog
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 def correct_name(name: str) -> str | None:
@@ -27,15 +31,15 @@ def keep_letters_and_spaces(text: str) -> str:
     return "".join(char for char in text if char.isalpha() or char.isspace()).strip().replace("  ", " ")
 
 
-def closest_match(target, candidates):
+def closest_match(target: str, candidates: Mapping[str, str]) -> str | None:
     keys, values = zip(*candidates.items(), strict=False)
     result = rapidfuzz.process.extractOne(
         target, values, scorer=rapidfuzz.distance.Levenshtein.distance, score_cutoff=100
     )
-    return keys[values.index(result[0])] if result else None
+    return str(keys[values.index(str(result[0]))]) if result else None
 
 
-def closest_to(value, choices):
+def closest_to(value: float, choices: list[float]) -> float:
     return min(choices, key=lambda x: abs(x - value))
 
 

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from src.overlay.settings import InfoSettingValue
 
 
-def test_save_settings_persists_relative_position_and_flags(monkeypatch):
+def test_save_settings_persists_relative_position_and_flags(monkeypatch) -> None:
     overlay = object.__new__(BossTimerOverlay)
     overlay.settings = {"show_gold": True}
     overlay.locked = True

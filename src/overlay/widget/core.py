@@ -2,7 +2,7 @@ import datetime
 import time
 import tkinter as tk
 from contextlib import suppress
-from typing import Protocol, override
+from typing import TYPE_CHECKING, Protocol, cast, override
 
 from src.automation import WindowSpec
 from src.overlay import state as _state
@@ -18,13 +18,16 @@ from src.overlay.widget.shared import TRANSPARENT_KEY, OverlayContract
 from src.perception import game_window_roi
 from src.settings import get_settings
 
+if TYPE_CHECKING:
+    from src.overlay.widget.widget import BossTimerOverlay
+
 
 class _OverlayClosed(Protocol):
-    def __call__(self, overlay: object | None) -> None: ...
+    def __call__(self, overlay: BossTimerOverlay | None) -> None: ...
 
 
 class _OverlayCore(OverlayContract):
-    def __init__(self, parent, on_closed: _OverlayClosed | None = None):
+    def __init__(self, parent: tk.Misc, on_closed: _OverlayClosed | None = None) -> None:
         super().__init__(parent)
         self._on_closed = on_closed
         self._after_ids: list[str] = []
@@ -108,11 +111,11 @@ class _OverlayCore(OverlayContract):
         super().destroy()
 
         if self._on_closed is not None:
-            self._on_closed(self)
+            self._on_closed(cast("BossTimerOverlay", self))
         else:
-            _state.clear_overlay(self)
+            _state.clear_overlay(cast("BossTimerOverlay", self))
 
-    def _apply_loaded_settings(self):
+    def _apply_loaded_settings(self) -> None:
         # Transition to relative coordinates: Add the current game window offset to the saved position.
         roi = game_window_roi()
         offset_x = roi.get("left", 0) if roi else 0
@@ -150,7 +153,7 @@ class _OverlayCore(OverlayContract):
         self._gold_initialized = self.capture_gold_stats and stats.last_gold is not None
         self._exp_initialized = self.capture_exp_stats and stats.last_exp is not None
 
-    def _save_settings(self):
+    def _save_settings(self) -> None:
         roi = game_window_roi()
         offset_x = roi.get("left", 0) if roi else 0
         offset_y = roi.get("top", 0) if roi else 0

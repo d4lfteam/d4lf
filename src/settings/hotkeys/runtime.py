@@ -2,7 +2,7 @@
 
 import threading
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from pynput import keyboard
 
@@ -10,7 +10,6 @@ from src.settings.binding.core import _canonicalize_token, _split_hotkey_tokens,
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Hashable
-
 
 _CONTROLLER: keyboard.Controller | None = None
 
@@ -22,7 +21,7 @@ def _controller() -> keyboard.Controller:
     return _CONTROLLER
 
 
-def _to_pressable(token: str):
+def _to_pressable(token: str) -> str | keyboard.Key:
     canonical_token = _canonicalize_token(token)
     if len(canonical_token) == 1:
         return canonical_token
@@ -56,12 +55,12 @@ class _GlobalHotkeyRegistry:
         self._pressed_keys: set[Hashable] = set()
         self._active_hotkeys: set[str] = set()
 
-    def _canonicalize_event_key(self, key):
+    def _canonicalize_event_key(self, key: Hashable) -> Hashable:
         if self._listener is None:
             return key
-        return self._listener.canonical(key)
+        return cast("Hashable", self._listener.canonical(key))
 
-    def _on_press(self, key) -> None:
+    def _on_press(self, key: Hashable) -> None:
         callbacks: list[Callable[[], None]] = []
         with self._lock:
             canonical_key = self._canonicalize_event_key(key)
@@ -78,7 +77,7 @@ class _GlobalHotkeyRegistry:
         for callback in callbacks:
             callback()
 
-    def _on_release(self, key) -> None:
+    def _on_release(self, key: Hashable) -> None:
         with self._lock:
             canonical_key = self._canonicalize_event_key(key)
             self._pressed_keys.discard(canonical_key)

@@ -27,7 +27,7 @@ if typing.TYPE_CHECKING:
         (ItemRarity.Legendary, {"rarity_test.AnyRarity"}),
     ],
 )
-def test_affix_rarity_gate(rarity: ItemRarity, expected: set[str], mocker: MockerFixture):
+def test_affix_rarity_gate(rarity: ItemRarity, expected: set[str], mocker: MockerFixture) -> None:
     boots = Item(
         item_type=ItemType.Boots,
         power=900,
@@ -40,7 +40,7 @@ def test_affix_rarity_gate(rarity: ItemRarity, expected: set[str], mocker: Mocke
     assert {m.profile for m in test_filter.should_keep(boots).matched} == expected
 
 
-def test_duplicate_affix_requirements_match_distinct_item_rows(mocker: MockerFixture):
+def test_duplicate_affix_requirements_match_distinct_item_rows(mocker: MockerFixture) -> None:
     profile = ProfileModel(
         name="duplicates",
         affixes=[
@@ -73,7 +73,7 @@ def test_duplicate_affix_requirements_match_distinct_item_rows(mocker: MockerFix
     assert result.matched[0].matched_affixes[1] is second_armor
 
 
-def test_duplicate_affix_requirements_assign_value_and_greater_constraints(mocker: MockerFixture):
+def test_duplicate_affix_requirements_assign_value_and_greater_constraints(mocker: MockerFixture) -> None:
     profile = ProfileModel(
         name="duplicates",
         affixes=[
@@ -219,7 +219,9 @@ CASES = (
 
 
 @pytest.mark.parametrize(("setting", "item", "enabled_keep", "mythic"), CASES)
-def test_filterable_item_category_override_skips_all_items_when_disabled(setting, item, enabled_keep, mythic, mocker):
+def test_filterable_item_category_override_skips_all_items_when_disabled(
+    setting, item, enabled_keep, mythic, mocker
+) -> None:
     settings = _patch_override_settings(mocker, **{setting: False})
     test_filter = _create_mocked_filter(mocker)
 
@@ -249,7 +251,7 @@ def test_filterable_item_category_override_skips_all_items_when_disabled(setting
     assert enabled_mythic.keep
 
 
-def test_disabled_sigils_skip_escalation_before_sigil_behavior(mocker):
+def test_disabled_sigils_skip_escalation_before_sigil_behavior(mocker) -> None:
     _patch_override_settings(mocker, filter_sigils=False, ignore_escalation_sigils=False)
     test_filter = _create_mocked_filter(mocker)
     escalation_sigil = Item(item_type=ItemType.EscalationSigil, name="escalation")
@@ -260,7 +262,7 @@ def test_disabled_sigils_skip_escalation_before_sigil_behavior(mocker):
     assert result.matched == []
 
 
-def test_disabled_category_still_loads_and_reports_invalid_profiles(tmp_path, mocker):
+def test_disabled_category_still_loads_and_reports_invalid_profiles(tmp_path, mocker) -> None:
     settings = _patch_override_settings(mocker, filter_equipment=False)
     settings.general.profiles = ["invalid"]
     settings.user_dir = tmp_path

@@ -13,6 +13,8 @@ from src.settings import BASE_DIR
 if TYPE_CHECKING:
     from collections.abc import Container
 
+    from src.type_aliases import JsonObject
+
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("selenium").setLevel(logging.WARNING)
@@ -42,7 +44,7 @@ class ColoredFormatter(logging.Formatter):
         style: Literal["%", "{", "$"] = "%",
         validate: bool = True,
         *,
-        defaults: dict[str, object] | None = None,
+        defaults: JsonObject | None = None,
     ) -> None:
         colorama.just_fix_windows_console()
         super().__init__(fmt=fmt, datefmt=datefmt, style=style, validate=validate, defaults=defaults)
@@ -173,7 +175,7 @@ def consume_startup_log_records() -> list[logging.LogRecord]:
     return records
 
 
-def clean_up_old_log_files():
+def clean_up_old_log_files() -> None:
     max_to_keep = 10
 
     files = [f for f in LOG_DIR.iterdir() if f.is_file() and f.name.startswith("log_")]

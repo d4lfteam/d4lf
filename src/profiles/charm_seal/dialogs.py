@@ -1,6 +1,16 @@
 from typing import override
 
-from PyQt6.QtWidgets import QDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout
+from PyQt6.QtWidgets import (
+    QDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from src.game_data import GameCatalog
 from src.profiles import (
@@ -17,7 +27,7 @@ from src.profiles.editor.pickers import CheckboxListDialog
 class CreateCharmOrSeal(QDialog):
     """Dialog for creating a new named charm or seal filter."""
 
-    def __init__(self, item_list: list[str], is_charm: bool = True, parent=None):
+    def __init__(self, item_list: list[str], is_charm: bool = True, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.is_charm = is_charm
         label = "Charm" if is_charm else "Seal"
@@ -53,7 +63,7 @@ class CreateCharmOrSeal(QDialog):
             return
         super().accept()
 
-    def get_value(self):
+    def get_value(self) -> DynamicCharmFilterModel | DynamicSealFilterModel:
         item_name = self.name_input.text()
         affix_dict = GameCatalog().charm_affix_dict if self.is_charm else GameCatalog().seal_affix_dict
         default_affix = AffixFilterModel(name=next(iter(affix_dict.keys()), ""))
@@ -66,7 +76,7 @@ class CreateCharmOrSeal(QDialog):
 class SetPicker(CheckboxListDialog[str]):
     """Multi-select dialog for charm set names."""
 
-    def __init__(self, parent, selected_sets: list[str]):
+    def __init__(self, parent: QWidget, selected_sets: list[str]) -> None:
         super().__init__(
             parent,
             window_title="Select Sets",

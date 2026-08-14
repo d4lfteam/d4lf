@@ -1,12 +1,22 @@
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QComboBox, QCompleter, QDialog, QFormLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QCompleter,
+    QDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from src.game_data import GameCatalog
 from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
 
 
 class AddAspectUpgrade(QDialog):
-    def __init__(self, aspect_upgrades: list[str], parent=None):
+    def __init__(self, aspect_upgrades: list[str], parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.aspect_upgrades = aspect_upgrades
         self.setWindowTitle("Add Aspect")

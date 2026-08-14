@@ -67,7 +67,7 @@ class OverlayCoreMixin(OverlayContract):
                 setattr(self._cfg, attr, val)
 
         self._config_loader = get_settings()
-        self._config_listener = self._on_config_changed
+        self._config_listener: Callable[[set[str] | frozenset[str]], None] = self._on_config_changed
         self._config_loader.register_change_listener(self._config_listener)
         self._res = get_ui_coordinates()
         self._win_spec = WindowSpec(self._config_loader.advanced_options.process_name)

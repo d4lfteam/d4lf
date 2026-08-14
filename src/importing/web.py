@@ -2,7 +2,7 @@ import annotationlib
 import functools
 import inspect
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar, overload
 
 import httpx
 from selenium import webdriver
@@ -14,13 +14,18 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 from seleniumbase import Driver
 
+from src.importing.contracts import ImportRequest
 from src.settings import BrowserType, get_settings
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from selenium.webdriver.remote.webelement import WebElement
 
 LOGGER = logging.getLogger(__name__)
 HEADERS = {"User-Agent": "Diablo 4 Loot Filter - Profile Importer"}
+R = TypeVar("R")
+type ImporterArgument = ImportRequest | WebDriver | str | bool | None
 
 
 def get_with_retry(url: str, custom_headers: dict[str, str] | None = None) -> httpx.Response:
@@ -57,12 +62,24 @@ def hover_and_get_tooltip_html(
     return str(tooltip.get_attribute("outerHTML") or "")
 
 
-def retry_importer(func=None, inject_webdriver: bool = False, uc=False):
-    def decorator(wrap_function):
+@overload
+def retry_importer(func: Callable[..., R], inject_webdriver: bool = False, uc: bool = False) -> Callable[..., R]: ...
+
+
+@overload
+def retry_importer(
+    func: None = None, inject_webdriver: bool = False, uc: bool = False
+) -> Callable[[Callable[..., R]], Callable[..., R]]: ...
+
+
+def retry_importer(
+    func: Callable[..., R] | None = None, inject_webdriver: bool = False, uc: bool = False
+) -> Callable[[Callable[..., R]], Callable[..., R]] | Callable[..., R]:
+    def decorator(wrap_function: Callable[..., R]) -> Callable[..., R]:
         signature = inspect.signature(wrap_function, annotation_format=annotationlib.Format.STRING)
 
         @functools.wraps(wrap_function)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: ImporterArgument, **kwargs: ImporterArgument) -> R:
             bound = signature.bind_partial(*args, **kwargs)
             explicit_driver = bound.arguments.get("driver") is not None
             if not explicit_driver:
@@ -95,6 +112,8 @@ def retry_importer(func=None, inject_webdriver: bool = False, uc=False):
             finally:
                 if owned_driver is not None:
                     owned_driver.quit()
+            msg = "Importer retry loop exited unexpectedly"
+            raise RuntimeError(msg)
 
         return wrapper
 

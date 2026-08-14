@@ -1,9 +1,9 @@
 import os
-from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from pydantic import BaseModel
 from PyQt6.QtWidgets import QApplication
 
 from src.settings.widgets import QChestTabWidget
@@ -11,20 +11,29 @@ from src.settings.widgets import QChestTabWidget
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from src.settings.types import SettingValue
 
-def test_chest_tab_reset_callback_narrows_list_values():
+type SaveArgument = BaseModel | str | Callable[[SettingValue], None]
+
+
+class _ChestModel(BaseModel):
+    max_stash_tabs: int = 3
+
+
+def test_chest_tab_reset_callback_narrows_list_values() -> None:
     _app = QApplication.instance() or QApplication([])
 
-    reset_callbacks: list[Callable[..., object]] = []
+    reset_callbacks: list[Callable[[SettingValue], None]] = []
 
-    def save_setting_value(*args: object) -> None:
+    def save_setting_value(*args: SaveArgument) -> bool:
         callback = args[-1]
         if not callable(callback):
             msg = "Expected a reset callback."
             raise TypeError(msg)
-        reset_callbacks.append(callback)
+        reset_callbacks.append(cast("Callable[[SettingValue], None]", callback))
+        return True
 
-    widget = QChestTabWidget(SimpleNamespace(max_stash_tabs=3), "section", "key", [0], save_setting_value)
+    widget = QChestTabWidget(_ChestModel(), "section", "key", [0], save_setting_value)
 
     assert widget.all_checkboxes[0].isChecked()
     assert not widget.all_checkboxes[1].isChecked()
@@ -36,6 +45,6 @@ def test_chest_tab_reset_callback_narrows_list_values():
     assert not widget.all_checkboxes[0].isChecked()
     assert widget.all_checkboxes[1].isChecked()
 
-    reset([2, "invalid"])
+    reset(cast("SettingValue", [2, "invalid"]))
     assert not widget.all_checkboxes[0].isChecked()
     assert widget.all_checkboxes[1].isChecked()

@@ -64,12 +64,12 @@ def _read_output(path: Path) -> np.ndarray:
         ({"aspect_matched": True, "item": Item(affixes=[Affix(name="life")])}, "aspect"),
     ],
 )
-def test_validate_replay_config_rejects_invalid_inputs(tmp_path, overrides, message):
+def test_validate_replay_config_rejects_invalid_inputs(tmp_path, overrides, message) -> None:
     with pytest.raises(ReplayConfigurationError, match=message):
         validate_replay_config(make_replay_config(tmp_path, **overrides))
 
 
-def test_validate_replay_config_rejects_unreadable_image(tmp_path):
+def test_validate_replay_config_rejects_unreadable_image(tmp_path) -> None:
     config = make_replay_config(tmp_path)
     Path(config.image_path).write_text("not an image", encoding="utf-8")
 
@@ -77,7 +77,7 @@ def test_validate_replay_config_rejects_unreadable_image(tmp_path):
         validate_replay_config(config)
 
 
-def test_run_replay_saves_annotated_output_and_logs_all_stages(tmp_path, monkeypatch, caplog):
+def test_run_replay_saves_annotated_output_and_logs_all_stages(tmp_path, monkeypatch, caplog) -> None:
     trace = TemplateMatchTrace(name="affix_bullet_point_1", center=(20, 100), region=[16, 96, 8, 8], confidence=0.91)
     separator = TemplateMatchTrace("item_separator", (40, 60), [0, 50, 20, 10], 0.95)
     long_separator = TemplateMatchTrace("item_long_separator", (50, 75), [40, 70, 20, 10], 0.95)
@@ -124,7 +124,7 @@ def test_run_replay_saves_annotated_output_and_logs_all_stages(tmp_path, monkeyp
         assert expected in caplog.text
 
 
-def test_run_replay_saves_failure_annotation_without_display(tmp_path, monkeypatch):
+def test_run_replay_saves_failure_annotation_without_display(tmp_path, monkeypatch) -> None:
     diagnostic_result = DiagnosticLocatorResult(
         LocatorResult([], reliable=False), LocatorDiagnostics(failure_reason="missing_separator")
     )
@@ -139,7 +139,7 @@ def test_run_replay_saves_failure_annotation_without_display(tmp_path, monkeypat
     assert tuple(output[0, 0]) == (0, 0, 255)
 
 
-def test_run_replay_annotates_all_match_stages_and_resolution_sized_marker(tmp_path, monkeypatch):
+def test_run_replay_annotates_all_match_stages_and_resolution_sized_marker(tmp_path, monkeypatch) -> None:
     config = make_replay_config(tmp_path, matched_row_indices=[1], aspect_matched=False, game_resolution="1920x1080")
     cv2.imwrite(str(config.image_path), np.zeros((1000, 1000, 3), dtype=np.uint8))
     diagnostic_result = DiagnosticLocatorResult(
@@ -167,7 +167,7 @@ def test_run_replay_annotates_all_match_stages_and_resolution_sized_marker(tmp_p
     assert tuple(output[500, 492]) != (93, 252, 35)
 
 
-def test_show_result_uses_blocking_window(monkeypatch):
+def test_show_result_uses_blocking_window(monkeypatch) -> None:
     calls = []
     monkeypatch.setattr("src.tools.replay.cropped_tooltip.cv2.imshow", lambda *args: calls.append(("show", args)))
     monkeypatch.setattr("src.tools.replay.cropped_tooltip.cv2.waitKey", lambda *args: calls.append(("wait", args)))
@@ -181,7 +181,7 @@ def test_show_result_uses_blocking_window(monkeypatch):
 
 
 @pytest.mark.parametrize(("reliable", "expected_status"), [(True, 0), (False, 1)])
-def test_main_returns_reliability_status_without_requiring_window(monkeypatch, reliable, expected_status):
+def test_main_returns_reliability_status_without_requiring_window(monkeypatch, reliable, expected_status) -> None:
     config = ReplayConfig(False, "3840x2160", Path("tooltip.png"), Item(), [])
     result = type("ReplayResult", (), {"reliable": reliable})()
     monkeypatch.setattr("src.tools.replay.cropped_tooltip.REPLAY_CONFIG", config)

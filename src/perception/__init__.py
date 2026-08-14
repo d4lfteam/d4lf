@@ -1,4 +1,11 @@
-from typing import cast
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    import numpy as np
+
+    from src.item import Item
 
 from . import listener as _listener
 from .capture.core import Cam
@@ -35,7 +42,7 @@ find_item_start = _listener.find_item_start
 fix_data = _listener.fix_data
 
 
-def read_latest_item():
+def read_latest_item() -> Item | None:
     return parse_item_text(list(_listener.LAST_ITEM))
 
 
@@ -51,7 +58,7 @@ def start_connection() -> None:
     _listener.start_connection()
 
 
-def capture(force_new: bool = False):
+def capture(force_new: bool = False) -> np.ndarray:
     return Cam().grab(force_new=force_new)
 
 
@@ -60,18 +67,19 @@ def game_window_ready() -> bool:
 
 
 def game_window_roi() -> dict[str, int]:
-    return cast("dict[str, int]", dict(Cam().window_roi))
+    roi = Cam().window_roi
+    return {"top": roi["top"], "left": roi["left"], "width": roi["width"], "height": roi["height"]}
 
 
-def monitor_to_window(coordinate):
+def monitor_to_window(coordinate: Sequence[int | float] | np.ndarray) -> np.ndarray:
     return Cam().monitor_to_window(coordinate)
 
 
-def window_to_monitor(coordinate):
+def window_to_monitor(coordinate: Sequence[int | float] | np.ndarray) -> np.ndarray:
     return Cam().window_to_monitor(coordinate)
 
 
-def abs_window_to_monitor(coordinate):
+def abs_window_to_monitor(coordinate: Sequence[int | float] | np.ndarray) -> np.ndarray:
     return Cam().abs_window_to_monitor(coordinate)
 
 

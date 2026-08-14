@@ -14,8 +14,9 @@ Python 3.14 via uv; C++ for the TTS DLL in `tts/`.
 
 ## Commands
 
-Run these when you think you are finished and make sure these pass.
-Run formatters, type checkers, line guard and linters: prek run -a
+prek is used to wrap several different formaters and checkers.
+Run "prek run -a" before committing to make sure all checks pass.
+Don't just disable the rules, they are enabled for a reason. Fix the findings properly.
 Don't change formatting changes done by the hooks, they are authorative.
 Run unit tests: uv run pytest . -m "not selenium" -n logical
 
@@ -33,8 +34,6 @@ Item flow:
 - This is a standalone tool, not a library. Do not care about any compatibility, do changes as necessary.
 - Don't investigate super edge cases, especially during testing. Bring up the concern during planning stages and let the user decide.
 - Runtime target is Windows. Some tests are skipped outside Windows.
-- No more than 300 lines of code in Python files in `src` and `tests`.
-- The unit tests should mirror the structure of the code, so a test file should correspond to a source file.
 - User data lives under `~/.d4lf/` including profiles, params, and logs.
 - Always prefer subpackages over creating files with specific prefixes or suffixes. For example, `src.profiles.affix` and `src.profiles.aspect` are subpackages rather than
   `src.profiles_affix.py` and `src.profiles_aspect.py`.
@@ -43,7 +42,17 @@ Item flow:
 ### Python 3.14
 
 - Don't use from __future__ imports.
+- Remember deferred annotation evaluation for type annotation.
+- Avoid any or object types in type annotations, use specific types instead.
+
+### Taste
+
 - Prefer from imports to full qualified.
+- Don't prefix files, rather create a new package with the name and omit the prefix for the modules.
+- In packages expose the public interface via __init__.py only.
+- The unit tests should mirror the structure of the code, so a test file should correspond to a source file.
+- We use pytest for testing, so don't do any importing of unittest or other testing frameworks.
+- No more than 300 lines of code in Python files.
 
 ## Agent skills
 

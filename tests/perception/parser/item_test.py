@@ -4,7 +4,7 @@ from src.item import AffixType, Aspect, Item
 from src.perception import parse_item_text
 
 
-def test_captured_tts_cases_parse_without_item_description_modules(parser_cases):
+def test_captured_tts_cases_parse_without_item_description_modules(parser_cases) -> None:
     for input_item, expected_item in parser_cases:
         assert parse_item_text(input_item) == expected_item
 
@@ -12,15 +12,15 @@ def test_captured_tts_cases_parse_without_item_description_modules(parser_cases)
 LOOT_FILTER_TTS = ["SELECT ALL", "Checkbox Disabled", "Item Power Range", "Left mouse button"]
 
 
-def test_loot_filter_controls_are_not_tts_item_start():
+def test_loot_filter_controls_are_not_tts_item_start() -> None:
     assert perception.find_item_start(LOOT_FILTER_TTS) is None
 
 
-def test_loot_filter_controls_do_not_raise_tts_parser_error():
+def test_loot_filter_controls_do_not_raise_tts_parser_error() -> None:
     assert parse_item_text(LOOT_FILTER_TTS) is None
 
 
-def test_captured_filters_screen_is_not_an_item():
+def test_captured_filters_screen_is_not_an_item() -> None:
     assert (
         parse_item_text([
             "FILTERS",
@@ -44,19 +44,19 @@ def test_captured_filters_screen_is_not_an_item():
     )
 
 
-def test_parser_returns_non_equipment_items_without_image_lookup():
+def test_parser_returns_non_equipment_items_without_image_lookup() -> None:
     item_text = ["GREATER MATERIALS CACHE", "Legendary Cache"]
 
     assert parse_item_text(item_text) == Item(item_type=ItemType.Cache, original_name="GREATER MATERIALS CACHE")
 
 
-def test_parser_returns_boss_keys_without_image_lookup():
+def test_parser_returns_boss_keys_without_image_lookup() -> None:
     item_text = ["MALIGNANT HEART", "Legendary Boss Key"]
 
     assert parse_item_text(item_text) == Item(item_type=ItemType.LairBossKey, original_name="MALIGNANT HEART")
 
 
-def test_legendary_horadric_seal_parses_item_power_charm_slots_as_inherent():
+def test_legendary_horadric_seal_parses_item_power_charm_slots_as_inherent() -> None:
     item_text = [
         "SHIELDING HORADRIC SEAL OF ILL-TEMPERANCE",
         "Legendary Horadric Seal",
@@ -88,7 +88,7 @@ def test_legendary_horadric_seal_parses_item_power_charm_slots_as_inherent():
     ]
 
 
-def test_unique_helm_with_armory_loadout_has_five_affixes_and_one_aspect():
+def test_unique_helm_with_armory_loadout_has_five_affixes_and_one_aspect() -> None:
     item_text = [
         "GODSLAYER CROWN",
         "Ancestral Unique Helm",
@@ -138,7 +138,7 @@ def test_unique_helm_with_armory_loadout_has_five_affixes_and_one_aspect():
     )
 
 
-def test_sigil_rarity_is_derived_from_tts_affixes():
+def test_sigil_rarity_is_derived_from_tts_affixes() -> None:
     item_text = [
         "Nightmare Sigil",
         "Transform this dungeon into. aNightmare Dungeon",

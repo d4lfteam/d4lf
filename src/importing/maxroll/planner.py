@@ -14,13 +14,14 @@ from src.importing.maxroll.constants import (
     PLANNER_API_BASE_URL,
     PLANNER_API_REGEX,
     PLANNER_BASE_URL,
-    SCRIPT_XPATH,
 )
 from src.importing.web import get_with_retry
 from src.perception import correct_name
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+
+    from src.type_aliases import JsonValue
 
 LOGGER = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class MaxrollError(ImportSourceError):
 
 
 def _find_legendary_aspect(
-    mapping_data: Mapping[str, object], legendary_aspect: Mapping[str, object] | list[object]
+    mapping_data: Mapping[str, JsonValue], legendary_aspect: Mapping[str, JsonValue] | list[JsonValue]
 ) -> str | None:
     if not legendary_aspect:
         return None
@@ -142,7 +143,16 @@ def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int, bool]:
         except ConnectionError as exc:
             LOGGER.exception(msg := "Couldn't get planner")
             raise MaxrollError(msg) from exc
-        data_id = json.loads(r.json()["data"])["activeProfile"]
+        response_data = _as_mapping(r.json())
+        raw_data = response_data.get("data")
+        if not isinstance(raw_data, str):
+            message = "Planner API response did not contain encoded data"
+            raise MaxrollError(message)
+        active_profile = _as_mapping(json.loads(raw_data)).get("activeProfile")
+        if not isinstance(active_profile, int) or isinstance(active_profile, bool):
+            message = "Planner API response did not contain an integer active profile"
+            raise MaxrollError(message)
+        data_id = active_profile
         build_id_is_visible_position = False
     return PLANNER_API_BASE_URL + planner_id, data_id, build_id_is_visible_position
 
@@ -154,9 +164,10 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, bool]:
     except ConnectionError as exc:
         LOGGER.exception(msg := "Couldn't get build guide")
         raise MaxrollError(msg) from exc
-    data = lxml.html.fromstring(r.text)
+    data = lxml.html.fromstring(r.text, parser=lxml.html.HTMLParser())
     # As of season 13, the link to the planner is stuck in a script so we get it from there
-    script_elements = data.xpath(SCRIPT_XPATH)
+    root = data.find(".//div[@id='root']")
+    script_elements = root.findall("script") if root is not None else []
     for script_element in script_elements:
         if script_element.text and script_element.text.strip().startswith(BUILD_SCRIPT_PREFIX):
             planner_match = PLANNER_API_REGEX.search(script_element.text)
@@ -172,7 +183,7 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, bool]:
     raise MaxrollError(msg)
 
 
-def _resolve_visible_profile_index(profiles: Sequence[Mapping[str, object]], visible_profile_index: int) -> int:
+def _resolve_visible_profile_index(profiles: Sequence[Mapping[str, JsonValue]], visible_profile_index: int) -> int:
     visible_index = 0
     for profile_index, profile in enumerate(profiles):
         if profile.get("hidden"):

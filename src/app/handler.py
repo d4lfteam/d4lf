@@ -8,6 +8,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from collections.abc import Set as AbstractSet
 
+    from src.type_aliases import JsonValue
+
+
 import src.perception
 from src import automation
 from src.automation import (
@@ -42,7 +45,7 @@ SETUP_INSTRUCTIONS_URL = "https://github.com/d4lfteam/d4lf/blob/main/README.md#h
 
 
 class ScriptHandler:
-    def __init__(self):
+    def __init__(self) -> None:
         self.loot_interaction_thread: threading.Thread | None = None
         self.paragon_overlay_thread: threading.Thread | None = None
         self._info_overlay_last_toggle_time: float = 0
@@ -56,7 +59,6 @@ class ScriptHandler:
         self._language = self._config.general.language
         self.vision_mode: VisionMode = self._create_vision_mode(self._config.general.vision_mode_type)
 
-        # Initialize Info Overlay hooks and subscriptions
         set_info_busy_checker(lambda: self.loot_interaction_thread is not None)
 
         self.setup_key_binds()
@@ -67,7 +69,7 @@ class ScriptHandler:
     def _create_vision_mode(self, vision_mode_type: VisionModeType) -> VisionMode:
         return create_vision_mode(vision_mode_type)
 
-    def _graceful_exit(self):
+    def _graceful_exit(self) -> None:
         safe_exit()
 
     def _on_config_changed(self, changed_keys: AbstractSet[str]) -> None:
@@ -122,7 +124,7 @@ class ScriptHandler:
         self._manual_restart_warning = True
         LOGGER.warning("Please restart d4lf manually to apply %s.", reason)
 
-    def toggle_paragon_overlay(self):
+    def toggle_paragon_overlay(self) -> None:
         """Toggle the Paragon overlay thread (start if not running, request close if running)."""
         try:
             if self.paragon_overlay_thread is not None and self.paragon_overlay_thread.is_alive():
@@ -172,10 +174,9 @@ class ScriptHandler:
             finally:
                 self.paragon_overlay_thread = None
 
-    def toggle_info_overlay(self):
+    def toggle_info_overlay(self) -> None:
         """Toggle the Info Panel overlay (debounced; show/hide a widget on the shared UI thread)."""
         now = time.time()
-        # Debounce to prevent rapid key-repeat triggers
         if now - self._info_overlay_last_toggle_time < 0.3:
             return
         self._info_overlay_last_toggle_time = now
@@ -199,13 +200,13 @@ class ScriptHandler:
                 automation.remove_hotkey(handle)
 
     def _register_hotkey(self, hotkey: str, callback: Callable[[], None], check_focus: bool = True) -> None:
-        def wrapped_callback():
+        def wrapped_callback() -> None:
             if not check_focus or is_window_foreground(self._win_spec):
                 callback()
 
         self._hotkey_handles.append(automation.add_hotkey(hotkey, wrapped_callback))
 
-    def setup_key_binds(self):
+    def setup_key_binds(self) -> None:
         config = self._config
         advanced_options = config.advanced_options
         self._register_hotkey(advanced_options.run_vision_mode, lambda: self.run_vision_mode())
@@ -227,7 +228,9 @@ class ScriptHandler:
 
         self._current_hotkey_signature = self._hotkey_signature(config)
 
-    def filter_items(self, force_refresh=ItemRefreshType.no_refresh, no_match_action: str = "junk"):
+    def filter_items(
+        self, force_refresh: ItemRefreshType = ItemRefreshType.no_refresh, no_match_action: str = "junk"
+    ) -> None:
         if src.perception.is_connected():
             self._start_or_stop_loot_interaction_thread(run_loot_filter, (force_refresh, no_match_action))
         else:
@@ -238,13 +241,15 @@ class ScriptHandler:
                 SETUP_INSTRUCTIONS_URL,
             )
 
-    def move_items_to_inventory(self):
+    def move_items_to_inventory(self) -> None:
         self._start_or_stop_loot_interaction_thread(move_items_to_inventory)
 
-    def move_items_to_stash(self):
+    def move_items_to_stash(self) -> None:
         self._start_or_stop_loot_interaction_thread(move_items_to_stash)
 
-    def _start_or_stop_loot_interaction_thread(self, loot_interaction_method: Callable[..., None], method_args=()):
+    def _start_or_stop_loot_interaction_thread(
+        self, loot_interaction_method: Callable[..., None], method_args: tuple[JsonValue, ...] = ()
+    ) -> None:
         if LOCK.acquire(blocking=False):
             try:
                 if self.loot_interaction_thread is not None:
@@ -265,7 +270,9 @@ class ScriptHandler:
         else:
             return
 
-    def _wrapper_run_loot_interaction_method(self, loot_interaction_method: Callable[..., None], method_args=()):
+    def _wrapper_run_loot_interaction_method(
+        self, loot_interaction_method: Callable[..., None], method_args: tuple[JsonValue, ...] = ()
+    ) -> None:
         try:
             # We will stop all scripts if they are currently running and restart them afterward if needed.
             self.did_stop_scripts = False
@@ -280,7 +287,7 @@ class ScriptHandler:
         finally:
             self.loot_interaction_thread = None
 
-    def run_vision_mode(self):
+    def run_vision_mode(self) -> None:
         if LOCK.acquire(blocking=False):
             try:
                 if self.vision_mode.running():

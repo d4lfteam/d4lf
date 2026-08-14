@@ -43,21 +43,21 @@ def _layout_widget(tab: SigilsTab):
     return widget
 
 
-def test_global_affix_blacklist_loads_as_affix_kind(qapp, mock_ini_loader):
+def test_global_affix_blacklist_loads_as_affix_kind(qapp, mock_ini_loader) -> None:
     tab = _loaded_tab(_first_affix_key())
     widget = _layout_widget(tab)
     assert isinstance(widget, SigilWidget)
     assert widget.kind == "affix"
 
 
-def test_dungeon_blacklist_loads_as_dungeon_kind(qapp, mock_ini_loader):
+def test_dungeon_blacklist_loads_as_dungeon_kind(qapp, mock_ini_loader) -> None:
     tab = _loaded_tab(_first_dungeon_key())
     widget = _layout_widget(tab)
     assert isinstance(widget, SigilWidget)
     assert widget.kind == "dungeon"
 
 
-def test_sigil_lists_keep_canonical_targets_for_mixed_rule_kinds(qapp, mock_ini_loader):
+def test_sigil_lists_keep_canonical_targets_for_mixed_rule_kinds(qapp, mock_ini_loader) -> None:
     dungeon_name = _first_dungeon_key()
     affix_name = _first_affix_key()
     model = SigilFilterModel(
@@ -71,14 +71,14 @@ def test_sigil_lists_keep_canonical_targets_for_mixed_rule_kinds(qapp, mock_ini_
     assert tab.whitelist_sigils == [affix_name]
 
 
-def test_remove_sigil_removes_the_selected_canonical_rule(qapp, monkeypatch):
+def test_remove_sigil_removes_the_selected_canonical_rule(qapp, monkeypatch) -> None:
     name = _first_dungeon_key()
     model = SigilFilterModel(blacklist=[SigilConditionModel(name=name)])
     tab = SigilsTab(model)
     tab.load()
 
     class _AcceptedRemoveDialog(QDialog):
-        def __init__(self, *_args, **_kwargs):
+        def __init__(self, *_args, **_kwargs) -> None:
             super().__init__()
 
         @override
@@ -95,7 +95,7 @@ def test_remove_sigil_removes_the_selected_canonical_rule(qapp, monkeypatch):
     assert tab.blacklist_sigils == []
 
 
-def test_duplicate_sigil_rename_reverts_without_losing_canonical_identity(qapp, mocker):
+def test_duplicate_sigil_rename_reverts_without_losing_canonical_identity(qapp, mocker) -> None:
     names = [target.name for target in SigilRules.default().targets("dungeon")[:3]]
     model = SigilFilterModel(blacklist=[SigilConditionModel(name=name) for name in names[:2]])
     tab = SigilsTab(model)
@@ -118,29 +118,29 @@ def test_duplicate_sigil_rename_reverts_without_losing_canonical_identity(qapp, 
     assert [condition.name for condition in model.blacklist] == [names[2], names[1]]
 
 
-def test_affix_kind_has_condition_list(qapp, mock_ini_loader):
+def test_affix_kind_has_condition_list(qapp, mock_ini_loader) -> None:
     tab = _loaded_tab(_first_affix_key())
     widget = _layout_widget(tab)
     assert hasattr(widget, "condition_list")
 
 
-def test_dungeon_kind_has_condition_list(qapp, mock_ini_loader):
+def test_dungeon_kind_has_condition_list(qapp, mock_ini_loader) -> None:
     tab = _loaded_tab(_first_dungeon_key())
     widget = _layout_widget(tab)
     assert hasattr(widget, "condition_list")
 
 
-def test_create_sigil_remembers_size(qapp, monkeypatch):
+def test_create_sigil_remembers_size(qapp, monkeypatch) -> None:
     store: dict[str, QSize] = {}
 
     class FakeSettings:
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args, **kwargs) -> None:
             pass
 
         def value(self, key, default=None):
             return store.get(key, default)
 
-        def setValue(self, key, value):  # ruff:ignore[invalid-function-name]
+        def setValue(self, key, value) -> None:  # ruff:ignore[invalid-function-name]
             store[key] = value
 
     monkeypatch.setattr(dialog_module, "QSettings", FakeSettings)
@@ -153,7 +153,7 @@ def test_create_sigil_remembers_size(qapp, monkeypatch):
     assert restored.size() == QSize(640, 360)
 
 
-def test_create_sigil_rejects_unknown_target_kind(qapp, mocker):
+def test_create_sigil_rejects_unknown_target_kind(qapp, mocker) -> None:
     dialog = CreateSigil([], [])
     mocker.patch.object(dialog.kind_input, "currentText", return_value="unknown")
 
@@ -161,7 +161,7 @@ def test_create_sigil_rejects_unknown_target_kind(qapp, mocker):
         dialog.get_value()
 
 
-def test_create_sigil_detects_duplicate_canonical_target(qapp, mocker):
+def test_create_sigil_detects_duplicate_canonical_target(qapp, mocker) -> None:
     name = _first_dungeon_key()
     display = SigilRules.default().target(name, target_type="dungeon").display
     dialog = CreateSigil([name], [])

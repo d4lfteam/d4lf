@@ -1,10 +1,10 @@
 from typing import TYPE_CHECKING, Protocol, override, runtime_checkable
 
 from src.profiles.aspect.dialogs import AddAspectUpgrade
-from src.profiles.editor.rule_list import RuleListTab
+from src.profiles.editor.rule_list import DialogFactory, RuleListTab
 
 if TYPE_CHECKING:
-    from PyQt6.QtWidgets import QDialog
+    from PyQt6.QtWidgets import QDialog, QWidget
 
 ASPECT_UPGRADES_TABNAME = "Aspect Upgrades"
 
@@ -15,7 +15,7 @@ class _AspectUpgradeDialog(Protocol):
 
 
 class AspectUpgradesTab(RuleListTab[str]):
-    def __init__(self, aspect_upgrades: list[str], parent=None):
+    def __init__(self, aspect_upgrades: list[str], parent: QWidget | None = None) -> None:
         super().__init__(aspect_upgrades, parent)
         self.aspect_upgrades = self.items
         self.upgrade_list_widget = self.list_widget
@@ -28,7 +28,7 @@ class AspectUpgradesTab(RuleListTab[str]):
         )
 
     @override
-    def add_actions(self):
+    def add_actions(self) -> list[tuple[str, DialogFactory]]:
         return [("Add Aspect", lambda: AddAspectUpgrade(self.aspect_upgrades))]
 
     @override

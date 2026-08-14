@@ -11,7 +11,7 @@ LOGGER = logging.getLogger("d4lf")
 
 
 class _ResTransformer:
-    def __init__(self, resolution: str):
+    def __init__(self, resolution: str) -> None:
         self._target_width, self._target_height = map(int, resolution.split("x"))
         self._scale_x = self._target_width / POSITIONS[0][0]
         self._scale_y = self._target_height / POSITIONS[0][1]
@@ -27,7 +27,7 @@ class _ResTransformer:
     def _transform(self, value: int) -> int:
         return int(value * self._scale_y)
 
-    def _transform_array(self, value: np.ndarray, scale_only=False) -> np.ndarray:
+    def _transform_array(self, value: np.ndarray, scale_only: bool = False) -> np.ndarray:
         new_value = value * self._scale_y
         if scale_only:
             return new_value.astype(int)
@@ -101,7 +101,7 @@ class _ResTransformer:
 
 @singleton
 class ResManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self._current_resolution = "3840x2160"
         self._offsets = POSITIONS[1]
         self._pos = POSITIONS[2]
@@ -132,7 +132,7 @@ class ResManager:
     def templates(self) -> dict[str, Template]:
         return self._templates
 
-    def set_resolution(self, res: str):
+    def set_resolution(self, res: str) -> None:
         if res == self._current_resolution:
             return
         self._current_resolution = res

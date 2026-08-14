@@ -12,7 +12,8 @@ class QSettingsLastOpenedStore(ProfileLastOpenedStore):
 
     @override
     def get(self) -> str | None:
-        return self._settings.value("last_opened_profile", None, type=str)
+        value = self._settings.value("last_opened_profile", None, type=str)
+        return value if isinstance(value, str) else None
 
     @override
     def set(self, name: str) -> None:

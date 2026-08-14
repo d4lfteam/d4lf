@@ -1,7 +1,10 @@
 """Private typed values shared by InfinityBuilds modules."""
 
 from dataclasses import dataclass
-from typing import TypedDict, TypeVar
+from typing import TYPE_CHECKING, TypedDict, TypeVar
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonObject
 
 
 class _RawAffix(TypedDict, total=False):
@@ -24,7 +27,7 @@ class _VariantData(TypedDict, total=False):
     id: str
     name: str
     gear: list[_GearPiece]
-    paragon: dict[str, object]
+    paragon: JsonObject
     talisman: list[_GearPiece]
 
 

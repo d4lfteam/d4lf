@@ -3,7 +3,10 @@
 import json
 import re
 from pathlib import Path
-from typing import TypedDict, TypeGuard, TypeVar
+from typing import TYPE_CHECKING, TypedDict, TypeGuard, TypeVar, cast
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
 
 D4LF_BASE_DIR = Path(__file__).parents[3]
 
@@ -56,13 +59,13 @@ class AttributeReplacement(TypedDict):
 DataT = TypeVar("DataT")
 
 
-def _is_nested_data(value: object) -> TypeGuard[dict[str, dict[str, DataT]]]:
+def _is_nested_data(value: JsonValue) -> TypeGuard[dict[str, dict[str, DataT]]]:
     return isinstance(value, dict) and all(
         isinstance(key, str) and isinstance(item, dict) for key, item in value.items()
     )
 
 
-def remove_content_in_braces(input_string) -> str:
+def remove_content_in_braces(input_string: str) -> str:
     pattern = r"\{.*?\}"
     result = re.sub(pattern, "", input_string)
     pattern = r"\[.*?\]"
@@ -80,7 +83,7 @@ def remove_content_in_braces(input_string) -> str:
     return result
 
 
-def is_placeholder_or_test_name(name) -> bool:
+def is_placeholder_or_test_name(name: str) -> bool:
     if any(
         x in name
         for x in [
@@ -105,7 +108,7 @@ def is_placeholder_or_test_name(name) -> bool:
     return name.startswith("ph_")
 
 
-def check_ms(input_string) -> str:
+def check_ms(input_string: str) -> str:
     start_index = input_string.find("[ms]")
     end_index = input_string.find("[fs]")
 
@@ -138,13 +141,13 @@ def clean_item_name(name: str) -> str:
     return check_ms(clean_name)
 
 
-def load_json_file(json_file: Path):
+def load_json_file(json_file: Path) -> JsonValue:
     with json_file.open(encoding="utf-8") as file:
-        return json.load(file)
+        return cast("JsonValue", json.load(file))
 
 
 def string_list_map(string_list_file: Path) -> dict[str, str]:
-    data = load_json_file(string_list_file)
+    data = cast("dict[str, list[dict[str, str]]]", load_json_file(string_list_file))
     return {entry["szLabel"]: entry["szText"] for entry in data["arStrings"]}
 
 

@@ -1,6 +1,6 @@
 import logging
 import tkinter as tk
-from typing import Any
+from typing import NoReturn
 
 LOGGER = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class OverlayContract(tk.Toplevel):
     _gold_initialized: bool
     _exp_initialized: bool
 
-    def __getattr__(self, name: str) -> Any:  # ruff:ignore[any-type] - dynamic Tk widget attributes
+    def __getattr__(self, name: str) -> NoReturn:
         raise AttributeError(name)
 
 

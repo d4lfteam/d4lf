@@ -1,5 +1,7 @@
+from typing import cast
+
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QPushButton, QStyle, QVBoxLayout, QWidget
 
 from src.profiles import AffixFilterCountModel, AffixFilterModel
 from src.profiles.affix.helpers import affix_dict_for_widget
@@ -13,12 +15,12 @@ UNIQUE_ASPECTS_TITLE = "Unique Aspects"
 
 
 class AffixPoolWidget(QWidget):
-    def __init__(self, pool: AffixFilterCountModel, parent=None):
+    def __init__(self, pool: AffixFilterCountModel, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.pool = pool
         self.setup_ui()
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
@@ -101,34 +103,35 @@ class AffixPoolWidget(QWidget):
 
         self.setLayout(layout)
 
-    def _refresh_widget_style(self, widget):
-        widget.style().unpolish(widget)
-        widget.style().polish(widget)
+    def _refresh_widget_style(self, widget: QWidget) -> None:
+        style = cast("QStyle", widget.style())
+        style.unpolish(widget)
+        style.polish(widget)
 
-    def add_affix_item(self, affix: AffixFilterModel):
+    def add_affix_item(self, affix: AffixFilterModel) -> None:
         item = QListWidgetItem()
         widget = AffixWidget(affix, self)
         item.setSizeHint(widget.sizeHint())
         self.affix_list.addItem(item)
         self.affix_list.setItemWidget(item, widget)
 
-    def get_affix_dict(self):
+    def get_affix_dict(self) -> dict[str, str]:
         return affix_dict_for_widget(self)
 
-    def add_affix(self):
+    def add_affix(self) -> None:
         affix_dict = self.get_affix_dict()
         new_affix = AffixFilterModel(name=next(iter(affix_dict.keys()), ""), value=None)
         self.pool.count.append(new_affix)
         self.add_affix_item(new_affix)
 
-    def remove_selected(self, list_widget: QListWidget):
+    def remove_selected(self, list_widget: QListWidget) -> None:
         for item in list_widget.selectedItems():
             row = list_widget.row(item)
             list_widget.takeItem(row)
             del self.pool.count[row]
 
-    def update_min_count(self):
+    def update_min_count(self) -> None:
         self.pool.min_count = self.min_count.value()
 
-    def update_max_count(self):
+    def update_max_count(self) -> None:
         self.pool.max_count = self.max_count.value()

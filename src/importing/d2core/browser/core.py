@@ -3,7 +3,7 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, cast, runtime_checkable
 
 from selenium.common.exceptions import TimeoutException, WebDriverException
 
@@ -18,7 +18,12 @@ from src.importing.d2core.errors import (
 from src.importing.web import setup_webdriver
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from src.importing.d2core.browser.bidi import BidiDriver
+    from src.importing.d2core.browser.capture import PageLoadDriver
     from src.importing.d2core.url import D2CoreUrl
+    from src.type_aliases import JsonObject
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,7 +32,7 @@ LOGGER = logging.getLogger(__name__)
 class BrowserSnapshot:
     """One captured body and the catalog URL observed in the same page session."""
 
-    response_body: object
+    response_body: str | JsonObject
     catalog_url: str
 
 
@@ -61,7 +66,7 @@ class BrowserAcquirer:
         browser_factory: BrowserFactory,
         network_observer: NetworkObserver,
         *,
-        clock=time.monotonic,
+        clock: Callable[[], float] = time.monotonic,
         attempt_timeout: float = 30.0,
     ) -> None:
         self.browser_factory = browser_factory
@@ -80,10 +85,10 @@ class BrowserAcquirer:
                 self._remaining(deadline)
                 if not observer.supports_response_bodies(driver):
                     raise D2CoreBrowserError(BROWSER_CAPABILITY, "The selected browser cannot expose response bodies")
-                set_page_load_timeout(driver, self._remaining(deadline))
+                set_page_load_timeout(cast("PageLoadDriver", driver), self._remaining(deadline))
                 observer.attach(driver, planner.build_id)
                 self._remaining(deadline)
-                set_page_load_timeout(driver, self._remaining(deadline))
+                set_page_load_timeout(cast("PageLoadDriver", driver), self._remaining(deadline))
                 try:
                     driver.get(planner.canonical)
                 except TimeoutException:
@@ -143,7 +148,9 @@ class SeleniumBrowserFactory:
 class SeleniumNetworkObserver:
     """Observe response bodies through Selenium's cross-browser BiDi network API."""
 
-    def __init__(self, *, clock=time.monotonic, sleeper=time.sleep) -> None:
+    def __init__(
+        self, *, clock: Callable[[], float] = time.monotonic, sleeper: Callable[[float], None] = time.sleep
+    ) -> None:
         self._bidi = BidiNetworkObserver(clock=clock, sleeper=sleeper)
 
     def supports_response_bodies(self, driver: _Driver) -> bool:
@@ -163,7 +170,7 @@ class SeleniumNetworkObserver:
             return False
 
     def attach(self, driver: _Driver, build_id: str) -> None:
-        self._bidi.attach(driver, build_id)
+        self._bidi.attach(cast("BidiDriver", driver), build_id)
 
     def capture(self, driver: _Driver, planner: D2CoreUrl, deadline: float) -> BrowserSnapshot:
         del driver, planner
@@ -171,4 +178,4 @@ class SeleniumNetworkObserver:
         return BrowserSnapshot(response_body=snapshot.response_body, catalog_url=snapshot.catalog_url)
 
     def detach(self, driver: _Driver) -> None:
-        self._bidi.detach(driver)
+        self._bidi.detach(cast("BidiDriver", driver))

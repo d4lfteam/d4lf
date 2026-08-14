@@ -3,12 +3,19 @@
 import logging
 import time
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from src import automation
 from src.game_data import ItemType, is_consumable, is_non_sigil_mapping, is_socketable
-from src.item import SeasonalAttribute
+from src.item import Item, SeasonalAttribute
 from src.perception import abs_window_to_monitor
 from src.settings import get_settings
+
+if TYPE_CHECKING:
+    import tkinter as tk
+
+    from src.automation.contracts import Inventory
+    from src.automation.inventory import ItemSlot
 
 LOGGER = logging.getLogger(__name__)
 ACCENT_BLUE = "#56B4E9"
@@ -35,7 +42,7 @@ def get_filter_colors() -> FilterColors:
         return FILTER_COLORS_DEFAULT
 
 
-def is_ignored_item(item_descr) -> bool:
+def is_ignored_item(item_descr: Item) -> bool:
     if is_consumable(item_descr.item_type) or is_non_sigil_mapping(item_descr.item_type):
         return True
     if item_descr.item_type == ItemType.EscalationSigil and get_settings().general.ignore_escalation_sigils:
@@ -50,7 +57,7 @@ def is_ignored_item(item_descr) -> bool:
     return item_descr.seasonal_attribute == SeasonalAttribute.sanctified
 
 
-def reset_canvas(root, canvas) -> None:
+def reset_canvas(root: tk.Tk | tk.Toplevel, canvas: tk.Canvas) -> None:
     canvas.delete("all")
     canvas.config(height=0, width=0)
     root.geometry("0x0+0+0")
@@ -71,7 +78,7 @@ def mark_as_favorite() -> None:
     time.sleep(0.13)
 
 
-def reset_item_status(occupied, inv) -> None:
+def reset_item_status(occupied: list[ItemSlot], inv: Inventory) -> None:
     for item_slot in occupied:
         if item_slot.is_fav:
             inv.hover_item_with_delay(item_slot)

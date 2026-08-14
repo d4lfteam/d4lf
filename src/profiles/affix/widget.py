@@ -1,8 +1,8 @@
-from typing import Protocol, runtime_checkable
+from typing import Protocol, cast, runtime_checkable
 
 from PyQt6.QtCore import QSignalBlocker, Qt
 from PyQt6.QtGui import QDoubleValidator, QIntValidator
-from PyQt6.QtWidgets import QCheckBox, QComboBox, QCompleter, QHBoxLayout, QLineEdit, QMessageBox, QWidget
+from PyQt6.QtWidgets import QCheckBox, QComboBox, QCompleter, QHBoxLayout, QLineEdit, QMessageBox, QStyle, QWidget
 
 from src.game_data import GameCatalog
 from src.profiles import AffixFilterModel, SealFilterModel
@@ -23,13 +23,13 @@ class GreaterCountParent(Protocol):
 
 
 class AffixWidget(QWidget):
-    def __init__(self, affix: AffixFilterModel, parent=None):
+    def __init__(self, affix: AffixFilterModel, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.affix = affix
         self.filtered_affixes: dict[str, str] = {}
         self.setup_ui()
 
-    def get_parent_seal_config(self):
+    def get_parent_seal_config(self) -> SealFilterModel | None:
         curr = self
         while curr:
             config = getattr(curr, "config", None)
@@ -38,7 +38,7 @@ class AffixWidget(QWidget):
             curr = curr.parent()
         return None
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         layout = QHBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         layout.setSpacing(50)
@@ -63,10 +63,10 @@ class AffixWidget(QWidget):
 
         self.setLayout(layout)
 
-    def get_affix_dict(self):
+    def get_affix_dict(self) -> dict[str, str]:
         return affix_dict_for_widget(self)
 
-    def create_set_name_combobox(self):
+    def create_set_name_combobox(self) -> None:
         self.set_combo = IgnoreScrollWheelComboBox()
         self.set_combo.setFixedWidth(200)
         self.set_combo.addItems(["(No Set Selected)"] + sorted(GameCatalog().set_list))
@@ -79,13 +79,13 @@ class AffixWidget(QWidget):
 
         self.set_combo.currentTextChanged.connect(self.on_set_changed)
 
-    def on_set_changed(self):
+    def on_set_changed(self) -> None:
         self.populate_affix_combo()
         if self.name_combo.count() > 0:
             self.name_combo.setCurrentIndex(0)
             self.update_name()
 
-    def populate_affix_combo(self):
+    def populate_affix_combo(self) -> None:
         _blocker = QSignalBlocker(self.name_combo)
         self.name_combo.clear()
 
@@ -115,7 +115,7 @@ class AffixWidget(QWidget):
             if self.affix.name in affix_dict:
                 self.name_combo.setCurrentText(affix_dict[self.affix.name])
 
-    def create_affix_name_combobox(self):
+    def create_affix_name_combobox(self) -> None:
         self.name_combo = IgnoreScrollWheelComboBox()
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
@@ -128,7 +128,7 @@ class AffixWidget(QWidget):
         # currentIndexChanged misses some editable-combobox keyboard flows.
         self.name_combo.currentTextChanged.connect(self.update_name)
 
-    def create_greater_checkbox(self):
+    def create_greater_checkbox(self) -> None:
         self.greater_checkbox = QCheckBox("Greater")
         self.greater_checkbox.setChecked(getattr(self.affix, "want_greater", False))
         self.greater_checkbox.setFixedWidth(80)
@@ -137,11 +137,12 @@ class AffixWidget(QWidget):
         self.greater_checkbox.stateChanged.connect(self.update_greater)
         self.greater_checkbox.stateChanged.connect(self.update_parent_count_label)
 
-    def _refresh_widget_style(self, widget):
-        widget.style().unpolish(widget)
-        widget.style().polish(widget)
+    def _refresh_widget_style(self, widget: QWidget) -> None:
+        style = cast("QStyle", widget.style())
+        style.unpolish(widget)
+        style.polish(widget)
 
-    def update_parent_count_label(self):
+    def update_parent_count_label(self) -> None:
         parent = self.parent()
         while parent:
             if isinstance(parent, GreaterCountParent):
@@ -150,7 +151,7 @@ class AffixWidget(QWidget):
                 break
             parent = parent.parent()
 
-    def create_mode_combobox(self):
+    def create_mode_combobox(self) -> None:
         self.mode_combo = IgnoreScrollWheelComboBox()
         self.mode_combo.setFixedSize(100, self.mode_combo.sizeHint().height())
         self.mode_combo.addItems([AFFIX_VALUE_MODE, AFFIX_PERCENT_MODE])
@@ -159,12 +160,12 @@ class AffixWidget(QWidget):
         else:
             self.mode_combo.setCurrentText(AFFIX_VALUE_MODE)
 
-    def create_value_input(self):
+    def create_value_input(self) -> None:
         self.value_edit = QLineEdit()
         self.value_edit.setFixedSize(100, self.value_edit.sizeHint().height())
         self.value_edit.textChanged.connect(self.update_value)
 
-    def update_name(self, current_text=None):
+    def update_name(self, current_text: str | None = None) -> None:
         """Update the model only when the editable combobox contains a valid affix."""
         is_seal = self.get_parent_seal_config() is not None
         affix_dict = self.get_affix_dict()
@@ -177,7 +178,7 @@ class AffixWidget(QWidget):
             reverse_dict = {v: k for k, v in affix_dict.items()}
             self.affix.name = reverse_dict.get(text, "")
 
-    def refresh_value_input(self):
+    def refresh_value_input(self) -> None:
         if self.mode_combo.currentText() == AFFIX_PERCENT_MODE:
             self.value_edit.setPlaceholderText("Percent (0-100)")
             self.value_edit.setValidator(QIntValidator(0, 100, self.value_edit))
@@ -190,7 +191,7 @@ class AffixWidget(QWidget):
         with QSignalBlocker(self.value_edit):
             self.value_edit.setText(display_value)
 
-    def update_mode(self, current_text=None):
+    def update_mode(self, current_text: str | None = None) -> None:
         mode = current_text or self.mode_combo.currentText()
         if mode == AFFIX_PERCENT_MODE:
             self.affix.value = None
@@ -198,7 +199,7 @@ class AffixWidget(QWidget):
             self.affix.min_percent_of_affix = 0
         self.refresh_value_input()
 
-    def update_value(self, value):
+    def update_value(self, value: str) -> None:
         if self.mode_combo.currentText() == AFFIX_PERCENT_MODE:
             try:
                 percent = int(value) if value else 0
@@ -218,10 +219,10 @@ class AffixWidget(QWidget):
             return
         self.affix.min_percent_of_affix = 0
 
-    def update_greater(self):
+    def update_greater(self) -> None:
         self.affix.want_greater = self.greater_checkbox.isChecked()
 
-    def set_min_percent(self, percent: int, convert_mode: bool = False):
+    def set_min_percent(self, percent: int, convert_mode: bool = False) -> None:
         if convert_mode and self.mode_combo.currentText() != AFFIX_PERCENT_MODE:
             self.mode_combo.setCurrentText(AFFIX_PERCENT_MODE)
         if self.mode_combo.currentText() != AFFIX_PERCENT_MODE:

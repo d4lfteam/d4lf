@@ -3,6 +3,10 @@
 import logging
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
 
 LOGGER = logging.getLogger("src.settings.loader")
 
@@ -24,6 +28,6 @@ def log_load_error(error: SettingsLoadError) -> None:
     LOGGER.error("Failed to load settings from %s", error.config_path, exc_info=error.original)
 
 
-def make_cleanup_record(logger: logging.Logger, message: str, args: tuple[object, ...]) -> logging.LogRecord:
+def make_cleanup_record(logger: logging.Logger, message: str, args: tuple[JsonValue, ...]) -> logging.LogRecord:
     path_name, line_number, _, _ = logger.findCaller(stacklevel=3)
     return logger.makeRecord(logger.name, logging.WARNING, path_name, line_number, message, args, None)

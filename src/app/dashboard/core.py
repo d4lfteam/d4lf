@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING, cast
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QFrame,
@@ -19,13 +21,16 @@ from src.desktop.activity import ANSIConsoleWidget
 from src.desktop.widgets import CheckmarkCheckBox
 from src.settings import IS_HOTKEY_KEY, get_settings
 
+if TYPE_CHECKING:
+    from src.app.shell import UnifiedMainWindow
+
 __all__ = ["ActivityLogWidget", "DragHandleButton"]
 
 
 class ActivityLogWidget(ActivityProfileRowsMixin, ActivityProfileDragMixin, ActivityLogControlsMixin, QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._main_window = parent
+        self._main_window = cast("UnifiedMainWindow | None", parent)
         self._config = get_settings()
         self._config.register_change_listener(self._on_config_changed)
         self.setAcceptDrops(True)
@@ -158,7 +163,7 @@ class ActivityLogWidget(ActivityProfileRowsMixin, ActivityProfileDragMixin, Acti
         self._connect_signals()
         self.refresh_profiles()
 
-    def _setup_hotkey_grid(self):
+    def _setup_hotkey_grid(self) -> None:
         """Build the hotkey grid dynamically from AdvancedOptionsModel metadata."""
         while self.hotkey_grid.count():
             item = self.hotkey_grid.takeAt(0)

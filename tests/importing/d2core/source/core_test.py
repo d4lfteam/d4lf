@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
-from typing import cast, override
+from typing import TYPE_CHECKING, cast, override
 
 import pytest
 
@@ -13,6 +13,9 @@ from src.importing.d2core.catalog import CatalogTransport
 from src.importing.d2core.errors import PRIVATE_ACCESS, D2CoreImportError
 from src.importing.d2core.source import PlannerSnapshot
 
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
+
 FIXTURE_ROOT = Path(__file__).parent.parent / "data"
 
 
@@ -22,10 +25,10 @@ class CatalogFixture(CatalogTransport):
         self.urls: list[str] = []
 
     @override
-    def get(self, url: str, *, timeout: float) -> object:
+    def get(self, url: str, *, timeout: float) -> JsonValue:
         del timeout
         self.urls.append(url)
-        return self.responses[url.rsplit("/", maxsplit=1)[-1].split("_", maxsplit=1)[0]]
+        return cast("JsonValue", self.responses[url.rsplit("/", maxsplit=1)[-1].split("_", maxsplit=1)[0]])
 
 
 class FixtureCatalog(CatalogTransport):
@@ -34,15 +37,15 @@ class FixtureCatalog(CatalogTransport):
         self.urls: list[str] = []
 
     @override
-    def get(self, url: str, *, timeout: float) -> object:
+    def get(self, url: str, *, timeout: float) -> JsonValue:
         del timeout
         self.urls.append(url)
         kind = url.rsplit("/", maxsplit=1)[-1].split("_", maxsplit=1)[0]
-        return self.responses[kind]
+        return cast("JsonValue", self.responses[kind])
 
 
-def _fixture(name: str) -> dict[str, object]:
-    return cast("dict[str, object]", json.loads((FIXTURE_ROOT / name).read_text()))
+def _fixture(name: str) -> dict[str, JsonValue]:
+    return cast("dict[str, JsonValue]", json.loads((FIXTURE_ROOT / name).read_text()))
 
 
 def _import_fixture(mocker, name: str, request: ImportRequest):
@@ -81,15 +84,15 @@ def _snapshot() -> tuple[BrowserSnapshot, CatalogFixture]:
     return BrowserSnapshot(body, "https://cloudstorage.d2core.com/data/d4/v1/affix_enUS.json"), catalog
 
 
-def _snapshot_build(snapshot: BrowserSnapshot) -> dict[str, object]:
-    body = cast("dict[str, object]", snapshot.response_body)
-    data = cast("dict[str, object]", body["data"])
-    return cast("dict[str, object]", json.loads(str(data["response_data"])))
+def _snapshot_build(snapshot: BrowserSnapshot) -> dict[str, JsonValue]:
+    body = cast("dict[str, JsonValue]", snapshot.response_body)
+    data = cast("dict[str, JsonValue]", body["data"])
+    return cast("dict[str, JsonValue]", json.loads(str(data["response_data"])))
 
 
-def _replace_snapshot_build(snapshot: BrowserSnapshot, build: dict[str, object]) -> None:
-    body = cast("dict[str, object]", snapshot.response_body)
-    data = cast("dict[str, object]", body["data"])
+def _replace_snapshot_build(snapshot: BrowserSnapshot, build: dict[str, JsonValue]) -> None:
+    body = cast("dict[str, JsonValue]", snapshot.response_body)
+    data = cast("dict[str, JsonValue]", body["data"])
     data["response_data"] = json.dumps(build)
 
 
@@ -167,8 +170,8 @@ def test_source_validates_direct_snapshots_and_cleans_them_after_failure() -> No
 def test_source_fetches_optional_catalogs_only_for_enabled_supported_data(mocker, caplog) -> None:
     snapshot, catalog = _snapshot()
     build = _snapshot_build(snapshot)
-    data = cast("dict[str, object]", build["data"])
-    variants = cast("list[dict[str, object]]", data["variants"])
+    data = cast("dict[str, JsonValue]", build["data"])
+    variants = cast("list[dict[str, JsonValue]]", data["variants"])
     variants[0]["name"] = "Equipment"
     variants[1]["name"] = "Optional"
     variants[1]["gear"] = variants[0]["gear"]
@@ -202,10 +205,10 @@ def test_source_fetches_optional_catalogs_only_for_enabled_supported_data(mocker
 def test_source_ignores_inherently_unsupported_talisman_entries(mocker, caplog) -> None:
     snapshot, catalog = _snapshot()
     build = _snapshot_build(snapshot)
-    data = cast("dict[str, object]", build["data"])
-    variants = cast("list[dict[str, object]]", data["variants"])
+    data = cast("dict[str, JsonValue]", build["data"])
+    variants = cast("list[dict[str, JsonValue]]", data["variants"])
     variants[0]["charms"] = [{"type": "skill", "key": "not-a-talisman"}]
-    gear = cast("dict[str, dict[str, object]]", variants[0]["gear"])
+    gear = cast("dict[str, dict[str, JsonValue]]", variants[0]["gear"])
     gear["0"].update(type="legendary", key="unsupported", transfiguredAspect="crafted")
     _replace_snapshot_build(snapshot, build)
     store = mocker.Mock()

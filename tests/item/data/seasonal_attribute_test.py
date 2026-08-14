@@ -1,6 +1,6 @@
 from src.item.data.seasonal_attribute import SeasonalAttribute
 
 
-def test_seasonal_attributes_are_distinct_enum_values():
+def test_seasonal_attributes_are_distinct_enum_values() -> None:
     assert SeasonalAttribute.bloodied != SeasonalAttribute.sanctified
     assert SeasonalAttribute.bloodied.value == "bloodied"

@@ -19,7 +19,7 @@ def _read_test_image(name: str) -> np.ndarray:
     return image
 
 
-def test_search():
+def test_search() -> None:
     """Test default search behavior (first match)."""
     image = _read_test_image("stash_slots.png")
     slash = _read_test_image("stash_slot_slash.png")
@@ -30,7 +30,7 @@ def test_search():
     assert threshold <= match.score <= 1
 
 
-def test_search_best_match():
+def test_search_best_match() -> None:
     """Test search "best_match" behavior."""
     image = _read_test_image("stash_slots.png")
     slash = _read_test_image("stash_slot_slash.png")
@@ -42,7 +42,7 @@ def test_search_best_match():
     assert is_point_in_roi(slash_expected_roi, match.center)
 
 
-def test_search_all():
+def test_search_all() -> None:
     """Test all matches for a single template in argument."""
     image = _read_test_image("stash_slots.png")
     empty = _read_test_image("stash_slot_empty.png")
@@ -51,7 +51,7 @@ def test_search_all():
     assert len(matches) == 3
 
 
-def test_search_all_multiple_templates():
+def test_search_all_multiple_templates() -> None:
     """Test all matches with multiple templates in argument."""
     image = _read_test_image("stash_slots.png")
     empty = _read_test_image("stash_slot_empty.png")
@@ -61,7 +61,7 @@ def test_search_all_multiple_templates():
     assert len(matches) == 4
 
 
-def test_search_all_stops_when_condition_is_met():
+def test_search_all_stops_when_condition_is_met() -> None:
     """Test all matches can stop early once callers have enough matches."""
     image = _read_test_image("stash_slots.png")
     empty = _read_test_image("stash_slot_empty.png")
@@ -78,7 +78,7 @@ def test_search_all_stops_when_condition_is_met():
     assert len(result.matches) == 2
 
 
-def test_parallel_stop_condition_preserves_template_order(mocker):
+def test_parallel_stop_condition_preserves_template_order(mocker) -> None:
     """A fast lower-priority template must not win a parallel early-stop search."""
     correct_template = Template(name="correct")
     false_template = Template(name="false")
@@ -114,7 +114,7 @@ def test_parallel_stop_condition_preserves_template_order(mocker):
     assert [match.name for match in result.matches] == ["correct"]
 
 
-def test_process_template_refs_preserves_transparent_template_mask():
+def test_process_template_refs_preserves_transparent_template_mask() -> None:
     image = np.full((4, 4, 4), 255, dtype=np.uint8)
     image[0, 0, 3] = 0
 
@@ -125,7 +125,7 @@ def test_process_template_refs_preserves_transparent_template_mask():
     assert template.alpha_mask[1, 1] == 255
 
 
-def test_search_rejects_missing_named_roi(monkeypatch):
+def test_search_rejects_missing_named_roi(monkeypatch) -> None:
     image = _read_test_image("stash_slots.png")
     template = _read_test_image("stash_slot_cross.png")
 

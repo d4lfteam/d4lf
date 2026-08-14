@@ -11,17 +11,17 @@ class TabGroupWidget[ModelT](QWidget):
     tabs).
     """
 
-    def __init__(self, models: list[ModelT], parent=None):
+    def __init__(self, models: list[ModelT], parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.models = models
         self.loaded = False
 
-    def load(self):
+    def load(self) -> None:
         if not self.loaded:
             self.setup_ui()
             self.loaded = True
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         self.prepare_models()
 
         self.main_layout = QVBoxLayout(self)
@@ -50,7 +50,7 @@ class TabGroupWidget[ModelT](QWidget):
 
     # --- Hooks for subclasses ---
 
-    def prepare_models(self):
+    def prepare_models(self) -> None:
         """Called once, before tabs are built, to normalize/validate self.models in place."""
 
     def toolbar_name(self) -> str:
@@ -85,12 +85,12 @@ class TabGroupWidget[ModelT](QWidget):
         remove_button.clicked.connect(self.remove_item)
         return [add_button, remove_button]
 
-    def after_models_changed(self):
+    def after_models_changed(self) -> None:
         """Called after a tab/model is added or removed. No-op by default."""
 
     # --- Shared behavior ---
 
-    def add_item(self):
+    def add_item(self) -> None:
         model = self.create_model()
         if model is None:
             return
@@ -99,12 +99,12 @@ class TabGroupWidget[ModelT](QWidget):
         self.tab_widget.addTab(self.create_editor(model), self.tab_label(model, index))
         self.after_models_changed()
 
-    def close_tab(self, index: int):
+    def close_tab(self, index: int) -> None:
         self.tab_widget.removeTab(index)
         self.models.pop(index)
         self.after_models_changed()
 
-    def remove_item(self):
+    def remove_item(self) -> None:
         dialog = DeleteItem([self.tab_widget.tabText(i) for i in range(self.tab_widget.count())], self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             names_to_delete = set(dialog.get_value())

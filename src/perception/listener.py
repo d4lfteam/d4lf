@@ -3,7 +3,7 @@ import logging
 import queue
 import re
 import threading
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Self
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -48,13 +48,13 @@ def fix_data(data: str) -> str:
 
 
 class Publisher:
-    _instance: ClassVar[Publisher | None] = None
+    _instance: ClassVar[Self | None] = None
     _instance_lock: ClassVar[threading.Lock] = threading.Lock()
     _item_subscribers: set[Callable[..., None]]
     _info_subscribers: set[Callable[..., None]]
     _subscriber_lock: threading.Lock
 
-    def __new__(cls):
+    def __new__(cls) -> Self:
         with cls._instance_lock:
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
@@ -80,30 +80,30 @@ class Publisher:
             self.publish_item(LAST_ITEM)
             local_cache = []
 
-    def publish_item(self, data):
+    def publish_item(self, data: list[str]) -> None:
         LOGGER.debug("Raw TTS payload: %s", data)
         with self._subscriber_lock:
             for subscriber in self._item_subscribers:
                 subscriber(data)
 
-    def subscribe_item(self, subscriber):
+    def subscribe_item(self, subscriber: Callable[[list[str]], None]) -> None:
         with self._subscriber_lock:
             self._item_subscribers.add(subscriber)
 
-    def unsubscribe_item(self, subscriber):
+    def unsubscribe_item(self, subscriber: Callable[[list[str]], None]) -> None:
         with self._subscriber_lock:
             self._item_subscribers.discard(subscriber)
 
-    def publish_info(self, data):
+    def publish_info(self, data: str) -> None:
         with self._subscriber_lock:
             for subscriber in self._info_subscribers:
                 subscriber(data)
 
-    def subscribe_info(self, subscriber):
+    def subscribe_info(self, subscriber: Callable[[str], None]) -> None:
         with self._subscriber_lock:
             self._info_subscribers.add(subscriber)
 
-    def unsubscribe_info(self, subscriber):
+    def unsubscribe_info(self, subscriber: Callable[[str], None]) -> None:
         with self._subscriber_lock:
             self._info_subscribers.discard(subscriber)
 
@@ -113,7 +113,7 @@ def set_connected(value: bool) -> None:
     CONNECTED = value
 
 
-def create_pipe():
+def create_pipe() -> int:
     return _backend.create_pipe(LOGGER)
 
 
