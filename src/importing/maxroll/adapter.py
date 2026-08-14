@@ -25,13 +25,14 @@ from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGu
 from src.importing.web import get_with_retry, retry_importer
 from src.perception import correct_name
 from src.profiles import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
+from src.type_aliases import JsonObject, JsonValue
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
-type PlannerObject = dict[str, object]
+type PlannerObject = JsonObject
 
 
 def _planner_api_url(url: str) -> str:
@@ -42,11 +43,11 @@ def _planner_api_url(url: str) -> str:
     return api_url
 
 
-def _load_planner_data(url: str) -> tuple[dict[str, object], dict[str, object]]:
+def _load_planner_data(url: str) -> tuple[JsonObject, JsonObject]:
     """Fetch and decode planner data once for either discovery or import."""
     response = get_with_retry(url=_planner_api_url(url))
-    all_data = cast("dict[str, object]", response.json())
-    return all_data, cast("dict[str, object]", json.loads(str(all_data["data"])))
+    all_data = cast("JsonObject", response.json())
+    return all_data, cast("JsonObject", json.loads(str(all_data["data"])))
 
 
 def _validated_url(request: ImportRequest) -> str | None:
@@ -81,7 +82,7 @@ def _extract_profile_variant(
     *,
     profile_data: PlannerObject,
     items: dict[str, PlannerObject],
-    mapping_data: dict[str, object],
+    mapping_data: JsonObject,
     class_name: str,
     build_header: str,
     request: ImportRequest,
@@ -95,11 +96,11 @@ def _extract_profile_variant(
     charm_filters: list[CharmFilterModel] = []
     seal_filters: list[SealFilterModel] = []
     aspect_upgrade_filters: list[str] = []
-    item_mapping = cast("dict[str, dict[str, object]]", mapping_data["items"])
+    item_mapping = cast("dict[str, JsonObject]", mapping_data["items"])
     item_type_mapping = cast("Mapping[str, Mapping[str, str]]", item_mapping)
-    item_sets = cast("dict[str, dict[str, object]]", mapping_data.get("itemSets", {}))
+    item_sets = cast("dict[str, JsonObject]", mapping_data.get("itemSets", {}))
 
-    profile_items = cast("dict[str, object]", profile_data["items"])
+    profile_items = cast("JsonObject", profile_data["items"])
     for item_id in profile_items.values():
         resolved_item = items[str(item_id)]
         resolved_item_id = str(resolved_item["id"])
@@ -126,7 +127,7 @@ def _extract_profile_variant(
                 continue
             seal_charm_affixes = _find_item_affixes(
                 mapping_data=mapping_data,
-                item_affixes=cast("list[dict[str, object]]", resolved_item["explicits"]),
+                item_affixes=cast("list[JsonObject]", resolved_item["explicits"]),
                 item_type=item_type,
                 import_greater_affixes=request.options.import_greater_affixes,
             )
@@ -169,7 +170,7 @@ def _extract_profile_variant(
             legendary_aspect = _find_legendary_aspect(
                 mapping_data,
                 cast(
-                    "dict[str, object] | list[object]",
+                    "JsonObject | list[JsonValue]",
                     resolved_item.get("legendaryPower", resolved_item.get("aspects", {})),
                 ),
             )
@@ -192,7 +193,7 @@ def _extract_profile_variant(
 
         affixes = _find_item_affixes(
             mapping_data=mapping_data,
-            item_affixes=cast("list[dict[str, object]]", resolved_item["explicits"]),
+            item_affixes=cast("list[JsonObject]", resolved_item["explicits"]),
             item_type=item_type,
             import_greater_affixes=request.options.import_greater_affixes,
         )

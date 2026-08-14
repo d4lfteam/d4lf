@@ -61,7 +61,7 @@ def _notify(
 
 
 class _SessionStats:
-    def __init__(self):
+    def __init__(self) -> None:
         self.start_time: float | None = None
         persisted = load_settings()
         persisted_gold = persisted.get("session_total_gold", 0)

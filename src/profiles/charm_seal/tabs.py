@@ -1,6 +1,6 @@
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, cast, override
 
-from PyQt6.QtWidgets import QCheckBox, QDialog, QLineEdit, QMessageBox, QPushButton, QSizePolicy, QWidget
+from PyQt6.QtWidgets import QCheckBox, QDialog, QLineEdit, QMessageBox, QPushButton, QSizePolicy, QStyle, QWidget
 
 from src.profiles import CharmFilterModel, DynamicCharmFilterModel, DynamicSealFilterModel, SealFilterModel
 from src.profiles.charm_seal.dialogs import CreateCharmOrSeal
@@ -34,8 +34,8 @@ class BaseCharmsSealsTab[ModelT, ConfigT](TabGroupWidget[ModelT]):
         editor_factory: Callable[[ModelT], QWidget],
         model_type: type[ModelT],
         tab_label_factory: Callable[[ModelT], str],
-        parent=None,
-    ):
+        parent: QWidget | None = None,
+    ) -> None:
         self.is_charm = is_charm
         self.type_prefix = "charm" if is_charm else "seal"
         self._model_items = model_items
@@ -108,7 +108,7 @@ class BaseCharmsSealsTab[ModelT, ConfigT](TabGroupWidget[ModelT]):
         buttons.extend([set_all_min_greater_affix_button, convert_all_to_min_percent_button])
         return buttons
 
-    def set_all_min_greater_affix(self):
+    def set_all_min_greater_affix(self) -> None:
         dialog = MinGreaterDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             min_greater_affix = dialog.get_value()
@@ -119,7 +119,7 @@ class BaseCharmsSealsTab[ModelT, ConfigT](TabGroupWidget[ModelT]):
                 tab.min_greater.setValue(min_greater_affix)
                 tab.update_min_greater_affix()
 
-    def convert_all_to_min_percent_of_affix(self):
+    def convert_all_to_min_percent_of_affix(self) -> None:
         current_tab = self.tab_widget.currentWidget()
         if isinstance(current_tab, BaseGroupEditor):
             dialog = MinPercentDialog(self)
@@ -128,7 +128,7 @@ class BaseCharmsSealsTab[ModelT, ConfigT](TabGroupWidget[ModelT]):
 
 
 class CharmsTab(BaseCharmsSealsTab[DynamicCharmFilterModel, CharmFilterModel]):
-    def __init__(self, charms_model: list[DynamicCharmFilterModel], parent=None):
+    def __init__(self, charms_model: list[DynamicCharmFilterModel], parent: QWidget | None = None) -> None:
         super().__init__(
             charms_model,
             is_charm=True,
@@ -142,7 +142,7 @@ class CharmsTab(BaseCharmsSealsTab[DynamicCharmFilterModel, CharmFilterModel]):
 
 
 class SealsTab(BaseCharmsSealsTab[DynamicSealFilterModel, SealFilterModel]):
-    def __init__(self, seals_model: list[DynamicSealFilterModel], parent=None):
+    def __init__(self, seals_model: list[DynamicSealFilterModel], parent: QWidget | None = None) -> None:
         super().__init__(
             seals_model,
             is_charm=False,
@@ -158,7 +158,7 @@ class SealsTab(BaseCharmsSealsTab[DynamicSealFilterModel, SealFilterModel]):
 # --- Common Helpers ---
 
 
-def _create_readonly_line_edit():
+def _create_readonly_line_edit() -> QLineEdit:
     line_edit = QLineEdit()
     line_edit.setReadOnly(True)
     line_edit.setMinimumWidth(360)
@@ -166,7 +166,7 @@ def _create_readonly_line_edit():
     return line_edit
 
 
-def _create_auto_sync_checkbox():
+def _create_auto_sync_checkbox() -> QCheckBox:
     checkbox = QCheckBox("Auto Sync")
     checkbox.setToolTip(
         "When checked: Min Greater Affixes automatically matches the number of affixes marked as 'want greater'\n"
@@ -175,6 +175,7 @@ def _create_auto_sync_checkbox():
     return checkbox
 
 
-def _refresh_widget_style(widget):
-    widget.style().unpolish(widget)
-    widget.style().polish(widget)
+def _refresh_widget_style(widget: QWidget) -> None:
+    style = cast("QStyle", widget.style())
+    style.unpolish(widget)
+    style.polish(widget)

@@ -1,6 +1,6 @@
 """Profile-dashboard drag-and-drop behavior."""
 
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, override
 
 from PyQt6.QtCore import QMimeData, Qt
 from PyQt6.QtGui import QDrag, QDragEnterEvent, QDragMoveEvent, QDropEvent, QMouseEvent
@@ -9,6 +9,8 @@ from PyQt6.QtWidgets import QGraphicsOpacityEffect, QPushButton, QWidget
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from src.app.dashboard.core import ActivityLogWidget
+
 
 class DragHandleButton(QPushButton):
     def __init__(
@@ -16,7 +18,7 @@ class DragHandleButton(QPushButton):
         row_widget: QWidget,
         start_drag: Callable[[QMouseEvent | None, QWidget, QWidget], None],
         parent: QWidget | None = None,
-    ):
+    ) -> None:
         super().__init__("⠿", parent)
         self._row_widget = row_widget
         self._start_drag = start_drag
@@ -27,7 +29,7 @@ class DragHandleButton(QPushButton):
 
 
 class ActivityProfileDragMixin:
-    def _start_drag(self: Any, event: QMouseEvent | None, row_widget: QWidget, handle: QWidget) -> None:
+    def _start_drag(self: ActivityLogWidget, event: QMouseEvent | None, row_widget: QWidget, handle: QWidget) -> None:
         if event is None:
             return
         if event.buttons() != Qt.MouseButton.LeftButton:
@@ -50,14 +52,14 @@ class ActivityProfileDragMixin:
         row_widget.setGraphicsEffect(None)
         self.drop_indicator.hide()
 
-    def dragEnterEvent(self: Any, a0: QDragEnterEvent | None) -> None:  # ruff:ignore[invalid-function-name]
+    def dragEnterEvent(self: ActivityLogWidget, a0: QDragEnterEvent | None) -> None:  # ruff:ignore[invalid-function-name]
         if a0 is None:
             return
         mime_data = a0.mimeData()
         if mime_data is not None and mime_data.hasText():
             a0.acceptProposedAction()
 
-    def dragMoveEvent(self: Any, a0: QDragMoveEvent | None) -> None:  # ruff:ignore[invalid-function-name]
+    def dragMoveEvent(self: ActivityLogWidget, a0: QDragMoveEvent | None) -> None:  # ruff:ignore[invalid-function-name]
         if a0 is None:
             return
         mime_data = a0.mimeData()
@@ -110,13 +112,13 @@ class ActivityProfileDragMixin:
                 break
         a0.acceptProposedAction()
 
-    def dropEvent(self: Any, a0: QDropEvent | None) -> None:  # ruff:ignore[invalid-function-name]
+    def dropEvent(self: ActivityLogWidget, a0: QDropEvent | None) -> None:  # ruff:ignore[invalid-function-name]
         self._on_toggle()
         self._update_zebra_striping()
         if a0 is not None:
             a0.acceptProposedAction()
 
-    def _update_zebra_striping(self: Any):
+    def _update_zebra_striping(self: ActivityLogWidget) -> None:
         """Update alternating background colors for currently visible rows."""
         visible_count = 0
         for i in range(self.profile_layout.count()):
@@ -131,7 +133,7 @@ class ActivityProfileDragMixin:
                     style.polish(widget)
                 visible_count += 1
 
-    def _filter_profiles(self: Any, text: str):
+    def _filter_profiles(self: ActivityLogWidget, text: str) -> None:
         query = text.lower()
         for name, row in self._rows.items():
             row.setVisible(query in name.lower())

@@ -19,7 +19,7 @@ def camera():
     cam.reset_window_position()
 
 
-def test_grab_discards_frame_captured_before_window_restart(camera, mocker):
+def test_grab_discards_frame_captured_before_window_restart(camera, mocker) -> None:
     old_frame = np.zeros((1, 1, 4), dtype=np.uint8)
     new_frame = np.full((1, 1, 4), 255, dtype=np.uint8)
     camera.update_window_pos(10, 20, 1000, 800)

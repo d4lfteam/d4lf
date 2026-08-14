@@ -38,20 +38,20 @@ class _FakeGameCatalog:
 
 
 class _FakeEditor(QWidget):
-    def __init__(self, loaded_profile, parent=None):
+    def __init__(self, loaded_profile: LoadedProfile, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._model = loaded_profile.profile
+        self._model: ProfileModel = loaded_profile.profile
 
     def get_current_model(self) -> ProfileModel:
         return self._model
 
 
 class _FakeSession:
-    def __init__(self, *, catalog: ProfileCatalog, load_result, save_results=None, dirty=False):
+    def __init__(self, *, catalog: ProfileCatalog, load_result, save_results=None, dirty: bool = False) -> None:
         self._catalog = catalog
         self._load_result = load_result
         self._save_results = list(save_results or [])
-        self._dirty = dirty
+        self._dirty: bool = dirty
         self.save_calls: list[tuple[ProfileModel, bool]] = []
 
     def discover(self) -> ProfileCatalog:
@@ -84,7 +84,7 @@ def _patch_tab_dependencies(monkeypatch, fake_session, tmp_path: Path) -> None:
     monkeypatch.setattr(profile_tab_module, "ProfileSession", lambda **_kwargs: fake_session)
 
 
-def test_load_validation_guidance_shows_critical(qapp, monkeypatch, tmp_path: Path):
+def test_load_validation_guidance_shows_critical(qapp, monkeypatch, tmp_path: Path) -> None:
     fake_session = _FakeSession(
         catalog=_catalog(tmp_path), load_result=ValidationError(message="bad", guidance="guidance")
     )
@@ -102,7 +102,7 @@ def test_load_validation_guidance_shows_critical(qapp, monkeypatch, tmp_path: Pa
 
 
 @pytest.mark.parametrize("load_result", [YamlError(message="broken yaml"), EmptyError(message="empty profile")])
-def test_non_validation_load_errors_do_not_show_critical(qapp, monkeypatch, tmp_path: Path, load_result):
+def test_non_validation_load_errors_do_not_show_critical(qapp, monkeypatch, tmp_path: Path, load_result) -> None:
     fake_session = _FakeSession(catalog=_catalog(tmp_path), load_result=load_result)
     _patch_tab_dependencies(monkeypatch, fake_session, tmp_path)
     critical_calls = []
@@ -114,7 +114,7 @@ def test_non_validation_load_errors_do_not_show_critical(qapp, monkeypatch, tmp_
     assert tab.model_editor is None
 
 
-def test_load_validation_without_guidance_shows_validation_error(qapp, monkeypatch, tmp_path: Path):
+def test_load_validation_without_guidance_shows_validation_error(qapp, monkeypatch, tmp_path: Path) -> None:
     fake_session = _FakeSession(catalog=_catalog(tmp_path), load_result=ValidationError(message="validation message"))
     _patch_tab_dependencies(monkeypatch, fake_session, tmp_path)
     critical_calls = []
@@ -129,7 +129,7 @@ def test_load_validation_without_guidance_shows_validation_error(qapp, monkeypat
     assert critical_calls == [("Validation Error", "validation message")]
 
 
-def test_save_validation_differs_retries_with_force_and_emits_signal(qapp, monkeypatch, tmp_path: Path):
+def test_save_validation_differs_retries_with_force_and_emits_signal(qapp, monkeypatch, tmp_path: Path) -> None:
     loaded_profile = LoadedProfile(
         path=tmp_path / "profiles" / "alpha.yaml",
         name="alpha",
@@ -160,7 +160,7 @@ def test_save_validation_differs_retries_with_force_and_emits_signal(qapp, monke
     assert emitted == ["alpha"]
 
 
-def test_save_saved_shows_info_and_emits_signal(qapp, monkeypatch, tmp_path: Path):
+def test_save_saved_shows_info_and_emits_signal(qapp, monkeypatch, tmp_path: Path) -> None:
     loaded_profile = LoadedProfile(
         path=tmp_path / "profiles" / "alpha.yaml",
         name="alpha",
@@ -186,7 +186,7 @@ def test_save_saved_shows_info_and_emits_signal(qapp, monkeypatch, tmp_path: Pat
     assert info_calls == [("Info", "Profile saved successfully to alpha.yaml")]
 
 
-def test_save_failed_shows_critical(qapp, monkeypatch, tmp_path: Path):
+def test_save_failed_shows_critical(qapp, monkeypatch, tmp_path: Path) -> None:
     loaded_profile = LoadedProfile(
         path=tmp_path / "profiles" / "alpha.yaml",
         name="alpha",
@@ -210,7 +210,7 @@ def test_save_failed_shows_critical(qapp, monkeypatch, tmp_path: Path):
     assert critical_calls == [("Error", "Failed to save profile: boom")]
 
 
-def test_check_close_save_uses_session_dirty(qapp, monkeypatch, tmp_path: Path):
+def test_check_close_save_uses_session_dirty(qapp, monkeypatch, tmp_path: Path) -> None:
     loaded_profile = LoadedProfile(
         path=tmp_path / "profiles" / "alpha.yaml",
         name="alpha",

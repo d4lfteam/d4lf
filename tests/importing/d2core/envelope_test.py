@@ -1,4 +1,5 @@
 import json
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -12,8 +13,11 @@ from src.importing.d2core.errors import (
     D2CoreImportError,
 )
 
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
 
-def _body(**build_overrides: object) -> dict[str, object]:
+
+def _body(**build_overrides: JsonValue) -> dict[str, JsonValue]:
     build = {"_id": "offline", "is_public": True, "deleted": False, "variants": []}
     build.update(build_overrides)
     return {"data": {"response_data": json.dumps({"data": build})}}
@@ -36,7 +40,7 @@ def test_decode_build_envelope_validates_requested_identity_and_variants() -> No
         ({"data": {"response_data": "not-json"}}, SCHEMA_DRIFT),
     ],
 )
-def test_decode_build_envelope_classifies_expected_failures(body: dict[str, object], code: str) -> None:
+def test_decode_build_envelope_classifies_expected_failures(body: dict[str, JsonValue], code: str) -> None:
     with pytest.raises(D2CoreImportError) as error:
         decode_build_envelope(body, "offline")
 

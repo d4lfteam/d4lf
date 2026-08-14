@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from src.importing.conversion import as_string_keyed_mapping as _as_mapping
 from src.importing.filters import PLAYER_CLASSES
@@ -10,6 +10,8 @@ from src.paragon import transform_xy as _transform_xy
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from src.type_aliases import JsonObject, JsonValue
+
 
 def _fix_starting_board_slug(board_slug: str) -> str:
     for player_class in PLAYER_CLASSES:
@@ -17,11 +19,11 @@ def _fix_starting_board_slug(board_slug: str) -> str:
     return board_slug
 
 
-def extract_mobalytics_paragon_steps(paragon_data: Mapping[str, object]) -> list[list[dict[str, Any]]]:
+def extract_mobalytics_paragon_steps(paragon_data: Mapping[str, JsonValue]) -> list[list[JsonObject]]:
     """Extract paragon boards from Mobalytics preloaded-state build data."""
     boards_data = as_list((paragon_data or {}).get("boards"))
     nodes_data = as_list((paragon_data or {}).get("nodes"))
-    boards_out: list[dict[str, Any]] = []
+    boards_out: list[JsonObject] = []
     for board in boards_data:
         board_data = _as_mapping(board)
         board_slug = _as_mapping(board_data.get("board")).get("slug", "")

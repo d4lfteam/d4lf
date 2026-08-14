@@ -10,7 +10,7 @@ from src.overlay.settings import (
 )
 
 
-def test_setting_helpers_return_defaults_for_wrong_types():
+def test_setting_helpers_return_defaults_for_wrong_types() -> None:
     values: dict[str, InfoSettingValue] = {"i": "1", "b": 1, "s": 2, "d": "now"}
     default = datetime(2024, 1, 1, tzinfo=UTC)
     assert setting_int(values, "i", 3) == 3

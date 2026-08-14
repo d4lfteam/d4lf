@@ -12,7 +12,7 @@ def _expected_unit_test_path(source_path: Path) -> Path:
     return Path("tests", *relative.parts[:-1], f"{relative.stem}_test.py")
 
 
-def test_source_modules_have_exactly_one_mirrored_unit_test():
+def test_source_modules_have_exactly_one_mirrored_unit_test() -> None:
     root = Path(__file__).resolve().parents[2]
     source_files = _relative_python_files(root, "src")
     unit_files = {

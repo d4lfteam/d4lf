@@ -15,7 +15,7 @@ import time as time
 import tkinter as tk
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, NoReturn, TypedDict
 
 from PIL import Image as Image
 from PIL import ImageDraw as ImageDraw
@@ -48,6 +48,8 @@ if TYPE_CHECKING:
     from src.paragon.overlay.controller import ParagonOverlay
     from src.profiles import ParagonBoardModel
 
+type TkOption = str | int | float | bool | tk.PhotoImage | tuple[str, int] | tuple[str, int, str]
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -56,8 +58,14 @@ class OverlayContract(tk.Toplevel):
 
     _build_popup_bind_id: str | None
     _build_popup_escape_bind_id: str | None
+    _last_roi: tuple[int, int, int, int] | None
+    _last_res: tuple[int, int] | None
+    grid_x: int
+    grid_y: int
+    grid_x_collapsed: int
+    grid_y_collapsed: int
 
-    def __getattr__(self, name: str) -> Any:  # ruff:ignore[any-type] - dynamic Tk widget attributes
+    def __getattr__(self, name: str) -> NoReturn:
         raise AttributeError(name)
 
 
@@ -126,7 +134,7 @@ FS_CARD_FRAME, FS_GRID_FRAME = 1, 6
 # =============================================================================
 
 
-def _tk_btn(parent: tk.Misc, text: str = "", cmd: Callable[[], object] | None = None, **kw: object) -> tk.Button:
+def _tk_btn(parent: tk.Misc, text: str = "", cmd: Callable[[], None] | None = None, **kw: TkOption) -> tk.Button:
     """Creates a pre-styled Tkinter Button."""
     opts = {
         "bg": CARD_BG,
@@ -143,7 +151,7 @@ def _tk_btn(parent: tk.Misc, text: str = "", cmd: Callable[[], object] | None = 
     return button
 
 
-def _tk_lbl(parent: tk.Misc, text: str = "", **kw: object) -> tk.Label:
+def _tk_lbl(parent: tk.Misc, text: str = "", **kw: TkOption) -> tk.Label:
     """Creates a pre-styled Tkinter Label."""
     opts = {"bg": CARD_BG, "fg": TEXT}
     opts.update(kw)

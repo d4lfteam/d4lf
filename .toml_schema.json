@@ -1,0 +1,40 @@
+{
+    "$defs": {
+        "value": {
+            "anyOf": [
+                {
+                    "additionalProperties": {
+                        "$ref": "#/$defs/value"
+                    },
+                    "type": "object",
+                    "x-tombi-table-keys-order": "ascending"
+                },
+                {
+                    "items": {
+                        "$ref": "#/$defs/value"
+                    },
+                    "type": "array"
+                },
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "integer"
+                },
+                {
+                    "type": "number"
+                },
+                {
+                    "type": "boolean"
+                }
+            ]
+        }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": {
+        "$ref": "#/$defs/value"
+    },
+    "title": "Generic TOML schema without embedded sorting",
+    "type": "object",
+    "x-tombi-table-keys-order": "ascending"
+}

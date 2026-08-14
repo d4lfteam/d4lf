@@ -7,7 +7,12 @@ from src.importing.contracts import ImportSession
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from typing import TYPE_CHECKING, Never
+
 from PyQt6.QtWidgets import QApplication
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
 
 importer_window_module = importlib.import_module("src.importing.gui.window")
 importing_module = importlib.import_module("src.importing")
@@ -25,19 +30,19 @@ def qapp():
 
 @pytest.fixture
 def importer_settings(monkeypatch):
-    store: dict[str, object] = {}
+    store: dict[str, JsonValue] = {}
 
     class FakeSettings:
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args, **kwargs) -> None:
             pass
 
         def contains(self, key: str) -> bool:
             return key in store
 
-        def value(self, key: str, default: object = None) -> object:
+        def value(self, key: str, default: JsonValue = None) -> JsonValue:
             return store.get(key, default)
 
-        def set_value(self, key: str, value: object) -> None:
+        def set_value(self, key: str, value: JsonValue) -> None:
             store[key] = value
 
         def __getattr__(self, name: str):
@@ -51,7 +56,7 @@ def importer_settings(monkeypatch):
     return store
 
 
-def test_filename_part_selector_defaults_to_all_parts(qapp, importer_settings):
+def test_filename_part_selector_defaults_to_all_parts(qapp, importer_settings) -> None:
     window = ImporterWindow()
     assert window._selected_filename_parts() == DEFAULT_FILENAME_PARTS
     assert (
@@ -61,13 +66,13 @@ def test_filename_part_selector_defaults_to_all_parts(qapp, importer_settings):
     window.close()
 
 
-def test_importer_window_is_exposed_by_importing_gui_facade():
+def test_importer_window_is_exposed_by_importing_gui_facade() -> None:
     importing_gui = importlib.import_module("src.importing.gui")
 
     assert importing_gui.ImporterWindow is ImporterWindow
 
 
-def test_filename_part_selection_persists(qapp, importer_settings):
+def test_filename_part_selection_persists(qapp, importer_settings) -> None:
     window = ImporterWindow()
     window.filename_part_actions[FilenamePart.CLASS].setChecked(False)
     window.close()
@@ -78,7 +83,7 @@ def test_filename_part_selection_persists(qapp, importer_settings):
     restored.close()
 
 
-def test_generate_requires_url_and_filename_parts_or_custom_name(qapp, importer_settings):
+def test_generate_requires_url_and_filename_parts_or_custom_name(qapp, importer_settings) -> None:
     window = ImporterWindow()
     for action in window.filename_part_actions.values():
         action.setChecked(False)
@@ -94,11 +99,11 @@ def test_generate_requires_url_and_filename_parts_or_custom_name(qapp, importer_
     window.close()
 
 
-def test_generate_passes_selected_filename_parts(qapp, importer_settings, monkeypatch):
+def test_generate_passes_selected_filename_parts(qapp, importer_settings, monkeypatch) -> None:
     captured_config: ImportRequest | None = None
 
     class FakeThreadPool:
-        def start(self, worker):
+        def start(self, worker) -> None:
             nonlocal captured_config
             captured_config = worker.request
 
@@ -117,11 +122,11 @@ def test_generate_passes_selected_filename_parts(qapp, importer_settings, monkey
     window.close()
 
 
-def test_import_category_choices_persist_and_serialize(qapp, importer_settings, monkeypatch):
+def test_import_category_choices_persist_and_serialize(qapp, importer_settings, monkeypatch) -> None:
     captured_request: ImportRequest | None = None
 
     class FakeThreadPool:
-        def start(self, worker):
+        def start(self, worker) -> None:
             nonlocal captured_request
             captured_request = worker.request
 
@@ -145,7 +150,7 @@ def test_import_category_choices_persist_and_serialize(qapp, importer_settings, 
     restored.close()
 
 
-def test_importer_window_accepts_the_composed_accent_color(qapp, importer_settings, monkeypatch):
+def test_importer_window_accepts_the_composed_accent_color(qapp, importer_settings, monkeypatch) -> None:
     received: list[str] = []
     monkeypatch.setattr(importer_window_module, "set_accent_color", received.append)
 
@@ -155,7 +160,7 @@ def test_importer_window_accepts_the_composed_accent_color(qapp, importer_settin
     window.close()
 
 
-def test_multi_variant_import_cancellation_releases_session(qapp, importer_settings, monkeypatch):
+def test_multi_variant_import_cancellation_releases_session(qapp, importer_settings, monkeypatch) -> None:
     class FakeSession:
         name = "fixture"
         closed = False
@@ -164,10 +169,10 @@ def test_multi_variant_import_cancellation_releases_session(qapp, importer_setti
         def fetch_variants(self, request):
             return []
 
-        def import_build(self, request):
+        def import_build(self, request) -> Never:
             raise AssertionError
 
-        def close(self):
+        def close(self) -> None:
             self.close_calls += 1
             self.closed = True
 
@@ -178,7 +183,7 @@ def test_multi_variant_import_cancellation_releases_session(qapp, importer_setti
     captured_workers = []
 
     class FakeThreadPool:
-        def start(self, worker):
+        def start(self, worker) -> None:
             captured_workers.append(worker)
 
     monkeypatch.setattr(importer_window_module, "THREADPOOL", FakeThreadPool())
@@ -195,19 +200,19 @@ def test_multi_variant_import_cancellation_releases_session(qapp, importer_setti
     window.close()
 
 
-def test_discovery_failure_releases_session_through_worker(qapp, importer_settings, monkeypatch):
+def test_discovery_failure_releases_session_through_worker(qapp, importer_settings, monkeypatch) -> None:
     class FakeSession:
         name = "fixture"
         close_calls = 0
 
-        def fetch_variants(self, request):
+        def fetch_variants(self, request) -> Never:
             message = "discovery failed"
             raise RuntimeError(message)
 
-        def import_build(self, request):
+        def import_build(self, request) -> Never:
             raise AssertionError
 
-        def close(self):
+        def close(self) -> None:
             self.close_calls += 1
 
     source = FakeSession()
@@ -215,7 +220,7 @@ def test_discovery_failure_releases_session_through_worker(qapp, importer_settin
     monkeypatch.setattr(importer_window_module, "open_session", lambda _url: session)
 
     class RunningThreadPool:
-        def start(self, worker):
+        def start(self, worker) -> None:
             worker.run()
 
     monkeypatch.setattr(importer_window_module, "THREADPOOL", RunningThreadPool())
@@ -228,18 +233,18 @@ def test_discovery_failure_releases_session_through_worker(qapp, importer_settin
     window.close()
 
 
-def test_import_failure_releases_session_through_worker(qapp, importer_settings):
+def test_import_failure_releases_session_through_worker(qapp, importer_settings) -> None:
     class FakeSource:
         name = "fixture"
 
         def fetch_variants(self, request):
             return []
 
-        def import_build(self, request):
+        def import_build(self, request) -> Never:
             message = "import failed"
             raise RuntimeError(message)
 
-        def close(self):
+        def close(self) -> None:
             self.close_calls += 1
 
         close_calls = 0
@@ -257,7 +262,7 @@ def test_import_failure_releases_session_through_worker(qapp, importer_settings)
     window.close()
 
 
-def test_selected_variants_receive_the_discovery_session(qapp, importer_settings, monkeypatch):
+def test_selected_variants_receive_the_discovery_session(qapp, importer_settings, monkeypatch) -> None:
     class FakeSession:
         name = "fixture"
         close_calls = 0
@@ -265,10 +270,10 @@ def test_selected_variants_receive_the_discovery_session(qapp, importer_settings
         def fetch_variants(self, request):
             return []
 
-        def import_build(self, request):
+        def import_build(self, request) -> Never:
             raise AssertionError
 
-        def close(self):
+        def close(self) -> None:
             self.close_calls += 1
 
     source = FakeSession()
@@ -277,7 +282,7 @@ def test_selected_variants_receive_the_discovery_session(qapp, importer_settings
     monkeypatch.setattr(importer_window_module, "select_variants_dialog", lambda *_args: ["one"])
 
     class FakeThreadPool:
-        def start(self, worker):
+        def start(self, worker) -> None:
             captured_workers.append(worker)
 
     monkeypatch.setattr(importer_window_module, "THREADPOOL", FakeThreadPool())

@@ -27,7 +27,7 @@ SIGILS_TABNAME = "Sigils"
 class ConditionWidget(QWidget):
     condition_changed = pyqtSignal(str, str)
 
-    def __init__(self, condition: str, parent=None):
+    def __init__(self, condition: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.condition = condition
         widget_layout = QHBoxLayout()
@@ -45,7 +45,7 @@ class ConditionWidget(QWidget):
         widget_layout.addWidget(self.name_combo)
         self.setLayout(widget_layout)
 
-    def update_condition(self):
+    def update_condition(self) -> None:
         old_condition = self.condition
         self.condition = self.name_combo.currentText()
         self.condition_changed.emit(old_condition, self.condition)
@@ -56,7 +56,7 @@ class SigilWidget(Container):
 
     def __init__(
         self, sigil_name: str, sigil: SigilConditionModel, whitelist: bool, kind: SigilRuleTargetType = "dungeon"
-    ):
+    ) -> None:
         super().__init__(sigil_name, color_background=True)
         self.sigil = sigil
         self.sigil_name = sigil_name
@@ -65,7 +65,7 @@ class SigilWidget(Container):
         self.old_sigil_name = sigil.name
         self.setup_ui()
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         container_layout = QVBoxLayout(self.content_widget)
         widget = QWidget()
         layout = QVBoxLayout()
@@ -112,7 +112,7 @@ class SigilWidget(Container):
         widget.setLayout(layout)
         container_layout.addWidget(widget)
 
-    def add_condition_to_list(self, condition):
+    def add_condition_to_list(self, condition: str) -> None:
         widget_item = QListWidgetItem()
         widget = ConditionWidget(condition)
         widget.condition_changed.connect(self.on_condition_update)
@@ -120,7 +120,7 @@ class SigilWidget(Container):
         self.condition_list.addItem(widget_item)
         self.condition_list.setItemWidget(widget_item, widget)
 
-    def add_condition(self):
+    def add_condition(self) -> None:
         default_target = next(iter(SigilRules.default().targets("affix")), None)
         if default_target is None:
             return
@@ -129,13 +129,13 @@ class SigilWidget(Container):
         self.add_condition_to_list(default_val)
         self.sigil.condition.append(default_key)
 
-    def remove_selected(self):
+    def remove_selected(self) -> None:
         for item in self.condition_list.selectedItems():
             row = self.condition_list.row(item)
             self.condition_list.takeItem(row)
             self.sigil.condition.pop(row)
 
-    def revert_sigil_dungeon(self):
+    def revert_sigil_dungeon(self) -> None:
         self.sigil_name_combo.currentIndexChanged.disconnect()
         self.sigil_name_combo.currentTextChanged.connect(lambda: self.update_sigil_dungeon(classic=False))
         self.sigil_name_combo.setCurrentText(self.old_name)
@@ -143,7 +143,7 @@ class SigilWidget(Container):
         self.sigil_name_combo.currentIndexChanged.connect(self.update_sigil_dungeon)
         self.old_sigil_name = self.sigil.name
 
-    def update_sigil_dungeon(self, classic=True):
+    def update_sigil_dungeon(self, classic: bool = True) -> None:
         new_name = self.sigil_name_combo.currentText()
         self.old_name = self.sigil_name
         self.old_sigil_name = self.sigil.name
@@ -153,7 +153,7 @@ class SigilWidget(Container):
         if classic:
             self.dungeon_changed.emit()
 
-    def on_condition_update(self, old_condition, condition: str):
+    def on_condition_update(self, old_condition: str, condition: str) -> None:
         sigil_rules = SigilRules.default()
         old_target = sigil_rules.target(old_condition, target_type="affix", display=True)
         new_target = sigil_rules.target(condition, target_type="affix", display=True)

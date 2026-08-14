@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from typing import TypedDict
+from typing import ClassVar, Self, TypedDict
 
 import mss
 import mss.windows
@@ -35,14 +35,14 @@ class Cam:
     _window_generation: int = 0
 
     _initialized: bool = False
-    _instance: Cam | None = None
+    _instance: ClassVar[Self | None] = None
 
-    def __new__(cls):
+    def __new__(cls) -> Self:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def update_window_pos(self, offset_x: int, offset_y: int, width: int, height: int):
+    def update_window_pos(self, offset_x: int, offset_y: int, width: int, height: int) -> None:
         with cached_img_lock:
             if (
                 self.window_offset_set
@@ -78,7 +78,7 @@ class Cam:
         if width / height < 16 / 10:
             LOGGER.warning("Aspect ratio is too narrow, please use a wider window. At least 16/10")
 
-    def reset_window_position(self):
+    def reset_window_position(self) -> None:
         with cached_img_lock:
             if not self.window_offset_set:
                 return
@@ -93,7 +93,7 @@ class Cam:
             self.cached_img = None
         LOGGER.info("Diablo IV window was closed; waiting for a new window.")
 
-    def is_offset_set(self):
+    def is_offset_set(self) -> bool:
         return self.window_offset_set
 
     def grab(self, force_new: bool = False) -> np.ndarray:

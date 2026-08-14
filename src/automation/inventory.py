@@ -23,7 +23,7 @@ class InventoryBase(Menu):
     Provides methods for identifying occupied and empty slots, item operations, etc.
     """
 
-    def __init__(self, rows: int = 3, columns: int = 11, is_stash: bool = False):
+    def __init__(self, rows: int = 3, columns: int = 11, is_stash: bool = False) -> None:
         super().__init__()
         self.rows = rows
         self.columns = columns
@@ -33,9 +33,9 @@ class InventoryBase(Menu):
         else:
             self.junk_template = "junk_inv"
 
-    def get_max_slot_size(self):
-        y_size = self.slots_roi[3] // self.rows
-        x_size = self.slots_roi[2] // self.columns
+    def get_max_slot_size(self) -> int:
+        y_size = int(self.slots_roi[3]) // self.rows
+        x_size = int(self.slots_roi[2]) // self.columns
         return max(y_size, x_size)
 
     def get_item_slots(self, img: np.ndarray | None = None) -> tuple[list[ItemSlot], list[ItemSlot]]:
@@ -82,13 +82,13 @@ class InventoryBase(Menu):
 
         return occupied_slots, empty_slots
 
-    def hover_item(self, item: ItemSlot):
+    def hover_item(self, item: ItemSlot) -> None:
         Mouse.move(*window_to_monitor(item.center), randomize=15)
 
     # Needed for double checking a TTS
-    def hover_left_of_item(self, item: ItemSlot):
+    def hover_left_of_item(self, item: ItemSlot) -> None:
         x, y, width, height = item.bounding_box
         Mouse.move(*window_to_monitor([x - width / 2, y + height / 2]), randomize=15)
 
-    def hover_item_with_delay(self, item: ItemSlot, delay_factor: tuple[float, float] = (2, 3)):
+    def hover_item_with_delay(self, item: ItemSlot, delay_factor: tuple[float, float] = (2, 3)) -> None:
         Mouse.move(*window_to_monitor(item.center), randomize=15, delay_factor=delay_factor)

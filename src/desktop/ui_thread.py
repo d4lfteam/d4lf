@@ -6,11 +6,14 @@ import threading
 import tkinter as tk
 from collections.abc import Callable
 
+from src.type_aliases import JsonValue
+
 LOGGER = logging.getLogger(__name__)
 
 _UI_THREAD: threading.Thread | None = None
-UiCallback = Callable[[], object]
-_UI_QUEUE: queue.Queue[tuple[UiCallback, threading.Event | None, dict[str, object]]] = queue.Queue()
+type UiResult = JsonValue | tk.Misc | BaseException
+UiCallback = Callable[[], JsonValue | tk.Misc | None]
+_UI_QUEUE: queue.Queue[tuple[UiCallback, threading.Event | None, dict[str, UiResult]]] = queue.Queue()
 _UI_ROOT: tk.Tk | None = None
 _UI_READY = threading.Event()
 _START_LOCK = threading.Lock()
@@ -80,16 +83,20 @@ def join_ui_thread() -> None:
     _UI_THREAD.join()
 
 
-def call_on_ui_thread(fn: UiCallback) -> object:
+def call_on_ui_thread(fn: UiCallback) -> JsonValue | tk.Misc | None:
     """Execute a callback on the Tk thread and wait for its return value."""
     ensure_ui_thread()
-    done, box = threading.Event(), {}
+    done = threading.Event()
+    box: dict[str, UiResult] = {}
     _UI_QUEUE.put((fn, done, box))
     done.wait()
     exc = box.get("error")
     if isinstance(exc, BaseException):
         raise exc
-    return box.get("result")
+    result = box.get("result")
+    if isinstance(result, BaseException):
+        raise result
+    return result
 
 
 def post_to_ui_thread(fn: UiCallback) -> None:

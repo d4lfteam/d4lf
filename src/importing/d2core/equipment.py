@@ -20,6 +20,7 @@ from src.profiles import AspectUniqueFilterModel, ItemFilterModel
 
 if TYPE_CHECKING:
     from src.importing.d2core.catalog import CatalogStore
+    from src.type_aliases import JsonValue
 
 
 Warn = Callable[[str, str, str, str], None]
@@ -51,7 +52,7 @@ TYPE_ALIASES = {
 
 
 def normalize_variant(
-    raw_variant: Mapping[str, object],
+    raw_variant: Mapping[str, JsonValue],
     *,
     variant_name: str,
     class_name: str,
@@ -65,9 +66,9 @@ def normalize_variant(
     affix_value = catalogs.require("affix").get("affix", {})
     unique_value = catalogs.data.get("uniqueItem", {}).get("uniqueItem", {})
     aspect_value = catalogs.data.get("aspect", {}).get("aspect", {})
-    affix_catalog = cast("Mapping[str, object]", affix_value) if isinstance(affix_value, Mapping) else {}
-    unique_catalog = cast("Mapping[str, object]", unique_value) if isinstance(unique_value, Mapping) else {}
-    aspect_catalog = cast("Mapping[str, object]", aspect_value) if isinstance(aspect_value, Mapping) else {}
+    affix_catalog = cast("Mapping[str, JsonValue]", affix_value) if isinstance(affix_value, Mapping) else {}
+    unique_catalog = cast("Mapping[str, JsonValue]", unique_value) if isinstance(unique_value, Mapping) else {}
+    aspect_catalog = cast("Mapping[str, JsonValue]", aspect_value) if isinstance(aspect_value, Mapping) else {}
     filters: list[ItemFilterModel] = []
     hints: list[str | None] = []
     aspect_upgrades: list[str] = []
@@ -76,7 +77,7 @@ def normalize_variant(
         for slot, raw_item in gear.items():
             if not isinstance(raw_item, Mapping):
                 continue
-            source_item = cast("Mapping[str, object]", raw_item)
+            source_item = cast("Mapping[str, JsonValue]", raw_item)
             item_filter, hint = _normalize_item(
                 source_item,
                 slot=str(slot),
@@ -114,12 +115,12 @@ def normalize_variant(
 
 
 def _normalize_item(
-    item: Mapping[str, object],
+    item: Mapping[str, JsonValue],
     *,
     slot: str,
     class_name: str,
-    affixes: Mapping[str, object],
-    uniques: Mapping[str, object],
+    affixes: Mapping[str, JsonValue],
+    uniques: Mapping[str, JsonValue],
     import_greater_affixes: bool,
     require_greater_affixes: bool,
     warn: Warn,
@@ -128,7 +129,7 @@ def _normalize_item(
     payload_item_type = str(item.get("itemType", ""))
     unique_like = str(item.get("type", "")).casefold() == "uniqueitem"
     unique_name = None
-    unique_record: Mapping[str, object] | None = None
+    unique_record: Mapping[str, JsonValue] | None = None
     if unique_like:
         unique_record = _catalog_record(uniques, item.get("key"))
         if unique_record is None:
@@ -203,23 +204,23 @@ def _item_type(raw: str, *, slot: str, class_name: str) -> ItemType | list[ItemT
     return WEAPON_TYPES if slot in {"6", "7"} else None
 
 
-def _catalog_record(catalog: Mapping[str, object], key: object) -> Mapping[str, object] | None:
+def _catalog_record(catalog: Mapping[str, JsonValue], key: JsonValue) -> Mapping[str, JsonValue] | None:
     if key is None:
         return None
     value = catalog.get(str(key))
     if not isinstance(value, Mapping):
         return None
-    return cast("Mapping[str, object]", value)
+    return cast("Mapping[str, JsonValue]", value)
 
 
-def _canonical_aspect_name(record: Mapping[str, object] | None) -> str | None:
+def _canonical_aspect_name(record: Mapping[str, JsonValue] | None) -> str | None:
     if record is None:
         return None
     aspect_mapping = {str(name): str(name) for name in GameCatalog().aspect_list}
     return canonical_catalog_name(record, aspect_mapping)
 
 
-def _catalog_item_type(record: Mapping[str, object]) -> str:
+def _catalog_item_type(record: Mapping[str, JsonValue]) -> str:
     """Use the joined Unique/Mythic catalog type, never the payload display label."""
     for field in ("equipTypeName", "equipType"):
         value = record.get(field)

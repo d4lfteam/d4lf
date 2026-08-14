@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import TYPE_CHECKING, cast
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
@@ -21,6 +21,9 @@ from src.profiles.affix.unique_aspect import UniqueAspectWidget
 from src.profiles.editor.container import Container
 from src.profiles.editor.helpers import refresh_widget_style
 
+if TYPE_CHECKING:
+    from src.profiles.affix.group.core import AffixGroupEditor
+
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
 AFFIX_PERCENT_MODE = "Min %"
@@ -28,7 +31,7 @@ UNIQUE_ASPECTS_TITLE = "Unique Aspects"
 
 
 class _AffixGroupPoolsMixin:
-    def create_unique_aspect_container(self: Any):
+    def create_unique_aspect_container(self: AffixGroupEditor) -> None:
         self.unique_aspect_container = Container(self._unique_aspects_title())
         self.unique_aspect_layout = QVBoxLayout(self.unique_aspect_container.content_widget)
         self.unique_aspect_container.first_expansion.connect(self.init_unique_aspects)
@@ -80,18 +83,18 @@ class _AffixGroupPoolsMixin:
         self.unique_aspect_layout.addLayout(layout)
         self.content_layout.addWidget(self.unique_aspect_container)
 
-    def _unique_aspects_title(self: Any):
+    def _unique_aspects_title(self: AffixGroupEditor) -> str:
         aspect_names = ", ".join(unique_aspect.name for unique_aspect in self.config.unique_aspect) or "None"
         return f"{UNIQUE_ASPECTS_TITLE} - {aspect_names}"
 
-    def refresh_unique_aspects_title(self: Any):
+    def refresh_unique_aspects_title(self: AffixGroupEditor) -> None:
         self.unique_aspect_container.header.set_name(self._unique_aspects_title())
 
-    def init_unique_aspects(self: Any):
+    def init_unique_aspects(self: AffixGroupEditor) -> None:
         for unique_aspect in self.config.unique_aspect:
             self.add_unique_aspect_item(unique_aspect)
 
-    def add_unique_aspect_item(self: Any, unique_aspect: AspectUniqueFilterModel):
+    def add_unique_aspect_item(self: AffixGroupEditor, unique_aspect: AspectUniqueFilterModel) -> None:
         item = QListWidgetItem()
         widget = UniqueAspectWidget(unique_aspect)
         item_size = widget.sizeHint()
@@ -100,7 +103,7 @@ class _AffixGroupPoolsMixin:
         self.unique_aspect_list.addItem(item)
         self.unique_aspect_list.setItemWidget(item, widget)
 
-    def add_unique_aspect(self: Any):
+    def add_unique_aspect(self: AffixGroupEditor) -> None:
         existing_names = {unique_aspect.name for unique_aspect in self.config.unique_aspect}
         for aspect_name in GameCatalog().aspect_unique_dict:
             if aspect_name in existing_names:
@@ -112,7 +115,7 @@ class _AffixGroupPoolsMixin:
             return
         QMessageBox.information(cast("QWidget", self), "Info", "All unique aspects have already been added.")
 
-    def remove_selected_unique_aspects(self: Any):
+    def remove_selected_unique_aspects(self: AffixGroupEditor) -> None:
         selected_rows = sorted(
             (self.unique_aspect_list.row(item) for item in self.unique_aspect_list.selectedItems()), reverse=True
         )
@@ -121,19 +124,19 @@ class _AffixGroupPoolsMixin:
             del self.config.unique_aspect[row]
         self.refresh_unique_aspects_title()
 
-    def init_affix_pool(self: Any):
+    def init_affix_pool(self: AffixGroupEditor) -> None:
         """Initialize affix pool content on first expansion."""
         for pool in self.config.affix_pool:
             self.add_affix_pool_item(pool)
         QTimer.singleShot(50, self.update_greater_count_label)
 
-    def init_inherent_pool(self: Any):
+    def init_inherent_pool(self: AffixGroupEditor) -> None:
         """Initialize inherent pool content on first expansion."""
         for pool in self.config.inherent_pool:
             self.add_affix_pool_item(pool, inherent=True)
         QTimer.singleShot(50, self.update_greater_count_label)
 
-    def add_affix_pool_item(self: Any, pool: AffixFilterCountModel, inherent: bool = False):
+    def add_affix_pool_item(self: AffixGroupEditor, pool: AffixFilterCountModel, inherent: bool = False) -> None:
         if inherent:
             nb_count = self.inherent_pool_layout.count()
             container = Container(f"Count {nb_count}", color_background=True)
@@ -151,7 +154,7 @@ class _AffixGroupPoolsMixin:
             self.affix_pool_layout.addWidget(container)
             QTimer.singleShot(50, container.expand)
 
-    def add_affix_pool(self: Any):
+    def add_affix_pool(self: AffixGroupEditor) -> None:
         self.affix_pool_container.expand()
         default_affix = AffixFilterModel(
             name=next(iter(GameCatalog().affix_dict.keys()), ""),  # First valid affix name
@@ -162,7 +165,7 @@ class _AffixGroupPoolsMixin:
         self.config.affix_pool.append(new_pool)
         self.add_affix_pool_item(new_pool)
 
-    def add_inherent_pool(self: Any):
+    def add_inherent_pool(self: AffixGroupEditor) -> None:
         self.inherent_pool_container.expand()
         default_affix = AffixFilterModel(
             name=next(iter(GameCatalog().affix_dict.keys()), ""),  # First valid affix name
@@ -173,7 +176,7 @@ class _AffixGroupPoolsMixin:
         self.config.inherent_pool.append(new_pool)
         self.add_affix_pool_item(new_pool, inherent=True)
 
-    def remove_selected(self: Any, layout_widget: QVBoxLayout, inherent: bool = False):
+    def remove_selected(self: AffixGroupEditor, layout_widget: QVBoxLayout, inherent: bool = False) -> None:
         container = self.inherent_pool_container if inherent else self.affix_pool_container
         container.expand()
         nb_pool = layout_widget.count()
@@ -197,7 +200,7 @@ class _AffixGroupPoolsMixin:
                     self.config.affix_pool.pop(index)
             self.reorganize_pool(layout_widget)
 
-    def reorganize_pool(self: Any, layout_widget: QVBoxLayout):
+    def reorganize_pool(self: AffixGroupEditor, layout_widget: QVBoxLayout) -> None:
         for i in range(layout_widget.count()):
             item = layout_widget.itemAt(i)
             if item is None:

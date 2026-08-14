@@ -2,11 +2,11 @@ import importlib
 
 from pydantic import BaseModel, Field
 
-from src.settings.loader import PARAMS_INI, IniConfigLoader
+from src.settings.loader import PARAMS_INI, IniConfigLoaderType
 from src.settings.store import SettingsStore
 
 
-def test_set_value_validates_and_persists(isolated_ini_loader: IniConfigLoader) -> None:
+def test_set_value_validates_and_persists(isolated_ini_loader: IniConfigLoaderType) -> None:
     store = SettingsStore(loader=isolated_ini_loader)
     model = isolated_ini_loader.general
 
@@ -20,7 +20,7 @@ def test_set_value_validates_and_persists(isolated_ini_loader: IniConfigLoader) 
 
 
 def test_set_value_reports_validation_failure_and_preserves_previous_value(
-    isolated_ini_loader: IniConfigLoader,
+    isolated_ini_loader: IniConfigLoaderType,
 ) -> None:
     store = SettingsStore(loader=isolated_ini_loader)
     model = isolated_ini_loader.general
@@ -38,14 +38,14 @@ class _DefaultFactoryModel(BaseModel):
     values: list[int] = Field(default_factory=lambda: [1, 2, 3])
 
 
-def test_default_value_for_supports_default_and_default_factory(isolated_ini_loader: IniConfigLoader) -> None:
+def test_default_value_for_supports_default_and_default_factory(isolated_ini_loader: IniConfigLoaderType) -> None:
     store = SettingsStore(loader=isolated_ini_loader)
 
     assert store.default_value_for(isolated_ini_loader.general, "max_stash_tabs") == 7
     assert store.default_value_for(_DefaultFactoryModel(), "values") == [1, 2, 3]
 
 
-def test_reset_category_resets_only_requested_settings(isolated_ini_loader: IniConfigLoader) -> None:
+def test_reset_category_resets_only_requested_settings(isolated_ini_loader: IniConfigLoaderType) -> None:
     store = SettingsStore(loader=isolated_ini_loader)
     general = isolated_ini_loader.general
 
@@ -62,7 +62,7 @@ def test_reset_category_resets_only_requested_settings(isolated_ini_loader: IniC
     assert isolated_ini_loader.general.run_vision_mode_on_startup is False
 
 
-def test_reset_field_restores_single_setting_default(isolated_ini_loader: IniConfigLoader) -> None:
+def test_reset_field_restores_single_setting_default(isolated_ini_loader: IniConfigLoaderType) -> None:
     store = SettingsStore(loader=isolated_ini_loader)
     general = isolated_ini_loader.general
     store.set_value(general, "general", "max_stash_tabs", 6)
@@ -73,7 +73,7 @@ def test_reset_field_restores_single_setting_default(isolated_ini_loader: IniCon
     assert isolated_ini_loader.general.max_stash_tabs == 7
 
 
-def test_reset_all_restores_defaults(isolated_ini_loader: IniConfigLoader) -> None:
+def test_reset_all_restores_defaults(isolated_ini_loader: IniConfigLoaderType) -> None:
     store = SettingsStore(loader=isolated_ini_loader)
     general = isolated_ini_loader.general
     store.set_value(general, "general", "run_vision_mode_on_startup", False)
@@ -83,7 +83,7 @@ def test_reset_all_restores_defaults(isolated_ini_loader: IniConfigLoader) -> No
     assert isolated_ini_loader.general.run_vision_mode_on_startup is True
 
 
-def test_config_tab_constructs_without_error(qapp, isolated_ini_loader: IniConfigLoader) -> None:
+def test_config_tab_constructs_without_error(qapp, isolated_ini_loader: IniConfigLoaderType) -> None:
     settings_tab_module = importlib.import_module("src.settings.tab")
     config_tab_class = settings_tab_module.ConfigTab
 

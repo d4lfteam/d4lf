@@ -14,7 +14,7 @@ def qapp():
     return QApplication.instance() or QApplication([])
 
 
-def test_unique_widget_updates_all_thresholds(qapp):
+def test_unique_widget_updates_all_thresholds(qapp) -> None:
     model = GlobalUniqueModel()
     widget = UniqueWidget(model)
 
@@ -29,7 +29,7 @@ def test_unique_widget_updates_all_thresholds(qapp):
     assert model.min_percent_of_aspect == 75
 
 
-def test_uniques_tab_adds_and_removes_rules(qapp):
+def test_uniques_tab_adds_and_removes_rules(qapp) -> None:
     models = [GlobalUniqueModel(profile_alias="existing")]
     tab = UniquesTab(models)
     tab.load()

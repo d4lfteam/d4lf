@@ -10,7 +10,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Stash(InventoryBase):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(5, 10, is_stash=True)
         self.menu_name = "Stash"
         self.is_open_search_args = SearchArgs(
@@ -19,7 +19,7 @@ class Stash(InventoryBase):
         self.curr_tab = 0
 
     @staticmethod
-    def switch_to_tab(tab_idx) -> bool:
+    def switch_to_tab(tab_idx: int) -> bool:
         number_tabs = get_settings().general.max_stash_tabs
         LOGGER.info(f"Switch Stash Tab to: {tab_idx}")
         if tab_idx > (number_tabs - 1):

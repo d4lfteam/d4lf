@@ -1,12 +1,15 @@
 import dataclasses
 import logging
-from typing import Any, Protocol, TypeVar
+from typing import TYPE_CHECKING, Protocol, TypeVar
 
 from src.importing import ImportRequest, ImportResult, assemble_profile_file_name
 from src.importing.filters import deduplicate_filters, sort_profile_filters
 from src.importing.paragon import build_paragon_profile_payload
 from src.importing.profiles import add_to_profiles
 from src.profiles import CharmFilterModel, ItemFilterModel, ProfileDocumentStore, ProfileModel, SealFilterModel
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonObject
 
 LOGGER = logging.getLogger(__name__)
 FilterModelT = TypeVar("FilterModelT", CharmFilterModel, SealFilterModel)
@@ -20,7 +23,7 @@ class Variant:
     charm_filters: list[CharmFilterModel] = dataclasses.field(default_factory=list)
     seal_filters: list[SealFilterModel] = dataclasses.field(default_factory=list)
     aspect_upgrade_filters: list[str] = dataclasses.field(default_factory=list)
-    paragon_steps: list[list[dict[str, Any]]] | None = None
+    paragon_steps: list[list[JsonObject]] | None = None
     paragon_build_name: str = ""
 
 

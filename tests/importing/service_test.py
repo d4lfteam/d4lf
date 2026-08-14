@@ -1,3 +1,5 @@
+from typing import Never
+
 import pytest
 
 from src.importing import ImportRequest, ImportResult, UnsupportedImportSourceError, import_build, select_source
@@ -66,13 +68,13 @@ def test_direct_import_owns_and_closes_one_session() -> None:
         name = "fixture"
         close_calls = 0
 
-        def fetch_variants(self, request):
+        def fetch_variants(self, request) -> Never:
             raise AssertionError
 
         def import_build(self, request):
             return ImportResult(source_name=self.name, selected_variant="one", profile=ProfileModel(name="profile"))
 
-        def close(self):
+        def close(self) -> None:
             self.close_calls += 1
 
     source = FakeSource()
@@ -90,11 +92,11 @@ def test_direct_import_closes_session_when_source_fails() -> None:
         def fetch_variants(self, request):
             return []
 
-        def import_build(self, request):
+        def import_build(self, request) -> Never:
             message = "import failed"
             raise RuntimeError(message)
 
-        def close(self):
+        def close(self) -> None:
             self.close_calls += 1
 
     source = FakeSource()

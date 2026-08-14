@@ -24,7 +24,7 @@ def test_config_window_can_be_constructed(qapp, isolated_ini_loader) -> None:
 
 def test_config_window_restores_maximized_state_from_qsettings(monkeypatch, qapp) -> None:
     class FakeSettings:
-        def __init__(self, *_args):
+        def __init__(self, *_args) -> None:
             pass
 
         def value(self, key, default=None, **kwargs):
@@ -32,7 +32,7 @@ def test_config_window_restores_maximized_state_from_qsettings(monkeypatch, qapp
             return True if key == "maximized" else default
 
     class FakeTab(QWidget):
-        def __init__(self, **_kwargs):
+        def __init__(self, **_kwargs) -> None:
             super().__init__()
 
     maximized = []
@@ -48,7 +48,7 @@ def test_config_window_restores_maximized_state_from_qsettings(monkeypatch, qapp
 
 def test_config_window_force_maximized_overrides_saved_state(monkeypatch, qapp) -> None:
     class FakeSettings:
-        def __init__(self, *_args):
+        def __init__(self, *_args) -> None:
             pass
 
         def value(self, key, default=None, **kwargs):
@@ -56,7 +56,7 @@ def test_config_window_force_maximized_overrides_saved_state(monkeypatch, qapp) 
             return False if key == "maximized" else default
 
     class FakeTab(QWidget):
-        def __init__(self, **_kwargs):
+        def __init__(self, **_kwargs) -> None:
             super().__init__()
 
     maximized = []
@@ -74,18 +74,18 @@ def test_config_window_persists_maximized_state_on_close(monkeypatch, qapp) -> N
     class FakeSettings:
         values = {"maximized": False}
 
-        def __init__(self, *_args):
+        def __init__(self, *_args) -> None:
             pass
 
         def value(self, key, default=None, **kwargs):
             default = kwargs.get("defaultValue", default)
             return self.values.get(key, default)
 
-        def setValue(self, key, value):  # ruff:ignore[invalid-function-name] - mirrors QSettings API
+        def setValue(self, key, value) -> None:  # ruff:ignore[invalid-function-name] - mirrors QSettings API
             self.values[key] = value
 
     class FakeTab(QWidget):
-        def __init__(self, **_kwargs):
+        def __init__(self, **_kwargs) -> None:
             super().__init__()
 
     maximized = False

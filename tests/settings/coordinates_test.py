@@ -6,6 +6,8 @@ from src.settings.coordinates import COLORS
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from src.type_aliases import JsonValue
+
 
 def test_load_templates_skips_unreadable_images(monkeypatch, tmp_path: Path) -> None:
     template_dir = tmp_path / "assets" / "templates"
@@ -15,7 +17,7 @@ def test_load_templates_skips_unreadable_images(monkeypatch, tmp_path: Path) -> 
     monkeypatch.setattr(data, "BASE_DIR", tmp_path)
     imread_calls: list[str] = []
 
-    def imread_unreadable(path: str, *_args: object, **_kwargs: object) -> None:
+    def imread_unreadable(path: str, *_args: JsonValue, **_kwargs: JsonValue) -> None:
         imread_calls.append(path)
 
     monkeypatch.setattr(data.cv2, "imread", imread_unreadable)

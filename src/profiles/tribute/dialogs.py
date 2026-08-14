@@ -24,7 +24,7 @@ from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
 
 
 class CreateTribute(QDialog):
-    def __init__(self, tributes: list[str], parent=None):
+    def __init__(self, tributes: list[str], parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.tributes = tributes
@@ -70,7 +70,7 @@ class CreateTribute(QDialog):
             return
         super().accept()
 
-    def get_value(self):
+    def get_value(self) -> TributeFilterModel:
         reverse_dict = {v: k for k, v in GameCatalog().tribute_dict.items()}
         tribute_name = reverse_dict.get(self.name_input.currentText())
         if tribute_name is None:
@@ -80,7 +80,7 @@ class CreateTribute(QDialog):
 
 
 class AddTributeRarity(QDialog):
-    def __init__(self, rarities: list[ItemRarity], parent=None):
+    def __init__(self, rarities: list[ItemRarity], parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.rarities = {ItemRarity(rarity) for rarity in rarities}
@@ -128,13 +128,13 @@ class AddTributeRarity(QDialog):
 
         super().accept()
 
-    def get_value(self):
+    def get_value(self) -> TributeFilterModel:
         rarity = ItemRarity[self.rarity_input.currentText()]
         return TributeFilterModel(name=[], rarities=[rarity])
 
 
 class RemoveTribute(QDialog):
-    def __init__(self, tributes: list[str], parent=None):
+    def __init__(self, tributes: list[str], parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.tributes = tributes
         self.setWindowTitle("Delete Tributes")
@@ -176,6 +176,6 @@ class RemoveTribute(QDialog):
 
         self.setLayout(self.main_layout)
 
-    def get_value(self):
+    def get_value(self) -> list[str | None]:
         reverse_dict = {v: k for k, v in GameCatalog().tribute_dict.items()}
         return [reverse_dict.get(checkbox.text()) for checkbox in self.checkbox_list if checkbox.isChecked()]

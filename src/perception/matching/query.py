@@ -3,7 +3,7 @@
 import logging
 import operator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 
@@ -17,7 +17,11 @@ from .models import ColorMatch, Rectangle, SearchResult, TemplateReferences
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+
 LOGGER = logging.getLogger(__name__)
+type SearchArgValue = (
+    TemplateReferences | np.ndarray | Sequence[int | float] | ColorMatch | str | int | float | bool | None
+)
 
 
 @dataclass
@@ -36,11 +40,11 @@ class SearchArgs:
     suppress_debug: bool = True
     do_multi_process: bool = True
 
-    def __call__(self, cls):
+    def __call__(self, cls: type[Self]) -> type[Self]:
         cls._search_args = self
         return cls
 
-    def as_dict(self):
+    def as_dict(self) -> dict[str, SearchArgValue]:
         return self.__dict__
 
     def detect(self, img: np.ndarray | None = None) -> SearchResult:
@@ -48,7 +52,18 @@ class SearchArgs:
             self.inp_img = img
         elif self.inp_img is None:
             Cam().grab()
-        return search(**self.as_dict())
+        return search(
+            ref=self.ref,
+            inp_img=self.inp_img,
+            threshold=self.threshold,
+            roi=self.roi,
+            use_grayscale=self.use_grayscale,
+            color_match=self.color_match,
+            mode=self.mode,
+            timeout=self.timeout,
+            suppress_debug=self.suppress_debug,
+            do_multi_process=self.do_multi_process,
+        )
 
     def is_visible(self, img: np.ndarray | None = None) -> bool:
         return self.detect(img).success

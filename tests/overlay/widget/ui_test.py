@@ -1,20 +1,25 @@
+from typing import TYPE_CHECKING
+
 from src.overlay.widget.widget import BossTimerOverlay
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
 
 
 class _Packable:
-    pack_calls: list[dict[str, object]]
+    pack_calls: list[dict[str, JsonValue]]
 
     def __init__(self) -> None:
         self.pack_calls = []
 
-    def pack(self, **kwargs: object) -> None:
+    def pack(self, **kwargs: JsonValue) -> None:
         self.pack_calls.append(kwargs)
 
     def pack_forget(self) -> None:
         pass
 
 
-def test_repack_shows_only_enabled_timer_groups(monkeypatch):
+def test_repack_shows_only_enabled_timer_groups(monkeypatch) -> None:
     overlay = object.__new__(BossTimerOverlay)
     overlay.orientation = "horizontal"
     overlay.show_wb = True

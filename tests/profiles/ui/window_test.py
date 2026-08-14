@@ -28,7 +28,7 @@ class FakeGameCatalog:
 
 
 class FakeEditor(QWidget):
-    def __init__(self, loaded_profile, parent=None):
+    def __init__(self, loaded_profile, parent=None) -> None:
         super().__init__(parent)
         self._model = loaded_profile.profile
 
@@ -37,7 +37,7 @@ class FakeEditor(QWidget):
 
 
 class FakeSession:
-    def __init__(self, catalog, results, last_opened=None):
+    def __init__(self, catalog, results, last_opened=None) -> None:
         self.catalog = catalog
         self.results = results
         self.last_opened = last_opened
@@ -71,13 +71,13 @@ def make_tab(monkeypatch, qapp, tmp_path, results, names=("alpha", "beta"), init
     return tab_module.ProfileTab(initial_profile_name=initial), session
 
 
-def test_editor_facade_exports_store():
+def test_editor_facade_exports_store() -> None:
     assert QSettingsLastOpenedStore.__name__ == "QSettingsLastOpenedStore"
     assert "QSettingsLastOpenedStore" in __import__("src.profiles.editor", fromlist=["__all__"]).__all__
     assert tab_module.QSettingsLastOpenedStore is QSettingsLastOpenedStore
 
 
-def test_failed_switch_restores_loaded_state_and_combo(monkeypatch, qapp, tmp_path):
+def test_failed_switch_restores_loaded_state_and_combo(monkeypatch, qapp, tmp_path) -> None:
     alpha = profile(tmp_path, "alpha")
     results = {"alpha": Loaded(alpha), "beta": YamlError(message="broken")}
     tab, _ = make_tab(monkeypatch, qapp, tmp_path, results)
@@ -94,7 +94,7 @@ def test_failed_switch_restores_loaded_state_and_combo(monkeypatch, qapp, tmp_pa
     assert tab.profile_combo.currentData() == "alpha"
 
 
-def test_refresh_replaces_editor_with_reloaded_profile(monkeypatch, qapp, tmp_path):
+def test_refresh_replaces_editor_with_reloaded_profile(monkeypatch, qapp, tmp_path) -> None:
     first = profile(tmp_path, "alpha")
     second = profile(tmp_path, "alpha")
     results = {"alpha": [Loaded(first), Loaded(second)], "beta": Loaded(second)}
@@ -106,7 +106,7 @@ def test_refresh_replaces_editor_with_reloaded_profile(monkeypatch, qapp, tmp_pa
     assert tab.root is second.profile
 
 
-def test_initial_profile_is_selected_once_and_unknown_falls_back(monkeypatch, qapp, tmp_path):
+def test_initial_profile_is_selected_once_and_unknown_falls_back(monkeypatch, qapp, tmp_path) -> None:
     alpha = profile(tmp_path, "alpha")
     beta = profile(tmp_path, "beta")
     results = {"alpha": Loaded(alpha), "beta": Loaded(beta)}
@@ -118,15 +118,15 @@ def test_initial_profile_is_selected_once_and_unknown_falls_back(monkeypatch, qa
     assert fallback.current_profile_name == "alpha"
 
 
-def test_window_passes_initial_profile_and_close_before_construction(monkeypatch, qapp):
+def test_window_passes_initial_profile_and_close_before_construction(monkeypatch, qapp) -> None:
     calls = []
 
     class FakeTab(QWidget):
-        def __init__(self, initial_profile_name=None):
+        def __init__(self, initial_profile_name=None) -> None:
             super().__init__()
             calls.append(initial_profile_name)
 
-        def check_close_save(self):
+        def check_close_save(self) -> bool:
             return True
 
     monkeypatch.setattr(window_module, "ProfileTab", FakeTab)
@@ -140,9 +140,9 @@ def test_window_passes_initial_profile_and_close_before_construction(monkeypatch
     assert calls == []
 
 
-def test_window_can_be_forced_maximized_by_parent(monkeypatch, qapp):
+def test_window_can_be_forced_maximized_by_parent(monkeypatch, qapp) -> None:
     class FakeSettings:
-        def __init__(self, *_args):
+        def __init__(self, *_args) -> None:
             pass
 
         def value(self, key, default=None):
@@ -166,7 +166,7 @@ def test_window_can_be_forced_maximized_by_parent(monkeypatch, qapp):
         (QMessageBox.StandardButton.Cancel, False),
     ],
 )
-def test_close_save_yes_no_cancel(monkeypatch, qapp, reply, accepted):
+def test_close_save_yes_no_cancel(monkeypatch, qapp, reply, accepted) -> None:
     monkeypatch.setattr(tab_module.QMessageBox, "warning", lambda *_args, **_kwargs: reply)
     monkeypatch.setattr(ProfileTab, "save_yaml", lambda _self: None)
     tab = ProfileTab.__new__(ProfileTab)

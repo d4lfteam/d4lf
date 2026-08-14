@@ -23,7 +23,9 @@ LOGGER = logging.getLogger(__name__)
 class ProfileEditorWindow(QMainWindow):
     """Standalone window for Profile Editor."""
 
-    def __init__(self, parent=None, profile_name: str | None = None, force_maximized: bool = False):
+    def __init__(
+        self, parent: QMainWindow | None = None, profile_name: str | None = None, force_maximized: bool = False
+    ) -> None:
         super().__init__(parent)
         self.settings = QSettings("d4lf", "profile_editor")
         self._initial_profile = profile_name
@@ -43,7 +45,7 @@ class ProfileEditorWindow(QMainWindow):
 
         QTimer.singleShot(0, self._finish_construction)
 
-    def _finish_construction(self):
+    def _finish_construction(self) -> None:
         if self._closing:
             return
         self.profile_tab = ProfileTab(initial_profile_name=self._initial_profile)

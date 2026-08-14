@@ -36,7 +36,7 @@ def _selected_sigil_target_type(combo: QComboBox) -> SigilRuleTargetType:
 
 
 class CreateSigil(QDialog):
-    def __init__(self, whitelist_sigils: list[str], blacklist_sigils: list[str], parent=None):
+    def __init__(self, whitelist_sigils: list[str], blacklist_sigils: list[str], parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.whitelist_sigils = whitelist_sigils
@@ -101,12 +101,12 @@ class CreateSigil(QDialog):
             return
         super().accept()
 
-    def _populate_names(self):
+    def _populate_names(self) -> None:
         self.name_input.clear()
         targets = SigilRules.default().targets(_selected_sigil_target_type(self.kind_input))
         self.name_input.addItems([target.display for target in targets])
 
-    def get_value(self):
+    def get_value(self) -> tuple[str, str, SigilRuleTargetType]:
         sigil_name = self.name_input.currentText()
         type_name = self.type_input.currentText()
         kind = _selected_sigil_target_type(self.kind_input)
@@ -120,7 +120,7 @@ class CreateSigil(QDialog):
 
 
 class RemoveSigil(QDialog):
-    def __init__(self, sigils: list[str], blacklist: bool = False, parent=None):
+    def __init__(self, sigils: list[str], blacklist: bool = False, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.sigils = sigils
         if blacklist:
@@ -166,7 +166,7 @@ class RemoveSigil(QDialog):
 
         self.setLayout(self.main_layout)
 
-    def get_value(self):
+    def get_value(self) -> list[str]:
         rules = SigilRules.default()
         return [
             rules.target(checkbox.text(), display=True).name for checkbox in self.checkbox_list if checkbox.isChecked()

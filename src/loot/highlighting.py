@@ -20,13 +20,14 @@ if TYPE_CHECKING:
     from threading import Event, Thread
 
     from src.item import Item
+    from src.perception import LocatorResult
 
 LOGGER = logging.getLogger(__name__)
 
 type HighlightTask = (
     tuple[Literal["clear"]]
     | tuple[Literal["empty"], Item, tuple[int, int, int, int], str, str | None]
-    | tuple[Literal["match"], Item, tuple[int, int, int, int], FilterResult, object | None]
+    | tuple[Literal["match"], Item, tuple[int, int, int, int], FilterResult, LocatorResult | None]
     | tuple[Literal["no_match"], Item, tuple[int, int, int, int]]
     | tuple[Literal["codex_upgrade"], Item, tuple[int, int, int, int], FilterResult]
 )
@@ -34,7 +35,7 @@ type HighlightTask = (
 
 @singleton
 class VisionModeWithHighlighting(HighlightingRenderer, HighlightingWorker):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.root: tk.Toplevel
         self.canvas: tk.Canvas
@@ -88,27 +89,37 @@ class VisionModeWithHighlighting(HighlightingRenderer, HighlightingWorker):
         self.screen_off_x = window_roi["left"]
         self.screen_off_y = window_roi["top"]
 
-    def request_clear(self):
+    def request_clear(self) -> None:
         self.queue.put(("clear",))
 
-    def request_empty_outline(self, item_descr, item_roi, color, text: str | None = None):
+    def request_empty_outline(
+        self, item_descr: Item, item_roi: tuple[int, int, int, int], color: str, text: str | None = None
+    ) -> None:
         self.queue.put(("empty", item_descr, item_roi, color, text))
 
-    def request_match_box(self, item_descr, item_roi, should_keep_res, locator_result):
+    def request_match_box(
+        self,
+        item_descr: Item,
+        item_roi: tuple[int, int, int, int],
+        should_keep_res: FilterResult,
+        locator_result: LocatorResult | None,
+    ) -> None:
         self.queue.put(("match", item_descr, item_roi, should_keep_res, locator_result))
 
-    def request_no_match_box(self, item_descr, item_roi):
+    def request_no_match_box(self, item_descr: Item, item_roi: tuple[int, int, int, int]) -> None:
         self.queue.put(("no_match", item_descr, item_roi))
 
-    def request_codex_upgrade_box(self, item_descr, item_roi, res):
+    def request_codex_upgrade_box(
+        self, item_descr: Item, item_roi: tuple[int, int, int, int], res: FilterResult
+    ) -> None:
         self.queue.put(("codex_upgrade", item_descr, item_roi, res))
 
-    def start(self):
+    def start(self) -> None:
         LOGGER.info("Starting Vision Mode")
         Publisher().subscribe_item(self.on_tts)
         self.is_running = True
 
-    def stop(self):
+    def stop(self) -> None:
         LOGGER.info("Stopping Vision Mode")
         self.request_clear()
         if self.evaluate_item_thread:
@@ -122,5 +133,5 @@ class VisionModeWithHighlighting(HighlightingRenderer, HighlightingWorker):
         Publisher().unsubscribe_item(self.on_tts)
         self.is_running = False
 
-    def running(self):
+    def running(self) -> bool:
         return self.is_running

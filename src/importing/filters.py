@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, TypeVar, overload
 
 import rapidfuzz
 
@@ -18,6 +18,7 @@ from src.profiles import (
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+
 
 E = TypeVar("E", bound=Enum)
 FilterModelT = TypeVar("FilterModelT", bound=ItemFilterModel | CharmFilterModel | SealFilterModel)
@@ -78,7 +79,7 @@ def get_class_name(input_str: str) -> str:
     return "Unknown"
 
 
-def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool):
+def update_mingreateraffixcount(item_filter: ItemFilterModel, require_gas: bool) -> None:
     item_filter.min_greater_affix_count = (
         sum(affix.want_greater for affix in item_filter.affix_pool[0].count) if require_gas else 0
     )
@@ -129,7 +130,43 @@ def create_item_affix_pool(affixes: list[Affix], unique_like: bool) -> list[Affi
     ]
 
 
-def create_seal_charm_filter(affixes, require_gas, model_type=SealFilterModel, unique_name=None, set_name=None):
+@overload
+def create_seal_charm_filter(
+    affixes: list[Affix],
+    require_gas: bool,
+    model_type: type[SealFilterModel] = SealFilterModel,
+    unique_name: str | None = None,
+    set_name: str | None = None,
+) -> SealFilterModel: ...
+
+
+@overload
+def create_seal_charm_filter(
+    affixes: list[Affix],
+    require_gas: bool,
+    model_type: type[CharmFilterModel],
+    unique_name: str | None = None,
+    set_name: str | None = None,
+) -> CharmFilterModel: ...
+
+
+@overload
+def create_seal_charm_filter(
+    affixes: list[Affix],
+    require_gas: bool,
+    model_type: type[SealFilterModel | CharmFilterModel],
+    unique_name: str | None = None,
+    set_name: str | None = None,
+) -> SealFilterModel | CharmFilterModel: ...
+
+
+def create_seal_charm_filter(
+    affixes: list[Affix],
+    require_gas: bool,
+    model_type: type[SealFilterModel | CharmFilterModel] = SealFilterModel,
+    unique_name: str | None = None,
+    set_name: str | None = None,
+) -> SealFilterModel | CharmFilterModel:
     affix_pool = (
         [
             AffixFilterCountModel(
@@ -155,7 +192,7 @@ def weapon_slot_name_hint(item_filter: ItemFilterModel, slot: str) -> str | None
     return slot if item_filter.item_type == WEAPON_TYPES else None
 
 
-def unique_filter_name(filter_name_template: str, filters: Sequence[Mapping[str, object]]) -> str:
+def unique_filter_name[FilterT](filter_name_template: str, filters: Sequence[Mapping[str, FilterT]]) -> str:
     filter_name, i = filter_name_template, 2
     while any(filter_name == next(iter(existing_filter)) for existing_filter in filters):
         filter_name, i = f"{filter_name_template}{i}", i + 1
@@ -185,7 +222,8 @@ def deduplicate_filters(
             else:
                 base_name = "Charm" if isinstance(filter_spec, CharmFilterModel) else "HoradricSeal"
             groups.append((base_name, filter_spec, 1))
-    result, used_names = [], []
+    result: list[dict[str, FilterModelT]] = []
+    used_names: list[dict[str, FilterModelT]] = []
     for base_name, model, count in groups:
         key = f"{base_name}(x{count})" if count > 1 else unique_filter_name(base_name, used_names)
         suffix = 2

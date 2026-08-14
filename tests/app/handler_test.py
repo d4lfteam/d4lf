@@ -7,23 +7,23 @@ if typing.TYPE_CHECKING:
 from src.app.handler import ScriptHandler
 
 
-def test_loot_interaction_stops_and_restarts_running_vision_mode(mocker: MockerFixture):
+def test_loot_interaction_stops_and_restarts_running_vision_mode(mocker: MockerFixture) -> None:
     handler = object.__new__(ScriptHandler)
     handler.loot_interaction_thread = threading.Thread()
     handler.did_stop_scripts = False
     handler.run_vision_mode = mocker.Mock()
 
     class VisionMode:
-        def __init__(self):
+        def __init__(self) -> None:
             self.stopped = False
 
-        def running(self):
+        def running(self) -> bool:
             return not self.stopped
 
-        def stop(self):
+        def stop(self) -> None:
             self.stopped = True
 
-        def start(self):
+        def start(self) -> None:
             self.stopped = False
 
     handler.vision_mode = VisionMode()

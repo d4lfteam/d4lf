@@ -45,7 +45,8 @@ def load_replay_image(image_path: Path | str, *, label: str) -> tuple[Path, np.n
 
 def font_scale(image: np.ndarray) -> float:
     """Return a readable annotation font scale for an image's height."""
-    return max(0.45, min(1.0, image.shape[0] / 800))
+    height = int(image.shape[0])
+    return max(0.45, min(1.0, height / 800))
 
 
 def show_replay_result(image: np.ndarray, window_name: str) -> None:

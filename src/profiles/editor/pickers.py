@@ -31,7 +31,7 @@ class CheckboxListDialog[OptionT](QDialog):
         selected: list[OptionT],
         note_text: str,
         option_text: Callable[[OptionT], str] | None = None,
-    ):
+    ) -> None:
         super().__init__(parent)
         self.setWindowTitle(window_title)
         self.checkboxes: dict[OptionT, QCheckBox] = {}
@@ -71,7 +71,7 @@ class CheckboxListDialog[OptionT](QDialog):
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
-    def clear_selection(self):
+    def clear_selection(self) -> None:
         for checkbox in self.checkboxes.values():
             checkbox.setChecked(False)
 
@@ -80,7 +80,7 @@ class CheckboxListDialog[OptionT](QDialog):
 
 
 class RarityPicker(CheckboxListDialog[ItemRarity]):
-    def __init__(self, parent: QWidget, selected_rarities: list[ItemRarity]):
+    def __init__(self, parent: QWidget, selected_rarities: list[ItemRarity]) -> None:
         super().__init__(
             parent,
             window_title="Select Rarities",

@@ -51,7 +51,9 @@ def _choose_best_match(result: SearchResult, anchor_x: int) -> TemplateMatch | N
     return min(result.matches, key=lambda candidate: (abs(candidate.center[0] - anchor_x), -candidate.score))
 
 
-def _template_search(img: np.ndarray, anchor: int, roi: np.ndarray, take_debug_screenshot: bool = False):
+def _template_search(
+    img: np.ndarray, anchor: int, roi: np.ndarray, take_debug_screenshot: bool = False
+) -> SearchResult:
     roi_copy = copy(roi)
     roi_copy[0] += anchor
     ok, roi_left = fit_roi_to_window_size(roi_copy, get_ui_coordinates().pos.window_dimensions)

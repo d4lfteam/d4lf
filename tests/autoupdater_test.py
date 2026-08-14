@@ -3,15 +3,15 @@ import zipfile
 from src.autoupdater import D4LFUpdater
 
 
-def test_normalize_version_adds_prefix_and_preserves_missing_values():
+def test_normalize_version_adds_prefix_and_preserves_missing_values() -> None:
     assert D4LFUpdater.normalize_version(" 1.2.3") == "v1.2.3"
     assert D4LFUpdater.normalize_version("v1.2.3") == "v1.2.3"
     assert D4LFUpdater.normalize_version(None) is None
 
 
-def test_get_latest_release_includes_prereleases_for_beta_versions(monkeypatch):
+def test_get_latest_release_includes_prereleases_for_beta_versions(monkeypatch) -> None:
     class Response:
-        def raise_for_status(self):
+        def raise_for_status(self) -> None:
             return None
 
         def json(self):
@@ -23,13 +23,14 @@ def test_get_latest_release_includes_prereleases_for_beta_versions(monkeypatch):
 
     release = D4LFUpdater().get_latest_release()
 
+    assert release is not None
     assert release["tag_name"] == "v10.0.0-beta7"
     assert requests == ["https://api.github.com/repos/d4lfteam/d4lf/releases?per_page=100"]
 
 
-def test_get_latest_release_allows_beta_versions_to_update_to_final_release(monkeypatch):
+def test_get_latest_release_allows_beta_versions_to_update_to_final_release(monkeypatch) -> None:
     class Response:
-        def raise_for_status(self):
+        def raise_for_status(self) -> None:
             return None
 
         def json(self):
@@ -38,12 +39,14 @@ def test_get_latest_release_allows_beta_versions_to_update_to_final_release(monk
     monkeypatch.setattr("src.autoupdater.__version__", "10.0.0-beta6")
     monkeypatch.setattr("src.autoupdater.requests.get", lambda *_args, **_kwargs: Response())
 
-    assert D4LFUpdater().get_latest_release()["tag_name"] == "v10.0.0"
+    release = D4LFUpdater().get_latest_release()
+    assert release is not None
+    assert release["tag_name"] == "v10.0.0"
 
 
-def test_get_latest_release_uses_stable_endpoint_for_release_versions(monkeypatch):
+def test_get_latest_release_uses_stable_endpoint_for_release_versions(monkeypatch) -> None:
     class Response:
-        def raise_for_status(self):
+        def raise_for_status(self) -> None:
             return None
 
         def json(self):
@@ -53,11 +56,13 @@ def test_get_latest_release_uses_stable_endpoint_for_release_versions(monkeypatc
     monkeypatch.setattr("src.autoupdater.__version__", "9.9.9")
     monkeypatch.setattr("src.autoupdater.requests.get", lambda url, **_kwargs: requests.append(url) or Response())
 
-    assert D4LFUpdater().get_latest_release()["tag_name"] == "v10.0.0"
+    release = D4LFUpdater().get_latest_release()
+    assert release is not None
+    assert release["tag_name"] == "v10.0.0"
     assert requests == ["https://api.github.com/repos/d4lfteam/d4lf/releases/latest"]
 
 
-def test_extract_release_writes_version_and_files(tmp_path):
+def test_extract_release_writes_version_and_files(tmp_path) -> None:
     archive = tmp_path / "release.zip"
     with zipfile.ZipFile(archive, "w") as release:
         release.writestr("d4lf/readme.txt", "ready")
@@ -70,11 +75,11 @@ def test_extract_release_writes_version_and_files(tmp_path):
     assert updater.version_file.read_text() == "v4.5.6"
 
 
-def test_download_file_writes_streamed_content_without_network(monkeypatch, tmp_path):
+def test_download_file_writes_streamed_content_without_network(monkeypatch, tmp_path) -> None:
     class Response:
         headers = {"content-length": "5"}
 
-        def raise_for_status(self):
+        def raise_for_status(self) -> None:
             return None
 
         def iter_content(self, chunk_size):

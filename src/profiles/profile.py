@@ -1,3 +1,5 @@
+from typing import cast
+
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
 
 from src.game_data import GameCatalog
@@ -10,6 +12,7 @@ from src.profiles.equipment import (  # ruff:ignore[typing-only-first-party-impo
 from src.profiles.paragon import ParagonPayloadModel  # ruff:ignore[typing-only-first-party-import]
 from src.profiles.sigils import SigilFilterModel, SigilPriority, TributeFilterModel
 from src.profiles.validation.normalization import _as_string_keyed_dict, _legacy_filter_values
+from src.type_aliases import YamlObject, YamlValue  # ruff:ignore[typing-only-first-party-import]
 
 
 class ProfileModel(BaseModel):
@@ -28,7 +31,7 @@ class ProfileModel(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def migrate_list_tributes(cls, data: object) -> object:
+    def migrate_list_tributes(cls, data: YamlValue) -> YamlValue:
         """Merge legacy list-shaped Tributes into a single object."""
         data_dict = _as_string_keyed_dict(data)
         if data_dict is None:
@@ -39,8 +42,8 @@ class ProfileModel(BaseModel):
         tributes = data_dict[key]
         if not isinstance(tributes, list):
             return data
-        names: list[object] = []
-        rarities: list[object] = []
+        names: list[YamlValue] = []
+        rarities: list[YamlValue] = []
         for entry in tributes:
             entry_dict = _as_string_keyed_dict(entry)
             if entry_dict is None:
@@ -71,7 +74,7 @@ class ProfileModel(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def aspects_must_exist(cls, data: object) -> object:
+    def aspects_must_exist(cls, data: YamlValue) -> YamlValue:
         data_dict = _as_string_keyed_dict(data)
         if data_dict is None:
             return data
@@ -99,7 +102,7 @@ class ProfileModel(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def normalize_paragon(cls, data: object) -> object:
+    def normalize_paragon(cls, data: YamlValue) -> YamlValue:
         data_dict = _as_string_keyed_dict(data)
         if data_dict is None:
             return data
@@ -122,10 +125,12 @@ class ProfileModel(BaseModel):
         if paragon_payload is None:
             msg = "Paragon legacy list entries must be objects"
             raise ValueError(msg)
-        return {**data_dict, key: paragon_payload}
+        return cast("YamlValue", {**data_dict, key: paragon_payload})
 
     @field_serializer("paragon", when_used="json-unless-none")
-    def serialize_paragon(self, paragon: ParagonPayloadModel | None) -> object:
+    def serialize_paragon(self, paragon: ParagonPayloadModel | None) -> YamlObject | None:
         if paragon is None:
             return None
-        return paragon.model_dump(mode="python", by_alias=True, exclude_none=True, exclude_defaults=True)
+        return cast(
+            "YamlObject", paragon.model_dump(mode="python", by_alias=True, exclude_none=True, exclude_defaults=True)
+        )

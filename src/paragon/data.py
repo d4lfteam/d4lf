@@ -128,7 +128,7 @@ def _clamp_int(v: int | None, lo: int, hi: int, default: int) -> int:
         return default
 
 
-def _format_build_display_name(raw_name: object) -> str:
+def _format_build_display_name(raw_name: str | None) -> str:
     """Convert stored build/profile names into a cleaner title-card label."""
     text = str(raw_name or "").strip()
     if not text:

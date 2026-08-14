@@ -19,12 +19,17 @@ if sys.platform == "win32":
 else:
     _perception = None
 
+from typing import TYPE_CHECKING
+
 from src.app.startup import check_for_proper_tts_configuration
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 LOGGER = logging.getLogger(__name__)
 
 
-def get_perception_module():
+def get_perception_module() -> ModuleType | None:
     """Return the active perception adapter, or ``None`` in GUI-only mode."""
     return _perception
 
@@ -35,7 +40,7 @@ class BackendWorker(QObject):
     finished = pyqtSignal()
     script_handler = None
 
-    def run(self):
+    def run(self) -> None:
         if sys.platform != "win32":
             LOGGER.info("GUI-only mode is active on non-Windows. Backend runtime is disabled.")
             self.finished.emit()

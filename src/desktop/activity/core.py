@@ -33,7 +33,7 @@ class ANSIConsoleWidget(QTextEdit):
         "97": "#FFFFFF",
     }
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QTextEdit | None = None) -> None:
         super().__init__(parent)
         self.setReadOnly(True)
         font = self.font()
@@ -78,7 +78,7 @@ class QtLogHandler(logging.Handler, QObject):
     flushOnClose = True  # ruff:ignore[mixed-case-variable-in-class-scope]
     log_signal = pyqtSignal(str)
 
-    def __init__(self, text_widget: QTextEdit | None = None):
+    def __init__(self, text_widget: QTextEdit | None = None) -> None:
         logging.Handler.__init__(self)
         QObject.__init__(self)
         self.setLevel(logging.DEBUG)

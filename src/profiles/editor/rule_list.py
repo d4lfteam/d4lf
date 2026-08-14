@@ -1,4 +1,4 @@
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -13,22 +13,26 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 ItemType = TypeVar("ItemType")
+type DialogFactory = Callable[[], QDialog]
 
 
 class RuleListTab[ItemType](QWidget):
-    def __init__(self, items: list[ItemType] | None, parent=None):
+    def __init__(self, items: list[ItemType] | None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.items = items if items is not None else []
         self.list_widget = QListWidget()
         self.loaded = False
 
-    def load(self):
+    def load(self) -> None:
         if not self.loaded:
             self.setup_ui()
             self.loaded = True
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 20, 0, 20)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -55,18 +59,18 @@ class RuleListTab[ItemType](QWidget):
         main_layout.addWidget(self.list_widget)
         self.setLayout(main_layout)
 
-    def _reload_list_widget(self):
+    def _reload_list_widget(self) -> None:
         self.list_widget.clear()
         for item in self.items:
             self.list_widget.addItem(self.to_display_text(item))
 
-    def _run_add_action(self, dialog_factory):
+    def _run_add_action(self, dialog_factory: Callable[[], QDialog]) -> None:
         dialog = dialog_factory()
         if dialog.exec() == QDialog.DialogCode.Accepted:
             item = self.on_add_accepted(dialog)
             self.list_widget.addItem(self.to_display_text(item))
 
-    def remove_selected(self):
+    def remove_selected(self) -> None:
         rows = sorted({self.list_widget.row(item) for item in self.list_widget.selectedItems()}, reverse=True)
         if not rows:
             QMessageBox.warning(self, "Warning", self.empty_selection_warning_text())
@@ -80,7 +84,7 @@ class RuleListTab[ItemType](QWidget):
         msg = "Subclasses must implement description_text()."
         raise NotImplementedError(msg)
 
-    def add_actions(self):
+    def add_actions(self) -> list[tuple[str, DialogFactory]]:
         msg = "Subclasses must implement add_actions()."
         raise NotImplementedError(msg)
 

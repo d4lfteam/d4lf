@@ -1,25 +1,29 @@
 """Leaf, thread-safe state shared by the overlay lifecycle and renderer."""
 
 import threading
+from typing import TYPE_CHECKING
 
-_OVERLAY_INSTANCE: object | None = None
+if TYPE_CHECKING:
+    from src.overlay.widget.widget import BossTimerOverlay
+
+_OVERLAY_INSTANCE: BossTimerOverlay | None = None
 _OVERLAY_LOCK = threading.RLock()
 
 
-def get_overlay() -> object | None:
+def get_overlay() -> BossTimerOverlay | None:
     """Return the currently composed overlay, if one exists."""
     with _OVERLAY_LOCK:
         return _OVERLAY_INSTANCE
 
 
-def set_overlay(overlay: object) -> None:
+def set_overlay(overlay: BossTimerOverlay) -> None:
     """Publish an overlay after its UI object has been constructed."""
     global _OVERLAY_INSTANCE
     with _OVERLAY_LOCK:
         _OVERLAY_INSTANCE = overlay
 
 
-def clear_overlay(overlay: object | None = None) -> None:
+def clear_overlay(overlay: BossTimerOverlay | None = None) -> None:
     """Clear the current overlay, preserving a newer replacement if present."""
     global _OVERLAY_INSTANCE
     with _OVERLAY_LOCK:

@@ -1,29 +1,63 @@
+import enum
 import importlib
 import json
 import typing
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Protocol, cast
 
 import src.item.filter.engine as engine_module
 import src.item.filter.equipment as equipment_module
 import src.item.filter.special as special_module
+from src.item import Affix, Aspect, Item
 from src.item.filter import Filter
+from src.profiles import ProfileModel
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
+    from src.type_aliases import JsonValue
 
-def _type(name: str) -> type:
+
+type FixtureValue = (
+    JsonValue | Affix | Aspect | Item | ProfileModel | enum.Enum | list[FixtureValue] | dict[str, FixtureValue]
+)
+type ItemListCase = tuple[str, list[str], Item]
+type ItemBooleanCase = tuple[str, bool, Item]
+
+
+class _FilterFixtures(Protocol):
+    affix: ProfileModel
+    affix_rarity: ProfileModel
+    always_keep_mythics: ProfileModel
+    aspects_filters: ProfileModel
+    global_unique: ProfileModel
+    seal_charm: ProfileModel
+    sigil: ProfileModel
+    sigil_blacklist_only: ProfileModel
+    sigil_priority: ProfileModel
+    sigil_rarity_rare_only: ProfileModel
+    sigil_rarity_rare_with_blacklist: ProfileModel
+    sigil_rarity_rare_with_whitelist: ProfileModel
+    sigil_whitelist_only: ProfileModel
+    tributes: ProfileModel
+    unique_affixes: ProfileModel
+
+
+class _FixtureConstructor(Protocol):
+    def __call__(self, *args: FixtureValue, **kwargs: FixtureValue) -> FixtureValue: ...
+
+
+def _type(name: str) -> _FixtureConstructor:
     module, _, qualname = name.rpartition(".")
-    value: object = importlib.import_module(module)
+    value = importlib.import_module(module)
     for part in qualname.split("."):
         value = getattr(value, part)
-    return cast("type", value)
+    return cast("_FixtureConstructor", value)
 
 
-def _mapping(value: object) -> dict[str, object]:
-    return cast("dict[str, object]", value)
+def _mapping(value: FixtureValue) -> dict[str, FixtureValue]:
+    return cast("dict[str, FixtureValue]", value)
 
 
 def _create_mocked_filter(mocker: MockerFixture) -> Filter:
@@ -62,14 +96,14 @@ def _patch_override_settings(mocker, **overrides):
     return settings
 
 
-def _decode(value: object) -> object:
+def _decode(value: FixtureValue) -> FixtureValue:
     if isinstance(value, list):
         return [_decode(item) for item in value]
     if not isinstance(value, dict):
         return value
     value = _mapping(value)
     if "__enum__" in value:
-        return getattr(_type(cast("str", value["__enum__"])), cast("str", value["value"]))
+        return cast("FixtureValue", getattr(_type(cast("str", value["__enum__"])), cast("str", value["value"])))
     if "__class__" in value:
         cls = _type(cast("str", value["__class__"]))
         fields = _mapping(_decode(value["fields"]))
@@ -81,28 +115,28 @@ def _decode(value: object) -> object:
 
 
 with (Path(__file__).parent / "data" / "fixtures.json").open(encoding="utf-8") as fixture_file:
-    _fixtures = _mapping(_decode(json.load(fixture_file)))
+    _fixtures = _mapping(_decode(cast("FixtureValue", json.load(fixture_file))))
 
-affixes: Any = _mapping(_fixtures["affixes"])["affixes"]
-aspects: Any = _mapping(_fixtures["aspects"])["aspects"]
-charms: Any = _mapping(_fixtures["charms"])["charms"]
-filters: Any = type("Filters", (), _mapping(_fixtures["filters"]))()
-items: Any = _mapping(_fixtures["items"])["items"]
-seals: Any = _mapping(_fixtures["seals"])["seals"]
-sigil_data: Any = _mapping(_fixtures["sigils"])
-tributes: Any = _mapping(_fixtures["tributes"])["tributes"]
-uniques: Any = _mapping(_fixtures["uniques"])
+affixes = cast("list[ItemListCase]", _mapping(_fixtures["affixes"])["affixes"])
+aspects = cast("list[ItemListCase]", _mapping(_fixtures["aspects"])["aspects"])
+charms = cast("list[ItemListCase]", _mapping(_fixtures["charms"])["charms"])
+filters = cast("_FilterFixtures", type("Filters", (), _mapping(_fixtures["filters"]))())
+items = cast("list[ItemListCase]", _mapping(_fixtures["items"])["items"])
+seals = cast("list[ItemListCase]", _mapping(_fixtures["seals"])["seals"])
+sigil_data = _mapping(_fixtures["sigils"])
+tributes = cast("list[ItemListCase]", _mapping(_fixtures["tributes"])["tributes"])
+uniques = _mapping(_fixtures["uniques"])
 
-sigils = sigil_data["sigils"]
-sigil_derived_legendary = sigil_data["sigil_derived_legendary"]
-sigil_derived_rare = sigil_data["sigil_derived_rare"]
-sigil_jalal = sigil_data["sigil_jalal"]
-sigil_mythic_fallback = sigil_data["sigil_mythic_fallback"]
-sigil_priority = sigil_data["sigil_priority"]
-sigil_rare_blacklisted = sigil_data["sigil_rare_blacklisted"]
-sigil_unknown_rarity = sigil_data["sigil_unknown_rarity"]
+sigils = cast("list[ItemListCase]", sigil_data["sigils"])
+sigil_derived_legendary = cast("Item", sigil_data["sigil_derived_legendary"])
+sigil_derived_rare = cast("Item", sigil_data["sigil_derived_rare"])
+sigil_jalal = cast("Item", sigil_data["sigil_jalal"])
+sigil_mythic_fallback = cast("Item", sigil_data["sigil_mythic_fallback"])
+sigil_priority = cast("Item", sigil_data["sigil_priority"])
+sigil_rare_blacklisted = cast("Item", sigil_data["sigil_rare_blacklisted"])
+sigil_unknown_rarity = cast("Item", sigil_data["sigil_unknown_rarity"])
 
-global_uniques = uniques["global_uniques"]
-simple_mythics = uniques["simple_mythics"]
-uniques_with_affixes = uniques["uniques_with_affixes"]
-aspect_only_mythic_tests = uniques["aspect_only_mythic_tests"]
+global_uniques = cast("list[ItemListCase]", uniques["global_uniques"])
+simple_mythics = cast("list[ItemBooleanCase]", uniques["simple_mythics"])
+uniques_with_affixes = cast("list[ItemListCase]", uniques["uniques_with_affixes"])
+aspect_only_mythic_tests = cast("list[ItemBooleanCase]", uniques["aspect_only_mythic_tests"])

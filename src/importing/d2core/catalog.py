@@ -4,13 +4,16 @@ import logging
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import cast, override
+from typing import TYPE_CHECKING, cast, override
 from urllib.parse import urlsplit
 
 import httpx
 
 from src.importing.d2core.errors import EQUIPMENT_CATALOG, D2CoreCatalogError
 from src.perception import clean_str, correct_name
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonObject, JsonValue
 
 LOGGER = logging.getLogger(__name__)
 CATALOG_HOST = "cloudstorage.d2core.com"
@@ -33,16 +36,16 @@ CATALOG_VERSION_MISSING = "catalog version missing"
 
 
 class CatalogTransport:
-    def get(self, url: str, *, timeout: float) -> object:  # pragma: no cover - protocol-shaped base
+    def get(self, url: str, *, timeout: float) -> JsonValue:  # pragma: no cover - protocol-shaped base
         raise NotImplementedError
 
 
 class HttpCatalogTransport(CatalogTransport):
     @override
-    def get(self, url: str, *, timeout: float) -> object:
+    def get(self, url: str, *, timeout: float) -> JsonValue:
         response = httpx.get(url, timeout=timeout)
         response.raise_for_status()
-        return response.json()
+        return cast("JsonValue", response.json())
 
 
 @dataclass(slots=True)
@@ -52,22 +55,22 @@ class CatalogStore:
     sleeper: Callable[[float], None] = time.sleep
     attempts: int = 3
     timeout: float = 10.0
-    data: dict[str, dict[str, object]] = field(default_factory=dict)
+    data: dict[str, JsonObject] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.attempts = min(max(self.attempts, 1), 3)
         self.timeout = min(max(self.timeout, 0.01), 10.0)
 
-    def require(self, kind: str) -> dict[str, object]:
+    def require(self, kind: str) -> JsonObject:
         return self._load(kind)
 
-    def optional(self, kind: str) -> dict[str, object]:
+    def optional(self, kind: str) -> JsonObject:
         return self._load(kind)
 
     def clear(self) -> None:
         self.data.clear()
 
-    def _load(self, kind: str) -> dict[str, object]:
+    def _load(self, kind: str) -> JsonObject:
         if kind in self.data:
             return self.data[kind]
         if kind not in COLLECTIONS:
@@ -90,7 +93,7 @@ class CatalogStore:
         detail = f"Unable to fetch the d2core {kind} catalog"
         raise D2CoreCatalogError(EQUIPMENT_CATALOG, detail, context={"catalog": kind}) from last_error
 
-    def _get(self, url: str) -> object:
+    def _get(self, url: str) -> JsonValue:
         return self.transport.get(url, timeout=self.timeout)
 
 
@@ -98,19 +101,19 @@ def catalog_url(version: str, kind: str) -> str:
     return f"https://{CATALOG_HOST}/data/d4/{version}/{kind}_enUS.json?env=prod&v=8"
 
 
-def validate_catalog(kind: str, value: object) -> dict[str, object]:
+def validate_catalog(kind: str, value: JsonValue) -> JsonObject:
     if kind == "affix":
         if not isinstance(value, Mapping) or not isinstance(value.get("affix"), list):
             raise ValueError(AFFIX_COLLECTION_MISSING)
-        source = cast("Mapping[str, object]", value)
+        source = cast("Mapping[str, JsonValue]", value)
         return {kind: _index_records(source["affix"])}
     if kind == "talisman":
         if not isinstance(value, Mapping) or any(
             not isinstance(value.get(key), (dict, list)) for key in COLLECTIONS[kind]
         ):
             raise ValueError(TALISMAN_COLLECTIONS_MISSING)
-        source = cast("Mapping[str, object]", value)
-        indexed: dict[str, object] = {key: _index_records(source[key]) for key in COLLECTIONS[kind] if key != "affixes"}
+        source = cast("Mapping[str, JsonValue]", value)
+        indexed: JsonObject = {key: _index_records(source[key]) for key in COLLECTIONS[kind] if key != "affixes"}
         affixes = source["affixes"]
         if not isinstance(affixes, Mapping):
             raise ValueError(TALISMAN_AFFIX_COLLECTIONS_MISSING)
@@ -124,22 +127,22 @@ def validate_catalog(kind: str, value: object) -> dict[str, object]:
     if kind == "paragon":
         if not isinstance(value, Mapping) or not any(_valid_paragon_class(item) for item in value.values()):
             raise ValueError(PARAGON_COLLECTIONS_MISSING)
-        source = cast("Mapping[object, object]", value)
+        source = cast("Mapping[str, JsonValue]", value)
         return {str(key): item for key, item in source.items()}
     raise ValueError(UNSUPPORTED_CATALOG)
 
 
-def _index_records(records: object) -> dict[str, object]:
+def _index_records(records: JsonValue) -> JsonObject:
     if isinstance(records, Mapping):
-        source = cast("Mapping[object, object]", records)
+        source = cast("Mapping[str, JsonValue]", records)
         return {str(key): value for key, value in source.items()}
     if not isinstance(records, list):
         raise ValueError(CATALOG_COLLECTION_MISSING)
-    result: dict[str, object] = {}
+    result: JsonObject = {}
     for record in records:
         if not isinstance(record, Mapping) or not record.get("key"):
             raise ValueError(CATALOG_RECORD_MISSING_KEY)
-        source = cast("Mapping[object, object]", record)
+        source = cast("Mapping[str, JsonValue]", record)
         result[str(source["key"])] = {str(key): value for key, value in source.items()}
     return result
 
@@ -162,7 +165,7 @@ def observed_catalog_version(catalog_url_value: str) -> str:
     return version
 
 
-def canonical_catalog_name(record: Mapping[str, object] | object, mapping: Mapping[str, object]) -> str | None:
+def canonical_catalog_name(record: Mapping[str, JsonValue] | JsonValue, mapping: Mapping[str, JsonValue]) -> str | None:
     """Match a catalog record's stable key or localized names to D4LF's canonical name."""
     if not isinstance(record, Mapping):
         return None
@@ -179,7 +182,7 @@ def canonical_catalog_name(record: Mapping[str, object] | object, mapping: Mappi
     return None
 
 
-def canonical_affix_name(record: Mapping[str, object] | object, mapping: Mapping[str, object]) -> str | None:
+def canonical_affix_name(record: Mapping[str, JsonValue] | JsonValue, mapping: Mapping[str, JsonValue]) -> str | None:
     """Match a current d2core affix description to D4LF's canonical name."""
     if not isinstance(record, Mapping):
         return None
@@ -195,7 +198,7 @@ def canonical_affix_name(record: Mapping[str, object] | object, mapping: Mapping
     return None
 
 
-def _valid_paragon_class(value: object) -> bool:
+def _valid_paragon_class(value: JsonValue) -> bool:
     return isinstance(value, Mapping) and all(isinstance(value.get(key), Mapping) for key in ("board", "node", "glyph"))
 
 

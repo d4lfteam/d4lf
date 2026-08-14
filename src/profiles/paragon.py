@@ -1,9 +1,11 @@
 import re
+from typing import cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.paragon import NODES_LEN
 from src.profiles.validation.normalization import _as_string_keyed_dict
+from src.type_aliases import YamlValue  # ruff:ignore[typing-only-first-party-import]
 
 
 class ParagonBoardModel(BaseModel):
@@ -26,7 +28,7 @@ class ParagonBoardModel(BaseModel):
 
     @field_validator("rotation", mode="before")
     @classmethod
-    def normalize_rotation(cls, rotation: object) -> str:
+    def normalize_rotation(cls, rotation: YamlValue) -> str:
         if isinstance(rotation, int) and not isinstance(rotation, bool):
             degrees = rotation
         elif isinstance(rotation, str):
@@ -46,7 +48,7 @@ class ParagonBoardModel(BaseModel):
 
     @field_validator("nodes", mode="before")
     @classmethod
-    def validate_nodes(cls, nodes: object) -> list[object]:
+    def validate_nodes(cls, nodes: list[YamlValue]) -> list[YamlValue]:
         if not isinstance(nodes, list):
             msg = f"Nodes must be a list of {NODES_LEN} boolean-compatible values"
             raise ValueError(msg)
@@ -75,7 +77,7 @@ class ParagonPayloadModel(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def normalize_paragon_boards_list(cls, data: object) -> object:
+    def normalize_paragon_boards_list(cls, data: YamlValue) -> YamlValue:
         data_dict = _as_string_keyed_dict(data)
         if data_dict is None:
             return data
@@ -100,7 +102,7 @@ class ParagonPayloadModel(BaseModel):
             normalized = dict(data_dict)
             normalized.pop(key, None)
             normalized["ParagonBoardsList"] = [boards_list]
-            return normalized
+            return cast("YamlValue", normalized)
         return data
 
     @model_validator(mode="after")

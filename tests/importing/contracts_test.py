@@ -1,3 +1,5 @@
+from typing import Never
+
 from src.importing.contracts import FilenamePart, ImportOptions, ImportRequest, ImportSession
 
 
@@ -45,10 +47,10 @@ def test_import_session_retains_source_and_closes_idempotently() -> None:
         def fetch_variants(self, request):
             return []
 
-        def import_build(self, request):
+        def import_build(self, request) -> Never:
             raise AssertionError
 
-        def close(self):
+        def close(self) -> None:
             self.close_calls += 1
 
     source = FakeSource()

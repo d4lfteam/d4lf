@@ -1,16 +1,19 @@
 import queue
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from src.loot.highlighting import VisionModeWithHighlighting
 
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
+
 
 class _HighlightingMode(Protocol):
-    queue: queue.Queue[object]
+    queue: queue.Queue[JsonValue]
 
     def request_clear(self) -> None: ...
 
     def request_match_box(
-        self, item: object, item_roi: tuple[int, int, int, int], result: object, markers: object
+        self, item: JsonValue, item_roi: tuple[int, int, int, int], result: JsonValue, markers: JsonValue
     ) -> None: ...
 
 
@@ -26,7 +29,7 @@ def _new_highlighting_mode() -> _HighlightingMode:
     raise AssertionError
 
 
-def test_highlighting_mode_queues_clear_and_match_requests():
+def test_highlighting_mode_queues_clear_and_match_requests() -> None:
     mode = _new_highlighting_mode()
     mode.queue = queue.Queue()
 

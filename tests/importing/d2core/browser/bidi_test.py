@@ -8,6 +8,9 @@ from selenium.common.exceptions import WebDriverException
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from src.importing.d2core.browser.bidi import BidiDriver
+    from src.type_aliases import JsonValue
+
 from src.importing.d2core.browser import BrowserAcquirer, SeleniumBrowserFactory, SeleniumNetworkObserver
 from src.importing.d2core.browser.bidi import BidiNetworkObserver
 from src.importing.d2core.catalog import CatalogStore, HttpCatalogTransport, observed_catalog_version
@@ -55,31 +58,31 @@ def test_firefox_bidi_does_not_finish_success_before_catalog_arrives() -> None:
         def __init__(self) -> None:
             self.handler = None
 
-        def add_data_collector(self, **kwargs: object) -> object:
+        def add_data_collector(self, **kwargs: JsonValue) -> JsonValue:
             del kwargs
             return {"collector": "collector"}
 
-        def add_event_handler(self, event: str, callback: object) -> object:
+        def add_event_handler(self, event: str, callback: Callable[[JsonValue], None]) -> JsonValue:
             assert event == "response_started"
             self.handler = callback
-            return callback
+            return cast("JsonValue", callback)
 
-        def get_data(self, **kwargs: object) -> object:
+        def get_data(self, **kwargs: JsonValue) -> JsonValue:
             del kwargs
             return {"bytes": build_body}
 
-        def remove_event_handler(self, event: str, handler: object) -> None:
+        def remove_event_handler(self, event: str, handler: JsonValue) -> None:
             assert event == "response_started"
             del handler
 
-        def remove_data_collector(self, collector: object) -> None:
+        def remove_data_collector(self, collector: JsonValue) -> None:
             del collector
 
     network = Network()
     observer = BidiNetworkObserver(clock=Clock(), sleeper=lambda _: None)
-    driver = type("Driver", (), {"network": network})()
+    driver = cast("BidiDriver", type("Driver", (), {"network": network})())
     observer.attach(driver, "offline")
-    handler = cast("Callable[[object], object]", network.handler)
+    handler = cast("Callable[[JsonValue], None]", network.handler)
     handler({
         "request": {"request": "request", "url": "https://tcb-api.tencentcloudapi.com/web"},
         "response": {"url": "https://tcb-api.tencentcloudapi.com/web"},
@@ -100,27 +103,27 @@ def test_firefox_bidi_polls_delayed_response_body_from_passive_event() -> None:
             self.handler = None
             self.body_reads = 0
 
-        def add_data_collector(self, **kwargs: object) -> object:
+        def add_data_collector(self, **kwargs: JsonValue) -> JsonValue:
             del kwargs
             return {"collector": "collector"}
 
-        def add_event_handler(self, event: str, callback: object) -> object:
+        def add_event_handler(self, event: str, callback: Callable[[JsonValue], None]) -> JsonValue:
             assert event == "response_started"
             self.handler = callback
-            return callback
+            return cast("JsonValue", callback)
 
-        def get_data(self, **kwargs: object) -> object:
+        def get_data(self, **kwargs: JsonValue) -> JsonValue:
             assert kwargs["request"] == "request"
             self.body_reads += 1
             if self.body_reads == 1:
                 raise WebDriverException
             return {"bytes": build_body}
 
-        def remove_event_handler(self, event: str, handler: object) -> None:
+        def remove_event_handler(self, event: str, handler: JsonValue) -> None:
             assert event == "response_started"
             del handler
 
-        def remove_data_collector(self, collector: object) -> None:
+        def remove_data_collector(self, collector: JsonValue) -> None:
             del collector
 
     class Clock:
@@ -132,9 +135,9 @@ def test_firefox_bidi_polls_delayed_response_body_from_passive_event() -> None:
 
     network = Network()
     observer = BidiNetworkObserver(clock=Clock(), sleeper=lambda _: None)
-    driver = type("Driver", (), {"network": network})()
+    driver = cast("BidiDriver", type("Driver", (), {"network": network})())
     observer.attach(driver, "offline")
-    handler = cast("Callable[[object], object]", network.handler)
+    handler = cast("Callable[[JsonValue], None]", network.handler)
     handler({"request": {"request": "catalog"}, "response": {"url": catalog_url}})
     handler({
         "request": {"request": "request", "url": "https://tcb-api.tencentcloudapi.com/web"},
@@ -156,34 +159,34 @@ def test_firefox_bidi_detach_attempts_both_removals_and_clears_state() -> None:
             self.handler = None
             self.removals: list[str] = []
 
-        def add_data_collector(self, **kwargs: object) -> object:
+        def add_data_collector(self, **kwargs: JsonValue) -> JsonValue:
             del kwargs
             return {"collector": "collector"}
 
-        def add_event_handler(self, event: str, callback: object) -> object:
+        def add_event_handler(self, event: str, callback: Callable[[JsonValue], None]) -> JsonValue:
             assert event == "response_started"
             self.handler = callback
-            return callback
+            return cast("JsonValue", callback)
 
-        def get_data(self, **kwargs: object) -> object:
+        def get_data(self, **kwargs: JsonValue) -> JsonValue:
             del kwargs
             return {"bytes": build_body}
 
-        def remove_event_handler(self, event: str, handler: object) -> None:
+        def remove_event_handler(self, event: str, handler: JsonValue) -> None:
             assert event == "response_started"
             del handler
             self.removals.append("handler")
             raise RuntimeError
 
-        def remove_data_collector(self, collector: object) -> None:
+        def remove_data_collector(self, collector: JsonValue) -> None:
             assert collector == "collector"
             self.removals.append("collector")
 
     network = Network()
     observer = BidiNetworkObserver(clock=lambda: 0, sleeper=lambda _: None)
-    driver = type("Driver", (), {"network": network})()
+    driver = cast("BidiDriver", type("Driver", (), {"network": network})())
     observer.attach(driver, "offline")
-    handler = cast("Callable[[object], object]", network.handler)
+    handler = cast("Callable[[JsonValue], None]", network.handler)
     handler({
         "request": {"request": "catalog"},
         "response": {"url": "https://cloudstorage.d2core.com/data/d4/v1/affix_enUS.json"},

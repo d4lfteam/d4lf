@@ -1,6 +1,7 @@
 import json
 import logging
 import typing
+from typing import cast
 
 import pytest
 from selenium.common.exceptions import NoSuchElementException
@@ -26,6 +27,9 @@ if typing.TYPE_CHECKING:
     from collections.abc import Mapping
 
     from pytest_mock import MockerFixture
+    from selenium.webdriver.remote.webelement import WebElement
+
+    from src.type_aliases import JsonValue
 URLS = [
     # No frills and no uniques
     "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb",
@@ -81,14 +85,14 @@ class _MobalyticsImportDriver:
     def get(self, url: str) -> None:
         self.current_url = url
 
-    def find_element(self, *_args, **_kwargs) -> object:
-        return object()
+    def find_element(self, *_args, **_kwargs) -> WebElement:
+        return typing.cast("WebElement", object())
 
     def quit(self) -> None:
         return None
 
 
-def _mobalytics_page_source(slots: list[Mapping[str, object]]) -> str:
+def _mobalytics_page_source(slots: list[Mapping[str, JsonValue]]) -> str:
     build_data = {
         "name": "Pulverize Druid",
         "buildVariants": {"values": [{"id": "variant-1", "genericBuilder": {"slots": slots}, "paragon": {}}]},
@@ -107,8 +111,8 @@ def _mobalytics_page_source(slots: list[Mapping[str, object]]) -> str:
 
 
 def _mobalytics_slot(
-    slot: str, entity_type: str, title: str, modifiers: Mapping[str, object] | None = None, icon_url: str = ""
-) -> dict[str, object]:
+    slot: str, entity_type: str, title: str, modifiers: Mapping[str, JsonValue] | None = None, icon_url: str = ""
+) -> dict[str, JsonValue]:
     return {
         "gameSlotSlug": slot,
         "gameEntity": {
@@ -122,7 +126,7 @@ def _mobalytics_slot(
     }
 
 
-def test_extract_mobalytics_paragon_steps_normalizes_warlock_starting_board():
+def test_extract_mobalytics_paragon_steps_normalizes_warlock_starting_board() -> None:
     steps = extract_mobalytics_paragon_steps({
         "boards": [{"board": {"slug": "warlock-starter-board"}, "glyph": {"slug": "warlock-hellforge"}, "rotation": 0}],
         "nodes": [{"slug": "warlock-starting-board-x11-y14"}],
@@ -132,12 +136,13 @@ def test_extract_mobalytics_paragon_steps_normalizes_warlock_starting_board():
     node_index = (14 - 1) * 21 + (11 - 1)
 
     assert board["Name"] == "warlock-starting-board"
-    assert board["Nodes"].count(True) == 1
-    assert board["Nodes"][node_index] is True
+    nodes = cast("list[bool]", board["Nodes"])
+    assert nodes.count(True) == 1
+    assert nodes[node_index] is True
 
 
 @pytest.mark.parametrize("value", [None, 7, False])
-def test_as_text_rejects_non_string_remote_values(value: object) -> None:
+def test_as_text_rejects_non_string_remote_values(value: JsonValue) -> None:
     assert not _as_text(value)
 
 
@@ -154,11 +159,12 @@ def test_extract_mobalytics_paragon_steps_keeps_rotation_index_mapping(rotation:
 
     board = steps[0][0]
     assert board["Rotation"] == f"{rotation}°"
-    assert board["Nodes"].count(True) == 1
-    assert board["Nodes"][expected_index] is True
+    nodes = cast("list[bool]", board["Nodes"])
+    assert nodes.count(True) == 1
+    assert nodes[expected_index] is True
 
 
-def test_build_paragon_profile_payload_returns_typed_model():
+def test_build_paragon_profile_payload_returns_typed_model() -> None:
     payload = build_paragon_profile_payload(
         build_name="Build Name",
         source_url="https://example.invalid",
@@ -172,7 +178,7 @@ def test_build_paragon_profile_payload_returns_typed_model():
     assert payload.paragon_boards_list[0][0].rotation == "90°"
 
 
-def test_log_mobalytics_page_diagnostics_reports_loaded_page_shape(caplog: pytest.LogCaptureFixture):
+def test_log_mobalytics_page_diagnostics_reports_loaded_page_shape(caplog: pytest.LogCaptureFixture) -> None:
     caplog.set_level(logging.DEBUG, logger="src.importing.mobalytics")
 
     _log_mobalytics_page_diagnostics(

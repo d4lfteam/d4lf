@@ -37,7 +37,7 @@ def _create_mock_seal_model(name: str) -> DynamicSealFilterModel:
     return DynamicSealFilterModel(root={name: config})
 
 
-def test_charms_tab_close_tab_safely(qapp, mock_ini_loader):
+def test_charms_tab_close_tab_safely(qapp, mock_ini_loader) -> None:
     # Create models list, including a multi-key model (representing grouped YAML entries)
     default_affix = AffixFilterModel(name="movement_speed", value=None)
     default_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
@@ -70,7 +70,7 @@ def test_charms_tab_close_tab_safely(qapp, mock_ini_loader):
     assert "Charm3" in tab.models[1].root
 
 
-def test_seals_tab_close_tab_safely(qapp, mock_ini_loader):
+def test_seals_tab_close_tab_safely(qapp, mock_ini_loader) -> None:
     default_affix = AffixFilterModel(name="all_stats", value=None)
     default_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
     config1 = SealFilterModel(affix_pool=[default_pool])
@@ -94,7 +94,7 @@ def test_seals_tab_close_tab_safely(qapp, mock_ini_loader):
     assert "Seal3" in tab.models[1].root
 
 
-def test_charms_seals_qsettings_namespacing(qapp, mock_ini_loader):
+def test_charms_seals_qsettings_namespacing(qapp, mock_ini_loader) -> None:
     charm_model = _create_mock_charm_model("MyBuild")
     seal_model = _create_mock_seal_model("MyBuild")
 
@@ -107,7 +107,7 @@ def test_charms_seals_qsettings_namespacing(qapp, mock_ini_loader):
     assert seal_editor.item_name == "MyBuild"
 
 
-def test_charms_ui_set_aspect_mutual_exclusion(qapp, mock_ini_loader, mocker):
+def test_charms_ui_set_aspect_mutual_exclusion(qapp, mock_ini_loader, mocker) -> None:
     mock_warning = mocker.patch("PyQt6.QtWidgets.QMessageBox.warning")
 
     charm_model = _create_mock_charm_model("MyBuild")
@@ -131,7 +131,7 @@ def test_charms_ui_set_aspect_mutual_exclusion(qapp, mock_ini_loader, mocker):
     assert len(charm_editor.config.set) == 0
 
 
-def test_charms_ui_edit_rarities(qapp, mock_ini_loader, mocker):
+def test_charms_ui_edit_rarities(qapp, mock_ini_loader, mocker) -> None:
     charm_model = _create_mock_charm_model("MyBuild")
     charm_editor = CharmGroupEditor(charm_model)
 
@@ -153,12 +153,12 @@ def test_charms_ui_edit_rarities(qapp, mock_ini_loader, mocker):
     assert charm_editor.config.rarities == [ItemRarity.Rare, ItemRarity.Legendary]
 
 
-def test_charms_ui_edit_sets_updates_model(qapp, mock_ini_loader, monkeypatch):
+def test_charms_ui_edit_sets_updates_model(qapp, mock_ini_loader, monkeypatch) -> None:
     charm_model = _create_mock_charm_model("MyBuild")
     charm_editor = CharmGroupEditor(charm_model)
 
     class FakeSetPicker:
-        def __init__(self, parent, selected_sets):
+        def __init__(self, parent, selected_sets) -> None:
             self.parent = parent
             self.selected_sets = selected_sets
 
@@ -175,7 +175,7 @@ def test_charms_ui_edit_sets_updates_model(qapp, mock_ini_loader, monkeypatch):
     assert charm_editor.config.set == ["sescherons_fury", "demonbinder"]
 
 
-def test_charm_group_editor_rejects_multi_key_dynamic_model(qapp, mock_ini_loader):
+def test_charm_group_editor_rejects_multi_key_dynamic_model(qapp, mock_ini_loader) -> None:
     default_affix = AffixFilterModel(name="movement_speed", value=None)
     default_pool = AffixFilterCountModel(count=[default_affix], min_count=1, max_count=3)
     config1 = CharmFilterModel(affix_pool=[default_pool])

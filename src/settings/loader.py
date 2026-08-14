@@ -1,28 +1,28 @@
-"""Configuration loading, validation, persistence, and live change notifications."""
-
 import configparser
 import logging
 import pathlib
 import threading
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from src.settings.errors import ConfigLoadErrorListener, SettingsLoadError, log_load_error, make_cleanup_record
 from src.settings.models import GeneralModel
 from src.settings.models.core import AdvancedOptionsModel, CharModel
 from src.settings.validation import singleton
 
+if TYPE_CHECKING:
+    from src.settings.types import SettingValue
+
 type SectionModel = AdvancedOptionsModel | CharModel | GeneralModel
+type StateSnapshot = dict[str, SettingValue]
 LOGGER = logging.getLogger(__name__)
 PARAMS_INI = "params.ini"
 MANUAL_RESTART_SETTING_KEYS = {"general.vision_mode_type"}
 ConfigChangeListener = Callable[[frozenset[str]], None]
 
 
-@singleton
-class IniConfigLoader:
-    """Load, validate, persist, and broadcast config changes."""
-
+class _IniConfigLoader:
     def __init__(self) -> None:
         self._advanced_options = AdvancedOptionsModel()
         self._char = CharModel()
@@ -35,7 +35,7 @@ class IniConfigLoader:
         self._load_error_listeners: list[ConfigLoadErrorListener] = []
         self._last_config_signature: tuple[int, int] | None = None
         self._config_revision = 0
-        self._state_snapshot: dict[str, object] = {}
+        self._state_snapshot: StateSnapshot = {}
         self._deferred_cleanup_log_records: list[logging.LogRecord] = []
         self._defer_cleanup_log_records = True
         self.load(notify=False)
@@ -56,14 +56,14 @@ class IniConfigLoader:
     def _model_for_section(self, section: str) -> SectionModel | None:
         return self._section_models().get(section)
 
-    def _capture_state_snapshot(self) -> dict[str, object]:
-        snapshot: dict[str, object] = {}
-        for section_name, model in self._section_models().items():
-            for key, value in model.model_dump(mode="python").items():
-                snapshot[f"{section_name}.{key}"] = value
-        return snapshot
+    def _capture_state_snapshot(self) -> StateSnapshot:
+        return {
+            f"{section_name}.{key}": value
+            for section_name, model in self._section_models().items()
+            for key, value in model.model_dump(mode="python").items()
+        }
 
-    def _changed_keys(self, previous_snapshot: dict[str, object], current_snapshot: dict[str, object]) -> set[str]:
+    def _changed_keys(self, previous_snapshot: StateSnapshot, current_snapshot: StateSnapshot) -> set[str]:
         return {
             key
             for key in previous_snapshot.keys() | current_snapshot.keys()
@@ -101,15 +101,13 @@ class IniConfigLoader:
         if self._parser is None:
             return False
         removed = False
-        # Move items "everything" migration: if found, remove the key so it defaults to the full list
         if "general" in self._parser:
             for key in ["move_to_inv_item_type", "move_to_stash_item_type"]:
                 if self._parser.has_option("general", key):
                     val = self._parser.get("general", key)
                     if "everything" in val.lower():
-                        new_val = "favorites,junk,unmarked"
-                        self._log_defunct_value("general", key, val, new_val)
-                        self._parser.set("general", key, new_val)
+                        self._log_defunct_value("general", key, val, "favorites,junk,unmarked")
+                        self._parser.set("general", key, "favorites,junk,unmarked")
                         removed = True
         return removed
 
@@ -119,7 +117,7 @@ class IniConfigLoader:
             (old_value, section, key, new_value, PARAMS_INI),
         )
 
-    def _log_cleanup(self, message: str, args: tuple[object, ...]) -> None:
+    def _log_cleanup(self, message: str, args: tuple[SettingValue, ...]) -> None:
         record = make_cleanup_record(LOGGER, message, args)
         if self._defer_cleanup_log_records:
             self._deferred_cleanup_log_records.append(record)
@@ -133,7 +131,7 @@ class IniConfigLoader:
             self._defer_cleanup_log_records = False
             return records
 
-    def _format_value_for_log(self, value: object) -> str:
+    def _format_value_for_log(self, value: SettingValue) -> str:
         if isinstance(value, bool):
             return "on" if value else "off"
         return str(value)
@@ -151,9 +149,8 @@ class IniConfigLoader:
     def _notify_listeners(self, changed_keys: set[str]) -> None:
         if not changed_keys:
             return
-        listeners = list(self._change_listeners)
         frozen_keys = frozenset(changed_keys)
-        for listener in listeners:
+        for listener in list(self._change_listeners):
             try:
                 listener(frozen_keys)
             except Exception:
@@ -242,8 +239,6 @@ class IniConfigLoader:
         try:
             self.load(notify=True)
         except SettingsLoadError:
-            # Treat an invalid signature as observed. A later edit will produce a new
-            # signature and retry, while repeated property access remains quiet.
             with self._lock:
                 self._last_config_signature = current_signature
         return True
@@ -272,7 +267,7 @@ class IniConfigLoader:
         with self._lock:
             return self._config_revision
 
-    def save_value(self, section: str, key: str, value: object) -> None:
+    def save_value(self, section: str, key: str, value: SettingValue) -> None:
         with self._lock:
             if self._parser is None:
                 self.load(notify=False)
@@ -298,3 +293,7 @@ class IniConfigLoader:
             changed_keys = self._changed_keys(previous_snapshot, self._state_snapshot)
         self._log_changed_values(changed_keys)
         self._notify_listeners(changed_keys)
+
+
+IniConfigLoader = singleton(_IniConfigLoader)
+type IniConfigLoaderType = _IniConfigLoader

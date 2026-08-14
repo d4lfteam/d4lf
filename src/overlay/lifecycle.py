@@ -1,5 +1,4 @@
 import logging
-from typing import cast
 
 from src.desktop import call_on_ui_thread, get_root
 from src.overlay import state as _state
@@ -33,7 +32,7 @@ def open_overlay() -> None:
 
 
 def request_close() -> None:
-    overlay = cast("BossTimerOverlay | None", _state.get_overlay())
+    overlay = _state.get_overlay()
     if overlay is not None:
 
         def close(overlay: BossTimerOverlay = overlay) -> None:
@@ -48,7 +47,7 @@ def is_open() -> bool:
     return _state.is_open()
 
 
-def _forget(overlay: object | None) -> None:
+def _forget(overlay: BossTimerOverlay | None) -> None:
     if overlay is None or _state.get_overlay() is overlay:
         _state.clear_overlay(overlay)
         unsubscribe_stats(_on_stats)
@@ -62,7 +61,7 @@ def update_stats(
     total_exp: int | None = None,
     t2l: str | None = None,
 ) -> None:
-    overlay = cast("BossTimerOverlay | None", _state.get_overlay())
+    overlay = _state.get_overlay()
     if overlay is not None:
         visible_overlay = overlay
         call_on_ui_thread(
@@ -72,5 +71,5 @@ def update_stats(
         )
 
 
-def get_setting(key: str, default: object = None) -> InfoSettingValue | object:
+def get_setting(key: str, default: InfoSettingValue = None) -> InfoSettingValue:
     return load_settings().get(key, default)

@@ -8,6 +8,8 @@ from src.importing.contracts import ImportSourceError
 from src.importing.service import import_build
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from src.importing.contracts import ImportRequest, ImportResult, ImportSession
 
 LOGGER = logging.getLogger(__name__)
@@ -19,7 +21,9 @@ def run_import(*, request: ImportRequest, session: ImportSession | None = None) 
 
 
 class ImportWorker(QRunnable):
-    def __init__(self, request: ImportRequest, finished, session: ImportSession | None = None):
+    def __init__(
+        self, request: ImportRequest, finished: Callable[[], None], session: ImportSession | None = None
+    ) -> None:
         super().__init__()
         self.request = request
         self.finished = finished
@@ -29,7 +33,7 @@ class ImportWorker(QRunnable):
 
     @pyqtSlot()
     @override
-    def run(self):
+    def run(self) -> None:
         threading.current_thread().name = "import"
         try:
             run_import(request=self.request, session=self.session)
@@ -42,7 +46,7 @@ class ImportWorker(QRunnable):
 
 
 class FetchVariantsWorker(QRunnable):
-    def __init__(self, request: ImportRequest, finished, session: ImportSession):
+    def __init__(self, request: ImportRequest, finished: Callable[[], None], session: ImportSession) -> None:
         super().__init__()
         self.request = request
         self.finished = finished
@@ -52,7 +56,7 @@ class FetchVariantsWorker(QRunnable):
 
     @pyqtSlot()
     @override
-    def run(self):
+    def run(self) -> None:
         threading.current_thread().name = "import-fetch-variants"
         try:
             variants = self.session.fetch_variants(self.request)

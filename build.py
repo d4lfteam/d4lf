@@ -8,7 +8,7 @@ from src import __version__
 EXE_NAME = "d4lf.exe"
 
 
-def build(release_dir: Path):
+def build(release_dir: Path) -> None:
     subprocess.run(
         [
             "pyinstaller",
@@ -26,14 +26,14 @@ def build(release_dir: Path):
     (release_dir / "main.exe").rename(release_dir / EXE_NAME)
 
 
-def clean_up():
+def clean_up() -> None:
     if (build_dir := Path("build")).exists():
         shutil.rmtree(build_dir)
     for p in Path.cwd().glob("*.spec"):
         p.unlink()
 
 
-def copy_additional_resources(release_dir: Path):
+def copy_additional_resources(release_dir: Path) -> None:
     (release_dir / "tts").mkdir()
     shutil.copy("README.md", release_dir)
     shutil.copy("tts/saapi64.dll", release_dir)
@@ -41,7 +41,7 @@ def copy_additional_resources(release_dir: Path):
     shutil.copy("tts/install_dll.cmd", release_dir)
 
 
-def create_batch_for_consoleonly(release_dir: Path, exe_name: str):
+def create_batch_for_consoleonly(release_dir: Path, exe_name: str) -> None:
     batch_file_path = release_dir / "d4lf-consoleonly.bat"
     with Path(batch_file_path).open("w", encoding="utf-8") as f:
         f.write("@echo off\n")
@@ -49,7 +49,7 @@ def create_batch_for_consoleonly(release_dir: Path, exe_name: str):
         f.write(f'start "" {exe_name} --consoleonly\n')
 
 
-def create_batch_for_autoupdater(release_dir: Path, exe_name: str):
+def create_batch_for_autoupdater(release_dir: Path, exe_name: str) -> None:
     batch_file_path = release_dir / "autoupdater.bat"
     Path(batch_file_path).write_text(
         f"""@echo off

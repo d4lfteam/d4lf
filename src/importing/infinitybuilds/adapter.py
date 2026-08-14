@@ -2,13 +2,13 @@ import logging
 from typing import TYPE_CHECKING
 
 import lxml.html
+from lxml import etree
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
 from src.game_data import GameCatalog, ItemRarity, ItemType
-from src.importing.contracts import ImportSourceError, VariantMetadata
-from src.importing.conversion import as_string_keyed_mapping as _as_object
+from src.importing.contracts import ImportRequest, ImportResult, ImportSourceError, VariantMetadata
 from src.importing.filters import (
     create_item_affix_pool,
     create_seal_charm_filter,
@@ -23,7 +23,6 @@ from src.importing.infinitybuilds.extraction import (
     _extract_build_data,
     _extract_build_title,
     _normalize_aspect_name,
-    _parse_gear_piece,
     _resolve_gear_data,
 )
 from src.importing.infinitybuilds.paragon import (
@@ -36,12 +35,11 @@ from src.importing.web import retry_importer
 from src.profiles import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Sequence
 
     from selenium.webdriver.remote.webdriver import WebDriver
 
-    from src.importing.contracts import ImportRequest, ImportResult
-    from src.importing.infinitybuilds.models import BuildData, _ResolvedGearData
+    from src.importing.infinitybuilds.models import BuildData, _GearPiece, _ResolvedGearData
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://infinitybuilds.gg/"
@@ -53,7 +51,7 @@ class InfinityBuildsError(ImportSourceError):
     pass
 
 
-def _validated_url(request, driver: WebDriver | None) -> tuple[str, WebDriver] | None:
+def _validated_url(request: ImportRequest, driver: WebDriver | None) -> tuple[str, WebDriver] | None:
     if driver is None:
         msg = "A Selenium WebDriver is required for InfinityBuilds imports"
         raise RuntimeError(msg)
@@ -64,12 +62,12 @@ def _validated_url(request, driver: WebDriver | None) -> tuple[str, WebDriver] |
     return url, driver
 
 
-def _load_build_page(url: str, driver: WebDriver) -> tuple[lxml.html.HtmlElement, BuildData]:
+def _load_build_page(url: str, driver: WebDriver) -> tuple[etree._Element, BuildData]:
     driver.get(url)
     wait = WebDriverWait(driver, 15)
     wait.until(ec.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
     wait.until(lambda d: "classId" in d.page_source and "variants" in d.page_source)
-    raw_html_data = lxml.html.fromstring(driver.page_source)
+    raw_html_data = lxml.html.fromstring(driver.page_source, parser=lxml.html.HTMLParser())
     if (build_data := _extract_build_data(raw_html_data)) is None:
         message = "No build data found in the InfinityBuilds page"
         raise InfinityBuildsError(message)
@@ -162,15 +160,13 @@ def _import_infinitybuilds(request: ImportRequest, driver: WebDriver | None = No
     )
 
 
-def _build_variant_for_gear(
-    gear: Sequence[Mapping[str, object]], resolved: _ResolvedGearData, request: ImportRequest
-) -> Variant:
+def _build_variant_for_gear(gear: Sequence[_GearPiece], resolved: _ResolvedGearData, request: ImportRequest) -> Variant:
     finished_filters: list[ItemFilterModel] = []
     charm_filters: list[CharmFilterModel] = []
     seal_filters: list[SealFilterModel] = []
     aspect_upgrade_filters: list[str] = []
     for raw_gear_piece in gear:
-        gear_piece = _parse_gear_piece(_as_object(raw_gear_piece))
+        gear_piece = raw_gear_piece
         item_id = _canonical_catalog_id(gear_piece.get("itemId"))
         item = resolved.items.get(item_id, {})
         item_name = item.get("label", "")

@@ -17,13 +17,18 @@ UNIQUE_ASPECTS_TITLE = "Unique Aspects"
 
 
 class UniqueAspectWidget(QWidget):
-    def __init__(self, unique_aspect: AspectUniqueFilterModel, allowed_aspects: list[str] | None = None, parent=None):
+    def __init__(
+        self,
+        unique_aspect: AspectUniqueFilterModel,
+        allowed_aspects: list[str] | None = None,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self.unique_aspect = unique_aspect
         self.allowed_aspects = allowed_aspects
         self.setup_ui()
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         layout = QHBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         layout.setSpacing(50)
@@ -41,7 +46,7 @@ class UniqueAspectWidget(QWidget):
         self.setMinimumWidth(850)
         self.setLayout(layout)
 
-    def create_aspect_name_combobox(self):
+    def create_aspect_name_combobox(self) -> None:
         self.name_combo = IgnoreScrollWheelComboBox()
         self.name_combo.setEditable(True)
         self.name_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
@@ -60,7 +65,7 @@ class UniqueAspectWidget(QWidget):
             self.name_combo.setCurrentText(self.unique_aspect.name)
         self.name_combo.currentTextChanged.connect(self.update_name)
 
-    def create_mode_combobox(self):
+    def create_mode_combobox(self) -> None:
         self.mode_combo = IgnoreScrollWheelComboBox()
         self.mode_combo.setFixedSize(100, self.mode_combo.sizeHint().height())
         self.mode_combo.addItems([AFFIX_VALUE_MODE, AFFIX_PERCENT_MODE])
@@ -69,12 +74,12 @@ class UniqueAspectWidget(QWidget):
         else:
             self.mode_combo.setCurrentText(AFFIX_VALUE_MODE)
 
-    def create_value_input(self):
+    def create_value_input(self) -> None:
         self.value_edit = QLineEdit()
         self.value_edit.setFixedSize(100, self.value_edit.sizeHint().height())
         self.value_edit.textChanged.connect(self.update_value)
 
-    def update_name(self, current_text=None):
+    def update_name(self, current_text: str | None = None) -> None:
         aspect_name = current_text or self.name_combo.currentText()
         aspect_name = aspect_name.strip()
         if aspect_name not in GameCatalog().aspect_unique_dict:
@@ -82,7 +87,7 @@ class UniqueAspectWidget(QWidget):
         self.unique_aspect.name = aspect_name
         self.update_parent_unique_aspects_title()
 
-    def update_parent_unique_aspects_title(self):
+    def update_parent_unique_aspects_title(self) -> None:
         parent = self.parent()
         while parent:
             refresh_title = getattr(parent, "refresh_unique_aspects_title", None)
@@ -91,7 +96,7 @@ class UniqueAspectWidget(QWidget):
                 break
             parent = parent.parent()
 
-    def refresh_value_input(self):
+    def refresh_value_input(self) -> None:
         if self.mode_combo.currentText() == AFFIX_PERCENT_MODE:
             self.value_edit.setPlaceholderText("Percent (0-100)")
             self.value_edit.setValidator(QIntValidator(0, 100, self.value_edit))
@@ -106,7 +111,7 @@ class UniqueAspectWidget(QWidget):
         with QSignalBlocker(self.value_edit):
             self.value_edit.setText(display_value)
 
-    def update_mode(self, current_text=None):
+    def update_mode(self, current_text: str | None = None) -> None:
         mode = current_text or self.mode_combo.currentText()
         if mode == AFFIX_PERCENT_MODE:
             self.unique_aspect.value = None
@@ -114,7 +119,7 @@ class UniqueAspectWidget(QWidget):
             self.unique_aspect.min_percent_of_aspect = 0
         self.refresh_value_input()
 
-    def update_value(self, value):
+    def update_value(self, value: str) -> None:
         if self.mode_combo.currentText() == AFFIX_PERCENT_MODE:
             try:
                 percent = int(value) if value else 0

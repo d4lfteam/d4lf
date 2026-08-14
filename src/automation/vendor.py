@@ -7,7 +7,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Vendor(InventoryBase):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(8, 1, is_stash=False)
         self.menu_name = "Vendor"
         self.is_open_search_args = SearchArgs(

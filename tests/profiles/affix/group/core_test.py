@@ -22,7 +22,7 @@ def test_group_module_is_importable() -> None:
     assert hasattr(module, "AffixGroupEditor")
 
 
-def test_affix_group_editor_lazily_loads_pools_on_expansion(qapp, mock_ini_loader):
+def test_affix_group_editor_lazily_loads_pools_on_expansion(qapp, mock_ini_loader) -> None:
     pool = AffixFilterCountModel(
         count=[AffixFilterModel(name="movement_speed", want_greater=True)], min_count=1, max_count=1
     )
@@ -43,7 +43,7 @@ def test_affix_group_editor_lazily_loads_pools_on_expansion(qapp, mock_ini_loade
     assert editor.inherent_pool_layout.count() == 0
 
 
-def test_affix_group_editor_pool_mutations_initialize_collapsed_containers(qapp, mock_ini_loader, mocker):
+def test_affix_group_editor_pool_mutations_initialize_collapsed_containers(qapp, mock_ini_loader, mocker) -> None:
     pool = AffixFilterCountModel(count=[AffixFilterModel(name="movement_speed")], min_count=1, max_count=1)
     config = ItemFilterModel(affix_pool=[pool], inherent_pool=[])
     editor = AffixGroupEditor(DynamicItemFilterModel(root={"sword": config}))
@@ -54,7 +54,7 @@ def test_affix_group_editor_pool_mutations_initialize_collapsed_containers(qapp,
     assert editor.affix_pool_layout.count() == 2
 
     class AcceptedDelete:
-        def __init__(self, *_args):
+        def __init__(self, *_args) -> None:
             pass
 
         def exec(self):

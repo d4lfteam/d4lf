@@ -1,7 +1,7 @@
 from src import loot
 
 
-def test_default_filter_colors_have_all_rendering_roles(monkeypatch):
+def test_default_filter_colors_have_all_rendering_roles(monkeypatch) -> None:
     monkeypatch.setattr("src.loot.colors.get_settings", lambda: (_ for _ in ()).throw(RuntimeError()))
     colors = loot.get_filter_colors()
     assert colors.matched

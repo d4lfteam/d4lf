@@ -1,4 +1,9 @@
+from typing import TYPE_CHECKING
+
 from src.game_data import GameCatalog, ItemType
+
+if TYPE_CHECKING:
+    from PyQt6.QtWidgets import QWidget
 
 
 def _item_type_summary(item_types: list[ItemType]) -> str:
@@ -28,7 +33,7 @@ def get_affixes_for_set(affix_dict: dict[str, str], set_list: list[str], target_
     return result
 
 
-def affix_dict_for_widget(widget) -> dict[str, str]:
+def affix_dict_for_widget(widget: QWidget) -> dict[str, str]:
     current = widget
     while current:
         config = getattr(current, "config", None)

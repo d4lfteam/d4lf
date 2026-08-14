@@ -1,8 +1,17 @@
+from typing import TYPE_CHECKING, cast
+
 from src.overlay import state
+
+if TYPE_CHECKING:
+    from src.overlay.widget.widget import BossTimerOverlay
+
+
+def _overlay() -> BossTimerOverlay:
+    return cast("BossTimerOverlay", object())
 
 
 def test_state_stores_and_clears_overlay_instance() -> None:
-    marker = object()
+    marker = _overlay()
     state.set_overlay(marker)
 
     assert state.get_overlay() is marker
@@ -15,8 +24,8 @@ def test_state_stores_and_clears_overlay_instance() -> None:
 
 
 def test_state_does_not_clear_a_replacement_overlay() -> None:
-    first = object()
-    second = object()
+    first = _overlay()
+    second = _overlay()
     state.set_overlay(first)
     state.set_overlay(second)
 

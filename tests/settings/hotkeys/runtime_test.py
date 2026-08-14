@@ -13,7 +13,7 @@ from src.settings.hotkeys import runtime as hotkeys
 class _FakeListener:
     instances = []
 
-    def __init__(self, on_press, on_release):
+    def __init__(self, on_press, on_release) -> None:
         self._on_press = on_press
         self._on_release = on_release
         self.started = False
@@ -21,10 +21,10 @@ class _FakeListener:
         self.canonicalized_keys = []
         self.__class__.instances.append(self)
 
-    def start(self):
+    def start(self) -> None:
         self.started = True
 
-    def stop(self):
+    def stop(self) -> None:
         self.stopped = True
 
     def canonical(self, key):
@@ -43,16 +43,16 @@ class _FakeListener:
             return keyboard.KeyCode.from_vk(key.value.vk)
         return key
 
-    def press(self, key):
+    def press(self, key) -> None:
         self._on_press(key)
 
-    def release(self, key):
+    def release(self, key) -> None:
         self._on_release(key)
 
 
 class TestGlobalHotkeyRegistry:
     @pytest.fixture(autouse=True)
-    def setup(self, mocker: MockerFixture):
+    def setup(self, mocker: MockerFixture) -> None:
         _FakeListener.instances = []
         mocker.patch.object(hotkeys.keyboard, "Listener", _FakeListener)
         self.registry = hotkeys._GlobalHotkeyRegistry()
@@ -69,14 +69,14 @@ class TestGlobalHotkeyRegistry:
     def add_hotkey(self, hotkey):
         return self.registry.add_hotkey(hotkey, lambda: self.dispatched.append(hotkey))
 
-    def test_unmodified_hotkey_dispatches_once(self):
+    def test_unmodified_hotkey_dispatches_once(self) -> None:
         self.add_hotkey("f11")
 
         self.listener.press(self.f11_key())
 
         assert self.dispatched == ["f11"]
 
-    def test_modified_hotkey_does_not_dispatch_unmodified_hotkey(self):
+    def test_modified_hotkey_does_not_dispatch_unmodified_hotkey(self) -> None:
         self.add_hotkey("f11")
         self.add_hotkey("shift+f11")
 
@@ -85,7 +85,7 @@ class TestGlobalHotkeyRegistry:
 
         assert self.dispatched == ["shift+f11"]
 
-    def test_unmodified_hotkey_does_not_dispatch_when_extra_modifier_is_held(self):
+    def test_unmodified_hotkey_does_not_dispatch_when_extra_modifier_is_held(self) -> None:
         self.add_hotkey("f11")
 
         self.listener.press(keyboard.Key.shift)
@@ -93,7 +93,7 @@ class TestGlobalHotkeyRegistry:
 
         assert self.dispatched == []
 
-    def test_most_specific_hotkey_dispatches_when_multiple_modified_hotkeys_share_key(self):
+    def test_most_specific_hotkey_dispatches_when_multiple_modified_hotkeys_share_key(self) -> None:
         self.add_hotkey("ctrl+f11")
         self.add_hotkey("shift+f11")
         self.add_hotkey("ctrl+shift+f11")
@@ -104,7 +104,7 @@ class TestGlobalHotkeyRegistry:
 
         assert self.dispatched == ["ctrl+shift+f11"]
 
-    def test_key_repeat_does_not_dispatch_active_hotkey_again(self):
+    def test_key_repeat_does_not_dispatch_active_hotkey_again(self) -> None:
         self.add_hotkey("shift+f11")
 
         self.listener.press(keyboard.Key.shift)
@@ -113,7 +113,7 @@ class TestGlobalHotkeyRegistry:
 
         assert self.dispatched == ["shift+f11"]
 
-    def test_hotkey_rearms_after_release(self):
+    def test_hotkey_rearms_after_release(self) -> None:
         self.add_hotkey("shift+f11")
 
         self.listener.press(keyboard.Key.shift)
@@ -123,7 +123,7 @@ class TestGlobalHotkeyRegistry:
 
         assert self.dispatched == ["shift+f11", "shift+f11"]
 
-    def test_releasing_modifier_rearms_modified_hotkey(self):
+    def test_releasing_modifier_rearms_modified_hotkey(self) -> None:
         self.add_hotkey("shift+f11")
 
         self.listener.press(keyboard.Key.shift)
@@ -133,7 +133,7 @@ class TestGlobalHotkeyRegistry:
 
         assert self.dispatched == ["shift+f11", "shift+f11"]
 
-    def test_left_and_right_modifier_events_are_canonicalized(self):
+    def test_left_and_right_modifier_events_are_canonicalized(self) -> None:
         self.add_hotkey("shift+f11")
 
         self.listener.press(keyboard.Key.shift_l)
@@ -149,7 +149,7 @@ class TestGlobalHotkeyRegistry:
             keyboard.Key.shift_r,
         ]
 
-    def test_multiple_callbacks_for_same_hotkey_dispatch_together(self):
+    def test_multiple_callbacks_for_same_hotkey_dispatch_together(self) -> None:
         self.add_hotkey("f11")
         self.add_hotkey("f11")
 
@@ -157,7 +157,7 @@ class TestGlobalHotkeyRegistry:
 
         assert self.dispatched == ["f11", "f11"]
 
-    def test_removing_one_callback_keeps_remaining_callback_registered(self):
+    def test_removing_one_callback_keeps_remaining_callback_registered(self) -> None:
         first_handle = self.add_hotkey("f11")
         self.add_hotkey("f11")
 
@@ -166,7 +166,7 @@ class TestGlobalHotkeyRegistry:
 
         assert self.dispatched == ["f11"]
 
-    def test_removing_last_callback_stops_listener_and_clears_hotkey(self):
+    def test_removing_last_callback_stops_listener_and_clears_hotkey(self) -> None:
         handle = self.add_hotkey("f11")
         active_listener = self.listener
 
@@ -177,7 +177,7 @@ class TestGlobalHotkeyRegistry:
         assert self.registry._callbacks == {}
         assert self.registry._hotkey_keys == {}
 
-    def test_restart_clears_pressed_and_active_state(self):
+    def test_restart_clears_pressed_and_active_state(self) -> None:
         self.add_hotkey("shift+f11")
         self.listener.press(keyboard.Key.shift)
 
@@ -187,7 +187,7 @@ class TestGlobalHotkeyRegistry:
         assert self.registry._active_hotkeys == set()
 
 
-def test_controller_is_constructed_on_first_key_action(mocker: MockerFixture):
+def test_controller_is_constructed_on_first_key_action(mocker: MockerFixture) -> None:
     controller = mocker.Mock()
     constructor = mocker.patch.object(hotkeys.keyboard, "Controller", return_value=controller)
     mocker.patch.object(hotkeys, "_CONTROLLER", None)

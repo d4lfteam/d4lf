@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 class Overlay:
     """Create the shared transparent Tk surface on the UI thread and run it."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.root: tk.Toplevel
         self.canvas: tk.Canvas
 

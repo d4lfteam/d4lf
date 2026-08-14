@@ -4,7 +4,7 @@ import pathlib
 import re
 import shutil
 from dataclasses import dataclass
-from typing import override
+from typing import TYPE_CHECKING, Protocol, cast, override
 
 import yaml
 from pydantic import ValidationError
@@ -15,21 +15,34 @@ from src import __version__
 from src.profiles.profile import ProfileModel
 from src.settings import get_settings
 
+if TYPE_CHECKING:
+    from src.type_aliases import YamlScalar, YamlValue
+
 LOGGER = logging.getLogger(__name__)
+
+
+class _FlowStyle(Protocol):
+    _flow_style: bool | None
+
+    def set_block_style(self) -> None: ...
+
+
+class _HasFlowStyle(Protocol):
+    fa: _FlowStyle
 
 
 class UniqueKeyLoader(yaml.SafeLoader):
     @override
-    def construct_mapping(self, node: MappingNode, deep=False):
+    def construct_mapping(self, node: MappingNode, deep: bool = False) -> dict[YamlScalar, YamlValue]:
         mapping = set()
         for key_node, _ in node.value:
             if ":merge" in key_node.tag:
                 continue
-            key = self.construct_object(key_node, deep=deep)
+            key = cast("YamlScalar", self.construct_object(key_node, deep=deep))
             if key in mapping:
                 raise MarkedYAMLError(problem=f"Duplicate {key!r} key found in YAML", problem_mark=key_node.start_mark)
             mapping.add(key)
-        return super().construct_mapping(node, deep)
+        return cast("dict[YamlScalar, YamlValue]", super().construct_mapping(node, deep))
 
 
 class ProfileDocumentError(Exception):
@@ -47,7 +60,7 @@ class EmptyProfileError(ProfileDocumentError):
 class ProfileValidationError(ProfileDocumentError):
     code = "profile_validation_error"
 
-    def __init__(self, message: str, *, code: str | None = None, guidance: str = ""):
+    def __init__(self, message: str, *, code: str | None = None, guidance: str = "") -> None:
         super().__init__(message)
         if code is not None:
             self.code = code
@@ -191,33 +204,35 @@ def _legacy_min_greater_affix_count_guidance(profile_path: pathlib.Path) -> str:
     )
 
 
-def _sort_profile_sections(d):
+def _sort_profile_sections(d: YamlValue) -> None:
     if not isinstance(d, dict):
         return
 
     for key in ("aspect_upgrades", "AspectUpgrades"):
-        if isinstance(d.get(key), list):
-            d[key].sort(key=str.casefold)
+        values = d.get(key)
+        if isinstance(values, list):
+            values.sort(key=lambda value: str(value).casefold())
             break
 
 
-def _use_block_style(d):
+def _use_block_style(d: YamlValue) -> None:
     if not isinstance(d, dict):
         return
 
     for key in ("aspect_upgrades", "AspectUpgrades"):
-        if hasattr(d.get(key), "fa"):
-            d[key].fa.set_block_style()
+        value = d.get(key)
+        if hasattr(value, "fa"):
+            cast("_HasFlowStyle", value).fa.set_block_style()
             break
 
 
-def _rm_style_info(d):
+def _rm_style_info(d: YamlValue) -> None:
     if isinstance(d, dict):
-        d.fa._flow_style = None
+        cast("_HasFlowStyle", d).fa._flow_style = None
         for k, v in d.items():
             _rm_style_info(k)
             _rm_style_info(v)
     elif isinstance(d, list):
-        d.fa._flow_style = None
+        cast("_HasFlowStyle", d).fa._flow_style = None
         for elem in d:
             _rm_style_info(elem)

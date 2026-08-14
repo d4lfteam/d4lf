@@ -1,3 +1,15 @@
+import json
+from typing import TYPE_CHECKING
+
+import pytest
+from pydantic import ValidationError
+
+from src.paragon import NODES_LEN
+from src.profiles import ParagonBoardModel, ParagonPayloadModel, ProfileModel
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
+
 """Comprehensive tests for pydantic models including dual naming support.
 
 This file contains:
@@ -9,18 +21,10 @@ This file contains:
    - All validators work with both naming styles
 """
 
-import json
-
-import pytest
-from pydantic import ValidationError
-
-from src.paragon import NODES_LEN
-from src.profiles import ParagonBoardModel, ParagonPayloadModel, ProfileModel
-
 
 class TestParagonModels:
     @staticmethod
-    def _board_data(**overrides: object) -> dict[str, object]:
+    def _board_data(**overrides: JsonValue) -> dict[str, JsonValue]:
         board = {
             "Name": "Starting Board",
             "Glyph": "glyph_name",
@@ -41,7 +45,7 @@ class TestParagonModels:
             ParagonBoardModel.model_validate(self._board_data(Rotation=45))
 
     @pytest.mark.parametrize("rotation", [360, "360°", -90])
-    def test_board_rejects_wrapped_rotation_values(self, rotation: object) -> None:
+    def test_board_rejects_wrapped_rotation_values(self, rotation: JsonValue) -> None:
         with pytest.raises(ValidationError, match="Rotation must be one of 0, 90, 180, or 270 degrees"):
             ParagonBoardModel.model_validate(self._board_data(Rotation=rotation))
 

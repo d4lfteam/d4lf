@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import cast
 
 import src.app.dashboard.core as dashboard_module
 from src.app.dashboard import ActivityLogWidget
@@ -19,7 +19,7 @@ class _FakeLabel:
 
 class _FakeRowLayout:
     def __init__(self) -> None:
-        self.widgets = []
+        self.widgets: list[_FakeLabel] = []
 
     def setContentsMargins(self, *_args: int) -> None:  # ruff:ignore[invalid-function-name]
         pass
@@ -33,7 +33,7 @@ class _FakeRowLayout:
 
 class _FakeGridLayout:
     def __init__(self) -> None:
-        self.rows = []
+        self.rows: list[tuple[_FakeRowLayout, int, int]] = []
 
     def count(self) -> int:
         return 0
@@ -51,12 +51,14 @@ def test_hotkey_grid_builds_badges_from_hotkey_metadata(monkeypatch) -> None:
         toggle="f1",
     )
     dashboard = cast(
-        "Any", SimpleNamespace(hotkey_grid=_FakeGridLayout(), _config=SimpleNamespace(advanced_options=options))
+        "ActivityLogWidget",
+        SimpleNamespace(hotkey_grid=_FakeGridLayout(), _config=SimpleNamespace(advanced_options=options)),
     )
 
     ActivityLogWidget._setup_hotkey_grid(dashboard)
 
-    assert len(dashboard.hotkey_grid.rows) == 1
-    row, row_index, column = dashboard.hotkey_grid.rows[0]
+    grid = cast("_FakeGridLayout", dashboard.hotkey_grid)
+    assert len(grid.rows) == 1
+    row, row_index, column = grid.rows[0]
     assert (row_index, column) == (0, 0)
     assert [widget.text() for widget in row.widgets] == ["F1", "Toggle Mode"]

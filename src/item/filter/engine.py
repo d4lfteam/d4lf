@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal, Self
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -65,7 +65,7 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
     last_profile_list: list[str] | None = None
 
     _initialized: bool = False
-    _instance = None
+    _instance: ClassVar[Self | None] = None
 
     def __init__(self) -> None:
         if self._initialized:
@@ -78,7 +78,7 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
         self._failure_listeners: list[ProfileLoadListener] = []
         self.load_failures: tuple[str, ...] = ()
 
-    def __new__(cls):
+    def __new__(cls) -> Self:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -147,7 +147,7 @@ class Filter(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, Filt
             except Exception:
                 LOGGER.exception("Failed to notify profile load listener")
 
-    def load_files(self):
+    def load_files(self) -> None:
         self.files_loaded = True
         self.affix_filters = {}
         self.aspect_upgrade_filters = {}

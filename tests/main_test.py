@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Never, cast
 
 import src.main as main_module
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 from src.settings import SettingsLoadError
 
 
-def test_autoupdate_dispatches_without_qt_or_desktop_shell(monkeypatch):
+def test_autoupdate_dispatches_without_qt_or_desktop_shell(monkeypatch) -> None:
     calls = []
     monkeypatch.setattr(main_module.sys, "argv", ["d4lf", "--autoupdate"])
     monkeypatch.setattr(main_module, "_configure_logging", lambda **kwargs: calls.append(("log", kwargs)))
@@ -21,7 +21,7 @@ def test_autoupdate_dispatches_without_qt_or_desktop_shell(monkeypatch):
     assert calls == [("log", {"stdout": True}), ("update", {})]
 
 
-def test_autoupdatepost_dispatches_postprocess(monkeypatch):
+def test_autoupdatepost_dispatches_postprocess(monkeypatch) -> None:
     calls = []
     monkeypatch.setattr(main_module.sys, "argv", ["d4lf", "--autoupdatepost"])
     monkeypatch.setattr(main_module, "_configure_logging", lambda **kwargs: calls.append(kwargs))
@@ -31,7 +31,7 @@ def test_autoupdatepost_dispatches_postprocess(monkeypatch):
     assert calls == [{"stdout": True}, {"postprocess": True}]
 
 
-def test_consoleonly_dispatches_main_without_starting_qt(monkeypatch):
+def test_consoleonly_dispatches_main_without_starting_qt(monkeypatch) -> None:
     calls = []
     monkeypatch.setattr(main_module.sys, "argv", ["d4lf", "--consoleonly"])
     monkeypatch.setattr(main_module, "_configure_logging", lambda **kwargs: calls.append(("log", kwargs)))
@@ -41,7 +41,7 @@ def test_consoleonly_dispatches_main_without_starting_qt(monkeypatch):
     assert calls == [("log", {"stdout": True}), ("main", {})]
 
 
-def test_run_does_not_construct_qt_for_cli_modes(monkeypatch):
+def test_run_does_not_construct_qt_for_cli_modes(monkeypatch) -> None:
     monkeypatch.setattr(main_module.sys, "argv", ["d4lf", "--autoupdate"])
     monkeypatch.setattr(main_module, "_configure_logging", lambda **_: None)
     monkeypatch.setattr(main_module, "start_auto_update", lambda **_: None)
@@ -50,14 +50,14 @@ def test_run_does_not_construct_qt_for_cli_modes(monkeypatch):
     assert main_module.run() == 0
 
 
-def test_cli_settings_failure_is_logged_before_load_without_qt(monkeypatch, capsys):
+def test_cli_settings_failure_is_logged_before_load_without_qt(monkeypatch, capsys) -> None:
     calls = []
     error = SettingsLoadError(Path("params.ini"), ValueError("invalid"), log_path=Path("logs"))
     monkeypatch.setattr(main_module.sys, "argv", ["d4lf", "--autoupdate"])
     monkeypatch.setattr(main_module.src.logger, "is_configured", lambda: False)
     monkeypatch.setattr(main_module.src.logger, "setup", lambda **_kwargs: calls.append("setup"))
 
-    def fail_settings_load():
+    def fail_settings_load() -> Never:
         calls.append("load")
         raise error
 
@@ -69,7 +69,7 @@ def test_cli_settings_failure_is_logged_before_load_without_qt(monkeypatch, caps
     assert "params.ini" in capsys.readouterr().err
 
 
-def test_configured_logging_updates_bootstrap_handlers(monkeypatch):
+def test_configured_logging_updates_bootstrap_handlers(monkeypatch) -> None:
     root_logger = logging.getLogger()
     file_handler = logging.Handler()
     file_handler.name = "D4LF_FILE"

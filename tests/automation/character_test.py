@@ -9,7 +9,7 @@ from src.settings import BASE_DIR
 BASE_PATH = BASE_DIR / "tests/assets/ui"
 
 
-def test_character_inventory_uses_character_menu_name(monkeypatch):
+def test_character_inventory_uses_character_menu_name(monkeypatch) -> None:
     monkeypatch.setattr(
         "src.automation.character.get_ui_coordinates",
         lambda: type("C", (), {"roi": type("R", (), {"sort_icon": (1, 2, 3, 4)})()})(),
@@ -33,7 +33,7 @@ def test_character_inventory_uses_character_menu_name(monkeypatch):
         ((3840, 2160), f"{BASE_PATH}/char_inv_open_2160p.png"),
     ],
 )
-def test_character_inventory_detects_open_inventory(img_res, input_img):
+def test_character_inventory_detects_open_inventory(img_res, input_img) -> None:
     update_window_position(0, 0, *img_res)
     image = cv2.imread(input_img)
 
@@ -48,7 +48,7 @@ def test_character_inventory_detects_open_inventory(img_res, input_img):
         ((3440, 1440), f"{BASE_PATH}/char_inv_open_1440p_wide.png", 12, 0, 0),
     ],
 )
-def test_character_inventory_classifies_item_slots(img_res, input_img, occupied, junk, fav):
+def test_character_inventory_classifies_item_slots(img_res, input_img, occupied, junk, fav) -> None:
     update_window_position(0, 0, *img_res)
     image = cv2.imread(input_img)
     if image is None:

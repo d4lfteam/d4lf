@@ -16,11 +16,11 @@ from src.overlay.widget.shared import LOGGER, PROGRESS_YELLOW, TEXT, WARNING_ORA
 
 
 class _OverlayTimers(OverlayContract):
-    def _auto_sync(self):
+    def _auto_sync(self) -> None:
         """Fetch schedule from helltides.com and sync the timer."""
         threading.Thread(target=self._fetch_schedule, daemon=True).start()
 
-    def _fetch_schedule(self):
+    def _fetch_schedule(self) -> None:
         try:
             url = "https://helltides.com/api/schedule"
             with httpx.Client(timeout=10) as client:
@@ -76,7 +76,7 @@ class _OverlayTimers(OverlayContract):
                         LOGGER.info(f"Auto-synced Helltide: {latest_start}")
 
                     # Schedule the update on the UI thread to avoid cross-thread GUI errors
-                    def _safe_update():
+                    def _safe_update() -> None:
                         if self.winfo_exists():
                             self._update_timers()
 
@@ -84,7 +84,7 @@ class _OverlayTimers(OverlayContract):
         except (httpx.HTTPError, KeyError, RuntimeError, TypeError, ValueError, tk.TclError) as e:
             LOGGER.error(f"Failed to auto-sync from helltides.com: {e}")
 
-    def _update_timers(self):
+    def _update_timers(self) -> None:
         if self._closing or not self.winfo_exists():
             return
 
@@ -121,7 +121,7 @@ class _OverlayTimers(OverlayContract):
         self._flash_toggle = not self._flash_toggle
         colors = get_filter_colors()
 
-        def get_flash_color(seconds, base_color, threshold=300):
+        def get_flash_color(seconds: float, base_color: str, threshold: int = 300) -> str:
             if 0 < seconds < threshold and not self._flash_toggle:
                 return TEXT
             if 0 < seconds < threshold:
@@ -224,10 +224,10 @@ class _OverlayTimers(OverlayContract):
         eph: int | None = None,
         total_exp: int | None = None,
         t2l: str | None = None,
-    ):
+    ) -> None:
         """Update the gold and experience statistics display."""
 
-        def _do_update():
+        def _do_update() -> None:
             if self._closing or not self.winfo_exists():
                 return
             repack_needed = False

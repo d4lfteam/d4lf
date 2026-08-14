@@ -2,7 +2,7 @@ import logging
 import re
 import time
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -16,13 +16,15 @@ from src.paragon import transform_xy as _transform_xy
 if TYPE_CHECKING:
     from selenium.webdriver.remote.webdriver import WebDriver
 
+    from src.type_aliases import JsonObject
+
 
 LOGGER = logging.getLogger(__name__)
 
 
-def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[list[dict[str, Any]]]:
+def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[list[JsonObject]]:
     """Parse D4Builds paragon boards from the currently loaded page."""
-    boards_out: list[dict[str, Any]] = []
+    boards_out: list[JsonObject] = []
     try:
         board_elements = driver.find_elements(By.CLASS_NAME, "paragon__board")
     except Exception:
@@ -110,7 +112,7 @@ def _parse_d4builds_paragon_boards(driver: WebDriver, class_slug: str) -> list[l
 
 def extract_d4builds_paragon_steps(
     driver: WebDriver, class_name: str = "", *, wait: WebDriverWait[WebDriver] | None = None
-) -> list[list[dict[str, Any]]]:
+) -> list[list[JsonObject]]:
     """Extract paragon boards from D4Builds using Selenium."""
     class_slug = _class_slug_from_name(class_name)
     wait = wait or WebDriverWait(driver, 10)

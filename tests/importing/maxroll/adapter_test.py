@@ -2,6 +2,7 @@ import json
 import logging
 import typing
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -32,7 +33,7 @@ URLS = [
 
 
 @pytest.mark.parametrize("url", URLS)
-def test_import_maxroll(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
+def test_import_maxroll(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture) -> None:
     GameCatalog()  # need to load data first or the mock will make it impossible
     mocker.patch("builtins.open", new=mocker.mock_open())
     request = ImportRequest(
@@ -244,5 +245,6 @@ def test_extract_maxroll_paragon_steps_keeps_rotation_index_mapping(rotation: in
 
     board = steps[0][0]
     assert board["Rotation"] in {"0°", "90°", "180°", "270°"}
-    assert board["Nodes"].count(True) == 1
-    assert board["Nodes"][expected_index] is True
+    nodes = cast("list[bool]", board["Nodes"])
+    assert nodes.count(True) == 1
+    assert nodes[expected_index] is True

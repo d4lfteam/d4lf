@@ -1,7 +1,17 @@
 from typing import TYPE_CHECKING, override
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QComboBox, QDialog, QFormLayout, QHBoxLayout, QLabel, QPushButton, QSpinBox, QVBoxLayout
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
+)
 
 from src.game_data import MAX_POWER
 
@@ -10,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class IgnoreScrollWheelSpinBox(QSpinBox):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
@@ -23,7 +33,7 @@ class IgnoreScrollWheelSpinBox(QSpinBox):
 
 
 class IgnoreScrollWheelComboBox(QComboBox):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
@@ -42,7 +52,7 @@ class _SpinDialog(QDialog):
     maximum = 100
     default = 0
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle(self.title)
         self.setFixedSize(250, 150)

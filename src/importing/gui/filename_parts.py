@@ -1,13 +1,31 @@
 """Small filename selector builder used by the importer window."""
 
+from typing import Protocol
+
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QMenu, QPushButton, QVBoxLayout
 
-from src.importing.contracts import DEFAULT_FILENAME_PARTS
+from src.importing.contracts import DEFAULT_FILENAME_PARTS, FilenamePart
 from src.importing.gui.constants import FILENAME_PART_LABELS
 
 
-def build_filename_row(window, layout: QVBoxLayout) -> None:
+class _FilenameWindow(Protocol):
+    filename_input_box: QLineEdit
+    filename_parts_button: QPushButton
+    filename_parts_menu: QMenu
+    filename_part_actions: dict[FilenamePart, QAction]
+    filename_parts_summary_label: QLabel
+
+    def _update_generate_button_state(self) -> None: ...
+
+    def _filename_part_setting(self, part: FilenamePart) -> bool: ...
+
+    def _handle_filename_part_toggled(self, part: FilenamePart, checked: bool) -> None: ...
+
+    def _update_filename_parts_summary(self) -> None: ...
+
+
+def build_filename_row(window: _FilenameWindow, layout: QVBoxLayout) -> None:
     row = QHBoxLayout()
     row.addWidget(QLabel("Custom file name:"))
     window.filename_input_box = QLineEdit()

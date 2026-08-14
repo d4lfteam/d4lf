@@ -1,4 +1,5 @@
 import typing
+from typing import cast
 
 import pytest
 
@@ -14,6 +15,8 @@ from tests.conftest import INFINITYBUILDS_IMPORT_URLS
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
+
+    from src.type_aliases import JsonObject
 
 
 def _request(
@@ -51,7 +54,9 @@ def test_extract_infinitybuilds_paragon_steps_groups_boards_transforms_nodes_and
         board_labels={"paragon-board::paragon-barb-00": "Start", "paragon-board::paragon-barb-10": "Force of Nature"},
         glyph_labels={"glyph::rare-016-dexterity-side": "Exploit"},
     )
-    boards = extract_infinitybuilds_paragon_steps(data, catalog, "barbarian")[0]
+    boards = extract_infinitybuilds_paragon_steps(cast("JsonObject", data), catalog, "barbarian")[0]
+    first_nodes = cast("list[bool]", boards[0]["Nodes"])
+    second_nodes = cast("list[bool]", boards[1]["Nodes"])
     assert [board["BoardId"] for board in boards] == [
         "paragon-board::paragon-barb-00",
         "paragon-board::paragon-barb-10",
@@ -59,13 +64,13 @@ def test_extract_infinitybuilds_paragon_steps_groups_boards_transforms_nodes_and
     assert boards[0]["Name"] == "barbarian-start"
     assert boards[0]["Rotation"] == "0°"
     assert boards[0]["Glyph"] == "barbarian-exploit"
-    assert boards[0]["Nodes"].count(True) == 2
-    assert boards[0]["Nodes"][10] is True
-    assert boards[0]["Nodes"][136] is True
+    assert first_nodes.count(True) == 2
+    assert first_nodes[10] is True
+    assert first_nodes[136] is True
     assert boards[1]["Name"] == "barbarian-force-of-nature"
     assert boards[1]["Rotation"] == "90°"
     assert boards[1]["GlyphId"] is None
-    assert boards[1]["Nodes"][125] is True
+    assert second_nodes[125] is True
 
 
 def test_extract_infinitybuilds_paragon_steps_falls_back_to_raw_id_slug_when_catalog_misses() -> None:
@@ -96,10 +101,11 @@ def test_extract_infinitybuilds_paragon_steps_keeps_rotation_index_mapping(rotat
     catalog = InfinityBuildsParagonCatalog(
         board_labels={"paragon-board::paragon-barb-10": "Force of Nature"}, glyph_labels={}
     )
-    board = extract_infinitybuilds_paragon_steps(data, catalog, "barbarian")[0][0]
+    board = extract_infinitybuilds_paragon_steps(cast("JsonObject", data), catalog, "barbarian")[0][0]
+    nodes = cast("list[bool]", board["Nodes"])
     assert board["Rotation"] in {"0°", "90°", "180°", "270°"}
-    assert board["Nodes"].count(True) == 1
-    assert board["Nodes"][expected_index] is True
+    assert nodes.count(True) == 1
+    assert nodes[expected_index] is True
 
 
 def test_fetch_infinitybuilds_paragon_catalog_builds_label_maps_from_both_datasets(mocker: MockerFixture) -> None:
@@ -122,7 +128,7 @@ def test_fetch_infinitybuilds_paragon_catalog_builds_label_maps_from_both_datase
 
 
 @pytest.mark.parametrize("url", INFINITYBUILDS_IMPORT_URLS)
-def test_import_infinitybuilds(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
+def test_import_infinitybuilds(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture) -> None:
     GameCatalog()
     mocker.patch("builtins.open", new=mocker.mock_open())
     import_infinitybuilds(

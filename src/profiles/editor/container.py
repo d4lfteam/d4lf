@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QSpacerItem, QStac
 class Header(QWidget):
     first_expansion = pyqtSignal()  # Signal emitted on first expansion
 
-    def __init__(self, name, content_widget):
+    def __init__(self, name: str, content_widget: QWidget) -> None:
         super().__init__()
         self.content = content_widget
         self.name = name
@@ -63,7 +63,7 @@ class Header(QWidget):
         # Toggle between expand and collapse based on the visibility of the content widget
         self.expand() if not self.content.isVisible() else self.collapse()
 
-    def expand(self):
+    def expand(self) -> None:
         """Expand the collapsible group."""
         if self._is_first_expansion:
             self.first_expansion.emit()
@@ -71,12 +71,12 @@ class Header(QWidget):
         self.content.setVisible(True)
         self.icon.setText(self.collapse_ico)  # Set text instead of pixmap
 
-    def collapse(self):
+    def collapse(self) -> None:
         """Collapse the collapsible group."""
         self.content.setVisible(False)
         self.icon.setText(self.expand_ico)
 
-    def set_name(self, name):
+    def set_name(self, name: str) -> None:
         self.name = name
         self.label.setText(name)
 
@@ -84,7 +84,7 @@ class Header(QWidget):
 class Container(QWidget):
     first_expansion = pyqtSignal()  # Signal emitted on first expansion
 
-    def __init__(self, name, color_background=False):
+    def __init__(self, name: str, color_background: bool = False) -> None:
         super().__init__()  # Call the constructor of the parent class
 
         layout = QVBoxLayout(self)  # Create a QVBoxLayout instance and pass the current object as the parent
@@ -119,13 +119,13 @@ class Container(QWidget):
         )  # Assign the mousePressEvent method of the header to the instance attribute toggle
 
     @property
-    def content_widget(self):
+    def content_widget(self) -> QWidget:
         """Getter for the content widget.
 
         Returns: Content widget
         """
         return self._content_widget  # Return the _content_widget when the content_widget property is accessed
 
-    def _emit_first_expansion(self):
+    def _emit_first_expansion(self) -> None:
         """Handle first expansion event."""
         self.first_expansion.emit()  # Notify about first expansion

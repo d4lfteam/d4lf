@@ -1,8 +1,13 @@
+from typing import TYPE_CHECKING
+
 import pytest
 from pydantic import ValidationError
 
 from src.settings.models.core import CATEGORY_KEY, SettingsCategory
 from src.settings.models.general import GeneralModel
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
 
 
 class TestGeneralModel:
@@ -35,7 +40,7 @@ class TestGeneralModel:
         assert GeneralModel(check_chest_tabs=["1", "3"]).check_chest_tabs == [0, 2]
 
     @pytest.mark.parametrize("value", [[1.5], [None], [True], [{"tab": 1}]])
-    def test_check_chest_tabs_rejects_invalid_values(self, value: list[object]) -> None:
+    def test_check_chest_tabs_rejects_invalid_values(self, value: list[JsonValue]) -> None:
         with pytest.raises(ValidationError, match="list entries must be strings or integers"):
             GeneralModel.model_validate({"check_chest_tabs": value})
 

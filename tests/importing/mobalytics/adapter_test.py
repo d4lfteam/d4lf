@@ -13,6 +13,9 @@ if typing.TYPE_CHECKING:
 
     from pytest_mock import MockerFixture
     from selenium.webdriver.remote.webdriver import WebDriver
+    from selenium.webdriver.remote.webelement import WebElement
+
+    from src.type_aliases import JsonValue
 
 URLS = [
     "https://mobalytics.gg/diablo-4/builds/barbarian-whirlwind-leveling-barb",
@@ -74,15 +77,17 @@ class _MobalyticsImportDriver:
     def get(self, url: str) -> None:
         self.current_url = url
 
-    def find_element(self, *_args, **_kwargs) -> object:
-        return object()
+    def find_element(self, *_args, **_kwargs) -> WebElement:
+        return typing.cast("WebElement", object())
 
     def quit(self) -> None:
         return None
 
 
 def _mobalytics_page_source(
-    slots: Sequence[Mapping[str, object]], paragon: Mapping[str, object] | None = None, include_paragon: bool = True
+    slots: Sequence[Mapping[str, JsonValue]],
+    paragon: Mapping[str, JsonValue] | None = None,
+    include_paragon: bool = True,
 ) -> str:
     variant = {"id": "variant-1", "genericBuilder": {"slots": slots}}
     if include_paragon:
@@ -102,8 +107,8 @@ def _mobalytics_page_source(
 
 
 def _mobalytics_slot(
-    slot: str, entity_type: str, title: str, modifiers: Mapping[str, object] | None = None, icon_url: str = ""
-) -> dict[str, object]:
+    slot: str, entity_type: str, title: str, modifiers: Mapping[str, JsonValue] | None = None, icon_url: str = ""
+) -> dict[str, JsonValue]:
     return {
         "gameSlotSlug": slot,
         "gameEntity": {"title": title, "type": entity_type, "iconUrl": icon_url, "modifiers": modifiers, "entity": {}},
@@ -274,7 +279,7 @@ def test_import_mobalytics_returns_none_for_archived_build(mock_ini_loader) -> N
 
 
 @pytest.mark.parametrize("url", URLS)
-def test_import_mobalytics(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
+def test_import_mobalytics(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture) -> None:
     GameCatalog()
     mocker.patch("builtins.open", new=mocker.mock_open())
     import_mobalytics(

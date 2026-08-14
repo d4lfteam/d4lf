@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 from threading import Event, Thread
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -27,7 +27,9 @@ from src.perception import (
 )
 
 if TYPE_CHECKING:
-    from src.item import Item
+    from src.item import Affix, Item
+    from src.loot.highlighting import VisionModeWithHighlighting
+    from src.perception import DescrDetection, TemplateMatch
 
 LOGGER = logging.getLogger(__name__)
 _FRAME_RETRY_DELAY_SECONDS = 0.01
@@ -38,7 +40,7 @@ class CancellationRequestedError(Exception):
 
 
 class HighlightingWorker:
-    def on_tts(self: Any, _):
+    def on_tts(self: VisionModeWithHighlighting, _: list[str]) -> None:
         img = capture()
         item_descr = None
         try:
@@ -68,7 +70,7 @@ class HighlightingWorker:
         )
         self.evaluate_item_thread.start()
 
-    def evaluate_item_and_queue_draw(self: Any, item_descr: Item, cancel_event: Event) -> None:
+    def evaluate_item_and_queue_draw(self: VisionModeWithHighlighting, item_descr: Item, cancel_event: Event) -> None:
         if not self.is_cleared:
             self.request_clear()
         if self.clear_when_item_not_selected_thread:
@@ -106,12 +108,15 @@ class HighlightingWorker:
                 item_roi = detection.crop_roi
 
                 top_left_corner = None if not found or item_roi is None else item_roi[:2]
-                if found and item_roi is not None:
+                if found and item_roi is not None and detection.cropped_descr is not None:
+                    if len(item_roi) != 4:
+                        continue
+                    item_roi_tuple = (item_roi[0], item_roi[1], item_roi[2], item_roi[3])
                     if not is_confirmed:
                         time.sleep(_FRAME_RETRY_DELAY_SECONDS)
                         self.check_for_thread_cancellation(cancel_event)
                         found_check, cropped_descr_check, _ = find_descr(capture(force_new=True), item_center)
-                        if not found_check:
+                        if not found_check or cropped_descr is None or cropped_descr_check is None:
                             continue
                         score = compare_histograms(cropped_descr, cropped_descr_check)
                         if score < 0.99:
@@ -132,10 +137,13 @@ class HighlightingWorker:
                         if ignored_item:
                             if item_descr.seasonal_attribute == SeasonalAttribute.sanctified:
                                 self.request_empty_outline(
-                                    item_descr, item_roi, get_filter_colors().unhandled, "Sanctified (Not Supported)"
+                                    item_descr,
+                                    item_roi_tuple,
+                                    get_filter_colors().unhandled,
+                                    "Sanctified (Not Supported)",
                                 )
                             else:
-                                self.request_empty_outline(item_descr, item_roi, get_filter_colors().unhandled)
+                                self.request_empty_outline(item_descr, item_roi_tuple, get_filter_colors().unhandled)
 
                         # Remove any final drawing if the item is unselected. It is also automatically
                         # removed if a different TTS item comes in.
@@ -172,7 +180,7 @@ class HighlightingWorker:
                                 if any(
                                     res_matched.profile.endswith(ASPECT_UPGRADES_LABEL) for res_matched in res.matched
                                 ):
-                                    self.request_codex_upgrade_box(item_descr, item_roi, res)
+                                    self.request_codex_upgrade_box(item_descr, item_roi_tuple, res)
                                 else:
                                     if not is_sigil(item_descr.item_type):
                                         matched_affixes = res.matched[0].matched_affixes if res.matched else []
@@ -181,10 +189,10 @@ class HighlightingWorker:
                                         def locate_markers(
                                             tooltip_image: np.ndarray,
                                             *,
-                                            item=item_descr,
-                                            matched_affixes=matched_affixes,
-                                            aspect_matched=aspect_matched,
-                                            short_separator_match=None,
+                                            item: Item = item_descr,
+                                            matched_affixes: list[Affix] = matched_affixes,
+                                            aspect_matched: bool = aspect_matched,
+                                            short_separator_match: TemplateMatch | None = None,
                                         ) -> LocatorResult:
                                             return locate_affix_markers(
                                                 tooltip_image=tooltip_image,
@@ -194,7 +202,9 @@ class HighlightingWorker:
                                                 short_separator_match=short_separator_match,
                                             )
 
-                                        def locate_markers_for_detection(detection) -> LocatorResult:
+                                        def locate_markers_for_detection(detection: DescrDetection) -> LocatorResult:
+                                            if detection.cropped_descr is None:
+                                                return LocatorResult(markers=[], reliable=False)
                                             return locate_markers(
                                                 detection.cropped_descr,
                                                 short_separator_match=get_separator_match_in_crop(detection),
@@ -208,10 +218,17 @@ class HighlightingWorker:
                                             retry_detection = find_descr_with_diagnostics(capture(), item_center)
                                             if retry_detection.found:
                                                 locator_result = locate_markers_for_detection(retry_detection)
-                                                item_roi = retry_detection.crop_roi
-                                    self.request_match_box(item_descr, item_roi, res, locator_result)
+                                                retry_roi = retry_detection.crop_roi
+                                                if retry_roi is not None and len(retry_roi) == 4:
+                                                    item_roi_tuple = (
+                                                        retry_roi[0],
+                                                        retry_roi[1],
+                                                        retry_roi[2],
+                                                        retry_roi[3],
+                                                    )
+                                    self.request_match_box(item_descr, item_roi_tuple, res, locator_result)
                             else:
-                                self.request_no_match_box(item_descr, item_roi)
+                                self.request_no_match_box(item_descr, item_roi_tuple)
                 else:
                     self.request_clear()
                     self.check_for_thread_cancellation(cancel_event)
@@ -229,7 +246,7 @@ class HighlightingWorker:
             self.evaluate_item_thread = None
 
     @staticmethod
-    def check_for_thread_cancellation(cancel_event: Event):
+    def check_for_thread_cancellation(cancel_event: Event) -> None:
         if cancel_event.is_set():
             raise CancellationRequestedError
 
@@ -240,7 +257,9 @@ class HighlightingWorker:
         cancel_event.set()
         thread.join()
 
-    def check_for_item_still_selected(self: Any, item_center: tuple[int, int], cancel_event: Event) -> None:
+    def check_for_item_still_selected(
+        self: VisionModeWithHighlighting, item_center: tuple[int, int], cancel_event: Event
+    ) -> None:
         try:
             while True:
                 self.check_for_thread_cancellation(cancel_event)

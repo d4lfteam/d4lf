@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QTabWidget
+from PyQt6.QtWidgets import QTabWidget, QWidget
 
 from src.profiles import TributeFilterModel
 from src.profiles.affix import AFFIXES_TABNAME, AffixesTab
@@ -20,7 +20,7 @@ def _to_editor_tribute_filter(tributes: TributeFilterModel | None) -> TributeFil
 
 
 class ProfileEditor(QTabWidget):
-    def __init__(self, loaded_profile: LoadedProfile, parent=None):
+    def __init__(self, loaded_profile: LoadedProfile, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.loaded_profile = loaded_profile
@@ -51,7 +51,7 @@ class ProfileEditor(QTabWidget):
         self.setTabPosition(QTabWidget.TabPosition.North)
         self.setElideMode(Qt.TextElideMode.ElideRight)
 
-    def tab_changed(self, index):
+    def tab_changed(self, index: int) -> None:
         if self.tabText(index) == AFFIXES_TABNAME:
             self.affixes_tab.load()
         elif self.tabText(index) == CHARMS_TABNAME:

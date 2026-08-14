@@ -13,7 +13,7 @@ if typing.TYPE_CHECKING:
 
 
 @pytest.mark.parametrize("url", D4BUILDS_IMPORT_URLS)
-def test_import_d4builds(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture):
+def test_import_d4builds(url: str, mock_ini_loader: MockerFixture, mocker: MockerFixture) -> None:
     GameCatalog()  # need to load data first or the mock will make it impossible
     mocker.patch("builtins.open", new=mocker.mock_open())
     request = ImportRequest(

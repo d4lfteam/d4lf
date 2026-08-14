@@ -21,7 +21,7 @@ from src.profiles import AffixFilterCountModel, AffixFilterModel, DynamicItemFil
 
 
 class CreateItem(QDialog):
-    def __init__(self, item_list: list[str], parent=None):
+    def __init__(self, item_list: list[str], parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Create Item")
         self.setFixedSize(300, 150)
@@ -55,7 +55,7 @@ class CreateItem(QDialog):
             return
         super().accept()
 
-    def get_value(self):
+    def get_value(self) -> DynamicItemFilterModel:
         item = ItemFilterModel()
         item.item_type = [ItemType.Amulet]
         item.affix_pool = [
@@ -66,7 +66,7 @@ class CreateItem(QDialog):
 
 
 class DeleteAffixPool(QDialog):
-    def __init__(self, nb_affix_pool: int, inherent: bool = False, parent=None):
+    def __init__(self, nb_affix_pool: int, inherent: bool = False, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         title = "Delete Inherent Pool" if inherent else "Delete Affix Pool"
         self.setWindowTitle(title)
@@ -102,5 +102,5 @@ class DeleteAffixPool(QDialog):
         self.okButton = self.ok_button
         self.cancelButton = self.cancel_button
 
-    def get_value(self):
+    def get_value(self) -> list[str]:
         return [checkbox.text() for checkbox in self.checkbox_list if checkbox.isChecked()]

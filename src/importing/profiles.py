@@ -5,7 +5,7 @@ from src.settings import get_settings
 LOGGER = logging.getLogger(__name__)
 
 
-def add_to_profiles(build_name: str):
+def add_to_profiles(build_name: str) -> None:
     profiles = get_settings().general.profiles
     if build_name in profiles:
         LOGGER.info(f"Profile {build_name} was already an active profile.")

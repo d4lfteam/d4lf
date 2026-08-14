@@ -114,8 +114,10 @@ def _compute_affix_layout(tts_section: list[str], item: Item) -> tuple[int, int,
     """
     starting_index = _get_affix_starting_location_from_tts_section(tts_section, item)
     inherent_num, affixes_num = _get_affix_counts(tts_section, item, starting_index)
-    affixes = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
-    aspect_or_set_text = _get_aspect_or_set_from_tts_section(tts_section, item, starting_index, len(affixes))
+    affixes: list[str] = _get_affixes_from_tts_section(tts_section, starting_index, inherent_num + affixes_num)
+    aspect_or_set_text: str | None = _get_aspect_or_set_from_tts_section(
+        tts_section, item, starting_index, len(affixes)
+    )
     return inherent_num, affixes_num, affixes, aspect_or_set_text
 
 

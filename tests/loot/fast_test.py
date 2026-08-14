@@ -7,6 +7,7 @@ import pytest
 
 if typing.TYPE_CHECKING:
     from collections.abc import Callable
+    from tkinter.font import Font
 
     from pytest_mock import MockerFixture
 
@@ -29,9 +30,9 @@ class _DestroyableText:
 
 class _MeasuredText:
     def __init__(self) -> None:
-        self.placements: list[dict[str, int]] = []
+        self.placements: list[dict[str, int | float]] = []
 
-    def config(self, **_kwargs: object) -> None:
+    def config(self, **_kwargs: str | float | bool | None) -> None:
         pass
 
     def update_idletasks(self) -> None:
@@ -46,20 +47,20 @@ class _MeasuredText:
     def cget(self, _option: str) -> str:
         return "Courier New 20"
 
-    def place_configure(self, **kwargs: int) -> None:
+    def place_configure(self, **kwargs: float) -> None:
         self.placements.append(kwargs)
 
-    def place(self, **kwargs: int) -> None:
+    def place(self, **kwargs: float) -> None:
         self.placements.append(kwargs)
 
 
 class _FastMode(Protocol):
-    textbox: object | None
-    root: object
-    request_clear: Callable[[], object]
-    request_draw: Callable[[str, str], object]
+    textbox: tk.Text | None
+    root: tk.Toplevel
+    request_clear: Callable[[], None]
+    request_draw: Callable[[str, str], None]
 
-    def on_tts(self, value: object) -> object: ...
+    def on_tts(self, value: list[str]) -> None: ...
 
     def clear_textbox(self) -> None: ...
 
@@ -80,7 +81,7 @@ def _new_fast_mode() -> _FastMode:
     raise AssertionError
 
 
-def test_fast_mode_preserves_match_details_and_feedback():
+def test_fast_mode_preserves_match_details_and_feedback() -> None:
     assert create_match_text([MatchedFilter("Build", aspect_match=True, set_match=True)]) == [
         "Build\n  - Aspect\n  - Set"
     ]
@@ -88,11 +89,11 @@ def test_fast_mode_preserves_match_details_and_feedback():
     assert fast_feedback(Item(rarity=ItemRarity.Unique), FilterResult(keep=True, matched=[])) == ("Unique", "#23fc5d")
 
 
-def test_fast_mode_has_no_result_for_a_skipped_item():
+def test_fast_mode_has_no_result_for_a_skipped_item() -> None:
     assert fast_feedback(Item(), FilterResult(keep=False, matched=[], skipped=True)) is None
 
 
-def test_fast_mode_omits_redundant_aspect_for_always_kept_mythics():
+def test_fast_mode_omits_redundant_aspect_for_always_kept_mythics() -> None:
     assert fast_feedback(
         Item(rarity=ItemRarity.Mythic),
         FilterResult(keep=True, matched=[MatchedFilter("Mythics always kept", aspect_match=True)]),
@@ -112,7 +113,7 @@ def test_fast_mode_clears_unmatched_items_without_drawing(monkeypatch, mocker: M
         lambda: type("_Filter", (), {"should_keep": lambda _self, _item: FilterResult(keep=False, matched=[])})(),
     )
 
-    mode.on_tts(None)
+    mode.on_tts([])
 
     mode.request_clear.assert_called_once_with()
     mode.request_draw.assert_not_called()
@@ -120,7 +121,7 @@ def test_fast_mode_clears_unmatched_items_without_drawing(monkeypatch, mocker: M
 
 def test_clearing_before_next_match_does_not_leave_a_dead_textbox() -> None:
     mode = _new_fast_mode()
-    mode.textbox = _DestroyableText()
+    mode.textbox = typing.cast("tk.Text", _DestroyableText())
 
     mode.clear_textbox()
 
@@ -132,7 +133,7 @@ def test_clearing_before_next_match_does_not_leave_a_dead_textbox() -> None:
 def test_fast_match_textbox_gets_content_sized_geometry(monkeypatch) -> None:
     mode = _new_fast_mode()
     textbox = _MeasuredText()
-    mode.textbox = textbox
+    mode.textbox = typing.cast("tk.Text", textbox)
 
     class _Font:
         def metrics(self, _metric: str) -> int:
@@ -153,10 +154,10 @@ def test_fast_match_textbox_gets_content_sized_geometry(monkeypatch) -> None:
 def test_fast_textbox_uses_configured_position_or_centered_default(monkeypatch, configured, expected) -> None:
     mode = _new_fast_mode()
     textbox = _MeasuredText()
-    mode.root = object()
+    mode.root = typing.cast("tk.Toplevel", object())
     mode.textbox = None
 
-    monkeypatch.setattr(fast_module, "Font", lambda **_kwargs: object())
+    monkeypatch.setattr(fast_module, "Font", lambda **_kwargs: typing.cast("Font", object()))
     monkeypatch.setattr(fast_module.tk, "Text", lambda *_args, **_kwargs: textbox)
     monkeypatch.setattr(fast_module, "get_ui_coordinates", lambda: SimpleNamespace(resolution=(3840, 2160)))
     monkeypatch.setattr(

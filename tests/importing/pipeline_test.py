@@ -1,10 +1,14 @@
 import dataclasses
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 from src.game_data import GameCatalog, ItemType
 from src.importing import FilenamePart, ImportOptions, ImportRequest
 from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
 from src.profiles import CharmFilterModel, ItemFilterModel, SealFilterModel
+
+if TYPE_CHECKING:
+    from src.type_aliases import JsonValue
 
 
 def _config(**overrides) -> ImportRequest:
@@ -39,7 +43,7 @@ def _seal_filter() -> SealFilterModel:
     return SealFilterModel()
 
 
-def _paragon_steps() -> list[list[dict[str, object]]]:
+def _paragon_steps() -> list[list[dict[str, JsonValue]]]:
     return [[{"Name": "spiritborn-starting-board", "Glyph": "", "Rotation": "0°", "Nodes": [False] * 441}]]
 
 

@@ -1,8 +1,10 @@
+from typing import Never
+
 from src.loot import orchestration as _orchestration
 from src.settings import ItemRefreshType
 
 
-def test_loot_filter_processes_stash_tabs_before_inventory(monkeypatch):
+def test_loot_filter_processes_stash_tabs_before_inventory(monkeypatch) -> None:
     calls = []
 
     class Settings:
@@ -12,14 +14,14 @@ def test_loot_filter_processes_stash_tabs_before_inventory(monkeypatch):
         general = General()
 
     class Stash:
-        def is_open(self):
+        def is_open(self) -> bool:
             return True
 
-        def switch_to_tab(self, tab):
+        def switch_to_tab(self, tab) -> None:
             calls.append(("tab", tab))
 
     class Inventory:
-        def open(self):
+        def open(self) -> Never:
             raise AssertionError
 
     monkeypatch.setattr(_orchestration, "get_settings", lambda: Settings())

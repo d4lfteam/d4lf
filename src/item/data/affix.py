@@ -1,6 +1,5 @@
 import enum
 from dataclasses import dataclass
-from typing import override
 
 
 class AffixType(enum.Enum):
@@ -23,8 +22,8 @@ class Affix:
     type: AffixType = AffixType.normal
     value: float | None = None
 
-    @override
-    def __eq__(self, other: object) -> bool:
+    # ty: ignore[invalid-method-override, missing-override-decorator] - this project intentionally uses a same-type equality contract
+    def __eq__(self, other: Affix) -> bool:
         if not isinstance(other, Affix):
             return False
         return (

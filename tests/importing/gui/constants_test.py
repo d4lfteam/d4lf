@@ -1,6 +1,6 @@
 from src.importing.gui.constants import INSTRUCTIONS_TEXT
 
 
-def test_constants_can_be_imported():
+def test_constants_can_be_imported() -> None:
     assert isinstance(INSTRUCTIONS_TEXT, str)
     assert len(INSTRUCTIONS_TEXT) > 0

@@ -4,6 +4,7 @@ import sys
 import time
 import zipfile
 from pathlib import Path
+from typing import TypedDict, cast
 
 import requests
 
@@ -13,9 +14,13 @@ from src import __version__
 LOGGER = logging.getLogger(__name__)
 
 
+ReleaseAsset = TypedDict("ReleaseAsset", {"name": str, "browser_download_url": str})  # ruff: ignore[convert-typed-dict-functional-to-class]
+ReleaseData = TypedDict("ReleaseData", {"tag_name": str, "assets": list[ReleaseAsset]}, total=False)  # ruff: ignore[convert-typed-dict-functional-to-class]
+
+
 # This autoupdater was almost entirely provided by iAmPilcrow
 class D4LFUpdater:
-    def __init__(self):
+    def __init__(self) -> None:
         self.repo_owner = "d4lfteam"
         self.repo_name = "d4lf"
         self.api_url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/releases/latest"
@@ -26,18 +31,18 @@ class D4LFUpdater:
         self.version_file = self.temp_dir / "version"
 
     @staticmethod
-    def normalize_version(version):
+    def normalize_version(version: str | None) -> str | None:
         """Ensure version has 'v' prefix."""
         if version and not version.startswith("v"):
             return f"v{version.strip()}"
         return version
 
-    def get_latest_release(self, silent=False):
+    def get_latest_release(self, silent: bool = False) -> ReleaseData | None:
         """Fetch latest release info from GitHub API."""
         if not silent:
             LOGGER.info("Checking for latest release...")
         try:
-            current_version = self.normalize_version(__version__)
+            current_version = self.normalize_version(__version__) or ""
             api_url = (
                 self.releases_api_url
                 if any(marker in current_version.lower() for marker in ("-alpha", "-beta"))
@@ -46,12 +51,15 @@ class D4LFUpdater:
             response = requests.get(api_url, timeout=10)
             response.raise_for_status()
             release_data = response.json()
-            return next(iter(release_data), None) if api_url == self.releases_api_url else release_data
+            return cast(
+                "ReleaseData | None",
+                next(iter(release_data), None) if api_url == self.releases_api_url else release_data,
+            )
         except requests.exceptions.RequestException as e:
             LOGGER.error(f"Error fetching release info: {e}")
             return None
 
-    def print_changes_between_releases(self, current_version, latest_version):
+    def print_changes_between_releases(self, current_version: str, latest_version: str) -> None:
         try:
             url = self.changes_base_url + current_version + "..." + latest_version
             response = requests.get(url, timeout=10)
@@ -64,7 +72,7 @@ class D4LFUpdater:
             LOGGER.error(f"Error fetching changes since last update: {e}")
 
     @staticmethod
-    def download_file(url, filename):
+    def download_file(url: str, filename: Path) -> bool:
         """Download file with progress indication."""
         LOGGER.info(f"Downloading {filename}...")
         try:
@@ -89,7 +97,7 @@ class D4LFUpdater:
         LOGGER.info("Download complete!")
         return True
 
-    def extract_release(self, zip_path, latest_version):
+    def extract_release(self, zip_path: Path, latest_version: str) -> bool:
         """Extract zip so batch process can copy files."""
         LOGGER.info("Extracting files...")
 
@@ -113,7 +121,7 @@ class D4LFUpdater:
     def _get_major_version_number(version: str) -> int:
         return int(version.replace("v", "").split(".")[0])
 
-    def preprocess(self):
+    def preprocess(self) -> bool:
         """Main update process.
 
         This will:
@@ -125,7 +133,7 @@ class D4LFUpdater:
         self._print_header()
 
         # Get current installed version
-        current_version = self.normalize_version(__version__)
+        current_version = self.normalize_version(__version__) or ""
         LOGGER.info(f"Current installed version: {current_version}")
 
         # Get latest release info
@@ -134,7 +142,7 @@ class D4LFUpdater:
             LOGGER.warning("Unable to find latest release on github, can't automatically update.")
             return False
 
-        latest_version = self.normalize_version(release_data.get("tag_name"))
+        latest_version = self.normalize_version(release_data.get("tag_name")) or ""
         LOGGER.info(f"Latest release tag: {latest_version}")
 
         # Check if update needed
@@ -155,7 +163,6 @@ class D4LFUpdater:
             if proceed.lower() not in ["yes", "y"]:
                 LOGGER.info("Cancelling update.")
                 return False
-
         # Find the d4lf zip asset
         assets = release_data.get("assets", [])
         zip_asset = None
@@ -183,13 +190,12 @@ class D4LFUpdater:
         # Extract the zip
         if not self.extract_release(zip_filename, latest_version):
             return False
-
         LOGGER.info("=" * 50)
         LOGGER.info("✓ Preprocessing is done, shutting down to allow update to happen. A new window will open shortly.")
         LOGGER.info("=" * 50)
         return True
 
-    def postprocess(self):
+    def postprocess(self) -> bool:
         """Post process will handle the cleanup.
 
         It will:
@@ -206,7 +212,7 @@ class D4LFUpdater:
             )
             return False
 
-        current_version = self.normalize_version(__version__)
+        current_version = self.normalize_version(__version__) or ""
         if updated_to_version != current_version:
             LOGGER.error(
                 f"Current version is {current_version} but we attempted to update to {updated_to_version}. Check logs for errors and update manually."
@@ -217,21 +223,20 @@ class D4LFUpdater:
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir, ignore_errors=True)
         LOGGER.info("Temporary files are removed")
-
         LOGGER.info("=" * 50)
         LOGGER.info(f"✓ Successfully updated to {updated_to_version}!")
         LOGGER.info("=" * 50)
         return True
 
     @staticmethod
-    def _print_header():
+    def _print_header() -> None:
         LOGGER.info("=" * 50)
         LOGGER.info("D4LF Auto-Updater")
         LOGGER.info("=" * 50)
         LOGGER.info("")
 
 
-def start_auto_update(postprocess=False):
+def start_auto_update(postprocess: bool = False) -> None:
     updater = D4LFUpdater()
     try:
         success = updater.postprocess() if postprocess else updater.preprocess()
@@ -246,20 +251,20 @@ def start_auto_update(postprocess=False):
         sys.exit(1)
 
 
-def notify_if_update():
+def notify_if_update() -> None:
     if not _should_check_for_update():
         LOGGER.debug("Still within 4 hours of previous update check, skipping automatic update check.")
         return
 
     updater = D4LFUpdater()
-    current_version = updater.normalize_version(__version__)
+    current_version = updater.normalize_version(__version__) or ""
 
     release = updater.get_latest_release(silent=True)
     if not release:
         LOGGER.warning("Unable to find latest release of d4lf on github, skipping check for updates.")
         return
 
-    latest_version = updater.normalize_version(release.get("tag_name"))
+    latest_version = updater.normalize_version(release.get("tag_name")) or ""
     if current_version != latest_version:
         LOGGER.info("=" * 50)
         LOGGER.info(
@@ -269,7 +274,7 @@ def notify_if_update():
         LOGGER.info("=" * 50)
 
 
-def _should_check_for_update(check_interval_hours=4):
+def _should_check_for_update(check_interval_hours: float = 4) -> bool:
     """Check if it's time to check for updates based on a cooldown period."""
     check_file = Path.cwd() / "assets" / "last_update"
     current_time = time.time()
@@ -290,8 +295,6 @@ def _should_check_for_update(check_interval_hours=4):
     return False
 
 
-# Main is only used for testing as files will not actually be copied
 if __name__ == "__main__":
     src.logger.setup(log_level="debug")
     start_auto_update()
-    # start_auto_update(postprocess=True)

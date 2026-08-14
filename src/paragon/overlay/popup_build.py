@@ -50,7 +50,7 @@ class OverlayPopupBuildMixin(OverlayContract):
         lf.bind("<Configure>", lambda *_: cv.configure(scrollregion=cv.bbox("all")))
         cv.bind("<Configure>", lambda e: cv.itemconfigure(wid, width=int(e.width)))
 
-        def _ref():
+        def _ref() -> None:
             # Rebuild the visible list from scratch. This is simple and reliable for
             # the current popup size and allows highlighting/grouping to stay in sync
             # with the current overlay state.
@@ -107,7 +107,7 @@ class OverlayPopupBuildMixin(OverlayContract):
         imgs: dict[bool, tk.PhotoImage | None] = getattr(self, "_lock_img_cache", {})
 
         def _row(
-            txt: str, img: tk.PhotoImage | None, lbl_txt: str, cmd: Callable[[], object]
+            txt: str, img: tk.PhotoImage | None, lbl_txt: str, cmd: Callable[[], None]
         ) -> tuple[tk.Button, tk.Label]:
             """Create one icon/text setting row with a button and description."""
             r = tk.Frame(c, bg=CARD_BG)
@@ -240,7 +240,7 @@ class OverlayPopupBuildMixin(OverlayContract):
             pady=int(6 * s),
         ).pack(fill="x")
 
-        def _ref():
+        def _ref() -> None:
             """Refresh labels, icons, and enabled states after a setting changes."""
             lk, gd = self._cfg.grid_locked, getattr(self._cfg, "gold_frames", False)
             lock_image = imgs.get(lk)

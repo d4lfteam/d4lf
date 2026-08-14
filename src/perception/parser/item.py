@@ -23,7 +23,7 @@ from src.perception.parser.details import _is_codex_upgrade, _is_cosmetic_upgrad
 
 
 class _TtsItemParser:
-    def __init__(self, tts_section: list[str]):
+    def __init__(self, tts_section: list[str]) -> None:
         self.tts_section = tts_section
         self.item: Item | None = None
 

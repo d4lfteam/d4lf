@@ -11,7 +11,7 @@ from src.profiles.aspect import AspectUpgradesTab
 
 
 class _AcceptedDialog(QDialog):
-    def __init__(self, value: str):
+    def __init__(self, value: str) -> None:
         super().__init__()
         self._value = value
 
@@ -32,7 +32,7 @@ def _button(tab: AspectUpgradesTab, text: str) -> QPushButton:
     return next(btn for btn in tab.findChildren(QPushButton) if btn.text() == text)
 
 
-def test_add_aspect_adds_rule_to_list_and_widget(qapp, monkeypatch):
+def test_add_aspect_adds_rule_to_list_and_widget(qapp, monkeypatch) -> None:
     monkeypatch.setattr("src.profiles.aspect.tabs.AddAspectUpgrade", lambda *_args, **_kwargs: _AcceptedDialog("new"))
 
     aspects = ["old"]
@@ -48,10 +48,10 @@ def test_add_aspect_adds_rule_to_list_and_widget(qapp, monkeypatch):
     assert item.text() == "new"
 
 
-def test_remove_selected_with_no_selection_shows_warning_and_does_not_crash(qapp, monkeypatch):
+def test_remove_selected_with_no_selection_shows_warning_and_does_not_crash(qapp, monkeypatch) -> None:
     warnings: list[tuple[str, str]] = []
 
-    def _warning(parent, title: str, message: str):
+    def _warning(parent, title: str, message: str) -> None:
         warnings.append((title, message))
 
     monkeypatch.setattr(QMessageBox, "warning", _warning)

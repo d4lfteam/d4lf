@@ -9,7 +9,7 @@ from src.settings import BASE_DIR
 BASE_PATH = BASE_DIR / "tests/assets/ui"
 
 
-def test_stash_is_configured_as_stash_menu(monkeypatch):
+def test_stash_is_configured_as_stash_menu(monkeypatch) -> None:
     monkeypatch.setattr(
         "src.automation.stash.get_ui_coordinates",
         lambda: type(
@@ -27,7 +27,7 @@ def test_stash_is_configured_as_stash_menu(monkeypatch):
 
 
 @pytest.mark.parametrize("img_res", [(3440, 1440)])
-def test_stash_detects_open_chest(img_res):
+def test_stash_detects_open_chest(img_res) -> None:
     update_window_position(0, 0, *img_res)
     image = cv2.imread(f"{BASE_PATH}/chest_open_1440p_wide.png")
 

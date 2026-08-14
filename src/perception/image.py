@@ -212,19 +212,19 @@ def get_typographic_lines(img: np.ndarray, should_invert: bool = False) -> tuple
     # Calculate deltas in histogram
     deltas = np.diff(histogram)
     # Find the first row with text as topline
-    topline = np.where(histogram > 0)[0][0]
+    topline = int(np.where(histogram > 0)[0][0])
     # Find the last row with text as beardline (approached from the bottom)
-    beardline = np.where(histogram[::-1] > 0)[0][0]
+    beardline = int(np.where(histogram[::-1] > 0)[0][0])
     beardline = len(histogram) - beardline - 1  # Adjust for reversed indexing
     # Identify the two sharpest deltas for midline and baseline
     sharpest_deltas_indices = np.argsort(np.abs(deltas))[-2:]
     # Sort them to determine which is midline and which is baseline
-    midline, baseline = sorted(sharpest_deltas_indices)
+    midline, baseline = (int(index) for index in sorted(sharpest_deltas_indices))
 
     return topline, baseline, midline, beardline
 
 
-def compare_histograms(image_a, image_b):
+def compare_histograms(image_a: np.ndarray, image_b: np.ndarray) -> float:
     hist_a = cv2.calcHist([image_a], [0], None, [256], [0, 256])
     hist_b = cv2.calcHist([image_b], [0], None, [256], [0, 256])
     hist_a = cv2.normalize(hist_a, hist_a).flatten()
