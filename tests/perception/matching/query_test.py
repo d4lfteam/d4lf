@@ -30,3 +30,20 @@ def test_search_args_detects_through_the_matching_facade(monkeypatch) -> None:
 
     assert result.success
     assert observed["inp_img"] is image
+
+
+def test_search_args_uses_a_captured_image_when_no_image_is_supplied(monkeypatch) -> None:
+    captured = np.full((2, 2, 3), 7, dtype=np.uint8)
+    observed: dict[str, JsonValue] = {}
+
+    def fake_search(**kwargs):
+        observed.update(kwargs)
+        return SearchResult(success=True)
+
+    monkeypatch.setattr("src.perception.matching.query.search", fake_search)
+    monkeypatch.setattr("src.perception.matching.query.Cam.grab", lambda _self: captured)
+
+    result = SearchArgs(ref=captured).detect()
+
+    assert result.success
+    assert observed["inp_img"] is captured

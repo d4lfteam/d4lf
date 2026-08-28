@@ -5,10 +5,7 @@ import tkinter as tk
 from PIL import Image, ImageDraw, ImageFont
 
 from src.desktop import is_alive
-from src.paragon import data as _data
-from src.paragon.shared import OverlayContract
-
-globals().update({name: getattr(_data, name) for name in _data.__all__})
+from src.paragon.overlay.contracts import OverlayContract
 
 
 class OverlayGridMixin(OverlayContract):

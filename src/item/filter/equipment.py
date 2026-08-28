@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from src.item import ASPECT_UPGRADES_LABEL
 from src.item.data.affix import AffixType
 from src.item.models import FilterResult, MatchedFilter
-from src.settings import AspectFilterType, UnfilteredUniquesType, get_settings
+from src.settings import AspectFilterType, UnfilteredUniquesType
 
 if TYPE_CHECKING:
     from src.item.filter.matching import FilterContext
@@ -72,8 +72,8 @@ class FilterEquipmentMixin:
                     res.matched.append(MatchedFilter(f"{profile_name}.{ASPECT_UPGRADES_LABEL}", aspect_match=True))
             if res.keep:
                 return res
-        if get_settings().general.keep_aspects == AspectFilterType.none or (
-            get_settings().general.keep_aspects == AspectFilterType.upgrade and not item.codex_upgrade
+        if self.evaluation_settings.keep_aspects == AspectFilterType.none or (
+            self.evaluation_settings.keep_aspects == AspectFilterType.upgrade and not item.codex_upgrade
         ):
             return res
         LOGGER.info(f"{item.original_name} -- Matched Aspects that updates codex")
@@ -84,7 +84,7 @@ class FilterEquipmentMixin:
     def _check_global_unique_filter(self: FilterContext, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
         if not self.global_unique_filters:
-            keep = get_settings().general.handle_uniques != UnfilteredUniquesType.junk
+            keep = self.evaluation_settings.handle_uniques != UnfilteredUniquesType.junk
             return FilterResult(keep, [])
         for profile_name, profile_filter in self.global_unique_filters.items():
             for filter_item in profile_filter:

@@ -9,9 +9,12 @@ if TYPE_CHECKING:
 
 
 def _parse_item_type_or_rarities(data: str | list[str]) -> list[str]:
-    if isinstance(data, str):
-        return [data]
-    return data
+    values = [data] if isinstance(data, str) else data
+    catalog = GameCatalog()
+    return [
+        item_type.value if isinstance(value, str) and (item_type := catalog.item_type_from_text(value)) else value
+        for value in values
+    ]
 
 
 def _validate_set_name(name: str | None, field_name: str) -> str | None:

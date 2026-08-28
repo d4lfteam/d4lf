@@ -5,7 +5,6 @@ dependencies = [
   "beautifultable",
   "colorama",
   "httpx",
-  "jsonpath",
   "lxml",
   "mss",
   "natsort",
@@ -15,7 +14,6 @@ dependencies = [
   "psutil",
   "pydantic",
   "pydantic-numpy",
-  "pydantic-yaml",
   "pynput",
   "pyqt6",
   "python-jsonpath",
@@ -26,8 +24,6 @@ dependencies = [
   "ruamel-yaml",
   "selenium",
   "seleniumbase",
-  "tk",
-  "webdriver-manager",
 ]
 dynamic = ["version"]
 
@@ -37,9 +33,7 @@ dev = [
   "pyinstaller",
   "pytest",
   "pytest-cov",
-  "pytest-env",
   "pytest-mock",
-  "pytest-pythonpath",
   "pytest-xdist",
   "ruff",
   "ty",

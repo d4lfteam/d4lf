@@ -2,9 +2,9 @@ import tkinter as tk
 from contextlib import suppress
 from typing import TYPE_CHECKING
 
-from src.paragon import data as _data
-from src.paragon.shared import (
-    _TK_IMAGE_ATTRIBUTE,
+from src.paragon.overlay.contracts import BuildRow, OverlayContract
+from src.paragon.overlay.helpers import tk_btn, tk_lbl
+from src.paragon.overlay.theme import (
     CARD_BG,
     FS_BUILDS_MENU,
     FS_HINT,
@@ -15,13 +15,8 @@ from src.paragon.shared import (
     MUTED,
     SELECT_BG,
     TEXT,
-    BuildRow,
-    OverlayContract,
-    _tk_btn,
-    _tk_lbl,
+    TK_IMAGE_ATTRIBUTE,
 )
-
-globals().update({name: getattr(_data, name) for name in _data.__all__})
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -63,7 +58,7 @@ class OverlayPopupBuildMixin(OverlayContract):
 
             for p in sorted(grps):
                 if mul:
-                    _tk_lbl(
+                    tk_lbl(
                         lf,
                         text=p,
                         fg=MUTED,
@@ -74,7 +69,7 @@ class OverlayPopupBuildMixin(OverlayContract):
                     ).pack(fill="x", pady=(int(4 * scale), int(2 * scale)))
                 for i, b in grps[p]:
                     act = i == self.current_build_idx
-                    _tk_btn(
+                    tk_btn(
                         lf,
                         text=str(b.get("name") or "Unknown Build"),
                         cmd=lambda idx=i: (self._select_build(idx), self._close_build_dropdown()),
@@ -113,9 +108,9 @@ class OverlayPopupBuildMixin(OverlayContract):
             r = tk.Frame(c, bg=CARD_BG)
             r.pack(fill="x", pady=int(3 * s))
             b = (
-                _tk_btn(r, image=img, cmd=cmd, padx=int(6 * s), pady=int(4 * s))
+                tk_btn(r, image=img, cmd=cmd, padx=int(6 * s), pady=int(4 * s))
                 if img
-                else _tk_btn(
+                else tk_btn(
                     r,
                     text=txt,
                     cmd=cmd,
@@ -125,9 +120,9 @@ class OverlayPopupBuildMixin(OverlayContract):
                 )
             )
             if img:
-                setattr(b, _TK_IMAGE_ATTRIBUTE, img)
+                setattr(b, TK_IMAGE_ATTRIBUTE, img)
             b.pack(side="left")
-            lbl = _tk_lbl(r, text=lbl_txt, font=("Segoe UI", int(FS_SETTINGS_LABEL * s)), anchor="w")
+            lbl = tk_lbl(r, text=lbl_txt, font=("Segoe UI", int(FS_SETTINGS_LABEL * s)), anchor="w")
             lbl.pack(side="left", padx=(int(8 * s), int(24 * s)))
             return b, lbl
 
@@ -146,7 +141,7 @@ class OverlayPopupBuildMixin(OverlayContract):
         # Zoom controls change the active cell size for the current mode.
         zr = tk.Frame(c, bg=CARD_BG)
         zr.pack(fill="x", pady=int(3 * s))
-        btn_zm = _tk_btn(
+        btn_zm = tk_btn(
             zr,
             text="−",
             cmd=lambda: (self._zoom_grid(-1), _ref()),
@@ -155,9 +150,9 @@ class OverlayPopupBuildMixin(OverlayContract):
             pady=int(2 * s),
         )
         btn_zm.pack(side="left")
-        lbl_cell = _tk_lbl(zr, font=("Segoe UI", int(FS_SETTINGS_LABEL * s), "bold"), width=5, anchor="center")
+        lbl_cell = tk_lbl(zr, font=("Segoe UI", int(FS_SETTINGS_LABEL * s), "bold"), width=5, anchor="center")
         lbl_cell.pack(side="left")
-        btn_zp = _tk_btn(
+        btn_zp = tk_btn(
             zr,
             text="+",
             cmd=lambda: (self._zoom_grid(1), _ref()),
@@ -166,7 +161,7 @@ class OverlayPopupBuildMixin(OverlayContract):
             pady=int(2 * s),
         )
         btn_zp.pack(side="left")
-        _tk_lbl(zr, text="Grid Zoom", fg=MUTED, font=("Segoe UI", int(FS_SETTINGS_LABEL * s)), anchor="w").pack(
+        tk_lbl(zr, text="Grid Zoom", fg=MUTED, font=("Segoe UI", int(FS_SETTINGS_LABEL * s)), anchor="w").pack(
             side="left", padx=(int(8 * s), 0)
         )
 
@@ -182,7 +177,7 @@ class OverlayPopupBuildMixin(OverlayContract):
         r0 = tk.Frame(dc, bg=CARD_BG)
         r0.pack()
         tk.Frame(r0, bg=CARD_BG, width=sp, height=1).pack(side="left")
-        _tk_btn(
+        tk_btn(
             r0,
             text="↑",
             cmd=lambda: (self._move_grid(0, -1), _ref()),
@@ -194,7 +189,7 @@ class OverlayPopupBuildMixin(OverlayContract):
 
         r1 = tk.Frame(dc, bg=CARD_BG)
         r1.pack()
-        _tk_btn(
+        tk_btn(
             r1,
             text="←",
             cmd=lambda: (self._move_grid(-1, 0), _ref()),
@@ -203,7 +198,7 @@ class OverlayPopupBuildMixin(OverlayContract):
             pady=int(2 * s),
         ).pack(side="left", padx=1, pady=1)
         tk.Frame(r1, bg=CARD_BG, width=sp, height=1).pack(side="left")
-        _tk_btn(
+        tk_btn(
             r1,
             text="→",
             cmd=lambda: (self._move_grid(1, 0), _ref()),
@@ -215,7 +210,7 @@ class OverlayPopupBuildMixin(OverlayContract):
         r2 = tk.Frame(dc, bg=CARD_BG)
         r2.pack()
         tk.Frame(r2, bg=CARD_BG, width=sp, height=1).pack(side="left")
-        _tk_btn(
+        tk_btn(
             r2,
             text="↓",
             cmd=lambda: (self._move_grid(0, 1), _ref()),
@@ -225,11 +220,11 @@ class OverlayPopupBuildMixin(OverlayContract):
         ).pack(side="left", padx=1, pady=1)
         tk.Frame(r2, bg=CARD_BG, width=sp, height=1).pack(side="left")
 
-        _tk_lbl(dp, text="Move\nGrid", fg=MUTED, font=("Segoe UI", int(FS_HINT * s)), anchor="w", justify="left").pack(
+        tk_lbl(dp, text="Move\nGrid", fg=MUTED, font=("Segoe UI", int(FS_HINT * s)), anchor="w", justify="left").pack(
             side="left", padx=(int(8 * s), 0)
         )
         tk.Frame(c, bg=MUTED, height=1).pack(fill="x", pady=int(6 * s))
-        _tk_lbl(
+        tk_lbl(
             c,
             text="• Drag frame to move grid\n• D-Pad ↑ ↓ ← → moves grid per click\n• Use − + buttons to zoom\n• Use ★ to make all frames golden\n• Use ↺ to reset to default size/position\n• Use 🔓 to unlock/lock grid",
             fg=MUTED,
@@ -246,7 +241,7 @@ class OverlayPopupBuildMixin(OverlayContract):
             lock_image = imgs.get(lk)
             if lock_image is not None:
                 btn_lock.configure(image=lock_image)
-                setattr(btn_lock, _TK_IMAGE_ATTRIBUTE, lock_image)
+                setattr(btn_lock, TK_IMAGE_ATTRIBUTE, lock_image)
             else:
                 btn_lock.configure(text="🔒" if lk else "🔓", fg=GOLD if lk else TEXT)
             lbl_lock.configure(text="Grid locked" if lk else "Grid unlocked", fg=GOLD if lk else TEXT)

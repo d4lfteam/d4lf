@@ -78,10 +78,8 @@ class GameCatalog:
         self.bad_tts_uniques = cast("dict[str, str]", corrections["bad_tts_uniques"])
 
         self.item_types_dict = cast("dict[str, str]", self._load_json(language_dir / "item_types.json"))
-        for item, value in self.item_types_dict.items():
-            if item in ItemType.__members__:
-                ItemType[item]._value_ = value
-            else:
+        for item in self.item_types_dict:
+            if item not in ItemType.__members__:
                 LOGGER.warning("%s type not in item_type.py", item)
 
         self.affix_sigil_dict_all = cast("dict[str, dict[str, str]]", self._load_json(language_dir / "sigils.json"))
@@ -94,6 +92,29 @@ class GameCatalog:
         self.tooltips = cast("JsonObject", self._load_json(language_dir / "tooltips.json"))
         self.aspect_unique_dict = cast("JsonObject", self._load_json(language_dir / "uniques.json"))
         self.set_list = cast("list[str]", self._load_json(language_dir / "sets.json"))
+
+    def item_type_label(self, item_type: ItemType) -> str:
+        """Return the current localized display label for an item type."""
+        return self.item_types_dict.get(item_type.name, item_type.value)
+
+    def item_type_names(self, item_type: ItemType) -> tuple[str, ...]:
+        """Return accepted enum name, canonical value, and localized label for an item type."""
+        return tuple(dict.fromkeys((item_type.name, item_type.value, self.item_type_label(item_type))))
+
+    def item_type_from_text(self, value: str) -> ItemType | None:
+        """Resolve an enum name, canonical value, or localized catalog label to an item type."""
+        normalized = value.strip().casefold()
+        if not normalized:
+            return None
+
+        for item_type in ItemType:
+            if normalized in {item_type.name.casefold(), item_type.value.casefold()}:
+                return item_type
+
+        for item_type in ItemType:
+            if normalized == self.item_type_label(item_type).strip().casefold():
+                return item_type
+        return None
 
     @staticmethod
     def _load_json(path: pathlib.Path) -> JsonValue:

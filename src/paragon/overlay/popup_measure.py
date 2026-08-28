@@ -1,10 +1,7 @@
 import tkinter as tk
 from contextlib import suppress
 
-from src.paragon import data as _data
-from src.paragon.shared import OverlayContract
-
-globals().update({name: getattr(_data, name) for name in _data.__all__})
+from src.paragon.overlay.contracts import OverlayContract
 
 
 class OverlayPopupMixin(OverlayContract):

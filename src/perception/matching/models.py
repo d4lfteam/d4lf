@@ -10,6 +10,14 @@ TemplateReferences = TemplateReference | Sequence[TemplateReference]
 ColorMatch = list[np.ndarray] | str | None
 
 
+@dataclass(frozen=True, slots=True)
+class ImageMatch:
+    """A match expressed solely in image coordinates."""
+
+    region: Rectangle
+    score: float
+
+
 @dataclass
 class TemplateMatch:
     center: tuple[int, int]
