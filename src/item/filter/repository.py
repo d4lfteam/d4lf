@@ -28,6 +28,17 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
+def _contained_profile_path(profiles_dir: Path, profile_name: str) -> Path | None:
+    """Return a profile path only when it remains inside the profiles directory."""
+    try:
+        resolved_profiles_dir = profiles_dir.resolve()
+        resolved_profile_path = (profiles_dir / f"{profile_name}.yaml").resolve()
+        resolved_profile_path.relative_to(resolved_profiles_dir)
+    except OSError, RuntimeError, ValueError:
+        return None
+    return resolved_profile_path
+
+
 @dataclass(frozen=True)
 class ProfileLoadReport:
     """Summary emitted once when enabled profiles are skipped during a load."""
@@ -134,8 +145,11 @@ class ProfileRulesRepository:
         if self._missing_recheck_pending:
             self._missing_recheck_pending = False
             return True
+        profiles_dir = settings.user_dir / "profiles"
         for profile_name in current_profiles:
-            profile_path = settings.user_dir / "profiles" / f"{profile_name}.yaml"
+            profile_path = _contained_profile_path(profiles_dir, profile_name)
+            if profile_path is None:
+                continue
             signature = self.profile_signature(profile_path)
             if signature != self._profile_signatures.get(profile_path):
                 return True
@@ -194,8 +208,8 @@ class ProfileRulesRepository:
         profile_store = ProfileDocumentStore(profiles_dir=custom_profile_path, full_dump=False)
         all_file_paths: list[Path] = []
         for profile_str in profiles:
-            custom_file_path = custom_profile_path / f"{profile_str}.yaml"
-            if not custom_file_path.is_file():
+            custom_file_path = _contained_profile_path(custom_profile_path, profile_str)
+            if custom_file_path is None or not custom_file_path.is_file():
                 LOGGER.error("Could not load profile %s. Checked: %s", profile_str, custom_file_path)
                 failures.append(ProfileLoadFailure(profile_str, "missing", None))
                 missing_names.append(profile_str)

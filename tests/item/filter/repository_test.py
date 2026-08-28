@@ -44,3 +44,22 @@ def test_repository_detects_profile_file_changes(tmp_path) -> None:
     profile_path.write_text("AspectUpgrades:\n- accelerating\n", encoding="utf-8")
 
     assert repository.did_files_change()
+
+
+def test_repository_rejects_profile_paths_outside_profiles_directory(tmp_path) -> None:
+    user_dir = tmp_path / "user"
+    (user_dir / "profiles").mkdir(parents=True)
+    external_path = user_dir / "external.yaml"
+    ProfileDocumentStore(profiles_dir=user_dir, full_dump=False).save_new(
+        file_name="external", profile=ProfileModel(name="external", aspect_upgrades=["accelerating"]), source="test"
+    )
+    settings = SimpleNamespace(user_dir=user_dir, general=SimpleNamespace(profiles=["../external"]))
+    repository = ProfileRulesRepository(lambda: cast("Settings", settings))
+
+    loaded = repository.load_files()
+
+    assert loaded.aspect_upgrade_filters == {}
+    assert loaded.all_file_paths == ()
+    assert repository.did_files_change()
+    external_path.write_text(external_path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    assert not repository.did_files_change()
