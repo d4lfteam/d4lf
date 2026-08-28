@@ -187,9 +187,10 @@ class _OverlayCore(OverlayContract):
             if w is parent:
                 return True
             try:
-                w = getattr(w, "master", None)
-                if not isinstance(w, tk.Misc):
+                master = getattr(w, "master", None)
+                if not isinstance(master, tk.Misc):
                     break
+                w = master
             except AttributeError, RuntimeError, tk.TclError:
                 break
         return False

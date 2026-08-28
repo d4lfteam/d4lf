@@ -213,7 +213,7 @@ class ConfigTabMixin:
             )
         elif isinstance(config_value, enum.StrEnum):
             enum_type = type(config_value)
-            options = list(enum_type)
+            options = cast("list[SettingValue]", list(enum_type))
 
             def on_changed(new_text: str) -> None:
                 self._save_setting_value(
@@ -235,7 +235,7 @@ class ConfigTabMixin:
             else:
                 parameter_value_widget = IgnoreScrollWheelComboBox()
                 with QSignalBlocker(parameter_value_widget):
-                    parameter_value_widget.addItems(options)
+                    parameter_value_widget.addItems([str(option) for option in options])
                     parameter_value_widget.setCurrentText(config_value)
                 parameter_value_widget.currentTextChanged.connect(on_changed)
         elif isinstance(config_value, bool):

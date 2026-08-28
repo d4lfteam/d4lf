@@ -1,6 +1,6 @@
 import tkinter as tk
 from contextlib import suppress
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from src.paragon.overlay.contracts import BuildRow, OverlayContract
 from src.paragon.overlay.helpers import tk_btn, tk_lbl
@@ -40,6 +40,10 @@ class OverlayPopupBuildMixin(OverlayContract):
         lf = tk.Frame(cv, bg=CARD_BG)
         wid = cv.create_window((0, 0), window=lf, anchor="nw")
 
+        def _select_and_close(idx: int) -> None:
+            self._select_build(idx)
+            self._close_build_dropdown()
+
         # Keep the canvas scroll region and embedded frame width synchronized with
         # the real content size.
         lf.bind("<Configure>", lambda *_: cv.configure(scrollregion=cv.bbox("all")))
@@ -72,7 +76,7 @@ class OverlayPopupBuildMixin(OverlayContract):
                     tk_btn(
                         lf,
                         text=str(b.get("name") or "Unknown Build"),
-                        cmd=lambda idx=i: (self._select_build(idx), self._close_build_dropdown()),
+                        cmd=lambda idx=i: _select_and_close(idx),
                         bg=SELECT_BG if act else CARD_BG,
                         fg=GOLD if act else TEXT,
                         anchor="w",
@@ -99,7 +103,7 @@ class OverlayPopupBuildMixin(OverlayContract):
         s = self._cfg.ui_scale
         c = tk.Frame(host, bg=CARD_BG, padx=int(14 * s), pady=int(10 * s))
         c.pack(fill="both", expand=True)
-        imgs: dict[bool, tk.PhotoImage | None] = getattr(self, "_lock_img_cache", {})
+        imgs = cast("dict[bool, tk.PhotoImage | None]", getattr(self, "_lock_img_cache", {}))
 
         def _row(
             txt: str, img: tk.PhotoImage | None, lbl_txt: str, cmd: Callable[[], None]
@@ -126,15 +130,22 @@ class OverlayPopupBuildMixin(OverlayContract):
             lbl.pack(side="left", padx=(int(8 * s), int(24 * s)))
             return b, lbl
 
+        def _run_and_refresh(action: Callable[[], None]) -> Callable[[], None]:
+            def _run() -> None:
+                action()
+                _ref()
+
+            return _run
+
         btn_lock, lbl_lock = _row(
             "🔒" if self._cfg.grid_locked else "🔓",
             imgs.get(self._cfg.grid_locked),
             "Grid locked",
-            lambda: (self._toggle_grid_lock(), _ref()),
+            _run_and_refresh(self._toggle_grid_lock),
         )
-        btn_gold, lbl_gold = _row("★", None, "Golden frames", lambda: (self._toggle_gold_frames(), _ref()))
+        btn_gold, lbl_gold = _row("★", None, "Golden frames", _run_and_refresh(self._toggle_gold_frames))
         _row("↻", None, "Reload profiles", self._reload_profiles)
-        _row("↺", None, "Reset grid defaults", lambda: (self._reset_grid_defaults(), _ref()))
+        _row("↺", None, "Reset grid defaults", _run_and_refresh(self._reset_grid_defaults))
 
         tk.Frame(c, bg=MUTED, height=1).pack(fill="x", pady=int(6 * s))
 
@@ -144,7 +155,7 @@ class OverlayPopupBuildMixin(OverlayContract):
         btn_zm = tk_btn(
             zr,
             text="−",
-            cmd=lambda: (self._zoom_grid(-1), _ref()),
+            cmd=_run_and_refresh(lambda: self._zoom_grid(-1)),
             font=("Segoe UI", int(FS_ZOOM_BTN * s), "bold"),
             padx=int(8 * s),
             pady=int(2 * s),
@@ -155,7 +166,7 @@ class OverlayPopupBuildMixin(OverlayContract):
         btn_zp = tk_btn(
             zr,
             text="+",
-            cmd=lambda: (self._zoom_grid(1), _ref()),
+            cmd=_run_and_refresh(lambda: self._zoom_grid(1)),
             font=("Segoe UI", int(FS_ZOOM_BTN * s), "bold"),
             padx=int(8 * s),
             pady=int(2 * s),
@@ -180,7 +191,7 @@ class OverlayPopupBuildMixin(OverlayContract):
         tk_btn(
             r0,
             text="↑",
-            cmd=lambda: (self._move_grid(0, -1), _ref()),
+            cmd=_run_and_refresh(lambda: self._move_grid(0, -1)),
             font=("Segoe UI", int(FS_SETTINGS_ICON * s), "bold"),
             width=2,
             pady=int(2 * s),
@@ -192,7 +203,7 @@ class OverlayPopupBuildMixin(OverlayContract):
         tk_btn(
             r1,
             text="←",
-            cmd=lambda: (self._move_grid(-1, 0), _ref()),
+            cmd=_run_and_refresh(lambda: self._move_grid(-1, 0)),
             font=("Segoe UI", int(FS_SETTINGS_ICON * s), "bold"),
             width=2,
             pady=int(2 * s),
@@ -201,7 +212,7 @@ class OverlayPopupBuildMixin(OverlayContract):
         tk_btn(
             r1,
             text="→",
-            cmd=lambda: (self._move_grid(1, 0), _ref()),
+            cmd=_run_and_refresh(lambda: self._move_grid(1, 0)),
             font=("Segoe UI", int(FS_SETTINGS_ICON * s), "bold"),
             width=2,
             pady=int(2 * s),
@@ -213,7 +224,7 @@ class OverlayPopupBuildMixin(OverlayContract):
         tk_btn(
             r2,
             text="↓",
-            cmd=lambda: (self._move_grid(0, 1), _ref()),
+            cmd=_run_and_refresh(lambda: self._move_grid(0, 1)),
             font=("Segoe UI", int(FS_SETTINGS_ICON * s), "bold"),
             width=2,
             pady=int(2 * s),

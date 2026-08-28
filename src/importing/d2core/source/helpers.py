@@ -38,11 +38,12 @@ def has_type(selected: list[tuple[int, Mapping[str, JsonValue]]], item_type: str
 
 
 def decode_body(value: str | Mapping[str, JsonValue]) -> Mapping[str, JsonValue]:
+    parsed: JsonValue = value
     if isinstance(value, str):
         try:
-            value = json.loads(value)
+            parsed = cast("JsonValue", json.loads(value))
         except json.JSONDecodeError as error:
             raise D2CoreImportError(SCHEMA_DRIFT, "The d2core response body was not valid JSON") from error
-    if not isinstance(value, Mapping):
+    if not isinstance(parsed, Mapping):
         raise D2CoreImportError(SCHEMA_DRIFT, "The d2core response body was not an object")
-    return cast("Mapping[str, JsonValue]", value)
+    return cast("Mapping[str, JsonValue]", parsed)

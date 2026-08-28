@@ -64,7 +64,7 @@ class Publisher:
         return cls._instance
 
     def find_item(self) -> None:
-        local_cache = []
+        local_cache: list[str] = []
         while True:
             data = fix_data(_DATA_QUEUE.get())
             if "gold" in data.lower() or "experience" in data.lower():

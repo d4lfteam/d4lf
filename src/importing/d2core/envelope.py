@@ -112,7 +112,7 @@ def _parse_envelope(value: JsonValue) -> _Envelope:
     parsed: JsonValue = value
     if isinstance(parsed, str):
         try:
-            parsed = json.loads(parsed)
+            parsed = cast("JsonValue", json.loads(parsed))
         except json.JSONDecodeError:
             return {}, None, None, None, None
     outer = _mapping(parsed)

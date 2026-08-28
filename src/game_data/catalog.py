@@ -22,7 +22,7 @@ def _is_string_map(value: JsonValue) -> TypeGuard[dict[str, str]]:
 
 def _load_string_map(path: pathlib.Path) -> dict[str, str]:
     with path.open(encoding="utf-8") as file:
-        data: JsonValue = json.load(file)
+        data = cast("JsonValue", json.load(file))
     if not _is_string_map(data):
         msg = f"Expected a JSON object containing only string keys and values: {path}"
         raise ValueError(msg)

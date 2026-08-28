@@ -50,8 +50,9 @@ class _FakeListener:
         self._on_release(key)
 
 
+@pytest.mark.usefixtures("setup")
 class TestGlobalHotkeyRegistry:
-    @pytest.fixture(autouse=True)
+    @pytest.fixture
     def setup(self, mocker: MockerFixture) -> None:
         _FakeListener.instances = []
         mocker.patch.object(hotkeys.keyboard, "Listener", _FakeListener)

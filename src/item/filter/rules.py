@@ -48,18 +48,16 @@ class LoadedRules:
     @property
     def has_profile_rules(self) -> bool:
         """Whether any loaded profile section can affect item evaluation."""
-        return any(
-            (
-                self.affix_filters,
-                self.aspect_upgrade_filters,
-                self.paragon_filters,
-                self.global_unique_filters,
-                self.seal_filters,
-                self.charm_filters,
-                self.sigil_filters,
-                self.tribute_filters,
-            )
-        )
+        return any((
+            self.affix_filters,
+            self.aspect_upgrade_filters,
+            self.paragon_filters,
+            self.global_unique_filters,
+            self.seal_filters,
+            self.charm_filters,
+            self.sigil_filters,
+            self.tribute_filters,
+        ))
 
 
 @dataclass(frozen=True)

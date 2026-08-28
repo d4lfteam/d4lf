@@ -65,8 +65,8 @@ def main(d4data_dir: Path) -> None:
             with Path(json_file).open(encoding="utf-8") as file:
                 data = json.load(file)
                 name_idx, _ = (0, 1) if data["arStrings"][0]["szLabel"] == "Name" else (1, 0)
-                tribute_name: str = (
-                    data["arStrings"][name_idx]["szText"].lower().strip().replace("’", "").replace("'", "")
+                tribute_name: str = cast(
+                    "str", data["arStrings"][name_idx]["szText"].lower().strip().replace("’", "").replace("'", "")
                 )
                 tribute_dict[tribute_name.replace(" ", "_").replace("(", "").replace(")", "")] = tribute_name
 

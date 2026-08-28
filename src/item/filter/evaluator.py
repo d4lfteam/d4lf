@@ -32,11 +32,7 @@ LOGGER = logging.getLogger(__name__)
 class FilterEvaluator(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, FilterContext):
     """Evaluate one item against a complete rules and settings snapshot."""
 
-    def __init__(
-        self,
-        rules: LoadedRules | None = None,
-        evaluation_settings: EvaluationSettings | None = None,
-    ) -> None:
+    def __init__(self, rules: LoadedRules | None = None, evaluation_settings: EvaluationSettings | None = None) -> None:
         self._rules = rules or LoadedRules.empty()
         self._evaluation_settings = evaluation_settings or EvaluationSettings()
 
@@ -178,7 +174,9 @@ class FilterEvaluator(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMi
         elif item.rarity == ItemRarity.Unique:
             result = self._check_global_unique_filter(item)
         elif item.rarity == ItemRarity.Mythic:
-            result = FilterResult(keep=True, matched=[MatchedFilter(profile=MYTHICS_ALWAYS_KEPT_LABEL, aspect_match=True)])
+            result = FilterResult(
+                keep=True, matched=[MatchedFilter(profile=MYTHICS_ALWAYS_KEPT_LABEL, aspect_match=True)]
+            )
         if not result.keep:
             return self._check_cosmetic(item)
         return result
