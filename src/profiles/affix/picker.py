@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.game_data import ItemType, is_weapon
+from src.game_data import GameCatalog, ItemType, is_weapon
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
@@ -66,7 +66,7 @@ class ItemTypePicker(QDialog):
         content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         for item_type in item_types:
-            checkbox = QCheckBox(item_type.value)
+            checkbox = QCheckBox(GameCatalog().item_type_label(item_type))
             checkbox.setChecked(item_type in selected_item_types)
             self.checkboxes[item_type] = checkbox
             content_layout.addWidget(checkbox)

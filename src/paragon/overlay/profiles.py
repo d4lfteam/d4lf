@@ -1,8 +1,9 @@
-from src.paragon import data as _data
-from src.paragon.data import _resolve_build_index, load_builds_from_path
-from src.paragon.shared import LOGGER, OverlayContract
+import logging
 
-globals().update({name: getattr(_data, name) for name in _data.__all__})
+from src.paragon.data import _resolve_build_index, load_builds_from_path
+from src.paragon.overlay.contracts import OverlayContract
+
+LOGGER = logging.getLogger(__name__)
 
 
 class OverlayUIMixin(OverlayContract):
@@ -24,5 +25,5 @@ class OverlayUIMixin(OverlayContract):
             self._refresh_lists()
             self.redraw()
             self._persist_state()
-        except Exception:  # ruff:ignore[blind-except] - preserve profile reload fallback
+        except Exception:
             LOGGER.exception("Failed to reload profiles")

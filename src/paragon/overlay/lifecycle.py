@@ -1,10 +1,15 @@
+import logging
 from contextlib import suppress
+from typing import TYPE_CHECKING, cast
 
-from src.paragon import data as _data
 from src.paragon.data import _save_overlay_settings
-from src.paragon.shared import _CURRENT_OVERLAY, _OVERLAY_LOCK, LOGGER, OverlayContract
+from src.paragon.overlay import state as overlay_state
+from src.paragon.overlay.contracts import OverlayContract
 
-globals().update({name: getattr(_data, name) for name in _data.__all__})
+LOGGER = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from src.paragon.overlay.controller import ParagonOverlay
 
 
 class OverlayLifecycleMixin(OverlayContract):
@@ -20,10 +25,7 @@ class OverlayLifecycleMixin(OverlayContract):
         finally:
             if self._on_close:
                 self._on_close()
-            with _OVERLAY_LOCK:
-                global _CURRENT_OVERLAY
-                if _CURRENT_OVERLAY is self:
-                    _CURRENT_OVERLAY = None
+            overlay_state.clear_overlay(cast("ParagonOverlay", self))
 
     def _persist_state(self) -> None:
         """Write the overlay's current user-facing state back to params.ini."""
@@ -45,5 +47,5 @@ class OverlayLifecycleMixin(OverlayContract):
                 "grid_locked": bool(self._cfg.grid_locked),
                 "gold_frames": bool(getattr(self._cfg, "gold_frames", False)),
             })
-        except Exception:  # ruff:ignore[blind-except] - preserve persistence fallback
+        except Exception:
             LOGGER.debug("Failed to persist overlay state", exc_info=True)

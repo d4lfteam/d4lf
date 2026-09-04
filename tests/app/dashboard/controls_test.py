@@ -13,12 +13,12 @@ from src.app.dashboard.controls import ActivityLogControlsMixin
 
 
 def test_select_all_checks_every_profile_and_saves_names(mocker: MockerFixture) -> None:
-    first_mock: Mock = mocker.Mock()
-    second_mock: Mock = mocker.Mock()
+    first_mock = cast("Mock", mocker.Mock())
+    second_mock = cast("Mock", mocker.Mock())
     first, second = cast("CheckmarkCheckBox", first_mock), cast("CheckmarkCheckBox", second_mock)
     controls = cast("ActivityLogWidget", ActivityLogControlsMixin())
     controls._checkboxes = {"alpha": first, "beta": second}
-    save_active_list: Mock = mocker.Mock()
+    save_active_list = cast("Mock", mocker.Mock())
     controls._save_active_list = save_active_list
 
     controls._select_all()

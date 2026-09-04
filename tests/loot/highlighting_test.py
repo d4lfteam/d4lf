@@ -1,5 +1,5 @@
 import queue
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, cast
 
 from src.loot.highlighting import VisionModeWithHighlighting
 
@@ -24,7 +24,7 @@ def _new_highlighting_mode() -> _HighlightingMode:
     for cell in closure:
         implementation = cell.cell_contents
         if isinstance(implementation, type):
-            implementation_type: type[_HighlightingMode] = implementation
+            implementation_type = cast("type[_HighlightingMode]", implementation)
             return object.__new__(implementation_type)
     raise AssertionError
 

@@ -225,7 +225,26 @@ def _get_item_rarity(data: str) -> ItemRarity | None:
 
 
 def _get_item_type(data: str) -> ItemType | None:
-    return next((it for it in ItemType if it.value == data.lower()), None)
+    return GameCatalog().item_type_from_text(data)
+
+
+def _item_type_text_matches(data: str, item_type: ItemType) -> bool:
+    normalized = data.strip().casefold()
+    return any(normalized == candidate.strip().casefold() for candidate in GameCatalog().item_type_names(item_type))
+
+
+def _has_item_type_suffix(data: str, item_type: ItemType) -> bool:
+    normalized = data.strip().casefold()
+    return any(
+        normalized.endswith(candidate.strip().casefold()) for candidate in GameCatalog().item_type_names(item_type)
+    )
+
+
+def _has_item_type_prefix(data: str, item_type: ItemType) -> bool:
+    normalized = data.strip().casefold()
+    return any(
+        normalized.startswith(candidate.strip().casefold()) for candidate in GameCatalog().item_type_names(item_type)
+    )
 
 
 def _is_codex_upgrade(tts_section: list[str]) -> bool:

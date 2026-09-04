@@ -188,34 +188,41 @@ def _add_sigil_affixes_from_tts(tts_section: list[str], item: Item) -> Item:
 
 def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
     item = Item(original_name=tts_item[0])
-    if tts_item[1].endswith(ItemIdentifiers.COMPASS.value):
+    if _has_item_type_suffix(tts_item[1], ItemType.Compass):
         return _update_item_object(item, rarity=ItemRarity.Common, item_type=ItemType.Compass)
-    if ItemIdentifiers.NIGHTMARE_SIGIL.value.upper() in tts_item[0].upper():
+    if (
+        _has_item_type_prefix(tts_item[0], ItemType.Sigil)
+        or ItemIdentifiers.NIGHTMARE_SIGIL.value.upper() in tts_item[0].upper()
+    ):
         if "Nightmare Sigil is used" in tts_item[0]:  # This is actually the crafting screen
             return None
         if "bloodied" in tts_item[1].lower():
             item.seasonal_attribute = SeasonalAttribute.bloodied
         return _update_item_object(item, item_type=ItemType.Sigil)
-    if tts_item[0].startswith(ItemIdentifiers.ESCALATION_SIGIL.value):
+    if _has_item_type_prefix(tts_item[0], ItemType.EscalationSigil) or tts_item[0].startswith(
+        ItemIdentifiers.ESCALATION_SIGIL.value
+    ):
         return _update_item_object(item, item_type=ItemType.EscalationSigil)
     metadata_parts = tts_item[1].split(" ")
     descriptor_parts = metadata_parts[1:]
-    if any(part.lower() == ItemType.Tribute.value for part in descriptor_parts):
+    if _has_item_type_suffix(" ".join(descriptor_parts), ItemType.Tribute) or any(
+        _item_type_text_matches(part, ItemType.Tribute) for part in descriptor_parts
+    ):
         item.item_type = ItemType.Tribute
         item.rarity = _get_item_rarity(metadata_parts[0])
         item.name = correct_name(" ".join(descriptor_parts))
         return item
     if tts_item[0].startswith(ItemIdentifiers.WHISPERING_KEY.value):
         return _update_item_object(item, item_type=ItemType.Consumable)
-    if any(tts_item[1].lower().endswith(x) for x in ["summoning"]):
+    if _has_item_type_suffix(tts_item[1], ItemType.Material) or tts_item[1].lower().endswith("summoning"):
         return _update_item_object(item, item_type=ItemType.Material)
-    if any(tts_item[1].lower().endswith(x) for x in ["gem"]):
+    if _has_item_type_suffix(tts_item[1], ItemType.Gem):
         return _update_item_object(item, item_type=ItemType.Gem)
-    if any(tts_item[1].lower().endswith(x) for x in ["whispering wood"]):
+    if _has_item_type_suffix(tts_item[1], ItemType.WhisperingWood):
         return _update_item_object(item, item_type=ItemType.WhisperingWood)
-    if any(tts_item[1].lower().startswith(x) for x in ["cosmetic"]):
+    if _has_item_type_prefix(tts_item[1], ItemType.Cosmetic) or tts_item[1].lower().startswith("cosmetic"):
         return _update_item_object(item, item_type=ItemType.Cosmetic)
-    if any(tts_item[1].lower().endswith(x) for x in ["boss key"]):
+    if _has_item_type_suffix(tts_item[1], ItemType.LairBossKey) or tts_item[1].lower().endswith("boss key"):
         return _update_item_object(item, item_type=ItemType.LairBossKey)
     if "rune of" in tts_item[1].lower():
         item.item_type = ItemType.Rune
@@ -224,16 +231,16 @@ def _create_base_item_from_tts(tts_item: list[str]) -> Item | None:
         return item
     if any("Cost : " in value or "Cost:" in value for value in tts_item):
         item.is_in_shop = True
-    if any(tts_item[1].lower().endswith(x) for x in ["cache"]):
+    if _has_item_type_suffix(tts_item[1], ItemType.Cache):
         item.item_type = ItemType.Cache
         return item
-    if tts_item[1].lower().endswith("elixir"):
+    if _has_item_type_suffix(tts_item[1], ItemType.Elixir):
         item.item_type = ItemType.Elixir
-    elif tts_item[1].lower().endswith("incense"):
+    elif _has_item_type_suffix(tts_item[1], ItemType.Incense):
         item.item_type = ItemType.Incense
-    elif "temper manual" in tts_item[1].lower():
+    elif _has_item_type_suffix(tts_item[1], ItemType.TemperManual):
         item.item_type = ItemType.TemperManual
-    elif any(tts_item[1].lower().endswith(x) for x in ["consumable", "scroll"]):
+    elif _has_item_type_suffix(tts_item[1], ItemType.Consumable) or tts_item[1].lower().endswith("scroll"):
         item.item_type = ItemType.Consumable
     if is_consumable(item.item_type):
         search_string_split = tts_item[1].split(" ")
@@ -279,6 +286,9 @@ from src.perception.parser.details import (  # ruff:ignore[module-import-not-at-
     _get_aspect_or_set_from_tts_section,
     _get_item_rarity,
     _get_item_type,
+    _has_item_type_prefix,
+    _has_item_type_suffix,
     _is_known_affix_text,
+    _item_type_text_matches,
     _update_item_object,
 )

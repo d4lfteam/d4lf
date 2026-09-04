@@ -26,7 +26,7 @@ repo = "local"
 [[repos]]
 hooks = [{ id = "uv-lock", priority = 4294967294 }]
 repo = "https://github.com/astral-sh/uv-pre-commit"
-rev = "0.12.4"
+rev = "0.12.7"
 
 [[repos]]
 hooks = [
@@ -55,7 +55,7 @@ rev = "v2.16.0"
 [[repos]]
 hooks = [{ id = "clang-format", priority = 4294967294, files = '\.(cpp|h)$' }]
 repo = "https://github.com/pre-commit/mirrors-clang-format"
-rev = "v22.1.8"
+rev = "v23.1.0"
 
 [[repos]]
 hooks = [
@@ -71,9 +71,9 @@ hooks = [
   { id = "ruff-check", priority = 4294967293, args = ["--fix"] },
 ]
 repo = "https://github.com/astral-sh/ruff-pre-commit"
-rev = "v0.16.3"
+rev = "v0.16.5"
 
 [[repos]]
 hooks = [{ id = "tombi-format", exclude = "^uv.lock", priority = 4294967294 }]
 repo = "https://github.com/tombi-toml/tombi-pre-commit"
-rev = "v1.4.0"
+rev = "v1.4.1"

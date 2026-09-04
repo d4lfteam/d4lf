@@ -3,12 +3,12 @@ from threading import Event, Thread
 from types import SimpleNamespace
 from typing import cast
 
+import numpy as np
 import pytest
 
 if typing.TYPE_CHECKING:
     from unittest.mock import Mock
 
-    import numpy as np
     from pytest_mock import MockerFixture
 
     from src.loot.highlighting import VisionModeWithHighlighting
@@ -94,7 +94,7 @@ def test_filter_result_queues_only_normal_highlighting_results(
     worker.request_no_match_box_mock = mocker.Mock()
     worker.request_empty_outline_mock = mocker.Mock()
     worker.request_codex_upgrade_box_mock = mocker.Mock()
-    worker.possible_centers = worker_module.np.array([[0, 0]])
+    worker.possible_centers = np.array([[0, 0]])
     worker.possible_vendor_centers = worker.possible_centers
 
     detection = SimpleNamespace(found=True, cropped_descr=object(), crop_roi=(0, 0, 10, 10))

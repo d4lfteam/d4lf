@@ -152,7 +152,7 @@ class _FakePaperdollItem(WebElement):
         self._icon = icon
 
     @override
-    def find_elements(self, by: str = By.ID, value: str | None = None) -> list[WebElement]:
+    def find_elements(self, by: str | By = By.ID, value: str | None = None) -> list[WebElement]:
         if value is None:
             value = str(by)
         if value == d4builds_constants.PAPERDOLL_ITEM_SLOT_CSS:
@@ -190,7 +190,7 @@ def test_get_weapon_paperdoll_icons_maps_slot_to_icon_without_hovering(mocker: M
             pass
 
         @override
-        def find_elements(self, by: str | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
+        def find_elements(self, by: str | By | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
             if value is None:
                 value = str(by)
             assert value == d4builds_constants.PAPERDOLL_WEAPON_ITEM_CSS
@@ -212,7 +212,7 @@ def test_get_weapon_paperdoll_icons_renames_2h_weapon_slot() -> None:
             pass
 
         @override
-        def find_elements(self, by: str | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
+        def find_elements(self, by: str | By | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
             if value is None:
                 value = str(by)
                 assert value == d4builds_constants.PAPERDOLL_WEAPON_ITEM_CSS

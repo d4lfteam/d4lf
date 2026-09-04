@@ -1,18 +1,17 @@
+import logging
 import sys
 import tkinter as tk
 from contextlib import suppress
 
 from src.desktop import is_alive
 from src.paragon.data import _clamp_int, _format_build_display_name, format_board_display_text
-
-# fmt: off
-from src.paragon.shared import CARD_BG, FS_BOARD_CARD, FS_GRID_COLOR, GOLD, LOGGER, SELECT_BG, TEXT, TRANSPARENT_KEY, OverlayContract, _tk_lbl  # isort: skip
-# fmt: on
-from src.paragon import data as _data
+from src.paragon.overlay.contracts import OverlayContract
+from src.paragon.overlay.helpers import tk_lbl
+from src.paragon.overlay.theme import CARD_BG, FS_BOARD_CARD, FS_GRID_COLOR, GOLD, SELECT_BG, TEXT, TRANSPARENT_KEY
 from src.paragon.transform import GRID, NODES_LEN, nodes_to_grid
 from src.perception import game_window_roi
 
-globals().update({name: getattr(_data, name) for name in _data.__all__})
+LOGGER = logging.getLogger(__name__)
 
 if sys.platform == "win32":
     import win32con
@@ -78,7 +77,7 @@ class OverlayGridMixin(OverlayContract):
                 highlightcolor=acc,
             )
             c.pack(fill="x", pady=8)
-            lbl = _tk_lbl(
+            lbl = tk_lbl(
                 c,
                 text=txt,
                 fg=fg,

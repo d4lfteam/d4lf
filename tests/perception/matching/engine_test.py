@@ -67,18 +67,14 @@ def test_search_all_stops_when_condition_is_met() -> None:
     empty = _read_test_image("stash_slot_empty.png")
 
     result = matching.search(
-        empty,
-        image,
-        threshold=0.98,
-        mode="all",
-        do_multi_process=False,
-        stop_condition=lambda matches: len(matches) >= 2,
+        empty, image, threshold=0.98, mode="all", use_parallel=False, stop_condition=lambda matches: len(matches) >= 2
     )
 
     assert len(result.matches) == 2
 
 
-def test_parallel_stop_condition_preserves_template_order(mocker) -> None:
+@pytest.mark.parametrize("mode", ["all", "first"])
+def test_parallel_stop_condition_preserves_template_order(mocker, mode: str) -> None:
     """A fast lower-priority template must not win a parallel early-stop search."""
     correct_template = Template(name="correct")
     false_template = Template(name="false")
@@ -98,20 +94,34 @@ def test_parallel_stop_condition_preserves_template_order(mocker) -> None:
 
     mocker.patch("src.perception.matching.engine._get_cv_result", side_effect=fake_get_cv_result)
     executor = ThreadPoolExecutor(max_workers=2)
-    mocker.patch("src.perception.matching.engine.TP", executor)
 
     try:
         result = matching.search(
             ref=["correct", "false"],
             inp_img=np.zeros((10, 10, 3), dtype=np.uint8),
             threshold=0.8,
-            mode="all",
+            mode=mode,
             stop_condition=lambda matches: len(matches) >= 1,
+            _executor=executor,
         )
     finally:
         executor.shutdown(wait=True)
 
     assert [match.name for match in result.matches] == ["correct"]
+
+
+def test_parallel_polling_reuses_one_owned_executor(mocker) -> None:
+    templates = [Template(name="first"), Template(name="second")]
+    mocker.patch("src.perception.matching.engine._process_template_refs", return_value=templates)
+    mocker.patch("src.perception.matching.engine._find_template_matches", return_value=[])
+    executor_type = mocker.patch("src.perception.matching.engine.ThreadPoolExecutor", wraps=ThreadPoolExecutor)
+    clock = iter((0.0, 0.0, 0.5, 1.0))
+    mocker.patch("src.perception.matching.engine.time.monotonic", side_effect=clock)
+
+    result = matching.search(ref=["first", "second"], inp_img=np.zeros((2, 2, 3), dtype=np.uint8), timeout=1)
+
+    assert not result.success
+    assert executor_type.call_count == 1
 
 
 def test_process_template_refs_preserves_transparent_template_mask() -> None:
@@ -135,7 +145,7 @@ def test_search_rejects_missing_named_roi(monkeypatch) -> None:
     class EmptyResources:
         roi = EmptyRoi()
 
-    monkeypatch.setattr(matching, "get_ui_coordinates", lambda: EmptyResources())
+    monkeypatch.setattr("src.perception.matching.resources.get_ui_coordinates", lambda: EmptyResources())
 
     with pytest.raises(ValueError, match="Invalid roi key: missing"):
         matching.search(template, image, threshold=0.6, roi="missing")

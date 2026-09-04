@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from src.game_data import ItemRarity, SigilRules
 from src.item.models import FilterResult, MatchedFilter
 from src.profiles import CharmFilterModel, SigilPriority
-from src.settings import CosmeticFilterType, get_settings
+from src.settings import CosmeticFilterType
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -17,11 +17,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 class FilterSpecialMixin:
-    @staticmethod
-    def _check_cosmetic(item: Item) -> FilterResult:
+    def _check_cosmetic(self: FilterContext, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
-        if get_settings().general.handle_cosmetics == CosmeticFilterType.junk or (
-            get_settings().general.handle_cosmetics == CosmeticFilterType.ignore and not item.cosmetic_upgrade
+        if self.evaluation_settings.handle_cosmetics == CosmeticFilterType.junk or (
+            self.evaluation_settings.handle_cosmetics == CosmeticFilterType.ignore and not item.cosmetic_upgrade
         ):
             return res
         if not item.cosmetic_upgrade:

@@ -1,3 +1,4 @@
+import logging
 import time
 import tkinter as tk
 from contextlib import suppress
@@ -5,22 +6,33 @@ from contextlib import suppress
 from src.automation import is_self_foreground, is_window_foreground
 from src.desktop import is_alive, post_to_ui_thread
 from src.paragon.data import _clamp_int
-
-# fmt: off
-from src.paragon.shared import CARD_BG, FS_BUTTON, FS_CARD_FRAME, FS_GRID_FRAME, FS_MODE_LABEL, FS_PANEL_TITLE, GOLD, LOGGER, MUTED, NODE_BLUE, NODE_GREEN, TRANSPARENT_KEY, OverlayContract, _CLOSE_REQUESTED, _TK_BASELINE_SCALING, _dpi_scale_for_widget, _tk_btn, _tk_lbl  # isort: skip
-# fmt: on
-from src.paragon import data as _data
+from src.paragon.overlay import state as overlay_state
+from src.paragon.overlay.contracts import OverlayContract
+from src.paragon.overlay.helpers import TK_BASELINE_SCALING, dpi_scale_for_widget, tk_btn, tk_lbl
+from src.paragon.overlay.theme import (
+    CARD_BG,
+    FS_BUTTON,
+    FS_CARD_FRAME,
+    FS_GRID_FRAME,
+    FS_MODE_LABEL,
+    FS_PANEL_TITLE,
+    GOLD,
+    MUTED,
+    NODE_BLUE,
+    NODE_GREEN,
+    TRANSPARENT_KEY,
+)
 from src.settings import get_settings
 
-globals().update({name: getattr(_data, name) for name in _data.__all__})
+LOGGER = logging.getLogger(__name__)
 
 
 class OverlayUIMixin(OverlayContract):
     def _apply_dpi_scaling(self) -> None:
         """Apply DPI-aware sizing before widgets are created."""
         with suppress(Exception):
-            self.tk.call("tk", "scaling", _TK_BASELINE_SCALING)
-        scale = _dpi_scale_for_widget(self) * float(self._cfg.ui_scale or 1.0)
+            self.tk.call("tk", "scaling", TK_BASELINE_SCALING)
+        scale = dpi_scale_for_widget(self) * float(self._cfg.ui_scale or 1.0)
         self._cfg.ui_scale = eff = max(0.75, min(4.0, float(scale)))
 
         # The panel width always scales with DPI. Cell sizes only scale
@@ -36,12 +48,10 @@ class OverlayUIMixin(OverlayContract):
         accent = self._accent_frame_color()
         outer = tk.Frame(self, bg=TRANSPARENT_KEY)
         outer.pack(fill="both", expand=True)
-
         # The canvas owns all grid drawing. The left panel is a separate Frame
         # placed on top of the same transparent outer container.
         self.canvas = tk.Canvas(outer, highlightthickness=0, bg=TRANSPARENT_KEY)
         self.canvas.pack(fill="both", expand=True)
-
         self.left = tk.Frame(outer, bg=TRANSPARENT_KEY)
         self.left.place(x=0, y=0, width=self._cfg.panel_w, relheight=1.0)
 
@@ -58,13 +68,11 @@ class OverlayUIMixin(OverlayContract):
             padx=int(10 * self._cfg.ui_scale),
             pady=(int(10 * self._cfg.ui_scale), int(8 * self._cfg.ui_scale)),
         )
-
         title_row = tk.Frame(self.card_title, bg=CARD_BG)
         title_row.pack(
             fill="both", expand=True, padx=int(12 * self._cfg.ui_scale), pady=(0, int(4 * self._cfg.ui_scale))
         )
-
-        self.lbl_title = _tk_lbl(
+        self.lbl_title = tk_lbl(
             title_row,
             font=("Segoe UI", int(FS_PANEL_TITLE * self._cfg.ui_scale), "bold"),
             anchor="w",
@@ -72,11 +80,9 @@ class OverlayUIMixin(OverlayContract):
             justify="left",
         )
         self.lbl_title.pack(side="left", fill="x", expand=True)
-
         mode_frame = tk.Frame(self.card_title, bg=CARD_BG)
         mode_frame.pack(fill="x", padx=int(12 * self._cfg.ui_scale))
-
-        self.lbl_mode = _tk_lbl(
+        self.lbl_mode = tk_lbl(
             mode_frame,
             text="Compact View" if self._cfg.is_collapsed else "Full View",
             fg=MUTED,
@@ -85,7 +91,7 @@ class OverlayUIMixin(OverlayContract):
         )
         self.lbl_mode.pack(side="left")
 
-        self.btn_view_switch = _tk_btn(
+        self.btn_view_switch = tk_btn(
             mode_frame,
             text="⤢" if self._cfg.is_collapsed else "⤡",
             cmd=self._toggle_collapsed_mode,
@@ -104,11 +110,9 @@ class OverlayUIMixin(OverlayContract):
             highlightcolor=accent,
         )
         self.card_buttons.pack(fill="x", padx=int(10 * self._cfg.ui_scale), pady=(0, int(8 * self._cfg.ui_scale)))
-
         btn_cont = tk.Frame(self.card_buttons, bg=CARD_BG)
         btn_cont.pack(expand=True, fill="both", padx=int(12 * self._cfg.ui_scale), pady=int(8 * self._cfg.ui_scale))
-
-        self.btn_settings = _tk_btn(
+        self.btn_settings = tk_btn(
             btn_cont,
             text="Settings⚙ ▼",
             cmd=self._show_settings_dropdown,
@@ -118,7 +122,7 @@ class OverlayUIMixin(OverlayContract):
         )
         self.btn_settings.pack(side="left", padx=int(4 * self._cfg.ui_scale))
 
-        self.btn_build_menu = _tk_btn(
+        self.btn_build_menu = tk_btn(
             btn_cont,
             text="Builds ▼",
             cmd=self._show_build_menu,
@@ -153,8 +157,9 @@ class OverlayUIMixin(OverlayContract):
 
     def _poll_close_request(self) -> None:
         """Check for external close requests coming from non-UI threads."""
-        if _CLOSE_REQUESTED.is_set():
-            _CLOSE_REQUESTED.clear()
+        close_requested = overlay_state.close_requested()
+        if close_requested.is_set():
+            close_requested.clear()
             self.close()
             return
         if is_alive(self):
@@ -258,7 +263,7 @@ class OverlayUIMixin(OverlayContract):
             return GOLD
         try:
             return NODE_BLUE if bool(getattr(get_settings().general, "colorblind_mode", False)) else NODE_GREEN
-        except Exception:  # ruff:ignore[blind-except] - preserve color fallback
+        except Exception:
             LOGGER.debug("Failed to determine Paragon overlay accent color.", exc_info=True)
             return NODE_GREEN
 

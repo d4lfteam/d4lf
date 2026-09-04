@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, cast
 from urllib.parse import urlsplit
 
 from src.importing.d2core.envelope import terminal_envelope_code
@@ -38,11 +38,13 @@ def set_page_load_timeout(driver: PageLoadDriver, timeout: float) -> None:
 
 def body_matches_build(body: str, build_id: str) -> bool:
     try:
-        value: JsonValue = json.loads(body)
+        value = cast("JsonValue", json.loads(body))
         if isinstance(value, Mapping):
             data = value.get("data")
             response_data = data.get("response_data") if isinstance(data, Mapping) else None
-            value = json.loads(response_data) if isinstance(response_data, str) else response_data or data
+            value = cast(
+                "JsonValue", json.loads(response_data) if isinstance(response_data, str) else response_data or data
+            )
             build = value.get("data") if isinstance(value, Mapping) else None
             return isinstance(build, Mapping) and str(build.get("_id", build.get("id", ""))) == build_id
     except json.JSONDecodeError, TypeError:

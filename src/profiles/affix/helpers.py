@@ -9,7 +9,8 @@ if TYPE_CHECKING:
 def _item_type_summary(item_types: list[ItemType]) -> str:
     if not item_types:
         return "All item types"
-    return ", ".join(item_type.value for item_type in item_types)
+    catalog = GameCatalog()
+    return ", ".join(catalog.item_type_label(item_type) for item_type in item_types)
 
 
 def get_set_and_base_for_key(key: str, set_list: list[str]) -> tuple[str | None, str]:

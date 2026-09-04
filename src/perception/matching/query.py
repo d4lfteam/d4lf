@@ -3,7 +3,7 @@
 import logging
 import operator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Self, cast
 
 import numpy as np
 
@@ -11,12 +11,14 @@ from src.perception.capture.core import Cam
 from src.perception.image import crop
 from src.perception.polling import run_until_condition
 
+from .config import SearchConfig
 from .engine import search
 from .models import ColorMatch, Rectangle, SearchResult, TemplateReferences
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from .config import SearchMode
 
 LOGGER = logging.getLogger(__name__)
 type SearchArgValue = (
@@ -38,7 +40,16 @@ class SearchArgs:
     mode: str = "first"
     timeout: int = 0
     suppress_debug: bool = True
-    do_multi_process: bool = True
+    use_parallel: bool = True
+
+    @property
+    def do_multi_process(self) -> bool:
+        """Read the former option name while integrations migrate to ``use_parallel``."""
+        return self.use_parallel
+
+    @do_multi_process.setter
+    def do_multi_process(self, value: bool) -> None:
+        self.use_parallel = value
 
     def __call__(self, cls: type[Self]) -> type[Self]:
         cls._search_args = self
@@ -48,21 +59,22 @@ class SearchArgs:
         return self.__dict__
 
     def detect(self, img: np.ndarray | None = None) -> SearchResult:
-        if img is not None:
-            self.inp_img = img
-        elif self.inp_img is None:
-            Cam().grab()
+        search_img = img if img is not None else self.inp_img
+        if search_img is None:
+            search_img = Cam().grab()
         return search(
             ref=self.ref,
-            inp_img=self.inp_img,
-            threshold=self.threshold,
-            roi=self.roi,
-            use_grayscale=self.use_grayscale,
-            color_match=self.color_match,
-            mode=self.mode,
-            timeout=self.timeout,
-            suppress_debug=self.suppress_debug,
-            do_multi_process=self.do_multi_process,
+            inp_img=search_img,
+            config=SearchConfig(
+                threshold=self.threshold,
+                roi=self.roi,
+                use_grayscale=self.use_grayscale,
+                color_match=self.color_match,
+                mode=cast("SearchMode", self.mode),
+                timeout=self.timeout,
+                suppress_debug=self.suppress_debug,
+                use_parallel=self.use_parallel,
+            ),
         )
 
     def is_visible(self, img: np.ndarray | None = None) -> bool:

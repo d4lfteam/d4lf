@@ -1,5 +1,6 @@
 import importlib
 import os
+from typing import cast
 
 import pytest
 
@@ -105,7 +106,7 @@ def test_generate_passes_selected_filename_parts(qapp, importer_settings, monkey
     class FakeThreadPool:
         def start(self, worker) -> None:
             nonlocal captured_config
-            captured_config = worker.request
+            captured_config = cast("ImportRequest", worker.request)
 
     monkeypatch.setattr(importer_window_module, "THREADPOOL", FakeThreadPool())
 
@@ -128,7 +129,7 @@ def test_import_category_choices_persist_and_serialize(qapp, importer_settings, 
     class FakeThreadPool:
         def start(self, worker) -> None:
             nonlocal captured_request
-            captured_request = worker.request
+            captured_request = cast("ImportRequest", worker.request)
 
     monkeypatch.setattr(importer_window_module, "THREADPOOL", FakeThreadPool())
 

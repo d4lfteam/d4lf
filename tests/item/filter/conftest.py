@@ -7,10 +7,9 @@ from types import SimpleNamespace
 from typing import Protocol, cast
 
 import src.item.filter.engine as engine_module
-import src.item.filter.equipment as equipment_module
-import src.item.filter.special as special_module
 from src.item import Affix, Aspect, Item
 from src.item.filter import Filter
+from src.item.filter.rules import LoadedRules
 from src.profiles import ProfileModel
 
 if typing.TYPE_CHECKING:
@@ -62,14 +61,7 @@ def _mapping(value: FixtureValue) -> dict[str, FixtureValue]:
 
 def _create_mocked_filter(mocker: MockerFixture) -> Filter:
     filter_obj = Filter()
-    filter_obj.affix_filters = {}
-    filter_obj.aspect_upgrade_filters = {}
-    filter_obj.paragon_filters = {}
-    filter_obj.global_unique_filters = {}
-    filter_obj.seal_filters = {}
-    filter_obj.charm_filters = {}
-    filter_obj.sigil_filters = {}
-    filter_obj.tribute_filters = {}
+    filter_obj.rules = LoadedRules.empty()
     filter_obj.files_loaded = True
     mocker.patch.object(filter_obj, "_did_files_change", return_value=False)
     return filter_obj
@@ -91,8 +83,6 @@ def _patch_override_settings(mocker, **overrides):
         setattr(general, key, value)
     settings = SimpleNamespace(general=general)
     mocker.patch.object(engine_module, "get_settings", return_value=settings)
-    mocker.patch.object(equipment_module, "get_settings", return_value=settings)
-    mocker.patch.object(special_module, "get_settings", return_value=settings)
     return settings
 
 

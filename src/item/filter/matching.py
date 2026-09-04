@@ -6,11 +6,68 @@ from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect  # ruff:ignore[typing-only-first-party-import]
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from src.item.filter.rules import EvaluationSettings, LoadedRules
     from src.item.models import Item
-    from src.profiles import AffixAspectFilterModel, AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel
+    from src.profiles import (
+        AffixAspectFilterModel,
+        AffixFilterCountModel,
+        AffixFilterModel,
+        AspectUniqueFilterModel,
+        DynamicCharmFilterModel,
+        DynamicItemFilterModel,
+        DynamicSealFilterModel,
+        GlobalUniqueModel,
+        ParagonPayloadModel,
+        SigilFilterModel,
+        TributeFilterModel,
+    )
 
 
 class FilterContext:
+    @property
+    def rules(self) -> LoadedRules:
+        missing_name = "rules"
+        raise AttributeError(missing_name)
+
+    @property
+    def evaluation_settings(self) -> EvaluationSettings:
+        missing_name = "evaluation_settings"
+        raise AttributeError(missing_name)
+
+    @property
+    def affix_filters(self) -> Mapping[str, list[DynamicItemFilterModel]]:
+        return self.rules.affix_filters
+
+    @property
+    def aspect_upgrade_filters(self) -> Mapping[str, list[str]]:
+        return self.rules.aspect_upgrade_filters
+
+    @property
+    def paragon_filters(self) -> Mapping[str, ParagonPayloadModel]:
+        return self.rules.paragon_filters
+
+    @property
+    def global_unique_filters(self) -> Mapping[str, list[GlobalUniqueModel]]:
+        return self.rules.global_unique_filters
+
+    @property
+    def seal_filters(self) -> Mapping[str, list[DynamicSealFilterModel]]:
+        return self.rules.seal_filters
+
+    @property
+    def charm_filters(self) -> Mapping[str, list[DynamicCharmFilterModel]]:
+        return self.rules.charm_filters
+
+    @property
+    def sigil_filters(self) -> Mapping[str, SigilFilterModel]:
+        return self.rules.sigil_filters
+
+    @property
+    def tribute_filters(self) -> Mapping[str, TributeFilterModel]:
+        return self.rules.tribute_filters
+
     def __getattr__(self, name: str) -> NoReturn:
         raise AttributeError(name)
 

@@ -3,10 +3,8 @@ from contextlib import suppress
 from typing import TYPE_CHECKING
 
 from src.desktop import is_alive
-from src.paragon import data as _data
-from src.paragon.shared import CARD_BG, GOLD, TEXT, OverlayContract
-
-globals().update({name: getattr(_data, name) for name in _data.__all__})
+from src.paragon.overlay.contracts import OverlayContract
+from src.paragon.overlay.theme import CARD_BG, GOLD, TEXT
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -20,9 +18,10 @@ class OverlayPopupMixin(OverlayContract):
             if w is parent:
                 return True
             try:
-                w = getattr(w, "master", None)
-                if not isinstance(w, tk.Misc):
+                master = getattr(w, "master", None)
+                if not isinstance(master, tk.Misc):
                     break
+                w = master
             except AttributeError, RuntimeError, tk.TclError:
                 break
         return False

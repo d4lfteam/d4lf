@@ -76,7 +76,7 @@ def _new_fast_mode() -> _FastMode:
     for cell in closure:
         implementation = cell.cell_contents
         if isinstance(implementation, type):
-            implementation_type: type[_FastMode] = implementation
+            implementation_type = typing.cast("type[_FastMode]", implementation)
             return object.__new__(implementation_type)
     raise AssertionError
 

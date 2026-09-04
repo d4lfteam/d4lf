@@ -3,9 +3,10 @@ import threading
 
 import pytest
 
-from src.game_data import GameCatalog
+from src.game_data import GameCatalog, ItemType
 from src.game_data import catalog as catalog_module
 from src.game_data.catalog import _load_string_map
+from src.item import Item, ItemJSONEncoder
 
 
 class _LoaderFailure(BaseException):
@@ -31,6 +32,36 @@ def test_load_string_map_rejects_non_string_maps(tmp_path, payload) -> None:
 def test_catalog_has_expected_data_containers() -> None:
     assert isinstance(GameCatalog.affix_dict, dict)
     assert isinstance(GameCatalog.aspect_list, list)
+
+
+def test_catalog_reload_keeps_item_type_values_canonical() -> None:
+    catalog = GameCatalog()
+    canonical_values = {item_type: item_type.value for item_type in ItemType}
+
+    catalog.load_data()
+
+    assert {item_type: item_type.value for item_type in ItemType} == canonical_values
+
+
+def test_catalog_resolves_item_type_names_values_and_labels(monkeypatch) -> None:
+    catalog = GameCatalog()
+    monkeypatch.setattr(catalog, "item_types_dict", {**catalog.item_types_dict, "Helm": "Casque", "Incense": "Encens"})
+
+    assert catalog.item_type_label(ItemType.Helm) == "Casque"
+    assert catalog.item_type_from_text("Helm") is ItemType.Helm
+    assert catalog.item_type_from_text("helm") is ItemType.Helm
+    assert catalog.item_type_from_text("  casque ") is ItemType.Helm
+    assert catalog.item_type_from_text("encens") is ItemType.Incense
+    assert catalog.item_type_from_text("unknown") is None
+
+
+def test_item_type_serialization_uses_canonical_value_after_catalog_load() -> None:
+    catalog = GameCatalog()
+    catalog.load_data()
+
+    encoded = json.dumps(Item(item_type=ItemType.Incense), cls=ItemJSONEncoder)
+
+    assert '"item_type": "incense"' in encoded
 
 
 def test_catalog_retries_after_failed_initialization(monkeypatch) -> None:
