@@ -16,13 +16,13 @@ DARK_GRAY_BG = "#111111"
 
 if TYPE_CHECKING:
     from src.item import FilterResult
-    from src.loot.highlighting import VisionModeWithHighlighting
+    from src.loot.highlighting import _VisionModeWithHighlighting
     from src.perception import LocatorResult
 
 
 class HighlightingRenderer:
     def draw_rect(
-        self: VisionModeWithHighlighting,
+        self: _VisionModeWithHighlighting,
         canvas: tk.Canvas,
         bullet_width: int,
         loc: tuple[int, int],
@@ -37,7 +37,7 @@ class HighlightingRenderer:
         canvas.create_rectangle(x1, y1, x2, y2, fill=color)
 
     def draw_text(
-        self: VisionModeWithHighlighting,
+        self: _VisionModeWithHighlighting,
         canvas: tk.Canvas,
         text: str,
         color: str,
@@ -96,7 +96,9 @@ class HighlightingRenderer:
         )
         return int(previous_text_y - offset - text_height)
 
-    def create_signal_rect(self: VisionModeWithHighlighting, canvas: tk.Canvas, w: int, thick: int, color: str) -> None:
+    def create_signal_rect(
+        self: _VisionModeWithHighlighting, canvas: tk.Canvas, w: int, thick: int, color: str
+    ) -> None:
         canvas.create_rectangle(0, 0, w, thick * 2, outline="", fill=color)
         steps = int((thick * 20) / 40)
         for i in range(100):
@@ -115,7 +117,7 @@ class HighlightingRenderer:
             canvas.create_rectangle(0, start_y, thick * 2, end_y, fill=color, outline="", stipple=stipple)
             canvas.create_rectangle(w - thick * 2, start_y, w, end_y, fill=color, outline="", stipple=stipple)
 
-    def draw_from_queue(self: VisionModeWithHighlighting) -> None:
+    def draw_from_queue(self: _VisionModeWithHighlighting) -> None:
         try:
             task = self.queue.get_nowait()
             # LOGGER.debug(f"Queue size: {self.queue.qsize()}, task: {task}")
@@ -140,7 +142,7 @@ class HighlightingRenderer:
         self.canvas.after(10, self.draw_from_queue)
 
     def draw_empty_outline(
-        self: VisionModeWithHighlighting, item_roi: tuple[int, int, int, int], color: str, text: str | None
+        self: _VisionModeWithHighlighting, item_roi: tuple[int, int, int, int], color: str, text: str | None
     ) -> None:
         reset_canvas(self.root, self.canvas)
 
@@ -156,7 +158,7 @@ class HighlightingRenderer:
         self.root.update()
 
     def draw_match_outline(
-        self: VisionModeWithHighlighting,
+        self: _VisionModeWithHighlighting,
         item_roi: tuple[int, int, int, int],
         should_keep_res: FilterResult,
         locator_result: LocatorResult | None,
@@ -184,7 +186,7 @@ class HighlightingRenderer:
         self.root.update_idletasks()
         self.root.update()
 
-    def draw_no_match_outline(self: VisionModeWithHighlighting, item_roi: tuple[int, int, int, int]) -> None:
+    def draw_no_match_outline(self: _VisionModeWithHighlighting, item_roi: tuple[int, int, int, int]) -> None:
         reset_canvas(self.root, self.canvas)
 
         x, y, w, h, off = self.get_coords_from_roi(item_roi)
@@ -195,7 +197,7 @@ class HighlightingRenderer:
         self.root.update()
 
     def draw_codex_upgrade_outline(
-        self: VisionModeWithHighlighting, item_roi: tuple[int, int, int, int], should_keep_result: FilterResult
+        self: _VisionModeWithHighlighting, item_roi: tuple[int, int, int, int], should_keep_result: FilterResult
     ) -> None:
         reset_canvas(self.root, self.canvas)
 
@@ -220,7 +222,7 @@ class HighlightingRenderer:
         self.root.update()
 
     def get_coords_from_roi(
-        self: VisionModeWithHighlighting, item_roi: tuple[int, int, int, int]
+        self: _VisionModeWithHighlighting, item_roi: tuple[int, int, int, int]
     ) -> tuple[int, int, int, int, int]:
         x, y, w, h = item_roi
         off = int(w * 0.1)

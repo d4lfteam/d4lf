@@ -1,11 +1,10 @@
 import re
-from typing import cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.paragon import NODES_LEN
 from src.profiles.validation.normalization import _as_string_keyed_dict
-from src.type_aliases import YamlValue  # ruff:ignore[typing-only-first-party-import]
+from src.type_aliases import YamlObject, YamlValue  # ruff:ignore[typing-only-first-party-import]
 
 
 class ParagonBoardModel(BaseModel):
@@ -99,10 +98,12 @@ class ParagonPayloadModel(BaseModel):
             msg = "ParagonBoardsList must not be empty"
             raise ValueError(msg)
         if all(not isinstance(step, list) for step in boards_list):
-            normalized = dict(data_dict)
+            normalized: YamlObject = {}
+            for normalized_key, normalized_value in data_dict.items():
+                normalized[normalized_key] = normalized_value
             normalized.pop(key, None)
             normalized["ParagonBoardsList"] = [boards_list]
-            return cast("YamlValue", normalized)
+            return normalized
         return data
 
     @model_validator(mode="after")

@@ -213,7 +213,8 @@ class ConfigTabMixin:
             )
         elif isinstance(config_value, enum.StrEnum):
             enum_type = type(config_value)
-            options = cast("list[SettingValue]", list(enum_type))
+            options: list[SettingValue] = []
+            options.extend(str(option) for option in enum_type)
 
             def on_changed(new_text: str) -> None:
                 self._save_setting_value(

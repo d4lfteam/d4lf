@@ -11,6 +11,11 @@ if TYPE_CHECKING:
 from src.perception.matching import SearchConfig
 
 
+def _invalid_search_mode() -> SearchMode:
+    invalid_mode = "nearest".strip()
+    return cast("SearchMode", invalid_mode)
+
+
 def test_search_config_defaults_to_parallel_first_search() -> None:
     config = SearchConfig()
 
@@ -22,7 +27,7 @@ def test_search_config_defaults_to_parallel_first_search() -> None:
 @pytest.mark.parametrize(
     ("config_factory", "message"),
     [
-        (lambda: SearchConfig(mode=cast("SearchMode", "nearest")), "Invalid search mode"),
+        (lambda: SearchConfig(mode=_invalid_search_mode()), "Invalid search mode"),
         (lambda: SearchConfig(timeout=-1), "timeout must not be negative"),
         (lambda: SearchConfig(threshold=np.inf), "threshold must be a finite number"),
         (lambda: SearchConfig(roi=[0, 0, 0, 10]), "roi must have a non-negative origin and positive dimensions"),

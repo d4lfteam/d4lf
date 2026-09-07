@@ -1,10 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 
 from src.game_data import GameCatalog, ItemRarity, ItemType
-from src.profiles.affixes import (  # ruff:ignore[typing-only-first-party-import]
-    AffixFilterCountModel,
-    AspectUniqueFilterModel,
-)
+from src.profiles.affixes import AffixFilterCountModel, AspectUniqueFilterModel  # ruff:ignore[typing-only-first-party-import]
 from src.profiles.validation.constraints import check_greater_than_zero, validate_greater_affix_count
 from src.profiles.validation.normalization import (
     _normalize_rarities,

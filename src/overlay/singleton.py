@@ -1,13 +1,15 @@
 import threading
-from typing import TYPE_CHECKING, TypeVar, cast
+from typing import TYPE_CHECKING, TypeVar
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from src.type_aliases import JsonValue
 
 T = TypeVar("T")
 
 
-def singleton(cls: type[T]) -> type[T]:
+def singleton(cls: type[T]) -> Callable[..., T]:
     instances: dict[type[T], T] = {}
     lock = threading.Lock()
 
@@ -17,4 +19,4 @@ def singleton(cls: type[T]) -> type[T]:
                 instances[cls] = cls(*args, **kwargs)
         return instances[cls]
 
-    return cast("type[T]", get_instance)
+    return get_instance

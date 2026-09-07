@@ -11,7 +11,7 @@ def as_string_keyed_mapping(value: JsonValue | Mapping[str | int, JsonValue] | N
     return {key: item for key, item in value.items() if isinstance(key, str)}
 
 
-def as_string_keyed_mapping_list(value: JsonValue | Sequence[Mapping[str, JsonValue]]) -> list[JsonObject]:
+def as_string_keyed_mapping_list(value: JsonValue) -> list[JsonObject]:
     if not isinstance(value, Sequence) or isinstance(value, str):
         return []
     return [as_string_keyed_mapping(item) for item in value if isinstance(item, Mapping)]

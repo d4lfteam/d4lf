@@ -45,6 +45,6 @@ def test_chest_tab_reset_callback_narrows_list_values() -> None:
     assert not widget.all_checkboxes[0].isChecked()
     assert widget.all_checkboxes[1].isChecked()
 
-    reset(cast("SettingValue", [2, "invalid"]))
+    reset(["2", "invalid"])
     assert not widget.all_checkboxes[0].isChecked()
     assert widget.all_checkboxes[1].isChecked()
