@@ -11,7 +11,7 @@ if typing.TYPE_CHECKING:
 
     from pytest_mock import MockerFixture
 
-    from src.loot.highlighting import VisionModeWithHighlighting
+    from src.loot.highlighting import _VisionModeWithHighlighting
     from src.perception import LocatorResult
 
 import src.loot.highlighting_worker as worker_module
@@ -71,7 +71,7 @@ def test_unparsed_tts_does_not_clear_existing_item_overlay(monkeypatch, mocker: 
     monkeypatch.setattr("src.loot.highlighting_worker.capture", mocker.Mock())
     monkeypatch.setattr(src.perception, "read_latest_item", lambda: None)
 
-    cast("VisionModeWithHighlighting", worker).on_tts([])
+    cast("_VisionModeWithHighlighting", worker).on_tts([])
 
     worker.request_clear_mock.assert_not_called()
 
@@ -123,7 +123,7 @@ def test_filter_result_queues_only_normal_highlighting_results(
 
     monkeypatch.setattr(HighlightingWorker, "check_for_thread_cancellation", stop_after_first_evaluation)
 
-    cast("VisionModeWithHighlighting", worker).evaluate_item_and_queue_draw(item, Event())
+    cast("_VisionModeWithHighlighting", worker).evaluate_item_and_queue_draw(item, Event())
 
     if should_queue_match:
         worker.request_match_box_mock.assert_called_once()

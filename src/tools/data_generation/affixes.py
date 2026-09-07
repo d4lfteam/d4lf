@@ -30,10 +30,14 @@ if TYPE_CHECKING:
 DataT = TypeVar("DataT")
 
 
-def _power_index(core_toc: dict[str, dict[str, str]], d4data_dir: Path) -> dict[int, str]:
+def _power_index(core_toc: dict[str, dict[str, str] | dict[str, list[str]]], d4data_dir: Path) -> dict[int, str]:
     indexed_powers = core_toc.get("29")
     if indexed_powers:
-        return {int(sno): power_name for sno, power_name in indexed_powers.items()}
+        power_index = {
+            int(sno): power_name for sno, power_name in indexed_powers.items() if isinstance(power_name, str)
+        }
+        if power_index:
+            return power_index
     return {
         int(power_data["__snoID__"]): str(power_data["__fileName__"])
         for power_data in (
@@ -172,7 +176,7 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
         "necromancer_army": string_list_map(string_list_dir / "NecromancerArmy.stl.json"),
         "skill_tags": string_list_map(string_list_dir / "SkillTags.stl.json"),
         "ui_tooltips": string_list_map(string_list_dir / "UIToolTips.stl.json"),
-        "power_by_sno": _power_index(cast("dict[str, dict[str, str]]", core_toc), d4data_dir),
+        "power_by_sno": _power_index(core_toc, d4data_dir),
         "skill_tags_by_sno": {
             int(key) % (2**32): value for key, value in cast("dict[str, list[str]]", core_toc.get("56", {})).items()
         },

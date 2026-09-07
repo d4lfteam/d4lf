@@ -84,16 +84,11 @@ def build_variant(
             msg = f"No slot type found for {item_name}"
             raise error_type(msg)
         raw_affixes = _as_mapping_list(
-            cast(
-                "list[JsonValue]",
-                jsonpath.findall(".gameEntity.modifiers.gearStats[*]", item)
-                + jsonpath.findall(".gameEntity.modifiers.sealStats[*]", item)
-                + jsonpath.findall(".gameEntity.modifiers.charmStats[*]", item),
-            )
+            _find_jsonpath_values(".gameEntity.modifiers.gearStats[*]", item)
+            + _find_jsonpath_values(".gameEntity.modifiers.sealStats[*]", item)
+            + _find_jsonpath_values(".gameEntity.modifiers.charmStats[*]", item)
         )
-        raw_inherents = _as_mapping_list(
-            cast("list[JsonValue]", jsonpath.findall(".gameEntity.modifiers.implicitStats[*]", item))
-        )
+        raw_inherents = _as_mapping_list(_find_jsonpath_values(".gameEntity.modifiers.implicitStats[*]", item))
         is_unique = entity_type == "uniqueItems"
         if is_unique:
             try:
@@ -185,6 +180,10 @@ def build_variant(
         paragon_steps=extract_mobalytics_paragon_steps(dict(paragon_data)),
         paragon_build_name=build_name,
     )
+
+
+def _find_jsonpath_values(path: str, item: Mapping[str, JsonValue]) -> list[JsonValue]:
+    return [cast("JsonValue", value) for value in jsonpath.findall(path, item)]
 
 
 def _resolve_item_type(

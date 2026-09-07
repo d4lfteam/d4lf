@@ -4,11 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_valid
 
 from src.game_data import GameCatalog
 from src.profiles.affixes import GlobalUniqueModel  # ruff:ignore[typing-only-first-party-import]
-from src.profiles.equipment import (  # ruff:ignore[typing-only-first-party-import]
-    DynamicCharmFilterModel,
-    DynamicItemFilterModel,
-    DynamicSealFilterModel,
-)
+from src.profiles.equipment import DynamicCharmFilterModel, DynamicItemFilterModel, DynamicSealFilterModel  # ruff:ignore[typing-only-first-party-import]
 from src.profiles.paragon import ParagonPayloadModel  # ruff:ignore[typing-only-first-party-import]
 from src.profiles.sigils import SigilFilterModel, SigilPriority, TributeFilterModel
 from src.profiles.validation.normalization import _as_string_keyed_dict, _legacy_filter_values
@@ -125,7 +121,14 @@ class ProfileModel(BaseModel):
         if paragon_payload is None:
             msg = "Paragon legacy list entries must be objects"
             raise ValueError(msg)
-        return cast("YamlValue", {**data_dict, key: paragon_payload})
+        normalized: YamlObject = {}
+        for normalized_key, normalized_value in data_dict.items():
+            normalized[normalized_key] = normalized_value
+        normalized_paragon: YamlObject = {}
+        for normalized_key, normalized_value in paragon_payload.items():
+            normalized_paragon[normalized_key] = normalized_value
+        normalized[key] = normalized_paragon
+        return normalized
 
     @field_serializer("paragon", when_used="json-unless-none")
     def serialize_paragon(self, paragon: ParagonPayloadModel | None) -> YamlObject | None:

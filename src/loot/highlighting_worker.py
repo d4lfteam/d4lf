@@ -40,7 +40,7 @@ from src.perception import (
 
 if TYPE_CHECKING:
     from src.item import Affix, Item
-    from src.loot.highlighting import VisionModeWithHighlighting
+    from src.loot.highlighting import _VisionModeWithHighlighting
     from src.perception import DescrDetection
 
 LOGGER = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ class CancellationRequestedError(Exception):
 
 
 class HighlightingWorker:
-    def on_tts(self: VisionModeWithHighlighting, _: list[str]) -> None:
+    def on_tts(self: _VisionModeWithHighlighting, _: list[str]) -> None:
         img = capture()
         item_descr = None
         try:
@@ -82,7 +82,7 @@ class HighlightingWorker:
         )
         self.evaluate_item_thread.start()
 
-    def evaluate_item_and_queue_draw(self: VisionModeWithHighlighting, item_descr: Item, cancel_event: Event) -> None:
+    def evaluate_item_and_queue_draw(self: _VisionModeWithHighlighting, item_descr: Item, cancel_event: Event) -> None:
         if not self.is_cleared:
             self.request_clear()
         if self.clear_when_item_not_selected_thread:
@@ -258,7 +258,7 @@ class HighlightingWorker:
         finally:
             self.evaluate_item_thread = None
 
-    def _queue_rendering_command(self: VisionModeWithHighlighting, command: RenderingCommand) -> None:
+    def _queue_rendering_command(self: _VisionModeWithHighlighting, command: RenderingCommand) -> None:
         if isinstance(command, EmptyOutlineCommand):
             if command.text is None:
                 self.request_empty_outline(command.item, command.item_roi, command.color)
@@ -284,7 +284,7 @@ class HighlightingWorker:
         thread.join()
 
     def check_for_item_still_selected(
-        self: VisionModeWithHighlighting, item_center: tuple[int, int], cancel_event: Event
+        self: _VisionModeWithHighlighting, item_center: tuple[int, int], cancel_event: Event
     ) -> None:
         try:
             while True:

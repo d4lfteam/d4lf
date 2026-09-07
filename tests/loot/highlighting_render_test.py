@@ -5,7 +5,7 @@ from unittest.mock import Mock
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
-    from src.loot.highlighting import VisionModeWithHighlighting
+    from src.loot.highlighting import _VisionModeWithHighlighting
 
 from src.item import FilterResult, MatchedFilter
 from src.loot.highlighting_render import HighlightingRenderer
@@ -31,7 +31,7 @@ def test_highlighting_renderer_places_reliable_affix_markers(monkeypatch, mocker
     monkeypatch.setattr(renderer, "draw_text", mocker.Mock(side_effect=lambda *_args: 1))
     draw_rect = Mock()
     monkeypatch.setattr(renderer, "draw_rect", draw_rect)
-    cast("VisionModeWithHighlighting", renderer).draw_match_outline(
+    cast("_VisionModeWithHighlighting", renderer).draw_match_outline(
         (10, 20, 100, 200),
         FilterResult(keep=True, matched=[MatchedFilter("Build")]),
         LocatorResult([LocatedMarker("affix", 0, (30, 40), 0.99)], reliable=True),

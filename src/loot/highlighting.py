@@ -33,8 +33,7 @@ type HighlightTask = (
 )
 
 
-@singleton
-class VisionModeWithHighlighting(HighlightingRenderer, HighlightingWorker):
+class _VisionModeWithHighlighting(HighlightingRenderer, HighlightingWorker):
     def __init__(self) -> None:
         super().__init__()
         self.root: tk.Toplevel
@@ -135,3 +134,6 @@ class VisionModeWithHighlighting(HighlightingRenderer, HighlightingWorker):
 
     def running(self) -> bool:
         return self.is_running
+
+
+VisionModeWithHighlighting = singleton(_VisionModeWithHighlighting)

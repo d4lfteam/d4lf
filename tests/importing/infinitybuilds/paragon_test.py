@@ -41,7 +41,7 @@ def _request(
 
 
 def test_extract_infinitybuilds_paragon_steps_groups_boards_transforms_nodes_and_resolves_names() -> None:
-    data = {
+    data: JsonObject = {
         "slots": [{"boardId": "paragon-board::paragon-barb-10", "rotation": 1}],
         "glyphs": {"paragon-board::paragon-barb-00::136": "glyph::rare-016-dexterity-side"},
         "activeNodes": [
@@ -54,7 +54,7 @@ def test_extract_infinitybuilds_paragon_steps_groups_boards_transforms_nodes_and
         board_labels={"paragon-board::paragon-barb-00": "Start", "paragon-board::paragon-barb-10": "Force of Nature"},
         glyph_labels={"glyph::rare-016-dexterity-side": "Exploit"},
     )
-    boards = extract_infinitybuilds_paragon_steps(cast("JsonObject", data), catalog, "barbarian")[0]
+    boards = extract_infinitybuilds_paragon_steps(data, catalog, "barbarian")[0]
     first_nodes = cast("list[bool]", boards[0]["Nodes"])
     second_nodes = cast("list[bool]", boards[1]["Nodes"])
     assert [board["BoardId"] for board in boards] == [
@@ -93,7 +93,7 @@ def test_extract_infinitybuilds_paragon_steps_returns_empty_when_no_active_nodes
 
 @pytest.mark.parametrize(("rotation", "expected_index"), [(0, 5), (1, 125), (2, 435), (3, 315)])
 def test_extract_infinitybuilds_paragon_steps_keeps_rotation_index_mapping(rotation: int, expected_index: int) -> None:
-    data = {
+    data: JsonObject = {
         "slots": [{"boardId": "paragon-board::paragon-barb-10", "rotation": rotation}],
         "glyphs": {},
         "activeNodes": ["paragon-board::paragon-barb-10::5"],
@@ -101,7 +101,7 @@ def test_extract_infinitybuilds_paragon_steps_keeps_rotation_index_mapping(rotat
     catalog = InfinityBuildsParagonCatalog(
         board_labels={"paragon-board::paragon-barb-10": "Force of Nature"}, glyph_labels={}
     )
-    board = extract_infinitybuilds_paragon_steps(cast("JsonObject", data), catalog, "barbarian")[0][0]
+    board = extract_infinitybuilds_paragon_steps(data, catalog, "barbarian")[0][0]
     nodes = cast("list[bool]", board["Nodes"])
     assert board["Rotation"] in {"0°", "90°", "180°", "270°"}
     assert nodes.count(True) == 1
