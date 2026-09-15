@@ -71,6 +71,9 @@
     "beastfall_boots": {
         "num_inherents": 0
     },
+    "bell_of_the_bovine": {
+        "num_inherents": 1
+    },
     "bindings_of_attrition": {
         "num_inherents": 0
     },
