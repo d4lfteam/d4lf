@@ -185,7 +185,6 @@ def _convert_raw_to_affixes(
             if (
                 isinstance(max_value, (int, float))
                 and not isinstance(max_value, bool)
-                and isinstance(raw_roll, (int, float))
                 and not isinstance(raw_roll, bool)
                 and raw_roll >= max_value
             ):

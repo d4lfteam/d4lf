@@ -1,6 +1,6 @@
 """Snapshots passed between profile loading and item evaluation."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from src.settings import AspectFilterType, CosmeticFilterType, UnfilteredUniquesType
@@ -69,7 +69,7 @@ class EvaluationSettings:
     filter_tributes: bool = True
     filter_seals: bool = True
     filter_charms: bool = True
-    handle_cosmetics: CosmeticFilterType = CosmeticFilterType.ignore
+    handle_cosmetics: CosmeticFilterType = field(default_factory=lambda: CosmeticFilterType.ignore)
     keep_aspects: AspectFilterType = AspectFilterType.upgrade
     handle_uniques: UnfilteredUniquesType = UnfilteredUniquesType.favorite
     ignore_escalation_sigils: bool = True

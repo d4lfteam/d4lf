@@ -26,7 +26,7 @@ def process_template_refs(ref: TemplateReferences) -> list[Template]:
                 templates.append(get_ui_coordinates().templates[template_ref.lower()])
             except KeyError:
                 LOGGER.warning(f"Template not defined: {template_ref}")
-        elif isinstance(template_ref, np.ndarray):
+        else:
             template = Template(img_bgr=template_ref, img_gray=cv2.cvtColor(template_ref, cv2.COLOR_BGR2GRAY))
             alpha_mask = alpha_to_mask(template_ref)
             if alpha_mask is not None:
@@ -61,7 +61,7 @@ def _validate_roi(value: object, *, label: str = "roi") -> list[float]:
     return values
 
 
-def resolve_roi(roi: Sequence[int | float] | str | None) -> list[float] | None:
+def resolve_roi(roi: Sequence[int | float | str] | str | None) -> list[float] | None:
     """Resolve an inline or named region of interest into numeric coordinates."""
     if roi is None:
         return None

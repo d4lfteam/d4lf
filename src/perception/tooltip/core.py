@@ -81,13 +81,7 @@ def find_descr_with_diagnostics(img: np.ndarray, anchor: tuple[int, int]) -> Des
 
 def get_separator_match_in_crop(detection: DescrDetection) -> TemplateMatch | None:
     """Translate a full-image separator match into the returned crop's coordinates."""
-    if (
-        detection.separator_match is None
-        or detection.crop_roi is None
-        or len(detection.crop_roi) != 4
-        or detection.separator_match.center is None
-        or detection.separator_match.region is None
-    ):
+    if detection.separator_match is None or detection.crop_roi is None or len(detection.crop_roi) != 4:
         return None
 
     crop_x, crop_y, crop_width, crop_height = detection.crop_roi

@@ -53,13 +53,7 @@ class Menu:
                 return False
             match_name = res.matches[0].name
             ref = search_args.ref
-            if (
-                not isinstance(match_name, str)
-                or isinstance(ref, str)
-                or not isinstance(ref, Sequence)
-                or not ref
-                or not isinstance(ref[0], str)
-            ):
+            if isinstance(ref, str) or not isinstance(ref, Sequence) or not ref or not isinstance(ref[0], str):
                 return False
             return match_name.lower() == ref[0].lower()
         return True

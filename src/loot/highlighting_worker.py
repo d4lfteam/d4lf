@@ -13,7 +13,6 @@ from src.item import SeasonalAttribute
 from src.item.filter import Filter
 from src.loot.colors import get_filter_colors, is_ignored_item
 from src.loot.highlighting_pipeline import (
-    CodexUpgradeCommand,
     EmptyOutlineCommand,
     FilterOutcome,
     MatchCommand,
@@ -125,25 +124,24 @@ class HighlightingWorker:
                 if confirmation.status is TooltipConfirmationStatus.INVALID:
                     continue
 
-                if not is_confirmed:
-                    time.sleep(_FRAME_RETRY_DELAY_SECONDS)
-                    self.check_for_thread_cancellation(cancel_event)
-                    found_check, cropped_descr_check, _ = find_descr(capture(force_new=True), item_center)
-                    score = (
-                        compare_histograms(detection.cropped_descr, cropped_descr_check)
-                        if found_check and cropped_descr_check is not None and detection.cropped_descr is not None
-                        else None
-                    )
-                    confirmation = confirm_stable_tooltip(
-                        detection,
-                        already_confirmed=False,
-                        second_found=found_check,
-                        second_cropped_descr=cropped_descr_check,
-                        histogram_score=score,
-                    )
-                    if not confirmation.confirmed:
-                        continue
-                    is_confirmed = True
+                time.sleep(_FRAME_RETRY_DELAY_SECONDS)
+                self.check_for_thread_cancellation(cancel_event)
+                found_check, cropped_descr_check, _ = find_descr(capture(force_new=True), item_center)
+                score = (
+                    compare_histograms(detection.cropped_descr, cropped_descr_check)
+                    if found_check and cropped_descr_check is not None and detection.cropped_descr is not None
+                    else None
+                )
+                confirmation = confirm_stable_tooltip(
+                    detection,
+                    already_confirmed=False,
+                    second_found=found_check,
+                    second_cropped_descr=cropped_descr_check,
+                    histogram_score=score,
+                )
+                if not confirmation.confirmed:
+                    continue
+                is_confirmed = True
 
                 self.check_for_thread_cancellation(cancel_event)
 
@@ -268,7 +266,7 @@ class HighlightingWorker:
             self.request_match_box(command.item, command.item_roi, command.filter_result, command.locator_result)
         elif isinstance(command, NoMatchCommand):
             self.request_no_match_box(command.item, command.item_roi)
-        elif isinstance(command, CodexUpgradeCommand):
+        else:
             self.request_codex_upgrade_box(command.item, command.item_roi, command.filter_result)
 
     @staticmethod

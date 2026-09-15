@@ -29,6 +29,9 @@
     "argent_veil": {
         "num_inherents": 0
     },
+    "ariocs_needle": {
+        "num_inherents": 0
+    },
     "arreats_bearing": {
         "num_inherents": 0
     },
@@ -356,6 +359,9 @@
     "hellhounds_sabatons": {
         "num_inherents": 0
     },
+    "henris_perquisition": {
+        "num_inherents": 1
+    },
     "herald_of_zakarum": {
         "num_inherents": 3
     },
@@ -378,6 +384,9 @@
         "num_inherents": 0
     },
     "ifehs_dire_totem": {
+        "num_inherents": 0
+    },
+    "in-geom": {
         "num_inherents": 0
     },
     "indiras_memory": {
@@ -483,6 +492,9 @@
         "num_inherents": 0
     },
     "nails_of_the_gore-crowned": {
+        "num_inherents": 0
+    },
+    "nemesis_bracers": {
         "num_inherents": 0
     },
     "nesekem_the_herald": {
@@ -701,6 +713,9 @@
     "spine_of_tathamet": {
         "num_inherents": 0
     },
+    "squirts_blouse": {
+        "num_inherents": 0
+    },
     "staff_of_endless_rage": {
         "num_inherents": 0
     },
@@ -711,6 +726,9 @@
         "num_inherents": 0
     },
     "starfall_coronet": {
+        "num_inherents": 0
+    },
+    "stone_of_jordan": {
         "num_inherents": 0
     },
     "stone_of_vehemen": {
@@ -762,6 +780,9 @@
         "num_inherents": 0
     },
     "the_fecund_seal": {
+        "num_inherents": 0
+    },
+    "the_furnace": {
         "num_inherents": 0
     },
     "the_gloom_ward": {

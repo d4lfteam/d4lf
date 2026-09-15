@@ -10,6 +10,7 @@ from src.game_data import GameCatalog, ItemType
 from src.importing import ImportOptions, ImportRequest, VariantSelection
 from src.importing.maxroll import extract_maxroll_paragon_steps
 from src.importing.maxroll.adapter import (
+    _extract_profile_variant,
     _find_item_affixes,
     _find_item_type,
     _resolve_visible_profile_index,
@@ -94,12 +95,21 @@ def test_import_maxroll_keeps_mythic_item_without_affixes(mock_ini_loader, mocke
     }
     mapping_response = mocker.Mock()
     mapping_response.json.return_value = {
-        "items": {"item-mythic-helm": {"magicType": 4, "name": "Harlequin Crest", "type": "Helm"}},
-        "attributeDescriptions": {},
-        "affixes": {},
+        "version": "3.2.1.73552",
+        "items": {"item-mythic-helm": {"magicType": 4, "type": "Helm"}},
+        "attributeDescriptions": {"test_attribute": "Fallback description"},
+        "affixes": {"test_affix": {"id": 1}},
         "skills": {},
     }
-    mocker.patch("src.importing.maxroll.adapter.get_with_retry", side_effect=[planner_response, mapping_response])
+    names_response = mocker.Mock()
+    names_response.json.return_value = {
+        "items": {"item-mythic-helm": {"name": "Harlequin Crest"}},
+        "attributeDescriptions": {"test_attribute": "Localized description"},
+        "affixes": {"test_affix": {"prefix": "Localized prefix"}},
+    }
+    mocker.patch(
+        "src.importing.maxroll.adapter.get_with_retry", side_effect=[planner_response, mapping_response, names_response]
+    )
 
     captured_profile = {}
 
@@ -134,6 +144,24 @@ def test_import_maxroll_keeps_mythic_item_without_affixes(mock_ini_loader, mocke
     helm_filter = next(entry.root["Helm"] for entry in profile.affixes if "Helm" in entry.root)
     assert helm_filter.unique_aspect[0].name == "harlequin_crest"
     assert helm_filter.affix_pool == []
+    assert mapping_response.json.return_value["items"]["item-mythic-helm"]["name"] == "Harlequin Crest"
+    assert mapping_response.json.return_value["affixes"]["test_affix"]["prefix"] == "Localized prefix"
+    assert mapping_response.json.return_value["attributeDescriptions"]["test_attribute"] == "Localized description"
+
+
+def test_extract_profile_variant_skips_items_missing_from_mapping() -> None:
+    variant = _extract_profile_variant(
+        profile_data={"name": "Default", "items": {"helm": 1}},
+        items={"1": {"id": "Helm_Unique_Generic_005", "explicits": []}},
+        mapping_data={"items": {}, "attributeDescriptions": {}, "affixes": {}, "skills": {}},
+        class_name="Barbarian",
+        build_header="Test Build",
+        request=ImportRequest(
+            url="https://maxroll.gg/d4/planner/test-profile#1", options=ImportOptions(add_to_profiles=False)
+        ),
+    )
+
+    assert variant.affix_filters == []
 
 
 def test_import_maxroll_extracts_the_selected_profile(mock_ini_loader, mocker: MockerFixture) -> None:
@@ -155,7 +183,11 @@ def test_import_maxroll_extracts_the_selected_profile(mock_ini_loader, mocker: M
         "affixes": {},
         "skills": {},
     }
-    mocker.patch("src.importing.maxroll.adapter.get_with_retry", side_effect=[planner_response, mapping_response])
+    names_response = mocker.Mock()
+    names_response.json.return_value = {"items": {}}
+    mocker.patch(
+        "src.importing.maxroll.adapter.get_with_retry", side_effect=[planner_response, mapping_response, names_response]
+    )
     profile_store = mocker.Mock()
     profile_store.save_new.side_effect = lambda *, file_name, **_: SimpleNamespace(file_name=file_name)
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)

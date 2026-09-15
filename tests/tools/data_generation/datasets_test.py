@@ -1,7 +1,7 @@
 import json
 
 from src.tools.data_generation.affixes import generate_affixes
-from src.tools.data_generation.datasets import main, string_list_value
+from src.tools.data_generation.datasets import generate_uniques, main, string_list_value
 
 
 def test_get_string_list_name_returns_a_stable_name() -> None:
@@ -57,3 +57,31 @@ def test_affix_generation_uses_core_toc_power_index_without_parsing_power_files(
     generate_affixes(d4data, "enUS", sequential)
 
     assert sequential.exists()
+
+
+def test_generate_uniques_skips_placeholder_before_reading_incomplete_inherent_affix(tmp_path, monkeypatch) -> None:
+    d4data = tmp_path / "d4data"
+    unique_dir = d4data / "json/base/meta/Item"
+    string_dir = d4data / "json/enUS_Text/meta/StringList"
+    unique_dir.mkdir(parents=True)
+    string_dir.mkdir(parents=True)
+    (unique_dir / "Placeholder_Unique.itm.json").write_text(
+        json.dumps({
+            "snoItemType": {"name": "Sword"},
+            "arForcedAffixes": [{"name": "forced_affix"}],
+            "arInherentAffixes": [{}],
+        }),
+        encoding="utf-8",
+    )
+    (string_dir / "Item_Placeholder_Unique.stl.json").write_text(
+        json.dumps({"arStrings": [{"szLabel": "Name", "szText": "[PH] Placeholder Unique"}]}), encoding="utf-8"
+    )
+    output_dir = tmp_path / "assets/lang/enUS"
+    output_dir.mkdir(parents=True)
+    monkeypatch.setattr("src.tools.data_generation.datasets.D4LF_BASE_DIR", tmp_path)
+
+    assert generate_uniques(d4data, "enUS") == 1
+
+    output = json.loads((output_dir / "uniques.json").read_text(encoding="utf-8"))
+    assert "[ph]_placeholder_unique" not in output
+    assert output == {}

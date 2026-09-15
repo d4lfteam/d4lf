@@ -65,7 +65,7 @@ def validate_replay_config(config: ReplayConfig) -> tuple[Path, np.ndarray]:
     if (
         not isinstance(anchor, (tuple, list))
         or len(anchor) != 2
-        or any(not isinstance(value, int) or isinstance(value, bool) for value in anchor)
+        or any(isinstance(value, bool) for value in anchor)
         or any(value < 0 for value in anchor)
     ):
         _raise_configuration_error("Item anchor must be a pair of non-negative integers.")

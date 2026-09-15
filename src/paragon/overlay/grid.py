@@ -135,10 +135,11 @@ class OverlayGridMixin(OverlayContract):
     def _on_grid_drag_start(self, e: tk.Event) -> None:
         """Start dragging only when the cursor grabs the outer grid border."""
         self.focus_set()
-        if self._cfg.grid_locked or not self._border_rect:
+        border_rect: tuple[int, int, int, int] | None = self._border_rect
+        if self._cfg.grid_locked or border_rect is None:
             self._dragging_grid = False
             return
-        x1, y1, x2, y2, g, x, y = (*self._border_rect, int(self._border_grab), int(e.x), int(e.y))
+        x1, y1, x2, y2, g, x, y = (*border_rect, int(self._border_grab), int(e.x), int(e.y))
         if (
             not (x1 - g <= x <= x2 + g and y1 - g <= y <= y2 + g)
             or min(abs(x - x1), abs(x - x2), abs(y - y1), abs(y - y2)) > g

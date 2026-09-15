@@ -19,7 +19,6 @@ from src.game_data import GameCatalog
 from src.profiles import (
     EmptyError,
     Failed,
-    Loaded,
     LoadedProfile,
     ProfileSession,
     Saved,
@@ -228,9 +227,6 @@ class ProfileTab(QWidget):
             else:
                 QMessageBox.critical(self, "Validation Error", load_result.message)
             return False
-        if not isinstance(load_result, Loaded):
-            return False
-
         self.loaded_profile = load_result.loaded_profile
         self.root = self.loaded_profile.profile
         return True
@@ -273,8 +269,7 @@ class ProfileTab(QWidget):
             else:
                 QMessageBox.information(self, "Info", "Profile not saved.")
             return
-        if isinstance(save_result, Failed):
-            QMessageBox.critical(self, "Error", f"Failed to save profile: {save_result.error}")
+        QMessageBox.critical(self, "Error", f"Failed to save profile: {save_result.error}")
 
     def check_close_save(self) -> bool:
         if self.root and self.model_editor and self.session.is_dirty(self.model_editor.get_current_model()):

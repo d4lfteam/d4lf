@@ -19,10 +19,6 @@ class OverlayGridMixin(OverlayContract):
             return
 
         sz = max(12, int(14 * self._cfg.ui_scale))
-        if not Image or not ImageFont or not ImageDraw:
-            self._lock_img_cache = {True: None, False: None}
-            return
-
         try:
             # Segoe UI Emoji gives reliable lock/unlock glyphs on Windows and lets
             # the popup use small crisp icons instead of text symbols.

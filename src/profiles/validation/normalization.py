@@ -1,20 +1,26 @@
 from typing import TYPE_CHECKING
 
-from src.game_data import GameCatalog, ItemRarity
+from src.game_data import GameCatalog, ItemRarity, ItemType
 from src.perception import correct_name
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from src.profiles.affixes import AffixFilterCountModel
     from src.type_aliases import YamlValue
 
 
-def _parse_item_type_or_rarities(data: str | list[str]) -> list[str]:
-    values = [data] if isinstance(data, str) else data
+def _parse_item_type_or_rarities(data: str | ItemType | Sequence[str | ItemType]) -> list[str]:
+    values = [data] if isinstance(data, (str, ItemType)) else data
     catalog = GameCatalog()
-    return [
-        item_type.value if isinstance(value, str) and (item_type := catalog.item_type_from_text(value)) else value
-        for value in values
-    ]
+    normalized: list[str] = []
+    for value in values:
+        if isinstance(value, ItemType):
+            normalized.append(value.value)
+            continue
+        item_type = catalog.item_type_from_text(value)
+        normalized.append(item_type.value if item_type else value)
+    return normalized
 
 
 def _validate_set_name(name: str | None, field_name: str) -> str | None:
@@ -28,10 +34,16 @@ def _validate_set_name(name: str | None, field_name: str) -> str | None:
     return name
 
 
-def _normalize_rarities(data: str | list[str] | list[ItemRarity]) -> list[str]:
-    values = [data] if isinstance(data, str) else data
-    values = [v.value if isinstance(v, ItemRarity) else v for v in values]
-    return [v.lower() if isinstance(v, str) else v for v in values]
+def _normalize_rarities(data: str | ItemRarity | int | Sequence[str | ItemRarity | int]) -> list[str]:
+    values = [data] if isinstance(data, (str, ItemRarity, int)) else data
+    normalized: list[str] = []
+    invalid_rarity_message = "rarities must be strings or item rarity values"
+    for value in values:
+        normalized_value = value.value if isinstance(value, ItemRarity) else value
+        if not isinstance(normalized_value, str):
+            raise ValueError(invalid_rarity_message)
+        normalized.append(normalized_value.lower())
+    return normalized
 
 
 def _normalize_tribute_names(data: str | list[str] | None) -> list[str]:

@@ -127,9 +127,6 @@ class OverlayPopupMixin(OverlayContract):
             # popup content can be rebuilt later without re-creating the container.
             setattr(self, f"{popup_attr}_refresh", build_func(popup))
 
-        if popup is None:
-            return
-
         self._apply_accent_frames()
         if callable(refresh := getattr(self, f"{popup_attr}_refresh", None)):
             refresh()
@@ -214,9 +211,6 @@ class OverlayPopupMixin(OverlayContract):
             popup.bind("<Escape>", lambda *_: self._close_build_dropdown())
             self._build_popup = popup
             self._build_popup_refresh = self._build_build_popup(popup)
-
-        if popup is None:
-            return
 
         self._apply_accent_frames()
         refresh = self._build_popup_refresh

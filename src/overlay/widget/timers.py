@@ -131,8 +131,9 @@ class _OverlayTimers(OverlayContract):
         # --- World Boss ---
 
         # World Boss
-        if self.synced_wb and self.synced_wb[0] > now:
-            next_wb = self.synced_wb[0]
+        synced_wb: tuple[datetime.datetime, str] | None = self.synced_wb
+        if synced_wb is not None and synced_wb[0] > now:
+            next_wb = synced_wb[0]
         else:
             # Fallback to 3.5h interval from reference
             wb_interval = datetime.timedelta(hours=3.5)
@@ -231,27 +232,29 @@ class _OverlayTimers(OverlayContract):
             if self._closing or not self.winfo_exists():
                 return
             repack_needed = False
-            if gph is not None and self.capture_gold_stats:
+            capture_gold_stats: bool = self.capture_gold_stats
+            capture_exp_stats: bool = self.capture_exp_stats
+            if gph is not None and capture_gold_stats:
                 self.gph_value_label.config(text=f"{gph:,}")
                 if not self._gold_initialized:
                     self._gold_initialized = True
                     repack_needed = True
-            if total_gained is not None and self.capture_gold_stats:
+            if total_gained is not None and capture_gold_stats:
                 self.total_gained_value_label.config(text=f"{total_gained:,}")
                 if not self._gold_initialized:
                     self._gold_initialized = True
                     repack_needed = True
-            if eph is not None and self.capture_exp_stats:
+            if eph is not None and capture_exp_stats:
                 self.eph_value_label.config(text=f"{eph:,}")
                 if not self._exp_initialized:
                     self._exp_initialized = True
                     repack_needed = True
-            if total_exp is not None and self.capture_exp_stats:
+            if total_exp is not None and capture_exp_stats:
                 self.total_exp_value_label.config(text=f"{total_exp:,}")
                 if not self._exp_initialized:
                     self._exp_initialized = True
                     repack_needed = True
-            if t2l is not None and self.capture_exp_stats:
+            if t2l is not None and capture_exp_stats:
                 self.t2l_value_label.config(text=t2l)
 
             if repack_needed:

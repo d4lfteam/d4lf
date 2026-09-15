@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import override
 
 
 @dataclass
@@ -12,8 +13,8 @@ class Aspect:
     text: str = ""
     value: float | None = None
 
-    # ty: ignore[invalid-method-override, missing-override-decorator] - this project intentionally uses a same-type equality contract
-    def __eq__(self, other: Aspect) -> bool:
+    @override
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Aspect):
             return False
         return self.name == other.name and self.value == other.value

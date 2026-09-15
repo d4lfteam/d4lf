@@ -16,12 +16,15 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
+def _selected_cosmetic_filter(value: CosmeticFilterType | str) -> CosmeticFilterType:
+    return CosmeticFilterType(value)
+
+
 class FilterSpecialMixin:
     def _check_cosmetic(self: FilterContext, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
-        if self.evaluation_settings.handle_cosmetics == CosmeticFilterType.junk or (
-            self.evaluation_settings.handle_cosmetics == CosmeticFilterType.ignore and not item.cosmetic_upgrade
-        ):
+        handle_cosmetics = _selected_cosmetic_filter(self.evaluation_settings.handle_cosmetics)
+        if handle_cosmetics == CosmeticFilterType.junk:
             return res
         if not item.cosmetic_upgrade:
             return res

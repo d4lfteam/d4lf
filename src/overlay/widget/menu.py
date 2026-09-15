@@ -15,22 +15,18 @@ class _OverlayMenu(OverlayContract):
     def _show_context_menu(self, event: _ContextMenuEvent | None) -> None:
         """Create and display a persistent settings popup."""
         self._destroy_settings_popup()
-
         if event:
             self._last_menu_pos = (event.x_root, event.y_root)
-
         popup = tk.Toplevel(self)
         popup.overrideredirect(boolean=True)
         popup.attributes("-topmost", 1)
         popup.configure(bg=CARD_BG, highlightthickness=1, highlightbackground=ACCENT)
         self._settings_popup = popup
-
         # Header
         header = tk.Label(
             popup, text="SETTINGS", bg=ACCENT, fg=CARD_BG, font=(self.font_family, self.font_size, "bold")
         )
         header.pack(fill="x")
-
         # Visibility Section
         self._create_toggle_btn(popup, "World Boss", "show_wb")
         self._create_toggle_btn(popup, "Legion", "show_legion")
@@ -42,9 +38,11 @@ class _OverlayMenu(OverlayContract):
         def build_gold_submenu_content(submenu_frame: tk.Misc) -> None:
             def update_dependent_widgets() -> None:
                 is_tracking = self.capture_gold_stats
+                show_gph = bool(self.show_gph)
+                show_total_gold = bool(self.show_total_gold)
                 state = tk.NORMAL if is_tracking else tk.DISABLED
-                btn_gph.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.show_gph) else MUTED)
-                btn_gained.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.show_total_gold) else MUTED)
+                btn_gph.config(state=state, fg=ACTIVE_GREEN if (is_tracking and show_gph) else MUTED)
+                btn_gained.config(state=state, fg=ACTIVE_GREEN if (is_tracking and show_total_gold) else MUTED)
 
             self._create_toggle_btn(
                 submenu_frame, "Track Gold", "capture_gold_stats", callback=update_dependent_widgets
@@ -65,16 +63,18 @@ class _OverlayMenu(OverlayContract):
         def build_exp_submenu_content(submenu_frame: tk.Misc) -> None:
             def update_dependent_widgets() -> None:
                 is_tracking = self.capture_exp_stats
+                show_eph = bool(self.show_eph)
+                show_total_exp = bool(self.show_total_exp)
+                show_t2l = bool(self.show_t2l)
+                show_next_scan = bool(self.show_next_scan)
                 state = tk.NORMAL if is_tracking else tk.DISABLED
+                check_exp_on_inventory_open = bool(self.settings.get("check_exp_on_inventory_open"))
 
-                btn_eph.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.show_eph) else MUTED)
-                btn_gained.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.show_total_exp) else MUTED)
-                btn_t2l.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.show_t2l) else MUTED)
-                btn_next.config(state=state, fg=ACTIVE_GREEN if (is_tracking and self.show_next_scan) else MUTED)
-                btn_inv.config(
-                    state=state,
-                    fg=ACTIVE_GREEN if (is_tracking and self.settings.get("check_exp_on_inventory_open")) else MUTED,
-                )
+                btn_eph.config(state=state, fg=ACTIVE_GREEN if (is_tracking and show_eph) else MUTED)
+                btn_gained.config(state=state, fg=ACTIVE_GREEN if (is_tracking and show_total_exp) else MUTED)
+                btn_t2l.config(state=state, fg=ACTIVE_GREEN if (is_tracking and show_t2l) else MUTED)
+                btn_next.config(state=state, fg=ACTIVE_GREEN if (is_tracking and show_next_scan) else MUTED)
+                btn_inv.config(state=state, fg=ACTIVE_GREEN if (is_tracking and check_exp_on_inventory_open) else MUTED)
 
                 btn_age.config(state=state, fg=TEXT if is_tracking else MUTED)
                 btn_pick.config(state=state, fg=TEXT if is_tracking else MUTED)

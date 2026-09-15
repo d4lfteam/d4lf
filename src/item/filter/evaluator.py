@@ -34,7 +34,7 @@ class FilterEvaluator(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMi
 
     def __init__(self, rules: LoadedRules | None = None, evaluation_settings: EvaluationSettings | None = None) -> None:
         self._rules = rules or LoadedRules.empty()
-        self._evaluation_settings = evaluation_settings or EvaluationSettings()
+        self._evaluation_settings: EvaluationSettings = evaluation_settings or EvaluationSettings()
 
     @property
     @override

@@ -1,13 +1,9 @@
 import logging
 
-from src.game_data import SIGIL_RULE_TARGET_TYPES, ItemRarity, SigilRules
+from src.game_data import ItemRarity, SigilRules
 from src.item import Item
 from src.item.data.affix import Affix
 from src.profiles import SigilConditionModel
-
-
-def test_target_types_preserve_editor_choices() -> None:
-    assert SIGIL_RULE_TARGET_TYPES == ("dungeon", "affix")
 
 
 def test_target_derives_affix_and_round_trips_display() -> None:

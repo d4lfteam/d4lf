@@ -190,8 +190,6 @@ def clean_up_old_log_files() -> None:
 def _log_unhandled_exceptions(args: threading.ExceptHookArgs) -> None:
     if args.exc_value is None or isinstance(args.exc_value, SystemExit):
         return
-    if args.exc_type is None:
-        return
     thread_name = args.thread.name if args.thread is not None else "unknown"
     LOGGER.critical(
         "Unhandled exception caused by thread '%s'",

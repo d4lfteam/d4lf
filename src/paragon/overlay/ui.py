@@ -38,9 +38,9 @@ class OverlayUIMixin(OverlayContract):
         # The panel width always scales with DPI. Cell sizes only scale
         # automatically when the user has not stored an explicit override.
         self._cfg.panel_w = round(self._cfg.panel_w * eff)
-        if self._settings.get("cell_size") is None:
+        if dict(self._settings).get("cell_size") is None:
             self._cfg.cell_size = round(self._cfg.cell_size * eff)
-        if self._settings.get("cell_size_collapsed") is None:
+        if dict(self._settings).get("cell_size_collapsed") is None:
             self._cfg.cell_size_collapsed = round(self._cfg.cell_size_collapsed * eff)
 
     def _build_ui(self) -> None:

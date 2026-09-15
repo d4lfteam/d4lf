@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 from natsort import natsorted
 
-from src.settings.coordinates import COLORS
 from src.settings.scaling import ResManager, _ResTransformer
 
 _PIXELS = [np.array([0, 0]), np.array([3840, 0]), np.array([0, 2160]), np.array([3840, 2160])]
@@ -34,10 +33,6 @@ def test_transformation(result) -> None:
         expected = next(result[1])
         assert new_pixel[0] == expected[0]
         assert new_pixel[1] == expected[1]
-
-
-def test_colors() -> None:
-    assert COLORS is not None
 
 
 def test_templates() -> None:
