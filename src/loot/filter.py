@@ -90,30 +90,25 @@ def check_items(
         if item_descr.rarity == ItemRarity.Unique and item_descr.item_type != ItemType.Tribute:
             if not res.keep:
                 _handle_no_match()
-            elif res.keep:
-                if len(res.matched) == 1 and res.matched[0].profile.lower() == "cosmetics":
-                    LOGGER.info("Ignoring unique because it matches no filters and is a cosmetic upgrade.")
-                elif any(match.aspect_match for match in res.matched) and get_settings().general.mark_as_favorite:
-                    # This means it was a legitimate match, not an ignore
-                    mark_as_favorite()
-                elif get_settings().general.handle_uniques == UnfilteredUniquesType.favorite:
-                    mark_as_favorite()
+            elif len(res.matched) == 1 and res.matched[0].profile.lower() == "cosmetics":
+                LOGGER.info("Ignoring unique because it matches no filters and is a cosmetic upgrade.")
+            elif any(match.aspect_match for match in res.matched) and get_settings().general.mark_as_favorite:
+                # This means it was a legitimate match, not an ignore
+                mark_as_favorite()
+            elif get_settings().general.handle_uniques == UnfilteredUniquesType.favorite:
+                mark_as_favorite()
         elif not res.keep:
             if get_settings().general.do_not_junk_ancestral_legendaries and item_descr.is_ancestral:
                 LOGGER.info("Skipping marking as junk because it is an ancestral legendary.")
             else:
                 _handle_no_match()
         elif (
-            res.keep
-            and (
-                matched_any_affixes
-                or matched_profile_legendary_aspect
-                or item_descr.rarity == ItemRarity.Mythic
-                or is_sigil(item_descr.item_type)
-                or item_descr.item_type == ItemType.Tribute
-            )
-            and get_settings().general.mark_as_favorite
-        ):
+            matched_any_affixes
+            or matched_profile_legendary_aspect
+            or item_descr.rarity == ItemRarity.Mythic
+            or is_sigil(item_descr.item_type)
+            or item_descr.item_type == ItemType.Tribute
+        ) and get_settings().general.mark_as_favorite:
             mark_as_favorite()
 
     LOGGER.debug(f"Time to filter all items in stash/inventory tab: {time.time() - start_checking_items:.2f}s")

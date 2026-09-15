@@ -168,7 +168,7 @@ class _OverlayControls(OverlayContract):
                 return
             # Check if focus is in any open submenu
             for sub in self._open_submenus.values():
-                if sub.winfo_exists() and self._is_descendant(focus, sub):
+                if self._is_descendant(focus, sub):
                     return
 
         # Focus is truly gone, cleanup everything
@@ -185,7 +185,7 @@ class _OverlayControls(OverlayContract):
                 existing_popup.destroy()
                 del self._open_submenus[key]
 
-        if submenu_id in self._open_submenus and self._open_submenus[submenu_id].winfo_exists():
+        if submenu_id in self._open_submenus:
             # Submenu is already open, close it
             self._open_submenus[submenu_id].destroy()
             del self._open_submenus[submenu_id]

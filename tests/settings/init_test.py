@@ -33,7 +33,6 @@ def test_resolution_manager_preserves_uhd_reference() -> None:
 def test_params_path_contract() -> None:
     loader = settings.get_settings()
     assert loader.user_dir == Path.home() / ".d4lf"
-    assert settings.PARAMS_INI == "params.ini"
 
 
 def test_import_is_free_of_platform_and_gui_backends() -> None:

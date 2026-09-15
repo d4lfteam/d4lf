@@ -1,6 +1,9 @@
 import logging
 import tkinter as tk
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
+
+if TYPE_CHECKING:
+    import datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -18,6 +21,10 @@ class OverlayContract(tk.Toplevel):
 
     _gold_initialized: bool
     _exp_initialized: bool
+    capture_gold_stats: bool
+    capture_exp_stats: bool
+    locked: bool
+    synced_wb: tuple[datetime.datetime, str] | None
 
     def __getattr__(self, name: str) -> NoReturn:
         raise AttributeError(name)

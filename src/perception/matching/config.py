@@ -19,7 +19,7 @@ class SearchConfig:
     """Options that control matching, independent of templates and input images."""
 
     threshold: float = 0.7
-    roi: Sequence[int | float] | str | None = None
+    roi: Sequence[int | float | str] | str | None = None
     use_grayscale: bool = False
     color_match: ColorMatch = None
     mode: SearchMode = "first"
@@ -54,10 +54,11 @@ class SearchConfig:
             if any(not isinstance(value, (int, float, np.number)) for value in values):
                 message = "roi must contain numeric values"
                 raise ValueError(message)
-            if not all(isfinite(float(value)) for value in values):
+            numeric_values = tuple(float(value) for value in values if isinstance(value, (int, float, np.number)))
+            if not all(isfinite(value) for value in numeric_values):
                 message = "roi must contain finite values"
                 raise ValueError(message)
-            if values[0] < 0 or values[1] < 0 or values[2] <= 0 or values[3] <= 0:
+            if numeric_values[0] < 0 or numeric_values[1] < 0 or numeric_values[2] <= 0 or numeric_values[3] <= 0:
                 message = "roi must have a non-negative origin and positive dimensions"
                 raise ValueError(message)
         if not isinstance(self.use_grayscale, bool):

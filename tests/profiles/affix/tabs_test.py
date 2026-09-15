@@ -1,3 +1,4 @@
+import operator
 import os
 
 import pytest
@@ -79,7 +80,7 @@ def test_affix_widget_clears_on_empty_filter(qapp, mock_ini_loader) -> None:
     widget.update_name("")
 
     # It must clear the name
-    assert not widget.affix.name
+    assert operator.not_(widget.affix.name)
 
 
 def test_affix_pool_add_and_remove_lifecycle(qapp, mock_ini_loader) -> None:

@@ -249,7 +249,7 @@ def merge_custom_data(data: list[DataT] | dict[str, DataT], name: str, language:
         _merge_list(data, custom, name)
     elif _is_nested_data(cast("JsonValue", data)) and _is_nested_data(cast("JsonValue", custom)) and custom:
         _merge_nested_dict(cast("dict[str, dict[str, DataT]]", data), cast("dict[str, dict[str, DataT]]", custom), name)
-    elif isinstance(data, dict):
+    else:
         _merge_flat_dict(data, custom, name)
 
 

@@ -19,6 +19,7 @@ class OverlayContract(tk.Toplevel):
     _build_popup_escape_bind_id: str | None
     _last_roi: tuple[int, int, int, int] | None
     _last_res: tuple[int, int] | None
+    _border_rect: tuple[int, int, int, int] | None
     grid_x: int
     grid_y: int
     grid_x_collapsed: int

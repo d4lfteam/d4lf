@@ -29,8 +29,8 @@ class Item:
     seasonal_attribute: SeasonalAttribute | None = None
     set: str | None = None
 
-    # ty: ignore[invalid-method-override, missing-override-decorator] - this project intentionally uses a same-type equality contract
-    def __eq__(self, other: Item) -> bool:
+    @override
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Item):
             return False
         res = True

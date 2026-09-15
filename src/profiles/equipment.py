@@ -34,12 +34,12 @@ class ItemFilterModel(BaseModel):
 
     @field_validator("item_type", mode="before")
     @classmethod
-    def parse_item_type(cls, data: str | list[str]) -> list[str]:
+    def parse_item_type(cls, data: str | ItemType | list[str | ItemType]) -> list[str]:
         return _parse_item_type_or_rarities(data)
 
     @field_validator("rarities", mode="before")
     @classmethod
-    def parse_rarities(cls, data: str | list[str]) -> list[str]:
+    def parse_rarities(cls, data: str | ItemRarity | int | list[str | ItemRarity | int]) -> list[str]:
         return _normalize_rarities(data)
 
     @field_validator("unique_aspect", mode="before")

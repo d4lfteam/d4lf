@@ -22,8 +22,8 @@ def normalize_paragon(
         return []
     paragon = catalogs.data.get("paragon", {})
     class_catalog = _class_catalog(paragon, class_name)
-    boards = class_catalog.get("board", {}) if isinstance(class_catalog, Mapping) else {}
-    glyphs = class_catalog.get("glyph", {}) if isinstance(class_catalog, Mapping) else {}
+    boards = class_catalog.get("board", {})
+    glyphs = class_catalog.get("glyph", {})
     result: list[JsonObject] = []
     for board_key, raw_board in sorted(raw_boards.items(), key=_board_index):
         if not isinstance(raw_board, Mapping) or raw_board.get("deleted") is True:

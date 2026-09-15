@@ -54,7 +54,7 @@ def _find_item_rarity(resolved_item_id: str, mapping_data: Mapping[str, JsonValu
 
 def _as_text_mapping(value: JsonValue) -> Mapping[str, str]:
     mapping = _as_mapping(value)
-    return {key: item for key, item in mapping.items() if isinstance(key, str) and isinstance(item, str)}
+    return {key: item for key, item in mapping.items() if isinstance(item, str)}
 
 
 def _attr_desc_special_handling(affix_id: int | str) -> str:

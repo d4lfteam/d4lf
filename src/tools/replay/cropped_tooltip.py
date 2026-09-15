@@ -77,7 +77,7 @@ def validate_replay_config(config: ReplayConfig) -> tuple[Path, np.ndarray]:
     indices = config.matched_row_indices
     if not isinstance(indices, list):
         _raise_configuration_error("Matched row indices must be provided as a list.")
-    if any(not isinstance(index, int) or isinstance(index, bool) for index in indices):
+    if any(isinstance(index, bool) for index in indices):
         _raise_configuration_error("Matched row indices must be integers.")
     if len(indices) != len(set(indices)):
         _raise_configuration_error("Matched row indices contain a duplicate.")

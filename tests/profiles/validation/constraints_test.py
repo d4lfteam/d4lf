@@ -14,7 +14,7 @@ import pytest
 from src.profiles.validation import constraints as validators
 
 
-def test_validator_constants_and_boundaries() -> None:
+def test_validator_boundary_values() -> None:
     assert validators.check_greater_than_zero(0) == 0
     assert validators.validate_percent(100) == 100
     assert validators.validate_greater_affix_count(4) == 4

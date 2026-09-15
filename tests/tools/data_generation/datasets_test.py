@@ -59,9 +59,7 @@ def test_affix_generation_uses_core_toc_power_index_without_parsing_power_files(
     assert sequential.exists()
 
 
-def test_generate_uniques_skips_placeholder_before_reading_incomplete_inherent_affix(
-    tmp_path, monkeypatch
-) -> None:
+def test_generate_uniques_skips_placeholder_before_reading_incomplete_inherent_affix(tmp_path, monkeypatch) -> None:
     d4data = tmp_path / "d4data"
     unique_dir = d4data / "json/base/meta/Item"
     string_dir = d4data / "json/enUS_Text/meta/StringList"
@@ -76,8 +74,7 @@ def test_generate_uniques_skips_placeholder_before_reading_incomplete_inherent_a
         encoding="utf-8",
     )
     (string_dir / "Item_Placeholder_Unique.stl.json").write_text(
-        json.dumps({"arStrings": [{"szLabel": "Name", "szText": "[PH] Placeholder Unique"}]}),
-        encoding="utf-8",
+        json.dumps({"arStrings": [{"szLabel": "Name", "szText": "[PH] Placeholder Unique"}]}), encoding="utf-8"
     )
     output_dir = tmp_path / "assets/lang/enUS"
     output_dir.mkdir(parents=True)

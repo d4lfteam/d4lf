@@ -49,7 +49,7 @@ def threshold(
         if inverse:
             thresholded_image = 255 - thresholded_image
     # otsu threshold
-    elif method == ThresholdTypes.OTSU:
+    else:
         _, thresholded_image = cv2.threshold(img_gray, 0, 255, thresh_type + cv2.THRESH_OTSU)
 
     return thresholded_image

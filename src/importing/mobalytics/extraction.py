@@ -53,7 +53,7 @@ def _fix_input_url(url: str) -> str:
 
 def _first_jsonpath_result(path: str, value: JsonValue) -> JsonValue | None:
     results = jsonpath.findall(path, value)
-    if not isinstance(results, list) or not results:
+    if not results:
         return None
     return cast("JsonValue", results[0])
 
