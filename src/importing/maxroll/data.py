@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING
 
-from src.importing.conversion import as_string_keyed_mapping as _as_mapping
 from src.type_aliases import JsonObject
 
 if TYPE_CHECKING:
@@ -16,9 +15,7 @@ def _find_item_name(
         (
             item_name
             for item_data in (item_mapping.get(resolved_item_id), resolved_item)
-            if item_data is not None
-            and isinstance(item_name := item_data.get("name"), str)
-            and item_name.strip()
+            if item_data is not None and isinstance(item_name := item_data.get("name"), str) and item_name.strip()
         ),
         None,
     )
