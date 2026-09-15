@@ -243,13 +243,6 @@ def generate_uniques(d4data_dir: Path, language: str) -> int:
             inherent_affixes = unique_item_data.get("arInherentAffixes", [])
         if item_type not in GEAR_TYPES and item_type not in ("FocusBookOffHand", "HoradricSeal"):
             continue
-        for inherent_affix in inherent_affixes:
-            if inherent_affix["name"].startswith("UNIQUE_INHERENT_Evade_MovementSpeed_"):
-                num_inherents += 1
-                continue
-            affix_file = d4data_dir / f"json/{inherent_affix['__targetFileName__']}.json"
-            with Path(affix_file).open(encoding="utf-8") as unique_affix_file:
-                num_inherents += len(json.load(unique_affix_file)["ptItemAffixAttributes"])
         core_unique_file_id = core_unique_file.name.split(".")[0]
         string_item_file = d4data_dir / f"json/{language}_Text/meta/StringList/Item_{core_unique_file_id}.stl.json"
         if not string_item_file.exists():
@@ -258,6 +251,13 @@ def generate_uniques(d4data_dir: Path, language: str) -> int:
         name_clean = get_string_list_name(string_item_file)
         if name_clean is None or name_clean in items_to_ignore or is_placeholder_or_test_name(name_clean):
             continue
+        for inherent_affix in inherent_affixes:
+            if inherent_affix["name"].startswith("UNIQUE_INHERENT_Evade_MovementSpeed_"):
+                num_inherents += 1
+                continue
+            affix_file = d4data_dir / f"json/{inherent_affix['__targetFileName__']}.json"
+            with Path(affix_file).open(encoding="utf-8") as unique_affix_file:
+                num_inherents += len(json.load(unique_affix_file)["ptItemAffixAttributes"])
         unique_dict[name_clean] = {"num_inherents": num_inherents}
 
     merge_custom_data(unique_dict, "uniques", language)
