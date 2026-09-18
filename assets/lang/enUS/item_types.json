@@ -1,6 +1,6 @@
 {
     "Amulet": "amulet",
-    "Axe": "axe",
+    "Axe": "berserker axe",
     "Axe2H": "two-handed axe",
     "Boots": "boots",
     "Bow": "bow",
@@ -27,7 +27,7 @@
     "Shield": "shield",
     "Sigil": "custom type sigil",
     "Staff": "staff",
-    "Sword": "sword",
+    "Sword": "phase blade",
     "Sword2H": "two-handed sword",
     "TemperManual": "temper manual",
     "Tome": "tome",
