@@ -1,6 +1,7 @@
 from pathlib import Path
 
 _SOURCE_MODULES_WITHOUT_MIRRORED_TESTS = {
+    Path("src/__init__.py"),
     Path("src/importing/d4builds/constants.py"),
     Path("src/importing/gui/constants.py"),
     Path("src/importing/maxroll/constants.py"),

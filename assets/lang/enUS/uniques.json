@@ -23,6 +23,9 @@
     "andariels_visage": {
         "num_inherents": 0
     },
+    "annihilus": {
+        "num_inherents": 0
+    },
     "arcadia": {
         "num_inherents": 0
     },
@@ -73,6 +76,9 @@
     },
     "beastfall_boots": {
         "num_inherents": 0
+    },
+    "bell_of_the_bovine": {
+        "num_inherents": 1
     },
     "bindings_of_attrition": {
         "num_inherents": 0
@@ -419,6 +425,9 @@
     "kilt_of_blackwing": {
         "num_inherents": 0
     },
+    "leorics_crown": {
+        "num_inherents": 0
+    },
     "levin_grasp": {
         "num_inherents": 0
     },
@@ -462,6 +471,9 @@
         "num_inherents": 0
     },
     "melted_heart_of_selig": {
+        "num_inherents": 0
+    },
+    "messerschmidts_reaver": {
         "num_inherents": 0
     },
     "might_of_qual-kehk": {

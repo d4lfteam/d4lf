@@ -45,6 +45,7 @@ LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://infinitybuilds.gg/"
 SCRIPT_XPATH = "//script"
 ASPECT_UPGRADE_RARITIES = {"legendary"}
+RUNEWORD_CATALOG_ID_PREFIX = "item-runeword-"
 
 
 class InfinityBuildsError(ImportSourceError):
@@ -175,6 +176,7 @@ def _build_variant_for_gear(gear: Sequence[_GearPiece], resolved: _ResolvedGearD
             continue
         rarity = item.get("rarity", "")
         is_unique_like = is_unique_like_rarity(rarity)
+        is_runeword = item_id is not None and item_id.startswith(RUNEWORD_CATALOG_ID_PREFIX)
         # Use the resolved catalog slot name (e.g. "Sword", "Ring", "Chest Armor") rather than the
         # build's internal slot key (e.g. "mainhand", "ring1", "chest") which doesn't map 1:1.
         catalog_slot = item.get("slot", "")
@@ -233,8 +235,13 @@ def _build_variant_for_gear(gear: Sequence[_GearPiece], resolved: _ResolvedGearD
             continue
         item_filter = ItemFilterModel()
         item_filter.item_type = [item_type] if item_type else []
-        if is_unique_like:
+        if is_unique_like and not is_runeword:
             item_filter.unique_aspect = [AspectUniqueFilterModel(name=item_name)]
+        elif is_runeword and is_unique_like:
+            LOGGER.warning(
+                f"Skipping unsupported runeword unique aspect for catalog item {item_id!r} ({item_name!r}); "
+                "preserving supported affixes."
+            )
         if not affixes and not item_filter.unique_aspect:
             LOGGER.warning(f"Skipping {gear_piece.get('slot')} because it had no supported affixes.")
             continue

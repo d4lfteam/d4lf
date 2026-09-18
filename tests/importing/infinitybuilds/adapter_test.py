@@ -153,6 +153,54 @@ def test_import_infinitybuilds_saves_one_profile_per_variant_and_resolves_gear_o
     assert profile_store.save_new.call_count == 2
 
 
+def test_import_infinitybuilds_skips_runeword_unique_aspect_but_keeps_supported_affixes(
+    mock_ini_loader, mocker: MockerFixture, caplog
+) -> None:
+    GameCatalog()
+    variants = [
+        {
+            "id": "v-1",
+            "name": "Rain of Arrows",
+            "gear": [
+                _gear_piece("mainhand", "item-runeword-spirit-dagger-itm", ["affix-damage", "affix-unsupported"]),
+                _gear_piece("helm", "item-unique-helm", []),
+            ],
+        }
+    ]
+    driver = _ImportDriver(_page_source("rogue", variants))
+    response = mocker.Mock()
+    response.json.return_value = {
+        "dataset": {
+            "gear": {
+                "items": [
+                    {"id": "item-runeword-spirit-dagger-itm", "label": "Spirit", "rarity": "unique", "slot": "Dagger"},
+                    {"id": "item-unique-helm", "label": "Doombringer", "rarity": "unique", "slot": "Helm"},
+                ],
+                "aspects": [],
+                "affixes": [{"id": "affix-damage", "label": "Damage", "greaterAffixEligible": False}],
+            }
+        }
+    }
+    mocker.patch("src.importing.infinitybuilds.extraction.get_with_retry", return_value=response)
+    profile_store = mocker.Mock()
+    profile_store.save_new.side_effect = lambda **kwargs: SimpleNamespace(file_name=kwargs["file_name"])
+    mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
+
+    with caplog.at_level("WARNING", logger="src.importing.infinitybuilds.adapter"):
+        result = import_infinitybuilds(
+            request=_request(url="https://infinitybuilds.gg/en/builds/virgories-rain-of-arrows-s15-rogue-LnwzHMu4qg"),
+            driver=typing.cast("WebDriver", driver),
+        )
+
+    assert result is not None
+    filters = {next(iter(entry.root)): next(iter(entry.root.values())) for entry in result.profile.affixes}
+    runeword_filter = filters["Dagger"]
+    assert runeword_filter.unique_aspect == []
+    assert runeword_filter.affix_pool[0].count[0].name == "damage"
+    assert filters["Helm"].unique_aspect[0].name == "doombringer"
+    assert "runeword" in caplog.text.lower()
+
+
 def test_import_infinitybuilds_imports_talisman_charms_and_seal(mock_ini_loader, mocker: MockerFixture) -> None:
     GameCatalog()
     variants = [

@@ -28,6 +28,32 @@ def test_main_reports_stage_start_finish_counts_and_elapsed_time(tmp_path, monke
     assert "FINISH affixes: 7 files, elapsed=" in output
 
 
+def test_main_preserves_generic_axe_and_sword_item_type_labels(tmp_path, monkeypatch) -> None:
+    d4data = tmp_path / "d4data"
+    string_list_dir = d4data / "json/enUS_Text/meta/StringList"
+    string_list_dir.mkdir(parents=True)
+    (string_list_dir / "UIToolTips.stl.json").write_text('{"arStrings": []}', encoding="utf-8")
+    for item_type, name in (
+        ("Axe", "axe"),
+        ("Axe_Berserker_Axe", "berserker axe"),
+        ("Sword", "sword"),
+        ("Sword_Phase_Blade", "phase blade"),
+    ):
+        (string_list_dir / f"ItemType_{item_type}.stl.json").write_text(
+            json.dumps({"arStrings": [{"szLabel": "Name", "szText": name}]}), encoding="utf-8"
+        )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("src.tools.data_generation.datasets.D4LF_BASE_DIR", tmp_path)
+    for stage in ("aspects", "uniques", "sets", "sigils", "affixes"):
+        monkeypatch.setattr(f"src.tools.data_generation.datasets.generate_{stage}", lambda *_args, **_kwargs: 0)
+
+    main(d4data)
+
+    output = json.loads((tmp_path / "assets/lang/enUS/item_types.json").read_text(encoding="utf-8"))
+    assert output["Axe"] == "axe"
+    assert output["Sword"] == "sword"
+
+
 def test_affix_generation_uses_core_toc_power_index_without_parsing_power_files(tmp_path, monkeypatch) -> None:
     d4data = tmp_path / "d4data"
     string_dir = d4data / "json/enUS_Text/meta/StringList"

@@ -1,5 +1,6 @@
 {
     "dungeons": {
+        "a_journey_through_the_past": "a journey through the past",
         "abandoned_mineworks": "abandoned mineworks",
         "akkhans_grasp": "akkhans grasp",
         "aldurwood": "aldurwood",
@@ -280,6 +281,7 @@
         "diamond_reserve": "diamond reserve many diamond chests have been stashed here.",
         "dungeon_delve": "dungeon delve completing the dungeon grants extra experience and rewards.",
         "duriels_offering": "duriels offering astaroths rewards include shards of agony, required to open duriels hoard.",
+        "echo_of_pindleskin": "echo of pindleskin the echo of pindleskin wanders this dungeon, and may drop any item in the game when killed.",
         "emerald_reserve": "emerald reserve many emerald chests have been stashed here.",
         "equipment_delve": "equipment delve find horadric artifacts to earn an increasingly higher quality cache of gear.",
         "extra_resplendent_chests": "extra resplendent chests extra resplendent chests will appear in the dungeon.",
