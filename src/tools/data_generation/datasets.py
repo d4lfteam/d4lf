@@ -94,7 +94,7 @@ def main(d4data_dir: Path) -> None:
                 name_idx = 0 if data["arStrings"][0]["szLabel"] == "Name" else 1
                 name_str: str = check_ms(data["arStrings"][name_idx]["szText"]).lower().strip()
                 if item_type in whitelist_types:
-                    item_typ_dict[item_type] = name_str
+                    item_typ_dict[item_type] = {"Axe": "axe", "Sword": "sword"}.get(item_type, name_str)
         merge_custom_data(item_typ_dict, "item_types", language)
         with Path(D4LF_BASE_DIR / f"assets/lang/{language}/item_types.json").open("w", encoding="utf-8") as json_file:
             json.dump(item_typ_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
