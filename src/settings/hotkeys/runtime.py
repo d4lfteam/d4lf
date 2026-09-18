@@ -2,14 +2,12 @@
 
 import threading
 from collections import defaultdict
-from typing import TYPE_CHECKING, cast
+from collections.abc import Callable, Hashable  # ruff: ignore[typing-only-standard-library-import] - pynput inspects the listener handlers
+from typing import cast
 
 from pynput import keyboard
 
 from src.settings.binding.core import _canonicalize_token, _split_hotkey_tokens, normalize_hotkey
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Hashable
 
 _CONTROLLER: keyboard.Controller | None = None
 

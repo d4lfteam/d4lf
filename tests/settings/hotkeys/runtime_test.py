@@ -1,3 +1,4 @@
+import inspect
 import typing
 
 import pytest
@@ -197,3 +198,10 @@ def test_controller_is_constructed_on_first_key_action(mocker: MockerFixture) ->
 
     constructor.assert_called_once_with()
     controller.press.assert_called_once_with("a")
+
+
+@pytest.mark.parametrize("handler_name", ["_on_press", "_on_release"])
+def test_listener_handler_signature_is_inspectable(handler_name: str) -> None:
+    handler = getattr(hotkeys._GlobalHotkeyRegistry(), handler_name)
+
+    inspect.getfullargspec(handler)
