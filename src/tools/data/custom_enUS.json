@@ -8,5 +8,10 @@
         "positive": {
             "ruptures": "ruptures close ruptures here to access the deathtoll chambers"
         }
+    },
+    "uniques": {
+        "the_grandfather": {
+            "num_inherents": 1
+        }
     }
 }

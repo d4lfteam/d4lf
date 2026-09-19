@@ -110,7 +110,7 @@ def test_generate_uniques_skips_placeholder_before_reading_incomplete_inherent_a
 
     output = json.loads((output_dir / "uniques.json").read_text(encoding="utf-8"))
     assert "[ph]_placeholder_unique" not in output
-    assert output == {}
+    assert output == {"the_grandfather": {"num_inherents": 1}}
 
 
 def test_generate_uniques_includes_runeword_items(tmp_path, monkeypatch) -> None:
