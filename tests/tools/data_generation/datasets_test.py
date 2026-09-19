@@ -139,3 +139,34 @@ def test_generate_uniques_includes_runeword_items(tmp_path, monkeypatch) -> None
     output = json.loads((output_dir / "uniques.json").read_text(encoding="utf-8"))
     assert "enigma" in output
     assert output["enigma"] == {"num_inherents": 0}
+
+
+def test_generate_uniques_includes_unique_charms_and_seals(tmp_path, monkeypatch) -> None:
+    d4data = tmp_path / "d4data"
+    item_dir = d4data / "json/base/meta/Item"
+    string_dir = d4data / "json/enUS_Text/meta/StringList"
+    item_dir.mkdir(parents=True)
+    string_dir.mkdir(parents=True)
+    (item_dir / "S15_Charm_Unique_Annihilus.itm.json").write_text(
+        json.dumps({"snoItemType": {"name": "HoradricSeal"}, "arInherentAffixes": []}), encoding="utf-8"
+    )
+    (string_dir / "Item_S15_Charm_Unique_Annihilus.stl.json").write_text(
+        json.dumps({"arStrings": [{"szLabel": "Name", "szText": "Annihilus"}]}), encoding="utf-8"
+    )
+    (item_dir / "S15_Charm_Unique_HellfireTorch.itm.json").write_text(
+        json.dumps({"snoItemType": {"name": "Charm"}, "arInherentAffixes": []}), encoding="utf-8"
+    )
+    (string_dir / "Item_S15_Charm_Unique_HellfireTorch.stl.json").write_text(
+        json.dumps({"arStrings": [{"szLabel": "Name", "szText": "Hellfire Torch"}]}), encoding="utf-8"
+    )
+    output_dir = tmp_path / "assets/lang/enUS"
+    output_dir.mkdir(parents=True)
+    monkeypatch.setattr("src.tools.data_generation.datasets.D4LF_BASE_DIR", tmp_path)
+
+    assert generate_uniques(d4data, "enUS") == 2
+
+    output = json.loads((output_dir / "uniques.json").read_text(encoding="utf-8"))
+    assert "annihilus" in output
+    assert output["annihilus"] == {"num_inherents": 0}
+    assert "hellfire_torch" in output
+    assert output["hellfire_torch"] == {"num_inherents": 0}

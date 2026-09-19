@@ -181,7 +181,14 @@ def create_seal_charm_filter(
         CharmFilterModel(set=[set_name] if set_name else []) if model_type is CharmFilterModel else SealFilterModel()
     )
     result.affix_pool = affix_pool
-    result.unique_aspect = [AspectUniqueFilterModel(name=unique_name)] if unique_name else []
+    if unique_name:
+        try:
+            result.unique_aspect = [AspectUniqueFilterModel(name=unique_name)]
+        except Exception:
+            LOGGER.exception(f"Unexpected error adding unique aspect for {unique_name}, please report a bug.")
+            result.unique_aspect = []
+    else:
+        result.unique_aspect = []
     if require_gas:
         result.min_greater_affix_count = sum(a.type == AffixType.greater for a in affixes)
     return result

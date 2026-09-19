@@ -205,7 +205,7 @@ def _extract_profile_variant(
 
         affixes = _find_item_affixes(
             mapping_data=mapping_data,
-            item_affixes=cast("list[JsonObject]", resolved_item["explicits"]),
+            item_affixes=cast("list[JsonObject]", resolved_item.get("explicits") or []),
             item_type=item_type,
             import_greater_affixes=request.options.import_greater_affixes,
         )

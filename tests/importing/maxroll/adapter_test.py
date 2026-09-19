@@ -164,6 +164,24 @@ def test_extract_profile_variant_skips_items_missing_from_mapping() -> None:
     assert variant.affix_filters == []
 
 
+def test_extract_profile_variant_handles_items_without_explicits() -> None:
+    variant = _extract_profile_variant(
+        profile_data={"name": "Default", "items": {"helm": 1}},
+        items={"1": {"id": "item-helm", "name": "Test Helm"}},
+        mapping_data={
+            "items": {"item-helm": {"type": "Helm", "magicType": 1}},
+            "attributeDescriptions": {},
+            "affixes": {},
+            "skills": {},
+        },
+        class_name="Barbarian",
+        build_header="Test Build",
+        request=ImportRequest(url="https://maxroll.gg/d4/planner/test#1", options=ImportOptions(add_to_profiles=False)),
+    )
+
+    assert variant.affix_filters == []
+
+
 def test_import_maxroll_extracts_the_selected_profile(mock_ini_loader, mocker: MockerFixture) -> None:
     GameCatalog()
     planner_response = mocker.Mock()

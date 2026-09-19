@@ -3,6 +3,7 @@ from src.importing import DEFAULT_FILENAME_PARTS, FilenamePart, ImportOptions, I
 from src.importing.filters import (
     affix_dict_for_item_type,
     create_item_affix_pool,
+    create_seal_charm_filter,
     deduplicate_filters,
     is_unique_like_rarity,
     match_set_aware_seal_affix,
@@ -214,3 +215,11 @@ def test_to_yaml_str_preserves_paragon_aliases(mock_ini_loader) -> None:
     assert "Paragon:" in yaml_str
     assert "ParagonBoardsList:" in yaml_str
     assert "Name: Build Name" in yaml_str
+
+
+def test_create_seal_charm_filter_handles_unknown_unique_aspect() -> None:
+    GameCatalog()
+    charm_filter = create_seal_charm_filter(
+        affixes=[], require_gas=False, model_type=CharmFilterModel, unique_name="unknown_unique_charm"
+    )
+    assert charm_filter.unique_aspect == []

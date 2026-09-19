@@ -120,7 +120,7 @@
         "num_inherents": 0
     },
     "cathedrals_song": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "chainscourged_mail": {
         "num_inherents": 0
@@ -216,7 +216,7 @@
         "num_inherents": 2
     },
     "eldruin_sword_of_justice": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "elegy": {
         "num_inherents": 0
@@ -371,6 +371,9 @@
     "hellbrand_signet": {
         "num_inherents": 0
     },
+    "hellfire_torch": {
+        "num_inherents": 0
+    },
     "hellhammer": {
         "num_inherents": 0
     },
@@ -378,10 +381,10 @@
         "num_inherents": 0
     },
     "henris_perquisition": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "herald_of_zakarum": {
-        "num_inherents": 3
+        "num_inherents": 0
     },
     "heralds_morningstar": {
         "num_inherents": 0
@@ -849,10 +852,10 @@
         "num_inherents": 0
     },
     "the_gloom_ward": {
-        "num_inherents": 2
+        "num_inherents": 0
     },
     "the_grandfather": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "the_hand_of_naz": {
         "num_inherents": 0
@@ -906,7 +909,7 @@
         "num_inherents": 0
     },
     "tyraels_might": {
-        "num_inherents": 1
+        "num_inherents": 0
     },
     "ugly_bastard_helm": {
         "num_inherents": 0
