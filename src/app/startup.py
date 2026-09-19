@@ -56,8 +56,19 @@ def check_for_proper_tts_configuration() -> None:
 
     if tts_dll and tts_dll.exists():
         try:
-            command = ["powershell", "-Command", f"(Get-AuthenticodeSignature '{tts_dll}').Status"]
-            status = subprocess.run(command, capture_output=True, text=True, check=True).stdout.strip()
+            dll_path = str(tts_dll).replace("'", "''")
+            command = [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                (
+                    "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(); "
+                    f"(Get-AuthenticodeSignature '{dll_path}').Status"
+                ),
+            ]
+            status = subprocess.run(
+                command, capture_output=True, encoding="utf-8", errors="replace", check=True
+            ).stdout.strip()
             if status == "Valid":
                 LOGGER.debug(f"{tts_dll} is locally signed and valid.")
             else:
