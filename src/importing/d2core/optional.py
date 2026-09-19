@@ -162,6 +162,8 @@ def _normalize_talisman(
             unique_name=unique_name,
             set_name=set_name,
         )
+    if result is None:
+        return None
     rarity = _rarity(quality)
     if rarity is not None:
         result.rarities = [rarity]

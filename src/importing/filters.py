@@ -3,6 +3,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, TypeVar, overload
 
 import rapidfuzz
+from pydantic import ValidationError
 
 from src.game_data import WEAPON_TYPES, GameCatalog, ItemRarity, ItemType
 from src.item import Affix, AffixType
@@ -137,7 +138,7 @@ def create_seal_charm_filter(
     model_type: type[SealFilterModel] = SealFilterModel,
     unique_name: str | None = None,
     set_name: str | None = None,
-) -> SealFilterModel: ...
+) -> SealFilterModel | None: ...
 
 
 @overload
@@ -147,7 +148,7 @@ def create_seal_charm_filter(
     model_type: type[CharmFilterModel],
     unique_name: str | None = None,
     set_name: str | None = None,
-) -> CharmFilterModel: ...
+) -> CharmFilterModel | None: ...
 
 
 @overload
@@ -157,7 +158,7 @@ def create_seal_charm_filter(
     model_type: type[SealFilterModel | CharmFilterModel],
     unique_name: str | None = None,
     set_name: str | None = None,
-) -> SealFilterModel | CharmFilterModel: ...
+) -> SealFilterModel | CharmFilterModel | None: ...
 
 
 def create_seal_charm_filter(
@@ -166,7 +167,7 @@ def create_seal_charm_filter(
     model_type: type[SealFilterModel | CharmFilterModel] = SealFilterModel,
     unique_name: str | None = None,
     set_name: str | None = None,
-) -> SealFilterModel | CharmFilterModel:
+) -> SealFilterModel | CharmFilterModel | None:
     affix_pool = (
         [
             AffixFilterCountModel(
@@ -184,9 +185,9 @@ def create_seal_charm_filter(
     if unique_name:
         try:
             result.unique_aspect = [AspectUniqueFilterModel(name=unique_name)]
-        except Exception:
-            LOGGER.exception(f"Unexpected error adding unique aspect for {unique_name}, please report a bug.")
-            result.unique_aspect = []
+        except ValidationError:
+            LOGGER.warning(f"Skipping unsupported unique Charm/Seal {unique_name!r}.")
+            return None
     else:
         result.unique_aspect = []
     if require_gas:

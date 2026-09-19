@@ -145,6 +145,8 @@ def build_variant(
                     unique_name=unique_name,
                     set_name=set_name,
                 )
+                if filter_model is None:
+                    continue
                 charm_filters.append(filter_model)
                 if not guessed_set_name and filter_model.set:
                     guessed_set_name = filter_model.set[0]
@@ -156,7 +158,8 @@ def build_variant(
                     unique_name=unique_name,
                     set_name=set_name,
                 )
-                seal_filters.append(filter_model)
+                if filter_model is not None:
+                    seal_filters.append(filter_model)
             continue
         if affixes:
             affixes = sorted(affixes, key=lambda affix: (affix.name, affix.type.value))

@@ -156,25 +156,25 @@ def _extract_profile_variant(
                 )
                 continue
             if item_type == ItemType.Charm:
-                charm_filters.append(
-                    create_seal_charm_filter(
-                        affixes=seal_charm_affixes,
-                        require_gas=request.options.require_greater_affixes,
-                        model_type=CharmFilterModel,
-                        unique_name=charm_or_seal_unique_aspect,
-                        set_name=charm_set_name,
-                    )
+                charm_filter = create_seal_charm_filter(
+                    affixes=seal_charm_affixes,
+                    require_gas=request.options.require_greater_affixes,
+                    model_type=CharmFilterModel,
+                    unique_name=charm_or_seal_unique_aspect,
+                    set_name=charm_set_name,
                 )
+                if charm_filter is not None:
+                    charm_filters.append(charm_filter)
             else:
-                seal_filters.append(
-                    create_seal_charm_filter(
-                        affixes=seal_charm_affixes,
-                        require_gas=request.options.require_greater_affixes,
-                        model_type=SealFilterModel,
-                        unique_name=charm_or_seal_unique_aspect,
-                        set_name=charm_set_name,
-                    )
+                seal_filter = create_seal_charm_filter(
+                    affixes=seal_charm_affixes,
+                    require_gas=request.options.require_greater_affixes,
+                    model_type=SealFilterModel,
+                    unique_name=charm_or_seal_unique_aspect,
+                    set_name=charm_set_name,
                 )
+                if seal_filter is not None:
+                    seal_filters.append(seal_filter)
             continue
 
         item_filter.item_type = [item_type]

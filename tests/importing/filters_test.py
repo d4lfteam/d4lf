@@ -1,3 +1,5 @@
+import pytest
+
 from src.game_data import WEAPON_TYPES, GameCatalog, ItemRarity, ItemType
 from src.importing import DEFAULT_FILENAME_PARTS, FilenamePart, ImportOptions, ImportRequest, assemble_profile_file_name
 from src.importing.filters import (
@@ -10,7 +12,7 @@ from src.importing.filters import (
     unique_filter_name,
 )
 from src.item import Affix, AffixType
-from src.profiles import CharmFilterModel, ItemFilterModel, ProfileModel, to_yaml_str
+from src.profiles import CharmFilterModel, ItemFilterModel, ProfileModel, SealFilterModel, to_yaml_str
 
 
 def test_build_default_profile_file_name_maxroll() -> None:
@@ -217,9 +219,14 @@ def test_to_yaml_str_preserves_paragon_aliases(mock_ini_loader) -> None:
     assert "Name: Build Name" in yaml_str
 
 
-def test_create_seal_charm_filter_handles_unknown_unique_aspect() -> None:
+@pytest.mark.parametrize("model_type", [CharmFilterModel, SealFilterModel])
+@pytest.mark.parametrize("with_affixes", [False, True])
+def test_create_seal_charm_filter_skips_unknown_unique_aspect(model_type, with_affixes) -> None:
     GameCatalog()
     charm_filter = create_seal_charm_filter(
-        affixes=[], require_gas=False, model_type=CharmFilterModel, unique_name="unknown_unique_charm"
+        affixes=[Affix(name="maximum_life")] if with_affixes else [],
+        require_gas=False,
+        model_type=model_type,
+        unique_name="unknown_unique_charm",
     )
-    assert charm_filter.unique_aspect == []
+    assert charm_filter is None

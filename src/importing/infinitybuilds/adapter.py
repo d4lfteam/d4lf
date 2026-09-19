@@ -215,6 +215,8 @@ def _build_variant_for_gear(gear: Sequence[_GearPiece], resolved: _ResolvedGearD
                 unique_name=unique_name,
                 set_name=set_name,
             )
+            if charm_filter is None:
+                continue
             charm_filter.rarities = [charm_rarity] if charm_rarity else []
             charm_filters.append(charm_filter)
             continue
@@ -230,6 +232,8 @@ def _build_variant_for_gear(gear: Sequence[_GearPiece], resolved: _ResolvedGearD
                 model_type=SealFilterModel,
                 unique_name=unique_name,
             )
+            if seal_filter is None:
+                continue
             seal_filter.rarities = [seal_rarity] if seal_rarity else []
             seal_filters.append(seal_filter)
             continue

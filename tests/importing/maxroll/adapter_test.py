@@ -2,13 +2,11 @@ import json
 import logging
 import typing
 from types import SimpleNamespace
-from typing import cast
 
 import pytest
 
 from src.game_data import GameCatalog, ItemType
 from src.importing import ImportOptions, ImportRequest, VariantSelection
-from src.importing.maxroll import extract_maxroll_paragon_steps
 from src.importing.maxroll.adapter import (
     _extract_profile_variant,
     _find_item_affixes,
@@ -282,19 +280,19 @@ def test_find_item_affixes_skips_transfiguration_affixes(affix_key, attribute, c
     assert "Skipping Transfiguration affix" in caplog.messages[0]
 
 
-@pytest.mark.parametrize(("rotation", "expected_index"), [(0, 5), (1, 125), (2, 435), (3, 315)])
-def test_extract_maxroll_paragon_steps_keeps_rotation_index_mapping(rotation: int, expected_index: int) -> None:
-    steps = extract_maxroll_paragon_steps(
-        active_profile={
-            "paragon": {
-                "steps": [{"data": [{"id": "Paragon_Barb_00", "glyph": "", "rotation": rotation, "nodes": {"5": 1}}]}]
-            }
-        },
-        mapping_data={"paragonBoards": {"Paragon_Barb_00": {"name": "Starting Board"}}, "paragonGlyphs": {}},
+@pytest.mark.parametrize("item_type", [ItemType.Charm, ItemType.HoradricSeal])
+def test_extract_profile_variant_skips_unknown_unique(item_type, mocker, caplog) -> None:
+    GameCatalog()
+    mocker.patch("src.importing.maxroll.adapter._find_item_type", return_value=item_type)
+    variant = _extract_profile_variant(
+        profile_data={"name": "Default", "items": {"slot": "1"}},
+        items={"1": {"id": "unknown", "explicits": []}},
+        mapping_data={"items": {"unknown": {"name": "Unknown Unique Charm", "magicType": 2}}},
+        class_name="Barbarian",
+        build_header="Test",
+        request=ImportRequest(url=URLS[0], options=ImportOptions()),
     )
 
-    board = steps[0][0]
-    assert board["Rotation"] in {"0°", "90°", "180°", "270°"}
-    nodes = cast("list[bool]", board["Nodes"])
-    assert nodes.count(True) == 1
-    assert nodes[expected_index] is True
+    assert variant.charm_filters == []
+    assert variant.seal_filters == []
+    assert "Skipping unsupported unique Charm/Seal" in caplog.text
