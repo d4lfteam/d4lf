@@ -111,3 +111,31 @@ def test_generate_uniques_skips_placeholder_before_reading_incomplete_inherent_a
     output = json.loads((output_dir / "uniques.json").read_text(encoding="utf-8"))
     assert "[ph]_placeholder_unique" not in output
     assert output == {}
+
+
+def test_generate_uniques_includes_runeword_items(tmp_path, monkeypatch) -> None:
+    d4data = tmp_path / "d4data"
+    item_dir = d4data / "json/base/meta/Item"
+    string_dir = d4data / "json/enUS_Text/meta/StringList"
+    item_dir.mkdir(parents=True)
+    string_dir.mkdir(parents=True)
+    (item_dir / "Runeword_Enigma.itm.json").write_text(
+        json.dumps({
+            "snoItemType": {"name": "ChestArmor"},
+            "arForcedAffixes": [{"name": "Runeword_Enigma"}],
+            "arInherentAffixes": [],
+        }),
+        encoding="utf-8",
+    )
+    (string_dir / "Item_Runeword_Enigma.stl.json").write_text(
+        json.dumps({"arStrings": [{"szLabel": "Name", "szText": "Enigma"}]}), encoding="utf-8"
+    )
+    output_dir = tmp_path / "assets/lang/enUS"
+    output_dir.mkdir(parents=True)
+    monkeypatch.setattr("src.tools.data_generation.datasets.D4LF_BASE_DIR", tmp_path)
+
+    assert generate_uniques(d4data, "enUS") == 1
+
+    output = json.loads((output_dir / "uniques.json").read_text(encoding="utf-8"))
+    assert "enigma" in output
+    assert output["enigma"] == {"num_inherents": 0}

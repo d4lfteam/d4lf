@@ -33,20 +33,19 @@ def main(d4data_dir: Path) -> None:
     lang_arr = ["enUS"]  # "deDE", "frFR", "esES", "esMX", "itIT", "jaJP", "koKR", "plPL", "ptBR", "ruFR"
 
     for lang in lang_arr:
-        file_names = [
-            f"assets/lang/{lang}/affixes.json",
-            f"assets/lang/{lang}/seals_affixes.json",
-            f"assets/lang/{lang}/charms_affixes.json",
-            f"assets/lang/{lang}/aspects.json",
-            f"assets/lang/{lang}/sets.json",
-            f"assets/lang/{lang}/uniques.json",
-            f"assets/lang/{lang}/sigils.json",
-            f"assets/lang/{lang}/tributes.json",
-            f"assets/lang/{lang}/item_types.json",
-            f"assets/lang/{lang}/tooltips.json",
-        ]
-        for f in file_names:
-            Path(f).unlink(missing_ok=True)
+        for name in (
+            "affixes",
+            "seals_affixes",
+            "charms_affixes",
+            "aspects",
+            "sets",
+            "uniques",
+            "sigils",
+            "tributes",
+            "item_types",
+            "tooltips",
+        ):
+            Path(f"assets/lang/{lang}/{name}.json").unlink(missing_ok=True)
         Path(f"assets/lang/{lang}").mkdir(exist_ok=True, parents=True)
 
     for language in lang_arr:
@@ -78,8 +77,7 @@ def main(d4data_dir: Path) -> None:
 
         print(f"START item_types for {language}")
         started = perf_counter()
-        whitelist_types = GEAR_TYPES.copy()
-        whitelist_types.extend(["Elixir", "TemperManual", "Tome"])
+        whitelist_types = [*GEAR_TYPES, "Elixir", "TemperManual", "Tome"]
         item_typ_dict = {
             "Material": "custom type material",
             "Sigil": "custom type sigil",
@@ -224,8 +222,10 @@ def generate_uniques(d4data_dir: Path, language: str) -> int:
     items_to_ignore = ["halo", "pact_amulet", "wilted_potential", "mythic_unique_horadric_seal"]
     print(f"Gen Uniques for {language}")
     unique_dict = {}
-    unique_pattern = "json/base/meta/Item/*nique*.itm.json"
-    unique_files = sorted(d4data_dir.glob(unique_pattern, case_sensitive=False))
+    unique_files = sorted(
+        set(d4data_dir.glob("json/base/meta/Item/*nique*.itm.json", case_sensitive=False))
+        | set(d4data_dir.glob("json/base/meta/Item/Runeword_*.itm.json", case_sensitive=False))
+    )
 
     for core_unique_file in unique_files:
         if core_unique_file.name.startswith("S10_"):
