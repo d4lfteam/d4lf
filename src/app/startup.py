@@ -63,7 +63,9 @@ def check_for_proper_tts_configuration() -> None:
                 "-Command",
                 (
                     "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(); "
-                    f"(Get-AuthenticodeSignature '{dll_path}').Status"
+                    "Import-Module (Join-Path $PSHOME "
+                    "'Modules/Microsoft.PowerShell.Security/Microsoft.PowerShell.Security.psd1') -ErrorAction Stop; "
+                    f"(Get-AuthenticodeSignature -LiteralPath '{dll_path}' -ErrorAction Stop).Status"
                 ),
             ]
             status = subprocess.run(
@@ -78,7 +80,8 @@ def check_for_proper_tts_configuration() -> None:
                     f"It currently has a status of {status}"
                 )
         except subprocess.CalledProcessError as error:
-            LOGGER.error(f"Error checking saapi64.dll signature: {error}")
+            details = (error.stderr or error.stdout or str(error)).strip()
+            LOGGER.error("Error checking saapi64.dll signature (exit %s): %s", error.returncode, details)
 
     if not d4_process_found:
         LOGGER.warning(

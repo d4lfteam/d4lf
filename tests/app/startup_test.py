@@ -46,6 +46,9 @@ def test_signature_check_handles_non_cp1252_subprocess_output(tmp_path, monkeypa
 
     def run_signature_check(command, **kwargs):
         assert "OutputEncoding" in command[-1]
+        assert "Import-Module (Join-Path $PSHOME " in command[-1]
+        assert "Microsoft.PowerShell.Security.psd1') -ErrorAction Stop" in command[-1]
+        assert "Get-AuthenticodeSignature -LiteralPath" in command[-1]
         return run(
             [
                 sys.executable,
@@ -64,3 +67,5 @@ def test_signature_check_handles_non_cp1252_subprocess_output(tmp_path, monkeypa
 
     expected = "locally signed and valid" if returncode == 0 else "Error checking saapi64.dll signature"
     assert expected in caplog.text
+    if returncode:
+        assert "diagnostic \ufffd" in caplog.text
