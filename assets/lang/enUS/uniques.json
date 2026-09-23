@@ -20,6 +20,9 @@
     "ancients_oath": {
         "num_inherents": 0
     },
+    "ancients_pledge": {
+        "num_inherents": 2
+    },
     "andariels_visage": {
         "num_inherents": 0
     },
@@ -108,6 +111,9 @@
         "num_inherents": 0
     },
     "cage_of_madness": {
+        "num_inherents": 0
+    },
+    "call_to_arms": {
         "num_inherents": 0
     },
     "cassias_grace": {
@@ -200,6 +206,9 @@
     "echo_of_kwatli": {
         "num_inherents": 0
     },
+    "edge": {
+        "num_inherents": 1
+    },
     "eggcecutioner": {
         "num_inherents": 0
     },
@@ -219,6 +228,9 @@
         "num_inherents": 0
     },
     "endurant_faith": {
+        "num_inherents": 0
+    },
+    "enigma": {
         "num_inherents": 0
     },
     "esadoras_overflowing_cameo": {
@@ -359,6 +371,9 @@
     "hellbrand_signet": {
         "num_inherents": 0
     },
+    "hellfire_torch": {
+        "num_inherents": 0
+    },
     "hellhammer": {
         "num_inherents": 0
     },
@@ -375,6 +390,9 @@
         "num_inherents": 0
     },
     "hesha_e_kesungi": {
+        "num_inherents": 0
+    },
+    "holy_thunder": {
         "num_inherents": 0
     },
     "hooves_of_the_mountain_god": {
@@ -401,7 +419,13 @@
     "infernal_homunculus": {
         "num_inherents": 0
     },
+    "infinity": {
+        "num_inherents": 1
+    },
     "insatiable_fury": {
+        "num_inherents": 0
+    },
+    "insight": {
         "num_inherents": 0
     },
     "jacinth_shell": {
@@ -425,6 +449,12 @@
     "kilt_of_blackwing": {
         "num_inherents": 0
     },
+    "kings_grace": {
+        "num_inherents": 0
+    },
+    "leaf": {
+        "num_inherents": 0
+    },
     "leorics_crown": {
         "num_inherents": 0
     },
@@ -441,6 +471,9 @@
         "num_inherents": 0
     },
     "locrans_talisman": {
+        "num_inherents": 0
+    },
+    "lore": {
         "num_inherents": 0
     },
     "loyaltys_mantle": {
@@ -551,11 +584,17 @@
     "path_of_tragoul": {
         "num_inherents": 0
     },
+    "pattern": {
+        "num_inherents": 1
+    },
     "peacemongers_signet": {
         "num_inherents": 0
     },
     "penitent_greaves": {
         "num_inherents": 0
+    },
+    "phoenix": {
+        "num_inherents": 2
     },
     "pitfighters_gull": {
         "num_inherents": 0
@@ -565,6 +604,9 @@
     },
     "protection_of_the_prime": {
         "num_inherents": 0
+    },
+    "prudence": {
+        "num_inherents": 1
     },
     "purified_lightbringer": {
         "num_inherents": 0
@@ -576,6 +618,9 @@
         "num_inherents": 0
     },
     "raiment_of_the_sea": {
+        "num_inherents": 0
+    },
+    "rain": {
         "num_inherents": 0
     },
     "rakanoths_wake": {
@@ -725,6 +770,9 @@
     "spine_of_tathamet": {
         "num_inherents": 0
     },
+    "spirit": {
+        "num_inherents": 2
+    },
     "squirts_blouse": {
         "num_inherents": 0
     },
@@ -740,6 +788,9 @@
     "starfall_coronet": {
         "num_inherents": 0
     },
+    "stealth": {
+        "num_inherents": 0
+    },
     "stone_of_jordan": {
         "num_inherents": 0
     },
@@ -748,6 +799,9 @@
     },
     "storms_companion": {
         "num_inherents": 0
+    },
+    "strength": {
+        "num_inherents": 1
     },
     "strike_of_stormhorn": {
         "num_inherents": 0
@@ -924,6 +978,9 @@
         "num_inherents": 0
     },
     "yens_blessing": {
+        "num_inherents": 0
+    },
+    "zephyr": {
         "num_inherents": 0
     }
 }
