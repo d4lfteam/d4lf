@@ -26,7 +26,7 @@ repo = "local"
 [[repos]]
 hooks = [{ id = "uv-lock", priority = 4294967294 }]
 repo = "https://github.com/astral-sh/uv-pre-commit"
-rev = "0.12.16"
+rev = "0.12.18"
 
 [[repos]]
 hooks = [

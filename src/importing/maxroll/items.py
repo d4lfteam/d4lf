@@ -91,6 +91,10 @@ def _find_item_affixes(
                 if not attributes_list:
                     continue
                 attribute = attributes_list[0]
+                attribute_name = _as_text(_as_mapping(attributes.get(str(attribute.get("id")))).get("name"))
+                if attribute_name == "Set_Item_Count":
+                    LOGGER.info("Skipping non-filterable MaxRoll set-count attribute '%s'", attribute_name)
+                    break
                 formula = attribute.get("formula")
                 if isinstance(formula, str) and formula.startswith("SancAffix_"):
                     LOGGER.info(f"Skipping Transfiguration affix for item type '{item_type.value}'")

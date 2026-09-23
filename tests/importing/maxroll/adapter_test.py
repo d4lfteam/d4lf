@@ -164,6 +164,24 @@ def test_extract_profile_variant_skips_items_missing_from_mapping() -> None:
     assert variant.affix_filters == []
 
 
+def test_extract_profile_variant_imports_season_15_uniques() -> None:
+    item_id = "S15_Charm_Unique_HellfireTorch"
+    assert {"enigma", "infinity", "hellfire_torch"} <= GameCatalog().aspect_unique_dict.keys()
+
+    variant = _extract_profile_variant(
+        profile_data={"items": {"charm": 1}},
+        items={"1": {"id": item_id, "explicits": []}},
+        mapping_data={"items": {item_id: {"type": "Charm", "magicType": 4, "name": "Hellfire Torch"}}},
+        class_name="Necromancer",
+        build_header="Test Build",
+        request=ImportRequest(url="test"),
+    )
+
+    assert [aspect.name for charm_filter in variant.charm_filters for aspect in charm_filter.unique_aspect] == [
+        "hellfire_torch"
+    ]
+
+
 def test_import_maxroll_extracts_the_selected_profile(mock_ini_loader, mocker: MockerFixture) -> None:
     GameCatalog()
     planner_response = mocker.Mock()
