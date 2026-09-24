@@ -338,6 +338,9 @@
     "greenwalkers_signet": {
         "num_inherents": 0
     },
+    "grief": {
+        "num_inherents": 1
+    },
     "griswolds_opus": {
         "num_inherents": 0
     },

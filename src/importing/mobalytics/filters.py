@@ -79,6 +79,11 @@ def build_variant(
                 f"Skipping {slot_result[0] if slot_result else '(unknown slot)'} ({entity_type}) because it has no title."
             )
             continue
+        title_weapon_type: ItemType | None = None
+        if entity_type == "uniqueItems" and (weapon_slot_suffix := re.fullmatch(r"(.+?)\s+\(([^()]*)\)", item_name)):
+            title_weapon_type = fix_weapon_type(weapon_slot_suffix.group(2))
+            if title_weapon_type:
+                item_name = weapon_slot_suffix.group(1).strip()
         slot_result = jsonpath.findall(".gameSlotSlug", item)
         if not slot_result or not (slot_type := str(slot_result[0]).strip()):
             msg = f"No slot type found for {item_name}"
@@ -106,6 +111,8 @@ def build_variant(
             LOGGER.warning(f"Skipping {slot_type} because it had no stats provided.")
             continue
         item_type = _resolve_item_type(raw_inherents, slot_type, class_name)
+        if item_type is None:
+            item_type = title_weapon_type
         if item_type:
             raw_inherents.clear()
         if "seal" in slot_type.lower():

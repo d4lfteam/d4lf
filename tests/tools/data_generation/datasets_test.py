@@ -179,6 +179,38 @@ def test_generate_uniques_includes_runeword_items(tmp_path, monkeypatch) -> None
     assert output["enigma"] == {"num_inherents": 0}
 
 
+def test_generate_uniques_includes_runeword_with_specialized_gear_type(tmp_path, monkeypatch) -> None:
+    d4data = tmp_path / "d4data"
+    item_dir = d4data / "json/base/meta/Item"
+    affix_dir = d4data / "json/base/meta/Affix"
+    string_dir = d4data / "json/enUS_Text/meta/StringList"
+    item_dir.mkdir(parents=True)
+    affix_dir.mkdir(parents=True)
+    string_dir.mkdir(parents=True)
+    (item_dir / "Runeword_Grief.itm.json").write_text(
+        json.dumps({
+            "snoItemType": {"name": "Sword_Phase_Blade"},
+            "arForcedAffixes": [{"name": "Runeword_Grief"}],
+            "arInherentAffixes": [
+                {"name": "Indestructible", "__targetFileName__": "base/meta/Affix/Indestructible.aff"}
+            ],
+        }),
+        encoding="utf-8",
+    )
+    (affix_dir / "Indestructible.aff.json").write_text(json.dumps({"ptItemAffixAttributes": [{}]}), encoding="utf-8")
+    (string_dir / "Item_Runeword_Grief.stl.json").write_text(
+        json.dumps({"arStrings": [{"szLabel": "Name", "szText": "Grief"}]}), encoding="utf-8"
+    )
+    output_dir = tmp_path / "assets/lang/enUS"
+    output_dir.mkdir(parents=True)
+    monkeypatch.setattr("src.tools.data_generation.datasets.D4LF_BASE_DIR", tmp_path)
+
+    assert generate_uniques(d4data, "enUS") == 1
+
+    output = json.loads((output_dir / "uniques.json").read_text(encoding="utf-8"))
+    assert output == {"grief": {"num_inherents": 1}}
+
+
 def test_generate_uniques_includes_unique_charms_and_seals(tmp_path, monkeypatch) -> None:
     d4data = tmp_path / "d4data"
     item_dir = d4data / "json/base/meta/Item"

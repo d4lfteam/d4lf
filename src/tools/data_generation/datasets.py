@@ -239,7 +239,8 @@ def generate_uniques(d4data_dir: Path, language: str) -> int:
             if item_type not in ("HoradricSeal", "Charm", "Seal") and not unique_item_data.get("arForcedAffixes"):
                 continue
             inherent_affixes = unique_item_data.get("arInherentAffixes", [])
-        if item_type not in GEAR_TYPES and item_type not in ("FocusBookOffHand", "HoradricSeal", "Charm", "Seal"):
+        base_item_type = item_type.split("_", maxsplit=1)[0]
+        if base_item_type not in GEAR_TYPES and item_type not in ("FocusBookOffHand", "HoradricSeal", "Charm", "Seal"):
             continue
         core_unique_file_id = core_unique_file.name.split(".")[0]
         string_item_file = d4data_dir / f"json/{language}_Text/meta/StringList/Item_{core_unique_file_id}.stl.json"
