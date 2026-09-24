@@ -26,23 +26,31 @@ def extract_mobalytics_paragon_steps(paragon_data: Mapping[str, JsonValue]) -> l
     boards_out: list[JsonObject] = []
     for board in boards_data:
         board_data = _as_mapping(board)
-        board_slug = _as_mapping(board_data.get("board")).get("slug", "")
-        board_slug = _fix_starting_board_slug(board_slug) if isinstance(board_slug, str) else ""
+        raw_board_slug = _as_mapping(board_data.get("board")).get("slug", "")
+        node_board_slug = raw_board_slug if isinstance(raw_board_slug, str) else ""
+        board_slug = _fix_starting_board_slug(node_board_slug)
         glyph_slug = _as_mapping(board_data.get("glyph")).get("slug", "")
         glyph_slug = glyph_slug if isinstance(glyph_slug, str) else ""
         rotation = as_int(board_data.get("rotation"))
         nodes = [False] * NODES_LEN
+        node_board_slugs = [node_board_slug]
+        if board_slug != node_board_slug:
+            node_board_slugs.append(board_slug)
         board_nodes = [
             node
             for node in nodes_data
-            if isinstance((node_slug := _as_mapping(node).get("slug")), str) and node_slug.startswith(board_slug)
+            if isinstance((node_slug := _as_mapping(node).get("slug")), str)
+            and any(node_slug.startswith(prefix + "-") for prefix in node_board_slugs)
         ]
         for node in board_nodes:
             slug = _as_mapping(node).get("slug", "")
             if not isinstance(slug, str):
                 continue
+            node_prefix = next((prefix for prefix in node_board_slugs if slug.startswith(prefix + "-")), None)
+            if node_prefix is None:
+                continue
             try:
-                x_part, y_part = slug.replace(board_slug + "-", "").split("-", 1)
+                x_part, y_part = slug.removeprefix(node_prefix + "-").split("-", 1)
                 x, y = int(x_part.lstrip("x")), int(y_part.lstrip("y"))
             except ValueError, IndexError:
                 continue
