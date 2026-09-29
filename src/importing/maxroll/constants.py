@@ -1,5 +1,8 @@
 import re
 
+ATTRIBUTE_NAME_FALLBACK_FORMULA_REGEX = re.compile(
+    r"^(?:Affix|TemperedAffix_)(?:IgnoreModifiers|SkillRank|FlatResource)"
+)
 BUILD_GUIDE_BASE_URL = "https://maxroll.gg/d4/build-guides/"
 BUILD_SCRIPT_PREFIX = "window.__remixContext = "
 PLANNER_API_BASE_URL = "https://planners.maxroll.gg/profiles/d4/"

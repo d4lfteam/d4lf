@@ -8,6 +8,7 @@ from src.importing.conversion import as_string_keyed_mapping_list as _as_mapping
 from src.importing.conversion import as_text as _as_text
 from src.importing.filters import affix_dict_for_item_type
 from src.importing.maxroll.constants import (
+    ATTRIBUTE_NAME_FALLBACK_FORMULA_REGEX,
     SKILL_RANK_AFFIX_KEY_REGEX,
     SKILL_RANK_BONUS_FORMULAS,
     SKILL_RANK_DESC_LABEL_REGEX,
@@ -144,9 +145,11 @@ def _find_item_affixes(
                     else:
                         attr_desc = _find_skill_rank_affix_description(
                             mapping_data=mapping_data, affix_key=affix_key, attribute=attribute
-                        ) or _find_formulaless_affix_description(
-                            mapping_data=mapping_data, attribute_name=attribute_name, param=attr_param
                         )
+                        if not attr_desc and _allows_attribute_name_fallback(formula):
+                            attr_desc = _find_affix_description_from_attribute_name(
+                                mapping_data=mapping_data, attribute_name=attribute_name, param=attr_param
+                            )
 
                 # Below is handling for seal affixes tied to a set. We attach the set to the front.
                 # If this ends up not working for some reason, a second option is to take the key
@@ -232,7 +235,11 @@ def _find_skill_rank_label_from_affix_key(affix_key: str) -> str:
     return ""
 
 
-def _find_formulaless_affix_description(
+def _allows_attribute_name_fallback(formula: JsonValue) -> bool:
+    return formula is None or (isinstance(formula, str) and bool(ATTRIBUTE_NAME_FALLBACK_FORMULA_REGEX.match(formula)))
+
+
+def _find_affix_description_from_attribute_name(
     mapping_data: Mapping[str, JsonValue], attribute_name: str, param: JsonValue
 ) -> str:
     ui_strings = _as_mapping(mapping_data.get("uiStrings"))
