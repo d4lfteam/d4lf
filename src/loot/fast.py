@@ -20,7 +20,8 @@ LOGGER = logging.getLogger(__name__)
 
 Iterable = collections.abc.Iterable
 
-type FastVisionTask = tuple[Literal["clear"]] | tuple[Literal["text"], str, str]
+type ColoredLine = tuple[str, str]
+type FastVisionTask = tuple[Literal["clear"]] | tuple[Literal["text"], list[ColoredLine]]
 
 
 @singleton
@@ -92,7 +93,7 @@ class VisionModeFast:
         try:
             task = self.queue.get_nowait()
             if task[0] == "text":
-                self.insert_colored_text(task[1], task[2])
+                self.insert_colored_lines(task[1])
             if task[0] == "clear":
                 self.clear_textbox()
         except queue.Empty:
@@ -100,14 +101,15 @@ class VisionModeFast:
 
         self.canvas.after(10, self.draw_from_queue)
 
-    def insert_colored_text(self, text: str, color: str) -> None:
+    def insert_colored_lines(self, lines: list[ColoredLine]) -> None:
         self.create_textbox()
         textbox = self.textbox
         if textbox is None:
             return
         textbox.config(state=tk.NORMAL)
-        textbox.insert(tk.END, text + "\n", "colored")
-        textbox.tag_configure("colored", foreground=color)
+        for text, color in lines:
+            textbox.tag_configure(color, foreground=color)
+            textbox.insert(tk.END, text + "\n", color)
         self.adjust_textbox_size()
         self.refresh_clear_timer()
         textbox.config(state=tk.DISABLED)
@@ -121,8 +123,8 @@ class VisionModeFast:
     def request_clear(self) -> None:
         self.queue.put(("clear",))
 
-    def request_draw(self, text: str, color: str) -> None:
-        self.queue.put(("text", text, color))
+    def request_draw(self, lines: list[ColoredLine]) -> None:
+        self.queue.put(("text", lines))
 
     def on_tts(self, _: list[str]) -> None:
         try:
@@ -144,14 +146,13 @@ class VisionModeFast:
 
             if item_descr is None:
                 LOGGER.info("Unknown Item")
-                return self.request_draw("Unknown item", "#ce7e00")
+                return self.request_draw([("Unknown item", "#ce7e00")])
 
             feedback = fast_feedback(item_descr, Filter().should_keep(item_descr))
             if feedback is None:
                 self.request_clear()
                 return None
-            text, color = feedback
-            return self.request_draw(text, color)
+            return self.request_draw(feedback)
         except Exception:
             LOGGER.exception("Error in vision mode. Please create a bug report")
 
@@ -170,20 +171,20 @@ class VisionModeFast:
         return self.is_running
 
 
-def create_match_text(matches: Iterable[MatchedFilter]) -> list[str]:
-    result: list[str] = []
+def create_match_text(matches: Iterable[MatchedFilter], color: str, missing_color: str) -> list[ColoredLine]:
+    result: list[ColoredLine] = []
     for match in matches:
-        match_list = [f"  - {ma.name}" for ma in match.matched_affixes]
+        result.append((match.profile, color))
+        result.extend((f"  - {affix.name}", color) for affix in match.matched_affixes)
         if match.aspect_match and match.profile != MYTHICS_ALWAYS_KEPT_LABEL:
-            match_list.append("  - Aspect")
+            result.append(("  - Aspect", color))
         if match.set_match:
-            match_list.append("  - Set")
-        result.append("\n".join([match.profile, *match_list]))
-
+            result.append(("  - Set", color))
+        result.extend((f"  - {name}", missing_color) for name in match.missing_affixes)
     return result
 
 
-def fast_feedback(item_descr: Item, filter_result: FilterResult) -> tuple[str, str] | None:
+def fast_feedback(item_descr: Item, filter_result: FilterResult) -> list[ColoredLine] | None:
     """Return the immediate tooltip feedback for a parsed item and its result."""
     colors = get_filter_colors()
     if filter_result.skipped or not filter_result.keep:
@@ -191,16 +192,14 @@ def fast_feedback(item_descr: Item, filter_result: FilterResult) -> tuple[str, s
 
     if not filter_result.matched:
         if item_descr.rarity == ItemRarity.Unique:
-            text = ["Unique"]
-        elif item_descr.rarity == ItemRarity.Mythic:
-            text = ["Mythic (Always Kept)"]
-        else:
-            text = []
-        return "\n".join(text), colors.matched
+            return [("Unique", colors.matched)]
+        if item_descr.rarity == ItemRarity.Mythic:
+            return [("Mythic (Always Kept)", colors.matched)]
+        return []
 
     color = (
         colors.codex_upgrade
         if any(match.profile.endswith(ASPECT_UPGRADES_LABEL) for match in filter_result.matched)
         else colors.matched
     )
-    return "\n".join(create_match_text(reversed(filter_result.matched))), color
+    return create_match_text(reversed(filter_result.matched), color, colors.missing)
