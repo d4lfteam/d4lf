@@ -13,7 +13,7 @@ if typing.TYPE_CHECKING:
 
 import src.loot.fast as fast_module
 from src.game_data import ItemRarity
-from src.item import FilterResult, Item, MatchedFilter
+from src.item import Affix, FilterResult, Item, MatchedFilter
 from src.loot.fast import VisionModeFast, create_match_text, fast_feedback
 
 
@@ -58,7 +58,7 @@ class _FastMode(Protocol):
     textbox: tk.Text | None
     root: tk.Toplevel
     request_clear: Callable[[], None]
-    request_draw: Callable[[str, str], None]
+    request_draw: Callable[[list[tuple[str, str]]], None]
 
     def on_tts(self, value: list[str]) -> None: ...
 
@@ -82,11 +82,23 @@ def _new_fast_mode() -> _FastMode:
 
 
 def test_fast_mode_preserves_match_details_and_feedback() -> None:
-    assert create_match_text([MatchedFilter("Build", aspect_match=True, set_match=True)]) == [
-        "Build\n  - Aspect\n  - Set"
+    assert create_match_text([MatchedFilter("Build", aspect_match=True, set_match=True)], "green", "red") == [
+        ("Build", "green"),
+        ("  - Aspect", "green"),
+        ("  - Set", "green"),
     ]
     assert fast_feedback(Item(), FilterResult(keep=False, matched=[])) is None
-    assert fast_feedback(Item(rarity=ItemRarity.Unique), FilterResult(keep=True, matched=[])) == ("Unique", "#23fc5d")
+    assert fast_feedback(Item(rarity=ItemRarity.Unique), FilterResult(keep=True, matched=[])) == [("Unique", "#23fc5d")]
+
+
+def test_fast_mode_lists_missing_affixes_after_matched_ones_in_missing_color() -> None:
+    match = MatchedFilter("Build.Helm", [Affix(name="armor")], missing_affixes=["maximum_life"])
+
+    assert create_match_text([match], "green", "red") == [
+        ("Build.Helm", "green"),
+        ("  - armor", "green"),
+        ("  - maximum_life", "red"),
+    ]
 
 
 def test_fast_mode_has_no_result_for_a_skipped_item() -> None:
@@ -97,7 +109,7 @@ def test_fast_mode_omits_redundant_aspect_for_always_kept_mythics() -> None:
     assert fast_feedback(
         Item(rarity=ItemRarity.Mythic),
         FilterResult(keep=True, matched=[MatchedFilter("Mythics always kept", aspect_match=True)]),
-    ) == ("Mythics always kept", "#23fc5d")
+    ) == [("Mythics always kept", "#23fc5d")]
 
 
 def test_fast_mode_clears_unmatched_items_without_drawing(monkeypatch, mocker: MockerFixture) -> None:

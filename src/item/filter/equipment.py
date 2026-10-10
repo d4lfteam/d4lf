@@ -35,21 +35,24 @@ class FilterEquipmentMixin:
                     continue
                 if not self._check_unique_aspects_for_item(item, filter_spec.unique_aspect):
                     continue
-                matched_affixes = []
+                affix_matches = []
                 if filter_spec.affix_pool:
-                    matched_affixes = self._match_affixes_count(
+                    affix_matches = self._match_affixes_count(
                         filter_spec.affix_pool, non_tempered_affixes, filter_spec.min_greater_affix_count
                     )
-                    if not matched_affixes:
+                    if not affix_matches:
                         continue
-                matched_inherents = []
+                inherent_matches = []
                 if filter_spec.inherent_pool:
-                    matched_inherents = self._match_affixes_count(
+                    inherent_matches = self._match_affixes_count(
                         filter_spec.inherent_pool, item.inherent, filter_spec.min_greater_affix_count
                     )
-                    if not matched_inherents:
+                    if not inherent_matches:
                         continue
-                all_matches = matched_affixes + matched_inherents
+                all_matches = [affix for _, affix in affix_matches + inherent_matches]
+                missing_affixes = self._missing_affix_names(
+                    filter_spec.affix_pool, affix_matches
+                ) + self._missing_affix_names(filter_spec.inherent_pool, inherent_matches)
                 match_details = [
                     f"{affix.name} (GA)" if affix.type == AffixType.greater else affix.name for affix in all_matches
                 ]
@@ -58,7 +61,12 @@ class FilterEquipmentMixin:
                     LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Affixes.{filter_name}: Unique aspect")
                 res.keep = True
                 res.matched.append(
-                    MatchedFilter(f"{profile_name}.{filter_name}", all_matches, bool(filter_spec.unique_aspect))
+                    MatchedFilter(
+                        f"{profile_name}.{filter_name}",
+                        all_matches,
+                        bool(filter_spec.unique_aspect),
+                        missing_affixes=missing_affixes,
+                    )
                 )
         return res
 

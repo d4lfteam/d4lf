@@ -78,6 +78,7 @@ class MatchedFilter:
     matched_affixes: list[Affix] = field(default_factory=list)
     aspect_match: bool = False
     set_match: bool = False
+    missing_affixes: list[str] = field(default_factory=list)
 
 
 @dataclass

@@ -5,6 +5,7 @@ from natsort import natsorted
 
 from src.game_data import ItemRarity, ItemType
 from src.item import Affix, Item
+from src.profiles import AffixFilterCountModel, AffixFilterModel, ItemFilterModel, ProfileModel
 
 from .conftest import (
     _create_mocked_filter,
@@ -86,3 +87,45 @@ def test_enabled_equipment_keeps_matches_and_rejects_non_matches(mocker: MockerF
     settings.general.filter_equipment = False
     assert test_filter.should_keep(matching).skipped
     assert test_filter.should_keep(non_matching).skipped
+
+
+def test_affix_match_reports_filter_affixes_missing_from_item(mocker: MockerFixture) -> None:
+    profile = ProfileModel(
+        name="build",
+        affixes=[
+            {
+                "Helm": ItemFilterModel(
+                    item_type=[ItemType.Helm],
+                    affix_pool=[
+                        AffixFilterCountModel(
+                            count=[
+                                AffixFilterModel(name="dexterity"),
+                                AffixFilterModel(name="maximum_resource"),
+                                AffixFilterModel(name="armor"),
+                                AffixFilterModel(name="maximum_life"),
+                            ],
+                            min_count=3,
+                        )
+                    ],
+                )
+            }
+        ],
+    )
+    test_filter = _create_mocked_filter(mocker)
+    test_filter.affix_filters = {profile.name: profile.affixes}
+    helm = Item(
+        item_type=ItemType.Helm,
+        power=900,
+        rarity=ItemRarity.Legendary,
+        affixes=[
+            Affix(name="dexterity"),
+            Affix(name="maximum_resource"),
+            Affix(name="armor"),
+            Affix(name="shadow_resistance"),
+        ],
+    )
+
+    result = test_filter.should_keep(helm)
+
+    assert [affix.name for affix in result.matched[0].matched_affixes] == ["dexterity", "maximum_resource", "armor"]
+    assert result.matched[0].missing_affixes == ["maximum_life"]

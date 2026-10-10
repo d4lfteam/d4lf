@@ -28,10 +28,11 @@ class FilterColors:
     codex_upgrade: str
     processing: str
     unhandled: str
+    missing: str
 
 
-FILTER_COLORS_DEFAULT = FilterColors("#23fc5d", "#fc2323", "#fca503", "#888888", "#00b3b3")
-FILTER_COLORS_COLORBLIND = FilterColors(ACCENT_BLUE, "#D55E00", "#E69F00", "#888888", "#CC79A7")
+FILTER_COLORS_DEFAULT = FilterColors("#23fc5d", "#fc2323", "#fca503", "#888888", "#00b3b3", "#8b2e2e")
+FILTER_COLORS_COLORBLIND = FilterColors(ACCENT_BLUE, "#D55E00", "#E69F00", "#888888", "#CC79A7", "#8a4b1e")
 
 
 def get_filter_colors() -> FilterColors:

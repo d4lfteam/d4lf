@@ -133,8 +133,8 @@ class FilterMatchingMixin:
 
     def _match_affixes_count(
         self, expected_affixes: list[AffixFilterCountModel], item_affixes: list[Affix], min_greater_affix_count: int = 0
-    ) -> list[Affix]:
-        result = []
+    ) -> list[tuple[AffixFilterModel, Affix]]:
+        result: list[tuple[AffixFilterModel, Affix]] = []
         for count_group in expected_affixes:
             best_matches = self._match_count_group(count_group, item_affixes)
             if len(best_matches) < count_group.min_count:
@@ -155,8 +155,20 @@ class FilterMatchingMixin:
                     )
                     if flagged_ga_count < min_greater_affix_count:  # not enough flagged affixes are GAs
                         return []
-            result.extend(matched for _, matched in best_matches)
+            result.extend(best_matches)
         return result
+
+    @staticmethod
+    def _missing_affix_names(
+        expected_affixes: list[AffixFilterCountModel], matches: list[tuple[AffixFilterModel, Affix]]
+    ) -> list[str]:
+        matched_ids = {id(expected) for expected, _ in matches}
+        return [
+            expected.name
+            for count_group in expected_affixes
+            for expected in count_group.count
+            if id(expected) not in matched_ids
+        ]
 
     @staticmethod
     def _match_greater_affix_count(expected_min_count: int, item_affixes: list[Affix]) -> bool:
