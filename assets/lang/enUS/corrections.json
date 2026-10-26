@@ -44,5 +44,8 @@
         "rogue",
         "sorcerer",
         "sorceress"
-    ]
+    ],
+    "item_type_aliases": {
+        "phase blade": "Sword"
+    }
 }
