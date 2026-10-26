@@ -1,7 +1,6 @@
 """Tk rendering for the highlighting vision mode."""
 
 import logging
-import math
 import queue
 import tkinter as tk
 from tkinter.font import Font
@@ -71,41 +70,26 @@ class HighlightingRenderer:
         elif window_height == WINDOW_HEIGHT_2160:
             font_size = minimum_font_size + 3
 
-        font = Font(family=font_name, size=font_size)
-        width_per_character = font.measure(text) / len(text)
-        height_of_character = font.metrics("linespace")
-        max_text_length_per_line = canvas_center_x * 2 // width_per_character
-        if max_text_length_per_line < len(text):  # Use a smaller font
+        width_per_character = Font(family=font_name, size=font_size).measure(text) / len(text)
+        if canvas_center_x * 2 // width_per_character < len(text):  # Use a smaller font
             font_size = minimum_font_size
-            font = Font(family=font_name, size=font_size)
-            width_per_character = font.measure(text) / len(text)
-            height_of_character = font.metrics("linespace")
-            max_text_length_per_line = canvas_center_x * 2 // width_per_character
+            width_per_character = Font(family=font_name, size=font_size).measure(text) / len(text)
 
-        # Create a gray rectangle as the background
-        text_width = int(width_per_character * len(text))
-        text_width = min(text_width, canvas_center_x * 2)
-        number_of_lines = math.ceil(len(text) / max_text_length_per_line)
-        text_height = int(height_of_character * number_of_lines)
-
-        canvas.create_rectangle(
-            canvas_center_x - text_width // 2,  # x1
-            previous_text_y - offset - text_height,  # y1
-            canvas_center_x + text_width // 2,  # x2
-            previous_text_y - offset,  # y2
-            fill=DARK_GRAY_BG,
-            outline="",
-        )
-        canvas.create_text(
+        text_width = min(int(width_per_character * len(text)), canvas_center_x * 2)
+        text_id = canvas.create_text(
             canvas_center_x,
             previous_text_y - offset,
             text=text,
             anchor=tk.S,
-            font=("Courier New", font_size),
+            font=(font_name, font_size),
             fill=color,
             width=text_width,
         )
-        return int(previous_text_y - offset - text_height)
+        # Tk wraps at word boundaries, so use the rendered bounds instead of estimating the line count
+        x1, y1, x2, y2 = canvas.bbox(text_id)
+        background_id = canvas.create_rectangle(x1, y1, x2, y2, fill=DARK_GRAY_BG, outline="")
+        canvas.tag_lower(background_id, text_id)
+        return y1
 
     def create_signal_rect(
         self: _VisionModeWithHighlighting, canvas: tk.Canvas, w: int, thick: int, color: str

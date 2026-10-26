@@ -127,3 +127,27 @@ def test_draw_from_queue_sets_done_event_after_clearing_canvas(monkeypatch, mock
 
     reset_canvas.assert_called_once_with(renderer.root, renderer.canvas)
     assert clear_done.is_set()
+
+
+def test_draw_text_positions_background_and_next_label_from_rendered_bounds(monkeypatch, mocker: MockerFixture) -> None:
+    font = mocker.Mock()
+    font.measure.side_effect = lambda text: 9 * len(text)
+    monkeypatch.setattr("src.loot.highlighting_render.Font", mocker.Mock(return_value=font))
+    monkeypatch.setattr(
+        "src.loot.highlighting_render.get_ui_coordinates",
+        mocker.Mock(return_value=mocker.Mock(pos=mocker.Mock(window_dimensions=(1920, 1080)))),
+    )
+    canvas = mocker.Mock()
+    canvas.create_text.return_value = "text"
+    canvas.create_rectangle.return_value = "background"
+    # Word wrapping rendered three lines where a character-count estimate would reserve two
+    canvas.bbox.return_value = (10, 400, 420, 451)
+
+    next_text_y = cast("_VisionModeWithHighlighting", _RendererHarness()).draw_text(
+        canvas, "missing: cooldown_reduction, critical_strike_chance, resource_cost_reduction", "#fff", 456, 5, 216
+    )
+
+    canvas.bbox.assert_called_once_with("text")
+    canvas.create_rectangle.assert_called_once_with(10, 400, 420, 451, fill="#111111", outline="")
+    canvas.tag_lower.assert_called_once_with("background", "text")
+    assert next_text_y == 400
