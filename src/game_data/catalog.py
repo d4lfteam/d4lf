@@ -42,6 +42,7 @@ class GameCatalog:
     bad_tts_uniques: dict[str, str]
     filter_after_keyword: list[str]
     filter_words: list[str]
+    item_type_aliases: dict[str, ItemType]
     item_types_dict: dict[str, str]
     set_list: list[str]
     tooltips: JsonObject
@@ -76,6 +77,9 @@ class GameCatalog:
         self.filter_after_keyword = cast("list[str]", corrections["filter_after_keyword"])
         self.filter_words = cast("list[str]", corrections["filter_words"])
         self.bad_tts_uniques = cast("dict[str, str]", corrections["bad_tts_uniques"])
+        self.item_type_aliases = {
+            alias: ItemType[name] for alias, name in cast("dict[str, str]", corrections["item_type_aliases"]).items()
+        }
 
         self.item_types_dict = cast("dict[str, str]", self._load_json(language_dir / "item_types.json"))
         for item in self.item_types_dict:
@@ -114,7 +118,7 @@ class GameCatalog:
         for item_type in ItemType:
             if normalized == self.item_type_label(item_type).strip().casefold():
                 return item_type
-        return None
+        return self.item_type_aliases.get(normalized)
 
     @staticmethod
     def _load_json(path: pathlib.Path) -> JsonValue:

@@ -140,6 +140,45 @@ def test_unique_helm_with_armory_loadout_has_five_affixes_and_one_aspect() -> No
     )
 
 
+def test_unique_grief_phase_blade_parses_as_sword() -> None:
+    item_text = [
+        "GRIEF",
+        "Ancestral Unique Phase Blade",
+        "900 Item Power",
+        "25 ( +25) Quality",
+        "Armory Loadout",
+        "EthTirLoMalRal",
+        "2,536 Damage Per Second (+2536)",
+        "[1,653 - 1,729] Damage per Hit",
+        "1.50 Attacks per Second (Very Fast)",
+        "Indestructible",
+        "+1,461 Weapon Damage [750 - 1,000]",
+        "+40.0% Attack Speed [30.0 - 40.0]%",
+        "+25.0% Deadly Strike Chance [20.0]%",
+        "x31% Damage Over Time Multiplier [15 - 30]%",
+        "+2 Primary Resource On Kill [2]",
+        "+75% Damage Over Time",
+        "Your direct damage inflicts 40% bonus Poisoning damage over 5 seconds.",
+        "x24% Poison Damage Multiplier",
+        "Requires Level 70. Account Bound. Unique Equipped. Lord of Hatred Item",
+        "Seasonal Item",
+        "Sell Value: 205,915 Gold",
+        "Durability: Indestructible. Tempers: 1/4",
+        "Right mouse button",
+    ]
+
+    item = parse_item_text(item_text)
+
+    assert item is not None
+    assert item.item_type == ItemType.Sword
+    assert item.name == "grief"
+    assert item.power == 900
+    assert item.aspect is not None
+    assert item.aspect.name == "grief"
+    affix_names = {affix.name for affix in item.affixes}
+    assert {"weapon_damage", "attack_speed", "deadly_strike_chance", "damage_over_time_multiplier"} <= affix_names
+
+
 def test_sigil_rarity_is_derived_from_tts_affixes() -> None:
     item_text = [
         "Nightmare Sigil",

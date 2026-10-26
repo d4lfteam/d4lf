@@ -56,6 +56,12 @@ def test_catalog_resolves_item_type_names_values_and_labels(monkeypatch) -> None
     assert catalog.item_type_from_text("unknown") is None
 
 
+def test_catalog_resolves_item_type_aliases() -> None:
+    catalog = GameCatalog()
+
+    assert catalog.item_type_from_text("Phase Blade") is ItemType.Sword
+
+
 def test_item_type_serialization_uses_canonical_value_after_catalog_load() -> None:
     catalog = GameCatalog()
     catalog.load_data()
