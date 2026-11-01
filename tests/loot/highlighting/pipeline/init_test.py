@@ -1,4 +1,4 @@
-from src.loot import highlighting_pipeline
+from src.loot.highlighting import pipeline
 
 
 def test_highlighting_pipeline_public_interface() -> None:
@@ -24,5 +24,5 @@ def test_highlighting_pipeline_public_interface() -> None:
         "select_target_center",
     ]
 
-    assert highlighting_pipeline.__all__ == expected
-    assert all(hasattr(highlighting_pipeline, name) for name in expected)
+    assert pipeline.__all__ == expected
+    assert all(hasattr(pipeline, name) for name in expected)

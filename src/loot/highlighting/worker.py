@@ -13,7 +13,7 @@ from src.game_data import is_sigil
 from src.item import SeasonalAttribute
 from src.item.filter import Filter
 from src.loot.colors import get_filter_colors, is_ignored_item
-from src.loot.highlighting_pipeline import (
+from src.loot.highlighting.pipeline import (
     FilterOutcome,
     TooltipConfirmationStatus,
     classify_filter_outcome,
@@ -38,8 +38,8 @@ if TYPE_CHECKING:
     import numpy as np
 
     from src.item import Affix, Item
-    from src.loot.highlighting_pipeline import ItemRoi
-    from src.loot.highlighting_render import HighlightingVisionMode
+    from src.loot.highlighting.overlay import HighlightingVisionMode
+    from src.loot.highlighting.pipeline import ItemRoi
     from src.perception import DescrDetection
 
 LOGGER = logging.getLogger(__name__)

@@ -1,6 +1,6 @@
 """Pure stages used by the highlighting worker."""
 
-from src.loot.highlighting_pipeline.pipeline import (
+from src.loot.highlighting.pipeline.pipeline import (
     CodexUpgradeCommand,
     EmptyOutlineCommand,
     FilterEvaluation,

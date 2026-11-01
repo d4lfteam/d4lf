@@ -10,13 +10,13 @@ import pytest
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
-import src.loot.highlighting_worker as worker_module
+import src.loot.highlighting.worker as worker_module
 import src.perception
 from src.game_data import ItemRarity, ItemType
 from src.item import FilterResult, Item, MatchedFilter
-from src.loot.highlighting_pipeline import MatchCommand
-from src.loot.highlighting_render import ClearCommand, HighlightingVisionMode, OverlayCommand
-from src.loot.highlighting_worker import (
+from src.loot.highlighting.overlay import ClearCommand, HighlightingVisionMode, OverlayCommand
+from src.loot.highlighting.pipeline import MatchCommand
+from src.loot.highlighting.worker import (
     CancellationRequestedError,
     HighlightingWorker,
     check_for_thread_cancellation,
