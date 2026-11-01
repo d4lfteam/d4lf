@@ -1,14 +1,12 @@
 """Tk overlay that draws highlighting commands for the current item."""
 
 import logging
-import queue
 import tkinter as tk
 from dataclasses import dataclass
 from threading import Event
 from tkinter.font import Font
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
-from src.desktop import call_on_ui_thread, create_overlay_toplevel, get_root
 from src.item import ASPECT_UPGRADES_LABEL
 from src.loot.colors import get_filter_colors, reset_canvas, visible_missing_affixes
 from src.loot.highlighting_pipeline import (
@@ -18,9 +16,13 @@ from src.loot.highlighting_pipeline import (
     NoMatchCommand,
     RenderingCommand,
 )
+from src.loot.highlighting_worker import HighlightingWorker
+from src.loot.vision_mode import VisionMode
 from src.settings import get_settings, get_ui_coordinates
 
 if TYPE_CHECKING:
+    import numpy as np
+
     from src.item import FilterResult, Item
     from src.loot.highlighting_pipeline import ItemRoi, Point
     from src.perception import LocatorResult
@@ -84,53 +86,41 @@ def outline_geometry(item_roi: ItemRoi) -> tuple[int, int, int, int, int]:
     return x - off, y - off, w + off * 2, h + off * 5, off
 
 
-class HighlightingOverlay:
-    """Owns the overlay window and draws queued commands on the Tk thread."""
+class HighlightingVisionMode(VisionMode[OverlayCommand]):
+    """Highlights hovered items by evaluating them in a worker and drawing the result on an overlay."""
 
-    def __init__(self, root: tk.Toplevel, canvas: tk.Canvas, thick: int, screen_offset: Point) -> None:
-        self.root = root
-        self.canvas = canvas
+    def __init__(
+        self,
+        root: tk.Toplevel,
+        canvas: tk.Canvas,
+        thick: int,
+        screen_offset: Point,
+        possible_centers: np.ndarray,
+        possible_vendor_centers: np.ndarray,
+    ) -> None:
+        super().__init__(root, canvas)
+        root.geometry("0x0+0+0")
         self.thick = thick
         self.screen_offset = screen_offset
         self.current_item: Item | None = None
-        self._queue: queue.Queue[OverlayCommand] = queue.Queue()
-
-    @classmethod
-    def create(cls, thick: int, screen_offset: Point) -> HighlightingOverlay:
-        """Build the overlay window on the UI thread and start its draw loop."""
-        overlays: list[HighlightingOverlay] = []
-
-        def _build_ui() -> None:
-            root, canvas = create_overlay_toplevel(get_root())
-            root.geometry("0x0+0+0")
-            overlays.append(cls(root, canvas, thick, screen_offset))
-            overlays[0].draw_from_queue()
-
-        # Widget creation and every subsequent Tk call must happen on the shared UI thread.
-        call_on_ui_thread(_build_ui)
-        return overlays[0]
-
-    def submit(self, command: RenderingCommand) -> None:
-        """Queue a drawing; it is skipped if its item is no longer the current item once it is drawn."""
-        self._queue.put(command)
+        self.worker = HighlightingWorker(self, possible_centers, possible_vendor_centers)
 
     def clear(self) -> Event:
         """Queue a clear and return an event that is set once the canvas has been cleared."""
         done = Event()
-        self._queue.put(ClearCommand(done))
+        self.submit(ClearCommand(done))
         return done
 
-    def draw_from_queue(self) -> None:
-        try:
-            self.draw(self._queue.get_nowait())
-        except queue.Empty:
-            pass
-        except Exception:
-            LOGGER.exception("Error while drawing highlighting overlay")
-        finally:
-            # Always reschedule, otherwise a single drawing error would stop the redraw loop for good.
-            self.canvas.after(10, self.draw_from_queue)
+    @override
+    def on_tts(self, lines: list[str]) -> None:
+        self.worker.on_tts(lines)
 
+    @override
+    def on_stop(self) -> None:
+        self.clear()
+        self.worker.stop()
+
+    @override
     def draw(self, command: OverlayCommand) -> None:
         if isinstance(command, ClearCommand):
             reset_canvas(self.root, self.canvas)

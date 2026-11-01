@@ -2,5 +2,10 @@ from src import loot
 
 
 def test_loot_facade_exposes_filtering_and_colors() -> None:
-    assert {"create_vision_mode", "run_loot_filter", "get_filter_colors"} <= set(loot.__all__)
+    assert {
+        "create_fast_vision_mode",
+        "create_highlighting_vision_mode",
+        "run_loot_filter",
+        "get_filter_colors",
+    } <= set(loot.__all__)
     assert isinstance(loot.get_filter_colors(), loot.FilterColors)

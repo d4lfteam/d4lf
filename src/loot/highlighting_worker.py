@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     import numpy as np
 
     from src.item import Affix, Item
-    from src.loot.highlighting_render import HighlightingOverlay
+    from src.loot.highlighting_render import HighlightingVisionMode
     from src.perception import DescrDetection
 
 LOGGER = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ class HighlightingWorker:
     """Evaluates hovered items in background threads and submits the drawings to the overlay."""
 
     def __init__(
-        self, overlay: HighlightingOverlay, possible_centers: np.ndarray, possible_vendor_centers: np.ndarray
+        self, overlay: HighlightingVisionMode, possible_centers: np.ndarray, possible_vendor_centers: np.ndarray
     ) -> None:
         self._overlay = overlay
         self._possible_centers = possible_centers

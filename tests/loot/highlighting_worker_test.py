@@ -1,17 +1,21 @@
 import time
+import typing
 from threading import Event, Thread
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, override
+from typing import override
 
 import numpy as np
 import pytest
+
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 import src.loot.highlighting_worker as worker_module
 import src.perception
 from src.game_data import ItemRarity, ItemType
 from src.item import FilterResult, Item, MatchedFilter
 from src.loot.highlighting_pipeline import MatchCommand
-from src.loot.highlighting_render import ClearCommand, HighlightingOverlay, OverlayCommand
+from src.loot.highlighting_render import ClearCommand, HighlightingVisionMode, OverlayCommand
 from src.loot.highlighting_worker import (
     CancellationRequestedError,
     HighlightingWorker,
@@ -19,17 +23,14 @@ from src.loot.highlighting_worker import (
     stop_thread_and_wait,
 )
 
-if TYPE_CHECKING:
-    from pytest_mock import MockerFixture
-
 CENTERS = np.array([[0, 0]])
 
 
-class _RecordingOverlay(HighlightingOverlay):
+class _RecordingOverlay(HighlightingVisionMode):
     """Overlay without Tk that records what it would draw."""
 
     def __init__(self, item: Item | None, mocker: MockerFixture) -> None:
-        super().__init__(mocker.Mock(), mocker.Mock(), thick=4, screen_offset=(0, 0))
+        super().__init__(mocker.Mock(), mocker.Mock(), 4, (0, 0), CENTERS, CENTERS)
         self.current_item = item
         self.drawn: list[OverlayCommand] = []
 
@@ -80,7 +81,7 @@ def test_unparsed_tts_keeps_existing_item_overlay(monkeypatch, mocker: MockerFix
     [(FilterResult(False, [], skipped=True), False), (FilterResult(True, [MatchedFilter("Mythic Sigil")]), True)],
 )
 def test_filter_result_submits_only_normal_highlighting_results(
-    monkeypatch, mocker: MockerFixture, filter_result, should_queue_match
+    monkeypatch, filter_result, should_queue_match, mocker: MockerFixture
 ) -> None:
     item = Item(name="helm", item_type=ItemType.Sigil, rarity=ItemRarity.Mythic if should_queue_match else None)
     overlay = _RecordingOverlay(item, mocker)
