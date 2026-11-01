@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Protocol, cast, override
 
 from src.automation import WindowSpec
-from src.overlay import state as _state
 from src.overlay.settings import InfoSettingValue
 from src.overlay.settings import load_settings as load_info_settings
 from src.overlay.settings import save_settings as save_info_settings
@@ -14,7 +13,7 @@ from src.overlay.settings import setting_datetime as _setting_datetime
 from src.overlay.settings import setting_int as _setting_int
 from src.overlay.settings import setting_str as _setting_str
 from src.overlay.statistics import SessionStats
-from src.overlay.widget.shared import TRANSPARENT_KEY, OverlayContract
+from src.overlay.widget.shared import BOSS_TIMER_SLOT, TRANSPARENT_KEY, BossTimerContract
 from src.perception import game_window_roi
 from src.settings import get_settings
 
@@ -26,7 +25,7 @@ class _OverlayClosed(Protocol):
     def __call__(self, overlay: BossTimerOverlay | None) -> None: ...
 
 
-class _OverlayCore(OverlayContract):
+class _OverlayCore(BossTimerContract):
     def __init__(self, parent: tk.Misc, on_closed: _OverlayClosed | None = None) -> None:
         super().__init__(parent)
         self._on_closed = on_closed
@@ -113,7 +112,7 @@ class _OverlayCore(OverlayContract):
         if self._on_closed is not None:
             self._on_closed(cast("BossTimerOverlay", self))
         else:
-            _state.clear_overlay(cast("BossTimerOverlay", self))
+            BOSS_TIMER_SLOT.clear(cast("BossTimerOverlay", self))
 
     def _apply_loaded_settings(self) -> None:
         # Transition to relative coordinates: Add the current game window offset to the saved position.

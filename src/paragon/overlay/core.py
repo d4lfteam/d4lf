@@ -1,12 +1,18 @@
+import base64
+import io
+import logging
 import sys
 import time
 import tkinter as tk
 from contextlib import suppress
 from typing import TYPE_CHECKING
 
+from PIL import Image, ImageDraw, ImageFont
+
 from src.automation import WindowSpec
-from src.paragon.data import _clamp_int, _load_overlay_settings, _resolve_build_index
-from src.paragon.overlay.contracts import BuildRow, OverlayConfig, OverlayContract, OverlaySettings
+from src.desktop import is_alive
+from src.paragon.data import _clamp_int, _load_overlay_settings, _resolve_build_index, load_builds_from_path
+from src.paragon.overlay.contracts import BuildRow, OverlayConfig, OverlaySettings, ParagonOverlayContract
 from src.paragon.overlay.theme import TRANSPARENT_KEY
 from src.settings import get_settings, get_ui_coordinates
 
@@ -15,8 +21,10 @@ if TYPE_CHECKING:
 
     from src.profiles import ParagonBoardModel
 
+LOGGER = logging.getLogger(__name__)
 
-class OverlayCoreMixin(OverlayContract):
+
+class OverlayCoreMixin(ParagonOverlayContract):
     def __init__(
         self,
         parent: tk.Misc,
@@ -121,3 +129,53 @@ class OverlayCoreMixin(OverlayContract):
         self.after(50, self._poll_close_request)
         if self._supports_click_through:
             self.after(100, self._poll_click_through)
+
+    def _warmup_settings_assets(self) -> None:
+        """Pre-render lock icons so the settings popup opens without image lag."""
+        self._warmup_after_id = None
+        if not is_alive(self) or hasattr(self, "_lock_img_cache"):
+            return
+        if is_alive(getattr(self, "_settings_popup", None), mapped=True):
+            self._warmup_after_id = self.after(400, self._warmup_settings_assets)
+            return
+
+        sz = max(12, int(14 * self._cfg.ui_scale))
+        try:
+            # Segoe UI Emoji gives reliable lock/unlock glyphs on Windows and lets
+            # the popup use small crisp icons instead of text symbols.
+            fnt = ImageFont.truetype(r"C:\Windows\Fonts\seguiemj.ttf", sz)
+
+            def _mk(locked: bool) -> tk.PhotoImage:
+                i = Image.new("RGBA", (sz + 2, sz + 2), (0, 0, 0, 0))
+                try:
+                    ImageDraw.Draw(i).text((1, 1), "🔒" if locked else "🔓", font=fnt, embedded_color=True)
+                except TypeError:
+                    ImageDraw.Draw(i).text((1, 1), "🔒" if locked else "🔓", font=fnt)
+                b = io.BytesIO()
+                i.save(b, format="PNG")
+                return tk.PhotoImage(master=self, data=base64.b64encode(b.getvalue()))
+
+            self._lock_img_cache = {True: _mk(locked=True), False: _mk(locked=False)}
+        except OSError, ValueError, tk.TclError:
+            self._lock_img_cache = {True: None, False: None}
+
+    def _reload_profiles(self) -> None:
+        """Reload build data from disk and keep the current selection if possible."""
+        try:
+            if not (new_builds := load_builds_from_path()):
+                return
+            current_build = self.builds[self.current_build_idx] if self.builds else {}
+            self.builds = new_builds
+            self.current_build_idx = _resolve_build_index(
+                self.builds,
+                profile_name=current_build.get("profile"),
+                build_name=current_build.get("name"),
+                fallback_idx=self.current_build_idx,
+            )
+            self.boards = self.builds[self.current_build_idx]["boards"] if self.builds else []
+            self.selected_board_idx = min(self.selected_board_idx, max(0, len(self.boards) - 1))
+            self._refresh_lists()
+            self.redraw()
+            self._persist_state()
+        except Exception:
+            LOGGER.exception("Failed to reload profiles")

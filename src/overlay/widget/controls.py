@@ -4,13 +4,13 @@ from typing import TYPE_CHECKING
 from src.loot import get_filter_colors
 from src.overlay.settings import InfoSettingValue
 from src.overlay.settings import save_settings as save_info_settings
-from src.overlay.widget.shared import ACCENT, CARD_BG, MUTED, TEXT, OverlayContract
+from src.overlay.widget.shared import ACCENT, CARD_BG, MUTED, TEXT, BossTimerContract
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class _OverlayControls(OverlayContract):
+class _OverlayControls(BossTimerContract):
     def _toggle_orientation(self) -> None:
         self.orientation = "vertical" if self.orientation == "horizontal" else "horizontal"
         self.overlay_frame.config(highlightbackground=get_filter_colors().matched)

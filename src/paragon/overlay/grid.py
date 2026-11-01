@@ -5,7 +5,7 @@ from contextlib import suppress
 
 from src.desktop import is_alive
 from src.paragon.data import _clamp_int, _format_build_display_name, format_board_display_text
-from src.paragon.overlay.contracts import OverlayContract
+from src.paragon.overlay.contracts import ParagonOverlayContract
 from src.paragon.overlay.helpers import tk_lbl
 from src.paragon.overlay.theme import CARD_BG, FS_BOARD_CARD, FS_GRID_COLOR, GOLD, SELECT_BG, TEXT, TRANSPARENT_KEY
 from src.paragon.transform import GRID, NODES_LEN, nodes_to_grid
@@ -20,7 +20,7 @@ if sys.platform == "win32":
     import win32gui
 
 
-class OverlayGridMixin(OverlayContract):
+class OverlayGridMixin(ParagonOverlayContract):
     def _update_board_selection(self) -> None:
         """Recolor board cards in-place — no destroy/rebuild, no flicker."""
         for i, card in enumerate(self.board_container.winfo_children()):

@@ -2,19 +2,24 @@
 
 import tkinter as tk
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, NoReturn, TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
+from src.desktop import OverlayContract, OverlaySlot
 from src.paragon.overlay.theme import PANEL_W
 
 if TYPE_CHECKING:
     from src.automation import WindowSpec
+    from src.paragon.overlay.controller import ParagonOverlay
     from src.profiles import ParagonBoardModel
 
 type TkOption = str | int | float | bool | tk.PhotoImage | tuple[str, int] | tuple[str, int, str]
 
 
-class OverlayContract(tk.Toplevel):
-    """Shared Tk and widget-attribute contract for the overlay mixins."""
+PARAGON_SLOT: OverlaySlot[ParagonOverlay] = OverlaySlot()
+
+
+class ParagonOverlayContract(OverlayContract):
+    """Widget-attribute contract for the Paragon overlay mixins."""
 
     _build_popup_bind_id: str | None
     _build_popup_escape_bind_id: str | None
@@ -28,9 +33,6 @@ class OverlayContract(tk.Toplevel):
     grid_y: int
     grid_x_collapsed: int
     grid_y_collapsed: int
-
-    def __getattr__(self, name: str) -> NoReturn:
-        raise AttributeError(name)
 
 
 class OverlaySettings(TypedDict, total=False):

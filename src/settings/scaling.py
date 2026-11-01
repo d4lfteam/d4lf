@@ -5,7 +5,7 @@ import numpy as np
 
 from src.settings.coordinates import COLORS, POSITIONS, Template, load_templates
 from src.settings.models.ui import ColorsModel, UiOffsetsModel, UiPosModel, UiRoiModel
-from src.settings.validation import singleton
+from src.singleton import singleton
 
 LOGGER = logging.getLogger("d4lf")
 

@@ -1,5 +1,7 @@
 """Shared Tk-thread primitives used by capability-owned desktop interfaces."""
 
+from src.desktop.overlay_contract import OverlayContract
+from src.desktop.overlay_slot import OverlaySlot
 from src.desktop.ui_thread import (
     call_on_ui_thread,
     create_overlay_toplevel,
@@ -10,6 +12,8 @@ from src.desktop.ui_thread import (
 )
 
 __all__ = [
+    "OverlayContract",
+    "OverlaySlot",
     "call_on_ui_thread",
     "create_overlay_toplevel",
     "get_root",

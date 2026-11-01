@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from src.settings.errors import ConfigLoadErrorListener, SettingsLoadError, log_load_error, make_cleanup_record
 from src.settings.models import GeneralModel
 from src.settings.models.core import AdvancedOptionsModel, CharModel
-from src.settings.validation import singleton
+from src.singleton import singleton
 
 if TYPE_CHECKING:
     from src.settings.types import SettingValue

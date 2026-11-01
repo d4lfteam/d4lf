@@ -2,11 +2,11 @@ import tkinter as tk
 
 from src.overlay.settings import save_settings as save_info_settings
 from src.overlay.statistics import SessionStats
-from src.overlay.widget.shared import ACTIVE_GREEN, LOGGER, OverlayContract
+from src.overlay.widget.shared import ACTIVE_GREEN, LOGGER, BossTimerContract
 from src.perception import monitor_to_window
 
 
-class _OverlayActions(OverlayContract):
+class _OverlayActions(BossTimerContract):
     def _close_overlay(self) -> None:
         """Close the overlay from its own UI without importing lifecycle code."""
         self._destroy_settings_popup()

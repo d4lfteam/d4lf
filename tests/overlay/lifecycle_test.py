@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, cast, override
 import pytest
 
 from src.overlay import lifecycle as _lifecycle
-from src.overlay import state as _state
+from src.overlay.widget.shared import BOSS_TIMER_SLOT
 
 if TYPE_CHECKING:
     from src.overlay.widget.widget import BossTimerOverlay
@@ -31,7 +31,7 @@ def test_close_clears_shared_instance_and_allows_reopen(monkeypatch) -> None:
     monkeypatch.setattr(_lifecycle, "BossTimerOverlay", _FakeOverlay)
     monkeypatch.setattr(_lifecycle, "get_root", object)
     monkeypatch.setattr(_lifecycle, "call_on_ui_thread", lambda callback: callback())
-    _state.clear_overlay()
+    BOSS_TIMER_SLOT.clear()
     _lifecycle.open_overlay()
     _lifecycle.request_close()
     _lifecycle.open_overlay()

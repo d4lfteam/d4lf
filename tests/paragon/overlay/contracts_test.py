@@ -1,4 +1,4 @@
-from src.paragon.overlay.contracts import BuildRow, OverlayConfig, OverlayContract, OverlaySettings
+from src.paragon.overlay.contracts import BuildRow, OverlayConfig, OverlaySettings, ParagonOverlayContract
 
 
 def test_overlay_contract_types_are_constructible() -> None:
@@ -8,4 +8,4 @@ def test_overlay_contract_types_are_constructible() -> None:
     assert settings["cell_size"] == 100
     assert row["name"] == "Build"
     assert OverlayConfig().panel_w == 370
-    assert OverlayContract is not None
+    assert ParagonOverlayContract is not None

@@ -3,14 +3,15 @@ from contextlib import suppress
 from typing import TYPE_CHECKING
 
 from src.desktop import is_alive
-from src.paragon.overlay.contracts import OverlayContract
+from src.paragon.overlay.contracts import ParagonOverlayContract
+from src.paragon.overlay.helpers import measure_build_popup_width
 from src.paragon.overlay.theme import CARD_BG, GOLD, TEXT
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class OverlayPopupMixin(OverlayContract):
+class OverlayPopupMixin(ParagonOverlayContract):
     def _is_descendant(self, child: tk.Misc, parent: tk.Misc) -> bool:
         """Return True when a widget belongs to the popup subtree."""
         w: tk.Misc | None = child
@@ -220,7 +221,7 @@ class OverlayPopupMixin(OverlayContract):
         popup.update_idletasks()
         s = self._cfg.ui_scale
         margin = int(8 * s)
-        popup_width = max(popup.winfo_reqwidth(), self._measure_build_popup_width(popup))
+        popup_width = max(popup.winfo_reqwidth(), measure_build_popup_width(popup, self._cfg.ui_scale))
         vx, vy, vw, vh = self._virtual_screen_bounds()
         pw = min(max(1, popup_width), max(1, vw - (margin * 2)))
         ph = popup.winfo_reqheight()
