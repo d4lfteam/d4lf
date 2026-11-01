@@ -1,10 +1,13 @@
+import typing
 from types import SimpleNamespace
-from unittest.mock import Mock
 
 import numpy as np
 
 import src.loot.highlighting as highlighting_module
 from src.loot.highlighting import HighlightingVisionMode
+
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture, MockType
 
 
 def _slots(*centers: tuple[int, int]) -> list[SimpleNamespace]:
@@ -15,16 +18,14 @@ def _inventory(occupied: tuple[int, int], empty: tuple[int, int]) -> SimpleNames
     return SimpleNamespace(get_item_slots=lambda _img: (_slots(occupied), _slots(empty)))
 
 
-def _patch_environment(monkeypatch) -> tuple[Mock, Mock, Mock, Mock]:
-    overlay = Mock()
-    create = Mock(return_value=overlay)
-    worker_cls = Mock()
-    publisher = Mock()
+def _patch_environment(
+    monkeypatch, mocker: MockerFixture, create: MockType, worker_cls: MockType, publisher: MockType
+) -> None:
     monkeypatch.setattr(highlighting_module.HighlightingOverlay, "create", create)
     monkeypatch.setattr(highlighting_module, "HighlightingWorker", worker_cls)
-    monkeypatch.setattr(highlighting_module, "Publisher", Mock(return_value=publisher))
+    monkeypatch.setattr(highlighting_module, "Publisher", mocker.Mock(return_value=publisher))
     monkeypatch.setattr(highlighting_module, "game_window_roi", lambda: {"left": 5, "top": 6, "height": 1000})
-    monkeypatch.setattr(highlighting_module, "capture", Mock())
+    monkeypatch.setattr(highlighting_module, "capture", mocker.Mock())
     monkeypatch.setattr(highlighting_module, "character_inventory", lambda: _inventory((1, 1), (2, 2)))
     monkeypatch.setattr(highlighting_module, "stash_inventory", lambda: _inventory((3, 3), (4, 4)))
     monkeypatch.setattr(highlighting_module, "vendor_inventory", lambda: _inventory((5, 5), (6, 6)))
@@ -33,11 +34,13 @@ def _patch_environment(monkeypatch) -> tuple[Mock, Mock, Mock, Mock]:
         "get_ui_coordinates",
         lambda: SimpleNamespace(pos=SimpleNamespace(possible_centers=[(9, 9)])),
     )
-    return overlay, create, worker_cls, publisher
 
 
-def test_mode_wires_overlay_and_worker_with_slot_centers(monkeypatch) -> None:
-    overlay, create, worker_cls, _ = _patch_environment(monkeypatch)
+def test_mode_wires_overlay_and_worker_with_slot_centers(monkeypatch, mocker: MockerFixture) -> None:
+    overlay = mocker.Mock()
+    create = mocker.Mock(return_value=overlay)
+    worker_cls = mocker.Mock()
+    _patch_environment(monkeypatch, mocker, create, worker_cls, mocker.Mock())
 
     mode = HighlightingVisionMode()
 
@@ -48,8 +51,11 @@ def test_mode_wires_overlay_and_worker_with_slot_centers(monkeypatch) -> None:
     np.testing.assert_array_equal(vendor_centers, [(1, 1), (2, 2), (9, 9), (5, 5), (6, 6)])
 
 
-def test_start_and_stop_subscribe_worker_and_clear_overlay(monkeypatch) -> None:
-    overlay, _, worker_cls, publisher = _patch_environment(monkeypatch)
+def test_start_and_stop_subscribe_worker_and_clear_overlay(monkeypatch, mocker: MockerFixture) -> None:
+    overlay = mocker.Mock()
+    worker_cls = mocker.Mock()
+    publisher = mocker.Mock()
+    _patch_environment(monkeypatch, mocker, mocker.Mock(return_value=overlay), worker_cls, publisher)
     mode = HighlightingVisionMode()
     worker = worker_cls.return_value
 

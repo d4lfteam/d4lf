@@ -1,10 +1,9 @@
 import logging
 import typing
-from unittest.mock import Mock
 
 if typing.TYPE_CHECKING:
     import pytest
-    from pytest_mock import MockerFixture
+    from pytest_mock import MockerFixture, MockType
 
 from src.item import Affix, FilterResult, Item, MatchedFilter
 from src.loot.highlighting_pipeline import MatchCommand, NoMatchCommand
@@ -15,15 +14,15 @@ from src.settings import get_settings
 ITEM = Item(name="helm")
 
 
-def _overlay(root: Mock, canvas: Mock, item: Item | None = ITEM) -> HighlightingOverlay:
+def _overlay(root: MockType, canvas: MockType, item: Item | None = ITEM) -> HighlightingOverlay:
     overlay = HighlightingOverlay(root, canvas, thick=4, screen_offset=(0, 0))
     overlay.current_item = item
     return overlay
 
 
-def test_match_command_places_reliable_affix_markers(monkeypatch) -> None:
+def test_match_command_places_reliable_affix_markers(monkeypatch, mocker: MockerFixture) -> None:
     monkeypatch.setattr("src.loot.highlighting_render.draw_text", lambda *_args: 1)
-    root, canvas = Mock(), Mock()
+    root, canvas = mocker.Mock(), mocker.Mock()
     overlay = _overlay(root, canvas)
 
     overlay.draw(
@@ -45,12 +44,12 @@ def test_match_command_shows_missing_affixes_in_one_line_under_their_profile(
     mocker.patch.object(get_settings().advanced_options, "max_missing_affixes_shown", 10)
     drawn: list[tuple[str, str]] = []
 
-    def _record_text(_canvas: Mock, text: str, color: str, text_y: int, _center: int) -> int:
+    def _record_text(_canvas: MockType, text: str, color: str, text_y: int, _center: int) -> int:
         drawn.append((text, color))
         return text_y - 1
 
     monkeypatch.setattr("src.loot.highlighting_render.draw_text", _record_text)
-    root, canvas = Mock(), Mock()
+    root, canvas = mocker.Mock(), mocker.Mock()
     overlay = _overlay(root, canvas)
 
     overlay.draw(
@@ -78,7 +77,7 @@ def test_match_command_shows_missing_affixes_in_one_line_under_their_profile(
 def test_command_for_stale_item_is_skipped(monkeypatch, mocker: MockerFixture) -> None:
     reset_canvas = mocker.Mock()
     monkeypatch.setattr("src.loot.highlighting_render.reset_canvas", reset_canvas)
-    root, canvas = Mock(), Mock()
+    root, canvas = mocker.Mock(), mocker.Mock()
     overlay = _overlay(root, canvas, Item(name="boots"))
 
     overlay.draw(NoMatchCommand(ITEM, (0, 0, 10, 10)))
@@ -90,7 +89,7 @@ def test_command_for_stale_item_is_skipped(monkeypatch, mocker: MockerFixture) -
 def test_clear_sets_done_event_once_canvas_is_cleared(monkeypatch, mocker: MockerFixture) -> None:
     reset_canvas = mocker.Mock()
     monkeypatch.setattr("src.loot.highlighting_render.reset_canvas", reset_canvas)
-    root, canvas = Mock(), Mock()
+    root, canvas = mocker.Mock(), mocker.Mock()
     overlay = _overlay(root, canvas)
 
     done = overlay.clear()
@@ -103,7 +102,7 @@ def test_clear_sets_done_event_once_canvas_is_cleared(monkeypatch, mocker: Mocke
 
 def test_draw_from_queue_draws_submitted_commands_in_order(monkeypatch, mocker: MockerFixture) -> None:
     monkeypatch.setattr("src.loot.highlighting_render.reset_canvas", mocker.Mock())
-    root, canvas = Mock(), Mock()
+    root, canvas = mocker.Mock(), mocker.Mock()
     overlay = _overlay(root, canvas)
     drawn: list[str] = []
     monkeypatch.setattr(overlay, "draw", lambda command: drawn.append(type(command).__name__))
@@ -120,7 +119,7 @@ def test_draw_from_queue_reschedules_and_logs_when_drawing_fails(
     monkeypatch, mocker: MockerFixture, caplog: pytest.LogCaptureFixture
 ) -> None:
     monkeypatch.setattr("src.loot.highlighting_render.reset_canvas", mocker.Mock(side_effect=RuntimeError("boom")))
-    root, canvas = Mock(), Mock()
+    root, canvas = mocker.Mock(), mocker.Mock()
     overlay = _overlay(root, canvas)
     overlay.submit(NoMatchCommand(ITEM, (0, 0, 10, 10)))
 
@@ -132,8 +131,8 @@ def test_draw_from_queue_reschedules_and_logs_when_drawing_fails(
     assert "boom" in caplog.text
 
 
-def test_draw_from_queue_reschedules_when_queue_is_empty() -> None:
-    root, canvas = Mock(), Mock()
+def test_draw_from_queue_reschedules_when_queue_is_empty(mocker: MockerFixture) -> None:
+    root, canvas = mocker.Mock(), mocker.Mock()
     overlay = _overlay(root, canvas)
 
     overlay.draw_from_queue()
