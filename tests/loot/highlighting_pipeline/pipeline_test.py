@@ -43,25 +43,17 @@ def test_confirm_stable_tooltip_requires_a_matching_second_frame() -> None:
     detection = DescrDetection(found=True, cropped_descr=np.zeros((2, 2)), crop_roi=[1, 2, 3, 4])
 
     result = confirm_stable_tooltip(
-        detection,
-        already_confirmed=False,
-        second_found=True,
-        second_cropped_descr=np.ones((2, 2)),
-        histogram_score=0.98,
+        detection, second_found=True, second_cropped_descr=np.ones((2, 2)), histogram_score=0.98
     )
 
     assert result.status is TooltipConfirmationStatus.UNCONFIRMED
     assert result.item_roi == (1, 2, 3, 4)
 
     confirmed = confirm_stable_tooltip(
-        detection,
-        already_confirmed=False,
-        second_found=True,
-        second_cropped_descr=np.ones((2, 2)),
-        histogram_score=0.99,
+        detection, second_found=True, second_cropped_descr=np.ones((2, 2)), histogram_score=0.99
     )
     assert confirmed.status is TooltipConfirmationStatus.CONFIRMED
-    assert confirmed.top_left_corner == (1, 2)
+    assert confirmed.item_roi == (1, 2, 3, 4)
 
 
 @pytest.mark.parametrize(
@@ -75,7 +67,7 @@ def test_confirm_stable_tooltip_requires_a_matching_second_frame() -> None:
     ],
 )
 def test_confirm_stable_tooltip_classifies_unusable_detections(detection, expected_status) -> None:
-    assert confirm_stable_tooltip(detection, already_confirmed=False).status is expected_status
+    assert confirm_stable_tooltip(detection).status is expected_status
 
 
 def test_classify_filter_outcome_keeps_only_the_current_item() -> None:

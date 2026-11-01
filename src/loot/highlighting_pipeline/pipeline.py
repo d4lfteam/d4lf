@@ -75,7 +75,6 @@ class TooltipConfirmation:
 
     status: TooltipConfirmationStatus
     item_roi: ItemRoi | None
-    top_left_corner: Point | None
 
     @property
     def confirmed(self) -> bool:
@@ -86,7 +85,6 @@ class TooltipConfirmation:
 def confirm_stable_tooltip(
     detection: DescrDetection,
     *,
-    already_confirmed: bool,
     second_found: bool | None = None,
     second_cropped_descr: np.ndarray | None = None,
     histogram_score: float | None = None,
@@ -94,16 +92,12 @@ def confirm_stable_tooltip(
 ) -> TooltipConfirmation:
     """Require a valid detector ROI and matching consecutive tooltip frames."""
     if not detection.found or detection.crop_roi is None or detection.cropped_descr is None:
-        return TooltipConfirmation(TooltipConfirmationStatus.ABSENT, None, None)
+        return TooltipConfirmation(TooltipConfirmationStatus.ABSENT, None)
     if len(detection.crop_roi) != CROP_ROI_VALUE_COUNT:
-        return TooltipConfirmation(TooltipConfirmationStatus.INVALID, None, None)
+        return TooltipConfirmation(TooltipConfirmationStatus.INVALID, None)
     item_roi = as_item_roi(detection.crop_roi)
     if item_roi is None:
-        return TooltipConfirmation(TooltipConfirmationStatus.INVALID, None, None)
-
-    top_left_corner = (item_roi[0], item_roi[1])
-    if already_confirmed:
-        return TooltipConfirmation(TooltipConfirmationStatus.CONFIRMED, item_roi, top_left_corner)
+        return TooltipConfirmation(TooltipConfirmationStatus.INVALID, None)
 
     is_stable = (
         second_found is True
@@ -112,7 +106,7 @@ def confirm_stable_tooltip(
         and histogram_score >= minimum_score
     )
     status = TooltipConfirmationStatus.CONFIRMED if is_stable else TooltipConfirmationStatus.UNCONFIRMED
-    return TooltipConfirmation(status, item_roi, top_left_corner)
+    return TooltipConfirmation(status, item_roi)
 
 
 class FilterOutcome(StrEnum):
