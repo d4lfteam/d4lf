@@ -195,38 +195,6 @@ def overlay_image(image1: np.ndarray, image2: np.ndarray, x_offset: int, y_offse
     return combined_image
 
 
-def get_typographic_lines(img: np.ndarray, should_invert: bool = False) -> tuple[int, int, int, int]:
-    """Extracts typographic lines from an image containing a single line of text.
-
-    :param img: The input image. Expects an image with light text on a dark background.
-    :param should_invert: Whether to invert the image before processing. Set to True if you have dark text on a light background.
-    :return: A tuple containing the positions (in y-coordinates) of the topline, baseline, midline, and beardline, respectively.
-    """
-    # Make img grayscale if it isn't already
-    if len(img.shape) == COLOR_IMAGE_NDIM:
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # invert the grayscale image if needed
-    if should_invert:
-        img = cv2.bitwise_not(img)
-    # Threshold the image
-    binary_img = threshold(img, method=ThresholdTypes.OTSU)
-    # Compute vertical histogram
-    histogram = cv2.reduce(binary_img, 1, cv2.REDUCE_SUM, dtype=cv2.CV_32S).flatten()
-    # Calculate deltas in histogram
-    deltas = np.diff(histogram)
-    # Find the first row with text as topline
-    topline = int(np.where(histogram > 0)[0][0])
-    # Find the last row with text as beardline (approached from the bottom)
-    beardline = int(np.where(histogram[::-1] > 0)[0][0])
-    beardline = len(histogram) - beardline - 1  # Adjust for reversed indexing
-    # Identify the two sharpest deltas for midline and baseline
-    sharpest_deltas_indices = np.argsort(np.abs(deltas))[-2:]
-    # Sort them to determine which is midline and which is baseline
-    midline, baseline = (int(index) for index in sorted(sharpest_deltas_indices))
-
-    return topline, baseline, midline, beardline
-
-
 def compare_histograms(image_a: np.ndarray, image_b: np.ndarray) -> float:
     hist_a = cv2.calcHist([image_a], [0], None, [256], [0, 256])
     hist_b = cv2.calcHist([image_b], [0], None, [256], [0, 256])

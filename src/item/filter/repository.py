@@ -160,9 +160,6 @@ class ProfileRulesRepository:
         if listener not in self._failure_listeners:
             self._failure_listeners.append(listener)
 
-    def unregister_profile_failure_listener(self, listener: ProfileLoadListener) -> None:
-        self._failure_listeners = [existing for existing in self._failure_listeners if existing != listener]
-
     def _emit_load_report(self, failures: list[ProfileLoadFailure]) -> None:
         failure_state = tuple(
             sorted(failures, key=lambda failure: (failure.name, failure.reason, failure.signature or ()))

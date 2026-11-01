@@ -93,15 +93,8 @@ class Filter(FilterEvaluator):
     def _did_files_change(self) -> bool:
         return self._repository.did_files_change()
 
-    @staticmethod
-    def _profile_signature(path: Path) -> tuple[int, int] | None:
-        return ProfileRulesRepository.profile_signature(path)
-
     def register_profile_failure_listener(self, listener: ProfileLoadListener) -> None:
         self._repository.register_profile_failure_listener(listener)
-
-    def unregister_profile_failure_listener(self, listener: ProfileLoadListener) -> None:
-        self._repository.unregister_profile_failure_listener(listener)
 
     def load_files(self) -> None:
         self._repository.load_files()

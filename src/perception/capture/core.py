@@ -149,10 +149,6 @@ class Cam:
         return abs_window_coord[:] + np.array([self.window_roi["width"] // 2, self.window_roi["height"] // 2])
 
     @convert_args_to_numpy
-    def window_to_abs_window(self, window_coord: np.ndarray) -> np.ndarray:
-        return window_coord[:] - np.array([self.window_roi["width"] // 2, self.window_roi["height"] // 2])
-
-    @convert_args_to_numpy
     def abs_window_to_monitor(self, abs_window_coord: np.ndarray) -> np.ndarray:
         window_coord = self.abs_window_to_window(abs_window_coord)
         return self.window_to_monitor(window_coord)
