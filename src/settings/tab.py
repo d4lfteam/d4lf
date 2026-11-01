@@ -116,8 +116,7 @@ class ConfigTab(ConfigTabMixin, ConfigResetMixin, QWidget):
             settings_list = categories_map.get(cat_name)
             if not settings_list:
                 continue
-            page = self._create_page(cat_name)
-            layout = page.findChild(QVBoxLayout)
+            layout = self._create_page(cat_name)
             # Determine a nice title for the group box
             if cat_name == SettingsCategory.HOTKEYS:
                 gb_title = "Key Bindings"
@@ -134,7 +133,7 @@ class ConfigTab(ConfigTabMixin, ConfigResetMixin, QWidget):
             layout.addWidget(gb)
             self._group_boxes[cat_name] = gb
 
-    def _create_page(self, name: str) -> QWidget:
+    def _create_page(self, name: str) -> QVBoxLayout:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -145,7 +144,7 @@ class ConfigTab(ConfigTabMixin, ConfigResetMixin, QWidget):
         scroll.setWidget(container)
         self.nav_list.addItem(name)
         self.stacked_widget.addWidget(scroll)
-        return container
+        return layout
 
     @override
     def _add_setting_row(
