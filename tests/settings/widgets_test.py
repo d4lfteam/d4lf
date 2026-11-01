@@ -1,50 +1,31 @@
 import os
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from pydantic import BaseModel
-from PyQt6.QtWidgets import QApplication
-
+from src.settings import GeneralModel
 from src.settings.widgets import QChestTabWidget
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from pydantic import BaseModel
 
     from src.settings.types import SettingValue
 
-type SaveArgument = BaseModel | str | Callable[[SettingValue], None]
 
+def test_chest_tab_widget_saves_checked_tabs(qapp) -> None:
+    saved: list[tuple[str, str, SettingValue]] = []
 
-class _ChestModel(BaseModel):
-    max_stash_tabs: int = 3
-
-
-def test_chest_tab_reset_callback_narrows_list_values() -> None:
-    _app = QApplication.instance() or QApplication([])
-
-    reset_callbacks: list[Callable[[SettingValue], None]] = []
-
-    def save_setting_value(*args: SaveArgument) -> bool:
-        callback = args[-1]
-        if not callable(callback):
-            msg = "Expected a reset callback."
-            raise TypeError(msg)
-        reset_callbacks.append(cast("Callable[[SettingValue], None]", callback))
+    def save(_model: BaseModel, section: str, key: str, value: SettingValue) -> bool:
+        saved.append((section, key, value))
         return True
 
-    widget = QChestTabWidget(_ChestModel(), "section", "key", [0], save_setting_value)
+    model = GeneralModel(max_stash_tabs=6)
+    widget = QChestTabWidget(model, "general", "check_chest_tabs", [0], save)
+    assert len(widget.all_checkboxes) == 6
 
-    assert widget.all_checkboxes[0].isChecked()
-    assert not widget.all_checkboxes[1].isChecked()
+    widget.all_checkboxes[2].setChecked(True)
 
-    widget._save_changes_on_box_change(widget.model, widget.section_header, widget.config_key)
-    reset = reset_callbacks[-1]
-    reset([1])
+    assert saved == [("general", "check_chest_tabs", "1,3")]
 
-    assert not widget.all_checkboxes[0].isChecked()
-    assert widget.all_checkboxes[1].isChecked()
-
-    reset(["2", "invalid"])
-    assert not widget.all_checkboxes[0].isChecked()
-    assert widget.all_checkboxes[1].isChecked()
+    widget.reset_values([1])
+    assert [box.isChecked() for box in widget.all_checkboxes[:3]] == [False, True, False]

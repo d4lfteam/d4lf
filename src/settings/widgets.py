@@ -1,5 +1,5 @@
 import sys
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, override
 
 from PyQt6.QtCore import QSignalBlocker, Qt
 from PyQt6.QtGui import QKeySequence
@@ -26,7 +26,8 @@ if TYPE_CHECKING:
 
     from src.settings import GeneralModel, MoveItemsType
     from src.settings.types import SettingValue
-CONFIG_TABNAME = "config"
+
+type SaveSetting = Callable[[BaseModel, str, str, SettingValue], bool]
 
 
 class MultiSegmentedControl(QWidget):
@@ -127,74 +128,48 @@ class IgnoreScrollWheelComboBox(QComboBox):
 
 class QChestTabWidget(QWidget):
     def __init__(
-        self,
-        model: BaseModel,
-        section_header: str,
-        config_key: str,
-        chest_tab_config: list[int],
-        save_setting_value: Callable[..., bool],
+        self, model: GeneralModel, section: str, key: str, chest_tab_config: list[int], save: SaveSetting
     ) -> None:
         super().__init__()
         self.model = model
-        self.section_header = section_header
-        self.config_key = config_key
-        self._save_setting_value = save_setting_value
+        self.section = section
+        self.key = key
+        self._save = save
         self.all_checkboxes: list[CheckmarkCheckBox] = []
         self._layout = QHBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
         self.reset_values(chest_tab_config)
 
     def reset_values(self, chest_tab_config: list[int]) -> None:
-        # Clear existing checkboxes
         while self.all_checkboxes:
             cb = self.all_checkboxes.pop()
             self._layout.removeWidget(cb)
             cb.deleteLater()
-        max_tabs = cast("GeneralModel", self.model).max_stash_tabs
-        for x in range(max_tabs):
+        for x in range(self.model.max_stash_tabs):
             stash_checkbox = CheckmarkCheckBox(self)
             stash_checkbox.setText(str(x + 1))
             self.all_checkboxes.append(stash_checkbox)
-            if x in chest_tab_config:
-                stash_checkbox.setChecked(True)
-            stash_checkbox.stateChanged.connect(
-                lambda: self._save_changes_on_box_change(self.model, self.section_header, self.config_key)
-            )
+            stash_checkbox.setChecked(x in chest_tab_config)
+            stash_checkbox.stateChanged.connect(self._save_checked_tabs)
             self._layout.addWidget(stash_checkbox)
 
-    def _save_changes_on_box_change(self, model: BaseModel, section_header: str, config_key: str) -> None:
+    def _save_checked_tabs(self) -> None:
         active_tabs = [check_box.text() for check_box in self.all_checkboxes if check_box.isChecked()]
-
-        def reset_chest_tabs(value: SettingValue) -> None:
-            if not isinstance(value, list):
-                return
-            tabs: list[int] = []
-            for tab in value:
-                if not isinstance(tab, int):
-                    return
-                tabs.append(tab)
-            self.reset_values(tabs)
-
-        self._save_setting_value(model, section_header, config_key, ",".join(active_tabs), reset_chest_tabs)
+        self._save(self.model, self.section, self.key, ",".join(active_tabs))
 
 
 class QHotkeyWidget(QWidget):
     def __init__(
-        self,
-        model: BaseModel,
-        section_header: str,
-        config_key: str,
-        current_value: SettingValue,
-        save_setting_value: Callable[..., bool],
+        self, model: BaseModel, section: str, key: str, current_value: SettingValue, save: SaveSetting
     ) -> None:
         super().__init__()
-        self._save_setting_value = save_setting_value
+        self._save = save
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.open_picker_button = QPushButton()
         self.reset_values(current_value)
         self.open_picker_button.clicked.connect(
-            lambda: self._launch_hotkey_dialog(model, section_header, config_key, self.open_picker_button.text())
+            lambda: self._launch_hotkey_dialog(model, section, key, self.open_picker_button.text())
         )
         self.open_picker_button.setProperty("hotkeyButton", True)  # ruff:ignore[FBT003]
         layout.addWidget(self.open_picker_button)
@@ -203,11 +178,11 @@ class QHotkeyWidget(QWidget):
     def reset_values(self, current_value: SettingValue) -> None:
         self.open_picker_button.setText(str(current_value))
 
-    def _launch_hotkey_dialog(self, model: BaseModel, section_header: str, config_key: str, current_value: str) -> None:
+    def _launch_hotkey_dialog(self, model: BaseModel, section: str, key: str, current_value: str) -> None:
         hotkey_dialog = HotkeyListenerDialog(self, current_value)
         if hotkey_dialog.exec():
             new_hotkey = hotkey_dialog.get_hotkey()
-            if new_hotkey and self._save_setting_value(model, section_header, config_key, new_hotkey):
+            if new_hotkey and self._save(model, section, key, new_hotkey):
                 self.open_picker_button.setText(new_hotkey)
 
 

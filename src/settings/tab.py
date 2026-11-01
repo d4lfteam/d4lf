@@ -1,6 +1,7 @@
-from typing import TYPE_CHECKING, cast, override
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -9,16 +10,17 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QListWidget,
+    QMessageBox,
+    QPushButton,
     QScrollArea,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
-from src.settings import CATEGORY_KEY, CATEGORY_ORDER, HIDE_FROM_GUI_KEY, IS_HOTKEY_KEY, SettingsCategory
-from src.settings.reset import ConfigResetMixin
+from src.settings import CATEGORY_KEY, CATEGORY_ORDER, HIDE_FROM_GUI_KEY, IS_HOTKEY_KEY, GeneralModel, SettingsCategory
+from src.settings.controls import create_control, prompt_restart, reset_control
 from src.settings.store import SettingsStore
-from src.settings.tab_mixin import ConfigTabMixin
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -27,19 +29,37 @@ if TYPE_CHECKING:
 
     from src.settings.types import SettingValue
 
-CONFIG_TABNAME = "config"
+FILTER_KEYS = {"filter_equipment", "filter_sigils", "filter_tributes", "filter_seals", "filter_charms"}
+THEME_KEYS = {"theme", "colorblind_mode"}
 
 
-class ConfigTab(ConfigTabMixin, ConfigResetMixin, QWidget):
+@dataclass(frozen=True)
+class SettingRow:
+    section: str
+    key: str
+    title: str
+    description: str
+    label: QWidget
+    control: QWidget
+    group: QGroupBox
+
+    def matches(self, query: str) -> bool:
+        return query in self.title.lower() or query in self.description.lower()
+
+    def set_visible(self, visible: bool) -> None:
+        self.label.setVisible(visible)
+        self.control.setVisible(visible)
+
+
+class ConfigTab(QWidget):
     def __init__(self, theme_changed_callback: Callable[[], None] | None = None) -> None:
-        self._initializing = True
         super().__init__()
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.theme_changed_callback = theme_changed_callback
         self._settings_store = SettingsStore()
-        self.model_to_parameter_value_map = {}
-        self._all_rows = []
-        self._group_boxes = {}  # Store group boxes to move them during search
+        self.rows: dict[tuple[str, str], SettingRow] = {}
+        self._group_boxes: dict[str, QGroupBox] = {}  # moved into the search page while searching
+        self._pages: dict[str, QVBoxLayout] = {}
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 10, 0, 0)
         # Search Bar
@@ -80,14 +100,12 @@ class ConfigTab(ConfigTabMixin, ConfigResetMixin, QWidget):
         action_bar.setObjectName("action-bar")
         action_hbox = QHBoxLayout(action_bar)
         action_hbox.setContentsMargins(10, 10, 10, 10)
-        action_hbox.addWidget(self._setup_reset_button())
+        reset_button = QPushButton("Reset to defaults")
+        reset_button.clicked.connect(self.reset_button_click)
+        action_hbox.addWidget(reset_button)
         action_hbox.addStretch()
         layout.addWidget(action_bar)
         self.setLayout(layout)
-        QTimer.singleShot(0, self._finish_init)
-
-    def _finish_init(self) -> None:
-        self._initializing = False
 
     def _build_sections(self) -> None:
         models = self._settings_store.models_with_sections()
@@ -129,7 +147,7 @@ class ConfigTab(ConfigTabMixin, ConfigResetMixin, QWidget):
             grid.setColumnStretch(0, 1)
             grid.setColumnStretch(2, 1)
             for model, section, key, val in settings_list:
-                self._add_setting_row(grid, grid.rowCount(), model, section, key, val)
+                self._add_setting_row(grid, gb, model, section, key, val)
             layout.addWidget(gb)
             self._group_boxes[cat_name] = gb
 
@@ -144,32 +162,133 @@ class ConfigTab(ConfigTabMixin, ConfigResetMixin, QWidget):
         scroll.setWidget(container)
         self.nav_list.addItem(name)
         self.stacked_widget.addWidget(scroll)
+        self._pages[name] = layout
         return layout
 
-    @override
     def _add_setting_row(
-        self, grid: QGridLayout, row: int, model: BaseModel, section: str, key: str, val: SettingValue
+        self, grid: QGridLayout, group: QGroupBox, model: BaseModel, section: str, key: str, val: SettingValue
     ) -> None:
         meta = model.model_json_schema()["properties"].get(key, {})
-        if meta.get(HIDE_FROM_GUI_KEY):
-            return
-        human_label = meta.get("title") or key.replace("_", " ").title()
+        title = meta.get("title") or key.replace("_", " ").title()
+        description = meta.get("description", "")
         label_container = QWidget()
         label_vbox = QVBoxLayout(label_container)
         label_vbox.setContentsMargins(0, 0, 10, 0)
         label_vbox.setSpacing(2)
-        title_lbl = QLabel(human_label)
+        title_lbl = QLabel(title)
         title_lbl.setObjectName("setting-title")
         title_lbl.setWordWrap(True)
-        desc_lbl = QLabel(meta.get("description", ""))
+        desc_lbl = QLabel(description)
         desc_lbl.setObjectName("description-label")
         desc_lbl.setWordWrap(True)
         label_vbox.addWidget(title_lbl)
         label_vbox.addWidget(desc_lbl)
-        control = self._generate_parameter_value_widget(model, section, key, val, meta.get(IS_HOTKEY_KEY))
-        self.model_to_parameter_value_map[f"{section}.{key}"] = control
+        control = create_control(model, section, key, val, bool(meta.get(IS_HOTKEY_KEY)), self.save)
+        if key in FILTER_KEYS:
+            control.setToolTip(description)
+        row = grid.rowCount()
         grid.addWidget(label_container, row, 0, Qt.AlignmentFlag.AlignTop)
         grid.addWidget(control, row, 2, Qt.AlignmentFlag.AlignTop)
-        self._all_rows.append(
-            (human_label, meta.get("description", ""), label_container, control, cast("QGroupBox", grid.parentWidget()))
-        )
+        self.rows[section, key] = SettingRow(section, key, title, description, label_container, control, group)
+
+    def save(self, model: BaseModel, section: str, key: str, value: SettingValue) -> bool:
+        """Persist one setting; on validation failure show the error and restore the widget."""
+        result = self._settings_store.set_value(model, section, key, value)
+        if not result.success:
+            self._reset_control(section, key, result.previous_value)
+            QMessageBox.critical(
+                self,
+                "Error validating value",
+                f"There was an error setting {key} to {value}. Your value has been reset to its previous version."
+                f"\n\n{result.validation_error}",
+            )
+            return False
+        if str(result.previous_value) == str(value):
+            return True
+        if key == "max_stash_tabs" and isinstance(model, GeneralModel):
+            self._reset_control(section, "check_chest_tabs", model.check_chest_tabs)
+        elif key == "vision_mode_type":
+            prompt_restart(self)
+        elif key in THEME_KEYS and self.theme_changed_callback:
+            self.theme_changed_callback()
+        return True
+
+    def _reset_control(self, section: str, key: str, value: SettingValue) -> None:
+        if row := self.rows.get((section, key)):
+            reset_control(row.control, value)
+
+    def _filter_settings(self, text: str) -> None:
+        query = text.lower().strip()
+        if not query:
+            # Tabbed view: move group boxes back to their pages
+            self.nav_list.show()
+            self.stacked_widget.setCurrentIndex(self.nav_list.currentRow())
+            for name, gb in self._group_boxes.items():
+                gb.setVisible(True)
+                self._pages[name].addWidget(gb)
+            for row in self.rows.values():
+                row.set_visible(True)
+            return
+        # Condensed view: move all group boxes into the search page
+        if self.stacked_widget.currentWidget() != self.search_results_page:
+            self.nav_list.hide()
+            self.stacked_widget.addWidget(self.search_results_page)
+            self.stacked_widget.setCurrentWidget(self.search_results_page)
+            for gb in self._group_boxes.values():
+                self.search_results_layout.addWidget(gb)
+        for row in self.rows.values():
+            row.set_visible(row.matches(query))
+        for gb in self._group_boxes.values():
+            # isHidden() is the row's own state; isVisible() would also reflect a hidden group box
+            gb.setVisible(any(not row.label.isHidden() for row in self.rows.values() if row.group is gb))
+
+    def show_tab(self) -> None:
+        for model, section in self._settings_store.models_with_sections():
+            self._reset_section(model, section)
+
+    def reset_button_click(self) -> None:
+        """Offer a reset of the current category or of all settings."""
+        current_item = self.nav_list.currentItem()
+        if not current_item or self.search_input.text():
+            self._perform_global_reset()
+            return
+        tab_name = current_item.text()
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Icon.Question)
+        msg.setWindowTitle("Reset Settings")
+        msg.setText(f"Would you like to reset only the '{tab_name}' settings or all settings to defaults?")
+        btn_tab = msg.addButton(f"Reset {tab_name}", QMessageBox.ButtonRole.ActionRole)
+        btn_all = msg.addButton("Reset All Tabs", QMessageBox.ButtonRole.ActionRole)
+        msg.addButton(QMessageBox.StandardButton.Cancel)
+        msg.exec()
+        clicked = msg.clickedButton()
+        if clicked == btn_all:
+            self._perform_global_reset(confirm=True)
+        elif clicked == btn_tab:
+            self._reset_current_category(tab_name)
+
+    def _perform_global_reset(self, confirm: bool = False) -> None:
+        if confirm:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Icon.Warning)
+            msg.setText("This will reset ALL custom values in your params.ini. Are you sure?")
+            msg.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
+            if msg.exec() != QMessageBox.StandardButton.Ok:
+                return
+        self._settings_store.reset_all()
+        self.show_tab()
+
+    def _reset_current_category(self, category_name: str) -> None:
+        group = self._group_boxes.get(category_name)
+        settings = [
+            (self._settings_store.model_for_section(row.section), row.section, row.key)
+            for row in self.rows.values()
+            if row.group is group
+        ]
+        changes = self._settings_store.reset_category(settings)
+        for section in {section for section, _, _ in changes}:
+            self._reset_section(self._settings_store.model_for_section(section), section)
+
+    def _reset_section(self, model: BaseModel, section: str) -> None:
+        for key, value in model:
+            self._reset_control(section, key, value)
