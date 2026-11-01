@@ -1,19 +1,16 @@
 """Executable template-query behavior."""
 
 import logging
-import operator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Self, cast
 
 import numpy as np
 
 from src.perception.capture.core import Cam
-from src.perception.image import crop
-from src.perception.polling import run_until_condition
 
 from .config import SearchConfig
 from .engine import search
-from .models import ColorMatch, Rectangle, SearchResult, TemplateReferences
+from .models import ColorMatch, SearchResult, TemplateReferences
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -79,36 +76,3 @@ class SearchArgs:
 
     def is_visible(self, img: np.ndarray | None = None) -> bool:
         return self.detect(img).success
-
-    def wait_until_visible(self, timeout: float = 30, suppress_debug: bool = False) -> SearchResult:
-        raw_result, _ = run_until_condition(self.detect, lambda match: match.success, timeout)
-        result = raw_result if isinstance(raw_result, SearchResult) else SearchResult()
-        if not result.success and not suppress_debug:
-            LOGGER.debug(f"{self.ref} not found after {timeout} seconds")
-        return result
-
-    def wait_until_hidden(self, timeout: float = 3, suppress_debug: bool = False) -> bool:
-        if (
-            not (hidden := run_until_condition(lambda: self.detect().success, operator.not_, timeout)[1])
-            and not suppress_debug
-        ):
-            LOGGER.debug(f"{self.ref} still found after {timeout} seconds")
-        return hidden
-
-    @staticmethod
-    def wait_for_update(
-        img: np.ndarray, roi: Rectangle | None = None, timeout: float = 3, suppress_debug: bool = False
-    ) -> bool:
-        resolved_roi = roi if roi is not None else (0, 0, img.shape[0] - 1, img.shape[1] - 1)
-        if (
-            not (
-                change := run_until_condition(
-                    lambda: crop(Cam().grab(), resolved_roi),
-                    lambda res: not np.array_equal(crop(img, resolved_roi), res),
-                    timeout,
-                )[1]
-            )
-            and not suppress_debug
-        ):
-            LOGGER.debug(f"ROI: '{resolved_roi}' unchanged after {timeout} seconds")
-        return change

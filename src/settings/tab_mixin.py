@@ -159,18 +159,6 @@ class ConfigTabMixin:
             post_save_callback()
         return True
 
-    def _generate_params_section(
-        self, model: BaseModel, section_readable_header: str, section_config_header: str
-    ) -> QGroupBox:
-        group_box = QGroupBox(section_readable_header.replace("&", "&&"))
-        grid = QGridLayout(group_box)
-        grid.setSpacing(10)
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(2, 1)
-        for i, (config_key, config_value) in enumerate(model):
-            self._add_setting_row(grid, i, model, section_config_header, config_key, config_value)
-        return group_box
-
     def _generate_parameter_value_widget(
         self, model: BaseModel, section_config_header: str, config_key: str, config_value: SettingValue, is_hotkey: bool
     ) -> QWidget:
