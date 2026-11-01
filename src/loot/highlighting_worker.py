@@ -3,6 +3,7 @@
 import logging
 import threading
 import time
+from contextlib import suppress
 from threading import Event, Thread
 from typing import TYPE_CHECKING
 
@@ -13,11 +14,7 @@ from src.item import SeasonalAttribute
 from src.item.filter import Filter
 from src.loot.colors import get_filter_colors, is_ignored_item
 from src.loot.highlighting_pipeline import (
-    EmptyOutlineCommand,
     FilterOutcome,
-    MatchCommand,
-    NoMatchCommand,
-    RenderingCommand,
     TooltipConfirmationStatus,
     classify_filter_outcome,
     confirm_stable_tooltip,
@@ -38,8 +35,10 @@ from src.perception import (
 )
 
 if TYPE_CHECKING:
+    import numpy as np
+
     from src.item import Affix, Item
-    from src.loot.highlighting import _VisionModeWithHighlighting
+    from src.loot.highlighting_render import HighlightingOverlay
     from src.perception import DescrDetection
 
 LOGGER = logging.getLogger(__name__)
@@ -51,8 +50,42 @@ class CancellationRequestedError(Exception):
     """Exception raised when a cancellation is requested."""
 
 
+def check_for_thread_cancellation(cancel_event: Event) -> None:
+    if cancel_event.is_set():
+        raise CancellationRequestedError
+
+
+def stop_thread_and_wait(thread: Thread | None, cancel_event: Event | None) -> None:
+    if thread is None or cancel_event is None:
+        return
+    cancel_event.set()
+    thread.join()
+
+
 class HighlightingWorker:
-    def on_tts(self: _VisionModeWithHighlighting, _: list[str]) -> None:
+    """Evaluates hovered items in background threads and submits the drawings to the overlay."""
+
+    def __init__(
+        self, overlay: HighlightingOverlay, possible_centers: np.ndarray, possible_vendor_centers: np.ndarray
+    ) -> None:
+        self._overlay = overlay
+        self._possible_centers = possible_centers
+        self._possible_vendor_centers = possible_vendor_centers
+        self.evaluate_item_thread: Thread | None = None
+        self.evaluate_item_thread_cancel_event: Event | None = None
+        self.clear_when_item_not_selected_thread: Thread | None = None
+        self.clear_when_item_not_selected_thread_cancel_event: Event | None = None
+
+    def stop(self) -> None:
+        """Cancel and join all running evaluation threads."""
+        stop_thread_and_wait(self.evaluate_item_thread, self.evaluate_item_thread_cancel_event)
+        self.evaluate_item_thread = None
+        stop_thread_and_wait(
+            self.clear_when_item_not_selected_thread, self.clear_when_item_not_selected_thread_cancel_event
+        )
+        self.clear_when_item_not_selected_thread = None
+
+    def on_tts(self, _: list[str]) -> None:
         img = capture()
         item_descr = None
         try:
@@ -68,12 +101,11 @@ class HighlightingWorker:
             # actually disappears, so an unparseable event must not erase valid markers.
             return
 
-        self.current_item = item_descr
+        self._overlay.current_item = item_descr
 
         # Kick off a thread that will evaluate the item and queue up the appropriate drawings.
         # If one already exists we'll kill it since a new item has come in
-        if self.evaluate_item_thread:
-            self.stop_thread_and_wait(self.evaluate_item_thread, self.evaluate_item_thread_cancel_event)
+        stop_thread_and_wait(self.evaluate_item_thread, self.evaluate_item_thread_cancel_event)
 
         cancel_event = threading.Event()
         self.evaluate_item_thread_cancel_event = cancel_event
@@ -82,15 +114,14 @@ class HighlightingWorker:
         )
         self.evaluate_item_thread.start()
 
-    def evaluate_item_and_queue_draw(self: _VisionModeWithHighlighting, item_descr: Item, cancel_event: Event) -> None:
+    def evaluate_item_and_queue_draw(self, item_descr: Item, cancel_event: Event) -> None:
         # Always queue a clear: the queue is FIFO, so once it is processed any draw left pending
         # by a previous thread has been drawn and removed again.
-        clear_done = self.request_clear()
-        if self.clear_when_item_not_selected_thread:
-            self.stop_thread_and_wait(
-                self.clear_when_item_not_selected_thread, self.clear_when_item_not_selected_thread_cancel_event
-            )
-            self.clear_when_item_not_selected_thread = None
+        clear_done = self._overlay.clear()
+        stop_thread_and_wait(
+            self.clear_when_item_not_selected_thread, self.clear_when_item_not_selected_thread_cancel_event
+        )
+        self.clear_when_item_not_selected_thread = None
 
         last_top_left_corner = None
         last_center = None
@@ -100,34 +131,33 @@ class HighlightingWorker:
         retry_count = 0
         try:
             while retry_count < _MAX_CONFIRMATION_ATTEMPTS and not is_confirmed:
-                self.check_for_thread_cancellation(cancel_event)
+                check_for_thread_cancellation(cancel_event)
                 retry_count += 1
                 item_center = select_target_center(
                     monitor_to_window(pointer_position()),
-                    self.possible_centers,
-                    self.possible_vendor_centers,
+                    self._possible_centers,
+                    self._possible_vendor_centers,
                     is_in_shop=item_descr.is_in_shop,
                 ).center
 
-                self.check_for_thread_cancellation(cancel_event)
+                check_for_thread_cancellation(cancel_event)
                 # Before we get the cropped_descr we need to ensure there is no previous overlay on screen
                 while not clear_done.wait(0.10):
-                    self.check_for_thread_cancellation(cancel_event)
+                    check_for_thread_cancellation(cancel_event)
                 detection = find_descr_with_diagnostics(capture(), item_center)
                 confirmation = confirm_stable_tooltip(detection, already_confirmed=is_confirmed)
                 if confirmation.status is TooltipConfirmationStatus.ABSENT:
-                    clear_done = self.request_clear()
-                    self.check_for_thread_cancellation(cancel_event)
+                    clear_done = self._overlay.clear()
+                    check_for_thread_cancellation(cancel_event)
                     last_center = None
                     last_top_left_corner = None
                     time.sleep(0.15)
-                    is_confirmed = False
                     continue
                 if confirmation.status is TooltipConfirmationStatus.INVALID:
                     continue
 
                 time.sleep(_FRAME_RETRY_DELAY_SECONDS)
-                self.check_for_thread_cancellation(cancel_event)
+                check_for_thread_cancellation(cancel_event)
                 found_check, cropped_descr_check, _ = find_descr(capture(force_new=True), item_center)
                 score = (
                     compare_histograms(detection.cropped_descr, cropped_descr_check)
@@ -145,7 +175,7 @@ class HighlightingWorker:
                     continue
                 is_confirmed = True
 
-                self.check_for_thread_cancellation(cancel_event)
+                check_for_thread_cancellation(cancel_event)
 
                 item_roi_tuple = confirmation.item_roi
                 top_left_corner = confirmation.top_left_corner
@@ -169,11 +199,9 @@ class HighlightingWorker:
                             filter_evaluation=None,
                         )
                         if command is not None:
-                            self._queue_rendering_command(command)
+                            self._overlay.submit(command)
 
-                    # Remove any final drawing if the item is unselected. It is also automatically
-                    # removed if a different TTS item comes in.
-                    self.check_for_thread_cancellation(cancel_event)
+                    check_for_thread_cancellation(cancel_event)
                     # Since we've now drawn something we kick off a thread to remove the drawing
                     # if the item is unselected. It is also automatically removed if a different
                     # TTS item comes in.
@@ -194,9 +222,9 @@ class HighlightingWorker:
                     last_top_left_corner = top_left_corner
                     last_center = item_center
 
-                    if item_descr == self.current_item:
+                    if item_descr == self._overlay.current_item:
                         evaluation = classify_filter_outcome(
-                            item_descr, self.current_item, Filter().should_keep(item_descr)
+                            item_descr, self._overlay.current_item, Filter().should_keep(item_descr)
                         )
                         if evaluation.outcome is FilterOutcome.SKIPPED:
                             return
@@ -227,7 +255,7 @@ class HighlightingWorker:
                             if not locator_result.reliable:
                                 # Bullet templates may still be fading after the tooltip is confirmed.
                                 time.sleep(_FRAME_RETRY_DELAY_SECONDS)
-                                self.check_for_thread_cancellation(cancel_event)
+                                check_for_thread_cancellation(cancel_event)
                                 retry_detection = find_descr_with_diagnostics(capture(), item_center)
                                 marker_location = locate_markers_with_retry(
                                     detection,
@@ -248,7 +276,7 @@ class HighlightingWorker:
                             locator_result=locator_result,
                         )
                         if command is not None:
-                            self._queue_rendering_command(command)
+                            self._overlay.submit(command)
         except CancellationRequestedError:
             pass
         except Exception:
@@ -258,42 +286,13 @@ class HighlightingWorker:
         finally:
             self.evaluate_item_thread = None
 
-    def _queue_rendering_command(self: _VisionModeWithHighlighting, command: RenderingCommand) -> None:
-        if isinstance(command, EmptyOutlineCommand):
-            if command.text is None:
-                self.request_empty_outline(command.item, command.item_roi, command.color)
-            else:
-                self.request_empty_outline(command.item, command.item_roi, command.color, command.text)
-        elif isinstance(command, MatchCommand):
-            self.request_match_box(command.item, command.item_roi, command.filter_result, command.locator_result)
-        elif isinstance(command, NoMatchCommand):
-            self.request_no_match_box(command.item, command.item_roi)
-        else:
-            self.request_codex_upgrade_box(command.item, command.item_roi, command.filter_result)
-
-    @staticmethod
-    def check_for_thread_cancellation(cancel_event: Event) -> None:
-        if cancel_event.is_set():
-            raise CancellationRequestedError
-
-    @staticmethod
-    def stop_thread_and_wait(thread: Thread | None, cancel_event: Event | None) -> None:
-        if thread is None or cancel_event is None:
-            return
-        cancel_event.set()
-        thread.join()
-
-    def check_for_item_still_selected(
-        self: _VisionModeWithHighlighting, item_center: tuple[int, int], cancel_event: Event
-    ) -> None:
-        try:
+    def check_for_item_still_selected(self, item_center: tuple[int, int], cancel_event: Event) -> None:
+        with suppress(CancellationRequestedError):
             while True:
-                self.check_for_thread_cancellation(cancel_event)
+                check_for_thread_cancellation(cancel_event)
                 found_check, _, _ = find_descr(capture(), item_center)
                 if not found_check:
-                    self.request_clear()
-                    self.clear_when_item_not_selected_thread = None
+                    self._overlay.clear()
                     break
                 time.sleep(0.15)
-        except CancellationRequestedError:
-            self.clear_when_item_not_selected_thread = None
+        self.clear_when_item_not_selected_thread = None
