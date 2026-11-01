@@ -27,7 +27,9 @@ def test_imported_profile_round_trips_typed_paragon_and_transforms_board(tmp_pat
                 profile=ProfileModel(name="imported", Paragon=payload),
             )
 
-    result = importing.import_build(importing.ImportRequest("fixture://build"), FakeSource())
+    result = importing.import_build(
+        importing.ImportRequest("fixture://build"), session=importing.ImportSession(FakeSource())
+    )
     store = ProfileDocumentStore(tmp_path / "profiles", full_dump=False)
     saved = store.save_new(file_name="imported", profile=result.profile, source=result.source_name)
     loaded = store.load(saved.path).profile

@@ -30,8 +30,8 @@ from src.importing.infinitybuilds.paragon import (
     extract_infinitybuilds_paragon_steps,
     fetch_infinitybuilds_paragon_catalog,
 )
-from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
-from src.importing.web import retry_importer
+from src.importing.pipeline import ExtractedBuild, ImportPipeline, Variant
+from src.importing.web import retry_importer, validated_url
 from src.profiles import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
 
 if TYPE_CHECKING:
@@ -43,6 +43,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
 BUILD_GUIDE_BASE_URL = "https://infinitybuilds.gg/"
+URL_HINT = "an infinitybuilds.gg build link"
 SCRIPT_XPATH = "//script"
 ASPECT_UPGRADE_RARITIES = {"legendary"}
 RUNEWORD_CATALOG_ID_PREFIX = "item-runeword-"
@@ -50,17 +51,6 @@ RUNEWORD_CATALOG_ID_PREFIX = "item-runeword-"
 
 class InfinityBuildsError(ImportSourceError):
     pass
-
-
-def _validated_url(request: ImportRequest, driver: WebDriver | None) -> tuple[str, WebDriver] | None:
-    if driver is None:
-        msg = "A Selenium WebDriver is required for InfinityBuilds imports"
-        raise RuntimeError(msg)
-    url = request.url.strip().replace("\n", "")
-    if BUILD_GUIDE_BASE_URL not in url:
-        LOGGER.error("Invalid url, please use an infinitybuilds.gg build link")
-        return None
-    return url, driver
 
 
 def _load_build_page(url: str, driver: WebDriver) -> tuple[etree._Element, BuildData]:
@@ -76,11 +66,9 @@ def _load_build_page(url: str, driver: WebDriver) -> tuple[etree._Element, Build
 
 
 @retry_importer(inject_webdriver=True)
-def fetch_variants_infinitybuilds(request: ImportRequest, driver: WebDriver | None = None) -> list[VariantMetadata]:
-    validated = _validated_url(request, driver)
-    if validated is None:
+def fetch_variants_infinitybuilds(request: ImportRequest, driver: WebDriver) -> list[VariantMetadata]:
+    if (url := validated_url(request, BUILD_GUIDE_BASE_URL, hint=URL_HINT)) is None:
         return []
-    url, driver = validated
     LOGGER.info(f"Loading {url} for variants")
     try:
         _raw_html_data, build_data = _load_build_page(url, driver)
@@ -95,16 +83,10 @@ def fetch_variants_infinitybuilds(request: ImportRequest, driver: WebDriver | No
     return variants
 
 
-def import_infinitybuilds(request: ImportRequest, driver: WebDriver | None = None) -> ImportResult | None:
-    return _import_infinitybuilds(request, driver)
-
-
 @retry_importer(inject_webdriver=True)
-def _import_infinitybuilds(request: ImportRequest, driver: WebDriver | None = None) -> ImportResult | None:
-    validated = _validated_url(request, driver)
-    if validated is None:
+def import_infinitybuilds(request: ImportRequest, driver: WebDriver) -> ImportResult | None:
+    if (url := validated_url(request, BUILD_GUIDE_BASE_URL, hint=URL_HINT)) is None:
         return None
-    url, driver = validated
     LOGGER.info(f"Loading {url}")
     # The build data is streamed in via React Server Components after initial hydration; the
     # shared loader waits for the hydrated payload before parsing it.
@@ -148,16 +130,11 @@ def _import_infinitybuilds(request: ImportRequest, driver: WebDriver | None = No
         extracted_variant.paragon_build_name = build_header or extracted_variant.name
         extracted_variants.append(extracted_variant)
     return ImportPipeline.run_result(
-        adapter=StaticBuildGuideAdapter(
-            url=url,
-            build=ExtractedBuild(
-                source_name="infinitybuilds",
-                class_name=class_name,
-                build_header=build_header,
-                variants=extracted_variants,
-            ),
+        build=ExtractedBuild(
+            source_name="infinitybuilds", class_name=class_name, build_header=build_header, variants=extracted_variants
         ),
         request=request,
+        source_url=url,
     )
 
 

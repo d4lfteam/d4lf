@@ -5,6 +5,7 @@ from typing import cast
 import pytest
 
 from src.importing.contracts import ImportSession
+from src.importing.web import validated_url
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -64,6 +65,15 @@ def test_filename_part_selector_defaults_to_all_parts(qapp, importer_settings) -
         window.filename_parts_summary_label.text() == "Default file name: Source_Season_Class_Build title_Variant.yaml"
     )
 
+    window.close()
+
+
+def test_importer_window_shows_invalid_url_hint(qapp, importer_settings) -> None:
+    window = ImporterWindow()
+
+    validated_url(ImportRequest("https://maxroll.gg/d4/tierlists"), "https://maxroll.gg/d4/planner/", hint="a planner")
+
+    assert "Invalid url, please use a planner" in window.log_output.toPlainText()
     window.close()
 
 

@@ -4,11 +4,13 @@ from typing import TYPE_CHECKING
 
 from src.game_data import GameCatalog, ItemType
 from src.importing import FilenamePart, ImportOptions, ImportRequest
-from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
+from src.importing.pipeline import ExtractedBuild, ImportPipeline, Variant
 from src.profiles import CharmFilterModel, ItemFilterModel, SealFilterModel
 
 if TYPE_CHECKING:
     from src.type_aliases import JsonValue
+
+URL = "https://example.invalid/build"
 
 
 def _config(**overrides) -> ImportRequest:
@@ -58,10 +60,9 @@ def test_run_saves_single_variant_and_attaches_paragon(mock_ini_loader, mocker) 
     add_to_profiles = mocker.patch("src.importing.pipeline.add_to_profiles")
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
-    saved_file_names = ImportPipeline.run(
-        StaticBuildGuideAdapter(
-            url="https://example.invalid/build",
-            build=_build(
+    saved_file_names = [
+        *ImportPipeline.run_result(
+            _build(
                 variants=[
                     Variant(
                         name="Pit Push",
@@ -72,9 +73,10 @@ def test_run_saves_single_variant_and_attaches_paragon(mock_ini_loader, mocker) 
                     )
                 ]
             ),
-        ),
-        request=_config(export_paragon=True),
-    )
+            _config(export_paragon=True),
+            URL,
+        ).saved_file_names
+    ]
 
     assert saved_file_names == ["maxroll_s12_spiritborn_touch_of_death_pit_push"]
     assert saved["source"] == "https://example.invalid/build"
@@ -92,18 +94,18 @@ def test_run_saves_multiple_variants_and_adds_profiles(mock_ini_loader, mocker) 
     add_to_profiles = mocker.patch("src.importing.pipeline.add_to_profiles")
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
-    saved_file_names = ImportPipeline.run(
-        StaticBuildGuideAdapter(
-            url="https://example.invalid/build",
-            build=_build(
+    saved_file_names = [
+        *ImportPipeline.run_result(
+            _build(
                 variants=[
                     Variant(name="Variant One", affix_filters=[_item_filter(ItemType.Ring)]),
                     Variant(name="Variant Two", affix_filters=[_item_filter(ItemType.Amulet)]),
                 ]
             ),
-        ),
-        request=_config(add_to_profiles=True),
-    )
+            _config(add_to_profiles=True),
+            URL,
+        ).saved_file_names
+    ]
 
     assert saved_file_names == [
         "maxroll_s12_spiritborn_touch_of_death_variant_one",
@@ -119,18 +121,18 @@ def test_run_disambiguates_duplicate_generated_variant_names(mock_ini_loader, mo
     profile_store.save_new.side_effect = lambda *, file_name, **_kwargs: SimpleNamespace(file_name=file_name)
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
-    saved_file_names = ImportPipeline.run(
-        StaticBuildGuideAdapter(
-            url="https://example.invalid/build",
-            build=_build(
+    saved_file_names = [
+        *ImportPipeline.run_result(
+            _build(
                 variants=[
                     Variant(name="Pit Push", affix_filters=[_item_filter(ItemType.Ring)]),
                     Variant(name="Pit Push", affix_filters=[_item_filter(ItemType.Amulet)]),
                 ]
             ),
-        ),
-        request=_config(),
-    )
+            _config(),
+            URL,
+        ).saved_file_names
+    ]
 
     expected_file_names = [
         "maxroll_s12_spiritborn_touch_of_death_pit_push",
@@ -146,18 +148,18 @@ def test_run_suffixes_custom_filename_for_multiple_variants(mock_ini_loader, moc
     profile_store.save_new.side_effect = lambda *, file_name, **_kwargs: SimpleNamespace(file_name=file_name)
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
-    saved_file_names = ImportPipeline.run(
-        StaticBuildGuideAdapter(
-            url="https://example.invalid/build",
-            build=_build(
+    saved_file_names = [
+        *ImportPipeline.run_result(
+            _build(
                 variants=[
                     Variant(name="Variant One", affix_filters=[_item_filter(ItemType.Ring)]),
                     Variant(name="Variant Two", affix_filters=[_item_filter(ItemType.Amulet)]),
                 ]
             ),
-        ),
-        request=_config(custom_file_name="custom-name"),
-    )
+            _config(custom_file_name="custom-name"),
+            URL,
+        ).saved_file_names
+    ]
 
     assert saved_file_names == ["custom-name_1", "custom-name_2"]
 
@@ -171,10 +173,7 @@ def test_run_uses_selected_filename_parts(mock_ini_loader, mocker) -> None:
     )
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
-    ImportPipeline.run(
-        StaticBuildGuideAdapter(url="https://example.invalid/build", build=_build()),
-        request=_config(filename_parts=(FilenamePart.SOURCE, FilenamePart.BUILD_TITLE)),
-    )
+    ImportPipeline.run_result(_build(), _config(filename_parts=(FilenamePart.SOURCE, FilenamePart.BUILD_TITLE)), URL)
 
     assert saved["file_name"] == "maxroll_touch_of_death"
 
@@ -186,10 +185,7 @@ def test_run_warns_when_paragon_export_enabled_without_steps(mock_ini_loader, mo
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
     with caplog.at_level("WARNING"):
-        ImportPipeline.run(
-            StaticBuildGuideAdapter(url="https://example.invalid/build", build=_build()),
-            request=_config(export_paragon=True),
-        )
+        ImportPipeline.run_result(_build(), _config(export_paragon=True), URL)
 
     assert "Paragon export enabled, but no paragon data was found" in caplog.text
 
@@ -203,16 +199,14 @@ def test_run_deduplicates_identical_affix_filters(mock_ini_loader, mocker) -> No
     )
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
-    ImportPipeline.run(
-        StaticBuildGuideAdapter(
-            url="https://example.invalid/build",
-            build=_build(
-                variants=[
-                    Variant(name="Pit Push", affix_filters=[_item_filter(ItemType.Ring), _item_filter(ItemType.Ring)])
-                ]
-            ),
+    ImportPipeline.run_result(
+        _build(
+            variants=[
+                Variant(name="Pit Push", affix_filters=[_item_filter(ItemType.Ring), _item_filter(ItemType.Ring)])
+            ]
         ),
-        request=_config(),
+        _config(),
+        URL,
     )
 
     assert len(saved["profile"].affixes) == 1
@@ -228,17 +222,15 @@ def test_run_excludes_disabled_charm_and_seal_filters_for_each_variant(mock_ini_
     )
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
-    ImportPipeline.run(
-        StaticBuildGuideAdapter(
-            url="https://example.invalid/build",
-            build=_build(
-                variants=[
-                    Variant(name="One", charm_filters=[_charm_filter()], seal_filters=[_seal_filter()]),
-                    Variant(name="Two", charm_filters=[_charm_filter()], seal_filters=[_seal_filter()]),
-                ]
-            ),
+    ImportPipeline.run_result(
+        _build(
+            variants=[
+                Variant(name="One", charm_filters=[_charm_filter()], seal_filters=[_seal_filter()]),
+                Variant(name="Two", charm_filters=[_charm_filter()], seal_filters=[_seal_filter()]),
+            ]
         ),
-        request=_config(import_charms=False, import_seals=False),
+        _config(import_charms=False, import_seals=False),
+        URL,
     )
 
     assert len(saved_profiles) == 2
@@ -254,12 +246,10 @@ def test_run_maps_import_categories_from_config_fallback(mock_ini_loader, mocker
     )
     mocker.patch("src.profiles.ProfileDocumentStore.default", return_value=profile_store)
 
-    ImportPipeline.run(
-        StaticBuildGuideAdapter(
-            url="https://example.invalid/build",
-            build=_build(variants=[Variant(charm_filters=[_charm_filter()], seal_filters=[_seal_filter()])]),
-        ),
-        request=_config(import_charms=False, import_seals=True),
+    ImportPipeline.run_result(
+        _build(variants=[Variant(charm_filters=[_charm_filter()], seal_filters=[_seal_filter()])]),
+        _config(import_charms=False, import_seals=True),
+        URL,
     )
 
     assert not saved["profile"].charms

@@ -24,6 +24,8 @@ if TYPE_CHECKING:
     from selenium.webdriver.remote.webelement import WebElement
 
 LOGGER = logging.getLogger(__name__)
+# Own child logger so the importer window can show URL hints without the retry noise of LOGGER.
+URL_LOGGER = logging.getLogger(f"{__name__}.validation")
 HEADERS = {"User-Agent": "Diablo 4 Loot Filter - Profile Importer"}
 type ImporterArgument = ImportRequest | WebDriver | str | bool | None
 
@@ -41,6 +43,14 @@ def get_with_retry(url: str, custom_headers: dict[str, str] | None = None) -> ht
         return response
     LOGGER.error(msg := f"Failed to get a successful response after 10 attempts: {url=}")
     raise ConnectionError(msg)
+
+
+def validated_url(request: ImportRequest, *base_urls: str, hint: str) -> str | None:
+    """Return the request URL if it belongs to one of ``base_urls``; otherwise log ``hint`` and return None."""
+    if any(base_url in request.url for base_url in base_urls):
+        return request.url
+    URL_LOGGER.error("Invalid url, please use %s", hint)
+    return None
 
 
 def hover_and_get_tooltip_html(

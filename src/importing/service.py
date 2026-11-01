@@ -40,14 +40,9 @@ class _SelectedSource:
         return result
 
 
-def open_session(url: str, source: ImportSource | None = None) -> ImportSession:
-    """Open one explicit source session for discovery and import.
-
-    A caller may pass a selected source to keep source construction at its
-    boundary.
-    """
-    selected_source = source if source is not None else select_source(url)
-    return ImportSession(selected_source)
+def open_session(url: str) -> ImportSession:
+    """Open one explicit source session for discovery and import."""
+    return ImportSession(select_source(url))
 
 
 def select_source(url: str) -> ImportSource:
@@ -68,11 +63,9 @@ def select_source(url: str) -> ImportSource:
     raise UnsupportedImportSourceError(message)
 
 
-def import_build(
-    request: ImportRequest, source: ImportSource | None = None, *, session: ImportSession | None = None
-) -> ImportResult:
+def import_build(request: ImportRequest, *, session: ImportSession | None = None) -> ImportResult:
     """Import a build through one source-independent request/result seam."""
-    active_session = session or open_session(request.url, source)
+    active_session = session or open_session(request.url)
     owns_session = session is None
     try:
         return active_session.import_build(request)

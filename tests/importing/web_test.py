@@ -2,7 +2,8 @@ from typing import Never
 
 import pytest
 
-from src.importing.web import retry_importer
+from src.importing.contracts import ImportRequest
+from src.importing.web import retry_importer, validated_url
 
 
 def test_retry_importer_closes_an_owned_browser_after_exhausting_retries(mocker) -> None:
@@ -81,3 +82,21 @@ def test_retry_importer_preserves_explicit_positional_driver(mocker) -> None:
 
     setup.assert_not_called()
     supplied_driver.quit.assert_not_called()
+
+
+def test_validated_url_accepts_any_matching_base_url() -> None:
+    request = ImportRequest(" https://maxroll.gg/d4/planner/abc\n")
+
+    assert validated_url(
+        request, "https://maxroll.gg/d4/build-guides/", "https://maxroll.gg/d4/planner/", hint="x"
+    ) == ("https://maxroll.gg/d4/planner/abc")
+
+
+def test_validated_url_logs_hint_and_rejects_foreign_url(caplog) -> None:
+    with caplog.at_level("ERROR"):
+        assert (
+            validated_url(ImportRequest("https://example.invalid/x"), "https://d4builds.gg/", hint="a d4builds url")
+            is None
+        )
+
+    assert "Invalid url, please use a d4builds url" in caplog.text

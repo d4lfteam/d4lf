@@ -14,8 +14,8 @@ from src.importing.contracts import ImportRequest, ImportResult, VariantMetadata
 from src.importing.d4builds.constants import BASE_URL, BUILD_OVERVIEW_XPATH, PAPERDOLL_XPATH
 from src.importing.d4builds.metadata import D4BuildsError, _extract_build_metadata
 from src.importing.d4builds.variants import extract_variant
-from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter
-from src.importing.web import retry_importer
+from src.importing.pipeline import ExtractedBuild, ImportPipeline
+from src.importing.web import retry_importer, validated_url
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -34,17 +34,6 @@ class _LoadedVariantPage:
     build_header: str
     season_number: str
     variant_name: str
-
-
-def _validated_url(request: ImportRequest, driver: WebDriver | None) -> tuple[str, WebDriver] | None:
-    if driver is None:
-        msg = "A Selenium WebDriver is required for D4Builds imports"
-        raise RuntimeError(msg)
-    url = request.url
-    if BASE_URL not in url:
-        LOGGER.error("Invalid url, please use a d4builds url")
-        return None
-    return url, driver
 
 
 def _load_variant_page(url: str, driver: WebDriver, *, wait_for_paperdoll: bool = False) -> _LoadedVariantPage:
@@ -91,11 +80,9 @@ def _iter_variant_pages(
 
 
 @retry_importer(inject_webdriver=True)
-def fetch_variants_d4builds(request: ImportRequest, driver: WebDriver | None = None) -> list[VariantMetadata]:
-    validated = _validated_url(request, driver)
-    if validated is None:
+def fetch_variants_d4builds(request: ImportRequest, driver: WebDriver) -> list[VariantMetadata]:
+    if (url := validated_url(request, BASE_URL, hint="a d4builds url")) is None:
         return []
-    url, driver = validated
 
     variants = []
     for var_index, loaded_page in _iter_variant_pages(url, driver, selection=request.variant_selection):
@@ -109,11 +96,9 @@ def fetch_variants_d4builds(request: ImportRequest, driver: WebDriver | None = N
 
 
 @retry_importer(inject_webdriver=True)
-def import_d4builds(request: ImportRequest, driver: WebDriver | None = None) -> ImportResult | None:
-    validated = _validated_url(request, driver)
-    if validated is None:
+def import_d4builds(request: ImportRequest, driver: WebDriver) -> ImportResult | None:
+    if (url := validated_url(request, BASE_URL, hint="a d4builds url")) is None:
         return None
-    url, driver = validated
     variants = []
     final_class_name = ""
     final_build_header = ""
@@ -162,15 +147,13 @@ def import_d4builds(request: ImportRequest, driver: WebDriver | None = None) -> 
         raise D4BuildsError(message)
 
     return ImportPipeline.run_result(
-        adapter=StaticBuildGuideAdapter(
-            url=url,
-            build=ExtractedBuild(
-                source_name="d4builds",
-                class_name=final_class_name,
-                build_header=final_build_header,
-                season_number=final_season_number,
-                variants=variants,
-            ),
+        build=ExtractedBuild(
+            source_name="d4builds",
+            class_name=final_class_name,
+            build_header=final_build_header,
+            season_number=final_season_number,
+            variants=variants,
         ),
         request=request,
+        source_url=url,
     )

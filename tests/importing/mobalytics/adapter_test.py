@@ -56,17 +56,6 @@ def _request(
     )
 
 
-def test_import_mobalytics_passes_category_options_to_pipeline_config(mocker: MockerFixture) -> None:
-    run_result = mocker.patch("src.importing.mobalytics.adapter._import_mobalytics", return_value=None)
-    request = _request(url="https://mobalytics.gg/diablo-4/builds/example", import_charms=False, import_seals=False)
-
-    import_mobalytics(request, driver=typing.cast("WebDriver", object()))
-
-    captured_request = run_result.call_args.args[0]
-    assert not captured_request.options.import_charms
-    assert not captured_request.options.import_seals
-
-
 class _MobalyticsImportDriver:
     current_url = ""
     title = "Mobalytics"

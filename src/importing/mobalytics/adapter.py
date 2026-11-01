@@ -19,8 +19,8 @@ from src.importing.mobalytics.extraction import (
     _log_mobalytics_page_diagnostics,
 )
 from src.importing.mobalytics.filters import build_variant
-from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter
-from src.importing.web import retry_importer
+from src.importing.pipeline import ExtractedBuild, ImportPipeline
+from src.importing.web import retry_importer, validated_url
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -36,26 +36,11 @@ BUILD_GUIDE_BASE_URL = "https://mobalytics.gg/diablo-4/"
 BUILD_SCRIPT_PREFIX = "window.__PRELOADED_STATE__="
 PROFILE_GUIDE_BASE_URL = f"{BUILD_GUIDE_BASE_URL}profile"
 SCRIPT_XPATH = "//script"
+URL_HINT = "a mobalytics build guide"
 
 
 class MobalyticsError(ImportSourceError):
     """Raised when Mobalytics page data cannot be extracted."""
-
-
-def _validated_url(
-    request: ImportRequest, driver: WebDriver | None, *, reject_profile: bool = False
-) -> tuple[str, WebDriver] | None:
-    if driver is None:
-        msg = "A Selenium WebDriver is required for Mobalytics imports"
-        raise RuntimeError(msg)
-    url = request.url.strip().replace("\n", "")
-    if BUILD_GUIDE_BASE_URL not in url:
-        LOGGER.error("Invalid url, please use a mobalytics build guide")
-        return None
-    if reject_profile and PROFILE_GUIDE_BASE_URL in url:
-        LOGGER.error("Builds from user profiles are not supported at this time.")
-        return None
-    return url, driver
 
 
 def _load_build_page(url: str, driver: WebDriver) -> tuple[str, str, JsonValue | None, int]:
@@ -72,11 +57,9 @@ def _load_build_page(url: str, driver: WebDriver) -> tuple[str, str, JsonValue |
 
 
 @retry_importer(inject_webdriver=True)
-def fetch_variants_mobalytics(request: ImportRequest, driver: WebDriver | None = None) -> list[VariantMetadata]:
-    validated = _validated_url(request, driver)
-    if validated is None:
+def fetch_variants_mobalytics(request: ImportRequest, driver: WebDriver) -> list[VariantMetadata]:
+    if (url := validated_url(request, BUILD_GUIDE_BASE_URL, hint=URL_HINT)) is None:
         return []
-    url, driver = validated
     url, _, state, _ = _load_build_page(url, driver)
     LOGGER.info("Loading %s for variants", url)
     if state is None:
@@ -104,16 +87,13 @@ def fetch_variants_mobalytics(request: ImportRequest, driver: WebDriver | None =
     return variants
 
 
-def import_mobalytics(request: ImportRequest, driver: WebDriver | None = None) -> ImportResult | None:
-    return _import_mobalytics(request, driver)
-
-
 @retry_importer(inject_webdriver=True)
-def _import_mobalytics(request: ImportRequest, driver: WebDriver | None = None) -> ImportResult | None:
-    validated = _validated_url(request, driver, reject_profile=True)
-    if validated is None:
+def import_mobalytics(request: ImportRequest, driver: WebDriver) -> ImportResult | None:
+    if (url := validated_url(request, BUILD_GUIDE_BASE_URL, hint=URL_HINT)) is None:
         return None
-    url, driver = validated
+    if PROFILE_GUIDE_BASE_URL in url:
+        LOGGER.error("Builds from user profiles are not supported at this time.")
+        return None
     url, page_source, state, script_count = _load_build_page(url, driver)
     LOGGER.info("Loading %s", url)
     variant_id_from_url = None
@@ -191,17 +171,15 @@ def _import_mobalytics(request: ImportRequest, driver: WebDriver | None = None) 
     if not extracted_variants:
         raise MobalyticsError(msg := "No variants could be extracted")
     return ImportPipeline.run_result(
-        adapter=StaticBuildGuideAdapter(
-            url=url,
-            build=ExtractedBuild(
-                source_name="mobalytics",
-                class_name=class_name,
-                build_header=build_header,
-                season_number=_extract_mobalytics_season_number(_as_mapping(state)),
-                variants=extracted_variants,
-            ),
+        build=ExtractedBuild(
+            source_name="mobalytics",
+            class_name=class_name,
+            build_header=build_header,
+            season_number=_extract_mobalytics_season_number(_as_mapping(state)),
+            variants=extracted_variants,
         ),
         request=request,
+        source_url=url,
     )
 
 
