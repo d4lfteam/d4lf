@@ -4,10 +4,10 @@ from PyQt6.QtCore import QTimer, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QVBoxLayout
 
 from src.profiles import AffixFilterCountModel, AffixFilterModel
-from src.profiles.affix.dialogs import DeleteAffixPool
-from src.profiles.affix.pool import AffixPoolWidget
-from src.profiles.affix.widget import AffixWidget
 from src.profiles.editor.container import Container
+from src.profiles.pool_controls.affix_widget import AffixWidget
+from src.profiles.pool_controls.dialogs import DeleteAffixPool
+from src.profiles.pool_controls.pool_widget import AffixPoolWidget
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

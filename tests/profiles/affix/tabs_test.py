@@ -1,101 +1,18 @@
-import operator
 import os
 
 import pytest
-from PyQt6.QtWidgets import QApplication, QWidget
+from PyQt6.QtWidgets import QApplication
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from src.game_data import GameCatalog, ItemType
-from src.profiles import (
-    AffixFilterCountModel,
-    AffixFilterModel,
-    AspectUniqueFilterModel,
-    CharmFilterModel,
-    DynamicItemFilterModel,
-    ItemFilterModel,
-    SealFilterModel,
-)
-from src.profiles.affix import (
-    AffixesTab,
-    AffixGroupEditor,
-    AffixPoolWidget,
-    AffixWidget,
-    ItemTypePicker,
-    UniqueAspectWidget,
-)
+from src.game_data import ItemType
+from src.profiles import DynamicItemFilterModel, ItemFilterModel
+from src.profiles.affix import AffixesTab, AffixGroupEditor, ItemTypePicker
 
 
 @pytest.fixture(scope="module")
 def qapp():
     return QApplication.instance() or QApplication([])
-
-
-class MockGroupEditor(QWidget):
-    """Mock group editor to act as a parent with a config attribute."""
-
-    def __init__(self, config) -> None:
-        super().__init__()
-        self.config = config
-
-    def refresh_greater_count(self) -> None:
-        pass
-
-
-def test_affix_widget_parent_config(qapp, mock_ini_loader) -> None:
-    # Test that only SealFilterModel is recognized as a parent seal config
-    seal_config = SealFilterModel(affix_pool=[])
-    charm_config = CharmFilterModel(affix_pool=[])
-
-    affix = AffixFilterModel(name="movement_speed", value=None)
-
-    parent_seal = MockGroupEditor(seal_config)
-    widget_seal = AffixWidget(affix, parent=parent_seal)
-    assert widget_seal.get_parent_seal_config() is seal_config
-
-    parent_charm = MockGroupEditor(charm_config)
-    widget_charm = AffixWidget(affix, parent=parent_charm)
-    assert widget_charm.get_parent_seal_config() is None
-
-
-def test_affix_widget_clears_on_empty_filter(qapp, mock_ini_loader) -> None:
-    # Test that if name_combo has no items, update_name clears self.affix.name (for seals)
-    affix = AffixFilterModel(name="adept_action_damage_reduction_while_moving", value=None)
-    seal_config = SealFilterModel(affix_pool=[])
-
-    parent = MockGroupEditor(seal_config)
-    widget = AffixWidget(affix, parent=parent)
-
-    # Initially it should match adept_action_damage_reduction_while_moving
-    assert widget.affix.name == "adept_action_damage_reduction_while_moving"
-
-    # Set filtered_affixes to empty to simulate a set change filtering out all options
-    widget.filtered_affixes = {}
-    widget.name_combo.clear()
-
-    # Call update_name with empty string
-    widget.update_name("")
-
-    # It must clear the name
-    assert operator.not_(widget.affix.name)
-
-
-def test_affix_pool_add_and_remove_lifecycle(qapp, mock_ini_loader) -> None:
-    affix = AffixFilterModel(name="movement_speed")
-    pool = AffixFilterCountModel(count=[affix], min_count=1, max_count=3)
-    widget = AffixPoolWidget(pool)
-
-    assert widget.affix_list.count() == 1
-    widget.add_affix()
-    assert len(pool.count) == 2
-    assert widget.affix_list.count() == 2
-
-    item = widget.affix_list.item(0)
-    assert item is not None
-    item.setSelected(True)
-    widget.remove_selected(widget.affix_list)
-    assert len(pool.count) == 1
-    assert widget.affix_list.count() == 1
 
 
 def test_item_type_picker_selection_and_clear(qapp, mock_ini_loader) -> None:
@@ -172,19 +89,3 @@ def test_affixes_tab_preserves_models_and_disables_editor_on_duplicate_name(qapp
     warning_label = tab.warning_label
     assert warning_label is not None
     assert "disabled" in warning_label.text().lower()
-
-
-def test_unique_aspect_widget_value_and_percent_are_mutually_exclusive(qapp, mock_ini_loader) -> None:
-    aspect_name = next(iter(GameCatalog().aspect_unique_dict))
-    model = AspectUniqueFilterModel(name=aspect_name, value=1.5)
-    widget = UniqueAspectWidget(model)
-
-    widget.mode_combo.setCurrentText("Min %")
-    widget.value_edit.setText("25")
-    assert model.min_percent_of_aspect == 25
-    assert model.value is None
-
-    widget.mode_combo.setCurrentText("Value")
-    widget.value_edit.setText("2.5")
-    assert model.value == pytest.approx(2.5)
-    assert model.min_percent_of_aspect == 0

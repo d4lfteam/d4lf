@@ -3,9 +3,9 @@ from PyQt6.QtWidgets import QHBoxLayout, QLabel, QListWidget, QListWidgetItem, Q
 
 from src.game_data import GameCatalog
 from src.profiles import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
-from src.profiles.affix.unique_aspect import UNIQUE_ASPECTS_TITLE, UniqueAspectWidget
 from src.profiles.editor.container import Container
 from src.profiles.editor.helpers import refresh_widget_style
+from src.profiles.pool_controls.unique_aspect_widget import UNIQUE_ASPECTS_TITLE, UniqueAspectWidget
 
 
 def _title(config: ItemFilterModel | CharmFilterModel | SealFilterModel) -> str:

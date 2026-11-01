@@ -6,8 +6,8 @@ from PyQt6.QtWidgets import QCheckBox, QComboBox, QCompleter, QHBoxLayout, QLine
 
 from src.game_data import GameCatalog
 from src.profiles import AffixFilterModel, SealFilterModel
-from src.profiles.affix.helpers import affix_dict_for_widget, get_affixes_for_set, get_set_and_base_for_key
 from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
+from src.profiles.pool_controls.helpers import affix_dict_for_widget, get_affixes_for_set, get_set_and_base_for_key
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
