@@ -63,16 +63,10 @@ class CatalogStore:
         self.attempts = min(max(self.attempts, 1), 3)
         self.timeout = min(max(self.timeout, 0.01), 10.0)
 
-    def require(self, kind: str) -> JsonObject:
-        return self._load(kind)
-
-    def optional(self, kind: str) -> JsonObject:
-        return self._load(kind)
-
     def clear(self) -> None:
         self.data.clear()
 
-    def _load(self, kind: str) -> JsonObject:
+    def load(self, kind: str) -> JsonObject:
         if kind in self.data:
             return self.data[kind]
         if kind not in COLLECTIONS:

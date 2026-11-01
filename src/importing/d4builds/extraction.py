@@ -21,6 +21,7 @@ from src.importing.d4builds.constants import (
     UNIQUE_TOOLTIP_CSS,
     UNIQUE_TOOLTIP_SLOT_XPATH,
 )
+from src.importing.d4builds.metadata import _xpath_elements
 from src.importing.filters import (
     affix_dict_for_item_type,
     create_seal_charm_filter,
@@ -130,13 +131,6 @@ def _tooltip_element(tooltip_html: str) -> etree._Element | None:
     if not tooltip_html:
         return None
     return lxml.html.fromstring(tooltip_html, parser=lxml.html.HTMLParser())
-
-
-def _xpath_elements(element: etree._Element, xpath: str) -> list[etree._Element]:
-    nodes = element.xpath(xpath)
-    if not isinstance(nodes, list):
-        return []
-    return [node for node in nodes if isinstance(node, etree._Element)]
 
 
 def _texts_from_nodes(nodes: list[etree._Element]) -> list[str]:

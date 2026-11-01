@@ -1,6 +1,6 @@
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, override
 
-from PyQt6.QtWidgets import QCheckBox, QDialog, QLineEdit, QMessageBox, QPushButton, QSizePolicy, QStyle, QWidget
+from PyQt6.QtWidgets import QDialog, QMessageBox, QPushButton, QWidget
 
 from src.profiles import CharmFilterModel, DynamicCharmFilterModel, DynamicSealFilterModel, SealFilterModel
 from src.profiles.charm_seal.dialogs import CreateCharmOrSeal
@@ -14,12 +14,6 @@ if TYPE_CHECKING:
 
 CHARMS_TABNAME = "Charms"
 SEALS_TABNAME = "Seals"
-
-
-def _set_summary(sets: list[str]) -> str:
-    if not sets:
-        return "No sets selected"
-    return ", ".join(sets)
 
 
 class BaseCharmsSealsTab[ModelT, ConfigT](TabGroupWidget[ModelT]):
@@ -153,29 +147,3 @@ class SealsTab(BaseCharmsSealsTab[DynamicSealFilterModel, SealFilterModel]):
             tab_label_factory=lambda model: next(iter(model.root)),
             parent=parent,
         )
-
-
-# --- Common Helpers ---
-
-
-def _create_readonly_line_edit() -> QLineEdit:
-    line_edit = QLineEdit()
-    line_edit.setReadOnly(True)
-    line_edit.setMinimumWidth(360)
-    line_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-    return line_edit
-
-
-def _create_auto_sync_checkbox() -> QCheckBox:
-    checkbox = QCheckBox("Auto Sync")
-    checkbox.setToolTip(
-        "When checked: Min Greater Affixes automatically matches the number of affixes marked as 'want greater'\n"
-        "When unchecked: You can manually set Min Greater Affixes to any value"
-    )
-    return checkbox
-
-
-def _refresh_widget_style(widget: QWidget) -> None:
-    style = cast("QStyle", widget.style())
-    style.unpolish(widget)
-    style.polish(widget)

@@ -4,7 +4,7 @@ from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, cast
 
 from src.importing.d2core.errors import OPTIONAL_ENTRY_JOIN
-from src.importing.paragon import class_prefixed_slug
+from src.importing.paragon import as_int, class_prefixed_slug
 from src.paragon import NODES_LEN, rotation_info_quarter_turn
 
 if TYPE_CHECKING:
@@ -48,7 +48,7 @@ def normalize_paragon(
             ):
                 warn(OPTIONAL_ENTRY_JOIN, variant_name, "paragon", str(node_key or entry))
                 continue
-            transformed = _rotate_index(row, column, _int(raw_board.get("rotate")))
+            transformed = _rotate_index(row, column, as_int(raw_board.get("rotate")))
             if 0 <= transformed < NODES_LEN:
                 nodes[transformed] = True
         glyph_id, glyph_name = _glyph(cast("Mapping[str, JsonValue]", raw_board), glyphs, _class_slug(class_name))
@@ -56,7 +56,7 @@ def normalize_paragon(
             {
                 "Name": class_prefixed_slug(str(board.get("name", board_key)), _class_slug(class_name)),
                 "Glyph": glyph_name,
-                "Rotation": rotation_info_quarter_turn(_int(raw_board.get("rotate"))),
+                "Rotation": rotation_info_quarter_turn(as_int(raw_board.get("rotate"))),
                 "Nodes": nodes,
                 "BoardId": str(board_key),
                 "GlyphId": glyph_id,
@@ -116,17 +116,6 @@ def _board_index(item: tuple[str, JsonValue]) -> int:
         return int(cast("str | int", value))
     except TypeError, ValueError:
         return 0
-
-
-def _int(value: JsonValue) -> int:
-    if isinstance(value, int) and not isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        try:
-            return int(value)
-        except ValueError:
-            return 0
-    return 0
 
 
 def _class_slug(class_name: str) -> str:

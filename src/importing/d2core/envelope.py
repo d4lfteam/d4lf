@@ -4,6 +4,7 @@ import json
 from collections.abc import Mapping
 from typing import cast
 
+from src.importing.conversion import as_string_keyed_mapping as _as_mapping
 from src.importing.d2core.errors import (
     INTERACTIVE_ACCESS,
     MISSING_PLANNER,
@@ -52,7 +53,7 @@ def decode_build_envelope(body: str | Mapping[str, JsonValue], build_id: str) ->
 
 def validate_build(value: JsonValue, build_id: str) -> JsonObject:
     """Validate a decoded planner build, including offline source snapshots."""
-    build = _mapping(value)
+    build = _as_mapping(value)
     if not build:
         raise D2CoreImportError(SCHEMA_DRIFT, "The d2core build payload was missing")
     if str(build.get("_id", build.get("id", ""))) != build_id:
@@ -69,13 +70,6 @@ def validate_build(value: JsonValue, build_id: str) -> JsonObject:
     return dict(build)
 
 
-def _mapping(value: JsonValue) -> JsonObject:
-    if not isinstance(value, Mapping):
-        return {}
-    source = cast("Mapping[str, JsonValue]", value)
-    return {str(key): item for key, item in source.items()}
-
-
 def _valid_variant(value: JsonValue) -> bool:
     if not isinstance(value, Mapping):
         return False
@@ -88,7 +82,7 @@ def _valid_variant(value: JsonValue) -> bool:
 
 def _terminal_code(value: JsonValue) -> str | None:
     """Classify one CloudBase response object without traversing arbitrary payloads."""
-    parsed = _mapping(value)
+    parsed = _as_mapping(value)
     if not parsed:
         return None
     raw_code = parsed.get("code", parsed.get("error_code", parsed.get("errorCode")))
@@ -115,14 +109,14 @@ def _parse_envelope(value: JsonValue) -> _Envelope:
             parsed = cast("JsonValue", json.loads(parsed))
         except json.JSONDecodeError:
             return {}, None, None, None, None
-    outer = _mapping(parsed)
+    outer = _as_mapping(parsed)
     if not outer:
         return {}, None, None, None, None
 
     if "_id" in outer and "data" not in outer:
         return outer, outer, outer, _terminal_code(outer), None
 
-    data = _mapping(outer.get("data"))
+    data = _as_mapping(outer.get("data"))
     if not data:
         return outer, None, None, _terminal_code(outer), None
 
@@ -132,8 +126,8 @@ def _parse_envelope(value: JsonValue) -> _Envelope:
             raw_response = json.loads(raw_response)
         except json.JSONDecodeError as error:
             return outer, None, None, _terminal_code(outer) or _terminal_code(data), error
-    response = _mapping(raw_response) or data
-    build = _mapping(response.get("data"))
+    response = _as_mapping(raw_response) or data
+    build = _as_mapping(response.get("data"))
     terminal = next(
         (code for level in (outer, data, response, build) if (code := _terminal_code(level)) is not None), None
     )
