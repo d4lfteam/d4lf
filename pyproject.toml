@@ -127,7 +127,7 @@ split-on-trailing-comma = false
 "build.py" = [
   "S603",  # subprocess-without-shell-equals-true
 ]
-"src/settings/tab_mixin.py" = [
+"src/settings/controls.py" = [
   "S603",  # subprocess-without-shell-equals-true
 ]
 "src/paragon/__init__.py" = [
