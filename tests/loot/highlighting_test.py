@@ -1,7 +1,10 @@
+import typing
 from types import SimpleNamespace
-from unittest.mock import Mock
 
 import numpy as np
+
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 import src.loot.highlighting as highlighting_module
 from src.loot.highlighting import create_highlighting_vision_mode
@@ -15,12 +18,12 @@ def _inventory(occupied: tuple[int, int], empty: tuple[int, int]) -> SimpleNames
     return SimpleNamespace(get_item_slots=lambda _img: (_slots(occupied), _slots(empty)))
 
 
-def _patch_environment(monkeypatch) -> tuple[Mock, Mock, Mock]:
-    root, canvas = Mock(), Mock()
-    create_on_ui_thread = Mock(side_effect=lambda create: create(root, canvas))
+def _patch_environment(monkeypatch, mocker: MockerFixture):
+    root, canvas = mocker.Mock(), mocker.Mock()
+    create_on_ui_thread = mocker.Mock(side_effect=lambda create: create(root, canvas))
     monkeypatch.setattr(highlighting_module, "create_on_ui_thread", create_on_ui_thread)
     monkeypatch.setattr(highlighting_module, "game_window_roi", lambda: {"left": 5, "top": 6, "height": 1000})
-    monkeypatch.setattr(highlighting_module, "capture", Mock())
+    monkeypatch.setattr(highlighting_module, "capture", mocker.Mock())
     monkeypatch.setattr(highlighting_module, "character_inventory", lambda: _inventory((1, 1), (2, 2)))
     monkeypatch.setattr(highlighting_module, "stash_inventory", lambda: _inventory((3, 3), (4, 4)))
     monkeypatch.setattr(highlighting_module, "vendor_inventory", lambda: _inventory((5, 5), (6, 6)))
@@ -32,8 +35,8 @@ def _patch_environment(monkeypatch) -> tuple[Mock, Mock, Mock]:
     return root, canvas, create_on_ui_thread
 
 
-def test_creation_wires_window_geometry_and_slot_centers_into_the_worker(monkeypatch) -> None:
-    root, canvas, create_on_ui_thread = _patch_environment(monkeypatch)
+def test_creation_wires_window_geometry_and_slot_centers_into_the_worker(monkeypatch, mocker: MockerFixture) -> None:
+    root, canvas, create_on_ui_thread = _patch_environment(monkeypatch, mocker)
 
     mode = create_highlighting_vision_mode()
 

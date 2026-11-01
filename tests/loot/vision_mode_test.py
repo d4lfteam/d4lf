@@ -1,12 +1,12 @@
 import logging
 import typing
 from typing import override
-from unittest.mock import Mock
 
 if typing.TYPE_CHECKING:
     import tkinter as tk
 
     import pytest
+    from pytest_mock import MockerFixture
 
 import src.loot.vision_mode as vision_mode_module
 from src.loot.vision_mode import VisionMode, create_on_ui_thread
@@ -34,10 +34,10 @@ class _RecordingMode(VisionMode[str]):
         self.events.append("stop")
 
 
-def test_start_subscribes_to_item_events(monkeypatch) -> None:
-    publisher = Mock()
-    monkeypatch.setattr(vision_mode_module, "Publisher", Mock(return_value=publisher))
-    mode = _RecordingMode(Mock(), Mock())
+def test_start_subscribes_to_item_events(monkeypatch, mocker: MockerFixture) -> None:
+    publisher = mocker.Mock()
+    monkeypatch.setattr(vision_mode_module, "Publisher", mocker.Mock(return_value=publisher))
+    mode = _RecordingMode(mocker.Mock(), mocker.Mock())
 
     mode.start()
 
@@ -45,11 +45,11 @@ def test_start_subscribes_to_item_events(monkeypatch) -> None:
     publisher.subscribe_item.assert_called_once_with(mode.on_tts)
 
 
-def test_stop_cleans_up_before_unsubscribing(monkeypatch) -> None:
-    publisher = Mock()
-    mode = _RecordingMode(Mock(), Mock())
+def test_stop_cleans_up_before_unsubscribing(monkeypatch, mocker: MockerFixture) -> None:
+    publisher = mocker.Mock()
+    mode = _RecordingMode(mocker.Mock(), mocker.Mock())
     publisher.unsubscribe_item.side_effect = lambda _callback: mode.events.append("unsubscribe")
-    monkeypatch.setattr(vision_mode_module, "Publisher", Mock(return_value=publisher))
+    monkeypatch.setattr(vision_mode_module, "Publisher", mocker.Mock(return_value=publisher))
     mode.start()
 
     mode.stop()
@@ -59,9 +59,9 @@ def test_stop_cleans_up_before_unsubscribing(monkeypatch) -> None:
     publisher.unsubscribe_item.assert_called_once_with(mode.on_tts)
 
 
-def test_draw_from_queue_draws_submitted_commands_in_order() -> None:
-    canvas = Mock()
-    mode = _RecordingMode(Mock(), canvas)
+def test_draw_from_queue_draws_submitted_commands_in_order(mocker: MockerFixture) -> None:
+    canvas = mocker.Mock()
+    mode = _RecordingMode(mocker.Mock(), canvas)
     canvas.after.reset_mock()
 
     mode.submit("first")
@@ -73,9 +73,11 @@ def test_draw_from_queue_draws_submitted_commands_in_order() -> None:
     canvas.after.assert_called_with(10, mode.draw_from_queue)
 
 
-def test_draw_from_queue_reschedules_and_logs_when_drawing_fails(caplog: pytest.LogCaptureFixture) -> None:
-    canvas = Mock()
-    mode = _RecordingMode(Mock(), canvas)
+def test_draw_from_queue_reschedules_and_logs_when_drawing_fails(
+    caplog: pytest.LogCaptureFixture, mocker: MockerFixture
+) -> None:
+    canvas = mocker.Mock()
+    mode = _RecordingMode(mocker.Mock(), canvas)
     canvas.after.reset_mock()
     mode.fail = True
     mode.submit("first")
@@ -88,9 +90,9 @@ def test_draw_from_queue_reschedules_and_logs_when_drawing_fails(caplog: pytest.
     assert "boom" in caplog.text
 
 
-def test_draw_from_queue_reschedules_when_queue_is_empty() -> None:
-    canvas = Mock()
-    mode = _RecordingMode(Mock(), canvas)
+def test_draw_from_queue_reschedules_when_queue_is_empty(mocker: MockerFixture) -> None:
+    canvas = mocker.Mock()
+    mode = _RecordingMode(mocker.Mock(), canvas)
     canvas.after.reset_mock()
 
     mode.draw_from_queue()
@@ -99,12 +101,14 @@ def test_draw_from_queue_reschedules_when_queue_is_empty() -> None:
     assert mode.events == []
 
 
-def test_create_on_ui_thread_builds_mode_with_overlay_window_and_schedules_draw_loop(monkeypatch) -> None:
-    root, canvas, parent = Mock(), Mock(), Mock()
-    create_overlay_toplevel = Mock(return_value=(root, canvas))
+def test_create_on_ui_thread_builds_mode_with_overlay_window_and_schedules_draw_loop(
+    monkeypatch, mocker: MockerFixture
+) -> None:
+    root, canvas, parent = mocker.Mock(), mocker.Mock(), mocker.Mock()
+    create_overlay_toplevel = mocker.Mock(return_value=(root, canvas))
     monkeypatch.setattr(vision_mode_module, "call_on_ui_thread", lambda fn: fn())
     monkeypatch.setattr(vision_mode_module, "create_overlay_toplevel", create_overlay_toplevel)
-    monkeypatch.setattr(vision_mode_module, "get_root", Mock(return_value=parent))
+    monkeypatch.setattr(vision_mode_module, "get_root", mocker.Mock(return_value=parent))
 
     mode = create_on_ui_thread(_RecordingMode)
 

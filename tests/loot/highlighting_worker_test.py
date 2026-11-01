@@ -1,11 +1,14 @@
 import time
+import typing
 from threading import Event, Thread
 from types import SimpleNamespace
 from typing import override
-from unittest.mock import Mock
 
 import numpy as np
 import pytest
+
+if typing.TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 import src.loot.highlighting_worker as worker_module
 import src.perception
@@ -26,8 +29,8 @@ CENTERS = np.array([[0, 0]])
 class _RecordingOverlay(HighlightingVisionMode):
     """Overlay without Tk that records what it would draw."""
 
-    def __init__(self, item: Item | None) -> None:
-        super().__init__(Mock(), Mock(), 4, (0, 0), CENTERS, CENTERS)
+    def __init__(self, item: Item | None, mocker: MockerFixture) -> None:
+        super().__init__(mocker.Mock(), mocker.Mock(), 4, (0, 0), CENTERS, CENTERS)
         self.current_item = item
         self.drawn: list[OverlayCommand] = []
 
@@ -60,10 +63,10 @@ def test_cancellation_check_raises_for_set_event() -> None:
         check_for_thread_cancellation(event)
 
 
-def test_unparsed_tts_keeps_existing_item_overlay(monkeypatch) -> None:
+def test_unparsed_tts_keeps_existing_item_overlay(monkeypatch, mocker: MockerFixture) -> None:
     item = Item(name="gohrs_devastating_grips")
-    overlay = _RecordingOverlay(item)
-    monkeypatch.setattr(worker_module, "capture", Mock())
+    overlay = _RecordingOverlay(item, mocker)
+    monkeypatch.setattr(worker_module, "capture", mocker.Mock())
     monkeypatch.setattr(src.perception, "read_latest_item", lambda: None)
 
     HighlightingWorker(overlay, CENTERS, CENTERS).on_tts([])
@@ -77,9 +80,11 @@ def test_unparsed_tts_keeps_existing_item_overlay(monkeypatch) -> None:
     ("filter_result", "should_queue_match"),
     [(FilterResult(False, [], skipped=True), False), (FilterResult(True, [MatchedFilter("Mythic Sigil")]), True)],
 )
-def test_filter_result_submits_only_normal_highlighting_results(monkeypatch, filter_result, should_queue_match) -> None:
+def test_filter_result_submits_only_normal_highlighting_results(
+    monkeypatch, filter_result, should_queue_match, mocker: MockerFixture
+) -> None:
     item = Item(name="helm", item_type=ItemType.Sigil, rarity=ItemRarity.Mythic if should_queue_match else None)
-    overlay = _RecordingOverlay(item)
+    overlay = _RecordingOverlay(item, mocker)
     cleared = Event()
     cleared.set()
     monkeypatch.setattr(overlay, "clear", lambda: cleared)
@@ -128,9 +133,9 @@ def _stop_at_detection(monkeypatch, overlay: _RecordingOverlay) -> list[list[str
     return drawn_at_detection
 
 
-def test_detection_waits_for_own_clear_behind_pending_match_draw(monkeypatch) -> None:
+def test_detection_waits_for_own_clear_behind_pending_match_draw(monkeypatch, mocker: MockerFixture) -> None:
     item = Item(name="helm")
-    overlay = _RecordingOverlay(item)
+    overlay = _RecordingOverlay(item, mocker)
     # Draw submitted by the previous thread that Tk has not consumed yet.
     overlay.submit(MatchCommand(item, (0, 0, 10, 10), FilterResult(True, []), None))
     drawn_at_detection = _stop_at_detection(monkeypatch, overlay)
@@ -145,9 +150,9 @@ def test_detection_waits_for_own_clear_behind_pending_match_draw(monkeypatch) ->
     assert drawn_at_detection == [["MatchCommand", "ClearCommand"]]
 
 
-def test_cancellation_ends_thread_waiting_for_clear(monkeypatch) -> None:
+def test_cancellation_ends_thread_waiting_for_clear(monkeypatch, mocker: MockerFixture) -> None:
     item = Item(name="helm")
-    overlay = _RecordingOverlay(item)  # nothing ever consumes the queued clear
+    overlay = _RecordingOverlay(item, mocker)  # nothing ever consumes the queued clear
     drawn_at_detection = _stop_at_detection(monkeypatch, overlay)
     worker = HighlightingWorker(overlay, CENTERS, CENTERS)
     cancel_event = Event()

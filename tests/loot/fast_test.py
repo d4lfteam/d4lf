@@ -1,7 +1,6 @@
 import tkinter as tk
 import typing
 from types import SimpleNamespace
-from unittest.mock import Mock
 
 import pytest
 
@@ -54,8 +53,8 @@ class _MeasuredText:
         self.placements.append(kwargs)
 
 
-def _new_fast_mode() -> FastVisionMode:
-    return FastVisionMode(Mock(), Mock())
+def _new_fast_mode(mocker: MockerFixture) -> FastVisionMode:
+    return FastVisionMode(mocker.Mock(), mocker.Mock())
 
 
 def test_fast_mode_preserves_match_details_and_feedback() -> None:
@@ -91,7 +90,7 @@ def test_fast_mode_omits_redundant_aspect_for_always_kept_mythics() -> None:
 
 
 def test_fast_mode_clears_unmatched_items_without_drawing(monkeypatch, mocker: MockerFixture) -> None:
-    mode = _new_fast_mode()
+    mode = _new_fast_mode(mocker)
     mode.request_clear = mocker.Mock()
     mode.request_draw = mocker.Mock()
 
@@ -109,8 +108,8 @@ def test_fast_mode_clears_unmatched_items_without_drawing(monkeypatch, mocker: M
     mode.request_draw.assert_not_called()
 
 
-def test_clearing_before_next_match_does_not_leave_a_dead_textbox() -> None:
-    mode = _new_fast_mode()
+def test_clearing_before_next_match_does_not_leave_a_dead_textbox(mocker: MockerFixture) -> None:
+    mode = _new_fast_mode(mocker)
     mode.textbox = typing.cast("tk.Text", _DestroyableText())
 
     mode.clear_textbox()
@@ -120,8 +119,8 @@ def test_clearing_before_next_match_does_not_leave_a_dead_textbox() -> None:
     assert mode.textbox is None
 
 
-def test_fast_match_textbox_gets_content_sized_geometry(monkeypatch) -> None:
-    mode = _new_fast_mode()
+def test_fast_match_textbox_gets_content_sized_geometry(monkeypatch, mocker: MockerFixture) -> None:
+    mode = _new_fast_mode(mocker)
     textbox = _MeasuredText()
     mode.textbox = typing.cast("tk.Text", textbox)
 
@@ -141,8 +140,10 @@ def test_fast_match_textbox_gets_content_sized_geometry(monkeypatch) -> None:
 
 
 @pytest.mark.parametrize(("configured", "expected"), [(None, (1920.0, 1440.0)), ((300, 500), (300, 500))])
-def test_fast_textbox_uses_configured_position_or_centered_default(monkeypatch, configured, expected) -> None:
-    mode = _new_fast_mode()
+def test_fast_textbox_uses_configured_position_or_centered_default(
+    monkeypatch, configured, expected, mocker: MockerFixture
+) -> None:
+    mode = _new_fast_mode(mocker)
     textbox = _MeasuredText()
     mode.root = typing.cast("tk.Toplevel", object())
     mode.textbox = None
@@ -165,7 +166,7 @@ def test_fast_textbox_uses_configured_position_or_centered_default(monkeypatch, 
 
 
 def test_draw_dispatches_text_and_clear(mocker: MockerFixture) -> None:
-    mode = _new_fast_mode()
+    mode = _new_fast_mode(mocker)
     insert = mocker.patch.object(mode, "insert_colored_lines")
     clear = mocker.patch.object(mode, "clear_textbox")
 
@@ -178,7 +179,7 @@ def test_draw_dispatches_text_and_clear(mocker: MockerFixture) -> None:
 
 
 def test_on_stop_queues_a_clear(mocker: MockerFixture) -> None:
-    mode = _new_fast_mode()
+    mode = _new_fast_mode(mocker)
     clear = mocker.patch.object(mode, "clear_textbox")
 
     mode.on_stop()
