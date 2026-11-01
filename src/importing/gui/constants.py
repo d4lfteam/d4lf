@@ -102,5 +102,6 @@ IMPORTER_WINDOW_LOGGERS = (
     "src.importing.infinitybuilds",
     "src.importing.gui.support",
     "src.importing.pipeline",
+    "src.importing.web.validation",
     "src.profiles",
 )
