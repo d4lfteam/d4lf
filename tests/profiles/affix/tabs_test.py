@@ -38,10 +38,7 @@ class MockGroupEditor(QWidget):
         super().__init__()
         self.config = config
 
-    def update_greater_count_label(self) -> None:
-        pass
-
-    def sync_min_greater_from_checkboxes(self) -> None:
+    def refresh_greater_count(self) -> None:
         pass
 
 
@@ -117,7 +114,7 @@ def test_affix_group_editor_updates_power_and_greater_count(qapp, mock_ini_loade
     editor = AffixGroupEditor(DynamicItemFilterModel(root={"sword": config}))
 
     editor.min_power.setValue(850)
-    editor.min_greater.setValue(2)
+    editor.greater_controls.min_greater.setValue(2)
     assert config.min_power == 850
     assert config.min_greater_affix_count == 2
 

@@ -155,10 +155,8 @@ class AffixesTab(QWidget):
             min_greater_affix = dialog.get_value()
             for i in range(self.tab_widget.count()):
                 tab = self.tab_widget.widget(i)
-                if not isinstance(tab, AffixGroupEditor) or tab.auto_sync_checkbox.isChecked():
-                    continue
-                tab.min_greater.setValue(min_greater_affix)
-                tab.update_min_greater_affix()
+                if isinstance(tab, AffixGroupEditor):
+                    tab.greater_controls.set_min_greater(min_greater_affix)
 
     def convert_all_to_min_percent_of_affix(self) -> None:
         if self._editing_disabled:
@@ -167,7 +165,7 @@ class AffixesTab(QWidget):
         if isinstance(current_tab, AffixGroupEditor):
             dialog = MinPercentDialog(self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
-                current_tab.convert_all_to_min_percent_of_affix(dialog.get_value())
+                current_tab.affix_pools.convert_to_min_percent(dialog.get_value())
 
     def set_all_min_power(self) -> None:
         if self._editing_disabled:
