@@ -34,6 +34,7 @@ def normalize_paragon(
         if not isinstance(board, Mapping):
             warn(OPTIONAL_ENTRY_JOIN, variant_name, "paragon", str(board_key))
             continue
+        rotation = _quarter_turns(raw_board.get("rotate"))
         nodes = [False] * NODES_LEN
         board_data = board.get("data", [])
         raw_node_entries = raw_board.get("data")
@@ -48,7 +49,7 @@ def normalize_paragon(
             ):
                 warn(OPTIONAL_ENTRY_JOIN, variant_name, "paragon", str(node_key or entry))
                 continue
-            transformed = _rotate_index(row, column, as_int(raw_board.get("rotate")))
+            transformed = _rotate_index(row, column, rotation)
             if 0 <= transformed < NODES_LEN:
                 nodes[transformed] = True
         glyph_id, glyph_name = _glyph(cast("Mapping[str, JsonValue]", raw_board), glyphs, _class_slug(class_name))
@@ -56,7 +57,7 @@ def normalize_paragon(
             {
                 "Name": class_prefixed_slug(str(board.get("name", board_key)), _class_slug(class_name)),
                 "Glyph": glyph_name,
-                "Rotation": rotation_info_quarter_turn(as_int(raw_board.get("rotate"))),
+                "Rotation": rotation_info_quarter_turn(rotation),
                 "Nodes": nodes,
                 "BoardId": str(board_key),
                 "GlyphId": glyph_id,
@@ -102,6 +103,11 @@ def _node_entry(entry: JsonValue) -> tuple[int | None, int | None, str | None]:
         return int(parts[0]), int(parts[1]), parts[2]
     except ValueError:
         return None, None, None
+
+
+def _quarter_turns(value: JsonValue) -> int:
+    """d2core stores whole quarter turns; anything non-integral (e.g. 1.5) is treated as unrotated."""
+    return 0 if isinstance(value, float) else as_int(value)
 
 
 def _rotate_index(row: int, column: int, rotation: int) -> int:
