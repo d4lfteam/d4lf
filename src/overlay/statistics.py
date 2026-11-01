@@ -6,8 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from src.overlay.settings import load_settings, save_settings, setting_bool
-from src.overlay.singleton import singleton
 from src.perception import Publisher
+from src.singleton import singleton
 
 LOGGER = logging.getLogger(__name__)
 StatsListener = Callable[["StatsSnapshot"], None]

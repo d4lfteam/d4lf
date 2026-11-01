@@ -3,8 +3,7 @@ from contextlib import suppress
 from typing import TYPE_CHECKING, cast
 
 from src.paragon.data import _save_overlay_settings
-from src.paragon.overlay import state as overlay_state
-from src.paragon.overlay.contracts import OverlayContract
+from src.paragon.overlay.contracts import PARAGON_SLOT, ParagonOverlayContract
 
 LOGGER = logging.getLogger(__name__)
 
@@ -12,7 +11,7 @@ if TYPE_CHECKING:
     from src.paragon.overlay.controller import ParagonOverlay
 
 
-class OverlayLifecycleMixin(OverlayContract):
+class OverlayLifecycleMixin(ParagonOverlayContract):
     def close(self) -> None:
         """Persist state, destroy the window, and clear the global overlay handle."""
         try:
@@ -25,7 +24,7 @@ class OverlayLifecycleMixin(OverlayContract):
         finally:
             if self._on_close:
                 self._on_close()
-            overlay_state.clear_overlay(cast("ParagonOverlay", self))
+            PARAGON_SLOT.clear(cast("ParagonOverlay", self))
 
     def _persist_state(self) -> None:
         """Write the overlay's current user-facing state back to params.ini."""

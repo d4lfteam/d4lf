@@ -3,7 +3,7 @@ from typing import Protocol
 
 from src.loot import get_filter_colors
 from src.overlay.settings import setting_int as _setting_int
-from src.overlay.widget.shared import ACCENT, ACTIVE_GREEN, CARD_BG, MUTED, TEXT, OverlayContract
+from src.overlay.widget.shared import ACCENT, ACTIVE_GREEN, CARD_BG, MUTED, TEXT, BossTimerContract
 
 
 class _ContextMenuEvent(Protocol):
@@ -11,7 +11,7 @@ class _ContextMenuEvent(Protocol):
     y_root: int
 
 
-class _OverlayMenu(OverlayContract):
+class _OverlayMenu(BossTimerContract):
     def _show_context_menu(self, event: _ContextMenuEvent | None) -> None:
         """Create and display a persistent settings popup."""
         self._destroy_settings_popup()

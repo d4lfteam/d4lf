@@ -1,6 +1,6 @@
 import pytest
 
-from src.settings.validation import singleton, str_to_int_list, validate_hotkey
+from src.settings.validation import str_to_int_list, validate_hotkey
 
 
 class TestKeyMustExist:
@@ -28,19 +28,6 @@ class TestKeyMustExist:
         # Test for a non-existing key
         with pytest.raises(ValueError, match=r"Key 'non_existing_key' is not mapped to any known key\."):
             validate_hotkey("non_existing_key")
-
-
-class TestSingletonDecorator:
-    @singleton
-    class SingletonDummyClass:
-        def __init__(self, *args, **kwargs) -> None:
-            pass
-
-    def test_singleton_instance(self) -> None:
-        # Test whether multiple instances of singleton class return the same object
-        instance1 = self.SingletonDummyClass()
-        instance2 = self.SingletonDummyClass()
-        assert instance1 is instance2
 
 
 class TestStrToIntList:

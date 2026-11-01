@@ -13,13 +13,13 @@ from src.overlay.settings import load_settings as load_info_settings
 from src.overlay.settings import setting_int as _setting_int
 from src.overlay.statistics import SessionStats
 from src.overlay.tracking import InventoryExpTracker
-from src.overlay.widget.shared import LOGGER, PROGRESS_YELLOW, TEXT, WARNING_ORANGE, OverlayContract
+from src.overlay.widget.shared import LOGGER, PROGRESS_YELLOW, TEXT, WARNING_ORANGE, BossTimerContract
 
 FOCUS_HYSTERESIS_SECONDS = 0.75
 ACTIVE_PHASE_SECONDS = 3300
 
 
-class _OverlayTimers(OverlayContract):
+class _OverlayTimers(BossTimerContract):
     def _auto_sync(self) -> None:
         """Fetch schedule from helltides.com and sync the timer."""
         threading.Thread(target=self._fetch_schedule, daemon=True).start()

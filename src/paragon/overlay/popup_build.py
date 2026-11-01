@@ -2,7 +2,7 @@ import tkinter as tk
 from contextlib import suppress
 from typing import TYPE_CHECKING, cast
 
-from src.paragon.overlay.contracts import BuildRow, OverlayContract
+from src.paragon.overlay.contracts import BuildRow, ParagonOverlayContract
 from src.paragon.overlay.helpers import tk_btn, tk_lbl
 from src.paragon.overlay.theme import (
     CARD_BG,
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class OverlayPopupBuildMixin(OverlayContract):
+class OverlayPopupBuildMixin(ParagonOverlayContract):
     def _build_build_popup(self, host: tk.Misc) -> Callable[[], None]:
         """Create the scrollable builds popup and return its refresh callback."""
         scale = self._cfg.ui_scale

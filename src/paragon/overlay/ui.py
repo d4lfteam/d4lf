@@ -6,8 +6,7 @@ from contextlib import suppress
 from src.automation import is_self_foreground, is_window_foreground
 from src.desktop import is_alive, post_to_ui_thread
 from src.paragon.data import _clamp_int
-from src.paragon.overlay import state as overlay_state
-from src.paragon.overlay.contracts import OverlayContract
+from src.paragon.overlay.contracts import PARAGON_SLOT, ParagonOverlayContract
 from src.paragon.overlay.helpers import TK_BASELINE_SCALING, dpi_scale_for_widget, tk_btn, tk_lbl
 from src.paragon.overlay.theme import (
     CARD_BG,
@@ -28,7 +27,7 @@ LOGGER = logging.getLogger(__name__)
 FOCUS_HYSTERESIS_SECONDS = 0.75
 
 
-class OverlayUIMixin(OverlayContract):
+class OverlayUIMixin(ParagonOverlayContract):
     def _apply_dpi_scaling(self) -> None:
         """Apply DPI-aware sizing before widgets are created."""
         with suppress(Exception):
@@ -158,7 +157,7 @@ class OverlayUIMixin(OverlayContract):
 
     def _poll_close_request(self) -> None:
         """Check for external close requests coming from non-UI threads."""
-        close_requested = overlay_state.close_requested()
+        close_requested = PARAGON_SLOT.close_requested
         if close_requested.is_set():
             close_requested.clear()
             self.close()

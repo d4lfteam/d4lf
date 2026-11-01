@@ -12,12 +12,12 @@ from src.overlay.widget.shared import (
     LOGGER,
     TEXT,
     WB_ORANGE,
-    OverlayContract,
+    BossTimerContract,
 )
 from src.settings import get_settings
 
 
-class _OverlayUI(OverlayContract):
+class _OverlayUI(BossTimerContract):
     def _setup_ui(self) -> None:
         self.labels_to_resize = []
         stats = SessionStats()

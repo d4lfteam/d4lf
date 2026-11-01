@@ -1,12 +1,4 @@
-import threading
-from typing import TYPE_CHECKING
-
 from src.settings.binding import validate_hotkey as validate_hotkey_binding
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from src.type_aliases import JsonValue
 
 MAX_PERCENT = 100
 MAX_GREATER_AFFIX_COUNT = 4
@@ -36,19 +28,6 @@ def validate_greater_affix_count(v: int) -> int:
 
 def validate_hotkey(k: str) -> str:
     return validate_hotkey_binding(k)
-
-
-def singleton[T](cls: type[T]) -> Callable[..., T]:
-    instances: dict[type[T], T] = {}
-    lock = threading.Lock()
-
-    def get_instance(*args: JsonValue, **kwargs: JsonValue) -> T:
-        with lock:
-            if cls not in instances:
-                instances[cls] = cls(*args, **kwargs)
-        return instances[cls]
-
-    return get_instance
 
 
 def str_to_int_list(s: str) -> list[int]:

@@ -1,9 +1,12 @@
 import logging
-import tkinter as tk
-from typing import TYPE_CHECKING, NoReturn
+from typing import TYPE_CHECKING
+
+from src.desktop import OverlayContract, OverlaySlot
 
 if TYPE_CHECKING:
     from datetime import datetime
+
+    from src.overlay.widget.widget import BossTimerOverlay
 
 LOGGER = logging.getLogger(__name__)
 
@@ -16,8 +19,11 @@ ACCENT_GREEN = "#34C410"
 ACCENT_BLUE = "#56B4E9"
 
 
-class OverlayContract(tk.Toplevel):
-    """Shared Tk and dynamic-attribute contract for overlay mixins."""
+BOSS_TIMER_SLOT: OverlaySlot[BossTimerOverlay] = OverlaySlot()
+
+
+class BossTimerContract(OverlayContract):
+    """Dynamic-attribute contract for the boss timer overlay mixins."""
 
     _gold_initialized: bool
     _exp_initialized: bool
@@ -25,9 +31,6 @@ class OverlayContract(tk.Toplevel):
     capture_exp_stats: bool
     locked: bool
     synced_wb: tuple[datetime, str] | None
-
-    def __getattr__(self, name: str) -> NoReturn:
-        raise AttributeError(name)
 
 
 ACCENT = ACCENT_GOLD

@@ -4,12 +4,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from src.automation import move_pointer
-from src.overlay import state as _state
 from src.overlay.settings import InfoSettingValue, load_settings, setting_bool, setting_position
-from src.overlay.singleton import singleton
 from src.overlay.statistics import SessionStats
+from src.overlay.widget.shared import BOSS_TIMER_SLOT
 from src.perception import abs_window_to_monitor, game_window_roi, window_to_monitor
 from src.settings import get_settings
+from src.singleton import singleton
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -54,7 +54,7 @@ class InventoryExpTracker:
     def on_inventory_open(self) -> None:
         if self.hover_active or _STATE.busy_checker():
             return
-        if not _state.is_open():
+        if not BOSS_TIMER_SLOT.is_open():
             return
         config = load_settings()
         capture_exp = setting_bool(config, "capture_exp_stats", default=False)

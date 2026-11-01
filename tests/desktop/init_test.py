@@ -13,6 +13,8 @@ def test_desktop_facade_exports_ui_thread_helpers() -> None:
         "call_on_ui_thread",
         "create_overlay_toplevel",
         "get_root",
+        "OverlayContract",
+        "OverlaySlot",
         "is_alive",
         "join_ui_thread",
         "post_to_ui_thread",

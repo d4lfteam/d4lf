@@ -6,30 +6,19 @@ from contextlib import suppress
 
 from src.desktop import call_on_ui_thread, get_root, is_alive, post_to_ui_thread
 from src.paragon.data import load_builds_from_path
-from src.paragon.overlay import state as overlay_state
+from src.paragon.overlay.contracts import PARAGON_SLOT
 from src.paragon.overlay.core import OverlayCoreMixin
 from src.paragon.overlay.grid import OverlayGridMixin
-from src.paragon.overlay.grid_assets import OverlayGridMixin as OverlayGridAssetsMixin
 from src.paragon.overlay.lifecycle import OverlayLifecycleMixin
 from src.paragon.overlay.popup import OverlayPopupMixin
 from src.paragon.overlay.popup_build import OverlayPopupBuildMixin
-from src.paragon.overlay.popup_measure import OverlayPopupMixin as OverlayPopupMeasureMixin
-from src.paragon.overlay.profiles import OverlayUIMixin as OverlayProfilesMixin
 from src.paragon.overlay.ui import OverlayUIMixin
 
 LOGGER = logging.getLogger(__name__)
 
 
 class ParagonOverlay(
-    OverlayCoreMixin,
-    OverlayUIMixin,
-    OverlayProfilesMixin,
-    OverlayPopupMixin,
-    OverlayPopupMeasureMixin,
-    OverlayPopupBuildMixin,
-    OverlayGridMixin,
-    OverlayGridAssetsMixin,
-    OverlayLifecycleMixin,
+    OverlayCoreMixin, OverlayUIMixin, OverlayPopupMixin, OverlayPopupBuildMixin, OverlayGridMixin, OverlayLifecycleMixin
 ):
     """Tkinter Paragon overlay assembled from private behavior mixins."""
 
@@ -48,7 +37,7 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
         # Embedding mode is used when another Tk application already owns the
         # event loop and can host the overlay directly.
         overlay = ParagonOverlay(parent, builds, on_close=None)
-        overlay_state.set_overlay(overlay)
+        PARAGON_SLOT.set(overlay)
         return overlay
 
     closed = threading.Event()
@@ -62,7 +51,7 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
             closed.set()
             return
 
-        overlay_state.set_overlay(overlay)
+        PARAGON_SLOT.set(overlay)
 
     call_on_ui_thread(_open_overlay)
     # The caller owns a worker thread per overlay session and expects that thread
@@ -73,9 +62,9 @@ def run_paragon_overlay(preset_path: str | None = None, *, parent: tk.Misc | Non
 
 def request_close(overlay: ParagonOverlay | None = None) -> None:
     """Request that the current overlay closes, even from another thread."""
-    if not (t := overlay or overlay_state.get_overlay()):
+    if not (t := overlay or PARAGON_SLOT.get()):
         return
-    overlay_state.request_close()
+    PARAGON_SLOT.request_close()
     with suppress(Exception):
         post_to_ui_thread(lambda: t.close() if is_alive(t) else None)
 
