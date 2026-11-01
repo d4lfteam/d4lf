@@ -27,8 +27,8 @@ from src.importing.maxroll.planner import (
     _resolve_visible_profile_index,
     _unique_name_special_handling,
 )
-from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter, Variant
-from src.importing.web import get_with_retry, retry_importer
+from src.importing.pipeline import ExtractedBuild, ImportPipeline, Variant
+from src.importing.web import get_with_retry, retry_importer, validated_url
 from src.perception import correct_name
 from src.profiles import AspectUniqueFilterModel, CharmFilterModel, ItemFilterModel, SealFilterModel
 from src.type_aliases import JsonObject, JsonValue
@@ -39,6 +39,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 LOGGER.propagate = True
 type PlannerObject = JsonObject
+URL_HINT = "a maxroll build guide or maxroll planner url"
 
 
 def _planner_api_url(url: str) -> str:
@@ -55,16 +56,8 @@ def _load_planner_data(url: str) -> tuple[JsonObject, JsonObject]:
     return all_data, cast("JsonObject", json.loads(str(all_data["data"])))
 
 
-def _validated_url(request: ImportRequest) -> str | None:
-    url = request.url
-    if PLANNER_BASE_URL not in url and BUILD_GUIDE_BASE_URL not in url:
-        LOGGER.error("Invalid url, please use a maxroll build guide or maxroll planner url")
-        return None
-    return url
-
-
 def fetch_variants_maxroll(request: ImportRequest) -> list[VariantMetadata]:
-    if (url := _validated_url(request)) is None:
+    if (url := validated_url(request, PLANNER_BASE_URL, BUILD_GUIDE_BASE_URL, hint=URL_HINT)) is None:
         return []
     LOGGER.info(f"Loading {url} for variants")
     try:
@@ -231,7 +224,7 @@ def _extract_profile_variant(
 
 @retry_importer
 def import_maxroll(request: ImportRequest) -> ImportResult | None:
-    if (url := _validated_url(request)) is None:
+    if (url := validated_url(request, PLANNER_BASE_URL, BUILD_GUIDE_BASE_URL, hint=URL_HINT)) is None:
         return None
     LOGGER.info(f"Loading {url}")
     if BUILD_GUIDE_BASE_URL in url:
@@ -285,15 +278,13 @@ def import_maxroll(request: ImportRequest) -> ImportResult | None:
         )
 
     return ImportPipeline.run_result(
-        adapter=StaticBuildGuideAdapter(
-            url=url,
-            build=ExtractedBuild(
-                source_name="maxroll",
-                class_name=class_name,
-                build_header=build_header,
-                season_number=guide_season,
-                variants=finished_variants,
-            ),
+        build=ExtractedBuild(
+            source_name="maxroll",
+            class_name=class_name,
+            build_header=build_header,
+            season_number=guide_season,
+            variants=finished_variants,
         ),
         request=request,
+        source_url=url,
     )

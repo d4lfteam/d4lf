@@ -1,6 +1,6 @@
 import dataclasses
 import logging
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from src.importing import ImportRequest, ImportResult, assemble_profile_file_name
 from src.importing.filters import deduplicate_filters, sort_profile_filters
@@ -35,21 +35,6 @@ class ExtractedBuild:
     variants: list[Variant] = dataclasses.field(default_factory=list)
 
 
-class BuildGuideAdapter(Protocol):
-    url: str
-
-    def extract(self) -> ExtractedBuild: ...
-
-
-@dataclasses.dataclass(slots=True)
-class StaticBuildGuideAdapter:
-    url: str
-    build: ExtractedBuild
-
-    def extract(self) -> ExtractedBuild:
-        return self.build
-
-
 def _enabled_category_filters[FilterModelT: (CharmFilterModel, SealFilterModel)](
     filters: list[FilterModelT], enabled: bool
 ) -> list[dict[str, FilterModelT]]:
@@ -58,13 +43,8 @@ def _enabled_category_filters[FilterModelT: (CharmFilterModel, SealFilterModel)]
 
 class ImportPipeline:
     @staticmethod
-    def run(adapter: BuildGuideAdapter, request: ImportRequest) -> list[str]:
-        return list(ImportPipeline.run_result(adapter, request).saved_file_names)
-
-    @staticmethod
-    def run_result(adapter: BuildGuideAdapter, request: ImportRequest) -> ImportResult:
+    def run_result(build: ExtractedBuild, request: ImportRequest, source_url: str) -> ImportResult:
         """Normalize, persist, and return the result of an extracted build."""
-        build = adapter.extract()
         options = request.options
         saved_file_names: list[str] = []
         used_file_names: set[str] = set()
@@ -120,7 +100,7 @@ class ImportPipeline:
 
             corrected_file_name = (
                 ProfileDocumentStore.default()
-                .save_new(file_name=file_name, profile=profile, source=adapter.url)
+                .save_new(file_name=file_name, profile=profile, source=source_url)
                 .file_name
             )
             saved_file_names.append(corrected_file_name)

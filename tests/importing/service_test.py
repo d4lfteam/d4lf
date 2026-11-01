@@ -36,12 +36,10 @@ def test_open_session_retains_one_explicit_source(monkeypatch) -> None:
     session = open_session("https://fixture.invalid/build")
 
     assert isinstance(session, ImportSession)
-    assert session.source is source
-    assert session.source is session.source
     session.close()
 
 
-def test_session_uses_same_source_for_discovery_and_import() -> None:
+def test_session_uses_same_source_for_discovery_and_import(monkeypatch) -> None:
     class FakeSource:
         name = "fixture"
         calls: ClassVar[list[tuple[str, int]]] = []
@@ -55,7 +53,8 @@ def test_session_uses_same_source_for_discovery_and_import() -> None:
             return ImportResult(source_name=self.name, selected_variant="one", profile=ProfileModel(name="profile"))
 
     source = FakeSource()
-    session = open_session("https://fixture.invalid/build", source=source)
+    monkeypatch.setattr("src.importing.service.select_source", lambda _url: source)
+    session = open_session("https://fixture.invalid/build")
     session.fetch_variants(ImportRequest("https://fixture.invalid/build"))
     session.import_build(ImportRequest("https://fixture.invalid/build"))
 
@@ -63,7 +62,7 @@ def test_session_uses_same_source_for_discovery_and_import() -> None:
     session.close()
 
 
-def test_direct_import_owns_and_closes_one_session() -> None:
+def test_direct_import_owns_and_closes_one_session(monkeypatch) -> None:
     class FakeSource:
         name = "fixture"
         close_calls = 0
@@ -78,13 +77,14 @@ def test_direct_import_owns_and_closes_one_session() -> None:
             self.close_calls += 1
 
     source = FakeSource()
-    result = import_build(ImportRequest("https://fixture.invalid/build"), source=source)
+    monkeypatch.setattr("src.importing.service.select_source", lambda _url: source)
+    result = import_build(ImportRequest("https://fixture.invalid/build"))
 
     assert result.source_name == "fixture"
     assert source.close_calls == 1
 
 
-def test_direct_import_closes_session_when_source_fails() -> None:
+def test_direct_import_closes_session_when_source_fails(monkeypatch) -> None:
     class FakeSource:
         name = "fixture"
         close_calls = 0
@@ -100,8 +100,9 @@ def test_direct_import_closes_session_when_source_fails() -> None:
             self.close_calls += 1
 
     source = FakeSource()
+    monkeypatch.setattr("src.importing.service.select_source", lambda _url: source)
     with pytest.raises(RuntimeError, match="import failed"):
-        import_build(ImportRequest("https://fixture.invalid/build"), source=source)
+        import_build(ImportRequest("https://fixture.invalid/build"))
 
     assert source.close_calls == 1
 

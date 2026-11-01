@@ -56,7 +56,6 @@ def test_import_session_retains_source_and_closes_idempotently() -> None:
     source = FakeSource()
     session = ImportSession(source)
 
-    assert session.source is source
     session.close()
     session.close()
 

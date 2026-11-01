@@ -136,15 +136,6 @@ class ImportSession:
         self._closed = False
 
     @property
-    def source(self) -> ImportSource:
-        """Exact source instance retained by this session."""
-        return self._source
-
-    @property
-    def name(self) -> str:
-        return self._source.name
-
-    @property
     def closed(self) -> bool:
         return self._closed
 

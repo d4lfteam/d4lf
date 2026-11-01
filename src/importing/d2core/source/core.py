@@ -24,7 +24,7 @@ from src.importing.d2core.source.helpers import decode_body, select_variant_name
 from src.importing.d2core.source.normalization import normalize_build
 from src.importing.d2core.source.workflow import resolve_variants
 from src.importing.d2core.url import D2CoreUrl, parse_d2core_url
-from src.importing.pipeline import ExtractedBuild, ImportPipeline, StaticBuildGuideAdapter
+from src.importing.pipeline import ExtractedBuild, ImportPipeline
 
 if TYPE_CHECKING:
     from src.type_aliases import JsonValue
@@ -109,9 +109,7 @@ class D2CoreImportSource:
                 _raise_no_selection()
             build = self._build_normalized(snapshot.build, snapshot.catalog_version, selected, canonical_request)
             self._ensure_open()
-            result = ImportPipeline.run_result(
-                StaticBuildGuideAdapter(url=planner.canonical, build=build), canonical_request
-            )
+            result = ImportPipeline.run_result(build, canonical_request, planner.canonical)
         except Exception as error:
             self._log_terminal(error)
             raise

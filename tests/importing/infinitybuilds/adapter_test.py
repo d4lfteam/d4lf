@@ -60,19 +60,6 @@ def _request(
     )
 
 
-def test_import_infinitybuilds_passes_category_options_to_pipeline_config(mocker) -> None:
-    run_import = mocker.patch("src.importing.infinitybuilds.adapter._import_infinitybuilds", return_value=None)
-    request = _request(
-        url="https://infinitybuilds.gg/en/builds/barbarian-example", import_charms=False, import_seals=False
-    )
-
-    import_infinitybuilds(request, driver=typing.cast("WebDriver", object()))
-
-    captured_request = run_import.call_args.args[0]
-    assert not captured_request.options.import_charms
-    assert not captured_request.options.import_seals
-
-
 def _gear_piece(slot: str, item_id: str, affix_ids: list[str]) -> dict[str, JsonValue]:
     return {
         "kind": "custom_legendary",

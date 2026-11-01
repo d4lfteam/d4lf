@@ -67,7 +67,7 @@ def test_import_result_exposes_normalized_profile_and_optional_paragon() -> None
     assert result.paragon is None
 
 
-def test_import_build_passes_one_normalized_request_to_source() -> None:
+def test_import_build_passes_one_normalized_request_to_source(monkeypatch) -> None:
     captured: list[ImportRequest] = []
 
     class FakeSource:
@@ -80,9 +80,9 @@ def test_import_build_passes_one_normalized_request_to_source() -> None:
             captured.append(request)
             return ImportResult(source_name=self.name, selected_variant="Default", profile=ProfileModel(name="profile"))
 
+    monkeypatch.setattr("src.importing.service.select_source", lambda _url: FakeSource())
     result = import_build(
-        ImportRequest(url="  https://example.invalid/build\n", options=ImportOptions(custom_file_name="custom.yaml")),
-        source=FakeSource(),
+        ImportRequest(url="  https://example.invalid/build\n", options=ImportOptions(custom_file_name="custom.yaml"))
     )
 
     assert result.source_name == "fixture"
