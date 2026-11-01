@@ -1,132 +1,144 @@
 import logging
-import queue
 import typing
-from threading import Event
-from typing import cast
 from unittest.mock import Mock
 
 if typing.TYPE_CHECKING:
     import pytest
     from pytest_mock import MockerFixture
 
-    from src.loot.highlighting import HighlightTask, _VisionModeWithHighlighting
-
 from src.item import Affix, FilterResult, Item, MatchedFilter
-from src.loot.highlighting_render import HighlightingRenderer
+from src.loot.highlighting_pipeline import MatchCommand, NoMatchCommand
+from src.loot.highlighting_render import HighlightingOverlay, draw_text
 from src.perception import LocatedMarker, LocatorResult
 from src.settings import get_settings
 
-
-class _RendererHarness(HighlightingRenderer):
-    root: Mock
-    canvas: Mock
-    thick: int
-    screen_off_x: int
-    screen_off_y: int
-    queue: queue.Queue[HighlightTask]
-    current_item: Item | None
+ITEM = Item(name="helm")
 
 
-def test_highlighting_renderer_places_reliable_affix_markers(monkeypatch, mocker: MockerFixture) -> None:
-    renderer = _RendererHarness()
-    renderer.root = mocker.Mock()
-    renderer.canvas = mocker.Mock()
-    renderer.thick = 4
-    renderer.screen_off_x = 0
-    renderer.screen_off_y = 0
-    monkeypatch.setattr(renderer, "create_signal_rect", mocker.Mock())
-    monkeypatch.setattr(renderer, "draw_text", mocker.Mock(side_effect=lambda *_args: 1))
-    draw_rect = Mock()
-    monkeypatch.setattr(renderer, "draw_rect", draw_rect)
-    cast("_VisionModeWithHighlighting", renderer).draw_match_outline(
-        (10, 20, 100, 200),
-        FilterResult(keep=True, matched=[MatchedFilter("Build")]),
-        LocatorResult([LocatedMarker("affix", 0, (30, 40), 0.99)], reliable=True),
+def _overlay(root: Mock, canvas: Mock, item: Item | None = ITEM) -> HighlightingOverlay:
+    overlay = HighlightingOverlay(root, canvas, thick=4, screen_offset=(0, 0))
+    overlay.current_item = item
+    return overlay
+
+
+def test_match_command_places_reliable_affix_markers(monkeypatch) -> None:
+    monkeypatch.setattr("src.loot.highlighting_render.draw_text", lambda *_args: 1)
+    root, canvas = Mock(), Mock()
+    overlay = _overlay(root, canvas)
+
+    overlay.draw(
+        MatchCommand(
+            ITEM,
+            (10, 20, 100, 200),
+            FilterResult(keep=True, matched=[MatchedFilter("Build")]),
+            LocatorResult([LocatedMarker("affix", 0, (30, 40), 0.99)], reliable=True),
+        )
     )
-    draw_rect.assert_called_once_with(renderer.canvas, 12, (30, 40), 10, "#23fc5d")
+
+    canvas.create_rectangle.assert_any_call(34, 44, 46, 56, fill="#23fc5d")
+    root.geometry.assert_called_with("120x250+0+10")
 
 
-def test_highlighting_renderer_shows_missing_affixes_in_one_line_under_their_profile(
+def test_match_command_shows_missing_affixes_in_one_line_under_their_profile(
     monkeypatch, mocker: MockerFixture
 ) -> None:
     mocker.patch.object(get_settings().advanced_options, "max_missing_affixes_shown", 10)
-    renderer = _RendererHarness()
-    renderer.root = mocker.Mock()
-    renderer.canvas = mocker.Mock()
-    renderer.thick = 4
-    renderer.screen_off_x = 0
-    renderer.screen_off_y = 0
-    monkeypatch.setattr(renderer, "create_signal_rect", mocker.Mock())
     drawn: list[tuple[str, str]] = []
 
-    def _record_text(_canvas: Mock, text: str, color: str, text_y: int, _offset: int, _center: int) -> int:
+    def _record_text(_canvas: Mock, text: str, color: str, text_y: int, _center: int) -> int:
         drawn.append((text, color))
         return text_y - 1
 
-    monkeypatch.setattr(renderer, "draw_text", _record_text)
-    cast("_VisionModeWithHighlighting", renderer).draw_match_outline(
-        (10, 20, 100, 200),
-        FilterResult(
-            keep=True,
-            matched=[
-                MatchedFilter("Build.Helm", [Affix(name="armor")], missing_affixes=["maximum_life", "dexterity"]),
-                MatchedFilter("Other.Helm", [Affix(name="armor")]),
-            ],
-        ),
-        None,
+    monkeypatch.setattr("src.loot.highlighting_render.draw_text", _record_text)
+    root, canvas = Mock(), Mock()
+    overlay = _overlay(root, canvas)
+
+    overlay.draw(
+        MatchCommand(
+            ITEM,
+            (10, 20, 100, 200),
+            FilterResult(
+                keep=True,
+                matched=[
+                    MatchedFilter("Build.Helm", [Affix(name="armor")], missing_affixes=["maximum_life", "dexterity"]),
+                    MatchedFilter("Other.Helm", [Affix(name="armor")]),
+                ],
+            ),
+            None,
+        )
     )
 
-    top_to_bottom = list(reversed(drawn))
-    assert top_to_bottom == [
+    assert list(reversed(drawn)) == [
         ("Build.Helm", "#23fc5d"),
         ("missing: maximum_life, dexterity", "#8b2e2e"),
         ("Other.Helm", "#23fc5d"),
     ]
 
 
+def test_command_for_stale_item_is_skipped(monkeypatch, mocker: MockerFixture) -> None:
+    reset_canvas = mocker.Mock()
+    monkeypatch.setattr("src.loot.highlighting_render.reset_canvas", reset_canvas)
+    root, canvas = Mock(), Mock()
+    overlay = _overlay(root, canvas, Item(name="boots"))
+
+    overlay.draw(NoMatchCommand(ITEM, (0, 0, 10, 10)))
+
+    reset_canvas.assert_not_called()
+    canvas.create_rectangle.assert_not_called()
+
+
+def test_clear_sets_done_event_once_canvas_is_cleared(monkeypatch, mocker: MockerFixture) -> None:
+    reset_canvas = mocker.Mock()
+    monkeypatch.setattr("src.loot.highlighting_render.reset_canvas", reset_canvas)
+    root, canvas = Mock(), Mock()
+    overlay = _overlay(root, canvas)
+
+    done = overlay.clear()
+    assert not done.is_set()
+    overlay.draw_from_queue()
+
+    reset_canvas.assert_called_once_with(root, canvas)
+    assert done.is_set()
+
+
+def test_draw_from_queue_draws_submitted_commands_in_order(monkeypatch, mocker: MockerFixture) -> None:
+    monkeypatch.setattr("src.loot.highlighting_render.reset_canvas", mocker.Mock())
+    root, canvas = Mock(), Mock()
+    overlay = _overlay(root, canvas)
+    drawn: list[str] = []
+    monkeypatch.setattr(overlay, "draw", lambda command: drawn.append(type(command).__name__))
+
+    overlay.submit(NoMatchCommand(ITEM, (0, 0, 10, 10)))
+    overlay.clear()
+    for _ in range(3):
+        overlay.draw_from_queue()
+
+    assert drawn == ["NoMatchCommand", "ClearCommand"]
+
+
 def test_draw_from_queue_reschedules_and_logs_when_drawing_fails(
     monkeypatch, mocker: MockerFixture, caplog: pytest.LogCaptureFixture
 ) -> None:
-    item = Item(name="helm")
-    renderer = _RendererHarness()
-    renderer.canvas = mocker.Mock()
-    renderer.queue = queue.Queue()
-    renderer.current_item = item
-    renderer.queue.put(("match", item, (0, 0, 10, 10), FilterResult(keep=True, matched=[]), None))
-    monkeypatch.setattr(renderer, "draw_match_outline", mocker.Mock(side_effect=RuntimeError("boom")))
+    monkeypatch.setattr("src.loot.highlighting_render.reset_canvas", mocker.Mock(side_effect=RuntimeError("boom")))
+    root, canvas = Mock(), Mock()
+    overlay = _overlay(root, canvas)
+    overlay.submit(NoMatchCommand(ITEM, (0, 0, 10, 10)))
 
     with caplog.at_level(logging.ERROR, logger="src.loot.highlighting_render"):
-        cast("_VisionModeWithHighlighting", renderer).draw_from_queue()
+        overlay.draw_from_queue()
 
-    renderer.canvas.after.assert_called_once_with(10, renderer.draw_from_queue)
+    canvas.after.assert_called_once_with(10, overlay.draw_from_queue)
     assert "Error while drawing highlighting overlay" in caplog.text
     assert "boom" in caplog.text
 
 
-def test_draw_from_queue_reschedules_when_queue_is_empty(mocker: MockerFixture) -> None:
-    renderer = _RendererHarness()
-    renderer.canvas = mocker.Mock()
-    renderer.queue = queue.Queue()
+def test_draw_from_queue_reschedules_when_queue_is_empty() -> None:
+    root, canvas = Mock(), Mock()
+    overlay = _overlay(root, canvas)
 
-    cast("_VisionModeWithHighlighting", renderer).draw_from_queue()
+    overlay.draw_from_queue()
 
-    renderer.canvas.after.assert_called_once_with(10, renderer.draw_from_queue)
-
-
-def test_draw_from_queue_sets_done_event_after_clearing_canvas(monkeypatch, mocker: MockerFixture) -> None:
-    renderer = _RendererHarness()
-    renderer.root = mocker.Mock()
-    renderer.canvas = mocker.Mock()
-    renderer.queue = queue.Queue()
-    reset_canvas = mocker.Mock()
-    monkeypatch.setattr("src.loot.highlighting_render.reset_canvas", reset_canvas)
-    clear_done = Event()
-    renderer.queue.put(("clear", clear_done))
-
-    cast("_VisionModeWithHighlighting", renderer).draw_from_queue()
-
-    reset_canvas.assert_called_once_with(renderer.root, renderer.canvas)
-    assert clear_done.is_set()
+    canvas.after.assert_called_once_with(10, overlay.draw_from_queue)
 
 
 def test_draw_text_positions_background_and_next_label_from_rendered_bounds(monkeypatch, mocker: MockerFixture) -> None:
@@ -143,8 +155,8 @@ def test_draw_text_positions_background_and_next_label_from_rendered_bounds(monk
     # Word wrapping rendered three lines where a character-count estimate would reserve two
     canvas.bbox.return_value = (10, 400, 420, 451)
 
-    next_text_y = cast("_VisionModeWithHighlighting", _RendererHarness()).draw_text(
-        canvas, "missing: cooldown_reduction, critical_strike_chance, resource_cost_reduction", "#fff", 456, 5, 216
+    next_text_y = draw_text(
+        canvas, "missing: cooldown_reduction, critical_strike_chance, resource_cost_reduction", "#fff", 456, 216
     )
 
     canvas.bbox.assert_called_once_with("text")

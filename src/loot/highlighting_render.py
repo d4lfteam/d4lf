@@ -1,135 +1,128 @@
-"""Tk rendering for the highlighting vision mode."""
+"""Tk overlay that draws highlighting commands for the current item."""
 
 import logging
 import queue
 import tkinter as tk
+from dataclasses import dataclass
+from threading import Event
 from tkinter.font import Font
 from typing import TYPE_CHECKING
 
-import numpy as np
-
+from src.desktop import call_on_ui_thread, create_overlay_toplevel, get_root
 from src.item import ASPECT_UPGRADES_LABEL
 from src.loot.colors import get_filter_colors, reset_canvas, visible_missing_affixes
+from src.loot.highlighting_pipeline import (
+    CodexUpgradeCommand,
+    EmptyOutlineCommand,
+    MatchCommand,
+    NoMatchCommand,
+    RenderingCommand,
+)
 from src.settings import get_settings, get_ui_coordinates
+
+if TYPE_CHECKING:
+    from src.item import FilterResult, Item
+    from src.loot.highlighting_pipeline import ItemRoi, Point
+    from src.perception import LocatorResult
 
 LOGGER = logging.getLogger(__name__)
 
 DARK_GRAY_BG = "#111111"
-WINDOW_HEIGHT_1440 = 1440
-WINDOW_HEIGHT_1600 = 1600
-WINDOW_HEIGHT_2160 = 2160
-
-SIGNAL_GRAY75_AFTER = 75
-SIGNAL_GRAY50_AFTER = 80
-SIGNAL_GRAY25_AFTER = 95
-SIGNAL_GRAY12_AFTER = 90
-
-if TYPE_CHECKING:
-    from src.item import FilterResult
-    from src.loot.highlighting import _VisionModeWithHighlighting
-    from src.perception import LocatorResult
+FONT_NAME = "Courier New"
+TEXT_OFFSET = 5
+# Extra font size per supported window height
+FONT_SIZE_BONUS = {1440: 1, 1600: 2, 2160: 3}
+# Stipple pattern applied to the signal bars after the given step, the last matching entry wins
+SIGNAL_STIPPLES = ((75, "gray75"), (80, "gray50"), (95, "gray25"), (90, "gray12"))
 
 
-class HighlightingRenderer:
-    def draw_rect(
-        self: _VisionModeWithHighlighting,
-        canvas: tk.Canvas,
-        bullet_width: int,
-        loc: tuple[int, int],
-        off: int,
-        color: str,
-    ) -> None:
-        offset_loc = np.array(loc) + off
-        x1 = int(offset_loc[0] - bullet_width / 2)
-        y1 = int(offset_loc[1] - bullet_width / 2)
-        x2 = int(offset_loc[0] + bullet_width / 2)
-        y2 = int(offset_loc[1] + bullet_width / 2)
-        canvas.create_rectangle(x1, y1, x2, y2, fill=color)
+@dataclass(frozen=True)
+class ClearCommand:
+    """Clear the overlay and set `done` once the canvas is empty."""
 
-    def draw_text(
-        self: _VisionModeWithHighlighting,
-        canvas: tk.Canvas,
-        text: str,
-        color: str,
-        previous_text_y: int,
-        offset: int,
-        canvas_center_x: int,
-    ) -> int:
-        if not text:
-            return previous_text_y
+    done: Event
 
-        font_name = "Courier New"
-        minimum_font_size = get_settings().general.minimum_overlay_font_size
 
+type OverlayCommand = RenderingCommand | ClearCommand
+
+
+def draw_text(canvas: tk.Canvas, text: str, color: str, previous_text_y: int, canvas_center_x: int) -> int:
+    """Draw `text` above `previous_text_y` on a dark background and return the top of the drawn text."""
+    if not text:
+        return previous_text_y
+
+    minimum_font_size = get_settings().general.minimum_overlay_font_size
+    window_height = get_ui_coordinates().pos.window_dimensions[1]
+    font_size = minimum_font_size + FONT_SIZE_BONUS.get(window_height, 0)
+
+    width_per_character = Font(family=FONT_NAME, size=font_size).measure(text) / len(text)
+    if canvas_center_x * 2 // width_per_character < len(text):  # Use a smaller font
         font_size = minimum_font_size
-        window_height = get_ui_coordinates().pos.window_dimensions[1]
-        if window_height == WINDOW_HEIGHT_1440:
-            font_size = minimum_font_size + 1
-        elif window_height == WINDOW_HEIGHT_1600:
-            font_size = minimum_font_size + 2
-        elif window_height == WINDOW_HEIGHT_2160:
-            font_size = minimum_font_size + 3
+        width_per_character = Font(family=FONT_NAME, size=font_size).measure(text) / len(text)
 
-        width_per_character = Font(family=font_name, size=font_size).measure(text) / len(text)
-        if canvas_center_x * 2 // width_per_character < len(text):  # Use a smaller font
-            font_size = minimum_font_size
-            width_per_character = Font(family=font_name, size=font_size).measure(text) / len(text)
+    text_width = min(int(width_per_character * len(text)), canvas_center_x * 2)
+    text_id = canvas.create_text(
+        canvas_center_x,
+        previous_text_y - TEXT_OFFSET,
+        text=text,
+        anchor=tk.S,
+        font=(FONT_NAME, font_size),
+        fill=color,
+        width=text_width,
+    )
+    # Tk wraps at word boundaries, so use the rendered bounds instead of estimating the line count
+    x1, y1, x2, y2 = canvas.bbox(text_id)
+    background_id = canvas.create_rectangle(x1, y1, x2, y2, fill=DARK_GRAY_BG, outline="")
+    canvas.tag_lower(background_id, text_id)
+    return y1
 
-        text_width = min(int(width_per_character * len(text)), canvas_center_x * 2)
-        text_id = canvas.create_text(
-            canvas_center_x,
-            previous_text_y - offset,
-            text=text,
-            anchor=tk.S,
-            font=(font_name, font_size),
-            fill=color,
-            width=text_width,
-        )
-        # Tk wraps at word boundaries, so use the rendered bounds instead of estimating the line count
-        x1, y1, x2, y2 = canvas.bbox(text_id)
-        background_id = canvas.create_rectangle(x1, y1, x2, y2, fill=DARK_GRAY_BG, outline="")
-        canvas.tag_lower(background_id, text_id)
-        return y1
 
-    def create_signal_rect(
-        self: _VisionModeWithHighlighting, canvas: tk.Canvas, w: int, thick: int, color: str
-    ) -> None:
-        canvas.create_rectangle(0, 0, w, thick * 2, outline="", fill=color)
-        steps = int((thick * 20) / 40)
-        for i in range(100):
-            stipple = ""
-            if i > SIGNAL_GRAY75_AFTER:
-                stipple = "gray75"
-            if i > SIGNAL_GRAY50_AFTER:
-                stipple = "gray50"
-            if i > SIGNAL_GRAY25_AFTER:
-                stipple = "gray25"
-            if i > SIGNAL_GRAY12_AFTER:
-                stipple = "gray12"
-            start_y = steps * i
-            end_y = steps * (i + 1)
+def outline_geometry(item_roi: ItemRoi) -> tuple[int, int, int, int, int]:
+    """Grow the item ROI to the overlay window as (x, y, width, height, offset)."""
+    x, y, w, h = item_roi
+    off = int(w * 0.1)
+    return x - off, y - off, w + off * 2, h + off * 5, off
 
-            canvas.create_rectangle(0, start_y, thick * 2, end_y, fill=color, outline="", stipple=stipple)
-            canvas.create_rectangle(w - thick * 2, start_y, w, end_y, fill=color, outline="", stipple=stipple)
 
-    def draw_from_queue(self: _VisionModeWithHighlighting) -> None:
+class HighlightingOverlay:
+    """Owns the overlay window and draws queued commands on the Tk thread."""
+
+    def __init__(self, root: tk.Toplevel, canvas: tk.Canvas, thick: int, screen_offset: Point) -> None:
+        self.root = root
+        self.canvas = canvas
+        self.thick = thick
+        self.screen_offset = screen_offset
+        self.current_item: Item | None = None
+        self._queue: queue.Queue[OverlayCommand] = queue.Queue()
+
+    @classmethod
+    def create(cls, thick: int, screen_offset: Point) -> HighlightingOverlay:
+        """Build the overlay window on the UI thread and start its draw loop."""
+        overlays: list[HighlightingOverlay] = []
+
+        def _build_ui() -> None:
+            root, canvas = create_overlay_toplevel(get_root())
+            root.geometry("0x0+0+0")
+            overlays.append(cls(root, canvas, thick, screen_offset))
+            overlays[0].draw_from_queue()
+
+        # Widget creation and every subsequent Tk call must happen on the shared UI thread.
+        call_on_ui_thread(_build_ui)
+        return overlays[0]
+
+    def submit(self, command: RenderingCommand) -> None:
+        """Queue a drawing; it is skipped if its item is no longer the current item once it is drawn."""
+        self._queue.put(command)
+
+    def clear(self) -> Event:
+        """Queue a clear and return an event that is set once the canvas has been cleared."""
+        done = Event()
+        self._queue.put(ClearCommand(done))
+        return done
+
+    def draw_from_queue(self) -> None:
         try:
-            task = self.queue.get_nowait()
-            # LOGGER.debug(f"Queue size: {self.queue.qsize()}, task: {task}")
-            if task[0] == "clear":
-                reset_canvas(self.root, self.canvas)
-                task[1].set()
-            else:
-                item_desc = task[1]
-                if item_desc == self.current_item:
-                    if task[0] == "empty":
-                        self.draw_empty_outline(task[2], task[3], task[4])
-                    if task[0] == "match":
-                        self.draw_match_outline(task[2], task[3], task[4])
-                    if task[0] == "codex_upgrade":
-                        self.draw_codex_upgrade_outline(task[2], task[3])
-                    if task[0] == "no_match":
-                        self.draw_no_match_outline(task[2])
+            self.draw(self._queue.get_nowait())
         except queue.Empty:
             pass
         except Exception:
@@ -138,97 +131,79 @@ class HighlightingRenderer:
             # Always reschedule, otherwise a single drawing error would stop the redraw loop for good.
             self.canvas.after(10, self.draw_from_queue)
 
-    def draw_empty_outline(
-        self: _VisionModeWithHighlighting, item_roi: tuple[int, int, int, int], color: str, text: str | None
-    ) -> None:
+    def draw(self, command: OverlayCommand) -> None:
+        if isinstance(command, ClearCommand):
+            reset_canvas(self.root, self.canvas)
+            command.done.set()
+            return
+        if command.item != self.current_item:
+            return
+
         reset_canvas(self.root, self.canvas)
-
-        x, y, w, h, _off = self.get_coords_from_roi(item_roi)
+        x, y, w, h, off = outline_geometry(command.item_roi)
         self.canvas.config(height=h, width=w)
-        self.create_signal_rect(self.canvas, w, self.thick, color)
+        match command:
+            case EmptyOutlineCommand(color=color, text=text):
+                self._draw_signal_rect(w, color)
+                if text is not None:
+                    draw_text(self.canvas, text, color, h, w // 2)
+            case MatchCommand(filter_result=result, locator_result=locator_result):
+                self._draw_match(w, h, off, result, locator_result)
+            case NoMatchCommand():
+                self._draw_signal_rect(w, get_filter_colors().no_match)
+            case CodexUpgradeCommand(filter_result=result):
+                self._draw_codex_upgrade(w, h, result)
 
-        if text is not None and text != "":
-            self.draw_text(self.canvas, text, color, h, 5, w // 2)
-
-        self.root.geometry(f"{w}x{h}+{x + self.screen_off_x}+{y + self.screen_off_y}")
+        self.root.geometry(f"{w}x{h}+{x + self.screen_offset[0]}+{y + self.screen_offset[1]}")
         self.root.update_idletasks()
         self.root.update()
 
-    def draw_match_outline(
-        self: _VisionModeWithHighlighting,
-        item_roi: tuple[int, int, int, int],
-        should_keep_res: FilterResult,
-        locator_result: LocatorResult | None,
-    ) -> None:
-        reset_canvas(self.root, self.canvas)
-
+    def _draw_match(self, w: int, h: int, off: int, result: FilterResult, locator_result: LocatorResult | None) -> None:
         colors = get_filter_colors()
-        x, y, w, h, off = self.get_coords_from_roi(item_roi)
-        self.canvas.config(height=h, width=w)
-        self.create_signal_rect(self.canvas, w, self.thick, colors.matched)
+        self._draw_signal_rect(w, colors.matched)
 
         # show all info strings of the profiles, drawn bottom-up
         text_y = h
-        for match in reversed(should_keep_res.matched):
+        for match in reversed(result.matched):
             if missing_affixes := visible_missing_affixes(match.missing_affixes):
                 missing_text = f"missing: {', '.join(missing_affixes)}"
-                text_y = self.draw_text(self.canvas, missing_text, colors.missing, text_y, 5, w // 2)
-            text = match.profile
-            if match.set_match:
-                text = text + " (incl. Set)"
-            text_y = self.draw_text(self.canvas, text, colors.matched, text_y, 5, w // 2)
-        # Show matched bullets
-        if locator_result and locator_result.reliable and len(should_keep_res.matched) > 0:
-            bullet_width = self.thick * 3
+                text_y = draw_text(self.canvas, missing_text, colors.missing, text_y, w // 2)
+            text = f"{match.profile} (incl. Set)" if match.set_match else match.profile
+            text_y = draw_text(self.canvas, text, colors.matched, text_y, w // 2)
+
+        if locator_result and locator_result.reliable and result.matched:
+            half_bullet = self.thick * 3 / 2
             for marker in locator_result.markers:
-                self.draw_rect(self.canvas, bullet_width, marker.center, off, colors.matched)
-
-        self.root.geometry(f"{w}x{h}+{x + self.screen_off_x}+{y + self.screen_off_y}")
-        self.root.update_idletasks()
-        self.root.update()
-
-    def draw_no_match_outline(self: _VisionModeWithHighlighting, item_roi: tuple[int, int, int, int]) -> None:
-        reset_canvas(self.root, self.canvas)
-
-        x, y, w, h, _off = self.get_coords_from_roi(item_roi)
-        self.canvas.config(height=h, width=w)
-        self.create_signal_rect(self.canvas, w, self.thick, get_filter_colors().no_match)
-        self.root.geometry(f"{w}x{h}+{x + self.screen_off_x}+{y + self.screen_off_y}")
-        self.root.update_idletasks()
-        self.root.update()
-
-    def draw_codex_upgrade_outline(
-        self: _VisionModeWithHighlighting, item_roi: tuple[int, int, int, int], should_keep_result: FilterResult
-    ) -> None:
-        reset_canvas(self.root, self.canvas)
-
-        x, y, w, h, _off = self.get_coords_from_roi(item_roi)
-        self.canvas.config(height=h, width=w)
-
-        self.create_signal_rect(self.canvas, w, self.thick, get_filter_colors().codex_upgrade)
-
-        # show string indicating that this item upgrades the codex
-        if len(should_keep_result.matched) == 1 and should_keep_result.matched[0].profile == ASPECT_UPGRADES_LABEL:
-            self.draw_text(self.canvas, "Codex Upgrade", get_filter_colors().codex_upgrade, h, 5, w // 2)
-        else:
-            # This matched an Aspects section in a profile, write the profiles
-            text_y = h
-            for match in reversed(should_keep_result.matched):
-                text_y = self.draw_text(
-                    self.canvas, match.profile, get_filter_colors().codex_upgrade, text_y, 5, w // 2
+                cx, cy = marker.center[0] + off, marker.center[1] + off
+                self.canvas.create_rectangle(
+                    int(cx - half_bullet),
+                    int(cy - half_bullet),
+                    int(cx + half_bullet),
+                    int(cy + half_bullet),
+                    fill=colors.matched,
                 )
 
-        self.root.geometry(f"{w}x{h}+{x + self.screen_off_x}+{y + self.screen_off_y}")
-        self.root.update_idletasks()
-        self.root.update()
+    def _draw_codex_upgrade(self, w: int, h: int, result: FilterResult) -> None:
+        color = get_filter_colors().codex_upgrade
+        self._draw_signal_rect(w, color)
+        if len(result.matched) == 1 and result.matched[0].profile == ASPECT_UPGRADES_LABEL:
+            draw_text(self.canvas, "Codex Upgrade", color, h, w // 2)
+            return
+        # This matched an Aspects section in a profile, write the profiles
+        text_y = h
+        for match in reversed(result.matched):
+            text_y = draw_text(self.canvas, match.profile, color, text_y, w // 2)
 
-    def get_coords_from_roi(
-        self: _VisionModeWithHighlighting, item_roi: tuple[int, int, int, int]
-    ) -> tuple[int, int, int, int, int]:
-        x, y, w, h = item_roi
-        off = int(w * 0.1)
-        x -= off
-        y -= off
-        w += off * 2
-        h += off * 5
-        return x, y, w, h, off
+    def _draw_signal_rect(self, w: int, color: str) -> None:
+        thick = self.thick
+        self.canvas.create_rectangle(0, 0, w, thick * 2, outline="", fill=color)
+        steps = int((thick * 20) / 40)
+        for i in range(100):
+            stipple = ""
+            for after, pattern in SIGNAL_STIPPLES:
+                if i > after:
+                    stipple = pattern
+            start_y = steps * i
+            end_y = steps * (i + 1)
+            self.canvas.create_rectangle(0, start_y, thick * 2, end_y, fill=color, outline="", stipple=stipple)
+            self.canvas.create_rectangle(w - thick * 2, start_y, w, end_y, fill=color, outline="", stipple=stipple)

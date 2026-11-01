@@ -1,230 +1,166 @@
-import queue
 import time
-import typing
 from threading import Event, Thread
 from types import SimpleNamespace
-from typing import cast
+from typing import override
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
-
-if typing.TYPE_CHECKING:
-    from unittest.mock import Mock
-
-    from pytest_mock import MockerFixture
-
-    from src.loot.highlighting import HighlightTask, _VisionModeWithHighlighting
-    from src.perception import LocatorResult
 
 import src.loot.highlighting_worker as worker_module
 import src.perception
 from src.game_data import ItemRarity, ItemType
 from src.item import FilterResult, Item, MatchedFilter
-from src.loot.highlighting_worker import CancellationRequestedError, HighlightingWorker
+from src.loot.highlighting_pipeline import MatchCommand
+from src.loot.highlighting_render import ClearCommand, HighlightingOverlay, OverlayCommand
+from src.loot.highlighting_worker import (
+    CancellationRequestedError,
+    HighlightingWorker,
+    check_for_thread_cancellation,
+    stop_thread_and_wait,
+)
+
+CENTERS = np.array([[0, 0]])
 
 
-class _WorkerHarness(HighlightingWorker):
-    current_item: Item | None
-    clear_when_item_not_selected_thread: Thread | None
-    clear_when_item_not_selected_thread_cancel_event: Event | None
-    possible_centers: np.ndarray
-    possible_vendor_centers: np.ndarray
-    request_clear_mock: Mock
-    request_match_box_mock: Mock
-    request_no_match_box_mock: Mock
-    request_empty_outline_mock: Mock
-    request_codex_upgrade_box_mock: Mock
+class _RecordingOverlay(HighlightingOverlay):
+    """Overlay without Tk that records what it would draw."""
 
-    def request_clear(self) -> Event:
-        self.request_clear_mock()
-        done = Event()
-        done.set()
-        return done
+    def __init__(self, item: Item | None) -> None:
+        super().__init__(Mock(), Mock(), thick=4, screen_offset=(0, 0))
+        self.current_item = item
+        self.drawn: list[OverlayCommand] = []
 
-    def request_match_box(
-        self, *args: Item | FilterResult | tuple[int, int, int, int] | LocatorResult | str | None
-    ) -> None:
-        self.request_match_box_mock(*args)
+    @override
+    def draw(self, command: OverlayCommand) -> None:
+        self.drawn.append(command)
+        if isinstance(command, ClearCommand):
+            command.done.set()
 
-    def request_no_match_box(self, *args: Item | tuple[int, int, int, int]) -> None:
-        self.request_no_match_box_mock(*args)
+    def drain(self) -> None:
+        for _ in range(10):
+            self.draw_from_queue()
 
-    def request_empty_outline(self, *args: Item | tuple[int, int, int, int] | str | None) -> None:
-        self.request_empty_outline_mock(*args)
+    def drain_later(self, delay_seconds: float) -> None:
+        """Stand-in for Tk that starts processing the queue after a delay."""
 
-    def request_codex_upgrade_box(self, *args: Item | FilterResult | tuple[int, int, int, int]) -> None:
-        self.request_codex_upgrade_box_mock(*args)
+        def drain() -> None:
+            time.sleep(delay_seconds)
+            for _ in range(100):
+                self.draw_from_queue()
+                time.sleep(0.01)
 
-
-def test_cancellation_error_is_public_within_worker_module() -> None:
-    assert issubclass(CancellationRequestedError, Exception)
+        Thread(target=drain, daemon=True).start()
 
 
 def test_cancellation_check_raises_for_set_event() -> None:
     event = Event()
     event.set()
     with pytest.raises(CancellationRequestedError):
-        HighlightingWorker.check_for_thread_cancellation(event)
+        check_for_thread_cancellation(event)
 
 
-def test_unparsed_tts_does_not_clear_existing_item_overlay(monkeypatch, mocker: MockerFixture) -> None:
-    worker = _WorkerHarness()
-    worker.current_item = Item(name="gohrs_devastating_grips")
-    worker.request_clear_mock = mocker.Mock()
-
-    monkeypatch.setattr("src.loot.highlighting_worker.capture", mocker.Mock())
+def test_unparsed_tts_keeps_existing_item_overlay(monkeypatch) -> None:
+    item = Item(name="gohrs_devastating_grips")
+    overlay = _RecordingOverlay(item)
+    monkeypatch.setattr(worker_module, "capture", Mock())
     monkeypatch.setattr(src.perception, "read_latest_item", lambda: None)
 
-    cast("_VisionModeWithHighlighting", worker).on_tts([])
+    HighlightingWorker(overlay, CENTERS, CENTERS).on_tts([])
+    overlay.drain()
 
-    worker.request_clear_mock.assert_not_called()
+    assert overlay.current_item is item
+    assert overlay.drawn == []
 
 
 @pytest.mark.parametrize(
     ("filter_result", "should_queue_match"),
     [(FilterResult(False, [], skipped=True), False), (FilterResult(True, [MatchedFilter("Mythic Sigil")]), True)],
 )
-def test_filter_result_queues_only_normal_highlighting_results(
-    monkeypatch, mocker: MockerFixture, filter_result, should_queue_match
-) -> None:
-    worker = _WorkerHarness()
+def test_filter_result_submits_only_normal_highlighting_results(monkeypatch, filter_result, should_queue_match) -> None:
     item = Item(name="helm", item_type=ItemType.Sigil, rarity=ItemRarity.Mythic if should_queue_match else None)
-    worker.current_item = item
-    worker.clear_when_item_not_selected_thread = None
-    worker.clear_when_item_not_selected_thread_cancel_event = None
-    worker.request_clear_mock = mocker.Mock()
-    worker.request_match_box_mock = mocker.Mock()
-    worker.request_no_match_box_mock = mocker.Mock()
-    worker.request_empty_outline_mock = mocker.Mock()
-    worker.request_codex_upgrade_box_mock = mocker.Mock()
-    worker.possible_centers = np.array([[0, 0]])
-    worker.possible_vendor_centers = worker.possible_centers
+    overlay = _RecordingOverlay(item)
+    cleared = Event()
+    cleared.set()
+    monkeypatch.setattr(overlay, "clear", lambda: cleared)
 
     detection = SimpleNamespace(found=True, cropped_descr=object(), crop_roi=(0, 0, 10, 10))
     monkeypatch.setattr(worker_module, "pointer_position", lambda: (0, 0))
     monkeypatch.setattr(worker_module, "monitor_to_window", lambda position: position)
-    monkeypatch.setattr("src.loot.highlighting_worker.capture", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(worker_module, "capture", lambda *_args, **_kwargs: object())
     monkeypatch.setattr(worker_module, "find_descr_with_diagnostics", lambda *_args: detection)
     monkeypatch.setattr(worker_module, "find_descr", lambda *_args: (True, object(), None))
     monkeypatch.setattr(worker_module, "compare_histograms", lambda *_args: 1.0)
     monkeypatch.setattr(worker_module, "is_ignored_item", lambda _item: False)
     monkeypatch.setattr(worker_module, "Filter", lambda: SimpleNamespace(should_keep=lambda _item: filter_result))
     monkeypatch.setattr(worker_module.time, "sleep", lambda _seconds: None)
-
-    def fake_thread(*_args, **_kwargs):
-        return SimpleNamespace(start=lambda: None)
-
-    monkeypatch.setattr(worker_module.threading, "Thread", fake_thread)
+    monkeypatch.setattr(
+        worker_module.threading, "Thread", lambda *_args, **_kwargs: SimpleNamespace(start=lambda: None)
+    )
 
     checks = 0
 
-    def stop_after_first_evaluation(_worker, _event) -> None:
+    def stop_after_first_evaluation(_event: Event) -> None:
         nonlocal checks
         checks += 1
         if checks > 5:
             raise CancellationRequestedError
 
-    monkeypatch.setattr(HighlightingWorker, "check_for_thread_cancellation", stop_after_first_evaluation)
+    monkeypatch.setattr(worker_module, "check_for_thread_cancellation", stop_after_first_evaluation)
 
-    cast("_VisionModeWithHighlighting", worker).evaluate_item_and_queue_draw(item, Event())
+    HighlightingWorker(overlay, CENTERS, CENTERS).evaluate_item_and_queue_draw(item, Event())
+    overlay.drain()
 
-    if should_queue_match:
-        worker.request_match_box_mock.assert_called_once()
-    else:
-        worker.request_match_box_mock.assert_not_called()
-    worker.request_no_match_box_mock.assert_not_called()
-    worker.request_empty_outline_mock.assert_not_called()
-    worker.request_codex_upgrade_box_mock.assert_not_called()
+    assert [type(command) for command in overlay.drawn] == ([MatchCommand] if should_queue_match else [])
 
 
-class _QueueHarness(HighlightingWorker):
-    """Worker with a real task queue and a drain that mimics Tk's draw_from_queue."""
-
-    def __init__(self, item: Item) -> None:
-        self.current_item = item
-        self.queue: queue.Queue[HighlightTask] = queue.Queue()
-        self.processed: list[str] = []
-        self.processed_at_detection: list[str] | None = None
-        self.evaluate_item_thread = None
-        self.clear_when_item_not_selected_thread = None
-        self.clear_when_item_not_selected_thread_cancel_event = None
-        self.possible_centers = np.array([[0, 0]])
-        self.possible_vendor_centers = self.possible_centers
-
-    def request_clear(self) -> Event:
-        done = Event()
-        self.queue.put(("clear", done))
-        return done
-
-    def drain_later(self, delay_seconds: float) -> Thread:
-        """Start a stand-in for Tk that processes the queue after a delay until a clear was handled."""
-
-        def drain() -> None:
-            time.sleep(delay_seconds)
-            while True:
-                task = self.queue.get(timeout=2)
-                self.processed.append(task[0])
-                if task[0] == "clear":
-                    task[1].set()
-                    return
-
-        thread = Thread(target=drain, daemon=True)
-        thread.start()
-        return thread
-
-
-def _patch_perception(monkeypatch, harness: _QueueHarness) -> None:
+def _stop_at_detection(monkeypatch, overlay: _RecordingOverlay) -> list[list[str]]:
+    drawn_at_detection: list[list[str]] = []
     monkeypatch.setattr(worker_module, "pointer_position", lambda: (0, 0))
     monkeypatch.setattr(worker_module, "monitor_to_window", lambda position: position)
+    monkeypatch.setattr(worker_module, "capture", lambda *_args, **_kwargs: object())
 
     def find_descr_stub(*_args):
-        harness.processed_at_detection = list(harness.processed)
+        drawn_at_detection.append([type(command).__name__ for command in overlay.drawn])
         raise CancellationRequestedError
 
-    monkeypatch.setattr(worker_module, "capture", lambda *_args, **_kwargs: object())
     monkeypatch.setattr(worker_module, "find_descr_with_diagnostics", find_descr_stub)
+    return drawn_at_detection
 
 
 def test_detection_waits_for_own_clear_behind_pending_match_draw(monkeypatch) -> None:
     item = Item(name="helm")
-    harness = _QueueHarness(item)
-    # Draw queued by the previous thread that Tk has not consumed yet.
-    harness.queue.put(("match", item, (0, 0, 10, 10), FilterResult(True, []), None))
-    harness.processed_at_detection = None
-    _patch_perception(monkeypatch, harness)
+    overlay = _RecordingOverlay(item)
+    # Draw submitted by the previous thread that Tk has not consumed yet.
+    overlay.submit(MatchCommand(item, (0, 0, 10, 10), FilterResult(True, []), None))
+    drawn_at_detection = _stop_at_detection(monkeypatch, overlay)
+    worker = HighlightingWorker(overlay, CENTERS, CENTERS)
 
-    thread = Thread(
-        target=cast("_VisionModeWithHighlighting", harness).evaluate_item_and_queue_draw,
-        args=(item, Event()),
-        daemon=True,
-    )
+    thread = Thread(target=worker.evaluate_item_and_queue_draw, args=(item, Event()), daemon=True)
     thread.start()
-    harness.drain_later(0.2)
+    overlay.drain_later(0.2)
     thread.join(timeout=2)
 
     assert not thread.is_alive()
-    assert harness.processed_at_detection == ["match", "clear"]
+    assert drawn_at_detection == [["MatchCommand", "ClearCommand"]]
 
 
 def test_cancellation_ends_thread_waiting_for_clear(monkeypatch) -> None:
     item = Item(name="helm")
-    harness = _QueueHarness(item)  # nothing ever consumes the queued clear
-    _patch_perception(monkeypatch, harness)
+    overlay = _RecordingOverlay(item)  # nothing ever consumes the queued clear
+    drawn_at_detection = _stop_at_detection(monkeypatch, overlay)
+    worker = HighlightingWorker(overlay, CENTERS, CENTERS)
     cancel_event = Event()
 
-    thread = Thread(
-        target=cast("_VisionModeWithHighlighting", harness).evaluate_item_and_queue_draw,
-        args=(item, cancel_event),
-        daemon=True,
-    )
+    thread = Thread(target=worker.evaluate_item_and_queue_draw, args=(item, cancel_event), daemon=True)
     thread.start()
     thread.join(timeout=0.3)
     assert thread.is_alive()  # stuck waiting for the clear
 
-    stopper = Thread(target=HighlightingWorker.stop_thread_and_wait, args=(thread, cancel_event), daemon=True)
+    stopper = Thread(target=stop_thread_and_wait, args=(thread, cancel_event), daemon=True)
     stopper.start()
     stopper.join(timeout=1)
 
     assert not stopper.is_alive()
     assert not thread.is_alive()
-    assert harness.processed_at_detection is None
+    assert drawn_at_detection == []
