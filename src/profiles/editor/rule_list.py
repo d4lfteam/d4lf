@@ -53,6 +53,7 @@ class RuleListTab[ItemType](QWidget):
         remove_button.clicked.connect(self.remove_selected)
         button_layout.addWidget(remove_button)
         main_layout.addLayout(button_layout)
+        self.add_extra_controls(main_layout)
 
         self.list_widget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self._reload_list_widget()
@@ -95,6 +96,9 @@ class RuleListTab[ItemType](QWidget):
     def to_display_text(self, item: ItemType) -> str:
         msg = "Subclasses must implement to_display_text()."
         raise NotImplementedError(msg)
+
+    def add_extra_controls(self, layout: QVBoxLayout) -> None:
+        """Add widgets between the buttons and the list. No extra controls by default."""
 
     def empty_selection_warning_text(self) -> str:
         return "Select at least one rule to remove."

@@ -30,12 +30,6 @@ CHARMS_TABNAME = "Charms"
 SEALS_TABNAME = "Seals"
 
 
-def _set_summary(sets: list[str]) -> str:
-    if not sets:
-        return "No sets selected"
-    return ", ".join(sets)
-
-
 class _CharmSealGeneralMixin:
     def add_rarity_row(self: CharmSealEditor, general_form: QFormLayout) -> None:
         """Add the rarity picker row to the form."""

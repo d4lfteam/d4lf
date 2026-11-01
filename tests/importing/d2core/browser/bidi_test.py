@@ -33,7 +33,7 @@ def test_live_d2core_acquisition_contract() -> None:
     variants = build["variants"]
     assert isinstance(variants, list)
     assert variants
-    assert catalogs.require("affix")
+    assert catalogs.load("affix")
 
 
 def test_firefox_bidi_timeout_is_retryable() -> None:

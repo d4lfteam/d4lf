@@ -63,7 +63,7 @@ def normalize_variant(
     warn: Warn,
 ) -> Variant:
     """Translate required equipment and the independently optional aspect module."""
-    affix_value = catalogs.require("affix").get("affix", {})
+    affix_value = catalogs.load("affix").get("affix", {})
     unique_value = catalogs.data.get("uniqueItem", {}).get("uniqueItem", {})
     aspect_value = catalogs.data.get("aspect", {}).get("aspect", {})
     affix_catalog = cast("Mapping[str, JsonValue]", affix_value) if isinstance(affix_value, Mapping) else {}

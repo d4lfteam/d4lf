@@ -39,7 +39,7 @@ def test_catalog_schema_failure_is_not_retried() -> None:
     transport = Transport()
     store = CatalogStore(version="v1", transport=transport, sleeper=lambda _: None)
     with pytest.raises(D2CoreCatalogError):
-        store.require("affix")
+        store.load("affix")
     assert transport.calls == 1
 
 
@@ -61,7 +61,7 @@ def test_catalog_requests_are_bounded_to_three_attempts_and_ten_seconds() -> Non
     store = CatalogStore(version="v1", transport=transport, sleeper=sleeps.append, attempts=99, timeout=99)
 
     with pytest.raises(D2CoreCatalogError):
-        store.require("affix")
+        store.load("affix")
 
     assert transport.calls == 3
     assert transport.timeouts == [10.0, 10.0, 10.0]

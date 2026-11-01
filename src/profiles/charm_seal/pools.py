@@ -21,12 +21,6 @@ CHARMS_TABNAME = "Charms"
 SEALS_TABNAME = "Seals"
 
 
-def _set_summary(sets: list[str]) -> str:
-    if not sets:
-        return "No sets selected"
-    return ", ".join(sets)
-
-
 class _CharmSealPoolsMixin:
     def add_affix_pool(self: CharmSealEditor) -> None:
         affix_dict = GameCatalog().charm_affix_dict if self.is_charm else GameCatalog().seal_affix_dict

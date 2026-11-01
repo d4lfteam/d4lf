@@ -39,9 +39,9 @@ def normalize_build(
 ) -> ExtractedBuild:
     ensure_open()
     try:
-        catalogs.require("affix")
+        catalogs.load("affix")
         if has_type(selected, "uniqueitem"):
-            catalogs.require("uniqueItem")
+            catalogs.load("uniqueItem")
         ensure_open()
     except D2CoreCatalogError as error:
         raise D2CoreImportError(EQUIPMENT_CATALOG, error.detail, context=error.context) from error

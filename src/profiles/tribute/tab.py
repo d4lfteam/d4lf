@@ -1,61 +1,36 @@
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QAbstractItemView,
-    QDialog,
-    QFormLayout,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QMessageBox,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from typing import TYPE_CHECKING, cast, override
+
+from PyQt6.QtWidgets import QDialog, QFormLayout, QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from src.game_data import GameCatalog
 from src.profiles import TributeFilterModel
 from src.profiles.editor.pickers import RarityPicker, rarity_summary
+from src.profiles.editor.rule_list import DialogFactory, RuleListTab
 from src.profiles.tribute.dialogs import CreateTribute
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 TRIBUTES_TABNAME = "Tributes"
 _TRIBUTE_PREFIX = "Tribute: "
 
 
-class TributesTab(QWidget):
+class TributesTab(RuleListTab[str]):
     def __init__(self, tributes: TributeFilterModel | None, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
         self.tributes = tributes if tributes is not None else TributeFilterModel()
-        self.list_widget = QListWidget()
+        super().__init__(self.tributes.name, parent)
         self.rarity_line_edit = QLineEdit()
-        self.loaded = False
 
-    def load(self) -> None:
-        if not self.loaded:
-            self.setup_ui()
-            self.loaded = True
+    @override
+    def description_text(self) -> str:
+        return "Add tribute names and select rarities you want to keep. Leaving rarities empty keeps all rarities."
 
-    def setup_ui(self) -> None:
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 20, 0, 20)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+    @override
+    def add_actions(self) -> list[tuple[str, DialogFactory]]:
+        return [("Add Tribute", lambda: CreateTribute(self.items))]
 
-        label = QLabel(
-            "Add tribute names and select rarities you want to keep. Leaving rarities empty keeps all rarities."
-        )
-        label.setWordWrap(True)
-        main_layout.addWidget(label)
-
-        button_layout = QHBoxLayout()
-        add_tribute_button = QPushButton("Add Tribute")
-        add_tribute_button.clicked.connect(self._add_tribute)
-        button_layout.addWidget(add_tribute_button)
-
-        remove_button = QPushButton("Remove Selected")
-        remove_button.clicked.connect(self.remove_selected)
-        button_layout.addWidget(remove_button)
-        main_layout.addLayout(button_layout)
-
+    @override
+    def add_extra_controls(self, layout: QVBoxLayout) -> None:
         self.rarity_line_edit.setReadOnly(True)
         self.refresh_rarity_summary()
         rarity_layout = QHBoxLayout()
@@ -67,27 +42,25 @@ class TributesTab(QWidget):
         rarity_layout.addStretch()
         rarity_form = QFormLayout()
         rarity_form.addRow("Rarities:", rarity_layout)
-        main_layout.addLayout(rarity_form)
+        layout.addLayout(rarity_form)
 
-        self.list_widget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        self._reload_list_widget()
-        main_layout.addWidget(self.list_widget)
-        self.setLayout(main_layout)
+    @override
+    def _run_add_action(self, dialog_factory: Callable[[], QDialog]) -> None:
+        dialog = cast("CreateTribute", dialog_factory())
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        for tribute_name in dialog.get_value().name:
+            if tribute_name not in self.items:
+                self.items.append(tribute_name)
+                self.list_widget.addItem(self.to_display_text(tribute_name))
 
-    def _reload_list_widget(self) -> None:
-        self.list_widget.clear()
-        for tribute_name in self.tributes.name:
-            display_name = GameCatalog().tribute_dict.get(tribute_name, tribute_name)
-            self.list_widget.addItem(f"{_TRIBUTE_PREFIX}{display_name}")
+    @override
+    def to_display_text(self, item: str) -> str:
+        return f"{_TRIBUTE_PREFIX}{GameCatalog().tribute_dict.get(item, item)}"
 
-    def _add_tribute(self) -> None:
-        dialog = CreateTribute(self.tributes.name)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            value = dialog.get_value()
-            for tribute_name in value.name:
-                if tribute_name not in self.tributes.name:
-                    self.tributes.name.append(tribute_name)
-            self._reload_list_widget()
+    @override
+    def empty_selection_warning_text(self) -> str:
+        return "Select at least one tribute rule to remove."
 
     def refresh_rarity_summary(self) -> None:
         self.rarity_line_edit.setText(rarity_summary(self.tributes.rarities))
@@ -97,23 +70,3 @@ class TributesTab(QWidget):
         if picker.exec() == QDialog.DialogCode.Accepted:
             self.tributes.rarities = picker.get_selected_rarities()
             self.refresh_rarity_summary()
-
-    def remove_selected(self) -> None:
-        rows = sorted({self.list_widget.row(item) for item in self.list_widget.selectedItems()}, reverse=True)
-        if not rows:
-            QMessageBox.warning(self, "Warning", "Select at least one tribute rule to remove.")
-            return
-
-        for row in rows:
-            item = self.list_widget.item(row)
-            if item is None:
-                continue
-            text = item.text()
-            if text.startswith(_TRIBUTE_PREFIX):
-                selected_name = text.removeprefix(_TRIBUTE_PREFIX)
-                reverse_dict = {value: key for key, value in GameCatalog().tribute_dict.items()}
-                normalized_name = reverse_dict.get(selected_name, selected_name)
-                if normalized_name in self.tributes.name:
-                    self.tributes.name.remove(normalized_name)
-
-        self._reload_list_widget()

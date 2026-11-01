@@ -47,7 +47,7 @@ def load_optional_catalog(
     if not enabled:
         return False
     try:
-        catalogs.optional(kind)
+        catalogs.load(kind)
     except D2CoreCatalogError:
         for index, raw_variant in selected:
             name = str(raw_variant.get("name", "")).strip() or f"Variant {index}"

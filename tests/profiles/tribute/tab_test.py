@@ -104,3 +104,18 @@ def test_create_tribute_rejects_unknown_display_name(qapp) -> None:
 
     with pytest.raises(ValueError, match="Select a valid tribute"):
         dialog.get_value()
+
+
+def test_remove_selected_removes_tribute_from_model(qapp, monkeypatch) -> None:
+    monkeypatch.setattr("src.profiles.tribute.tab.GameCatalog", _FakeLoader)
+    tributes = TributeFilterModel.model_construct(name=["tribute_of_test", "other"], rarities=[])
+    tab = TributesTab(tributes)
+    tab.load()
+
+    item = tab.list_widget.item(0)
+    assert item is not None
+    item.setSelected(True)
+    tab.remove_selected()
+
+    assert tributes.name == ["other"]
+    assert tab.list_widget.count() == 1
