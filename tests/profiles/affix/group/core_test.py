@@ -1,13 +1,10 @@
-import importlib
 import os
-import time
 
 import pytest
-from PyQt6.QtWidgets import QApplication, QDialog
+from PyQt6.QtWidgets import QApplication
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-import src.profiles.affix.group.pools as pools_module
 from src.profiles import AffixFilterCountModel, AffixFilterModel, DynamicItemFilterModel, ItemFilterModel
 from src.profiles.affix.group import AffixGroupEditor
 
@@ -17,54 +14,18 @@ def qapp():
     return QApplication.instance() or QApplication([])
 
 
-def test_group_module_is_importable() -> None:
-    module = importlib.import_module("src.profiles.affix.group.core")
-    assert hasattr(module, "AffixGroupEditor")
-
-
-def test_affix_group_editor_lazily_loads_pools_on_expansion(qapp, mock_ini_loader) -> None:
+def test_affix_group_editor_wires_shared_pool_controls(qapp, mock_ini_loader, fake_settings) -> None:
     pool = AffixFilterCountModel(
         count=[AffixFilterModel(name="movement_speed", want_greater=True)], min_count=1, max_count=1
     )
     config = ItemFilterModel(affix_pool=[pool], inherent_pool=[])
-
-    editor = AffixGroupEditor(DynamicItemFilterModel(root={"sword": config}))
-    assert editor.greater_count_label.text() == "(1 greater affix marked)"
-
-    time.sleep(0.15)
-    qapp.processEvents()
-
-    assert editor.affix_pool_layout.count() == 0
-    assert editor.inherent_pool_layout.count() == 0
-
-    editor.affix_pool_container.expand()
-
-    assert editor.affix_pool_layout.count() == 1
-    assert editor.inherent_pool_layout.count() == 0
-
-
-def test_affix_group_editor_pool_mutations_initialize_collapsed_containers(qapp, mock_ini_loader, mocker) -> None:
-    pool = AffixFilterCountModel(count=[AffixFilterModel(name="movement_speed")], min_count=1, max_count=1)
-    config = ItemFilterModel(affix_pool=[pool], inherent_pool=[])
     editor = AffixGroupEditor(DynamicItemFilterModel(root={"sword": config}))
 
-    editor.add_affix_pool()
+    assert editor.greater_controls.count_label.text() == "(1 greater affix marked)"
+    editor.greater_controls.auto_sync_checkbox.setChecked(True)
+    assert fake_settings == {"auto_sync_ga_affix_sword": True}
+    assert config.min_greater_affix_count == 1
 
-    assert len(config.affix_pool) == 2
-    assert editor.affix_pool_layout.count() == 2
-
-    class AcceptedDelete:
-        def __init__(self, *_args) -> None:
-            pass
-
-        def exec(self):
-            return QDialog.DialogCode.Accepted
-
-        def get_value(self):
-            return ["Count 0"]
-
-    mocker.patch.object(pools_module, "DeleteAffixPool", AcceptedDelete)
-    editor.remove_selected(editor.affix_pool_layout)
-
+    editor.inherent_pools.add_pool()
+    assert len(config.inherent_pool) == 1
     assert len(config.affix_pool) == 1
-    assert editor.affix_pool_layout.count() == 1

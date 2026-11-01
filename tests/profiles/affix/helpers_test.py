@@ -6,7 +6,7 @@ from src.profiles.affix.helpers import _item_type_summary
 
 def test_helpers_module_is_importable() -> None:
     module = importlib.import_module("src.profiles.affix.helpers")
-    assert hasattr(module, "get_affixes_for_set")
+    assert hasattr(module, "_item_type_summary")
 
 
 def test_item_type_summary_uses_catalog_labels(monkeypatch) -> None:

@@ -15,7 +15,7 @@ from src.profiles import (
     DynamicSealFilterModel,
     SealFilterModel,
 )
-from src.profiles.charm_seal import CharmGroupEditor, CharmsTab, SealGroupEditor, SealsTab
+from src.profiles.charm_seal import CharmGroupEditor, CharmsTab, SealsTab
 
 
 @pytest.fixture(scope="module")
@@ -94,19 +94,6 @@ def test_seals_tab_close_tab_safely(qapp, mock_ini_loader) -> None:
     assert "Seal3" in tab.models[1].root
 
 
-def test_charms_seals_qsettings_namespacing(qapp, mock_ini_loader) -> None:
-    charm_model = _create_mock_charm_model("MyBuild")
-    seal_model = _create_mock_seal_model("MyBuild")
-
-    charm_editor = CharmGroupEditor(charm_model)
-    seal_editor = SealGroupEditor(seal_model)
-
-    assert charm_editor.type_prefix == "charm"
-    assert seal_editor.type_prefix == "seal"
-    assert charm_editor.item_name == "MyBuild"
-    assert seal_editor.item_name == "MyBuild"
-
-
 def test_charms_ui_set_aspect_mutual_exclusion(qapp, mock_ini_loader, mocker) -> None:
     mock_warning = mocker.patch("PyQt6.QtWidgets.QMessageBox.warning")
 
@@ -116,7 +103,7 @@ def test_charms_ui_set_aspect_mutual_exclusion(qapp, mock_ini_loader, mocker) ->
     # 1. Set has value, try to add unique aspect
     charm_editor.config.set = ["Sescherons Fury"]
     charm_editor.config.unique_aspect = []
-    charm_editor.add_unique_aspect()
+    charm_editor.unique_aspects.add_aspect()
     assert mock_warning.called
     assert len(charm_editor.config.unique_aspect) == 0
 
@@ -136,9 +123,9 @@ def test_charms_ui_edit_rarities(qapp, mock_ini_loader, mocker) -> None:
     charm_editor = CharmGroupEditor(charm_model)
 
     # Mock RarityPicker dialog execution
-    mock_exec = mocker.patch("src.profiles.charm_seal.pools.RarityPicker.exec", return_value=1)
+    mock_exec = mocker.patch("src.profiles.charm_seal.group.RarityPicker.exec", return_value=1)
     mock_get_selected_rarities = mocker.patch(
-        "src.profiles.charm_seal.pools.RarityPicker.get_selected_rarities",
+        "src.profiles.charm_seal.group.RarityPicker.get_selected_rarities",
         return_value=[ItemRarity.Rare, ItemRarity.Legendary],
     )
 

@@ -108,17 +108,15 @@ class BaseCharmsSealsTab[ModelT, ConfigT](TabGroupWidget[ModelT]):
             min_greater_affix = dialog.get_value()
             for i in range(self.tab_widget.count()):
                 tab = self.tab_widget.widget(i)
-                if not isinstance(tab, BaseGroupEditor) or tab.auto_sync_checkbox.isChecked():
-                    continue
-                tab.min_greater.setValue(min_greater_affix)
-                tab.update_min_greater_affix()
+                if isinstance(tab, BaseGroupEditor):
+                    tab.greater_controls.set_min_greater(min_greater_affix)
 
     def convert_all_to_min_percent_of_affix(self) -> None:
         current_tab = self.tab_widget.currentWidget()
         if isinstance(current_tab, BaseGroupEditor):
             dialog = MinPercentDialog(self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
-                current_tab.convert_all_to_min_percent_of_affix(dialog.get_value())
+                current_tab.affix_pools.convert_to_min_percent(dialog.get_value())
 
 
 class CharmsTab(BaseCharmsSealsTab[DynamicCharmFilterModel, CharmFilterModel]):

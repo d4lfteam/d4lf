@@ -6,8 +6,8 @@ from PyQt6.QtWidgets import QCheckBox, QComboBox, QCompleter, QHBoxLayout, QLine
 
 from src.game_data import GameCatalog
 from src.profiles import AffixFilterModel, SealFilterModel
-from src.profiles.affix.helpers import affix_dict_for_widget, get_affixes_for_set, get_set_and_base_for_key
 from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
+from src.profiles.pool_controls.helpers import affix_dict_for_widget, get_affixes_for_set, get_set_and_base_for_key
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
@@ -18,9 +18,7 @@ MAX_PERCENT = 100
 
 @runtime_checkable
 class GreaterCountParent(Protocol):
-    def update_greater_count_label(self) -> None: ...
-
-    def sync_min_greater_from_checkboxes(self) -> None: ...
+    def refresh_greater_count(self) -> None: ...
 
 
 class AffixWidget(QWidget):
@@ -147,8 +145,7 @@ class AffixWidget(QWidget):
         parent = self.parent()
         while parent:
             if isinstance(parent, GreaterCountParent):
-                parent.update_greater_count_label()
-                parent.sync_min_greater_from_checkboxes()
+                parent.refresh_greater_count()
                 break
             parent = parent.parent()
 
