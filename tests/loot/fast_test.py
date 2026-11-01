@@ -1,12 +1,11 @@
 import tkinter as tk
 import typing
 from types import SimpleNamespace
-from typing import Protocol
+from unittest.mock import Mock
 
 import pytest
 
 if typing.TYPE_CHECKING:
-    from collections.abc import Callable
     from tkinter.font import Font
 
     from pytest_mock import MockerFixture
@@ -14,7 +13,7 @@ if typing.TYPE_CHECKING:
 import src.loot.fast as fast_module
 from src.game_data import ItemRarity
 from src.item import Affix, FilterResult, Item, MatchedFilter
-from src.loot.fast import VisionModeFast, create_match_text, fast_feedback
+from src.loot.fast import FastVisionMode, create_match_text, fast_feedback
 from src.settings import get_settings
 
 
@@ -55,31 +54,8 @@ class _MeasuredText:
         self.placements.append(kwargs)
 
 
-class _FastMode(Protocol):
-    textbox: tk.Text | None
-    root: tk.Toplevel
-    request_clear: Callable[[], None]
-    request_draw: Callable[[list[tuple[str, str]]], None]
-
-    def on_tts(self, value: list[str]) -> None: ...
-
-    def clear_textbox(self) -> None: ...
-
-    def adjust_textbox_size(self) -> None: ...
-
-    def create_textbox(self) -> None: ...
-
-
-def _new_fast_mode() -> _FastMode:
-    closure = getattr(VisionModeFast, "__closure__", None)
-    if not isinstance(closure, tuple):
-        raise AssertionError
-    for cell in closure:
-        implementation = cell.cell_contents
-        if isinstance(implementation, type):
-            implementation_type = typing.cast("type[_FastMode]", implementation)
-            return object.__new__(implementation_type)
-    raise AssertionError
+def _new_fast_mode() -> FastVisionMode:
+    return FastVisionMode(Mock(), Mock())
 
 
 def test_fast_mode_preserves_match_details_and_feedback() -> None:
@@ -186,3 +162,26 @@ def test_fast_textbox_uses_configured_position_or_centered_default(monkeypatch, 
     mode.create_textbox()
 
     assert textbox.placements[-1] == {"x": expected[0], "y": expected[1]}
+
+
+def test_draw_dispatches_text_and_clear(mocker: MockerFixture) -> None:
+    mode = _new_fast_mode()
+    insert = mocker.patch.object(mode, "insert_colored_lines")
+    clear = mocker.patch.object(mode, "clear_textbox")
+
+    mode.draw(("text", [("Build", "green")]))
+    insert.assert_called_once_with([("Build", "green")])
+    clear.assert_not_called()
+
+    mode.draw(("clear",))
+    clear.assert_called_once_with()
+
+
+def test_on_stop_queues_a_clear(mocker: MockerFixture) -> None:
+    mode = _new_fast_mode()
+    clear = mocker.patch.object(mode, "clear_textbox")
+
+    mode.on_stop()
+    mode.draw_from_queue()
+
+    clear.assert_called_once_with()

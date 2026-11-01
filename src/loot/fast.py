@@ -1,49 +1,35 @@
-import collections.abc
 import logging
-import queue
 import tkinter as tk
 from tkinter import font
 from tkinter.font import Font
-from typing import Literal
+from typing import TYPE_CHECKING, Literal, override
 
 import src.perception
-from src.desktop import call_on_ui_thread, create_overlay_toplevel, get_root
 from src.game_data import ItemRarity
 from src.item import ASPECT_UPGRADES_LABEL, MYTHICS_ALWAYS_KEPT_LABEL, FilterResult, Item, MatchedFilter
 from src.item.filter import Filter
 from src.loot.colors import get_filter_colors, is_ignored_item, visible_missing_affixes
-from src.loot.singleton import singleton
-from src.perception import Publisher, capture, screenshot
+from src.loot.vision_mode import VisionMode, create_on_ui_thread
+from src.perception import capture, screenshot
 from src.settings import get_settings, get_ui_coordinates
 
-LOGGER = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
-Iterable = collections.abc.Iterable
+LOGGER = logging.getLogger(__name__)
 
 type ColoredLine = tuple[str, str]
 type FastVisionTask = tuple[Literal["clear"]] | tuple[Literal["text"], list[ColoredLine]]
 
 
-@singleton
-class VisionModeFast:
-    def __init__(self) -> None:
-        self.root: tk.Toplevel
-        self.canvas: tk.Canvas
+class FastVisionMode(VisionMode[FastVisionTask]):
+    """Shows a text box with the filter result next to the hovered item."""
+
+    def __init__(self, root: tk.Toplevel, canvas: tk.Canvas) -> None:
+        super().__init__(root, canvas)
         self.textbox: tk.Text | None = None
         self.clear_timer_id: str | None = None
-        self.queue: queue.Queue[FastVisionTask] = queue.Queue()
-        self.is_running: bool = False
-
-        def _build_ui() -> None:
-            self.root, self.canvas = create_overlay_toplevel(get_root())
-            self.canvas.config(height=self.root.winfo_screenheight(), width=self.root.winfo_screenwidth())
-            self.textbox = tk.Text(self.root, bg="black", fg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0)
-            self.textbox.config(state=tk.DISABLED)
-            self.draw_from_queue()
-
-        # Widget creation and every subsequent Tk call must happen on the
-        # shared UI thread, not whichever thread constructs this singleton.
-        call_on_ui_thread(_build_ui)
+        canvas.config(height=root.winfo_screenheight(), width=root.winfo_screenwidth())
 
     def adjust_textbox_size(self) -> None:
         textbox = self.textbox
@@ -78,28 +64,21 @@ class VisionModeFast:
         self.textbox = tk.Text(
             self.root, bg="black", wrap=tk.WORD, borderwidth=0, highlightthickness=0, font=minimum_font
         )
-        if get_settings().advanced_options.fast_vision_mode_coordinates is None:
+        coordinates = get_settings().advanced_options.fast_vision_mode_coordinates
+        if coordinates is None:
             x = get_ui_coordinates().resolution[0] / 2
             y = get_ui_coordinates().resolution[1] * 2 / 3
         else:
-            coordinates = get_settings().advanced_options.fast_vision_mode_coordinates
-            if coordinates is None:
-                return
             x, y = coordinates
         self.textbox.place(x=x, y=y)
         self.textbox.config(state=tk.DISABLED)
 
-    def draw_from_queue(self) -> None:
-        try:
-            task = self.queue.get_nowait()
-            if task[0] == "text":
-                self.insert_colored_lines(task[1])
-            if task[0] == "clear":
-                self.clear_textbox()
-        except queue.Empty:
-            pass
-
-        self.canvas.after(10, self.draw_from_queue)
+    @override
+    def draw(self, command: FastVisionTask) -> None:
+        if command[0] == "text":
+            self.insert_colored_lines(command[1])
+        if command[0] == "clear":
+            self.clear_textbox()
 
     def insert_colored_lines(self, lines: list[ColoredLine]) -> None:
         self.create_textbox()
@@ -121,11 +100,12 @@ class VisionModeFast:
         self.clear_timer_id = self.root.after(5000, self.clear_textbox)
 
     def request_clear(self) -> None:
-        self.queue.put(("clear",))
+        self.submit(("clear",))
 
     def request_draw(self, lines: list[ColoredLine]) -> None:
-        self.queue.put(("text", lines))
+        self.submit(("text", lines))
 
+    @override
     def on_tts(self, _: list[str]) -> None:
         try:
             item_descr = None
@@ -144,10 +124,6 @@ class VisionModeFast:
                 self.request_clear()
                 return None
 
-            if item_descr is None:
-                LOGGER.info("Unknown Item")
-                return self.request_draw([("Unknown item", "#ce7e00")])
-
             feedback = fast_feedback(item_descr, Filter().should_keep(item_descr))
             if feedback is None:
                 self.request_clear()
@@ -156,19 +132,13 @@ class VisionModeFast:
         except Exception:
             LOGGER.exception("Error in vision mode. Please create a bug report")
 
-    def start(self) -> None:
-        LOGGER.info("Starting Vision Mode")
-        Publisher().subscribe_item(self.on_tts)
-        self.is_running = True
-
-    def stop(self) -> None:
-        LOGGER.info("Stopping Vision Mode")
+    @override
+    def on_stop(self) -> None:
         self.request_clear()
-        Publisher().unsubscribe_item(self.on_tts)
-        self.is_running = False
 
-    def running(self) -> bool:
-        return self.is_running
+
+def create_fast_vision_mode() -> FastVisionMode:
+    return create_on_ui_thread(FastVisionMode)
 
 
 def create_match_text(matches: Iterable[MatchedFilter], color: str, missing_color: str) -> list[ColoredLine]:

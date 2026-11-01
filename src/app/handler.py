@@ -22,7 +22,13 @@ from src.automation import (
     safe_exit,
 )
 from src.game_data import GameCatalog
-from src.loot import VisionMode, create_vision_mode, run_loot_filter
+from src.loot import (
+    FastVisionMode,
+    HighlightingVisionMode,
+    create_fast_vision_mode,
+    create_highlighting_vision_mode,
+    run_loot_filter,
+)
 from src.overlay import InventoryExpTracker, is_open, open_overlay, request_close
 from src.overlay import set_busy_checker as set_info_busy_checker
 from src.paragon.overlay import request_close as request_close_paragon
@@ -58,7 +64,11 @@ class ScriptHandler:
         self._config = get_settings()
         self._win_spec = WindowSpec(self._config.advanced_options.process_name)
         self._language = self._config.general.language
-        self.vision_mode: VisionMode = self._create_vision_mode(self._config.general.vision_mode_type)
+        self.vision_mode: FastVisionMode | HighlightingVisionMode = (
+            create_fast_vision_mode()
+            if self._config.general.vision_mode_type == VisionModeType.fast
+            else create_highlighting_vision_mode()
+        )
 
         set_info_busy_checker(lambda: self.loot_interaction_thread is not None)
 
@@ -66,9 +76,6 @@ class ScriptHandler:
         self._config.register_change_listener(self._on_config_changed)
         if self._config.general.run_vision_mode_on_startup:
             self.run_vision_mode()
-
-    def _create_vision_mode(self, vision_mode_type: VisionModeType) -> VisionMode:
-        return create_vision_mode(vision_mode_type)
 
     def _graceful_exit(self) -> None:
         safe_exit()
