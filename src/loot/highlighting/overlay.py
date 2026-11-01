@@ -9,14 +9,14 @@ from typing import TYPE_CHECKING, override
 
 from src.item import ASPECT_UPGRADES_LABEL
 from src.loot.colors import get_filter_colors, reset_canvas, visible_missing_affixes
-from src.loot.highlighting_pipeline import (
+from src.loot.highlighting.pipeline import (
     CodexUpgradeCommand,
     EmptyOutlineCommand,
     MatchCommand,
     NoMatchCommand,
     RenderingCommand,
 )
-from src.loot.highlighting_worker import HighlightingWorker
+from src.loot.highlighting.worker import HighlightingWorker
 from src.loot.vision_mode import VisionMode
 from src.settings import get_settings, get_ui_coordinates
 
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     import numpy as np
 
     from src.item import FilterResult, Item
-    from src.loot.highlighting_pipeline import ItemRoi, Point
+    from src.loot.highlighting.pipeline import ItemRoi, Point
     from src.perception import LocatorResult
 
 LOGGER = logging.getLogger(__name__)

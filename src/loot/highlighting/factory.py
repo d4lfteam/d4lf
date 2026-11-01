@@ -3,7 +3,7 @@
 import numpy as np
 
 from src.automation import character_inventory, stash_inventory, vendor_inventory
-from src.loot.highlighting_render import HighlightingVisionMode
+from src.loot.highlighting.overlay import HighlightingVisionMode
 from src.loot.vision_mode import create_on_ui_thread
 from src.perception import capture, game_window_roi
 from src.settings import get_ui_coordinates

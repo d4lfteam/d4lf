@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from src.item import FilterResult, Item, MatchedFilter
-from src.loot.highlighting_pipeline import (
+from src.loot.highlighting.pipeline import (
     CodexUpgradeCommand,
     EmptyOutlineCommand,
     FilterOutcome,
