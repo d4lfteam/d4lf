@@ -1,6 +1,5 @@
 """Affix data generation."""
 
-import json
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -21,6 +20,7 @@ from src.tools.data_generation.common import (
     load_json_file,
     remove_content_in_braces,
     string_list_map,
+    write_json_file,
 )
 from src.tools.data_generation.constants import EXPECTED_MISSING_AFFIX_LOCALISATIONS
 
@@ -205,19 +205,13 @@ def generate_affixes(d4data_dir: Path, language: str, output_file: Path | None =
     merge_custom_data(charm_dict, "charms_affixes", language)
 
     output_path = output_file or D4LF_BASE_DIR / f"assets/lang/{language}/affixes.json"
-    with output_path.open("w", encoding="utf-8") as json_file:
-        json.dump(affix_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
-        json_file.write("\n")
+    write_json_file(output_path, affix_dict)
 
     seal_output_path = D4LF_BASE_DIR / f"assets/lang/{language}/seals_affixes.json"
-    with seal_output_path.open("w", encoding="utf-8") as json_file:
-        json.dump(seal_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
-        json_file.write("\n")
+    write_json_file(seal_output_path, seal_dict)
 
     charm_output_path = D4LF_BASE_DIR / f"assets/lang/{language}/charms_affixes.json"
-    with charm_output_path.open("w", encoding="utf-8") as json_file:
-        json.dump(charm_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
-        json_file.write("\n")
+    write_json_file(charm_output_path, charm_dict)
     return len(affix_files)
 
 
@@ -238,19 +232,18 @@ def merge_custom_data[DataT](data: list[DataT] | dict[str, DataT], name: str, la
     custom_file = D4LF_BASE_DIR / f"src/tools/data/custom_{language}.json"
     if not custom_file.exists():
         return
-    with custom_file.open(encoding="utf-8") as file:
-        all_custom = json.load(file)
+    all_custom = cast("dict[str, JsonValue]", load_json_file(custom_file))
 
     custom = all_custom.get(name)
     if custom is None:
         return
 
     if isinstance(data, list):
-        _merge_list(data, custom, name)
+        _merge_list(data, cast("list[DataT]", custom), name)
     elif _is_nested_data(cast("JsonValue", data)) and _is_nested_data(cast("JsonValue", custom)) and custom:
         _merge_nested_dict(cast("dict[str, dict[str, DataT]]", data), cast("dict[str, dict[str, DataT]]", custom), name)
     else:
-        _merge_flat_dict(data, custom, name)
+        _merge_flat_dict(data, cast("dict[str, DataT]", custom), name)
 
 
 def _merge_list[DataT](data: list[DataT], custom: list[DataT], name: str) -> None:
@@ -294,9 +287,8 @@ def _merge_nested_dict[DataT](
 
 
 def get_string_list_name(string_list_file: Path) -> str | None:
-    with string_list_file.open(encoding="utf-8") as file:
-        data = json.load(file)
-        name_item = [item for item in data["arStrings"] if item["szLabel"] == "Name"]
-        if not name_item:
-            return None
-        return clean_item_name(name_item[0]["szText"])
+    data = cast("dict[str, list[dict[str, str]]]", load_json_file(string_list_file))
+    name_item = [item for item in data["arStrings"] if item["szLabel"] == "Name"]
+    if not name_item:
+        return None
+    return clean_item_name(name_item[0]["szText"])

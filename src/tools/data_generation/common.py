@@ -145,6 +145,12 @@ def load_json_file(json_file: Path) -> JsonValue:
         return cast("JsonValue", json.load(file))
 
 
+def write_json_file(json_file: Path, data: JsonValue) -> None:
+    with json_file.open("w", encoding="utf-8") as file:
+        json.dump(data, file, indent=4, ensure_ascii=False, sort_keys=True)
+        file.write("\n")
+
+
 def string_list_map(string_list_file: Path) -> dict[str, str]:
     data = cast("dict[str, list[dict[str, str]]]", load_json_file(string_list_file))
     return {entry["szLabel"]: entry["szText"] for entry in data["arStrings"]}
