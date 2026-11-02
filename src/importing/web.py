@@ -7,7 +7,7 @@ from http import HTTPStatus
 from typing import TYPE_CHECKING, overload
 
 import httpx
-import lxml.html
+from lxml.html import HTMLParser, fromstring
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
@@ -74,7 +74,7 @@ def load_page(
         wait.until(ready)
     if settle_seconds:
         time.sleep(settle_seconds)
-    return lxml.html.fromstring(driver.page_source, parser=lxml.html.HTMLParser())
+    return fromstring(driver.page_source, parser=HTMLParser())
 
 
 def hover_and_get_tooltip_html(

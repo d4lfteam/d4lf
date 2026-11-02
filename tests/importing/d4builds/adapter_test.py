@@ -1,7 +1,7 @@
 import typing
 
-import lxml.html
 import pytest
+from lxml.html import fromstring
 
 from src.game_data import GameCatalog
 from src.importing import ImportOptions, ImportRequest
@@ -93,21 +93,21 @@ def test_fetch_variant_discovery_keeps_distinct_unnamed_pages(mocker: MockerFixt
     pages = iter(
         [
             d4builds_module._LoadedVariantPage(
-                data=lxml.html.fromstring("<html><body>one</body></html>"),
+                data=fromstring("<html><body>one</body></html>"),
                 class_name="barbarian",
                 build_header="Bash",
                 season_number="12",
                 variant_name="",
             ),
             d4builds_module._LoadedVariantPage(
-                data=lxml.html.fromstring("<html><body>two</body></html>"),
+                data=fromstring("<html><body>two</body></html>"),
                 class_name="barbarian",
                 build_header="Bash",
                 season_number="12",
                 variant_name="",
             ),
             d4builds_module._LoadedVariantPage(
-                data=lxml.html.fromstring("<html><body>two</body></html>"),
+                data=fromstring("<html><body>two</body></html>"),
                 class_name="barbarian",
                 build_header="Bash",
                 season_number="12",
