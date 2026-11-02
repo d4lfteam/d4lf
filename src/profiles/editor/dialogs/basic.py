@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, override
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel, QSpinBox, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QLabel, QSpinBox, QVBoxLayout, QWidget
 
 from src.game_data import MAX_POWER
 
@@ -10,19 +10,6 @@ if TYPE_CHECKING:
 
 
 class IgnoreScrollWheelSpinBox(QSpinBox):
-    def __init__(self) -> None:
-        super().__init__()
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-
-    @override
-    def wheelEvent(self, e: QWheelEvent | None) -> None:
-        if self.hasFocus():
-            super().wheelEvent(e)
-        elif e is not None:
-            e.ignore()
-
-
-class IgnoreScrollWheelComboBox(QComboBox):
     def __init__(self) -> None:
         super().__init__()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)

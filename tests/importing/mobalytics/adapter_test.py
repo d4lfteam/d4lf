@@ -61,7 +61,13 @@ class _MobalyticsImportDriver:
     title = "Mobalytics"
 
     def __init__(self, page_source: str) -> None:
-        self.page_source = page_source
+        self._page_source = page_source
+        self.page_source_reads = 0
+
+    @property
+    def page_source(self) -> str:
+        self.page_source_reads += 1
+        return self._page_source
 
     def get(self, url: str) -> None:
         self.current_url = url
@@ -265,6 +271,7 @@ def test_import_mobalytics_returns_none_for_archived_build(mock_ini_loader) -> N
     )
 
     assert result is None
+    assert driver.page_source_reads == 1
 
 
 @pytest.mark.parametrize("url", URLS)

@@ -1,21 +1,16 @@
 import logging
 import re
-import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import lxml.html
 from lxml import etree
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as ec
-from selenium.webdriver.support.wait import WebDriverWait
 
 from src.importing.contracts import ImportRequest, ImportResult, VariantMetadata, VariantSelection
 from src.importing.d4builds.constants import BASE_URL, BUILD_OVERVIEW_XPATH, PAPERDOLL_XPATH
 from src.importing.d4builds.metadata import D4BuildsError, _extract_build_metadata
 from src.importing.d4builds.variants import extract_variant
 from src.importing.pipeline import ExtractedBuild, ImportPipeline
-from src.importing.web import retry_importer, validated_url
+from src.importing.web import load_page, retry_importer, validated_url
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -37,13 +32,10 @@ class _LoadedVariantPage:
 
 
 def _load_variant_page(url: str, driver: WebDriver, *, wait_for_paperdoll: bool = False) -> _LoadedVariantPage:
-    driver.get(url)
-    wait = WebDriverWait(driver, 10)
-    wait.until(ec.presence_of_element_located((By.XPATH, BUILD_OVERVIEW_XPATH)))
     if wait_for_paperdoll:
-        wait.until(ec.presence_of_element_located((By.XPATH, PAPERDOLL_XPATH)))
-        time.sleep(5)
-    data = lxml.html.fromstring(driver.page_source, parser=lxml.html.HTMLParser())
+        data = load_page(driver, url, wait_xpaths=(BUILD_OVERVIEW_XPATH, PAPERDOLL_XPATH), settle_seconds=5)
+    else:
+        data = load_page(driver, url, wait_xpaths=(BUILD_OVERVIEW_XPATH,))
     class_name, build_header, season_number, variant_name = _extract_build_metadata(data=data)
     return _LoadedVariantPage(data, class_name, build_header, season_number, variant_name)
 

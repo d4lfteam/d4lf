@@ -3,8 +3,9 @@ from typing import TYPE_CHECKING, override
 from PyQt6.QtCore import QSettings, QSize
 from PyQt6.QtWidgets import QComboBox, QCompleter, QDialog, QFormLayout, QLabel, QMessageBox, QVBoxLayout, QWidget
 
+from src.desktop.widgets import IgnoreScrollWheelComboBox
 from src.game_data import SIGIL_RULE_TARGET_TYPES, SigilRules, SigilRuleTargetType
-from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox, ok_cancel_buttons
+from src.profiles.editor.dialogs import ok_cancel_buttons
 
 if TYPE_CHECKING:
     from PyQt6.QtGui import QCloseEvent
