@@ -3,6 +3,7 @@ import logging
 from typing import TYPE_CHECKING, cast
 
 import jsonpath
+from lxml.html import tostring
 
 from src.importing.contracts import ImportRequest, ImportResult, ImportSourceError, VariantMetadata
 from src.importing.conversion import as_string_keyed_mapping as _as_mapping
@@ -44,7 +45,7 @@ def _load_build_page(url: str, driver: WebDriver) -> tuple[str, str, JsonValue |
     """Load the preloaded state shared by variant discovery and import."""
     normalized_url = _fix_input_url(url=url)
     raw_html_data = load_page(driver, normalized_url, wait_xpaths=(SCRIPT_XPATH,))
-    page_source = driver.page_source
+    page_source = str(tostring(raw_html_data, encoding="unicode"))
     scripts = list(raw_html_data.iter("script"))
     state = _load_preloaded_state(scripts)
     return normalized_url, page_source, state, len(scripts)
