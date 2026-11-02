@@ -99,15 +99,13 @@ class TestIniConfigLoader:
         assert loader.general.run_vision_mode_on_startup is False
         assert len(errors) == 1
 
-    def test_reload_if_changed_updates_models_and_revision(self, isolated_ini_loader: IniConfigLoaderType) -> None:
+    def test_reload_if_changed_updates_models(self, isolated_ini_loader: IniConfigLoaderType) -> None:
         loader = isolated_ini_loader
-        revision_before_change = loader.config_revision
         config_path = loader.user_dir / PARAMS_INI
         config_path.write_text("[general]\nrun_vision_mode_on_startup = false\n", encoding="utf-8")
 
         assert loader.reload_if_changed() is True
         assert loader.general.run_vision_mode_on_startup is False
-        assert loader.config_revision > revision_before_change
         assert loader.reload_if_changed() is False
 
     def test_property_access_auto_reloads_changed_config(self, isolated_ini_loader: IniConfigLoaderType) -> None:

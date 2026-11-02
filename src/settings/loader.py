@@ -34,7 +34,6 @@ class _IniConfigLoader:
         self._change_listeners: list[ConfigChangeListener] = []
         self._load_error_listeners: list[ConfigLoadErrorListener] = []
         self._last_config_signature: tuple[int, int] | None = None
-        self._config_revision = 0
         self._state_snapshot: StateSnapshot = {}
         self._deferred_cleanup_log_records: list[logging.LogRecord] = []
         self._defer_cleanup_log_records = True
@@ -223,7 +222,6 @@ class _IniConfigLoader:
             if cleanup_needed:
                 self._write_parser()
             self._last_config_signature = self._get_config_signature()
-            self._config_revision += 1
             self._state_snapshot = self._capture_state_snapshot()
             changed_keys = self._changed_keys(previous_snapshot, self._state_snapshot)
         if notify:
@@ -262,11 +260,6 @@ class _IniConfigLoader:
     def user_dir(self) -> Path:
         return self._user_dir
 
-    @property
-    def config_revision(self) -> int:
-        with self._lock:
-            return self._config_revision
-
     def save_value(self, section: str, key: str, value: SettingValue) -> None:
         with self._lock:
             if self._parser is None:
@@ -288,7 +281,6 @@ class _IniConfigLoader:
             parser.set(section, key, new_serialized_value)
             self._write_parser()
             self._last_config_signature = self._get_config_signature()
-            self._config_revision += 1
             self._state_snapshot = self._capture_state_snapshot()
             changed_keys = self._changed_keys(previous_snapshot, self._state_snapshot)
         self._log_changed_values(changed_keys)

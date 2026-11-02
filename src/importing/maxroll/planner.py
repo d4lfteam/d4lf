@@ -31,7 +31,7 @@ class MaxrollError(ImportSourceError):
     pass
 
 
-def _find_legendary_aspect(
+def find_legendary_aspect(
     mapping_data: Mapping[str, JsonValue], legendary_aspect: Mapping[str, JsonValue] | list[JsonValue]
 ) -> str | None:
     if not legendary_aspect:
@@ -64,35 +64,7 @@ def _find_legendary_aspect(
     return None
 
 
-def _attr_desc_special_handling(affix_id: int | str) -> str:
-    match affix_id:
-        case 2609197:
-            return "charm slot"
-        # case 1014505 | 2051010:
-        #     return "evade grants movement speed for second"
-        # case 2568489:
-        #     return "hunger increased reputation from kill streaks"
-        # case 2568491:
-        #     return "hunger increased experience from kill streaks"
-        # case 2057810:
-        #     return "damage reduction from bleeding enemies"
-        # case 2067844:
-        #     return "maximum poison resistance"
-        # case 2037914:
-        #     return "subterfuge cooldown reduction"
-        # case 2123788:
-        #     return "chance for core skills to hit twice"
-        # case 2119054:
-        #     return "chance for basic skills to deal double damage"
-        # case 2119058:
-        #     return "basic lucky hit chance"
-        # case 2052125:
-        #     return "non-physical damage"
-        case _:
-            return ""
-
-
-def _unique_name_special_handling(unique_name: str) -> str:
+def unique_name_special_handling(unique_name: str) -> str:
     match unique_name:
         case "[PH] Season 7 Necro Pants":
             return "kessimes_legacy"
@@ -102,7 +74,7 @@ def _unique_name_special_handling(unique_name: str) -> str:
             return unique_name.replace("\xa0", " ")
 
 
-def _find_item_type(mapping_data: Mapping[str, Mapping[str, str]], value: str, class_name: str = "") -> ItemType | None:
+def find_item_type(mapping_data: Mapping[str, Mapping[str, str]], value: str, class_name: str = "") -> ItemType | None:
     for d_key, d_value in mapping_data.items():
         if d_key == value:
             item_type_str = d_value["type"]
@@ -128,7 +100,7 @@ def _normalize_item_type_str_for_import_helpers(item_type_str: str) -> str:
     return re.sub(r"\b([a-z]+)\s+(1h|2h)\b", r"\2 \1", normalized_item_type)
 
 
-def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int, bool]:
+def extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int, bool]:
     planner_suffix = url.split(PLANNER_BASE_URL)
     if len(planner_suffix) != PLANNER_URL_SPLIT_PART_COUNT:
         LOGGER.error(msg := "Invalid planner url")
@@ -158,7 +130,7 @@ def _extract_planner_url_and_id_from_planner(url: str) -> tuple[str, int, bool]:
     return PLANNER_API_BASE_URL + planner_id, data_id, build_id_is_visible_position
 
 
-def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, bool]:
+def extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, bool]:
     """Resolve a build guide to the underlying planner API url and profile selection."""
     try:
         r = get_with_retry(url=url)
@@ -176,7 +148,7 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, bool]:
                 continue
             planner_link = planner_match.group()
             if planner_link:
-                api_url, build_id, build_id_is_visible_position = _extract_planner_url_and_id_from_planner(planner_link)
+                api_url, build_id, build_id_is_visible_position = extract_planner_url_and_id_from_planner(planner_link)
                 return api_url, build_id, build_id_is_visible_position
 
     msg = "Couldn't resolve a planner profile from this Maxroll build guide. Use the planner link directly and please report a bug."
@@ -184,7 +156,7 @@ def _extract_planner_url_and_id_from_guide(url: str) -> tuple[str, int, bool]:
     raise MaxrollError(msg)
 
 
-def _resolve_visible_profile_index(profiles: Sequence[Mapping[str, JsonValue]], visible_profile_index: int) -> int:
+def resolve_visible_profile_index(profiles: Sequence[Mapping[str, JsonValue]], visible_profile_index: int) -> int:
     visible_index = 0
     for profile_index, profile in enumerate(profiles):
         if bool(profile.get("hidden")):

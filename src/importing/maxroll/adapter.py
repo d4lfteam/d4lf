@@ -20,12 +20,12 @@ from src.importing.maxroll.data import _find_item_name, _merge_localized_data
 from src.importing.maxroll.items import _find_item_affixes, _find_item_rarity
 from src.importing.maxroll.paragon import extract_maxroll_paragon_steps
 from src.importing.maxroll.planner import (
-    _extract_planner_url_and_id_from_guide,
-    _extract_planner_url_and_id_from_planner,
-    _find_item_type,
-    _find_legendary_aspect,
-    _resolve_visible_profile_index,
-    _unique_name_special_handling,
+    extract_planner_url_and_id_from_guide,
+    extract_planner_url_and_id_from_planner,
+    find_item_type,
+    find_legendary_aspect,
+    resolve_visible_profile_index,
+    unique_name_special_handling,
 )
 from src.importing.pipeline import ExtractedBuild, ImportPipeline, Variant
 from src.importing.web import get_with_retry, retry_importer, validated_url
@@ -44,9 +44,9 @@ URL_HINT = "a maxroll build guide or maxroll planner url"
 
 def _planner_api_url(url: str) -> str:
     if BUILD_GUIDE_BASE_URL in url:
-        api_url, _, _ = _extract_planner_url_and_id_from_guide(url)
+        api_url, _, _ = extract_planner_url_and_id_from_guide(url)
     else:
-        api_url, _, _ = _extract_planner_url_and_id_from_planner(url)
+        api_url, _, _ = extract_planner_url_and_id_from_planner(url)
     return api_url
 
 
@@ -102,7 +102,7 @@ def _extract_profile_variant(
     for item_id in profile_items.values():
         resolved_item = items[str(item_id)]
         resolved_item_id = str(resolved_item["id"])
-        item_type = _find_item_type(mapping_data=item_type_mapping, value=resolved_item_id, class_name=class_name)
+        item_type = find_item_type(mapping_data=item_type_mapping, value=resolved_item_id, class_name=class_name)
         if item_type is None:
             LOGGER.warning(
                 f"Couldn't find item type for {resolved_item['id']} from mapping data provided by Maxroll. Skipping item."
@@ -137,7 +137,7 @@ def _extract_profile_variant(
             charm_or_seal_unique_aspect = None
             charm_set_name = None
             if is_unique_like:
-                charm_or_seal_unique_aspect = correct_name(_unique_name_special_handling(item_name)) or None
+                charm_or_seal_unique_aspect = correct_name(unique_name_special_handling(item_name)) or None
             elif rarity == ItemRarity.Set:
                 set_key = str(item_mapping[resolved_item_id]["set"])
                 charm_set_name = correct_name(str(item_sets[set_key]["name"])) or None
@@ -170,7 +170,7 @@ def _extract_profile_variant(
 
         item_filter.item_type = [item_type]
         if rarity == ItemRarity.Legendary and request.options.import_aspect_upgrades:
-            legendary_aspect = _find_legendary_aspect(
+            legendary_aspect = find_legendary_aspect(
                 mapping_data,
                 cast(
                     "JsonObject | list[JsonValue]",
@@ -189,7 +189,7 @@ def _extract_profile_variant(
         if is_unique_like:
             unique_name = item_name
             try:
-                unique_name = _unique_name_special_handling(unique_name)
+                unique_name = unique_name_special_handling(unique_name)
                 item_filter.unique_aspect = [AspectUniqueFilterModel(name=unique_name)]
             except Exception:
                 LOGGER.exception(f"Unexpected error adding unique aspect for {unique_name}, please report a bug.")
@@ -228,9 +228,9 @@ def import_maxroll(request: ImportRequest) -> ImportResult | None:
         return None
     LOGGER.info(f"Loading {url}")
     if BUILD_GUIDE_BASE_URL in url:
-        _, build_id, build_id_is_visible_position = _extract_planner_url_and_id_from_guide(url)
+        _, build_id, build_id_is_visible_position = extract_planner_url_and_id_from_guide(url)
     else:
-        _, build_id, build_id_is_visible_position = _extract_planner_url_and_id_from_planner(url)
+        _, build_id, build_id_is_visible_position = extract_planner_url_and_id_from_planner(url)
     try:
         all_data, build_data = _load_planner_data(url)
     except ConnectionError:
@@ -262,7 +262,7 @@ def import_maxroll(request: ImportRequest) -> ImportResult | None:
                 profiles_to_extract.append((profile_id, profile_data))
     else:
         if build_id_is_visible_position:
-            build_id = _resolve_visible_profile_index(profiles, build_id)
+            build_id = resolve_visible_profile_index(profiles, build_id)
         profiles_to_extract.append((build_id, profiles[build_id]))
 
     for _profile_key, profile_data in profiles_to_extract:

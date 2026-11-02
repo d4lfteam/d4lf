@@ -28,9 +28,3 @@ def validate_greater_affix_count(v: int) -> int:
 
 def validate_hotkey(k: str) -> str:
     return validate_hotkey_binding(k)
-
-
-def str_to_int_list(s: str) -> list[int]:
-    if not s:
-        return []
-    return [int(x) for x in s.split(",")]
