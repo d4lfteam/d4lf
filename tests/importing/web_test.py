@@ -3,7 +3,7 @@ from typing import Never
 import pytest
 
 from src.importing.contracts import ImportRequest
-from src.importing.web import retry_importer, validated_url
+from src.importing.web import load_page, retry_importer, validated_url
 
 
 def test_retry_importer_closes_an_owned_browser_after_exhausting_retries(mocker) -> None:
@@ -100,3 +100,16 @@ def test_validated_url_logs_hint_and_rejects_foreign_url(caplog) -> None:
         )
 
     assert "Invalid url, please use a d4builds url" in caplog.text
+
+
+def test_load_page_waits_for_each_condition_then_parses(mocker) -> None:
+    wait = mocker.patch("src.importing.web.WebDriverWait").return_value
+    driver = mocker.Mock(page_source="<html><body><p>hi</p></body></html>")
+    ready = mocker.Mock(name="ready")
+
+    page = load_page(driver, "https://x", wait_xpaths=("//a", "//b"), timeout=15, ready=ready)
+
+    driver.get.assert_called_once_with("https://x")
+    assert wait.until.call_count == 3
+    assert wait.until.call_args.args == (ready,)
+    assert page.findtext(".//p") == "hi"

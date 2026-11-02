@@ -32,12 +32,10 @@ class _LoadedVariantPage:
 
 
 def _load_variant_page(url: str, driver: WebDriver, *, wait_for_paperdoll: bool = False) -> _LoadedVariantPage:
-    data = load_page(
-        driver,
-        url,
-        wait_xpaths=(BUILD_OVERVIEW_XPATH, PAPERDOLL_XPATH) if wait_for_paperdoll else (BUILD_OVERVIEW_XPATH,),
-        settle_seconds=5 if wait_for_paperdoll else 0,
-    )
+    if wait_for_paperdoll:
+        data = load_page(driver, url, wait_xpaths=(BUILD_OVERVIEW_XPATH, PAPERDOLL_XPATH), settle_seconds=5)
+    else:
+        data = load_page(driver, url, wait_xpaths=(BUILD_OVERVIEW_XPATH,))
     class_name, build_header, season_number, variant_name = _extract_build_metadata(data=data)
     return _LoadedVariantPage(data, class_name, build_header, season_number, variant_name)
 
