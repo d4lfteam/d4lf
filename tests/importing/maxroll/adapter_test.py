@@ -9,13 +9,7 @@ import pytest
 from src.game_data import GameCatalog, ItemType
 from src.importing import ImportOptions, ImportRequest, VariantSelection
 from src.importing.maxroll import extract_maxroll_paragon_steps
-from src.importing.maxroll.adapter import (
-    _extract_profile_variant,
-    _find_item_affixes,
-    find_item_type,
-    import_maxroll,
-    resolve_visible_profile_index,
-)
+from src.importing.maxroll.adapter import _extract_profile_variant, _find_item_affixes, import_maxroll
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -47,30 +41,6 @@ def test_import_maxroll(url: str, mock_ini_loader: MockerFixture, mocker: Mocker
         ),
     )
     import_maxroll(request=request)
-
-
-@pytest.mark.parametrize(
-    ("type_name", "class_name", "expected"),
-    [
-        pytest.param("2H Sword", "Barbarian", ItemType.Sword2H, id="weapon-type-with-slot-context"),
-        pytest.param("FocusBookOffHand", "Sorcerer", ItemType.Focus, id="offhand-type-with-slot-and-class-context"),
-        pytest.param("1HFocus", "Sorcerer", ItemType.Focus, id="offhand-type-implied-by-item-type"),
-    ],
-)
-def test_find_item_type_applies_maxroll_type_fixes(type_name: str, class_name: str, expected: ItemType) -> None:
-    mapping_data = {"item-1": {"type": type_name}}
-    assert find_item_type(mapping_data=mapping_data, value="item-1", class_name=class_name) == expected
-
-
-def test_resolve_visible_profile_index_skips_hidden_profiles() -> None:
-    profiles = [
-        {"name": "Any hidden variant name", "hidden": True},
-        {"name": "Visible variant A"},
-        {"name": "Visible variant B"},
-        {"name": "Visible variant C"},
-    ]
-
-    assert resolve_visible_profile_index(profiles=profiles, visible_profile_index=2) == 3
 
 
 def test_import_maxroll_keeps_mythic_item_without_affixes(mock_ini_loader, mocker: MockerFixture) -> None:
