@@ -14,7 +14,14 @@ from src.profiles import (
 )
 from src.settings import Settings
 
-from .conftest import _create_mocked_filter, _patch_override_settings, filters, sigil_jalal, sigil_mythic_fallback
+from .conftest import (
+    _create_mocked_filter,
+    _patch_override_settings,
+    _rules,
+    filters,
+    sigil_jalal,
+    sigil_mythic_fallback,
+)
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -36,7 +43,7 @@ def test_affix_rarity_gate(rarity: ItemRarity, expected: set[str], mocker: Mocke
         inherent=[],
     )
     test_filter = _create_mocked_filter(mocker)
-    test_filter.affix_filters = {filters.affix_rarity.name: filters.affix_rarity.affixes}
+    test_filter.rules = _rules(affix_filters={filters.affix_rarity.name: filters.affix_rarity.affixes})
     assert {m.profile for m in test_filter.should_keep(boots).matched} == expected
 
 
@@ -55,7 +62,7 @@ def test_duplicate_affix_requirements_match_distinct_item_rows(mocker: MockerFix
         ],
     )
     test_filter = _create_mocked_filter(mocker)
-    test_filter.affix_filters = {profile.name: profile.affixes}
+    test_filter.rules = _rules(affix_filters={profile.name: profile.affixes})
 
     one_armor = Item(
         item_type=ItemType.Helm, power=900, rarity=ItemRarity.Rare, affixes=[Affix(name="armor", value=100)]
@@ -94,7 +101,7 @@ def test_duplicate_affix_requirements_assign_value_and_greater_constraints(mocke
         ],
     )
     test_filter = _create_mocked_filter(mocker)
-    test_filter.affix_filters = {profile.name: profile.affixes}
+    test_filter.rules = _rules(affix_filters={profile.name: profile.affixes})
 
     first_armor = Affix(name="armor", value=100)
     second_armor = Affix(name="armor", value=200, type=AffixType.greater)
@@ -147,8 +154,8 @@ def test_filter_skips_invalid_profile_but_keeps_valid_profiles(tmp_path, mocker:
     test_filter.files_loaded = False
     test_filter.load_files()
 
-    assert "good" in test_filter.affix_filters or test_filter.files_loaded
-    assert "bad" not in test_filter.affix_filters
+    assert "good" in test_filter.rules.affix_filters or test_filter.files_loaded
+    assert "bad" not in test_filter.rules.affix_filters
     assert test_filter.load_failures == ("bad",)
 
 

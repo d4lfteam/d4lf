@@ -7,7 +7,7 @@ from src.item import Affix, FilterResult, Item
 from src.profiles import AffixFilterCountModel, AffixFilterModel
 from src.settings import AspectFilterType, get_settings
 
-from .conftest import _create_mocked_filter, aspects, charms, filters, seals
+from .conftest import _create_mocked_filter, _rules, aspects, charms, filters, seals
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -20,14 +20,16 @@ def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixtur
     test_filter = _create_mocked_filter(mocker)
     mocker.patch.object(get_settings().general, "keep_aspects", AspectFilterType.upgrade)
     mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
-    test_filter.aspect_upgrade_filters = {filters.aspects_filters.name: filters.aspects_filters.aspect_upgrades}
+    test_filter.rules = _rules(
+        aspect_upgrade_filters={filters.aspects_filters.name: filters.aspects_filters.aspect_upgrades}
+    )
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
 @pytest.mark.parametrize(("_name", "result", "item"), natsorted(seals), ids=[name for name, _, _ in natsorted(seals)])
 def test_seals(_name: str, result: list[str], item: Item, mocker: MockerFixture) -> None:
     test_filter = _create_mocked_filter(mocker)
-    test_filter.seal_filters = {filters.seal_charm.name: filters.seal_charm.seals}
+    test_filter.rules = _rules(seal_filters={filters.seal_charm.name: filters.seal_charm.seals})
     matches = test_filter.should_keep(item).matched
     assert natsorted([match.profile for match in matches]) == natsorted(result)
     for match in matches:
@@ -38,7 +40,7 @@ def test_seals(_name: str, result: list[str], item: Item, mocker: MockerFixture)
 @pytest.mark.parametrize(("_name", "result", "item"), natsorted(charms), ids=[name for name, _, _ in natsorted(charms)])
 def test_charms(_name: str, result: list[str], item: Item, mocker: MockerFixture) -> None:
     test_filter = _create_mocked_filter(mocker)
-    test_filter.charm_filters = {filters.seal_charm.name: filters.seal_charm.charms}
+    test_filter.rules = _rules(charm_filters={filters.seal_charm.name: filters.seal_charm.charms})
     matches = test_filter.should_keep(item).matched
     assert natsorted([match.profile for match in matches]) == natsorted(result)
     for match in matches:

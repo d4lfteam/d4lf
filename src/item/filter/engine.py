@@ -104,7 +104,7 @@ class Filter(FilterEvaluator):
         """Return the loaded Paragon payloads, reloading profiles when needed."""
         if not self.files_loaded or self._did_files_change():
             self.load_files()
-        return cast("dict[str, ParagonPayloadModel]", self.paragon_filters)
+        return cast("dict[str, ParagonPayloadModel]", self.rules.paragon_filters)
 
     @override
     def should_keep(self, item: Item) -> FilterResult:

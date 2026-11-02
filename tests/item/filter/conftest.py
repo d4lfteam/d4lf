@@ -13,8 +13,18 @@ from src.item.filter.rules import LoadedRules
 from src.profiles import ProfileModel
 
 if typing.TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from pytest_mock import MockerFixture
 
+    from src.profiles import (
+        DynamicCharmFilterModel,
+        DynamicItemFilterModel,
+        DynamicSealFilterModel,
+        GlobalUniqueModel,
+        SigilFilterModel,
+        TributeFilterModel,
+    )
     from src.type_aliases import JsonValue
 
 
@@ -57,6 +67,28 @@ def _type(name: str) -> _FixtureConstructor:
 
 def _mapping(value: FixtureValue) -> dict[str, FixtureValue]:
     return cast("dict[str, FixtureValue]", value)
+
+
+def _rules(
+    *,
+    affix_filters: Mapping[str, list[DynamicItemFilterModel]] | None = None,
+    aspect_upgrade_filters: Mapping[str, list[str]] | None = None,
+    global_unique_filters: Mapping[str, list[GlobalUniqueModel]] | None = None,
+    seal_filters: Mapping[str, list[DynamicSealFilterModel]] | None = None,
+    charm_filters: Mapping[str, list[DynamicCharmFilterModel]] | None = None,
+    sigil_filters: Mapping[str, SigilFilterModel] | None = None,
+    tribute_filters: Mapping[str, TributeFilterModel] | None = None,
+) -> LoadedRules:
+    return LoadedRules(
+        affix_filters=affix_filters or {},
+        aspect_upgrade_filters=aspect_upgrade_filters or {},
+        paragon_filters={},
+        global_unique_filters=global_unique_filters or {},
+        seal_filters=seal_filters or {},
+        charm_filters=charm_filters or {},
+        sigil_filters=sigil_filters or {},
+        tribute_filters=tribute_filters or {},
+    )
 
 
 def _create_mocked_filter(mocker: MockerFixture) -> Filter:
