@@ -11,15 +11,15 @@ from src.automation.window import core as _window
 
 
 def test_window_spec_matches_process_and_window_name(monkeypatch) -> None:
-    monkeypatch.setattr(_window._backend, "get_window_name_from_id", lambda _: "Diablo IV")
-    monkeypatch.setattr(_window._backend, "get_process_from_window_name", lambda _: "diablo iv.exe")
+    monkeypatch.setattr(_window._platform_backend, "get_window_name_from_id", lambda _: "Diablo IV")
+    monkeypatch.setattr(_window._platform_backend, "get_process_from_window_name", lambda _: "diablo iv.exe")
     assert _window.WindowSpec("Diablo IV.exe").match(1)
     assert _window._platform_backend is _window.window_backend_noop if sys.platform != "win32" else True
 
 
-def test_non_windows_window_adapter_is_safe_for_the_public_interface() -> None:
+def test_non_windows_window_backend_is_safe_for_the_public_interface() -> None:
     if sys.platform == "win32":
-        pytest.skip("No-op adapter behavior is non-Windows only")
+        pytest.skip("No-op backend behavior is non-Windows only")
     window = automation.WindowSpec("Diablo IV.exe")
 
     assert automation.get_window_spec_id(window) is None
@@ -28,7 +28,7 @@ def test_non_windows_window_adapter_is_safe_for_the_public_interface() -> None:
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows backend selection")
-def test_windows_window_adapter_selects_windows_backend() -> None:
+def test_windows_window_selects_windows_backend() -> None:
     assert _window._platform_backend.__name__.endswith("backend_windows")
 
 
@@ -42,10 +42,9 @@ def test_hotkey_interface_delegates_to_configured_input_backend(monkeypatch, moc
 
 
 def test_public_window_interface_uses_the_selected_backend(monkeypatch, mocker: MockerFixture) -> None:
-    backend = mocker.Mock()
-    backend.get_window_spec_id.return_value = 42
-    monkeypatch.setattr(_window, "_backend", backend)
+    get_id = mocker.Mock(return_value=42)
+    monkeypatch.setattr(_window._platform_backend, "get_window_spec_id", get_id)
     window = automation.WindowSpec("Diablo IV.exe")
 
     assert automation.get_window_spec_id(window) == 42
-    backend.get_window_spec_id.assert_called_once_with(window)
+    get_id.assert_called_once_with(window)
