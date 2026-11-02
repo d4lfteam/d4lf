@@ -32,6 +32,6 @@ def test_profile_session_implementation_is_pyqt_free() -> None:
 
 
 def test_profile_editor_capability_facades_export_their_public_editors() -> None:
-    assert {"SigilsTab", "SigilWidget", "CreateSigil", "RemoveSigil"} <= set(sigil.__all__)
-    assert {"TributesTab", "CreateTribute", "RemoveTribute"} <= set(tribute.__all__)
+    assert {"SigilsTab", "SigilWidget", "CreateSigil"} <= set(sigil.__all__)
+    assert {"TributesTab", "CreateTribute"} <= set(tribute.__all__)
     assert {"CharmsTab", "SealsTab", "CharmGroupEditor", "SealGroupEditor"} <= set(charm_seal.__all__)

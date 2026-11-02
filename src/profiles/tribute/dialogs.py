@@ -1,19 +1,14 @@
 from typing import override
 
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QCompleter,
     QDialog,
     QFormLayout,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
     QMessageBox,
     QPushButton,
-    QScrollArea,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -131,51 +126,3 @@ class AddTributeRarity(QDialog):
     def get_value(self) -> TributeFilterModel:
         rarity = ItemRarity[self.rarity_input.currentText()]
         return TributeFilterModel(name=[], rarities=[rarity])
-
-
-class RemoveTribute(QDialog):
-    def __init__(self, tributes: list[str], parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.tributes = tributes
-        self.setWindowTitle("Delete Tributes")
-        self.groupbox = QGroupBox("Tributes")
-        self.setFixedSize(300, 300)
-
-        self.main_layout = QVBoxLayout()
-        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        scroll_area = QScrollArea(self)
-        scroll_widget = QWidget(scroll_area)
-        scrollable_layout = QVBoxLayout(scroll_widget)
-        self.groupbox_layout = QVBoxLayout()
-
-        label = QLabel("Select Tributes to delete:")
-        label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        self.groupbox_layout.addWidget(label)
-
-        self.checkbox_list: list[QCheckBox] = []
-        for tribute in self.tributes:
-            checkbox = QCheckBox(str(GameCatalog().tribute_dict[tribute])) if tribute else QCheckBox("None")
-            scrollable_layout.addWidget(checkbox)
-            self.checkbox_list.append(checkbox)
-        scroll_widget.setLayout(scrollable_layout)
-        scroll_area.setWidget(scroll_widget)
-        self.groupbox_layout.addWidget(scroll_area)
-        self.groupbox.setLayout(self.groupbox_layout)
-        self.buttonLayout = QHBoxLayout()
-        self.okButton = QPushButton("OK")
-        self.okButton.clicked.connect(self.accept)
-        self.cancelButton = QPushButton("Cancel")
-        self.cancelButton.clicked.connect(self.reject)
-
-        self.buttonLayout.addWidget(self.okButton)
-        self.buttonLayout.addWidget(self.cancelButton)
-
-        self.main_layout.addWidget(self.groupbox)
-        self.main_layout.addLayout(self.buttonLayout)
-
-        self.setLayout(self.main_layout)
-
-    def get_value(self) -> list[str | None]:
-        reverse_dict = {v: k for k, v in GameCatalog().tribute_dict.items()}
-        return [reverse_dict.get(checkbox.text()) for checkbox in self.checkbox_list if checkbox.isChecked()]

@@ -14,10 +14,11 @@ from PyQt6.QtWidgets import (
 
 from src.game_data import SigilRules
 from src.profiles import SigilConditionModel, SigilFilterModel, SigilPriority
+from src.profiles.editor import SelectToDeleteDialog
 from src.profiles.editor.container import Container
 from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
 from src.profiles.editor.pickers import RarityPicker, rarity_summary
-from src.profiles.sigil.dialogs import CreateSigil, RemoveSigil
+from src.profiles.sigil.dialogs import CreateSigil
 from src.profiles.sigil.widgets import SigilWidget
 
 SIGILS_TABNAME = "Sigils"
@@ -146,7 +147,14 @@ class SigilsTab(QWidget):
         sigils = self.blacklist_sigils if blacklist else self.whitelist_sigils
         layout = self.blacklist_layout if blacklist else self.whitelist_layout
         rules = self.sigil_model.blacklist if blacklist else self.sigil_model.whitelist
-        dialog = RemoveSigil(sigils, blacklist=blacklist)
+        kind = "Blacklist" if blacklist else "Whitelist"
+        sigil_rules = SigilRules.default()
+        dialog = SelectToDeleteDialog(
+            f"Delete {kind} Sigil",
+            kind,
+            "Select Sigils to delete:",
+            [(sigil_rules.target(s).display, s) for s in sigils],
+        )
         if dialog.exec() == QDialog.DialogCode.Accepted:
             to_delete = set(dialog.get_value())
             sigils[:] = [sigil for sigil in sigils if sigil not in to_delete]

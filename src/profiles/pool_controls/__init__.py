@@ -5,7 +5,6 @@ Depends only on profile models and ``src.profiles.editor`` so editors can import
 
 from src.profiles.pool_controls.affix_pools import AffixPoolSection
 from src.profiles.pool_controls.affix_widget import AffixWidget
-from src.profiles.pool_controls.dialogs import DeleteAffixPool
 from src.profiles.pool_controls.greater import GreaterAffixControls
 from src.profiles.pool_controls.pool_widget import AffixPoolWidget
 from src.profiles.pool_controls.unique_aspect_widget import UniqueAspectWidget
@@ -15,7 +14,6 @@ __all__ = [
     "AffixPoolSection",
     "AffixPoolWidget",
     "AffixWidget",
-    "DeleteAffixPool",
     "GreaterAffixControls",
     "UniqueAspectSection",
     "UniqueAspectWidget",

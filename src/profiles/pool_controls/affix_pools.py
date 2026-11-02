@@ -4,9 +4,9 @@ from PyQt6.QtCore import QTimer, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QVBoxLayout
 
 from src.profiles import AffixFilterCountModel, AffixFilterModel
+from src.profiles.editor import SelectToDeleteDialog
 from src.profiles.editor.container import Container
 from src.profiles.pool_controls.affix_widget import AffixWidget
-from src.profiles.pool_controls.dialogs import DeleteAffixPool
 from src.profiles.pool_controls.pool_widget import AffixPoolWidget
 
 if TYPE_CHECKING:
@@ -39,14 +39,16 @@ class AffixPoolSection(Container):
     def remove_pools(self) -> None:
         """Ask which pools to delete and remove them from the view and the model."""
         self.expand()
-        dialog = DeleteAffixPool(self._layout.count(), self._inherent)
+        kind = "Inherent Pool" if self._inherent else "Affix Pool"
+        containers = self._pool_containers()
+        dialog = SelectToDeleteDialog(
+            f"Delete {kind}", kind, "Select items to delete:", [(c.header.name, i) for i, c in enumerate(containers)]
+        )
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
-        to_delete = set(dialog.get_value())
-        for index, container in reversed(list(enumerate(self._pool_containers()))):
-            if container.header.name in to_delete:
-                container.setParent(None)
-                self._pools.pop(index)
+        for index in reversed(dialog.get_value()):
+            containers[index].setParent(None)
+            self._pools.pop(index)
         for index, container in enumerate(self._pool_containers()):
             container.header.set_name(f"Count {index}")
         self.pools_removed.emit()

@@ -26,9 +26,9 @@ def test_add_and_remove_pools_keep_config_aligned(qapp, mock_ini_loader, mocker)
     assert len(pools) == 2
     assert pools[1].count[0].name == "maximum_life"
 
-    dialog = mocker.patch("src.profiles.pool_controls.affix_pools.DeleteAffixPool").return_value
+    dialog = mocker.patch("src.profiles.pool_controls.affix_pools.SelectToDeleteDialog").return_value
     dialog.exec.return_value = QDialog.DialogCode.Accepted
-    dialog.get_value.return_value = ["Count 0"]
+    dialog.get_value.return_value = [0]
     removed = mocker.Mock()
     section.pools_removed.connect(removed)
 

@@ -88,7 +88,7 @@ def test_remove_sigil_removes_the_selected_canonical_rule(qapp, monkeypatch) -> 
         def get_value(self) -> list[str]:
             return [name]
 
-    monkeypatch.setattr("src.profiles.sigil.tab.RemoveSigil", _AcceptedRemoveDialog)
+    monkeypatch.setattr("src.profiles.sigil.tab.SelectToDeleteDialog", _AcceptedRemoveDialog)
     tab.remove_sigil(blacklist=True)
 
     assert model.blacklist == []

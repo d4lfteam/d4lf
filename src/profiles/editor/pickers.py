@@ -93,3 +93,43 @@ class RarityPicker(CheckboxListDialog[ItemRarity]):
 
     def get_selected_rarities(self) -> list[ItemRarity]:
         return self.get_selected()
+
+
+class SelectToDeleteDialog[ValueT](QDialog):
+    """Checkbox list with OK/Cancel that returns the values of the checked entries."""
+
+    def __init__(
+        self,
+        title: str,
+        group_title: str,
+        prompt: str,
+        entries: list[tuple[str, ValueT]],
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setFixedSize(300, 300)
+        group_box = QGroupBox(group_title)
+        group_layout = QVBoxLayout(group_box)
+        group_layout.addWidget(QLabel(prompt))
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.checkboxes: list[tuple[QCheckBox, ValueT]] = []
+        for label, value in entries:
+            checkbox = QCheckBox(label)
+            content_layout.addWidget(checkbox)
+            self.checkboxes.append((checkbox, value))
+        scroll_area.setWidget(content_widget)
+        group_layout.addWidget(scroll_area)
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout = QVBoxLayout(self)
+        layout.addWidget(group_box)
+        layout.addWidget(button_box)
+
+    def get_value(self) -> list[ValueT]:
+        return [value for checkbox, value in self.checkboxes if checkbox.isChecked()]
