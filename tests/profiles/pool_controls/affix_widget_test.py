@@ -1,10 +1,7 @@
 import operator
-import os
 
 import pytest
 from PyQt6.QtWidgets import QApplication, QWidget
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from src.profiles import AffixFilterModel, CharmFilterModel, SealFilterModel
 from src.profiles.pool_controls import AffixWidget

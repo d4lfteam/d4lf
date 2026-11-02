@@ -1,10 +1,6 @@
-import os
 from typing import ClassVar, override
 
 import pytest
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 from PyQt6.QtWidgets import QApplication, QDialog, QPushButton
 
 from src.game_data import ItemRarity

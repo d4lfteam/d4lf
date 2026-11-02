@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QDialog, QPushButton, QTabWidget, QToolBar, QVBoxLayout, QWidget
 
-from src.profiles.editor.dialogs.delete import DeleteItem
+from src.profiles.editor.pickers import SelectToDeleteDialog
 
 
 class TabGroupWidget[ModelT](QWidget):
@@ -105,11 +105,10 @@ class TabGroupWidget[ModelT](QWidget):
         self.after_models_changed()
 
     def remove_item(self) -> None:
-        dialog = DeleteItem([self.tab_widget.tabText(i) for i in range(self.tab_widget.count())], self)
+        entries = [(self.tab_widget.tabText(i), i) for i in range(self.tab_widget.count())]
+        dialog = SelectToDeleteDialog("Delete Items", "Items", "Select items to delete:", entries, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            names_to_delete = set(dialog.get_value())
-            indices = [i for i in range(self.tab_widget.count()) if self.tab_widget.tabText(i) in names_to_delete]
-            for index in reversed(indices):
+            for index in reversed(dialog.get_value()):
                 self.tab_widget.removeTab(index)
                 self.models.pop(index)
             self.after_models_changed()

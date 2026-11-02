@@ -3,7 +3,8 @@ from PyQt6.QtWidgets import QDialog, QLabel, QMessageBox, QPushButton, QTabWidge
 from src.profiles import DynamicItemFilterModel, ItemFilterModel
 from src.profiles.affix.dialogs import CreateItem
 from src.profiles.affix.group import AffixGroupEditor
-from src.profiles.editor.dialogs import DeleteItem, MinGreaterDialog, MinPercentDialog, MinPowerDialog
+from src.profiles.editor import SelectToDeleteDialog
+from src.profiles.editor.dialogs import MinGreaterDialog, MinPercentDialog, MinPowerDialog
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
@@ -134,7 +135,9 @@ class AffixesTab(QWidget):
     def remove_item_type(self) -> None:
         if self._editing_disabled:
             return
-        dialog = DeleteItem(self.item_names, self)
+        dialog = SelectToDeleteDialog(
+            "Delete Items", "Items", "Select items to delete:", [(n, n) for n in self.item_names], self
+        )
         if dialog.exec() == QDialog.DialogCode.Accepted:
             item_names_to_delete = dialog.get_value()
             for item_name in item_names_to_delete:

@@ -1,11 +1,6 @@
 import logging
-import os
 from collections import UserList
 from typing import override
-
-from src.type_aliases import JsonValue
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 from PyQt6.QtGui import QCloseEvent
@@ -14,6 +9,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow
 from src.app.lifecycle import UnifiedWindowLifecycle
 from src.app.shell import UnifiedMainWindow
 from src.desktop.activity import QtLogHandler
+from src.type_aliases import JsonValue
 
 
 @pytest.fixture(scope="module")

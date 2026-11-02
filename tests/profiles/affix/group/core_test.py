@@ -1,9 +1,5 @@
-import os
-
 import pytest
 from PyQt6.QtWidgets import QApplication
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from src.profiles import AffixFilterCountModel, AffixFilterModel, DynamicItemFilterModel, ItemFilterModel
 from src.profiles.affix.group import AffixGroupEditor

@@ -1,7 +1,4 @@
-import os
 from typing import TYPE_CHECKING
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from src.settings import GeneralModel
 from src.settings.widgets import QChestTabWidget

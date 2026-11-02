@@ -1,9 +1,5 @@
-import os
-
 import pytest
 from PyQt6.QtWidgets import QApplication
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from src.profiles import AffixFilterCountModel, AffixFilterModel, CharmFilterModel
 from src.profiles.pool_controls import GreaterAffixControls

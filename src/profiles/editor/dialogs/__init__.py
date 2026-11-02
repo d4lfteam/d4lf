@@ -7,10 +7,8 @@ from .basic import (
     MinPercentDialog,
     MinPowerDialog,
 )
-from .delete import DeleteItem
 
 __all__ = [
-    "DeleteItem",
     "IgnoreScrollWheelComboBox",
     "IgnoreScrollWheelSpinBox",
     "MinGreaterDialog",

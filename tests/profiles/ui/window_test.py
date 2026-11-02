@@ -1,7 +1,4 @@
-import os
 from typing import TYPE_CHECKING, ClassVar
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 from PyQt6.QtGui import QCloseEvent

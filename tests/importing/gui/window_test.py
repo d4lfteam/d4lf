@@ -1,17 +1,11 @@
 import importlib
-import os
-from typing import cast
+from typing import TYPE_CHECKING, Never, cast
 
 import pytest
+from PyQt6.QtWidgets import QApplication
 
 from src.importing.contracts import ImportSession
 from src.importing.web import validated_url
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
-from typing import TYPE_CHECKING, Never
-
-from PyQt6.QtWidgets import QApplication
 
 if TYPE_CHECKING:
     from src.type_aliases import JsonValue

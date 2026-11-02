@@ -1,7 +1,4 @@
-import os
 from typing import TYPE_CHECKING, cast
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 from PyQt6.QtWidgets import QApplication, QLabel, QLineEdit, QMenu, QPushButton, QVBoxLayout, QWidget

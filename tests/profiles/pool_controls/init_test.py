@@ -6,7 +6,6 @@ def test_pool_controls_public_interface() -> None:
         "AffixPoolSection",
         "AffixPoolWidget",
         "AffixWidget",
-        "DeleteAffixPool",
         "GreaterAffixControls",
         "UniqueAspectSection",
         "UniqueAspectWidget",

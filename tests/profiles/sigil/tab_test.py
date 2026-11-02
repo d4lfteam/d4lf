@@ -1,10 +1,6 @@
-import os
 from typing import override
 
 import pytest
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 from PyQt6.QtCore import QSize
 from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QApplication, QDialog
@@ -88,7 +84,7 @@ def test_remove_sigil_removes_the_selected_canonical_rule(qapp, monkeypatch) -> 
         def get_value(self) -> list[str]:
             return [name]
 
-    monkeypatch.setattr("src.profiles.sigil.tab.RemoveSigil", _AcceptedRemoveDialog)
+    monkeypatch.setattr("src.profiles.sigil.tab.SelectToDeleteDialog", _AcceptedRemoveDialog)
     tab.remove_sigil(blacklist=True)
 
     assert model.blacklist == []
