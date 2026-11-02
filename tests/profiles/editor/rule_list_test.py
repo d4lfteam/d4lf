@@ -1,10 +1,6 @@
-import os
 from typing import override
 
 import pytest
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox, QPushButton
 
 from src.profiles.editor import RuleListTab

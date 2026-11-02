@@ -1,7 +1,4 @@
-import os
 from typing import TYPE_CHECKING
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from pydantic import BaseModel
 from PyQt6.QtWidgets import QCheckBox, QLineEdit, QSpinBox

@@ -1,9 +1,5 @@
-import os
-
 import pytest
 from PyQt6.QtWidgets import QApplication
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from src.game_data import GameCatalog
 from src.profiles import AspectUniqueFilterModel

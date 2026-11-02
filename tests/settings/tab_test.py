@@ -1,9 +1,4 @@
-import os
-
 import pytest
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 from PyQt6.QtWidgets import QLineEdit, QMessageBox
 
 from src.settings import SettingsCategory
