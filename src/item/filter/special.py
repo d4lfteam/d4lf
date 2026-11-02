@@ -36,11 +36,11 @@ class FilterSpecialMixin:
     def _check_sigil(self: FilterContext, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
         sigil_item = SigilRules.default().for_item(item)
-        if not self.sigil_filters.items():
+        if not self.rules.sigil_filters.items():
             LOGGER.info(f"{item.original_name} -- Matched Sigils")
             res.keep = True
             res.matched.append(MatchedFilter("Sigils not filtered"))
-        for profile_name, profile_filter in self.sigil_filters.items():
+        for profile_name, profile_filter in self.rules.sigil_filters.items():
             blacklist_empty = not profile_filter.blacklist
             is_in_blacklist = any(sigil_item.matches(rule) for rule in profile_filter.blacklist)
             blacklist_ok = True if blacklist_empty else not is_in_blacklist
@@ -135,11 +135,11 @@ class FilterSpecialMixin:
 
     def _check_tribute(self: FilterContext, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
-        if not self.tribute_filters.items():
+        if not self.rules.tribute_filters.items():
             LOGGER.info(f"{item.original_name} -- Matched Tributes")
             res.keep = True
             res.matched.append(MatchedFilter("Tributes not filtered"))
-        for profile_name, filter_item in self.tribute_filters.items():
+        for profile_name, filter_item in self.rules.tribute_filters.items():
             name_match = (
                 item.name is not None
                 and bool(filter_item.name)

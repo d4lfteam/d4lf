@@ -16,10 +16,10 @@ LOGGER = logging.getLogger(__name__)
 class FilterEquipmentMixin:
     def _check_affixes(self: FilterContext, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
-        if not self.affix_filters:
+        if not self.rules.affix_filters:
             return FilterResult(keep=False, matched=[])
         non_tempered_affixes = [affix for affix in item.affixes if affix.type != AffixType.tempered]
-        for profile_name, profile_filter in self.affix_filters.items():
+        for profile_name, profile_filter in self.rules.affix_filters.items():
             for filter_item in profile_filter:
                 filter_name = next(iter(filter_item.root.keys()))
                 filter_spec = filter_item.root[filter_name]
@@ -72,8 +72,8 @@ class FilterEquipmentMixin:
 
     def _check_aspect_upgrades(self: FilterContext, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
-        if item.codex_upgrade and self.aspect_upgrade_filters:
-            for profile_name, profile_filter in self.aspect_upgrade_filters.items():
+        if item.codex_upgrade and self.rules.aspect_upgrade_filters:
+            for profile_name, profile_filter in self.rules.aspect_upgrade_filters.items():
                 if item.aspect and any(name == item.aspect.name for name in profile_filter):
                     LOGGER.info(f"{item.original_name} -- Matched build-specific aspects that updates codex")
                     res.keep = True
@@ -91,10 +91,10 @@ class FilterEquipmentMixin:
 
     def _check_global_unique_filter(self: FilterContext, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
-        if not self.global_unique_filters:
+        if not self.rules.global_unique_filters:
             keep = self.evaluation_settings.handle_uniques != UnfilteredUniquesType.junk
             return FilterResult(keep, [])
-        for profile_name, profile_filter in self.global_unique_filters.items():
+        for profile_name, profile_filter in self.rules.global_unique_filters.items():
             for filter_item in profile_filter:
                 if item.aspect is None:
                     continue
