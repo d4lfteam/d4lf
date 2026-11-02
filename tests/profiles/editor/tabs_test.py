@@ -4,7 +4,7 @@ from typing import override
 import pytest
 from PyQt6.QtWidgets import QApplication, QDialog, QLabel, QWidget
 
-from src.profiles.editor import tabs
+from src.profiles.editor import SelectToDeleteDialog, tabs
 from src.profiles.editor.tabs import TabGroupWidget
 
 
@@ -24,14 +24,13 @@ class NamedTabs(TabGroupWidget[str]):
         return model.split("#", maxsplit=1)[0]
 
 
-def fake_dialog_selecting(selected: list[int]) -> type:
-    class FakeSelectToDeleteDialog:
-        def __init__(self, *args: object) -> None:
-            pass
-
-        def exec(self) -> QDialog.DialogCode:
+def fake_dialog_selecting(selected: list[int]) -> type[SelectToDeleteDialog[int]]:
+    class FakeSelectToDeleteDialog(SelectToDeleteDialog[int]):
+        @override
+        def exec(self) -> int:
             return QDialog.DialogCode.Accepted
 
+        @override
         def get_value(self) -> list[int]:
             return selected
 
