@@ -5,7 +5,7 @@ from src.importing.filters import (
     create_item_affix_pool,
     deduplicate_filters,
     is_unique_like_rarity,
-    match_set_aware_seal_affix,
+    match_affix_name,
     unique_filter_name,
 )
 from src.item import Affix, AffixType
@@ -116,10 +116,6 @@ def test_affix_dict_for_item_type_uses_context_specific_dict() -> None:
     assert affix_dict_for_item_type(None) is GameCatalog().affix_dict
 
 
-def test_match_set_aware_seal_affix_returns_none_for_unknown_set() -> None:
-    assert match_set_aware_seal_affix("maximum resolve", GameCatalog().seal_affix_dict, "unknown_set") is None
-
-
 def test_is_unique_like_rarity_handles_enum_and_string_values() -> None:
     assert is_unique_like_rarity(ItemRarity.Unique) is True
     assert is_unique_like_rarity(ItemRarity.Mythic) is True
@@ -214,3 +210,21 @@ def test_to_yaml_str_preserves_paragon_aliases(mock_ini_loader) -> None:
     assert "Paragon:" in yaml_str
     assert "ParagonBoardsList:" in yaml_str
     assert "Name: Build Name" in yaml_str
+
+
+def test_match_affix_name_uses_set_specific_seal_affix_for_guessed_set() -> None:
+    assert match_affix_name("maximum resolve", ItemType.HoradricSeal, "arms_of_arreat") == (
+        "arms_of_arreat_maximum_resolve"
+    )
+
+
+def test_match_affix_name_keeps_generic_seal_match_with_guessed_set() -> None:
+    assert match_affix_name("cooldown reduction", ItemType.HoradricSeal, "arms_of_arreat") == "cooldown_reduction"
+
+
+def test_match_affix_name_falls_back_to_closest_match_when_set_unknown() -> None:
+    assert match_affix_name("maximum resolve", ItemType.HoradricSeal, "unknown_set") == "maximum_resource"
+
+
+def test_match_affix_name_ignores_guessed_set_for_non_seal_items() -> None:
+    assert match_affix_name("cooldown reduction", ItemType.Ring, "arms_of_arreat") == "cooldown_reduction"

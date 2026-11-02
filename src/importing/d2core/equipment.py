@@ -1,11 +1,11 @@
 """Catalog-backed equipment normalization for one d2core Variant."""
 
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, cast
 
 from src.game_data import WEAPON_TYPES, GameCatalog, ItemType
-from src.importing.d2core.catalog import canonical_affix_name, canonical_catalog_name
+from src.importing.d2core.catalog import build_mod_affix, canonical_catalog_name
 from src.importing.d2core.errors import EQUIPMENT_JOIN, OPTIONAL_ENTRY_JOIN
 from src.importing.filters import (
     create_item_affix_pool,
@@ -15,15 +15,13 @@ from src.importing.filters import (
     weapon_slot_name_hint,
 )
 from src.importing.pipeline import Variant
-from src.item import Affix, AffixType
 from src.profiles import AspectUniqueFilterModel, ItemFilterModel
 
 if TYPE_CHECKING:
-    from src.importing.d2core.catalog import CatalogStore
+    from src.importing.d2core.catalog import CatalogStore, Warn
+    from src.item import Affix
     from src.type_aliases import JsonValue
 
-
-Warn = Callable[[str, str, str, str], None]
 
 SLOT_TYPES = {
     "0": ItemType.Helm,
@@ -152,20 +150,13 @@ def _normalize_item(
         for mod in mods:
             if not isinstance(mod, Mapping):
                 continue
-            key = str(mod.get("name", ""))
-            record = _catalog_record(affixes, mod.get("name"))
-            name = canonical_affix_name(record, GameCatalog().affix_dict)
-            if name is None:
-                warn(EQUIPMENT_JOIN, variant_name, "equipment", key or "unknown")
-                continue
-            normalized_affixes.append(
-                Affix(
-                    name=name,
-                    type=AffixType.greater
-                    if import_greater_affixes and mod.get("greater") is True
-                    else AffixType.normal,
-                )
+            affix = build_mod_affix(
+                mod, _catalog_record(affixes, mod.get("name")), GameCatalog().affix_dict, import_greater_affixes
             )
+            if affix is None:
+                warn(EQUIPMENT_JOIN, variant_name, "equipment", str(mod.get("name", "")) or "unknown")
+                continue
+            normalized_affixes.append(affix)
     item_types = item_type if isinstance(item_type, list) else [item_type]
     item_filter = ItemFilterModel(item_type=item_types, min_power=100)
     if unique_name is not None:

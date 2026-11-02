@@ -215,6 +215,14 @@ def test_convert_raw_to_affixes_keeps_generic_seal_match_with_guessed_set() -> N
     assert [affix.name for affix in affixes] == ["cooldown_reduction"]
 
 
+def test_convert_raw_to_affixes_falls_back_to_closest_match_when_set_unknown() -> None:
+    affixes = _convert_raw_to_affixes(
+        raw_stats=[{"id": "maximum-resolve"}], item_type=ItemType.HoradricSeal, guessed_set_name="unknown_set"
+    )
+
+    assert [affix.name for affix in affixes] == ["maximum_resource"]
+
+
 @pytest.mark.parametrize(
     ("title", "icon_url", "expected_set_name"),
     [

@@ -22,15 +22,10 @@ from src.importing.d4builds.constants import (
     UNIQUE_TOOLTIP_SLOT_XPATH,
 )
 from src.importing.d4builds.metadata import _xpath_elements
-from src.importing.filters import (
-    affix_dict_for_item_type,
-    create_seal_charm_filter,
-    fix_weapon_type,
-    match_set_aware_seal_affix,
-)
+from src.importing.filters import create_seal_charm_filter, fix_weapon_type, match_affix_name
 from src.importing.web import hover_and_get_tooltip_html
 from src.item import Affix
-from src.perception import clean_str, closest_match, correct_name
+from src.perception import clean_str, correct_name
 from src.profiles import CharmFilterModel, SealFilterModel
 
 if TYPE_CHECKING:
@@ -102,24 +97,13 @@ def _affixes_from_tooltip_values(
 ) -> list[Affix]:
     affixes = []
     for text in texts:
-        affix_name = _match_d4builds_tooltip_affix(text=text, item_type=item_type, guessed_set_name=guessed_set_name)
+        stat_clean = clean_str(_corrections(input_str=text))
+        affix_name = match_affix_name(stat_clean, item_type, guessed_set_name)
         if affix_name is None:
             LOGGER.error(f"Couldn't match D4Builds seal/charm tooltip affix {text=}")
             continue
         affixes.append(Affix(name=affix_name))
     return affixes
-
-
-def _match_d4builds_tooltip_affix(text: str, item_type: ItemType, guessed_set_name: str | None = None) -> str | None:
-    stat_clean = clean_str(_corrections(input_str=text))
-    affix_dict = affix_dict_for_item_type(item_type=item_type)
-    if item_type == ItemType.HoradricSeal and guessed_set_name is not None:
-        matched_name = match_set_aware_seal_affix(
-            stat_clean=stat_clean, affix_dict=affix_dict, guessed_set_name=guessed_set_name
-        )
-        if matched_name is not None:
-            return matched_name
-    return closest_match(stat_clean, affix_dict)
 
 
 def _tooltip_texts(tooltip_html: str, value_xpath: str) -> list[str]:
