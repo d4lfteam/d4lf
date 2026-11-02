@@ -1,16 +1,6 @@
 from typing import override
 
-from PyQt6.QtWidgets import (
-    QDialog,
-    QFormLayout,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import QDialog, QFormLayout, QLabel, QLineEdit, QMessageBox, QVBoxLayout, QWidget
 
 from src.game_data import GameCatalog
 from src.profiles import (
@@ -21,6 +11,7 @@ from src.profiles import (
     DynamicSealFilterModel,
     SealFilterModel,
 )
+from src.profiles.editor.dialogs import ok_cancel_buttons
 from src.profiles.editor.pickers import CheckboxListDialog
 
 
@@ -39,19 +30,9 @@ class CreateCharmOrSeal(QDialog):
         self.name_label = QLabel(f"{label} Name:")
         self.name_input = QLineEdit()
         self.form_layout.addRow(self.name_label, self.name_input)
-        self.button_layout = QHBoxLayout()
-        self.ok_button = QPushButton("OK")
-        self.ok_button.clicked.connect(self.accept)
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.clicked.connect(self.reject)
-        self.button_layout.addWidget(self.ok_button)
-        self.button_layout.addWidget(self.cancel_button)
         self.main_layout.addLayout(self.form_layout)
-        self.main_layout.addLayout(self.button_layout)
+        self.main_layout.addWidget(ok_cancel_buttons(self))
         self.setLayout(self.main_layout)
-        self.buttonLayout = self.button_layout
-        self.okButton = self.ok_button
-        self.cancelButton = self.cancel_button
 
     @override
     def accept(self) -> None:

@@ -1,21 +1,10 @@
 from typing import TYPE_CHECKING, override
 
 from PyQt6.QtCore import QSettings, QSize
-from PyQt6.QtWidgets import (
-    QComboBox,
-    QCompleter,
-    QDialog,
-    QFormLayout,
-    QHBoxLayout,
-    QLabel,
-    QMessageBox,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import QComboBox, QCompleter, QDialog, QFormLayout, QLabel, QMessageBox, QVBoxLayout, QWidget
 
 from src.game_data import SIGIL_RULE_TARGET_TYPES, SigilRules, SigilRuleTargetType
-from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
+from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox, ok_cancel_buttons
 
 if TYPE_CHECKING:
     from PyQt6.QtGui import QCloseEvent
@@ -70,17 +59,9 @@ class CreateSigil(QDialog):
         self.form_layout.addRow(self.kind_label, self.kind_input)
         self.form_layout.addRow(self.name_label, self.name_input)
         self.form_layout.addRow(self.type_label, self.type_input)
-        self.buttonLayout = QHBoxLayout()
-        self.okButton = QPushButton("OK")
-        self.okButton.clicked.connect(self.accept)
-        self.cancelButton = QPushButton("Cancel")
-        self.cancelButton.clicked.connect(self.reject)
-
-        self.buttonLayout.addWidget(self.okButton)
-        self.buttonLayout.addWidget(self.cancelButton)
 
         self.main_layout.addLayout(self.form_layout)
-        self.main_layout.addLayout(self.buttonLayout)
+        self.main_layout.addWidget(ok_cancel_buttons(self))
 
         self.setLayout(self.main_layout)
 

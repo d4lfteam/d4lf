@@ -6,6 +6,7 @@ from .basic import (
     MinGreaterDialog,
     MinPercentDialog,
     MinPowerDialog,
+    ok_cancel_buttons,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "MinGreaterDialog",
     "MinPercentDialog",
     "MinPowerDialog",
+    "ok_cancel_buttons",
 ]

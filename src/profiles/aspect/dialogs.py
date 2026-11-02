@@ -1,18 +1,8 @@
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QComboBox,
-    QCompleter,
-    QDialog,
-    QFormLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import QComboBox, QCompleter, QDialog, QFormLayout, QLabel, QVBoxLayout, QWidget
 
 from src.game_data import GameCatalog
-from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
+from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox, ok_cancel_buttons
 
 
 class AddAspectUpgrade(QDialog):
@@ -33,15 +23,8 @@ class AddAspectUpgrade(QDialog):
             completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.name_input.addItems([name for name in GameCatalog().aspect_list if name not in aspect_upgrades])
         self.form_layout.addRow(self.name_label, self.name_input)
-        button_layout = QHBoxLayout()
-        self.ok_button = QPushButton("OK")
-        self.ok_button.clicked.connect(self.accept)
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.clicked.connect(self.reject)
-        button_layout.addWidget(self.ok_button)
-        button_layout.addWidget(self.cancel_button)
         self.main_layout.addLayout(self.form_layout)
-        self.main_layout.addLayout(button_layout)
+        self.main_layout.addWidget(ok_cancel_buttons(self))
         self.setLayout(self.main_layout)
 
     def get_value(self) -> str:

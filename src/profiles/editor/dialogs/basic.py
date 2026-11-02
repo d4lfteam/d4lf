@@ -1,17 +1,7 @@
 from typing import TYPE_CHECKING, override
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QComboBox,
-    QDialog,
-    QFormLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QSpinBox,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel, QSpinBox, QVBoxLayout, QWidget
 
 from src.game_data import MAX_POWER
 
@@ -45,6 +35,14 @@ class IgnoreScrollWheelComboBox(QComboBox):
             e.ignore()
 
 
+def ok_cancel_buttons(dialog: QDialog) -> QDialogButtonBox:
+    """Return an OK/Cancel button box wired to the dialog's accept/reject."""
+    button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+    button_box.accepted.connect(dialog.accept)
+    button_box.rejected.connect(dialog.reject)
+    return button_box
+
+
 class _SpinDialog(QDialog):
     title = ""
     label = ""
@@ -61,16 +59,9 @@ class _SpinDialog(QDialog):
         self.spinBox.setRange(self.minimum, self.maximum)
         self.spinBox.setValue(self.default)
         form.addRow(QLabel(self.label), self.spinBox)
-        buttons = QHBoxLayout()
-        self.okButton = QPushButton("OK")
-        self.okButton.clicked.connect(self.accept)
-        self.cancelButton = QPushButton("Cancel")
-        self.cancelButton.clicked.connect(self.reject)
-        buttons.addWidget(self.okButton)
-        buttons.addWidget(self.cancelButton)
         layout = QVBoxLayout(self)
         layout.addLayout(form)
-        layout.addLayout(buttons)
+        layout.addWidget(ok_cancel_buttons(self))
 
     def get_value(self) -> int:
         return self.spinBox.value()
