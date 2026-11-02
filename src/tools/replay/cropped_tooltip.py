@@ -9,8 +9,7 @@ from src.game_data import ItemType
 from src.item import Affix, Item
 from src.logger import setup
 from src.perception import locate_affix_markers_with_diagnostics
-from src.settings import get_ui_coordinates
-from src.tools.replay.common import ReplayConfigurationError, load_replay_image, show_replay_result
+from src.tools.replay.common import ReplayConfigurationError, game_resolution, load_replay_image, show_replay_result
 from src.tools.replay.common import parse_resolution as _parse_resolution
 from src.tools.replay.common import raise_configuration_error as _raise_configuration_error
 from src.tools.replay.common import write_image as _write_image
@@ -108,15 +107,10 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
         config.item,
     )
 
-    resolution_manager = get_ui_coordinates()
-    previous_resolution = "x".join(str(value) for value in resolution_manager.resolution)
-    try:
-        resolution_manager.set_resolution(config.game_resolution)
+    with game_resolution(config.game_resolution):
         diagnostic_result = locate_affix_markers_with_diagnostics(
             tooltip_image=image, item=config.item, matched_affixes=matched_affixes, aspect_matched=config.aspect_matched
         )
-    finally:
-        resolution_manager.set_resolution(previous_resolution)
 
     _log_diagnostics(diagnostic_result)
     LOGGER.info(

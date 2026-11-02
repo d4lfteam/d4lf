@@ -7,8 +7,13 @@ import cv2
 
 from src.logger import setup
 from src.perception import DescrDetection, find_descr_with_diagnostics
-from src.settings import get_ui_coordinates
-from src.tools.replay.common import ReplayConfigurationError, load_replay_image, show_replay_result
+from src.tools.replay.common import (
+    ReplayConfigurationError,
+    draw_legend,
+    game_resolution,
+    load_replay_image,
+    show_replay_result,
+)
 from src.tools.replay.common import font_scale as _font_scale
 from src.tools.replay.common import parse_resolution as _parse_resolution
 from src.tools.replay.common import raise_configuration_error as _raise_configuration_error
@@ -28,7 +33,6 @@ BOTTOM_MATCH_COLOR = (255, 0, 255)
 CROP_COLOR = (0, 255, 0)
 ANCHOR_COLOR = (0, 255, 255)
 TEXT_COLOR = (255, 255, 255)
-BACKGROUND_COLOR = (30, 30, 30)
 FAILURE_COLOR = (0, 0, 255)
 ITEM_ANCHOR_VALUE_COUNT = 2
 
@@ -118,27 +122,7 @@ def _draw_legend(image: np.ndarray) -> None:
         (CROP_COLOR, "Cropped tooltip saved"),
         (ANCHOR_COLOR, "Configured item anchor"),
     ]
-    font_scale = _font_scale(image)
-    line_height = max(20, int(25 * font_scale))
-    panel_height = line_height * (len(entries) + 1) + 10
-    panel_width = min(image.shape[1], max(390, int(image.shape[1] * 0.55)))
-    panel_top = max(0, image.shape[0] - panel_height)
-    overlay = image.copy()
-    cv2.rectangle(overlay, (0, panel_top), (panel_width, image.shape[0]), BACKGROUND_COLOR, -1)
-    cv2.addWeighted(overlay, 0.78, image, 0.22, 0, image)
-    cv2.putText(
-        image,
-        "Full screenshot replay",
-        (8, panel_top + line_height),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        font_scale,
-        TEXT_COLOR,
-        1,
-    )
-    for row, (color, label) in enumerate(entries, start=1):
-        y = panel_top + line_height * (row + 1) - 5
-        cv2.rectangle(image, (8, y - line_height + 5), (24, y + 2), color, -1)
-        cv2.putText(image, label, (32, y), cv2.FONT_HERSHEY_SIMPLEX, font_scale, TEXT_COLOR, 1)
+    draw_legend(image, "Full screenshot replay", entries, min_width=390, width_ratio=0.55)
 
 
 def _annotate(image: np.ndarray, detection: DescrDetection, anchor: tuple[int, int]) -> np.ndarray:
@@ -212,13 +196,8 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
         "Full replay inputs: image=%s resolution=%sx%s item_anchor=%s", image_path, width, height, config.item_anchor
     )
 
-    resolution_manager = get_ui_coordinates()
-    previous_resolution = "x".join(str(value) for value in resolution_manager.resolution)
-    try:
-        resolution_manager.set_resolution(config.game_resolution)
+    with game_resolution(config.game_resolution):
         detection = find_descr_with_diagnostics(image, tuple(config.item_anchor))
-    finally:
-        resolution_manager.set_resolution(previous_resolution)
     _log_detection(detection)
 
     if not detection.found:
