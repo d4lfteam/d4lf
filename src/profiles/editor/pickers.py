@@ -5,6 +5,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QCheckBox, QDialog, QDialogButtonBox, QGroupBox, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from src.game_data import ItemRarity
+from src.profiles.editor.dialogs import ok_cancel_buttons
 
 OptionT = TypeVar("OptionT", bound=Hashable)
 
@@ -63,12 +64,10 @@ class CheckboxListDialog[OptionT](QDialog):
         note_label.setWordWrap(True)
         layout.addWidget(note_label)
 
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        button_box = ok_cancel_buttons(self)
         clear_button = button_box.addButton("Clear", QDialogButtonBox.ButtonRole.ResetRole)
         if clear_button is not None:
             clear_button.clicked.connect(self.clear_selection)
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
     def clear_selection(self) -> None:
@@ -124,9 +123,7 @@ class SelectToDeleteDialog[ValueT](QDialog):
             self.checkboxes.append((checkbox, value))
         scroll_area.setWidget(content_widget)
         group_layout.addWidget(scroll_area)
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
+        button_box = ok_cancel_buttons(self)
         layout = QVBoxLayout(self)
         layout.addWidget(group_box)
         layout.addWidget(button_box)

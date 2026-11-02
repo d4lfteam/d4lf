@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.game_data import GameCatalog, ItemType, is_weapon
+from src.profiles.editor.dialogs import ok_cancel_buttons
 
 AFFIXES_TABNAME = "Affixes"
 AFFIX_VALUE_MODE = "Value"
@@ -45,12 +46,10 @@ class ItemTypePicker(QDialog):
         note_label.setWordWrap(True)
         layout.addWidget(note_label)
 
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        button_box = ok_cancel_buttons(self)
         clear_button = button_box.addButton("Clear", QDialogButtonBox.ButtonRole.ResetRole)
         if clear_button is not None:
             clear_button.clicked.connect(self.clear_selection)
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
     def _create_item_type_group(

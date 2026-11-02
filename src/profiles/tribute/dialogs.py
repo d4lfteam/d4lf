@@ -1,21 +1,10 @@
 from typing import override
 
-from PyQt6.QtWidgets import (
-    QComboBox,
-    QCompleter,
-    QDialog,
-    QFormLayout,
-    QHBoxLayout,
-    QLabel,
-    QMessageBox,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import QComboBox, QCompleter, QDialog, QFormLayout, QLabel, QMessageBox, QVBoxLayout, QWidget
 
 from src.game_data import GameCatalog, ItemRarity
 from src.profiles import TributeFilterModel
-from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
+from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox, ok_cancel_buttons
 
 
 class CreateTribute(QDialog):
@@ -39,17 +28,9 @@ class CreateTribute(QDialog):
             name_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.name_input.addItems(sorted(GameCatalog().tribute_dict.values()))
         self.form_layout.addRow(self.name_label, self.name_input)
-        self.buttonLayout = QHBoxLayout()
-        self.okButton = QPushButton("OK")
-        self.okButton.clicked.connect(self.accept)
-        self.cancelButton = QPushButton("Cancel")
-        self.cancelButton.clicked.connect(self.reject)
-
-        self.buttonLayout.addWidget(self.okButton)
-        self.buttonLayout.addWidget(self.cancelButton)
 
         self.main_layout.addLayout(self.form_layout)
-        self.main_layout.addLayout(self.buttonLayout)
+        self.main_layout.addWidget(ok_cancel_buttons(self))
 
         self.setLayout(self.main_layout)
 
@@ -95,17 +76,9 @@ class AddTributeRarity(QDialog):
             rarity_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.rarity_input.addItems([rarity.name for rarity in ItemRarity])
         self.form_layout.addRow(self.rarity_label, self.rarity_input)
-        self.buttonLayout = QHBoxLayout()
-        self.okButton = QPushButton("OK")
-        self.okButton.clicked.connect(self.accept)
-        self.cancelButton = QPushButton("Cancel")
-        self.cancelButton.clicked.connect(self.reject)
-
-        self.buttonLayout.addWidget(self.okButton)
-        self.buttonLayout.addWidget(self.cancelButton)
 
         self.main_layout.addLayout(self.form_layout)
-        self.main_layout.addLayout(self.buttonLayout)
+        self.main_layout.addWidget(ok_cancel_buttons(self))
 
         self.setLayout(self.main_layout)
 
