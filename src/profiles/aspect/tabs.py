@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Protocol, override, runtime_checkable
+from typing import TYPE_CHECKING, override
 
 from src.profiles.aspect.dialogs import AddAspectUpgrade
 from src.profiles.editor.rule_list import DialogFactory, RuleListTab
@@ -7,11 +7,6 @@ if TYPE_CHECKING:
     from PyQt6.QtWidgets import QDialog, QWidget
 
 ASPECT_UPGRADES_TABNAME = "Aspect Upgrades"
-
-
-@runtime_checkable
-class _AspectUpgradeDialog(Protocol):
-    def get_value(self) -> str: ...
 
 
 class AspectUpgradesTab(RuleListTab[str]):
@@ -33,7 +28,7 @@ class AspectUpgradesTab(RuleListTab[str]):
 
     @override
     def on_add_accepted(self, dialog: QDialog) -> str:
-        if not isinstance(dialog, _AspectUpgradeDialog):
+        if not isinstance(dialog, AddAspectUpgrade):
             msg = "Aspect upgrades require an AddAspectUpgrade dialog."
             raise TypeError(msg)
         aspect_upgrade = dialog.get_value()

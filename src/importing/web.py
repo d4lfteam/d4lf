@@ -2,10 +2,12 @@ import annotationlib
 import functools
 import inspect
 import logging
+import time
 from http import HTTPStatus
 from typing import TYPE_CHECKING, overload
 
 import httpx
+import lxml.html
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
@@ -19,8 +21,9 @@ from src.importing.contracts import ImportRequest
 from src.settings import BrowserType, get_settings
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
+    from lxml import etree
     from selenium.webdriver.remote.webelement import WebElement
 
 LOGGER = logging.getLogger(__name__)
@@ -51,6 +54,27 @@ def validated_url(request: ImportRequest, *base_urls: str, hint: str) -> str | N
         return request.url
     URL_LOGGER.error("Invalid url, please use %s", hint)
     return None
+
+
+def load_page(
+    driver: WebDriver,
+    url: str,
+    *,
+    wait_xpaths: Sequence[str],
+    timeout: float = 10,
+    ready: Callable[[WebDriver], bool] | None = None,
+    settle_seconds: float = 0,
+) -> etree._Element:
+    """Open ``url``, wait for every XPath (and ``ready``, if given), and parse the page with lxml."""
+    driver.get(url)
+    wait = WebDriverWait(driver, timeout)
+    for xpath in wait_xpaths:
+        wait.until(ec.presence_of_element_located((By.XPATH, xpath)))
+    if ready is not None:
+        wait.until(ready)
+    if settle_seconds:
+        time.sleep(settle_seconds)
+    return lxml.html.fromstring(driver.page_source, parser=lxml.html.HTMLParser())
 
 
 def hover_and_get_tooltip_html(

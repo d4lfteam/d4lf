@@ -3,8 +3,8 @@
 from typing import ClassVar, override
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QPainter, QPaintEvent, QPen
-from PyQt6.QtWidgets import QCheckBox, QStyle, QStyleOptionButton
+from PyQt6.QtGui import QColor, QPainter, QPaintEvent, QPen, QWheelEvent
+from PyQt6.QtWidgets import QCheckBox, QComboBox, QStyle, QStyleOptionButton
 
 _DEFAULT_ACCENT = "#23fc5d"
 
@@ -57,3 +57,18 @@ class CheckmarkCheckBox(QCheckBox):
             )
         finally:
             painter.end()
+
+
+class IgnoreScrollWheelComboBox(QComboBox):
+    """A combo box that only reacts to the scroll wheel while it has focus."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    @override
+    def wheelEvent(self, e: QWheelEvent | None) -> None:
+        if self.hasFocus():
+            super().wheelEvent(e)
+        elif e is not None:
+            e.ignore()

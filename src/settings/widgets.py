@@ -1,19 +1,9 @@
 import sys
 from typing import TYPE_CHECKING, override
 
-from PyQt6.QtCore import QSignalBlocker, Qt
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence
-from PyQt6.QtWidgets import (
-    QButtonGroup,
-    QComboBox,
-    QDialog,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QSizePolicy,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import QButtonGroup, QDialog, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
 
 from src.desktop.widgets import CheckmarkCheckBox
 from src.settings.binding import validate_hotkey
@@ -22,7 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from pydantic import BaseModel
-    from PyQt6.QtGui import QKeyEvent, QWheelEvent
+    from PyQt6.QtGui import QKeyEvent
 
     from src.settings import GeneralModel, MoveItemsType
     from src.settings.types import SettingValue
@@ -106,24 +96,6 @@ class SegmentedControl(QWidget):
         super().setEnabled(a0)
         for btn in self.buttons.values():
             btn.setEnabled(a0)
-
-
-class IgnoreScrollWheelComboBox(QComboBox):
-    def __init__(self) -> None:
-        super().__init__()
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-
-    @override
-    def wheelEvent(self, e: QWheelEvent | None) -> None:
-        if self.hasFocus():
-            super().wheelEvent(e)
-            return
-        if e is not None:
-            e.ignore()
-
-    def reset_values(self, value: SettingValue) -> None:
-        with QSignalBlocker(self):
-            self.setCurrentText(str(value))
 
 
 class QChestTabWidget(QWidget):

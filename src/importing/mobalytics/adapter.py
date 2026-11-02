@@ -3,10 +3,6 @@ import logging
 from typing import TYPE_CHECKING, cast
 
 import jsonpath
-import lxml.html
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as ec
-from selenium.webdriver.support.wait import WebDriverWait
 
 from src.importing.contracts import ImportRequest, ImportResult, ImportSourceError, VariantMetadata
 from src.importing.conversion import as_string_keyed_mapping as _as_mapping
@@ -20,11 +16,12 @@ from src.importing.mobalytics.extraction import (
 )
 from src.importing.mobalytics.filters import build_variant
 from src.importing.pipeline import ExtractedBuild, ImportPipeline
-from src.importing.web import retry_importer, validated_url
+from src.importing.web import load_page, retry_importer, validated_url
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    import lxml.html
     from selenium.webdriver.remote.webdriver import WebDriver
 
     from src.type_aliases import JsonValue
@@ -46,11 +43,8 @@ class MobalyticsError(ImportSourceError):
 def _load_build_page(url: str, driver: WebDriver) -> tuple[str, str, JsonValue | None, int]:
     """Load the preloaded state shared by variant discovery and import."""
     normalized_url = _fix_input_url(url=url)
-    driver.get(normalized_url)
-    wait = WebDriverWait(driver, 10)
-    wait.until(ec.presence_of_element_located((By.XPATH, SCRIPT_XPATH)))
+    raw_html_data = load_page(driver, normalized_url, wait_xpaths=(SCRIPT_XPATH,))
     page_source = driver.page_source
-    raw_html_data = lxml.html.fromstring(page_source, parser=lxml.html.HTMLParser())
     scripts = list(raw_html_data.iter("script"))
     state = _load_preloaded_state(scripts)
     return normalized_url, page_source, state, len(scripts)

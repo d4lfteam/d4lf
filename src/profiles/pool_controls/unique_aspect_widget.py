@@ -4,8 +4,8 @@ from PyQt6.QtCore import QSignalBlocker, Qt
 from PyQt6.QtGui import QDoubleValidator, QIntValidator
 from PyQt6.QtWidgets import QComboBox, QCompleter, QHBoxLayout, QLineEdit, QMessageBox, QWidget
 
+from src.desktop.widgets import IgnoreScrollWheelComboBox
 from src.game_data import GameCatalog
-from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
 
 if TYPE_CHECKING:
     from src.profiles import AspectUniqueFilterModel

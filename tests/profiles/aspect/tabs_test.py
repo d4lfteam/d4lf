@@ -1,22 +1,21 @@
-from typing import override
+from typing import TYPE_CHECKING
 
 import pytest
 from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox, QPushButton
 
 from src.profiles.aspect import AspectUpgradesTab
+from src.profiles.aspect.dialogs import AddAspectUpgrade
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
-class _AcceptedDialog(QDialog):
-    def __init__(self, value: str) -> None:
-        super().__init__()
-        self._value = value
-
-    @override
-    def exec(self) -> int:
+def _accept_with(value: str) -> Callable[[AddAspectUpgrade], int]:
+    def exec_dialog(dialog: AddAspectUpgrade) -> int:
+        dialog.name_input.setCurrentText(value)
         return QDialog.DialogCode.Accepted
 
-    def get_value(self) -> str:
-        return self._value
+    return exec_dialog
 
 
 @pytest.fixture(scope="module")
@@ -29,7 +28,7 @@ def _button(tab: AspectUpgradesTab, text: str) -> QPushButton:
 
 
 def test_add_aspect_adds_rule_to_list_and_widget(qapp, monkeypatch) -> None:
-    monkeypatch.setattr("src.profiles.aspect.tabs.AddAspectUpgrade", lambda *_args, **_kwargs: _AcceptedDialog("new"))
+    monkeypatch.setattr(AddAspectUpgrade, "exec", _accept_with("new"))
 
     aspects = ["old"]
     tab = AspectUpgradesTab(aspects)

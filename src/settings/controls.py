@@ -7,16 +7,9 @@ from typing import TYPE_CHECKING, cast
 from PyQt6.QtCore import QCoreApplication, QSignalBlocker
 from PyQt6.QtWidgets import QCheckBox, QLineEdit, QMessageBox, QSpinBox, QWidget
 
-from src.desktop.widgets import CheckmarkCheckBox
+from src.desktop.widgets import CheckmarkCheckBox, IgnoreScrollWheelComboBox
 from src.settings import GeneralModel, MoveItemsType
-from src.settings.widgets import (
-    IgnoreScrollWheelComboBox,
-    MultiSegmentedControl,
-    QChestTabWidget,
-    QHotkeyWidget,
-    SaveSetting,
-    SegmentedControl,
-)
+from src.settings.widgets import MultiSegmentedControl, QChestTabWidget, QHotkeyWidget, SaveSetting, SegmentedControl
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
@@ -75,8 +68,11 @@ def reset_control(control: QWidget, value: SettingValue) -> None:
     if isinstance(control, QChestTabWidget):
         if isinstance(value, list) and all(isinstance(tab, int) for tab in value):
             control.reset_values(cast("list[int]", value))
-    elif isinstance(control, QHotkeyWidget | SegmentedControl | IgnoreScrollWheelComboBox):
+    elif isinstance(control, QHotkeyWidget | SegmentedControl):
         control.reset_values(value)
+    elif isinstance(control, IgnoreScrollWheelComboBox):
+        with QSignalBlocker(control):
+            control.setCurrentText(str(value))
     elif isinstance(control, MultiSegmentedControl):
         control.reset_values(cast("list[MoveItemsType]", value))
     elif isinstance(control, QCheckBox):

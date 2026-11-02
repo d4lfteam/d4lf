@@ -12,11 +12,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.desktop.widgets import IgnoreScrollWheelComboBox
 from src.game_data import SigilRules
 from src.profiles import SigilConditionModel, SigilFilterModel, SigilPriority
 from src.profiles.editor import SelectToDeleteDialog
 from src.profiles.editor.container import Container
-from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox
 from src.profiles.editor.pickers import RarityPicker, rarity_summary
 from src.profiles.sigil.dialogs import CreateSigil
 from src.profiles.sigil.widgets import SigilWidget

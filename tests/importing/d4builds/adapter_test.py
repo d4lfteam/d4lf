@@ -1,5 +1,6 @@
 import typing
 
+import lxml.html
 import pytest
 
 from src.game_data import GameCatalog
@@ -33,7 +34,7 @@ def test_import_d4builds(url: str, mock_ini_loader: MockerFixture, mocker: Mocke
 
 def test_load_variant_page_returns_shared_metadata(mocker: MockerFixture) -> None:
     driver = mocker.Mock(page_source="<html><body>build</body></html>")
-    mocker.patch("src.importing.d4builds.adapter.WebDriverWait").return_value.until = mocker.Mock()
+    mocker.patch("src.importing.web.WebDriverWait").return_value.until = mocker.Mock()
     metadata = ("barbarian", "Bash", "12", "Pit Push")
     mocker.patch("src.importing.d4builds.adapter._extract_build_metadata", return_value=metadata)
 
@@ -55,8 +56,8 @@ def test_load_variant_page_waits_before_capturing_hydrated_source(mocker: Mocker
         def get(self, _url: str) -> None:
             return None
 
-    mocker.patch("src.importing.d4builds.adapter.WebDriverWait").return_value.until = mocker.Mock()
-    mocker.patch("src.importing.d4builds.adapter.time.sleep", side_effect=lambda _seconds: events.append("sleep"))
+    mocker.patch("src.importing.web.WebDriverWait").return_value.until = mocker.Mock()
+    mocker.patch("src.importing.web.time.sleep", side_effect=lambda _seconds: events.append("sleep"))
     mocker.patch(
         "src.importing.d4builds.adapter._extract_build_metadata", return_value=("barbarian", "Bash", "12", "Pit Push")
     )
@@ -92,21 +93,21 @@ def test_fetch_variant_discovery_keeps_distinct_unnamed_pages(mocker: MockerFixt
     pages = iter(
         [
             d4builds_module._LoadedVariantPage(
-                data=d4builds_module.lxml.html.fromstring("<html><body>one</body></html>"),
+                data=lxml.html.fromstring("<html><body>one</body></html>"),
                 class_name="barbarian",
                 build_header="Bash",
                 season_number="12",
                 variant_name="",
             ),
             d4builds_module._LoadedVariantPage(
-                data=d4builds_module.lxml.html.fromstring("<html><body>two</body></html>"),
+                data=lxml.html.fromstring("<html><body>two</body></html>"),
                 class_name="barbarian",
                 build_header="Bash",
                 season_number="12",
                 variant_name="",
             ),
             d4builds_module._LoadedVariantPage(
-                data=d4builds_module.lxml.html.fromstring("<html><body>two</body></html>"),
+                data=lxml.html.fromstring("<html><body>two</body></html>"),
                 class_name="barbarian",
                 build_header="Bash",
                 season_number="12",

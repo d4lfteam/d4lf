@@ -1,8 +1,9 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QComboBox, QCompleter, QDialog, QFormLayout, QLabel, QVBoxLayout, QWidget
 
+from src.desktop.widgets import IgnoreScrollWheelComboBox
 from src.game_data import GameCatalog
-from src.profiles.editor.dialogs import IgnoreScrollWheelComboBox, ok_cancel_buttons
+from src.profiles.editor.dialogs import ok_cancel_buttons
 
 
 class AddAspectUpgrade(QDialog):
