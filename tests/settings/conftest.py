@@ -28,7 +28,6 @@ def isolated_ini_loader(tmp_path: Path):
         "char": loader._char,
         "advanced_options": loader._advanced_options,
         "signature": loader._last_config_signature,
-        "revision": loader._config_revision,
         "listeners": list(loader._change_listeners),
         "logs": list(loader._deferred_cleanup_log_records),
         "defer_logs": loader._defer_cleanup_log_records,
@@ -47,7 +46,6 @@ def isolated_ini_loader(tmp_path: Path):
         loader._char = original["char"]
         loader._advanced_options = original["advanced_options"]
         loader._last_config_signature = original["signature"]
-        loader._config_revision = original["revision"]
         loader._change_listeners = original["listeners"]
         loader._deferred_cleanup_log_records = original["logs"]
         loader._defer_cleanup_log_records = original["defer_logs"]

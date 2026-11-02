@@ -12,9 +12,9 @@ from src.importing.maxroll import extract_maxroll_paragon_steps
 from src.importing.maxroll.adapter import (
     _extract_profile_variant,
     _find_item_affixes,
-    _find_item_type,
-    _resolve_visible_profile_index,
+    find_item_type,
     import_maxroll,
+    resolve_visible_profile_index,
 )
 
 if typing.TYPE_CHECKING:
@@ -59,7 +59,7 @@ def test_import_maxroll(url: str, mock_ini_loader: MockerFixture, mocker: Mocker
 )
 def test_find_item_type_applies_maxroll_type_fixes(type_name: str, class_name: str, expected: ItemType) -> None:
     mapping_data = {"item-1": {"type": type_name}}
-    assert _find_item_type(mapping_data=mapping_data, value="item-1", class_name=class_name) == expected
+    assert find_item_type(mapping_data=mapping_data, value="item-1", class_name=class_name) == expected
 
 
 def test_resolve_visible_profile_index_skips_hidden_profiles() -> None:
@@ -70,7 +70,7 @@ def test_resolve_visible_profile_index_skips_hidden_profiles() -> None:
         {"name": "Visible variant C"},
     ]
 
-    assert _resolve_visible_profile_index(profiles=profiles, visible_profile_index=2) == 3
+    assert resolve_visible_profile_index(profiles=profiles, visible_profile_index=2) == 3
 
 
 def test_import_maxroll_keeps_mythic_item_without_affixes(mock_ini_loader, mocker: MockerFixture) -> None:

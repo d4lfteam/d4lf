@@ -96,10 +96,6 @@ class ProfileTab(QWidget):
             return True
         return reply == QMessageBox.StandardButton.No
 
-    def create_alert(self, msg: str) -> bool:
-        reply = QMessageBox.warning(self, "Alert", msg, QMessageBox.StandardButton.Ok)
-        return reply == QMessageBox.StandardButton.Ok
-
     def profile_selection_changed(self, index: int) -> None:
         selected_profile = self.profile_combo.itemData(index, Qt.ItemDataRole.UserRole)
         if selected_profile and selected_profile != self.current_profile_name:

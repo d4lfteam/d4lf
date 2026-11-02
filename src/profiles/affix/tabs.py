@@ -111,9 +111,6 @@ class AffixesTab(QWidget):
             "The Affixes editor is disabled and your profile data was left unchanged."
         )
 
-    def show_message(self, text: str) -> None:
-        QMessageBox.information(self, "Info", text)
-
     def add_item_type(self) -> None:
         if self._editing_disabled:
             return
