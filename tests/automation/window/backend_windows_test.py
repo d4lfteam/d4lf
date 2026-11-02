@@ -77,8 +77,7 @@ def test_resets_window_position_when_diablo_window_closes_during_geometry_lookup
     reset.assert_called_once_with()
 
 
-def test_backend_adapter_forwards_selected_backend(window_module, mocker) -> None:
-    adapter = window_module._WindowBackendAdapter()
+def test_public_interface_calls_selected_backend(window_module, mocker) -> None:
     mocker.patch.object(window_module._platform_backend, "is_self_foreground", return_value=True)
 
-    assert adapter.is_self_foreground()
+    assert window_module.is_self_foreground()

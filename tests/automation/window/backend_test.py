@@ -1,8 +1,7 @@
 from typing import get_protocol_members
 
-from src.automation.window.backend import WindowBackend, WindowSpecLike
+from src.automation.window.backend import WindowSpecLike
 
 
-def test_window_backend_contracts_are_protocols() -> None:
-    assert "get_window_spec_id" in get_protocol_members(WindowBackend)
+def test_window_spec_like_is_protocol() -> None:
     assert {"process_name", "match"} <= get_protocol_members(WindowSpecLike)

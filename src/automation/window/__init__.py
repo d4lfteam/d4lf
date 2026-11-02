@@ -1,6 +1,6 @@
 """Game-window detection and foreground-control interface."""
 
-from .backend import WindowBackend, WindowSpecLike
+from .backend import WindowSpecLike
 from .core import (
     WindowSpec,
     detect_window,
@@ -14,7 +14,6 @@ from .core import (
 )
 
 __all__ = [
-    "WindowBackend",
     "WindowSpec",
     "WindowSpecLike",
     "detect_window",
