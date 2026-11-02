@@ -1,13 +1,22 @@
 """Shared validation and output helpers for the replay tools."""
 
 import re
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 
 import cv2
 
+from src.settings import get_ui_coordinates
+
 if TYPE_CHECKING:
+    from collections.abc import Generator, Sequence
+
     import numpy as np
+
+
+PANEL_BACKGROUND_COLOR = (30, 30, 30)
+LEGEND_TEXT_COLOR = (255, 255, 255)
 
 
 class ReplayConfigurationError(ValueError):
@@ -61,3 +70,42 @@ def write_image(path: Path, image: np.ndarray) -> None:
     if not cv2.imwrite(str(path), image):
         message = f"Could not write replay output: {path}"
         raise OSError(message)
+
+
+@contextmanager
+def game_resolution(resolution: str) -> Generator[None]:
+    """Temporarily switch the UI coordinates to ``resolution``, restoring the previous one on exit."""
+    resolution_manager = get_ui_coordinates()
+    previous_resolution = "x".join(str(value) for value in resolution_manager.resolution)
+    try:
+        resolution_manager.set_resolution(resolution)
+        yield
+    finally:
+        resolution_manager.set_resolution(previous_resolution)
+
+
+def draw_legend(
+    image: np.ndarray,
+    title: str,
+    entries: Sequence[tuple[tuple[int, int, int] | None, str]],
+    *,
+    min_width: int,
+    width_ratio: float,
+) -> None:
+    """Draw a translucent bottom legend panel with a title and rows, each with an optional color swatch."""
+    scale = font_scale(image)
+    line_height = max(20, int(25 * scale))
+    panel_height = line_height * (len(entries) + 1) + 10
+    panel_width = min(image.shape[1], max(min_width, int(image.shape[1] * width_ratio)))
+    panel_top = max(0, int(image.shape[0]) - panel_height)
+    overlay = image.copy()
+    cv2.rectangle(overlay, (0, panel_top), (panel_width, image.shape[0]), PANEL_BACKGROUND_COLOR, -1)
+    cv2.addWeighted(overlay, 0.78, image, 0.22, 0, image)
+    cv2.putText(image, title, (8, panel_top + line_height), cv2.FONT_HERSHEY_SIMPLEX, scale, LEGEND_TEXT_COLOR, 1)
+    for row, (color, label) in enumerate(entries, start=1):
+        y = panel_top + line_height * (row + 1) - 5
+        label_x = 8
+        if color is not None:
+            cv2.rectangle(image, (8, y - line_height + 5), (24, y + 2), color, -1)
+            label_x = 32
+        cv2.putText(image, label, (label_x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, LEGEND_TEXT_COLOR, 1)

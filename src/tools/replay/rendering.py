@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
     from src.perception import BulletMatchDiagnostics, DiagnosticLocatorResult, TemplateMatchTrace
 
+from src.tools.replay.common import draw_legend
 from src.tools.replay.common import font_scale as _font_scale
 from src.tools.replay.diagnostics import _trace_label
 
@@ -18,7 +19,6 @@ ACCEPTED_MATCH_COLOR = (255, 255, 0)
 FINAL_MARKER_COLOR = (93, 252, 35)
 FAILURE_COLOR = (0, 0, 255)
 TEXT_COLOR = (255, 255, 255)
-BACKGROUND_COLOR = (30, 30, 30)
 
 
 def _draw_trace(
@@ -57,27 +57,7 @@ def _draw_legend(image: np.ndarray) -> None:
         (ACCEPTED_MATCH_COLOR, "Accepted template regions"),
         (FINAL_MARKER_COLOR, "Final production markers"),
     ]
-    font_scale = _font_scale(image)
-    line_height = max(20, int(25 * font_scale))
-    panel_height = line_height * (len(entries) + 1) + 10
-    panel_width = min(image.shape[1], max(280, int(image.shape[1] * 0.7)))
-    panel_top = max(0, image.shape[0] - panel_height)
-    overlay = image.copy()
-    cv2.rectangle(overlay, (0, panel_top), (panel_width, image.shape[0]), BACKGROUND_COLOR, -1)
-    cv2.addWeighted(overlay, 0.78, image, 0.22, 0, image)
-    cv2.putText(
-        image,
-        "Template matching replay",
-        (8, panel_top + line_height),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        font_scale,
-        TEXT_COLOR,
-        1,
-    )
-    for row, (color, label) in enumerate(entries, start=1):
-        y = panel_top + line_height * (row + 1) - 5
-        cv2.rectangle(image, (8, y - line_height + 5), (24, y + 2), color, -1)
-        cv2.putText(image, label, (32, y), cv2.FONT_HERSHEY_SIMPLEX, font_scale, TEXT_COLOR, 1)
+    draw_legend(image, "Template matching replay", entries, min_width=280, width_ratio=0.7)
 
 
 def _annotate(image: np.ndarray, diagnostic_result: DiagnosticLocatorResult, marker_size: int) -> np.ndarray:
