@@ -11,12 +11,14 @@ from urllib.parse import urlsplit
 import httpx
 
 from src.importing.d2core.errors import EQUIPMENT_CATALOG, D2CoreCatalogError
+from src.item import Affix, AffixType
 from src.perception import clean_str, correct_name
 
 if TYPE_CHECKING:
     from src.type_aliases import JsonObject, JsonValue
 
 LOGGER = logging.getLogger(__name__)
+Warn = Callable[[str, str, str, str], None]
 CATALOG_HOST = "cloudstorage.d2core.com"
 CATALOG_PATH_SEGMENT_COUNT = 5
 COLLECTIONS = {
@@ -205,3 +207,17 @@ def _retryable(error: Exception) -> bool:
         status = error.response.status_code
         return status in {408, 429} or status >= HTTPStatus.INTERNAL_SERVER_ERROR
     return True
+
+
+def build_mod_affix(
+    mod: Mapping[str, JsonValue],
+    record: Mapping[str, JsonValue] | None,
+    mapping: Mapping[str, JsonValue],
+    import_greater_affixes: bool,
+) -> Affix | None:
+    name = canonical_affix_name(record, mapping)
+    if name is None:
+        return None
+    return Affix(
+        name=name, type=AffixType.greater if import_greater_affixes and mod.get("greater") is True else AffixType.normal
+    )

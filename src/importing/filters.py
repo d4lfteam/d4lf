@@ -93,28 +93,28 @@ def affix_dict_for_item_type(item_type: ItemType | None) -> dict[str, str]:
     return GameCatalog().affix_dict
 
 
-def match_set_aware_seal_affix(stat_clean: str, affix_dict: dict[str, str], guessed_set_name: str) -> str | None:
+def match_affix_name(stat_clean: str, item_type: ItemType | None, guessed_set_name: str | None = None) -> str | None:
+    """Match to a canonical affix name; seal affixes of a guessed set are preferred over non-generic matches."""
+    affix_dict = affix_dict_for_item_type(item_type)
     best_global_key = closest_match(stat_clean, affix_dict)
-    if best_global_key is not None and best_global_key != "damage":
-        global_display = affix_dict[best_global_key]
-        if rapidfuzz.distance.Levenshtein.distance(stat_clean, global_display) <= GLOBAL_AFFIX_MAX_EDIT_DISTANCE:
-            is_set_specific = any(best_global_key.startswith(f"{set_name}_") for set_name in GameCatalog().set_list)
-            if not is_set_specific:
-                return best_global_key
-    set_affixes = {
-        key: value for key, value in GameCatalog().seal_affix_dict.items() if key.startswith(f"{guessed_set_name}_")
-    }
-    if not set_affixes:
-        return None
-    potential_match = closest_match(stat_clean, set_affixes)
-    if potential_match is None:
-        return None
-    display_name = GameCatalog().seal_affix_dict[potential_match]
-    return (
-        potential_match
-        if rapidfuzz.fuzz.token_set_ratio(stat_clean, display_name) >= SET_AFFIX_MIN_TOKEN_SET_RATIO
-        else None
-    )
+    if item_type != ItemType.HoradricSeal or guessed_set_name is None:
+        return best_global_key
+    if (
+        best_global_key is not None
+        and best_global_key != "damage"
+        and rapidfuzz.distance.Levenshtein.distance(stat_clean, affix_dict[best_global_key])
+        <= GLOBAL_AFFIX_MAX_EDIT_DISTANCE
+        and not any(best_global_key.startswith(f"{set_name}_") for set_name in GameCatalog().set_list)
+    ):
+        return best_global_key
+    set_affixes = {key: value for key, value in affix_dict.items() if key.startswith(f"{guessed_set_name}_")}
+    set_match = closest_match(stat_clean, set_affixes) if set_affixes else None
+    if (
+        set_match is not None
+        and rapidfuzz.fuzz.token_set_ratio(stat_clean, affix_dict[set_match]) >= SET_AFFIX_MIN_TOKEN_SET_RATIO
+    ):
+        return set_match
+    return best_global_key
 
 
 def is_unique_like_rarity(rarity: ItemRarity | str | None) -> bool:

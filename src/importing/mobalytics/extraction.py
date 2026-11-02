@@ -10,10 +10,10 @@ from selenium.common.exceptions import NoSuchElementException, WebDriverExceptio
 from selenium.webdriver.common.by import By
 
 from src.game_data import GameCatalog, ItemType
-from src.importing.filters import affix_dict_for_item_type, fix_weapon_type, match_set_aware_seal_affix
+from src.importing.filters import fix_weapon_type, match_affix_name
 from src.importing.web import hover_and_get_tooltip_html
 from src.item import Affix, AffixType
-from src.perception import clean_str, closest_match, correct_name
+from src.perception import clean_str, correct_name
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -170,20 +170,13 @@ def _convert_raw_to_affixes(
     guessed_set_name: str | None = None,
 ) -> list[Affix]:
     result = []
-    affix_dict = affix_dict_for_item_type(item_type=item_type)
     for stat in raw_stats:
         if stat:
             stat_id = stat.get("id")
             if not isinstance(stat_id, str):
                 continue
             stat_clean = clean_str(_corrections(input_str=stat_id.replace("-", " ")))
-            matched_name = None
-            if item_type == ItemType.HoradricSeal and guessed_set_name is not None:
-                matched_name = match_set_aware_seal_affix(
-                    stat_clean=stat_clean, affix_dict=affix_dict, guessed_set_name=guessed_set_name
-                )
-            if matched_name is None:
-                matched_name = closest_match(stat_clean, affix_dict)
+            matched_name = match_affix_name(stat_clean, item_type, guessed_set_name)
             if matched_name is None:
                 LOGGER.error(f"Couldn't match {stat=}")
                 continue

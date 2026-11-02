@@ -236,17 +236,20 @@ def test_get_weapon_type_from_paperdoll_tooltip_hovers_given_icon(mocker: Mocker
     assert result == ItemType.Bow
 
 
-def test_match_d4builds_tooltip_affix_uses_guessed_charm_set_for_seal_affixes() -> None:
-    affix_name = _d4builds_helpers._match_d4builds_tooltip_affix(
-        text="Maximum Resolve", item_type=ItemType.HoradricSeal, guessed_set_name="arms_of_arreat"
+def _seal_affix_names(text: str, guessed_set_name: str) -> list[str]:
+    affixes = _d4builds_helpers._affixes_from_tooltip_values(
+        texts=[text], item_type=ItemType.HoradricSeal, guessed_set_name=guessed_set_name
     )
+    return [affix.name for affix in affixes]
 
-    assert affix_name == "arms_of_arreat_maximum_resolve"
+
+def test_affixes_from_tooltip_values_uses_guessed_charm_set_for_seal_affixes() -> None:
+    assert _seal_affix_names("Maximum Resolve", "arms_of_arreat") == ["arms_of_arreat_maximum_resolve"]
 
 
-def test_match_d4builds_tooltip_affix_keeps_generic_seal_match_with_guessed_set() -> None:
-    affix_name = _d4builds_helpers._match_d4builds_tooltip_affix(
-        text="Cooldown Reduction", item_type=ItemType.HoradricSeal, guessed_set_name="arms_of_arreat"
-    )
+def test_affixes_from_tooltip_values_keeps_generic_seal_match_with_guessed_set() -> None:
+    assert _seal_affix_names("Cooldown Reduction", "arms_of_arreat") == ["cooldown_reduction"]
 
-    assert affix_name == "cooldown_reduction"
+
+def test_affixes_from_tooltip_values_falls_back_to_closest_match_when_set_unknown() -> None:
+    assert _seal_affix_names("Maximum Resolve", "unknown_set") == ["maximum_resource"]

@@ -1,6 +1,6 @@
 """d2core final Paragon snapshot transformation."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, cast
 
 from src.importing.d2core.errors import OPTIONAL_ENTRY_JOIN
@@ -8,10 +8,9 @@ from src.importing.paragon import as_int, class_prefixed_slug
 from src.paragon import NODES_LEN, rotation_info_quarter_turn
 
 if TYPE_CHECKING:
-    from src.importing.d2core.catalog import CatalogStore
+    from src.importing.d2core.catalog import CatalogStore, Warn
     from src.type_aliases import JsonObject, JsonValue
 
-Warn = Callable[[str, str, str, str], None]
 
 NODE_ENTRY_PART_COUNT = 3
 

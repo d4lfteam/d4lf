@@ -1,21 +1,19 @@
 """Best-effort d2core Charm and Seal normalization."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, cast
 
 from src.game_data import GameCatalog, ItemRarity
-from src.importing.d2core.catalog import canonical_affix_name, canonical_catalog_name
+from src.importing.d2core.catalog import build_mod_affix, canonical_catalog_name
 from src.importing.d2core.errors import OPTIONAL_ENTRY_JOIN, OPTIONAL_NO_OUTPUT
 from src.importing.filters import create_seal_charm_filter
-from src.item import Affix, AffixType
 from src.perception import correct_name
 from src.profiles import CharmFilterModel, SealFilterModel
 
 if TYPE_CHECKING:
-    from src.importing.d2core.catalog import CatalogStore
+    from src.importing.d2core.catalog import CatalogStore, Warn
+    from src.item import Affix
     from src.type_aliases import JsonValue
-
-Warn = Callable[[str, str, str, str], None]
 
 
 def has_talisman_category(raw_variant: Mapping[str, JsonValue], category: str) -> bool:
@@ -132,18 +130,11 @@ def _normalize_talisman(
                 cast("Mapping[str, JsonValue]", raw_record) if isinstance(raw_record, Mapping) else None
             )
             mapping = GameCatalog().seal_affix_dict if category == "seal" else GameCatalog().charm_affix_dict
-            name = canonical_affix_name(record, mapping)
-            if name is None:
+            affix = build_mod_affix(raw_mod, record, mapping, import_greater_affixes)
+            if affix is None:
                 warn(OPTIONAL_ENTRY_JOIN, variant_name, category, key or "unknown")
                 continue
-            affixes.append(
-                Affix(
-                    name=name,
-                    type=AffixType.greater
-                    if import_greater_affixes and raw_mod.get("greater") is True
-                    else AffixType.normal,
-                )
-            )
+            affixes.append(affix)
     if not affixes and unique_name is None and set_name is None:
         return None
     if category == "seal":
