@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 def select_variant_name(value: JsonValue, index: int) -> str:
-    name = value.get("name") if isinstance(value, Mapping) else ""
+    name = value.get("name", "") if isinstance(value, Mapping) else ""
     return str(name).strip() or f"Variant {index}"
 
 

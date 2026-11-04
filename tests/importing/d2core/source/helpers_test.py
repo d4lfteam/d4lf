@@ -7,6 +7,7 @@ from src.importing.filters import PLAYER_CLASSES
 
 def test_source_helpers_provide_stable_variant_labels_and_schema_errors() -> None:
     assert select_variant_name({"name": ""}, 3) == "Variant 3"
+    assert select_variant_name({}, 3) == "Variant 3"
     with pytest.raises(D2CoreImportError) as error:
         decode_body("not-json")
     assert error.value.code == SCHEMA_DRIFT
