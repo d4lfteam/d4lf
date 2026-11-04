@@ -1,13 +1,16 @@
 import importlib
-from typing import TYPE_CHECKING, Never, cast
+from typing import TYPE_CHECKING, Never
 
 import pytest
 from PyQt6.QtWidgets import QApplication
 
-from src.importing.contracts import ImportSession
+from src.importing.contracts import ImportSession, VariantMetadata
 from src.importing.web import validated_url
+from src.profiles import ProfileModel
 
 if TYPE_CHECKING:
+    from PyQt6.QtCore import QRunnable
+
     from src.type_aliases import JsonValue
 
 importer_window_module = importlib.import_module("src.importing.gui.window")
@@ -15,8 +18,34 @@ importing_module = importlib.import_module("src.importing")
 DEFAULT_FILENAME_PARTS = importing_module.DEFAULT_FILENAME_PARTS
 FilenamePart = importing_module.FilenamePart
 ImportRequest = importing_module.ImportRequest
+ImportResult = importing_module.ImportResult
 GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP = importer_window_module.GENERATE_DISABLED_FILENAME_PARTS_TOOLTIP
 ImporterWindow = importer_window_module.ImporterWindow
+
+
+class RecordingSource:
+    name = "fixture"
+
+    def __init__(self) -> None:
+        self.fetched: list[ImportRequest] = []
+        self.imported: list[ImportRequest] = []
+        self.close_calls = 0
+
+    def fetch_variants(self, request: ImportRequest) -> list[VariantMetadata]:
+        self.fetched.append(request)
+        return []
+
+    def import_build(self, request: ImportRequest) -> ImportResult:
+        self.imported.append(request)
+        return ImportResult(source_name=self.name, selected_variant="one", profile=ProfileModel(name="profile"))
+
+    def close(self) -> None:
+        self.close_calls += 1
+
+
+class RunningThreadPool:
+    def start(self, worker: QRunnable) -> None:
+        worker.run()
 
 
 @pytest.fixture(scope="module")
@@ -105,14 +134,9 @@ def test_generate_requires_url_and_filename_parts_or_custom_name(qapp, importer_
 
 
 def test_generate_passes_selected_filename_parts(qapp, importer_settings, monkeypatch) -> None:
-    captured_config: ImportRequest | None = None
-
-    class FakeThreadPool:
-        def start(self, worker) -> None:
-            nonlocal captured_config
-            captured_config = cast("ImportRequest", worker.request)
-
-    monkeypatch.setattr(importer_window_module, "THREADPOOL", FakeThreadPool())
+    source = RecordingSource()
+    monkeypatch.setattr(importer_window_module, "open_session", lambda _url: ImportSession(source))
+    monkeypatch.setattr(importer_window_module, "THREADPOOL", RunningThreadPool())
 
     window = ImporterWindow()
     window.filename_part_actions[FilenamePart.SEASON].setChecked(False)
@@ -121,21 +145,16 @@ def test_generate_passes_selected_filename_parts(qapp, importer_settings, monkey
 
     window._generate_button_click()
 
-    assert captured_config is not None
+    [captured_config] = source.imported
     assert captured_config.filename_parts == (FilenamePart.SOURCE, FilenamePart.CLASS, FilenamePart.BUILD_TITLE)
 
     window.close()
 
 
 def test_import_category_choices_persist_and_serialize(qapp, importer_settings, monkeypatch) -> None:
-    captured_request: ImportRequest | None = None
-
-    class FakeThreadPool:
-        def start(self, worker) -> None:
-            nonlocal captured_request
-            captured_request = cast("ImportRequest", worker.request)
-
-    monkeypatch.setattr(importer_window_module, "THREADPOOL", FakeThreadPool())
+    source = RecordingSource()
+    monkeypatch.setattr(importer_window_module, "open_session", lambda _url: ImportSession(source))
+    monkeypatch.setattr(importer_window_module, "THREADPOOL", RunningThreadPool())
 
     window = ImporterWindow()
     window.import_charms_checkbox.setChecked(False)
@@ -143,7 +162,7 @@ def test_import_category_choices_persist_and_serialize(qapp, importer_settings, 
     window.input_box.setText("https://maxroll.gg/d4/build-guides/example")
     window._generate_button_click()
 
-    assert captured_request is not None
+    [captured_request] = source.imported
     assert not captured_request.options.import_charms
     assert not captured_request.options.import_seals
     window.close()
@@ -166,41 +185,17 @@ def test_importer_window_accepts_the_composed_accent_color(qapp, importer_settin
 
 
 def test_multi_variant_import_cancellation_releases_session(qapp, importer_settings, monkeypatch) -> None:
-    class FakeSession:
-        name = "fixture"
-        closed = False
-        close_calls = 0
-
-        def fetch_variants(self, request):
-            return []
-
-        def import_build(self, request) -> Never:
-            raise AssertionError
-
-        def close(self) -> None:
-            self.close_calls += 1
-            self.closed = True
-
-    source = FakeSession()
-    session = ImportSession(source)
-    monkeypatch.setattr(importer_window_module, "open_session", lambda _url: session)
+    source = RecordingSource()
+    monkeypatch.setattr(importer_window_module, "open_session", lambda _url: ImportSession(source))
     monkeypatch.setattr(importer_window_module, "select_variants_dialog", lambda *_args: [])
-    captured_workers = []
-
-    class FakeThreadPool:
-        def start(self, worker) -> None:
-            captured_workers.append(worker)
-
-    monkeypatch.setattr(importer_window_module, "THREADPOOL", FakeThreadPool())
+    monkeypatch.setattr(importer_window_module, "THREADPOOL", RunningThreadPool())
     window = ImporterWindow()
     window.multi_build_checkbox.setChecked(True)
     window.input_box.setText("https://maxroll.gg/d4/build-guides/example")
     window._generate_button_click()
 
-    fetch_worker = captured_workers.pop()
-    assert fetch_worker.session is session
-    window._on_variants_extracted([])
-
+    assert source.fetched == [window._current_request]
+    assert source.imported == []
     assert source.close_calls == 1
     window.close()
 
@@ -258,8 +253,8 @@ def test_import_failure_releases_session_through_worker(qapp, importer_settings)
     window = ImporterWindow()
     window._active_import_session = session
     window._waiting_for_user_selection = True
-    worker = importer_window_module.ImportWorker(
-        request=ImportRequest("https://fixture.invalid/build"), finished=window._on_persist_finished, session=session
+    worker = importer_window_module.import_worker(
+        ImportRequest("https://fixture.invalid/build"), window._on_persist_finished, session
     )
     worker.run()
 
@@ -268,29 +263,10 @@ def test_import_failure_releases_session_through_worker(qapp, importer_settings)
 
 
 def test_selected_variants_receive_the_discovery_session(qapp, importer_settings, monkeypatch) -> None:
-    class FakeSession:
-        name = "fixture"
-        close_calls = 0
-
-        def fetch_variants(self, request):
-            return []
-
-        def import_build(self, request) -> Never:
-            raise AssertionError
-
-        def close(self) -> None:
-            self.close_calls += 1
-
-    source = FakeSession()
+    source = RecordingSource()
     session = ImportSession(source)
-    captured_workers = []
     monkeypatch.setattr(importer_window_module, "select_variants_dialog", lambda *_args: ["one"])
-
-    class FakeThreadPool:
-        def start(self, worker) -> None:
-            captured_workers.append(worker)
-
-    monkeypatch.setattr(importer_window_module, "THREADPOOL", FakeThreadPool())
+    monkeypatch.setattr(importer_window_module, "THREADPOOL", RunningThreadPool())
     window = ImporterWindow()
     window._current_request = ImportRequest(
         "https://maxroll.gg/d4/build-guides/example", options=importing_module.ImportOptions(multi_build=True)
@@ -298,7 +274,7 @@ def test_selected_variants_receive_the_discovery_session(qapp, importer_settings
     window._active_import_session = session
     window._on_variants_extracted([])
 
-    assert captured_workers[0].session is session
-    window._on_persist_finished()
+    [imported] = source.imported
+    assert imported.url == window._current_request.url
     assert source.close_calls == 1
     window.close()
