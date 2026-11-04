@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import QApplication
 import src.logger
 from src import __version__
 from src.app import (
-    ICON_PATH,
     SETUP_INSTRUCTIONS_URL,
     check_for_proper_tts_configuration,
     get_d4_local_prefs_file,
@@ -22,6 +21,7 @@ from src.app import (
 from src.app.backend import run_backend
 from src.app.shell import UnifiedMainWindow
 from src.autoupdater import start_auto_update
+from src.desktop import ICON_PATH
 from src.settings import Settings, SettingsLoadError, get_settings
 
 LOGGER = logging.getLogger(__name__)

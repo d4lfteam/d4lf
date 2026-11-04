@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from src.app.assets import DISCORD_ICON, GITHUB_ICON, ICON_PATH, get_asset_path
+from src.desktop import DISCORD_ICON, GITHUB_ICON, ICON_PATH, get_asset_path
 
 
 def test_asset_paths_are_paths() -> None:

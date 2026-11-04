@@ -1,17 +1,10 @@
-from pathlib import Path
 from typing import ClassVar
 
 from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QWidget
 
 import src.settings.window as window_module
-from src.settings.window import ICON_PATH, ConfigWindow
-
-
-def test_source_mode_icon_path_points_to_repo_asset() -> None:
-    expected = Path(__file__).resolve().parents[2] / "assets" / "logo.png"
-    assert expected == ICON_PATH
-    assert ICON_PATH.is_file()
+from src.settings.window import ConfigWindow
 
 
 def test_config_window_can_be_constructed(qapp, isolated_ini_loader) -> None:

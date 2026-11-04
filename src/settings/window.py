@@ -1,20 +1,16 @@
 import logging
-import sys
-from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt
 from PyQt6.QtGui import QCloseEvent, QIcon
 from PyQt6.QtWidgets import QMainWindow
 
+from src.desktop import ICON_PATH
 from src.settings.tab import ConfigTab
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[2]
-
-ICON_PATH = BASE_DIR / "assets" / "logo.png"
 LOGGER = logging.getLogger(__name__)
 
 

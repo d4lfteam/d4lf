@@ -1,7 +1,6 @@
 import logging
 
 from src.desktop import call_on_ui_thread, get_root
-from src.overlay.settings import InfoSettingValue, load_settings
 from src.overlay.statistics import StatsSnapshot, subscribe_stats, unsubscribe_stats
 from src.overlay.widget.shared import BOSS_TIMER_SLOT
 from src.overlay.widget.widget import BossTimerOverlay
@@ -69,7 +68,3 @@ def update_stats(
                 gph=gph, total_gained=total_gained, eph=eph, total_exp=total_exp, t2l=t2l
             )
         )
-
-
-def get_setting(key: str, default: InfoSettingValue = None) -> InfoSettingValue:
-    return load_settings().get(key, default)
