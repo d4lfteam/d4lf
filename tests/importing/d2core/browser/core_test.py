@@ -5,23 +5,12 @@ from typing import TYPE_CHECKING, Never, cast, override
 import pytest
 from selenium.common.exceptions import TimeoutException
 
-from src.importing.d2core.browser import (
-    BrowserAcquirer,
-    BrowserSnapshot,
-    SeleniumBrowserFactory,
-    SeleniumNetworkObserver,
-)
-from src.importing.d2core.browser.bidi import BidiNetworkObserver
+from src.importing.d2core.browser import BrowserAcquirer, BrowserSnapshot, SeleniumBrowserFactory
 from src.importing.d2core.errors import BROWSER_CAPABILITY, INITIALIZATION_TIMEOUT, D2CoreBrowserError
 from src.importing.d2core.url import parse_d2core_url
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from src.importing.d2core.browser.bidi import BidiNetwork
-    from src.importing.d2core.browser.core import _Driver
-    from src.importing.d2core.url import D2CoreUrl
-    from src.type_aliases import JsonValue
+    from src.importing.d2core.browser.capture import Driver
 
 
 @dataclass
@@ -37,23 +26,6 @@ class FakeDriver:
 
     def quit(self) -> None:
         self.closed = True
-
-
-class DriverWithNetwork:
-    def __init__(self, network: BidiNetwork) -> None:
-        self.network: BidiNetwork = network
-
-    def get(self, url: str) -> None:
-        del url
-
-    def quit(self) -> None:
-        pass
-
-    def get_log(self, *_: JsonValue) -> JsonValue:
-        pytest.fail("CDP performance logs must not be used")
-
-    def execute_cdp_cmd(self, *_: JsonValue) -> JsonValue:
-        pytest.fail("CDP must not be used")
 
 
 class FakeFactory:
@@ -75,16 +47,14 @@ class FakeObserver:
         self.detached: list[int] = []
         self.captures = 0
 
-    def supports_response_bodies(self, driver: _Driver) -> bool:
-        del driver
-        return self.capable
-
-    def attach(self, driver: _Driver, build_id: str) -> None:
+    def attach(self, driver: Driver, build_id: str) -> None:
         del build_id
         self.attached.append(cast("FakeDriver", driver).number)
+        if not self.capable:
+            raise D2CoreBrowserError(BROWSER_CAPABILITY, "The selected browser cannot expose response bodies")
 
-    def capture(self, driver: _Driver, planner: D2CoreUrl, deadline: float) -> BrowserSnapshot:
-        del driver, planner, deadline
+    def capture(self, deadline: float) -> BrowserSnapshot:
+        del deadline
         self.captures += 1
         if self.fail_once and self.captures == 1:
             raise D2CoreBrowserError(INITIALIZATION_TIMEOUT, "transient", retryable=True)
@@ -92,8 +62,8 @@ class FakeObserver:
             response_body={"data": {}}, catalog_url="https://cloudstorage.d2core.com/data/d4/v1/affix_enUS.json"
         )
 
-    def detach(self, driver: _Driver) -> None:
-        self.detached.append(cast("FakeDriver", driver).number)
+    def detach(self) -> None:
+        self.detached.append(self.attached[-1])
 
 
 def test_acquirer_retries_once_with_fresh_driver_and_cleans_both_attempts() -> None:
@@ -139,8 +109,8 @@ def test_acquirer_accepts_terminal_cloudbase_error_without_catalog_or_retry(erro
 
     class ErrorObserver(FakeObserver):
         @override
-        def capture(self, driver: _Driver, planner: D2CoreUrl, deadline: float) -> BrowserSnapshot:
-            del driver, planner, deadline
+        def capture(self, deadline: float) -> BrowserSnapshot:
+            del deadline
             return BrowserSnapshot(
                 response_body=json.dumps({"data": {"response_data": json.dumps({"code": error_code})}}), catalog_url=""
             )
@@ -151,53 +121,6 @@ def test_acquirer_accepts_terminal_cloudbase_error_without_catalog_or_retry(erro
 
     assert not snapshot.catalog_url
     assert len(factory.drivers) == 1
-
-
-def test_selenium_observer_uses_bidi_network_contract() -> None:
-    build_body = json.dumps({"data": {"response_data": json.dumps({"data": {"_id": "offline", "variants": []}})}})
-    catalog_url = "https://cloudstorage.d2core.com/data/d4/v1/affix_enUS.json?env=prod&v=8"
-
-    class Network:
-        handler = None
-
-        def add_data_collector(self, **kwargs: JsonValue) -> JsonValue:
-            del kwargs
-            return {"collector": "collector"}
-
-        def add_event_handler(self, event: str, callback: Callable[[JsonValue], None]) -> JsonValue:
-            assert event == "response_started"
-            self.handler = callback
-            return cast("JsonValue", callback)
-
-        def get_data(self, **kwargs: JsonValue) -> JsonValue:
-            del kwargs
-            return {"bytes": build_body}
-
-        def remove_event_handler(self, event: str, handler: JsonValue) -> None:
-            assert event == "response_started"
-            del handler
-
-        def remove_data_collector(self, collector: JsonValue) -> None:
-            del collector
-
-    observer = SeleniumNetworkObserver(clock=lambda: 0, sleeper=lambda _: None)
-    planner = parse_d2core_url("https://d2core.com/d4/planner?bd=offline")
-    network = Network()
-    driver = DriverWithNetwork(network)
-    observer.attach(driver, planner.build_id)
-    assert network.handler is not None
-    handler = network.handler
-    handler({"request": {"request": "catalog"}, "response": {"url": catalog_url}})
-    handler(
-        {
-            "request": {"request": "request", "url": "https://tcb-api.tencentcloudapi.com/web"},
-            "response": {"url": "https://tcb-api.tencentcloudapi.com/web"},
-        }
-    )
-    snapshot = observer.capture(driver, planner, 1)
-
-    assert snapshot.response_body == build_body
-    assert snapshot.catalog_url == catalog_url
 
 
 def test_selenium_factory_delegates_driver_creation_to_shared_importer_setup(monkeypatch) -> None:
@@ -227,58 +150,3 @@ def test_selenium_factory_translates_shared_unsupported_browser_error(monkeypatc
         SeleniumBrowserFactory().create()
 
     assert error.value.code == BROWSER_CAPABILITY
-
-
-def test_firefox_bidi_observer_captures_body_and_releases_listener() -> None:
-    build_body = json.dumps({"data": {"response_data": json.dumps({"data": {"_id": "offline", "variants": []}})}})
-
-    class Network:
-        def __init__(self) -> None:
-            self.handler = None
-            self.removed = False
-
-        def add_data_collector(self, **kwargs: JsonValue) -> JsonValue:
-            del kwargs
-            return {"collector": "collector"}
-
-        def add_event_handler(self, event: str, callback: Callable[[JsonValue], None]) -> JsonValue:
-            assert event == "response_started"
-            self.handler = callback
-            return cast("JsonValue", callback)
-
-        def get_data(self, **kwargs: JsonValue) -> JsonValue:
-            del kwargs
-            return {"bytes": build_body}
-
-        def remove_event_handler(self, event: str, handler: JsonValue) -> None:
-            assert event == "response_started"
-            assert handler is self.handler
-            self.removed = True
-
-        def remove_data_collector(self, collector: JsonValue) -> None:
-            assert collector == "collector"
-
-    network = Network()
-    driver = DriverWithNetwork(network)
-    observer = BidiNetworkObserver(clock=lambda: 0, sleeper=lambda _: None)
-    observer.attach(driver, "offline")
-    assert network.handler is not None
-    handler = network.handler
-    handler(
-        {
-            "request": {"request": "catalog"},
-            "response": {"url": "https://cloudstorage.d2core.com/data/d4/v1/affix_enUS.json"},
-        }
-    )
-    handler(
-        {
-            "request": {"request": "request", "url": "https://tcb-api.tencentcloudapi.com/web"},
-            "response": {"url": "https://tcb-api.tencentcloudapi.com/web"},
-        }
-    )
-
-    snapshot = observer.capture(1)
-    observer.detach(driver)
-    assert snapshot.response_body == build_body
-    assert snapshot.catalog_url.endswith("affix_enUS.json")
-    assert network.removed
