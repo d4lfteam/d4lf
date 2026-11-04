@@ -77,7 +77,6 @@ class ProfileRulesRepository:
         self._settings_provider = settings_provider or get_settings
         self._rules = LoadedRules.empty()
         self._files_loaded = False
-        self._all_file_paths: tuple[Path, ...] = ()
         self._last_loaded: float | None = None
         self._last_profile_list: list[str] | None = None
         self._profile_signatures: dict[Path, tuple[int, int]] = {}
@@ -95,7 +94,6 @@ class ProfileRulesRepository:
     def replace_rules(self, rules: LoadedRules) -> None:
         """Replace rules for the facade's compatibility adapters and tests."""
         self._rules = rules
-        self._all_file_paths = rules.all_file_paths
 
     @property
     def files_loaded(self) -> bool:
@@ -104,26 +102,6 @@ class ProfileRulesRepository:
     @files_loaded.setter
     def files_loaded(self, value: bool) -> None:
         self._files_loaded = value
-
-    @property
-    def all_file_paths(self) -> list[Path]:
-        return list(self._all_file_paths)
-
-    @property
-    def last_loaded(self) -> float | None:
-        return self._last_loaded
-
-    @last_loaded.setter
-    def last_loaded(self, value: float | None) -> None:
-        self._last_loaded = value
-
-    @property
-    def last_profile_list(self) -> list[str] | None:
-        return None if self._last_profile_list is None else self._last_profile_list.copy()
-
-    @last_profile_list.setter
-    def last_profile_list(self, value: list[str] | None) -> None:
-        self._last_profile_list = None if value is None else value.copy()
 
     @staticmethod
     def profile_signature(path: Path) -> tuple[int, int] | None:
@@ -187,7 +165,6 @@ class ProfileRulesRepository:
         profiles = [p.strip() for p in settings.general.profiles if p.strip()]
         filters = _MutableRules({}, {}, {}, {}, {}, {}, {}, {})
         self._files_loaded = True
-        self._all_file_paths = ()
         self._profile_signatures = {}
         failures: list[ProfileLoadFailure] = []
         missing_names: list[str] = []
@@ -272,7 +249,6 @@ class ProfileRulesRepository:
         return self._rules
 
     def _publish_rules(self, filters: _MutableRules, paths: tuple[Path, ...]) -> None:
-        self._all_file_paths = paths
         self._rules = LoadedRules(
             affix_filters=filters.affix_filters,
             aspect_upgrade_filters=filters.aspect_upgrade_filters,
