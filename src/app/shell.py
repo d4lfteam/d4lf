@@ -18,10 +18,10 @@ from PyQt6.QtWidgets import (
 )
 
 from src import __version__
-from src.app.assets import DISCORD_ICON, GITHUB_ICON, ICON_PATH
 from src.app.backend import BackendWorker, get_perception_module
 from src.app.dashboard import ActivityLogWidget
 from src.app.lifecycle import UnifiedWindowLifecycle
+from src.desktop import DISCORD_ICON, GITHUB_ICON, ICON_PATH
 from src.desktop.activity import ANSIConsoleWidget, QtLogHandler
 from src.desktop.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.desktop.widgets import set_accent_color

@@ -165,10 +165,6 @@ class _IniConfigLoader:
             if listener not in self._load_error_listeners:
                 self._load_error_listeners.append(listener)
 
-    def unregister_load_error_listener(self, listener: ConfigLoadErrorListener) -> None:
-        with self._lock:
-            self._load_error_listeners = [existing for existing in self._load_error_listeners if existing != listener]
-
     def unregister_change_listener(self, listener: ConfigChangeListener) -> None:
         with self._lock:
             self._change_listeners = [existing for existing in self._change_listeners if existing != listener]

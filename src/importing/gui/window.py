@@ -1,6 +1,4 @@
 import logging
-import sys
-from pathlib import Path
 from typing import override
 
 from PyQt6.QtCore import QPoint, QSettings, QSize, Qt, QThreadPool, pyqtSignal
@@ -17,6 +15,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.desktop import ICON_PATH
 from src.desktop.activity import QtLogHandler
 from src.desktop.widgets import CheckmarkCheckBox, set_accent_color
 from src.importing.contracts import (
@@ -43,8 +42,6 @@ from src.importing.gui.variant_dialog import select_variants_dialog
 from src.importing.service import UnsupportedImportSourceError, open_session
 from src.settings import get_settings
 
-BASE_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[3]
-ICON_PATH = BASE_DIR / "assets" / "logo.png"
 LOGGER = logging.getLogger(__name__)
 THREADPOOL = QThreadPool()
 

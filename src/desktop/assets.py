@@ -3,10 +3,6 @@
 import sys
 from pathlib import Path
 
-BASE_DIR = (
-    Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent.parent
-)
-
 
 def get_asset_path(filename: str) -> Path:
     """Find a packaged asset, including the lowercase names used by releases."""
