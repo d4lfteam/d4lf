@@ -5,19 +5,11 @@ from typing import TYPE_CHECKING
 
 import cv2
 
-from src.logger import setup
 from src.perception import TemplateMatch, search
-from src.tools.replay.common import (
-    ReplayConfigurationError,
-    draw_legend,
-    game_resolution,
-    load_replay_image,
-    show_replay_result,
-)
+from src.tools.replay.common import draw_legend, game_resolution, load_replay_image, run_replay_main, save_replay_output
 from src.tools.replay.common import font_scale as _font_scale
 from src.tools.replay.common import parse_resolution as _parse_resolution
 from src.tools.replay.common import raise_configuration_error as _raise_configuration_error
-from src.tools.replay.common import write_image as _write_image
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -126,11 +118,6 @@ def _annotate(image: np.ndarray, matches: list[TemplateMatch], template_count: i
     return annotated
 
 
-def show_result(image: np.ndarray) -> None:
-    """Display the matching result until the user closes the blocking window."""
-    show_replay_result(image, "D4LF template matching replay")
-
-
 def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
     """Match every configured template against a screen and save an annotated copy."""
     image_path, image = validate_replay_config(config)
@@ -151,21 +138,13 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
 
     output_path = image_path.with_name(f"{image_path.stem}_all_template_matches.png")
     annotated = _annotate(image, matches, len(templates), config.threshold)
-    _write_image(output_path, annotated)
     LOGGER.info("Template matching output: %s", output_path)
-    if display:
-        show_result(annotated)
+    save_replay_output(output_path, annotated, window_name="D4LF template matching replay", display=display)
     return ReplayResult(output_path=output_path, matches=matches)
 
 
 def main() -> int:
-    setup(enable_stdout=True)
-    try:
-        result = run_replay(REPLAY_CONFIG)
-    except ReplayConfigurationError as error:
-        LOGGER.error("Replay configuration error: %s", error)
-        return 2
-    return 0 if result.found else 1
+    return run_replay_main(lambda: run_replay(REPLAY_CONFIG).found)
 
 
 if __name__ == "__main__":

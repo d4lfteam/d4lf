@@ -9,7 +9,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 from src.perception import DescrDetection, TemplateMatch
-from src.tools.replay.full_screenshot import ReplayConfig, ReplayConfigurationError, run_replay, validate_replay_config
+from src.tools.replay.common import ReplayConfigurationError
+from src.tools.replay.full_screenshot import ReplayConfig, run_replay, validate_replay_config
 
 
 def make_replay_config(tmp_path: Path, **overrides) -> ReplayConfig:
@@ -104,7 +105,9 @@ def test_run_replay_writes_and_displays_full_failure_annotation(tmp_path, monkey
     detection = DescrDetection(found=False, failure_reason="missing_top_left_border")
     monkeypatch.setattr("src.tools.replay.full_screenshot.find_descr_with_diagnostics", lambda *_args: detection)
     displayed = []
-    monkeypatch.setattr("src.tools.replay.full_screenshot.show_result", displayed.append)
+    monkeypatch.setattr(
+        "src.tools.replay.common.show_replay_result", lambda image, _window_name: displayed.append(image)
+    )
 
     result = run_replay(config)
 

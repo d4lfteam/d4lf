@@ -14,14 +14,8 @@ from src.perception import (
     LocatorResult,
     TemplateMatchTrace,
 )
-from src.tools.replay.cropped_tooltip import (
-    ReplayConfig,
-    ReplayConfigurationError,
-    main,
-    run_replay,
-    show_result,
-    validate_replay_config,
-)
+from src.tools.replay.common import ReplayConfigurationError
+from src.tools.replay.cropped_tooltip import ReplayConfig, main, run_replay, validate_replay_config
 
 
 def make_item() -> Item:
@@ -167,26 +161,12 @@ def test_run_replay_annotates_all_match_stages_and_resolution_sized_marker(tmp_p
     assert tuple(output[500, 492]) != (93, 252, 35)
 
 
-def test_show_result_uses_blocking_window(monkeypatch) -> None:
-    calls = []
-    monkeypatch.setattr("src.tools.replay.cropped_tooltip.cv2.imshow", lambda *args: calls.append(("show", args)))
-    monkeypatch.setattr("src.tools.replay.cropped_tooltip.cv2.waitKey", lambda *args: calls.append(("wait", args)))
-    monkeypatch.setattr(
-        "src.tools.replay.cropped_tooltip.cv2.destroyWindow", lambda *args: calls.append(("destroy", args))
-    )
-
-    show_result(np.zeros((4, 4, 3), dtype=np.uint8))
-
-    assert [call[0] for call in calls] == ["show", "wait", "destroy"]
-
-
 @pytest.mark.parametrize(("reliable", "expected_status"), [(True, 0), (False, 1)])
 def test_main_returns_reliability_status_without_requiring_window(monkeypatch, reliable, expected_status) -> None:
     config = ReplayConfig(False, "3840x2160", Path("tooltip.png"), Item(), [])
     result = type("ReplayResult", (), {"reliable": reliable})()
     monkeypatch.setattr("src.tools.replay.cropped_tooltip.REPLAY_CONFIG", config)
-    monkeypatch.setattr("src.tools.replay.cropped_tooltip.setup", lambda **_kwargs: None)
+    monkeypatch.setattr("src.tools.replay.common.setup", lambda **_kwargs: None)
     monkeypatch.setattr("src.tools.replay.cropped_tooltip.run_replay", lambda *_args, **_kwargs: result)
-    monkeypatch.setattr("src.tools.replay.cropped_tooltip.show_result", lambda *_args: None)
 
     assert main() == expected_status
