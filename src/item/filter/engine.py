@@ -1,6 +1,5 @@
 """Application facade for profile loading and item filtering."""
 
-from dataclasses import replace
 from typing import TYPE_CHECKING, ClassVar, Self, cast, override
 
 from src.item.filter.evaluator import FilterEvaluator
@@ -14,8 +13,6 @@ from src.item.filter.rules import EvaluationSettings, LoadedRules
 from src.settings import Settings, get_settings
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from src.item.models import FilterResult, Item
     from src.profiles import ParagonPayloadModel
 
@@ -61,30 +58,6 @@ class Filter(FilterEvaluator):
     @files_loaded.setter
     def files_loaded(self, value: bool) -> None:
         self._repository.files_loaded = value
-
-    @property
-    def all_file_paths(self) -> list[Path]:
-        return self._repository.all_file_paths
-
-    @all_file_paths.setter
-    def all_file_paths(self, value: list[Path]) -> None:
-        self.rules = replace(self.rules, all_file_paths=tuple(value))
-
-    @property
-    def last_loaded(self) -> float | None:
-        return self._repository.last_loaded
-
-    @last_loaded.setter
-    def last_loaded(self, value: float | None) -> None:
-        self._repository.last_loaded = value
-
-    @property
-    def last_profile_list(self) -> list[str] | None:
-        return self._repository.last_profile_list
-
-    @last_profile_list.setter
-    def last_profile_list(self, value: list[str] | None) -> None:
-        self._repository.last_profile_list = value
 
     @property
     def load_failures(self) -> tuple[str, ...]:
