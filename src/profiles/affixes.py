@@ -3,7 +3,8 @@ import sys
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.game_data import GameCatalog
-from src.profiles.validation.constraints import check_greater_than_zero, validate_greater_affix_count, validate_percent
+from src.profiles.validation.constraints import validate_greater_affix_count, validate_percent
+from src.settings import check_greater_than_zero
 
 AFFIX_LIST_MAX_LENGTH = 2
 AFFIX_LIST_VALUE_LENGTH = 2

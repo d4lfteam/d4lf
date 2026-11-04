@@ -37,6 +37,7 @@ from src.settings.reload_groups import (
 )
 from src.settings.scaling import ResManager
 from src.settings.types import SettingValue, Template
+from src.settings.validation import check_greater_than_zero
 
 if TYPE_CHECKING:
     import logging
@@ -143,6 +144,7 @@ __all__ = [
     "UnfilteredUniquesType",
     "VisionModeType",
     "canonicalize_hotkey",
+    "check_greater_than_zero",
     "get_settings",
     "get_ui_coordinates",
     "has_any_changed",
