@@ -23,7 +23,7 @@ def test_evaluator_uses_supplied_rules_without_application_settings() -> None:
         ],
     )
 
-    result = evaluator.evaluate(item)
+    result = evaluator.should_keep(item)
 
     assert result.keep
     assert result.matched[0].profile.startswith(f"{filters.affix.name}.")

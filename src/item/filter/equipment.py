@@ -7,14 +7,14 @@ from src.item.models import FilterResult, MatchedFilter
 from src.settings import AspectFilterType, UnfilteredUniquesType
 
 if TYPE_CHECKING:
-    from src.item.filter.matching import FilterContext
+    from src.item.filter.evaluator import FilterEvaluator
     from src.item.models import Item
 
 LOGGER = logging.getLogger(__name__)
 
 
 class FilterEquipmentMixin:
-    def _check_affixes(self: FilterContext, item: Item) -> FilterResult:
+    def _check_affixes(self: FilterEvaluator, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
         if not self.rules.affix_filters:
             return FilterResult(keep=False, matched=[])
@@ -70,7 +70,7 @@ class FilterEquipmentMixin:
                 )
         return res
 
-    def _check_aspect_upgrades(self: FilterContext, item: Item) -> FilterResult:
+    def _check_aspect_upgrades(self: FilterEvaluator, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
         if item.codex_upgrade and self.rules.aspect_upgrade_filters:
             for profile_name, profile_filter in self.rules.aspect_upgrade_filters.items():
@@ -89,7 +89,7 @@ class FilterEquipmentMixin:
         res.matched.append(MatchedFilter(ASPECT_UPGRADES_LABEL, aspect_match=True))
         return res
 
-    def _check_global_unique_filter(self: FilterContext, item: Item) -> FilterResult:
+    def _check_global_unique_filter(self: FilterEvaluator, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
         if not self.rules.global_unique_filters:
             keep = self.evaluation_settings.handle_uniques != UnfilteredUniquesType.junk

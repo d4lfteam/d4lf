@@ -1,12 +1,12 @@
 """Pure item-rule evaluation over loaded rules and immutable settings."""
 
 import logging
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 from src.game_data import ItemRarity, ItemType, is_sigil
 from src.item import MYTHICS_ALWAYS_KEPT_LABEL
 from src.item.filter.equipment import FilterEquipmentMixin
-from src.item.filter.matching import FilterContext, FilterMatchingMixin
+from src.item.filter.matching import FilterMatchingMixin
 from src.item.filter.rules import EvaluationSettings, LoadedRules
 from src.item.filter.special import FilterSpecialMixin
 from src.item.models import FilterResult, MatchedFilter
@@ -17,32 +17,20 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-class FilterEvaluator(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin, FilterContext):
+class FilterEvaluator(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMixin):
     """Evaluate one item against a complete rules and settings snapshot."""
 
     def __init__(self, rules: LoadedRules | None = None, evaluation_settings: EvaluationSettings | None = None) -> None:
         self._rules = rules or LoadedRules.empty()
-        self._evaluation_settings: EvaluationSettings = evaluation_settings or EvaluationSettings()
+        self.evaluation_settings = evaluation_settings or EvaluationSettings()
 
     @property
-    @override
     def rules(self) -> LoadedRules:
         return self._rules
 
     @rules.setter
-    @override
     def rules(self, value: LoadedRules) -> None:
         self._rules = value
-
-    @property
-    @override
-    def evaluation_settings(self) -> EvaluationSettings:
-        return self._evaluation_settings
-
-    @evaluation_settings.setter
-    @override
-    def evaluation_settings(self, value: EvaluationSettings) -> None:
-        self._evaluation_settings = value
 
     def _skipped_by_filter_override(self, item: Item) -> bool:
         settings = self.evaluation_settings
@@ -88,7 +76,3 @@ class FilterEvaluator(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMi
         if not result.keep:
             return self._check_cosmetic(item)
         return result
-
-    def evaluate(self, item: Item) -> FilterResult:
-        """Alias emphasizing that this module performs a pure evaluation."""
-        return self.should_keep(item)
