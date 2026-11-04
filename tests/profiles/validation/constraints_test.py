@@ -9,18 +9,9 @@ This file contains:
    - All validators work with both naming styles
 """
 
-import pytest
-
 from src.profiles.validation import constraints as validators
 
 
 def test_validator_boundary_values() -> None:
-    assert validators.check_greater_than_zero(0) == 0
     assert validators.validate_percent(100) == 100
     assert validators.validate_greater_affix_count(4) == 4
-
-
-@pytest.mark.parametrize("value", [-1])
-def test_check_greater_than_zero_rejects_negative(value: int) -> None:
-    with pytest.raises(ValueError, match=validators.GREATER_THAN_ZERO_ERROR):
-        validators.check_greater_than_zero(value)

@@ -2,13 +2,14 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, m
 
 from src.game_data import GameCatalog, ItemRarity, ItemType
 from src.profiles.affixes import AffixFilterCountModel, AspectUniqueFilterModel  # ruff:ignore[TC001]
-from src.profiles.validation.constraints import check_greater_than_zero, validate_greater_affix_count
+from src.profiles.validation.constraints import validate_greater_affix_count
 from src.profiles.validation.normalization import (
     _normalize_rarities,
     _parse_item_type_or_rarities,
     _validate_affix_pool_names,
     _validate_set_name,
 )
+from src.settings import check_greater_than_zero
 from src.type_aliases import JsonObject  # ruff:ignore[TC001]
 
 

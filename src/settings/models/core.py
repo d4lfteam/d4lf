@@ -6,7 +6,8 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_numpy.helper.annotation import NpArrayPydanticAnnotation
 
-from src.settings.validation import check_greater_than_zero, validate_hotkey
+from src.settings.binding import validate_hotkey
+from src.settings.validation import check_greater_than_zero
 
 type Np1DArray = Annotated[
     np.ndarray[tuple[int, ...], np.dtype[np.generic]],
