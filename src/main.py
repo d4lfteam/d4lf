@@ -4,6 +4,8 @@ import ctypes
 import logging
 import os
 import sys
+from functools import partial
+from typing import TYPE_CHECKING
 
 from beautifultable import BeautifulTable, Style
 from PyQt6.QtGui import QIcon
@@ -23,6 +25,9 @@ from src.app.shell import UnifiedMainWindow
 from src.autoupdater import start_auto_update
 from src.desktop import ICON_PATH
 from src.settings import Settings, SettingsLoadError, get_settings
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 LOGGER = logging.getLogger(__name__)
 
@@ -109,29 +114,18 @@ def _apply_configured_logging(settings: Settings) -> None:
 
 def run() -> int:
     """Dispatch CLI update modes and start the Qt shell."""
-    if len(sys.argv) > 1 and sys.argv[1] == "--autoupdate":
+    cli_actions: dict[str, Callable[[], None]] = {
+        "--autoupdate": start_auto_update,
+        "--autoupdatepost": partial(start_auto_update, postprocess=True),
+        "--consoleonly": main,
+    }
+    if len(sys.argv) > 1 and (action := cli_actions.get(sys.argv[1])) is not None:
         try:
             _configure_logging(stdout=True)
         except SettingsLoadError as error:
             print(f"Could not load {error.config_path}; see {error.log_path} for details.", file=sys.stderr)
             return 1
-        start_auto_update()
-        return 0
-    if len(sys.argv) > 1 and sys.argv[1] == "--autoupdatepost":
-        try:
-            _configure_logging(stdout=True)
-        except SettingsLoadError as error:
-            print(f"Could not load {error.config_path}; see {error.log_path} for details.", file=sys.stderr)
-            return 1
-        start_auto_update(postprocess=True)
-        return 0
-    if len(sys.argv) > 1 and sys.argv[1] == "--consoleonly":
-        try:
-            _configure_logging(stdout=True)
-        except SettingsLoadError as error:
-            print(f"Could not load {error.config_path}; see {error.log_path} for details.", file=sys.stderr)
-            return 1
-        main()
+        action()
         return 0
 
     running_from_source = not getattr(sys, "frozen", False)

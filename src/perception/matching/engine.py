@@ -3,6 +3,7 @@
 import logging
 import time
 from concurrent.futures import Executor, ThreadPoolExecutor
+from functools import partial
 from typing import TYPE_CHECKING, cast
 
 from src.perception.capture.core import Cam
@@ -27,9 +28,6 @@ if TYPE_CHECKING:
     from .models import ColorMatch, TemplateReferences
 
 LOGGER = logging.getLogger(__name__)
-
-# These aliases retain narrow seams for callers that used to patch the monolithic implementation.
-_process_template_refs = process_template_refs
 
 
 def _get_cv_result(
@@ -59,19 +57,15 @@ def _find_template_matches(
     take_debug_screenshot: bool = False,
 ) -> list[ImageMatch]:
     """Find all matches for one template without sharing search state between workers."""
-
-    def get_result(
-        current_template: Template,
-        current_image: np.ndarray,
-        current_roi: Sequence[int | float] | None,
-        current_color_match: list[np.ndarray] | None,
-        grayscale: bool,
-    ) -> tuple[np.ndarray | None, np.ndarray, list[int]]:
-        return _get_cv_result(
-            current_template, current_image, current_roi, current_color_match, grayscale, take_debug_screenshot
-        )
-
-    return find_image_matches(template, img, roi, color_match, use_grayscale, threshold, get_result=get_result)
+    return find_image_matches(
+        template,
+        img,
+        roi,
+        color_match,
+        use_grayscale,
+        threshold,
+        get_result=partial(_get_cv_result, take_debug_screenshot=take_debug_screenshot),
+    )
 
 
 def _to_template_match(template: Template, image_match: ImageMatch) -> TemplateMatch:
@@ -203,7 +197,7 @@ def search(
         config,
         use_parallel,
     )
-    templates = _process_template_refs(ref)
+    templates = process_template_refs(ref)
     resolved_roi = resolve_roi(search_config.roi)
     resolved_color_match = resolve_color_match(search_config.color_match)
     matches: list[TemplateMatch] = []

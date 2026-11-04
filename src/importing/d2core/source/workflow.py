@@ -10,6 +10,7 @@ from src.importing.d2core.errors import (
     D2CoreCatalogError,
     D2CoreImportError,
 )
+from src.importing.d2core.source.helpers import select_variant_name
 
 if TYPE_CHECKING:
     from src.importing.contracts import ImportRequest
@@ -50,7 +51,6 @@ def load_optional_catalog(
         catalogs.load(kind)
     except D2CoreCatalogError:
         for index, raw_variant in selected:
-            name = str(raw_variant.get("name", "")).strip() or f"Variant {index}"
-            warn(OPTIONAL_CATALOG, f"{index}:{name}", kind, "")
+            warn(OPTIONAL_CATALOG, f"{index}:{select_variant_name(raw_variant, index)}", kind, "")
         return False
     return True
