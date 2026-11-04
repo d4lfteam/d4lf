@@ -1,29 +1,13 @@
 import sys
-from typing import TYPE_CHECKING, NoReturn
+from typing import TYPE_CHECKING
 
 from src.game_data import ItemRarity, ItemType
 from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect  # ruff:ignore[TC001]
 
 if TYPE_CHECKING:
-    from src.item.filter.rules import EvaluationSettings, LoadedRules
     from src.item.models import Item
     from src.profiles import AffixAspectFilterModel, AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel
-
-
-class FilterContext:
-    @property
-    def rules(self) -> LoadedRules:
-        missing_name = "rules"
-        raise AttributeError(missing_name)
-
-    @property
-    def evaluation_settings(self) -> EvaluationSettings:
-        missing_name = "evaluation_settings"
-        raise AttributeError(missing_name)
-
-    def __getattr__(self, name: str) -> NoReturn:
-        raise AttributeError(name)
 
 
 class FilterMatchingMixin:

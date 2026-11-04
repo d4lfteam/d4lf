@@ -9,7 +9,7 @@ from src.settings import CosmeticFilterType
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-    from src.item.filter.matching import FilterContext
+    from src.item.filter.evaluator import FilterEvaluator
     from src.item.models import Item
     from src.profiles import DynamicCharmFilterModel, DynamicSealFilterModel
 
@@ -21,7 +21,7 @@ def _selected_cosmetic_filter(value: CosmeticFilterType | str) -> CosmeticFilter
 
 
 class FilterSpecialMixin:
-    def _check_cosmetic(self: FilterContext, item: Item) -> FilterResult:
+    def _check_cosmetic(self: FilterEvaluator, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
         handle_cosmetics = _selected_cosmetic_filter(self.evaluation_settings.handle_cosmetics)
         if handle_cosmetics == CosmeticFilterType.junk:
@@ -33,7 +33,7 @@ class FilterSpecialMixin:
         res.matched.append(MatchedFilter("Cosmetics"))
         return res
 
-    def _check_sigil(self: FilterContext, item: Item) -> FilterResult:
+    def _check_sigil(self: FilterEvaluator, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
         sigil_item = SigilRules.default().for_item(item)
         if not self.rules.sigil_filters.items():
@@ -76,7 +76,7 @@ class FilterSpecialMixin:
         return res
 
     def _check_seal_charm_filters(
-        self: FilterContext,
+        self: FilterEvaluator,
         seal_or_charm: Item,
         seal_or_charm_filters: Mapping[str, Sequence[DynamicSealFilterModel | DynamicCharmFilterModel]],
         section_name: str,
@@ -105,7 +105,7 @@ class FilterSpecialMixin:
                 if filter_spec.unique_aspect:
                     matched_aspect = True
                 if isinstance(filter_spec, CharmFilterModel) and filter_spec.set:
-                    if not seal_or_charm.set or seal_or_charm.set not in filter_spec.set:
+                    if seal_or_charm.set is None or seal_or_charm.set not in filter_spec.set:
                         continue
                     matched_set = True
                 LOGGER.info(
@@ -133,7 +133,7 @@ class FilterSpecialMixin:
             res.matched.append(MatchedFilter(mythic_name))
         return res
 
-    def _check_tribute(self: FilterContext, item: Item) -> FilterResult:
+    def _check_tribute(self: FilterEvaluator, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
         if not self.rules.tribute_filters.items():
             LOGGER.info(f"{item.original_name} -- Matched Tributes")
