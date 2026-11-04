@@ -10,63 +10,50 @@ from src.importing.service import import_build
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from src.importing.contracts import ImportRequest, ImportResult, ImportSession
+    from src.importing.contracts import ImportRequest, ImportSession
 
 LOGGER = logging.getLogger(__name__)
 
 
-def run_import(*, request: ImportRequest, session: ImportSession | None = None) -> ImportResult:
-    """Run one import, optionally through a session retained by the window."""
-    return import_build(request, session=session)
-
-
 class ImportWorker(QRunnable):
+    """Run one import step on the thread pool and always signal completion."""
+
     def __init__(
-        self, request: ImportRequest, finished: Callable[[], None], session: ImportSession | None = None
+        self, task: Callable[[WorkerSignals], None], finished: Callable[[], None], *, thread_name: str, label: str
     ) -> None:
         super().__init__()
-        self.request = request
-        self.finished = finished
-        self.session = session
+        self.task = task
+        self.thread_name = thread_name
+        self.label = label
         self.signals = WorkerSignals()
         self.signals.finished.connect(finished)
 
     @pyqtSlot()
     @override
     def run(self) -> None:
-        threading.current_thread().name = "import"
+        threading.current_thread().name = self.thread_name
         try:
-            run_import(request=self.request, session=self.session)
+            self.task(self.signals)
         except ImportSourceError:
             pass
         except Exception:
-            LOGGER.exception("Import worker failed")
+            LOGGER.exception("%s worker failed", self.label)
         finally:
             self.signals.finished.emit()
 
 
-class FetchVariantsWorker(QRunnable):
-    def __init__(self, request: ImportRequest, finished: Callable[[], None], session: ImportSession) -> None:
-        super().__init__()
-        self.request = request
-        self.finished = finished
-        self.session = session
-        self.signals = WorkerSignals()
-        self.signals.finished.connect(finished)
+def import_worker(request: ImportRequest, finished: Callable[[], None], session: ImportSession) -> ImportWorker:
+    def task(_signals: WorkerSignals) -> None:
+        import_build(request, session=session)
 
-    @pyqtSlot()
-    @override
-    def run(self) -> None:
-        threading.current_thread().name = "import-fetch-variants"
-        try:
-            variants = self.session.fetch_variants(self.request)
-            self.signals.variants_extracted.emit(variants)
-        except ImportSourceError:
-            pass
-        except Exception:
-            LOGGER.exception("Fetch variants worker failed")
-        finally:
-            self.signals.finished.emit()
+    return ImportWorker(task, finished, thread_name="import", label="Import")
+
+
+def fetch_variants_worker(request: ImportRequest, finished: Callable[[], None], session: ImportSession) -> ImportWorker:
+    def task(signals: WorkerSignals) -> None:
+        signals.variants_extracted.emit(session.fetch_variants(request))
+
+    return ImportWorker(task, finished, thread_name="import-fetch-variants", label="Fetch variants")
 
 
 class WorkerSignals(QObject):

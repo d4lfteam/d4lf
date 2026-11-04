@@ -37,7 +37,7 @@ from src.importing.gui.constants import (
 )
 from src.importing.gui.filename_parts import build_filename_row
 from src.importing.gui.support import LOGGER as SUPPORT_LOGGER
-from src.importing.gui.support import FetchVariantsWorker, ImportWorker
+from src.importing.gui.support import fetch_variants_worker, import_worker
 from src.importing.gui.variant_dialog import select_variants_dialog
 from src.importing.service import UnsupportedImportSourceError, open_session
 from src.settings import get_settings
@@ -219,12 +219,10 @@ class ImporterWindow(QMainWindow):
             return
         self._active_import_session = session
         if request.options.multi_build:
-            worker = FetchVariantsWorker(request, self._on_worker_finished, self._active_import_session)
+            worker = fetch_variants_worker(request, self._on_worker_finished, self._active_import_session)
             worker.signals.variants_extracted.connect(self._on_variants_extracted)
         else:
-            worker = ImportWorker(
-                request=request, finished=self._on_worker_finished, session=self._active_import_session
-            )
+            worker = import_worker(request, self._on_worker_finished, self._active_import_session)
         self.is_generating = True
         self.generate_button.setEnabled(False)
         self.generate_button.setText("Generating...")
@@ -267,7 +265,7 @@ class ImporterWindow(QMainWindow):
         self.generate_button.setText("Saving...")
         selection = VariantSelection.from_ids(tuple(selected_ids))
         request = self._current_request.with_variant_selection(selection)
-        worker = ImportWorker(request, self._on_persist_finished, self._active_import_session)
+        worker = import_worker(request, self._on_persist_finished, self._active_import_session)
         THREADPOOL.start(worker)
 
     def _on_persist_finished(self) -> None:

@@ -5,17 +5,11 @@ from src.importing.contracts import ImportSession
 from src.importing.d2core.errors import NO_USABLE_VARIANT, D2CoreImportError
 from src.importing.d4builds.metadata import D4BuildsError
 from src.importing.gui import support
-from src.importing.gui.support import FetchVariantsWorker, ImportWorker, WorkerSignals, run_import
+from src.importing.gui.support import fetch_variants_worker, import_worker
 from src.profiles import ProfileModel
 
 
-def test_import_support_exposes_worker_and_headless_runner() -> None:
-    assert callable(run_import)
-    assert ImportWorker is not None
-    assert WorkerSignals is not None
-
-
-def test_run_import_reuses_explicit_session(monkeypatch) -> None:
+def test_import_worker_reuses_explicit_session(monkeypatch) -> None:
     class FakeSource:
         name = "fixture"
 
@@ -35,19 +29,19 @@ def test_run_import_reuses_explicit_session(monkeypatch) -> None:
         return original(request, session=session)
 
     monkeypatch.setattr(support, "import_build", spy_import_build)
-    run_import(request=ImportRequest("https://fixture.invalid/build"), session=session)
+    import_worker(ImportRequest("https://fixture.invalid/build"), lambda: None, session).run()
 
     assert captured == [session]
     assert not session.closed
     session.close()
 
 
-def test_fetch_worker_uses_explicit_session_without_opening_another() -> None:
+def test_fetch_worker_emits_variants_and_finished() -> None:
     class FakeSession:
         name = "fixture"
 
         def fetch_variants(self, request):
-            return []
+            return ["variant"]
 
         def import_build(self, request) -> Never:
             raise AssertionError
@@ -55,14 +49,16 @@ def test_fetch_worker_uses_explicit_session_without_opening_another() -> None:
         def close(self) -> None:
             pass
 
-    session = ImportSession(FakeSession())
-    assert not hasattr(support, "open_session")
-    worker = FetchVariantsWorker(
-        request=ImportRequest("https://fixture.invalid/build"), finished=lambda: None, session=session
+    finished: list[bool] = []
+    emitted: list[list[str]] = []
+    worker = fetch_variants_worker(
+        ImportRequest("https://fixture.invalid/build"), lambda: finished.append(True), ImportSession(FakeSession())
     )
+    worker.signals.variants_extracted.connect(emitted.append)
     worker.run()
 
-    assert worker.session is session
+    assert emitted == [["variant"]]
+    assert finished == [True]
 
 
 def test_workers_do_not_replay_expected_d2core_terminal_errors(caplog) -> None:
@@ -80,8 +76,8 @@ def test_workers_do_not_replay_expected_d2core_terminal_errors(caplog) -> None:
 
     caplog.set_level("ERROR")
     session = ImportSession(FailedSession())
-    ImportWorker(ImportRequest("https://d2core.com/d4/planner?bd=offline"), lambda: None, session).run()
-    FetchVariantsWorker(ImportRequest("https://d2core.com/d4/planner?bd=offline"), lambda: None, session).run()
+    import_worker(ImportRequest("https://d2core.com/d4/planner?bd=offline"), lambda: None, session).run()
+    fetch_variants_worker(ImportRequest("https://d2core.com/d4/planner?bd=offline"), lambda: None, session).run()
 
     assert not caplog.records
 
@@ -103,7 +99,7 @@ def test_workers_do_not_log_expected_provider_errors(caplog) -> None:
 
     caplog.set_level("ERROR")
     session = ImportSession(FailedSession())
-    ImportWorker(ImportRequest("https://d4builds.gg/builds/example"), lambda: None, session).run()
-    FetchVariantsWorker(ImportRequest("https://d4builds.gg/builds/example"), lambda: None, session).run()
+    import_worker(ImportRequest("https://d4builds.gg/builds/example"), lambda: None, session).run()
+    fetch_variants_worker(ImportRequest("https://d4builds.gg/builds/example"), lambda: None, session).run()
 
     assert not caplog.records
