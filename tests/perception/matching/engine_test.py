@@ -81,7 +81,7 @@ def test_parallel_stop_condition_preserves_template_order(mocker, mode: str) -> 
     fast_template_finished = Event()
 
     mocker.patch(
-        "src.perception.matching.engine._process_template_refs", return_value=[correct_template, false_template]
+        "src.perception.matching.engine.process_template_refs", return_value=[correct_template, false_template]
     )
 
     def fake_get_cv_result(template, *_args, **_kwargs):
@@ -112,7 +112,7 @@ def test_parallel_stop_condition_preserves_template_order(mocker, mode: str) -> 
 
 def test_parallel_polling_reuses_one_owned_executor(mocker) -> None:
     templates = [Template(name="first"), Template(name="second")]
-    mocker.patch("src.perception.matching.engine._process_template_refs", return_value=templates)
+    mocker.patch("src.perception.matching.engine.process_template_refs", return_value=templates)
     mocker.patch("src.perception.matching.engine._find_template_matches", return_value=[])
     executor_type = mocker.patch("src.perception.matching.engine.ThreadPoolExecutor", wraps=ThreadPoolExecutor)
     clock = iter((0.0, 0.0, 0.5, 1.0))
@@ -128,7 +128,7 @@ def test_process_template_refs_preserves_transparent_template_mask() -> None:
     image = np.full((4, 4, 4), 255, dtype=np.uint8)
     image[0, 0, 3] = 0
 
-    template = matching._process_template_refs(image)[0]
+    template = matching.process_template_refs(image)[0]
 
     assert isinstance(template.alpha_mask, np.ndarray)
     assert template.alpha_mask[0, 0] == 0
