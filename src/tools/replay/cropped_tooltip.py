@@ -7,12 +7,10 @@ import cv2  # ruff:ignore[F401]
 
 from src.game_data import ItemType
 from src.item import Affix, Item
-from src.logger import setup
 from src.perception import locate_affix_markers_with_diagnostics
-from src.tools.replay.common import ReplayConfigurationError, game_resolution, load_replay_image, show_replay_result
+from src.tools.replay.common import game_resolution, load_replay_image, run_replay_main, save_replay_output
 from src.tools.replay.common import parse_resolution as _parse_resolution
 from src.tools.replay.common import raise_configuration_error as _raise_configuration_error
-from src.tools.replay.common import write_image as _write_image
 from src.tools.replay.diagnostics import _log_diagnostics
 from src.tools.replay.rendering import _annotate
 
@@ -85,11 +83,6 @@ def validate_replay_config(config: ReplayConfig) -> tuple[Path, np.ndarray]:
     return image_path, image
 
 
-def show_result(image: np.ndarray) -> None:
-    """Display the replay result until the user closes the blocking window."""
-    show_replay_result(image, "D4LF cropped tooltip replay")
-
-
 def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
     """Run production matching against a cropped tooltip and save its explanation."""
     image_path, image = validate_replay_config(config)
@@ -120,10 +113,8 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
     )
     marker_size = int(int(height * _MARKER_THICKNESS_RATIO) * 3)
     annotated = _annotate(image, diagnostic_result, marker_size)
-    _write_image(output_path, annotated)
     LOGGER.info("Replay output: %s", output_path)
-    if display:
-        show_result(annotated)
+    save_replay_output(output_path, annotated, window_name="D4LF cropped tooltip replay", display=display)
     return ReplayResult(
         output_path=output_path,
         reliable=diagnostic_result.result.reliable,
@@ -132,13 +123,7 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
 
 
 def main() -> int:
-    setup(enable_stdout=True)
-    try:
-        result = run_replay(REPLAY_CONFIG)
-    except ReplayConfigurationError as error:
-        LOGGER.error("Replay configuration error: %s", error)
-        return 2
-    return 0 if result.reliable else 1
+    return run_replay_main(lambda: run_replay(REPLAY_CONFIG).reliable)
 
 
 if __name__ == "__main__":

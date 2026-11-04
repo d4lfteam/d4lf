@@ -6,13 +6,8 @@ import numpy as np
 import pytest
 
 from src.perception import SearchResult, TemplateMatch
-from src.tools.replay.template_matching import (
-    TEMPLATES,
-    ReplayConfig,
-    ReplayConfigurationError,
-    run_replay,
-    validate_replay_config,
-)
+from src.tools.replay.common import ReplayConfigurationError
+from src.tools.replay.template_matching import TEMPLATES, ReplayConfig, run_replay, validate_replay_config
 
 if TYPE_CHECKING:
     from pathlib import Path

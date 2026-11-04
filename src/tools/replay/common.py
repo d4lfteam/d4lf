@@ -1,5 +1,6 @@
 """Shared validation and output helpers for the replay tools."""
 
+import logging
 import re
 from contextlib import contextmanager
 from pathlib import Path
@@ -7,10 +8,11 @@ from typing import TYPE_CHECKING, NoReturn
 
 import cv2
 
+from src.logger import setup
 from src.settings import get_ui_coordinates
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Sequence
+    from collections.abc import Callable, Generator, Sequence
 
     import numpy as np
 
@@ -70,6 +72,24 @@ def write_image(path: Path, image: np.ndarray) -> None:
     if not cv2.imwrite(str(path), image):
         message = f"Could not write replay output: {path}"
         raise OSError(message)
+
+
+def save_replay_output(path: Path, image: np.ndarray, *, window_name: str, display: bool) -> None:
+    """Write the annotated replay image and optionally show it in a blocking window."""
+    write_image(path, image)
+    if display:
+        show_replay_result(image, window_name)
+
+
+def run_replay_main(replay: Callable[[], bool]) -> int:
+    """Run a replay tool: 0 when ``replay`` succeeds, 1 when it fails, 2 on a configuration error."""
+    setup(enable_stdout=True)
+    try:
+        succeeded = replay()
+    except ReplayConfigurationError as error:
+        logging.getLogger("d4lf").error("Replay configuration error: %s", error)
+        return 2
+    return 0 if succeeded else 1
 
 
 @contextmanager

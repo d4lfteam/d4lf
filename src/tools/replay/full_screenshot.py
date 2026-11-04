@@ -5,15 +5,8 @@ from typing import TYPE_CHECKING
 
 import cv2
 
-from src.logger import setup
 from src.perception import DescrDetection, find_descr_with_diagnostics
-from src.tools.replay.common import (
-    ReplayConfigurationError,
-    draw_legend,
-    game_resolution,
-    load_replay_image,
-    show_replay_result,
-)
+from src.tools.replay.common import draw_legend, game_resolution, load_replay_image, run_replay_main, save_replay_output
 from src.tools.replay.common import font_scale as _font_scale
 from src.tools.replay.common import parse_resolution as _parse_resolution
 from src.tools.replay.common import raise_configuration_error as _raise_configuration_error
@@ -35,6 +28,7 @@ ANCHOR_COLOR = (0, 255, 255)
 TEXT_COLOR = (255, 255, 255)
 FAILURE_COLOR = (0, 0, 255)
 ITEM_ANCHOR_VALUE_COUNT = 2
+WINDOW_NAME = "D4LF full screenshot replay"
 
 
 @dataclass
@@ -166,11 +160,6 @@ def _annotate(image: np.ndarray, detection: DescrDetection, anchor: tuple[int, i
     return annotated
 
 
-def show_result(image: np.ndarray) -> None:
-    """Display the full replay result until the user closes the blocking window."""
-    show_replay_result(image, "D4LF full screenshot replay")
-
-
 def _has_valid_crop(image: np.ndarray, detection: DescrDetection) -> bool:
     if detection.cropped_descr is None or detection.crop_roi is None:
         return False
@@ -202,10 +191,8 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
 
     if not detection.found:
         annotated = _annotate(image, detection, tuple(config.item_anchor))
-        _write_image(output_path, annotated)
         LOGGER.info("Full replay output: %s", output_path)
-        if display:
-            show_result(annotated)
+        save_replay_output(output_path, annotated, window_name=WINDOW_NAME, display=display)
         return ReplayResult(
             output_path=output_path, crop_path=None, found=False, failure_reason=detection.failure_reason
         )
@@ -221,9 +208,7 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
         )
         _log_detection(detection)
         annotated = _annotate(image, detection, tuple(config.item_anchor))
-        _write_image(output_path, annotated)
-        if display:
-            show_result(annotated)
+        save_replay_output(output_path, annotated, window_name=WINDOW_NAME, display=display)
         return ReplayResult(
             output_path=output_path, crop_path=None, found=False, failure_reason=detection.failure_reason
         )
@@ -234,7 +219,6 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
         raise RuntimeError(message)
     _write_image(crop_path, cropped_descr)
     annotated = _annotate(image, detection, tuple(config.item_anchor))
-    _write_image(output_path, annotated)
     LOGGER.info(
         "Full replay output: %s crop=%s found=%s failure_reason=%s",
         output_path,
@@ -242,19 +226,12 @@ def run_replay(config: ReplayConfig, *, display: bool = True) -> ReplayResult:
         detection.found,
         detection.failure_reason,
     )
-    if display:
-        show_result(annotated)
+    save_replay_output(output_path, annotated, window_name=WINDOW_NAME, display=display)
     return ReplayResult(output_path=output_path, crop_path=crop_path, found=True, failure_reason=None)
 
 
 def main() -> int:
-    setup(enable_stdout=True)
-    try:
-        result = run_replay(REPLAY_CONFIG)
-    except ReplayConfigurationError as error:
-        LOGGER.error("Replay configuration error: %s", error)
-        return 2
-    return 0 if result.found else 1
+    return run_replay_main(lambda: run_replay(REPLAY_CONFIG).found)
 
 
 if __name__ == "__main__":
