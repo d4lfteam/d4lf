@@ -3,19 +3,21 @@
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from selenium.common.exceptions import WebDriverException
 
 from src.importing.d2core.browser.capture import body_has_planner_error, body_matches_build, is_catalog_url
-from src.importing.d2core.errors import INITIALIZATION_TIMEOUT, D2CoreBrowserError
+from src.importing.d2core.errors import BROWSER_CAPABILITY, INITIALIZATION_TIMEOUT, D2CoreBrowserError
 
 if TYPE_CHECKING:
-    from src.type_aliases import JsonValue
+    from src.importing.d2core.browser.capture import Driver
+    from src.type_aliases import JsonObject, JsonValue
 
 RESPONSE_STARTED = "response_started"
 
 
+@runtime_checkable
 class BidiNetwork(Protocol):
     def add_data_collector(self, **kwargs: JsonValue) -> JsonValue: ...
 
@@ -28,18 +30,17 @@ class BidiNetwork(Protocol):
     def remove_data_collector(self, collector: JsonValue) -> None: ...
 
 
-class BidiDriver(Protocol):
-    @property
-    def network(self) -> BidiNetwork: ...
-
-
 @dataclass(frozen=True, slots=True)
-class BidiSnapshot:
-    response_body: str
+class BrowserSnapshot:
+    """One captured body and the catalog URL observed in the same page session."""
+
+    response_body: str | JsonObject
     catalog_url: str
 
 
-class BidiNetworkObserver:
+class SeleniumNetworkObserver:
+    """Observe response bodies through Selenium's cross-browser BiDi network API."""
+
     def __init__(
         self, *, clock: Callable[[], float] = time.monotonic, sleeper: Callable[[float], None] = time.sleep
     ) -> None:
@@ -53,9 +54,14 @@ class BidiNetworkObserver:
         self._sleeper = sleeper
         self._build_id = ""
 
-    def attach(self, driver: BidiDriver, build_id: str) -> None:
+    def attach(self, driver: Driver, build_id: str) -> None:
+        try:
+            network = getattr(driver, "network", None)
+        except WebDriverException:
+            network = None
+        if not isinstance(network, BidiNetwork):
+            raise D2CoreBrowserError(BROWSER_CAPABILITY, "The selected browser cannot expose response bodies")
         self._build_id = build_id
-        network = driver.network
         self._network = network
         collector = network.add_data_collector(
             data_types=["response"], max_encoded_data_size=100_000_000, collector_type="blob"
@@ -63,7 +69,7 @@ class BidiNetworkObserver:
         self._collector = collector.get("collector") if isinstance(collector, Mapping) else collector
         self._handler = network.add_event_handler(RESPONSE_STARTED, self._response_handler())
 
-    def capture(self, deadline: float) -> BidiSnapshot:
+    def capture(self, deadline: float) -> BrowserSnapshot:
         while True:
             snapshot = self._snapshot()
             if snapshot is not None:
@@ -74,8 +80,10 @@ class BidiNetworkObserver:
             self._sleeper(0.05)
         raise D2CoreBrowserError(INITIALIZATION_TIMEOUT, "d2core BiDi traffic was not observed", retryable=True)
 
-    def detach(self, driver: BidiDriver) -> None:
-        network = driver.network
+    def detach(self) -> None:
+        network = self._network
+        if network is None:
+            return
         removal_error: Exception | None = None
         try:
             if self._handler is not None:
@@ -141,9 +149,9 @@ class BidiNetworkObserver:
             body = body.get("value")
         return body if isinstance(body, str) else None
 
-    def _snapshot(self) -> BidiSnapshot | None:
+    def _snapshot(self) -> BrowserSnapshot | None:
         if self._candidates and self._catalog_urls:
-            return BidiSnapshot(self._candidates[-1], next(iter(self._catalog_urls)))
+            return BrowserSnapshot(self._candidates[-1], next(iter(self._catalog_urls)))
         if self._candidates and body_has_planner_error(self._candidates[-1]):
-            return BidiSnapshot(self._candidates[-1], "")
+            return BrowserSnapshot(self._candidates[-1], "")
         return None

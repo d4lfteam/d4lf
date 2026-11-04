@@ -27,11 +27,13 @@ def is_catalog_url(url: str) -> bool:
     )
 
 
-class PageLoadDriver(Protocol):
-    def set_page_load_timeout(self, timeout: float) -> None: ...
+class Driver(Protocol):
+    def get(self, url: str) -> None: ...
+
+    def quit(self) -> None: ...
 
 
-def set_page_load_timeout(driver: PageLoadDriver, timeout: float) -> None:
+def set_page_load_timeout(driver: Driver, timeout: float) -> None:
     setter = getattr(driver, "set_page_load_timeout", None)
     if callable(setter):
         setter(timeout)
