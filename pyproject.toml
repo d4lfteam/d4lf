@@ -21,9 +21,9 @@ dependencies = [
   "pywin32; sys_platform == 'win32'",
   "pyyaml",
   "rapidfuzz",
+  "requests",
   "ruamel-yaml",
   "selenium",
-  "seleniumbase",
 ]
 dynamic = ["version"]
 
