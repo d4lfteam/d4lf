@@ -113,7 +113,7 @@ class _OverlayMenu(BossTimerContract):
                     self._create_radio_button(
                         sub_submenu_frame,
                         label,
-                        _setting_int(self.settings, "exp_age_before_refresh", 5),
+                        _setting_int(self.settings, "exp_age_before_refresh"),
                         val,
                         lambda _: None,
                         config_key="exp_age_before_refresh",

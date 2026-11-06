@@ -1,10 +1,42 @@
 from datetime import UTC, datetime
-from typing import TypeVar
+from typing import Final, TypeVar
 
 from PyQt6.QtCore import QSettings
 
 type InfoSettingValue = int | str | bool | tuple[int, ...] | datetime | None
 T = TypeVar("T", int, str, bool)
+
+_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+INT_DEFAULTS: Final[dict[str, int]] = {"x": 100, "y": 100, "font_size": 14}
+STRING_INT_DEFAULTS: Final[dict[str, int]] = {
+    "exp_age_before_refresh": 5,
+    "session_total_gold": 0,
+    "session_total_exp": 0,
+}
+STR_DEFAULTS: Final[dict[str, str]] = {
+    "font_family": "Consolas",
+    "orientation": "horizontal",
+    "next_boss_name": "Unknown",
+}
+BOOL_DEFAULTS: Final[dict[str, bool]] = {
+    "show_wb": True,
+    "show_legion": True,
+    "show_ht": True,
+    "show_gold": True,
+    "show_gph": True,
+    "show_total_gold": True,
+    "show_exp": True,
+    "show_eph": True,
+    "show_total_exp": True,
+    "show_t2l": True,
+    "show_next_scan": True,
+    "locked": False,
+    "capture_gold_stats": False,
+    "capture_exp_stats": False,
+    "check_exp_on_inventory_open": True,
+}
+WB_REFERENCE_DEFAULT: Final = datetime(2024, 1, 1, tzinfo=UTC)
 
 
 def load_settings() -> dict[str, InfoSettingValue]:
@@ -32,38 +64,16 @@ def load_settings() -> dict[str, InfoSettingValue]:
         except ValueError:
             return None
 
-    result: dict[str, InfoSettingValue] = {
-        "x": value("x", 100, int),
-        "y": value("y", 100, int),
-        "font_size": value("font_size", 14, int),
-        "font_family": value("font_family", "Consolas", str),
-        "orientation": value("orientation", "horizontal", str),
-        "next_boss_name": value("next_boss_name", "Unknown", str),
-        "show_wb": flag("show_wb", default=True),
-        "show_legion": flag("show_legion", default=True),
-        "show_ht": flag("show_ht", default=True),
-        "show_gold": flag("show_gold", default=True),
-        "show_gph": flag("show_gph", default=True),
-        "show_total_gold": flag("show_total_gold", default=True),
-        "show_exp": flag("show_exp", default=True),
-        "show_eph": flag("show_eph", default=True),
-        "show_total_exp": flag("show_total_exp", default=True),
-        "show_t2l": flag("show_t2l", default=True),
-        "show_next_scan": flag("show_next_scan", default=True),
-        "locked": flag("locked", default=False),
-        "capture_gold_stats": flag("capture_gold_stats", default=False),
-        "capture_exp_stats": flag("capture_exp_stats", default=False),
-        "check_exp_on_inventory_open": flag("check_exp_on_inventory_open", default=True),
-        "exp_age_before_refresh": integer("exp_age_before_refresh", 5),
-        "exp_bar_pos": position("exp_bar_pos"),
-        "session_total_gold": integer("session_total_gold", 0),
-        "session_total_exp": integer("session_total_exp", 0),
-    }
-    raw_reference = store.value("wb_reference", "2024-01-01 00:00:00", type=str)
+    result: dict[str, InfoSettingValue] = {key: value(key, default, int) for key, default in INT_DEFAULTS.items()}
+    result.update({key: value(key, default, str) for key, default in STR_DEFAULTS.items()})
+    result.update({key: flag(key, default=default) for key, default in BOOL_DEFAULTS.items()})
+    result.update({key: integer(key, default) for key, default in STRING_INT_DEFAULTS.items()})
+    result["exp_bar_pos"] = position("exp_bar_pos")
+    raw_reference = store.value("wb_reference", WB_REFERENCE_DEFAULT.strftime(_DATETIME_FORMAT), type=str)
     try:
-        result["wb_reference"] = datetime.strptime(raw_reference, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
+        result["wb_reference"] = datetime.strptime(raw_reference, _DATETIME_FORMAT).replace(tzinfo=UTC)
     except TypeError, ValueError:
-        result["wb_reference"] = datetime(2024, 1, 1, tzinfo=UTC)
+        result["wb_reference"] = WB_REFERENCE_DEFAULT
     return result
 
 
@@ -72,30 +82,32 @@ def save_settings(values: dict[str, InfoSettingValue]) -> None:
     for key, raw_value in values.items():
         value = raw_value
         if key == "wb_reference" and isinstance(raw_value, datetime):
-            value = raw_value.strftime("%Y-%m-%d %H:%M:%S")
+            value = raw_value.strftime(_DATETIME_FORMAT)
         elif key == "exp_bar_pos":
             value = str(value) if value is not None else "None"
         store.setValue(key, value)
 
 
-def setting_int(values: dict[str, InfoSettingValue], key: str, default: int) -> int:
+def setting_int(values: dict[str, InfoSettingValue], key: str) -> int:
     value = values.get(key)
-    return value if isinstance(value, int) else default
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return INT_DEFAULTS[key] if key in INT_DEFAULTS else STRING_INT_DEFAULTS[key]
 
 
-def setting_bool(values: dict[str, InfoSettingValue], key: str, default: bool) -> bool:
+def setting_bool(values: dict[str, InfoSettingValue], key: str) -> bool:
     value = values.get(key)
-    return value if isinstance(value, bool) else default
+    return value if isinstance(value, bool) else BOOL_DEFAULTS[key]
 
 
-def setting_str(values: dict[str, InfoSettingValue], key: str, default: str) -> str:
+def setting_str(values: dict[str, InfoSettingValue], key: str) -> str:
     value = values.get(key)
-    return value if isinstance(value, str) else default
+    return value if isinstance(value, str) else STR_DEFAULTS[key]
 
 
-def setting_datetime(values: dict[str, InfoSettingValue], key: str, default: datetime) -> datetime:
-    value = values.get(key)
-    return value if isinstance(value, datetime) else default
+def wb_reference(values: dict[str, InfoSettingValue]) -> datetime:
+    value = values.get("wb_reference")
+    return value if isinstance(value, datetime) else WB_REFERENCE_DEFAULT
 
 
 def setting_position(value: InfoSettingValue) -> tuple[int, ...] | None:
