@@ -36,7 +36,7 @@ from src.logger import (
 from src.logger import setup as setup_logging
 from src.loot import get_filter_colors
 from src.profiles.ui import ProfileEditorWindow
-from src.settings import LOG_LEVEL_SETTING_KEYS, Settings, SettingsLoadError, get_settings, has_any_changed
+from src.settings import LOG_LEVEL_SETTING_KEYS, IniConfigLoaderType, SettingsLoadError, get_settings, has_any_changed
 from src.settings.ui import ConfigWindow
 
 if sys.platform == "win32":
@@ -252,7 +252,7 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
         win.show()
         return win
 
-    def _emit_deferred_config_cleanup_logs(self, config: Settings) -> None:
+    def _emit_deferred_config_cleanup_logs(self, config: IniConfigLoaderType) -> None:
         for record in config.consume_deferred_cleanup_log_records():
             if (
                 logging.getLogger(record.name).isEnabledFor(record.levelno)

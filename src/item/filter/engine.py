@@ -10,7 +10,7 @@ from src.item.filter.repository import (
     ProfileRulesRepository,
 )
 from src.item.filter.rules import EvaluationSettings, LoadedRules
-from src.settings import Settings, get_settings
+from src.settings import IniConfigLoaderType, get_settings
 
 if TYPE_CHECKING:
     from src.item.models import FilterResult, Item
@@ -35,7 +35,7 @@ class Filter(FilterEvaluator):
         self._initialized = True
 
     @staticmethod
-    def _current_settings() -> Settings:
+    def _current_settings() -> IniConfigLoaderType:
         # Resolved per call so the settings lookup is not frozen when the singleton is created.
         return get_settings()
 

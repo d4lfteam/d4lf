@@ -5,7 +5,7 @@ from src.item.filter.repository import ProfileRulesRepository
 from src.profiles import ProfileDocumentStore, ProfileModel
 
 if TYPE_CHECKING:
-    from src.settings import Settings
+    from src.settings import IniConfigLoaderType
 
 
 def test_repository_publishes_a_complete_rules_snapshot(tmp_path, monkeypatch) -> None:
@@ -20,7 +20,7 @@ def test_repository_publishes_a_complete_rules_snapshot(tmp_path, monkeypatch) -
         raise AssertionError(message)
 
     monkeypatch.setattr(ProfileDocumentStore, "default", staticmethod(reject_default))
-    repository = ProfileRulesRepository(lambda: cast("Settings", settings))
+    repository = ProfileRulesRepository(lambda: cast("IniConfigLoaderType", settings))
 
     first = repository.load_files()
     second = repository.rules
@@ -36,7 +36,7 @@ def test_repository_detects_profile_file_changes(tmp_path) -> None:
     profile_dir.mkdir()
     profile_path = profile_dir / "profile.yaml"
     profile_path.write_text("AspectUpgrades: []\n", encoding="utf-8")
-    repository = ProfileRulesRepository(lambda: cast("Settings", settings))
+    repository = ProfileRulesRepository(lambda: cast("IniConfigLoaderType", settings))
 
     repository.load_files()
     assert not repository.did_files_change()
@@ -53,7 +53,7 @@ def test_repository_rejects_profile_paths_outside_profiles_directory(tmp_path) -
         file_name="external", profile=ProfileModel(name="external", aspect_upgrades=["accelerating"]), source="test"
     )
     settings = SimpleNamespace(user_dir=user_dir, general=SimpleNamespace(profiles=["../external"]))
-    repository = ProfileRulesRepository(lambda: cast("Settings", settings))
+    repository = ProfileRulesRepository(lambda: cast("IniConfigLoaderType", settings))
 
     loaded = repository.load_files()
 

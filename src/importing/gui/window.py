@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMenu,
     QPushButton,
     QTextEdit,
     QVBoxLayout,
@@ -60,6 +61,8 @@ class ImporterWindow(QMainWindow):
     export_paragon_checkbox: CheckmarkCheckBox
     multi_build_checkbox: CheckmarkCheckBox
     filename_input_box: QLineEdit
+    filename_parts_button: QPushButton
+    filename_parts_menu: QMenu
     filename_part_actions: dict[FilenamePart, QAction]
     filename_parts_summary_label: QLabel
 
@@ -92,7 +95,7 @@ class ImporterWindow(QMainWindow):
         self.setCentralWidget(main_widget)
         layout = QVBoxLayout(main_widget)
         self._build_url_row(layout)
-        build_filename_row(self, layout)  # ty: ignore[invalid-argument-type]
+        build_filename_row(self, layout)
         self._build_options(layout)
         layout.addWidget(QLabel("Log:"))
         self.log_output = QTextEdit()

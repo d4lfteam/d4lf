@@ -99,8 +99,7 @@ class _ResTransformer:
         return offsets, pos, roi, templates
 
 
-@singleton
-class ResManager:
+class _ResManager:
     def __init__(self) -> None:
         self._current_resolution = "3840x2160"
         self._offsets = POSITIONS[1]
@@ -138,3 +137,7 @@ class ResManager:
         self._current_resolution = res
         LOGGER.info(f"Setting ui resolution to {res}")
         self._offsets, self._pos, self._roi, self._templates = _ResTransformer(resolution=res).from_uhd()
+
+
+ResManager = singleton(_ResManager)
+type ResManagerType = _ResManager
