@@ -1,13 +1,32 @@
+import logging
 import sys
 from typing import TYPE_CHECKING
 
 from src.game_data import ItemRarity, ItemType
 from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect  # ruff:ignore[TC001]
+from src.item.models import FilterResult, MatchedFilter
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from src.item.models import Item
     from src.profiles import AffixAspectFilterModel, AffixFilterCountModel, AffixFilterModel, AspectUniqueFilterModel
+
+LOGGER = logging.getLogger(__name__)
+
+
+def single_entry[T](root: Mapping[str, T]) -> tuple[str, T]:
+    name = next(iter(root.keys()))
+    return name, root[name]
+
+
+def keep_mythic(res: FilterResult, name: str | None, rarity: ItemRarity | None, kind: str, label: str) -> FilterResult:
+    if not res.keep and rarity == ItemRarity.Mythic:
+        LOGGER.info(f"{name} -- Matched mythic {kind}, always kept")
+        res.keep = True
+        res.matched.append(MatchedFilter(label))
+    return res
 
 
 class FilterMatchingMixin:
