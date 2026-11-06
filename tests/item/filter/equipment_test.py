@@ -1,42 +1,30 @@
-import typing
-
 import pytest
 from natsort import natsorted
 
 from src.game_data import ItemRarity, ItemType
 from src.item import Affix, Item
+from src.item.filter.evaluator import FilterEvaluator
+from src.item.filter.rules import EvaluationSettings
 from src.profiles import AffixFilterCountModel, AffixFilterModel, ItemFilterModel, ProfileModel
 
-from .conftest import (
-    _create_mocked_filter,
-    _patch_override_settings,
-    _rules,
-    affixes,
-    filters,
-    global_uniques,
-    simple_mythics,
-    uniques_with_affixes,
-)
-
-if typing.TYPE_CHECKING:
-    from pytest_mock import MockerFixture
+from .conftest import _rules, affixes, filters, global_uniques, simple_mythics, uniques_with_affixes
 
 
 @pytest.mark.parametrize(
     ("_name", "result", "item"), natsorted(affixes), ids=[name for name, _, _ in natsorted(affixes)]
 )
-def test_affixes(_name: str, result: list[str], item: Item, mocker: MockerFixture) -> None:
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.rules = _rules(affix_filters={filters.affix.name: filters.affix.affixes})
+def test_affixes(_name: str, result: list[str], item: Item) -> None:
+    test_filter = FilterEvaluator(_rules(affix_filters={filters.affix.name: filters.affix.affixes}))
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
 @pytest.mark.parametrize(
     ("_name", "result", "item"), natsorted(global_uniques), ids=[name for name, _, _ in natsorted(global_uniques)]
 )
-def test_global_uniques(_name: str, result: list[str], item: Item, mocker: MockerFixture) -> None:
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.rules = _rules(global_unique_filters={filters.global_unique.name: filters.global_unique.global_uniques})
+def test_global_uniques(_name: str, result: list[str], item: Item) -> None:
+    test_filter = FilterEvaluator(
+        _rules(global_unique_filters={filters.global_unique.name: filters.global_unique.global_uniques})
+    )
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
@@ -45,27 +33,24 @@ def test_global_uniques(_name: str, result: list[str], item: Item, mocker: Mocke
     natsorted(uniques_with_affixes),
     ids=[name for name, _, _ in natsorted(uniques_with_affixes)],
 )
-def test_uniques_with_affixes(_name: str, result: list[str], item: Item, mocker: MockerFixture) -> None:
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.rules = _rules(affix_filters={filters.unique_affixes.name: filters.unique_affixes.affixes})
+def test_uniques_with_affixes(_name: str, result: list[str], item: Item) -> None:
+    test_filter = FilterEvaluator(_rules(affix_filters={filters.unique_affixes.name: filters.unique_affixes.affixes}))
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
 @pytest.mark.parametrize(
     ("_name", "result", "item"), natsorted(simple_mythics), ids=[name for name, _, _ in natsorted(simple_mythics)]
 )
-def test_mythic_always_kept(_name: str, result: bool, item: Item, mocker: MockerFixture) -> None:
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.rules = _rules(
-        global_unique_filters={filters.always_keep_mythics.name: filters.always_keep_mythics.global_uniques}
+def test_mythic_always_kept(_name: str, result: bool, item: Item) -> None:
+    test_filter = FilterEvaluator(
+        _rules(global_unique_filters={filters.always_keep_mythics.name: filters.always_keep_mythics.global_uniques})
     )
     assert test_filter.should_keep(item).keep == result
 
 
-def test_enabled_equipment_keeps_matches_and_rejects_non_matches(mocker: MockerFixture) -> None:
-    settings = _patch_override_settings(mocker)
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.rules = _rules(affix_filters={"profile": filters.affix.affixes})
+def test_enabled_equipment_keeps_matches_and_rejects_non_matches() -> None:
+    rules = _rules(affix_filters={"profile": filters.affix.affixes})
+    test_filter = FilterEvaluator(rules)
     matching = Item(
         item_type=ItemType.Helm,
         power=725,
@@ -87,12 +72,12 @@ def test_enabled_equipment_keeps_matches_and_rejects_non_matches(mocker: MockerF
     assert not enabled_non_match.keep
     assert not enabled_non_match.skipped
 
-    settings.general.filter_equipment = False
-    assert test_filter.should_keep(matching).skipped
-    assert test_filter.should_keep(non_matching).skipped
+    disabled_filter = FilterEvaluator(rules, EvaluationSettings(filter_equipment=False))
+    assert disabled_filter.should_keep(matching).skipped
+    assert disabled_filter.should_keep(non_matching).skipped
 
 
-def test_affix_match_reports_filter_affixes_missing_from_item(mocker: MockerFixture) -> None:
+def test_affix_match_reports_filter_affixes_missing_from_item() -> None:
     profile = ProfileModel(
         name="build",
         affixes=[
@@ -114,8 +99,7 @@ def test_affix_match_reports_filter_affixes_missing_from_item(mocker: MockerFixt
             }
         ],
     )
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.rules = _rules(affix_filters={profile.name: profile.affixes})
+    test_filter = FilterEvaluator(_rules(affix_filters={profile.name: profile.affixes}))
     helm = Item(
         item_type=ItemType.Helm,
         power=900,
@@ -134,7 +118,7 @@ def test_affix_match_reports_filter_affixes_missing_from_item(mocker: MockerFixt
     assert result.matched[0].missing_affixes == ["maximum_life"]
 
 
-def test_affix_match_reports_filter_inherents_missing_from_item(mocker: MockerFixture) -> None:
+def test_affix_match_reports_filter_inherents_missing_from_item() -> None:
     profile = ProfileModel(
         name="build",
         affixes=[
@@ -151,8 +135,7 @@ def test_affix_match_reports_filter_inherents_missing_from_item(mocker: MockerFi
             }
         ],
     )
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.rules = _rules(affix_filters={profile.name: profile.affixes})
+    test_filter = FilterEvaluator(_rules(affix_filters={profile.name: profile.affixes}))
     helm = Item(
         item_type=ItemType.Helm,
         power=900,

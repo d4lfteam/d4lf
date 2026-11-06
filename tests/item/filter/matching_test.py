@@ -4,10 +4,10 @@ import pytest
 from natsort import natsorted
 
 from src.item import Affix, FilterResult, Item
+from src.item.filter.evaluator import FilterEvaluator
 from src.profiles import AffixFilterCountModel, AffixFilterModel
-from src.settings import AspectFilterType, get_settings
 
-from .conftest import _create_mocked_filter, _rules, aspects, charms, filters, seals
+from .conftest import _rules, aspects, charms, filters, seals
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
@@ -17,19 +17,16 @@ if typing.TYPE_CHECKING:
     ("_name", "result", "item"), natsorted(aspects), ids=[name for name, _, _ in natsorted(aspects)]
 )
 def test_aspects(_name: str, result: list[str], item: Item, mocker: MockerFixture) -> None:
-    test_filter = _create_mocked_filter(mocker)
-    mocker.patch.object(get_settings().general, "keep_aspects", AspectFilterType.upgrade)
-    mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
-    test_filter.rules = _rules(
-        aspect_upgrade_filters={filters.aspects_filters.name: filters.aspects_filters.aspect_upgrades}
+    test_filter = FilterEvaluator(
+        _rules(aspect_upgrade_filters={filters.aspects_filters.name: filters.aspects_filters.aspect_upgrades})
     )
+    mocker.patch.object(test_filter, "_check_affixes", return_value=FilterResult(keep=False, matched=[]))
     assert natsorted([match.profile for match in test_filter.should_keep(item).matched]) == natsorted(result)
 
 
 @pytest.mark.parametrize(("_name", "result", "item"), natsorted(seals), ids=[name for name, _, _ in natsorted(seals)])
-def test_seals(_name: str, result: list[str], item: Item, mocker: MockerFixture) -> None:
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.rules = _rules(seal_filters={filters.seal_charm.name: filters.seal_charm.seals})
+def test_seals(_name: str, result: list[str], item: Item) -> None:
+    test_filter = FilterEvaluator(_rules(seal_filters={filters.seal_charm.name: filters.seal_charm.seals}))
     matches = test_filter.should_keep(item).matched
     assert natsorted([match.profile for match in matches]) == natsorted(result)
     for match in matches:
@@ -38,9 +35,8 @@ def test_seals(_name: str, result: list[str], item: Item, mocker: MockerFixture)
 
 
 @pytest.mark.parametrize(("_name", "result", "item"), natsorted(charms), ids=[name for name, _, _ in natsorted(charms)])
-def test_charms(_name: str, result: list[str], item: Item, mocker: MockerFixture) -> None:
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.rules = _rules(charm_filters={filters.seal_charm.name: filters.seal_charm.charms})
+def test_charms(_name: str, result: list[str], item: Item) -> None:
+    test_filter = FilterEvaluator(_rules(charm_filters={filters.seal_charm.name: filters.seal_charm.charms}))
     matches = test_filter.should_keep(item).matched
     assert natsorted([match.profile for match in matches]) == natsorted(result)
     for match in matches:
@@ -102,12 +98,8 @@ def test_charms(_name: str, result: list[str], item: Item, mocker: MockerFixture
     ],
 )
 def test_missing_affix_names(
-    expected: list[AffixFilterModel],
-    max_count: int,
-    item_affixes: list[Affix],
-    missing: list[str],
-    mocker: MockerFixture,
+    expected: list[AffixFilterModel], max_count: int, item_affixes: list[Affix], missing: list[str]
 ) -> None:
     pool = [AffixFilterCountModel(count=expected, min_count=1, max_count=max_count)]
 
-    assert _create_mocked_filter(mocker)._missing_affix_names(pool, item_affixes) == missing
+    assert FilterEvaluator()._missing_affix_names(pool, item_affixes) == missing

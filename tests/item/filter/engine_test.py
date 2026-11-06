@@ -4,6 +4,7 @@ import pytest
 
 from src.game_data import ItemRarity, ItemType
 from src.item import Affix, AffixType, Item
+from src.item.filter.evaluator import FilterEvaluator
 from src.profiles import (
     AffixFilterCountModel,
     AffixFilterModel,
@@ -14,17 +15,12 @@ from src.profiles import (
 )
 from src.settings import IniConfigLoaderType
 
-from .conftest import (
-    _create_mocked_filter,
-    _patch_override_settings,
-    _rules,
-    filters,
-    sigil_jalal,
-    sigil_mythic_fallback,
-)
+from .conftest import _patch_override_settings, _rules, filters, sigil_jalal, sigil_mythic_fallback
 
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
+
+    from src.item.filter import Filter
 
 
 @pytest.mark.parametrize(
@@ -34,7 +30,7 @@ if typing.TYPE_CHECKING:
         (ItemRarity.Legendary, {"rarity_test.AnyRarity"}),
     ],
 )
-def test_affix_rarity_gate(rarity: ItemRarity, expected: set[str], mocker: MockerFixture) -> None:
+def test_affix_rarity_gate(rarity: ItemRarity, expected: set[str]) -> None:
     boots = Item(
         item_type=ItemType.Boots,
         power=900,
@@ -42,12 +38,11 @@ def test_affix_rarity_gate(rarity: ItemRarity, expected: set[str], mocker: Mocke
         affixes=[Affix(name="movement_speed", value=10)],
         inherent=[],
     )
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.rules = _rules(affix_filters={filters.affix_rarity.name: filters.affix_rarity.affixes})
+    test_filter = FilterEvaluator(_rules(affix_filters={filters.affix_rarity.name: filters.affix_rarity.affixes}))
     assert {m.profile for m in test_filter.should_keep(boots).matched} == expected
 
 
-def test_duplicate_affix_requirements_match_distinct_item_rows(mocker: MockerFixture) -> None:
+def test_duplicate_affix_requirements_match_distinct_item_rows() -> None:
     profile = ProfileModel(
         name="duplicates",
         affixes=[
@@ -61,8 +56,7 @@ def test_duplicate_affix_requirements_match_distinct_item_rows(mocker: MockerFix
             }
         ],
     )
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.rules = _rules(affix_filters={profile.name: profile.affixes})
+    test_filter = FilterEvaluator(_rules(affix_filters={profile.name: profile.affixes}))
 
     one_armor = Item(
         item_type=ItemType.Helm, power=900, rarity=ItemRarity.Rare, affixes=[Affix(name="armor", value=100)]
@@ -80,7 +74,7 @@ def test_duplicate_affix_requirements_match_distinct_item_rows(mocker: MockerFix
     assert result.matched[0].matched_affixes[1] is second_armor
 
 
-def test_duplicate_affix_requirements_assign_value_and_greater_constraints(mocker: MockerFixture) -> None:
+def test_duplicate_affix_requirements_assign_value_and_greater_constraints() -> None:
     profile = ProfileModel(
         name="duplicates",
         affixes=[
@@ -100,8 +94,7 @@ def test_duplicate_affix_requirements_assign_value_and_greater_constraints(mocke
             }
         ],
     )
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.rules = _rules(affix_filters={profile.name: profile.affixes})
+    test_filter = FilterEvaluator(_rules(affix_filters={profile.name: profile.affixes}))
 
     first_armor = Affix(name="armor", value=100)
     second_armor = Affix(name="armor", value=200, type=AffixType.greater)
@@ -114,7 +107,7 @@ def test_duplicate_affix_requirements_assign_value_and_greater_constraints(mocke
     assert result.matched[0].matched_affixes[1] is second_armor
 
 
-def test_filter_loads_typed_paragon_payload(tmp_path, mocker: MockerFixture) -> None:
+def test_filter_loads_typed_paragon_payload(tmp_path, fresh_filter: Filter, mocker: MockerFixture) -> None:
     settings = mocker.Mock(spec=IniConfigLoaderType.__value__)
     settings.user_dir = tmp_path
     settings.general.profiles = ["typed_paragon"]
@@ -133,14 +126,15 @@ def test_filter_loads_typed_paragon_payload(tmp_path, mocker: MockerFixture) -> 
         file_name="typed_paragon", profile=profile, source="https://example.invalid"
     )
 
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.files_loaded = False
+    test_filter = fresh_filter
     test_filter.load_files()
 
     assert isinstance(test_filter.get_paragon_filters()["typed_paragon"], ParagonPayloadModel)
 
 
-def test_filter_skips_invalid_profile_but_keeps_valid_profiles(tmp_path, mocker: MockerFixture) -> None:
+def test_filter_skips_invalid_profile_but_keeps_valid_profiles(
+    tmp_path, fresh_filter: Filter, mocker: MockerFixture
+) -> None:
     settings = mocker.Mock(spec=IniConfigLoaderType.__value__)
     settings.user_dir = tmp_path
     settings.general.profiles = ["good", "bad"]
@@ -150,31 +144,32 @@ def test_filter_skips_invalid_profile_but_keeps_valid_profiles(tmp_path, mocker:
     (profile_dir / "good.yaml").write_text("{}\n", encoding="utf-8")
     (profile_dir / "bad.yaml").write_text("[invalid", encoding="utf-8")
 
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.files_loaded = False
+    test_filter = fresh_filter
     test_filter.load_files()
 
-    assert "good" in test_filter.rules.affix_filters or test_filter.files_loaded
+    assert test_filter.files_loaded
     assert "bad" not in test_filter.rules.affix_filters
     assert test_filter.load_failures == ("bad",)
 
 
-def test_filter_removes_profile_only_after_second_missing_check(tmp_path, mocker: MockerFixture) -> None:
+def test_filter_removes_profile_only_after_second_missing_check(
+    tmp_path, fresh_filter: Filter, mocker: MockerFixture
+) -> None:
     settings = mocker.Mock(spec=IniConfigLoaderType.__value__)
     settings.user_dir = tmp_path
     settings.general.profiles = ["missing"]
     mocker.patch("src.item.filter.engine.get_settings", return_value=settings)
     (tmp_path / "profiles").mkdir()
-    test_filter = _create_mocked_filter(mocker)
-
-    test_filter.files_loaded = False
+    test_filter = fresh_filter
     test_filter.load_files()
     settings.save_value.assert_not_called()
     test_filter.load_files()
     settings.save_value.assert_called_once_with("general", "profiles", "")
 
 
-def test_invalid_profile_edit_emits_one_report_per_file_version(tmp_path, mocker: MockerFixture) -> None:
+def test_invalid_profile_edit_emits_one_report_per_file_version(
+    tmp_path, fresh_filter: Filter, mocker: MockerFixture
+) -> None:
     settings = mocker.Mock(spec=IniConfigLoaderType.__value__)
     settings.user_dir = tmp_path
     settings.general.profiles = ["bad"]
@@ -183,11 +178,9 @@ def test_invalid_profile_edit_emits_one_report_per_file_version(tmp_path, mocker
     profile_dir.mkdir()
     profile_path = profile_dir / "bad.yaml"
     profile_path.write_text("[invalid", encoding="utf-8")
-    test_filter = _create_mocked_filter(mocker)
+    test_filter = fresh_filter
     reports = []
     test_filter.register_profile_failure_listener(reports.append)
-
-    test_filter.files_loaded = False
     test_filter.load_files()
     test_filter.load_files()
     profile_path.write_text("[still-invalid", encoding="utf-8")
@@ -227,10 +220,10 @@ CASES = (
 
 @pytest.mark.parametrize(("setting", "item", "enabled_keep", "mythic"), CASES)
 def test_filterable_item_category_override_skips_all_items_when_disabled(
-    setting, item, enabled_keep, mythic, mocker
+    setting, item, enabled_keep, mythic, fresh_filter, mocker
 ) -> None:
     settings = _patch_override_settings(mocker, **{setting: False})
-    test_filter = _create_mocked_filter(mocker)
+    test_filter = fresh_filter
 
     skipped = test_filter.should_keep(item)
 
@@ -258,9 +251,9 @@ def test_filterable_item_category_override_skips_all_items_when_disabled(
     assert enabled_mythic.keep
 
 
-def test_disabled_sigils_skip_escalation_before_sigil_behavior(mocker) -> None:
+def test_disabled_sigils_skip_escalation_before_sigil_behavior(fresh_filter, mocker) -> None:
     _patch_override_settings(mocker, filter_sigils=False)
-    test_filter = _create_mocked_filter(mocker)
+    test_filter = fresh_filter
     escalation_sigil = Item(item_type=ItemType.EscalationSigil, name="escalation")
 
     result = test_filter.should_keep(escalation_sigil)
@@ -269,15 +262,14 @@ def test_disabled_sigils_skip_escalation_before_sigil_behavior(mocker) -> None:
     assert result.matched == []
 
 
-def test_disabled_category_still_loads_and_reports_invalid_profiles(tmp_path, mocker) -> None:
+def test_disabled_category_still_loads_and_reports_invalid_profiles(tmp_path, fresh_filter, mocker) -> None:
     settings = _patch_override_settings(mocker, filter_equipment=False)
     settings.general.profiles = ["invalid"]
     settings.user_dir = tmp_path
     profile_dir = tmp_path / "profiles"
     profile_dir.mkdir()
     (profile_dir / "invalid.yaml").write_text("[invalid", encoding="utf-8")
-    test_filter = _create_mocked_filter(mocker)
-    test_filter.files_loaded = False
+    test_filter = fresh_filter
 
     result = test_filter.should_keep(Item(item_type=ItemType.Helm, power=900, rarity=ItemRarity.Rare))
 

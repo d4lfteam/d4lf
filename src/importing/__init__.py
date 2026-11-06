@@ -22,9 +22,9 @@ from src.importing.gui import ImporterWindow
 from src.importing.service import UnsupportedImportSourceError, import_build, open_session, select_source
 
 
-def create_importer_window(parent: QWidget | None = None, accent_color: str | None = None) -> ImporterWindow:
+def create_importer_window(parent: QWidget | None = None) -> ImporterWindow:
     """Create the importing capability's standalone window."""
-    return ImporterWindow(parent=parent, accent_color=accent_color)
+    return ImporterWindow(parent=parent)
 
 
 __all__ = [

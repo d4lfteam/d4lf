@@ -6,6 +6,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Protocol, cast
 
+import pytest
+
 import src.item.filter.engine as engine_module
 from src.item import Affix, Aspect, Item
 from src.item.filter import Filter
@@ -14,8 +16,6 @@ from src.profiles import ProfileModel
 
 if typing.TYPE_CHECKING:
     from collections.abc import Mapping
-
-    from pytest_mock import MockerFixture
 
     from src.profiles import (
         DynamicCharmFilterModel,
@@ -91,12 +91,11 @@ def _rules(
     )
 
 
-def _create_mocked_filter(mocker: MockerFixture) -> Filter:
-    filter_obj = Filter()
-    filter_obj.rules = LoadedRules.empty()
-    filter_obj.files_loaded = True
-    mocker.patch.object(filter_obj, "_did_files_change", return_value=False)
-    return filter_obj
+@pytest.fixture
+def fresh_filter(monkeypatch: pytest.MonkeyPatch) -> Filter:
+    """A newly constructed ``Filter`` facade that has not loaded any profiles yet."""
+    monkeypatch.setattr(Filter, "_instance", None)
+    return Filter()
 
 
 def _patch_override_settings(mocker, **overrides):
@@ -109,10 +108,11 @@ def _patch_override_settings(mocker, **overrides):
         handle_cosmetics="ignore",
         keep_aspects="upgrade",
         handle_uniques="favorite",
+        profiles=[],
     )
     for key, value in overrides.items():
         setattr(general, key, value)
-    settings = SimpleNamespace(general=general)
+    settings = SimpleNamespace(general=general, user_dir=Path())
     mocker.patch.object(engine_module, "get_settings", return_value=settings)
     return settings
 

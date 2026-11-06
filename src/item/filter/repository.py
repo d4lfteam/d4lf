@@ -79,17 +79,9 @@ class ProfileRulesRepository:
         """Latest complete profile-rule snapshot."""
         return self._rules
 
-    def replace_rules(self, rules: LoadedRules) -> None:
-        """Replace rules for the facade's compatibility adapters and tests."""
-        self._rules = rules
-
     @property
     def files_loaded(self) -> bool:
         return self._files_loaded
-
-    @files_loaded.setter
-    def files_loaded(self, value: bool) -> None:
-        self._files_loaded = value
 
     @staticmethod
     def profile_signature(path: Path) -> tuple[int, int] | None:

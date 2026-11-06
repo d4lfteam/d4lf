@@ -269,7 +269,8 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
                 self.console_handler.handle(record)
 
     def open_import_dialog(self) -> None:
-        win = self._show_singleton_modal("importer", create_importer_window, accent_color=get_filter_colors().matched)
+        set_accent_color(get_filter_colors().matched)
+        win = self._show_singleton_modal("importer", create_importer_window)
         win.import_completed.connect(self.activity_tab.refresh_profiles, Qt.ConnectionType.UniqueConnection)  # ty: ignore[unresolved-attribute]
 
     def open_settings_dialog(self) -> None:
