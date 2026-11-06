@@ -1,13 +1,11 @@
-import json
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, override
 
 if TYPE_CHECKING:
     from src.game_data import ItemRarity, ItemType
     from src.item.data.affix import Affix
     from src.item.data.aspect import Aspect
     from src.item.data.seasonal_attribute import SeasonalAttribute
-    from src.type_aliases import JsonValue
 
 
 @dataclass
@@ -86,56 +84,3 @@ class FilterResult:
     keep: bool
     matched: list[MatchedFilter]
     skipped: bool = False
-
-
-class ItemJSONEncoder(json.JSONEncoder):
-    @override
-    def default(self, o: Item | JsonValue) -> JsonValue:
-        if isinstance(o, Item):
-            return {
-                "affixes": [
-                    {
-                        "loc": affix.loc,
-                        "max_value": affix.max_value,
-                        "min_value": affix.min_value,
-                        "name": affix.name,
-                        "text": affix.text,
-                        "type": affix.type.value,
-                        "value": affix.value,
-                    }
-                    for affix in o.affixes
-                ],
-                "aspect": (
-                    {
-                        "name": o.aspect.name,
-                        "loc": o.aspect.loc,
-                        "min_value": o.aspect.min_value,
-                        "max_value": o.aspect.max_value,
-                        "text": o.aspect.text,
-                        "value": o.aspect.value,
-                    }
-                    if o.aspect
-                    else None
-                ),
-                "codex_upgrade": o.codex_upgrade,
-                "cosmetic_upgrade": o.cosmetic_upgrade,
-                "inherent": [
-                    {
-                        "loc": affix.loc,
-                        "max_value": affix.max_value,
-                        "min_value": affix.min_value,
-                        "name": affix.name,
-                        "text": affix.text,
-                        "type": affix.type.value,
-                        "value": affix.value,
-                    }
-                    for affix in o.inherent
-                ],
-                "is_ancestral": o.is_ancestral,
-                "item_type": o.item_type.value if o.item_type else None,
-                "name": o.name or None,
-                "power": o.power or None,
-                "rarity": o.rarity.value if o.rarity else None,
-                "set_name": o.set or None,
-            }
-        return cast("JsonValue", super().default(o))
