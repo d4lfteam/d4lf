@@ -174,16 +174,6 @@ def test_import_category_choices_persist_and_serialize(qapp, importer_settings, 
     restored.close()
 
 
-def test_importer_window_accepts_the_composed_accent_color(qapp, importer_settings, monkeypatch) -> None:
-    received: list[str] = []
-    monkeypatch.setattr(importer_window_module, "set_accent_color", received.append)
-
-    window = ImporterWindow(accent_color="#56B4E9")
-
-    assert received == ["#56B4E9"]
-    window.close()
-
-
 def test_multi_variant_import_cancellation_releases_session(qapp, importer_settings, monkeypatch) -> None:
     source = RecordingSource()
     monkeypatch.setattr(importer_window_module, "open_session", lambda _url: ImportSession(source))

@@ -28,10 +28,6 @@ class FilterEvaluator(FilterSpecialMixin, FilterEquipmentMixin, FilterMatchingMi
     def rules(self) -> LoadedRules:
         return self._rules
 
-    @rules.setter
-    def rules(self, value: LoadedRules) -> None:
-        self._rules = value
-
     def _skipped_by_filter_override(self, item: Item) -> bool:
         settings = self.evaluation_settings
         if is_sigil(item.item_type):

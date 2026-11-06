@@ -9,7 +9,7 @@ from src.item.filter.repository import (
     ProfileLoadReport,
     ProfileRulesRepository,
 )
-from src.item.filter.rules import EvaluationSettings, LoadedRules
+from src.item.filter.rules import EvaluationSettings
 from src.settings import IniConfigLoaderType, get_settings
 
 if TYPE_CHECKING:
@@ -40,24 +40,8 @@ class Filter(FilterEvaluator):
         return get_settings()
 
     @property
-    @override
-    def rules(self) -> LoadedRules:
-        return self._rules
-
-    @rules.setter
-    @override
-    def rules(self, value: LoadedRules) -> None:
-        self._rules = value
-        if hasattr(self, "_repository"):
-            self._repository.replace_rules(value)
-
-    @property
     def files_loaded(self) -> bool:
         return self._repository.files_loaded
-
-    @files_loaded.setter
-    def files_loaded(self, value: bool) -> None:
-        self._repository.files_loaded = value
 
     @property
     def load_failures(self) -> tuple[str, ...]:

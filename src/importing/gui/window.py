@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 
 from src.desktop import ICON_PATH
 from src.desktop.activity import QtLogHandler
-from src.desktop.widgets import CheckmarkCheckBox, set_accent_color
+from src.desktop.widgets import CheckmarkCheckBox
 from src.importing.contracts import (
     DEFAULT_FILENAME_PARTS,
     FilenamePart,
@@ -66,10 +66,8 @@ class ImporterWindow(QMainWindow):
     filename_part_actions: dict[FilenamePart, QAction]
     filename_parts_summary_label: QLabel
 
-    def __init__(self, parent: QWidget | None = None, accent_color: str | None = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        if accent_color is not None:
-            set_accent_color(accent_color)
         if ICON_PATH.exists():
             self.setWindowIcon(QIcon(str(ICON_PATH)))
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
