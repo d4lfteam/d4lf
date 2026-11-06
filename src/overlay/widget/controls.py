@@ -17,75 +17,81 @@ class _OverlayControls(BossTimerContract):
         self._repack()
         self._save_settings()
 
-    def _create_toggle_btn(
-        self, parent: tk.Misc, label_text: str, attr_name: str, callback: Callable[[], None] | None = None
+    def _create_button(
+        self,
+        parent: tk.Misc,
+        text: str,
+        fg: str,
+        on_click: Callable[[tk.Button], None],
+        *,
+        active_bg: str = ACCENT,
+        padx: int = 10,
     ) -> tk.Button:
-        """Creates a toggle button that updates state and color immediately."""
-        is_active = getattr(self, attr_name)
-        colors = get_filter_colors()
-
+        """Creates and packs a menu button whose click handler receives the button itself."""
         btn = tk.Button(
             parent,
-            text=label_text,
+            text=text,
             bg=CARD_BG,
-            fg=colors.matched if is_active else MUTED,
+            fg=fg,
             font=(self.font_family, self.font_size, "bold"),
-            activebackground=colors.matched,
+            activebackground=active_bg,
             activeforeground=CARD_BG,
             bd=0,
-            padx=10,
+            padx=padx,
             pady=5,
             anchor="w",
         )
+        btn.config(command=lambda: on_click(btn))
+        btn.pack(fill="x")
+        return btn
 
-        def _on_click() -> None:
-            new_val = not getattr(self, attr_name)
-            setattr(self, attr_name, new_val)
+    def _create_toggle(
+        self,
+        parent: tk.Misc,
+        label_text: str,
+        get_state: Callable[[], bool],
+        set_state: Callable[[bool], None],
+        callback: Callable[[], None] | None,
+        active_bg: str,
+    ) -> tk.Button:
+        """Creates a toggle button that flips state via the getter/setter pair and recolors immediately."""
+        colors = get_filter_colors()
+
+        def _on_click(btn: tk.Button) -> None:
+            new_val = not get_state()
+            set_state(new_val)
             btn.config(fg=colors.matched if new_val else MUTED)
             if callback:
                 callback()
             self._repack()
             self._save_settings()
 
-        btn.config(command=_on_click)
-        btn.pack(fill="x")
-        return btn
+        fg = colors.matched if get_state() else MUTED
+        return self._create_button(parent, label_text, fg, _on_click, active_bg=active_bg)
 
-    def _create_config_toggle_btn(
-        self, parent: tk.Misc, label_text: str, config_key: str, callback: Callable[[], None] | None = None
+    def _create_toggle_btn(
+        self, parent: tk.Misc, label_text: str, attr_name: str, callback: Callable[[], None] | None = None
     ) -> tk.Button:
-        """Creates a toggle button for settings stored in QSettings."""
-        is_active = self.settings.get(config_key, False)
-        colors = get_filter_colors()
-
-        btn = tk.Button(
+        """Creates a toggle button backed by an overlay attribute."""
+        return self._create_toggle(
             parent,
-            text=label_text,
-            bg=CARD_BG,
-            fg=colors.matched if is_active else MUTED,
-            font=(self.font_family, self.font_size, "bold"),
-            activebackground=ACCENT,
-            activeforeground=CARD_BG,
-            bd=0,
-            padx=10,
-            pady=5,
-            anchor="w",
+            label_text,
+            lambda: getattr(self, attr_name),
+            lambda value: setattr(self, attr_name, value),
+            callback,
+            get_filter_colors().matched,
         )
 
-        def _on_click() -> None:
-            new_val = not self.settings.get(config_key, False)
-            save_info_settings({config_key: new_val})
-            self.settings[config_key] = new_val
-            if callback:
-                callback()
-            else:
-                btn.config(fg=colors.matched if new_val else MUTED)
-            self._repack()
-            self._save_settings()
+    def _create_config_toggle_btn(self, parent: tk.Misc, label_text: str, config_key: str) -> tk.Button:
+        """Creates a toggle button for settings stored in QSettings."""
 
-        btn.config(command=_on_click)
-        btn.pack(fill="x")
-        return btn
+        def _set(value: bool) -> None:
+            save_info_settings({config_key: value})
+            self.settings[config_key] = value
+
+        return self._create_toggle(
+            parent, label_text, lambda: bool(self.settings.get(config_key, False)), _set, None, ACCENT
+        )
 
     def _create_radio_button(
         self,
@@ -98,24 +104,8 @@ class _OverlayControls(BossTimerContract):
     ) -> tk.Button:
         """Creates a radio-style button that visually indicates selection."""
         is_selected = current_value == target_value
-        colors = get_filter_colors()
-        fg_color = colors.matched if is_selected else MUTED
 
-        btn = tk.Button(
-            parent,
-            text=f"● {label_text}" if is_selected else f"  {label_text}",
-            bg=CARD_BG,
-            fg=fg_color,
-            font=(self.font_family, self.font_size, "bold"),
-            activebackground=ACCENT,
-            activeforeground=CARD_BG,
-            bd=0,
-            padx=20,  # Indent further for radio items
-            pady=5,
-            anchor="w",
-        )
-
-        def _on_click() -> None:
+        def _on_click(_btn: tk.Button) -> None:
             on_select_callback(target_value)
             if config_key is not None:
                 save_info_settings({config_key: target_value})
@@ -126,30 +116,24 @@ class _OverlayControls(BossTimerContract):
             self._destroy_settings_popup()
             self._show_context_menu(event=None)  # Re-open at last position
 
-        btn.config(command=_on_click)
-        btn.pack(fill="x")
-        return btn
+        return self._create_button(
+            parent,
+            f"● {label_text}" if is_selected else f"  {label_text}",
+            get_filter_colors().matched if is_selected else MUTED,
+            _on_click,
+            padx=20,  # Indent further for radio items
+        )
 
     def _create_submenu_button(
         self, parent: tk.Misc, label_text: str, submenu_id: str, content_builder: Callable[[tk.Toplevel], None]
     ) -> tk.Button:
         """Creates a button that opens a cascading Toplevel submenu to its side."""
-        btn = tk.Button(
+        return self._create_button(
             parent,
-            text=f"{label_text} ▶",  # Default to collapsed
-            bg=CARD_BG,
-            fg=TEXT,
-            font=(self.font_family, self.font_size, "bold"),
-            activebackground=ACCENT,
-            activeforeground=CARD_BG,
-            bd=0,
-            padx=10,
-            pady=5,
-            anchor="w",
-            command=lambda: self._open_submenu(btn, submenu_id, content_builder),
+            f"{label_text} ▶",  # Default to collapsed
+            TEXT,
+            lambda btn: self._open_submenu(btn, submenu_id, content_builder),
         )
-        btn.pack(fill="x")
-        return btn
 
     def _on_popup_focus_out(self, event: tk.Event) -> None:
         """Delayed check to see if focus left the entire settings UI family."""
