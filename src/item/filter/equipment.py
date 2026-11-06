@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from src.item import ASPECT_UPGRADES_LABEL
 from src.item.data.affix import AffixType
+from src.item.filter.matching import single_entry
 from src.item.models import FilterResult, MatchedFilter
 from src.settings import AspectFilterType, UnfilteredUniquesType
 
@@ -21,8 +22,7 @@ class FilterEquipmentMixin:
         non_tempered_affixes = [affix for affix in item.affixes if affix.type != AffixType.tempered]
         for profile_name, profile_filter in self.rules.affix_filters.items():
             for filter_item in profile_filter:
-                filter_name = next(iter(filter_item.root.keys()))
-                filter_spec = filter_item.root[filter_name]
+                filter_name, filter_spec = single_entry(filter_item.root)
                 if not self._match_item_type(filter_spec.item_type, item.item_type):  # check item type
                     continue
                 if filter_spec.rarities and item.rarity not in filter_spec.rarities:  # check item rarity

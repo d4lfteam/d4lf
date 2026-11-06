@@ -1,7 +1,8 @@
 import logging
 from typing import TYPE_CHECKING
 
-from src.game_data import ItemRarity, SigilRules
+from src.game_data import SigilRules
+from src.item.filter.matching import keep_mythic, single_entry
 from src.item.models import FilterResult, MatchedFilter
 from src.profiles import CharmFilterModel, SigilPriority
 from src.settings import CosmeticFilterType
@@ -69,11 +70,7 @@ class FilterSpecialMixin:
             LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Sigils")
             res.keep = True
             res.matched.append(MatchedFilter(f"{profile_name}"))
-        if sigil_item.rarity == ItemRarity.Mythic and not res.keep:
-            LOGGER.info(f"{item.original_name} -- Matched mythic sigil, always kept")
-            res.keep = True
-            res.matched.append(MatchedFilter("Mythic Sigil"))
-        return res
+        return keep_mythic(res, item.original_name, sigil_item.rarity, "sigil", "Mythic Sigil")
 
     def _check_seal_charm_filters(
         self: FilterEvaluator,
@@ -85,8 +82,7 @@ class FilterSpecialMixin:
         res = FilterResult(keep=False, matched=[])
         for profile_name, profile_filter in seal_or_charm_filters.items():
             for filter_item in profile_filter:
-                filter_name = next(iter(filter_item.root.keys()))
-                filter_spec = filter_item.root[filter_name]
+                filter_name, filter_spec = single_entry(filter_item.root)
                 if filter_spec.rarities and seal_or_charm.rarity not in filter_spec.rarities:
                     continue
                 if not self._match_greater_affix_count(filter_spec.min_greater_affix_count, seal_or_charm.affixes):
@@ -127,11 +123,7 @@ class FilterSpecialMixin:
                         missing_affixes=self._missing_affix_names(filter_spec.affix_pool, seal_or_charm.affixes),
                     )
                 )
-        if not res.keep and seal_or_charm.rarity == ItemRarity.Mythic:
-            LOGGER.info(f"{seal_or_charm.original_name} -- Matched mythic {section_name.lower()}, always kept")
-            res.keep = True
-            res.matched.append(MatchedFilter(mythic_name))
-        return res
+        return keep_mythic(res, seal_or_charm.original_name, seal_or_charm.rarity, section_name.lower(), mythic_name)
 
     def _check_tribute(self: FilterEvaluator, item: Item) -> FilterResult:
         res = FilterResult(keep=False, matched=[])
@@ -151,8 +143,4 @@ class FilterSpecialMixin:
             LOGGER.info(f"{item.original_name} -- Matched {profile_name}.Tributes")
             res.keep = True
             res.matched.append(MatchedFilter(f"{profile_name}"))
-        if item.rarity == ItemRarity.Mythic and not res.keep:
-            LOGGER.info(f"{item.original_name} -- Matched mythic tribute, always kept")
-            res.keep = True
-            res.matched.append(MatchedFilter("Mythic Tribute"))
-        return res
+        return keep_mythic(res, item.original_name, item.rarity, "tribute", "Mythic Tribute")
