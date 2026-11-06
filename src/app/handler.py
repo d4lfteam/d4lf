@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 
 
 import src.perception
-from src import automation
 from src.automation import (
     WindowSpec,
     is_window_foreground,
@@ -44,6 +43,7 @@ from src.settings import (
     get_settings,
     has_any_changed,
 )
+from src.settings.hotkeys import add_hotkey, remove_hotkey
 
 LOGGER = logging.getLogger(__name__)
 LOCK = threading.Lock()
@@ -205,14 +205,14 @@ class ScriptHandler:
         while self._hotkey_handles:
             handle = self._hotkey_handles.pop()
             with suppress(KeyError, ValueError):
-                automation.remove_hotkey(handle)
+                remove_hotkey(handle)
 
     def _register_hotkey(self, hotkey: str, callback: Callable[[], None], check_focus: bool = True) -> None:
         def wrapped_callback() -> None:
             if not check_focus or is_window_foreground(self._win_spec):
                 callback()
 
-        self._hotkey_handles.append(automation.add_hotkey(hotkey, wrapped_callback))
+        self._hotkey_handles.append(add_hotkey(hotkey, wrapped_callback))
 
     def setup_key_binds(self) -> None:
         config = self._config

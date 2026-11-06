@@ -10,6 +10,7 @@ from src.game_data import ItemType, is_consumable, is_non_sigil_mapping, is_sock
 from src.item import Item, SeasonalAttribute
 from src.perception import abs_window_to_monitor
 from src.settings import get_settings
+from src.settings.hotkeys import press, release, send
 
 if TYPE_CHECKING:
     import tkinter as tk
@@ -72,15 +73,15 @@ def reset_canvas(root: tk.Tk | tk.Toplevel, canvas: tk.Canvas) -> None:
 
 
 def mark_as_junk() -> None:
-    automation.send_hotkey("space")
+    send("space")
     time.sleep(0.13)
 
 
 def mark_as_favorite() -> None:
     LOGGER.info("Mark as favorite")
-    automation.send_hotkey("space")
+    send("space")
     time.sleep(0.17)
-    automation.send_hotkey("space")
+    send("space")
     time.sleep(0.13)
 
 
@@ -88,21 +89,21 @@ def reset_item_status(occupied: list[ItemSlot], inv: Inventory) -> None:
     for item_slot in occupied:
         if item_slot.is_fav:
             inv.hover_item_with_delay(item_slot)
-            automation.send_hotkey("space")
+            send("space")
         if item_slot.is_junk:
             inv.hover_item_with_delay(item_slot)
-            automation.send_hotkey("space")
+            send("space")
             time.sleep(0.15)
-            automation.send_hotkey("space")
+            send("space")
         time.sleep(0.15)
     if occupied:
         automation.move_pointer(*abs_window_to_monitor((0, 0)))
 
 
 def drop_item_from_inventory() -> None:
-    automation.press_key("ctrl")
+    press("ctrl")
     time.sleep(0.03)
     automation.click_pointer("left")
     time.sleep(0.03)
-    automation.release_key("ctrl")
+    release("ctrl")
     time.sleep(0.10)
