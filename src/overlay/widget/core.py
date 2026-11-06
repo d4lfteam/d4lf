@@ -1,7 +1,6 @@
 import time
 import tkinter as tk
 from contextlib import suppress
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Protocol, cast, override
 
 from src.automation import WindowSpec
@@ -9,15 +8,17 @@ from src.overlay.settings import InfoSettingValue
 from src.overlay.settings import load_settings as load_info_settings
 from src.overlay.settings import save_settings as save_info_settings
 from src.overlay.settings import setting_bool as _setting_bool
-from src.overlay.settings import setting_datetime as _setting_datetime
 from src.overlay.settings import setting_int as _setting_int
 from src.overlay.settings import setting_str as _setting_str
+from src.overlay.settings import wb_reference as _wb_reference
 from src.overlay.statistics import SessionStats
 from src.overlay.widget.shared import BOSS_TIMER_SLOT, TRANSPARENT_KEY, BossTimerContract
 from src.perception import game_window_roi
 from src.settings import get_settings
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from src.overlay.widget.widget import BossTimerOverlay
 
 
@@ -119,27 +120,27 @@ class _OverlayCore(BossTimerContract):
         roi = game_window_roi()
         offset_x = roi.get("left", 0) if roi else 0
         offset_y = roi.get("top", 0) if roi else 0
-        self.x = _setting_int(self.settings, "x", 100) + offset_x
-        self.y = _setting_int(self.settings, "y", 100) + offset_y
-        self.font_size = _setting_int(self.settings, "font_size", 14)
-        self.next_boss_name = _setting_str(self.settings, "next_boss_name", "Unknown")
-        self.orientation = _setting_str(self.settings, "orientation", "horizontal")
-        self.locked = _setting_bool(self.settings, "locked", default=False)
-        self.font_family = _setting_str(self.settings, "font_family", "Consolas")
-        self.capture_gold_stats = _setting_bool(self.settings, "capture_gold_stats", default=False)
-        self.capture_exp_stats = _setting_bool(self.settings, "capture_exp_stats", default=False)
-        self.show_wb = _setting_bool(self.settings, "show_wb", default=True)
-        self.show_legion = _setting_bool(self.settings, "show_legion", default=True)
-        self.show_ht = _setting_bool(self.settings, "show_ht", default=True)
-        self.show_gold = _setting_bool(self.settings, "show_gold", default=True)
-        self.show_gph = _setting_bool(self.settings, "show_gph", default=True)
-        self.show_total_gold = _setting_bool(self.settings, "show_total_gold", default=True)
-        self.show_exp = _setting_bool(self.settings, "show_exp", default=True)
-        self.show_eph = _setting_bool(self.settings, "show_eph", default=True)
-        self.show_total_exp = _setting_bool(self.settings, "show_total_exp", default=True)
-        self.show_t2l = _setting_bool(self.settings, "show_t2l", default=True)
-        self.show_next_scan = _setting_bool(self.settings, "show_next_scan", default=True)
-        self.wb_reference = _setting_datetime(self.settings, "wb_reference", datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC))
+        self.x = _setting_int(self.settings, "x") + offset_x
+        self.y = _setting_int(self.settings, "y") + offset_y
+        self.font_size = _setting_int(self.settings, "font_size")
+        self.next_boss_name = _setting_str(self.settings, "next_boss_name")
+        self.orientation = _setting_str(self.settings, "orientation")
+        self.locked = _setting_bool(self.settings, "locked")
+        self.font_family = _setting_str(self.settings, "font_family")
+        self.capture_gold_stats = _setting_bool(self.settings, "capture_gold_stats")
+        self.capture_exp_stats = _setting_bool(self.settings, "capture_exp_stats")
+        self.show_wb = _setting_bool(self.settings, "show_wb")
+        self.show_legion = _setting_bool(self.settings, "show_legion")
+        self.show_ht = _setting_bool(self.settings, "show_ht")
+        self.show_gold = _setting_bool(self.settings, "show_gold")
+        self.show_gph = _setting_bool(self.settings, "show_gph")
+        self.show_total_gold = _setting_bool(self.settings, "show_total_gold")
+        self.show_exp = _setting_bool(self.settings, "show_exp")
+        self.show_eph = _setting_bool(self.settings, "show_eph")
+        self.show_total_exp = _setting_bool(self.settings, "show_total_exp")
+        self.show_t2l = _setting_bool(self.settings, "show_t2l")
+        self.show_next_scan = _setting_bool(self.settings, "show_next_scan")
+        self.wb_reference = _wb_reference(self.settings)
 
         # In-memory synced data
         self.synced_wb = None

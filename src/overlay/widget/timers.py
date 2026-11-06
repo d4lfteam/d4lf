@@ -210,7 +210,7 @@ class _OverlayTimers(BossTimerContract):
             elif SessionStats().last_exp is None:
                 self.next_scan_value_label.config(text="Ready")
             else:
-                remaining = (_setting_int(info_conf, "exp_age_before_refresh", 5) * 60) - (
+                remaining = (_setting_int(info_conf, "exp_age_before_refresh") * 60) - (
                     time.time() - InventoryExpTracker().last_hover_time
                 )
                 if remaining <= 0:

@@ -57,8 +57,8 @@ class InventoryExpTracker:
         if not BOSS_TIMER_SLOT.is_open():
             return
         config = load_settings()
-        capture_exp = setting_bool(config, "capture_exp_stats", default=False)
-        check_on_open = setting_bool(config, "check_exp_on_inventory_open", default=True)
+        capture_exp = setting_bool(config, "capture_exp_stats")
+        check_on_open = setting_bool(config, "check_exp_on_inventory_open")
         if not capture_exp or not check_on_open:
             return
         age = config.get("exp_age_before_refresh", 5)

@@ -107,8 +107,8 @@ class _SessionStats:
     def on_info_stat(self, raw_line: str) -> None:
         config = load_settings()
         text = raw_line.lower()
-        capture_gold = setting_bool(config, "capture_gold_stats", default=False)
-        capture_exp = setting_bool(config, "capture_exp_stats", default=False)
+        capture_gold = setting_bool(config, "capture_gold_stats")
+        capture_exp = setting_bool(config, "capture_exp_stats")
         if not capture_gold and not capture_exp:
             return
         if "gold" in text and not any(
