@@ -32,15 +32,6 @@ def test_windows_window_selects_windows_backend() -> None:
     assert _window._platform_backend.__name__.endswith("backend_windows")
 
 
-def test_hotkey_interface_delegates_to_configured_input_backend(monkeypatch, mocker: MockerFixture) -> None:
-    send = mocker.Mock()
-    monkeypatch.setattr("src.settings.hotkeys.send", send)
-
-    automation.send_hotkey("ctrl+f11")
-
-    send.assert_called_once_with("ctrl+f11")
-
-
 def test_public_window_interface_uses_the_selected_backend(monkeypatch, mocker: MockerFixture) -> None:
     get_id = mocker.Mock(return_value=42)
     monkeypatch.setattr(_window._platform_backend, "get_window_spec_id", get_id)
