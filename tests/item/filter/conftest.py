@@ -109,7 +109,6 @@ def _patch_override_settings(mocker, **overrides):
         handle_cosmetics="ignore",
         keep_aspects="upgrade",
         handle_uniques="favorite",
-        ignore_escalation_sigils=True,
     )
     for key, value in overrides.items():
         setattr(general, key, value)

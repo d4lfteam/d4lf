@@ -6,6 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from src.settings.constants import PARAMS_INI
 from src.settings.errors import ConfigLoadErrorListener, SettingsLoadError, log_load_error, make_cleanup_record
 from src.settings.models import GeneralModel
 from src.settings.models.core import AdvancedOptionsModel, CharModel
@@ -17,7 +18,6 @@ if TYPE_CHECKING:
 type SectionModel = AdvancedOptionsModel | CharModel | GeneralModel
 type StateSnapshot = dict[str, SettingValue]
 LOGGER = logging.getLogger(__name__)
-PARAMS_INI = "params.ini"
 MANUAL_RESTART_SETTING_KEYS = {"general.vision_mode_type"}
 ConfigChangeListener = Callable[[frozenset[str]], None]
 

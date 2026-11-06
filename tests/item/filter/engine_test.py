@@ -259,7 +259,7 @@ def test_filterable_item_category_override_skips_all_items_when_disabled(
 
 
 def test_disabled_sigils_skip_escalation_before_sigil_behavior(mocker) -> None:
-    _patch_override_settings(mocker, filter_sigils=False, ignore_escalation_sigils=False)
+    _patch_override_settings(mocker, filter_sigils=False)
     test_filter = _create_mocked_filter(mocker)
     escalation_sigil = Item(item_type=ItemType.EscalationSigil, name="escalation")
 

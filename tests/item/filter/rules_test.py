@@ -33,7 +33,6 @@ def test_evaluation_settings_copy_only_decision_settings() -> None:
             handle_cosmetics=CosmeticFilterType.junk,
             keep_aspects=AspectFilterType.none,
             handle_uniques=UnfilteredUniquesType.junk,
-            ignore_escalation_sigils=False,
         )
     )
 
@@ -48,5 +47,4 @@ def test_evaluation_settings_copy_only_decision_settings() -> None:
         handle_cosmetics=CosmeticFilterType.junk,
         keep_aspects=AspectFilterType.none,
         handle_uniques=UnfilteredUniquesType.junk,
-        ignore_escalation_sigils=False,
     )

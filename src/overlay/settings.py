@@ -5,7 +5,6 @@ from PyQt6.QtCore import QSettings
 
 type InfoSettingValue = int | str | bool | tuple[int, ...] | datetime | None
 T = TypeVar("T", int, str, bool)
-U = TypeVar("U")
 
 
 def load_settings() -> dict[str, InfoSettingValue]:

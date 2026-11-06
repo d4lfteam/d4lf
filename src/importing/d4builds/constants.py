@@ -12,7 +12,6 @@ CHARM_TOOLTIP_VALUE_XPATH = (
 )
 CLASS_XPATH = "//*[contains(@class, 'builder__header__name')]"
 GA_XPATH = ".//*[contains(@class, 'greater__affix__button--filled')]"
-ITEM_GROUP_XPATH = ".//*[contains(@class, 'builder__stats__group')]"
 ITEM_SLOT_XPATH = ".//*[contains(@class, 'builder__stats__slot')]"
 ITEM_STATS_XPATH = ".//*[contains(@class, 'dropdown__button__wrapper')]"
 PAPERDOLL_GEAR_ICON_CSS = ".builder__gear__icon"
