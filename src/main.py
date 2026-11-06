@@ -24,7 +24,7 @@ from src.app.backend import run_backend
 from src.app.shell import UnifiedMainWindow
 from src.autoupdater import start_auto_update
 from src.desktop import ICON_PATH
-from src.settings import Settings, SettingsLoadError, get_settings
+from src.settings import IniConfigLoaderType, SettingsLoadError, get_settings
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -95,7 +95,7 @@ def hide_console() -> None:
         ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
 
 
-def _configure_logging(*, stdout: bool, buffer_startup: bool = False) -> Settings:
+def _configure_logging(*, stdout: bool, buffer_startup: bool = False) -> IniConfigLoaderType:
     if not src.logger.is_configured():
         src.logger.setup(log_level="DEBUG", enable_stdout=stdout, buffer_startup=buffer_startup)
     settings = get_settings()
@@ -103,7 +103,7 @@ def _configure_logging(*, stdout: bool, buffer_startup: bool = False) -> Setting
     return settings
 
 
-def _apply_configured_logging(settings: Settings) -> None:
+def _apply_configured_logging(settings: IniConfigLoaderType) -> None:
     """Apply validated settings to handlers created during early startup."""
     advanced_options = settings.advanced_options
     formatter = src.logger.create_formatter(

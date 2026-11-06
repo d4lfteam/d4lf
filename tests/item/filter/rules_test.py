@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from typing import cast
 
 from src.item.filter.rules import EvaluationSettings, LoadedRules
-from src.settings import AspectFilterType, CosmeticFilterType, Settings, UnfilteredUniquesType
+from src.settings import AspectFilterType, CosmeticFilterType, IniConfigLoaderType, UnfilteredUniquesType
 
 
 def test_empty_rules_are_independent_snapshots() -> None:
@@ -36,7 +36,7 @@ def test_evaluation_settings_copy_only_decision_settings() -> None:
         )
     )
 
-    snapshot = EvaluationSettings.from_settings(cast("Settings", settings))
+    snapshot = EvaluationSettings.from_settings(cast("IniConfigLoaderType", settings))
 
     assert snapshot == EvaluationSettings(
         filter_equipment=False,

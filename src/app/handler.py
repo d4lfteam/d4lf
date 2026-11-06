@@ -38,8 +38,8 @@ from src.settings import (
     LANGUAGE_SETTING_KEYS,
     MANUAL_RESTART_SETTING_KEYS,
     VISION_MODE_TYPE_SETTING_KEY,
+    IniConfigLoaderType,
     ItemRefreshType,
-    Settings,
     VisionModeType,
     get_settings,
     has_any_changed,
@@ -92,7 +92,7 @@ class ScriptHandler:
             elif has_any_changed(changed_keys, MANUAL_RESTART_SETTING_KEYS):
                 self._notify_manual_restart_required("settings changes")
 
-    def _hotkey_signature(self, config: Settings) -> tuple[str | bool, ...]:
+    def _hotkey_signature(self, config: IniConfigLoaderType) -> tuple[str | bool, ...]:
         advanced_options = config.advanced_options
         return (
             advanced_options.run_vision_mode,
@@ -108,7 +108,7 @@ class ScriptHandler:
             advanced_options.move_to_chest,
         )
 
-    def _refresh_hotkeys(self, config: Settings) -> None:
+    def _refresh_hotkeys(self, config: IniConfigLoaderType) -> None:
         current_signature = self._hotkey_signature(config)
         if getattr(self, "_current_hotkey_signature", None) == current_signature:
             return
@@ -117,7 +117,7 @@ class ScriptHandler:
         self.setup_key_binds()
         LOGGER.info("Reloaded hotkeys from updated settings")
 
-    def _refresh_language_assets(self, config: Settings) -> None:
+    def _refresh_language_assets(self, config: IniConfigLoaderType) -> None:
         if config.general.language == self._language:
             return
 

@@ -1,11 +1,9 @@
 """Public settings capability interface."""
 
-from typing import TYPE_CHECKING, Protocol
-
 from src.settings.binding import canonicalize_hotkey, normalize_hotkey, validate_hotkey
 from src.settings.constants import BASE_DIR, PARAMS_INI
-from src.settings.errors import ConfigLoadErrorListener, SettingsLoadError
-from src.settings.loader import IniConfigLoader
+from src.settings.errors import SettingsLoadError
+from src.settings.loader import IniConfigLoader, IniConfigLoaderType
 from src.settings.models import GeneralModel
 from src.settings.models.core import (
     CATEGORY_KEY,
@@ -26,7 +24,7 @@ from src.settings.models.core import (
     UnfilteredUniquesType,
     VisionModeType,
 )
-from src.settings.models.ui import ColorsModel, UiOffsetsModel, UiPosModel, UiRoiModel
+from src.settings.models.ui import UiOffsetsModel, UiPosModel, UiRoiModel
 from src.settings.reload_groups import (
     HOTKEY_SETTING_KEYS,
     LANGUAGE_SETTING_KEYS,
@@ -35,75 +33,16 @@ from src.settings.reload_groups import (
     VISION_MODE_TYPE_SETTING_KEY,
     has_any_changed,
 )
-from src.settings.scaling import ResManager
+from src.settings.scaling import ResManager, ResManagerType
 from src.settings.types import SettingValue, Template
 from src.settings.validation import check_greater_than_zero
 
-if TYPE_CHECKING:
-    import logging
-    from collections.abc import Callable
-    from pathlib import Path
 
-
-class Settings(Protocol):
-    """Typed persistence and reload interface used by other capabilities."""
-
-    @property
-    def advanced_options(self) -> AdvancedOptionsModel: ...
-
-    @property
-    def char(self) -> CharModel: ...
-
-    @property
-    def general(self) -> GeneralModel: ...
-
-    @property
-    def user_dir(self) -> Path: ...
-
-    def load(self, clear: bool = False, notify: bool = True) -> None: ...
-
-    def reload_if_changed(self) -> bool: ...
-
-    def save_value(self, section: str, key: str, value: SettingValue) -> None: ...
-
-    def register_change_listener(self, listener: Callable[[frozenset[str]], None]) -> None: ...
-
-    def unregister_change_listener(self, listener: Callable[[frozenset[str]], None]) -> None: ...
-
-    def register_load_error_listener(self, listener: ConfigLoadErrorListener) -> None: ...
-
-    def consume_deferred_cleanup_log_records(self) -> list[logging.LogRecord]: ...
-
-
-class UiCoordinates(Protocol):
-    """Resolution-scaled UI coordinates at the 3840x2160 reference seam."""
-
-    @property
-    def offsets(self) -> UiOffsetsModel: ...
-
-    @property
-    def pos(self) -> UiPosModel: ...
-
-    @property
-    def resolution(self) -> tuple[int, ...]: ...
-
-    @property
-    def roi(self) -> UiRoiModel: ...
-
-    @property
-    def colors(self) -> ColorsModel: ...
-
-    def set_resolution(self, res: str) -> None: ...
-
-    @property
-    def templates(self) -> dict[str, Template]: ...
-
-
-def get_settings() -> Settings:
+def get_settings() -> IniConfigLoaderType:
     return IniConfigLoader()
 
 
-def get_ui_coordinates() -> UiCoordinates:
+def get_ui_coordinates() -> ResManagerType:
     return ResManager()
 
 
@@ -126,16 +65,15 @@ __all__ = [
     "CharModel",
     "CosmeticFilterType",
     "GeneralModel",
+    "IniConfigLoaderType",
     "ItemRefreshType",
     "LogLevels",
     "MoveItemsType",
     "SettingValue",
-    "Settings",
     "SettingsCategory",
     "SettingsLoadError",
     "Template",
     "ThemeType",
-    "UiCoordinates",
     "UiOffsetsModel",
     "UiPosModel",
     "UiRoiModel",

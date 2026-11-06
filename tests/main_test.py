@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Never, cast
 import src.main as main_module
 
 if TYPE_CHECKING:
-    from src.settings import Settings
+    from src.settings import IniConfigLoaderType
 
 from src.settings import SettingsLoadError
 
@@ -80,7 +80,7 @@ def test_configured_logging_updates_bootstrap_handlers(monkeypatch) -> None:
     original_handlers = root_logger.handlers[:]
     root_logger.handlers[:] = [file_handler, console_handler]
     settings = cast(
-        "Settings",
+        "IniConfigLoaderType",
         SimpleNamespace(
             advanced_options=SimpleNamespace(
                 log_lvl=SimpleNamespace(value="warning"), technical_log_info=True, log_timestamp=True

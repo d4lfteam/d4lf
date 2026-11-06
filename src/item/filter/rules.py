@@ -17,7 +17,7 @@ if TYPE_CHECKING:
         SigilFilterModel,
         TributeFilterModel,
     )
-    from src.settings import Settings
+    from src.settings import IniConfigLoaderType
 
 
 @dataclass(frozen=True)
@@ -74,7 +74,7 @@ class EvaluationSettings:
     handle_uniques: UnfilteredUniquesType = UnfilteredUniquesType.favorite
 
     @classmethod
-    def from_settings(cls, settings: Settings) -> EvaluationSettings:
+    def from_settings(cls, settings: IniConfigLoaderType) -> EvaluationSettings:
         """Copy evaluation settings from the application's mutable settings."""
         general = settings.general
         return cls(

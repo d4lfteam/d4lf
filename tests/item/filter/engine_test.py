@@ -12,7 +12,7 @@ from src.profiles import (
     ProfileDocumentStore,
     ProfileModel,
 )
-from src.settings import Settings
+from src.settings import IniConfigLoaderType
 
 from .conftest import (
     _create_mocked_filter,
@@ -115,7 +115,7 @@ def test_duplicate_affix_requirements_assign_value_and_greater_constraints(mocke
 
 
 def test_filter_loads_typed_paragon_payload(tmp_path, mocker: MockerFixture) -> None:
-    settings = mocker.Mock(spec=Settings)
+    settings = mocker.Mock(spec=IniConfigLoaderType.__value__)
     settings.user_dir = tmp_path
     settings.general.profiles = ["typed_paragon"]
     mocker.patch("src.item.filter.engine.get_settings", return_value=settings)
@@ -141,7 +141,7 @@ def test_filter_loads_typed_paragon_payload(tmp_path, mocker: MockerFixture) -> 
 
 
 def test_filter_skips_invalid_profile_but_keeps_valid_profiles(tmp_path, mocker: MockerFixture) -> None:
-    settings = mocker.Mock(spec=Settings)
+    settings = mocker.Mock(spec=IniConfigLoaderType.__value__)
     settings.user_dir = tmp_path
     settings.general.profiles = ["good", "bad"]
     mocker.patch("src.item.filter.engine.get_settings", return_value=settings)
@@ -160,7 +160,7 @@ def test_filter_skips_invalid_profile_but_keeps_valid_profiles(tmp_path, mocker:
 
 
 def test_filter_removes_profile_only_after_second_missing_check(tmp_path, mocker: MockerFixture) -> None:
-    settings = mocker.Mock(spec=Settings)
+    settings = mocker.Mock(spec=IniConfigLoaderType.__value__)
     settings.user_dir = tmp_path
     settings.general.profiles = ["missing"]
     mocker.patch("src.item.filter.engine.get_settings", return_value=settings)
@@ -175,7 +175,7 @@ def test_filter_removes_profile_only_after_second_missing_check(tmp_path, mocker
 
 
 def test_invalid_profile_edit_emits_one_report_per_file_version(tmp_path, mocker: MockerFixture) -> None:
-    settings = mocker.Mock(spec=Settings)
+    settings = mocker.Mock(spec=IniConfigLoaderType.__value__)
     settings.user_dir = tmp_path
     settings.general.profiles = ["bad"]
     mocker.patch("src.item.filter.engine.get_settings", return_value=settings)

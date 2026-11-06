@@ -23,7 +23,7 @@ if TYPE_CHECKING:
         SigilFilterModel,
         TributeFilterModel,
     )
-    from src.settings import Settings
+    from src.settings import IniConfigLoaderType
 
 LOGGER = logging.getLogger(__name__)
 MISSING_PROFILE_CHECK_LIMIT = 2
@@ -61,7 +61,7 @@ class ProfileLoadFailure:
 class ProfileRulesRepository:
     """Own profile-file state and publish complete ``LoadedRules`` snapshots."""
 
-    def __init__(self, settings_provider: Callable[[], Settings] | None = None) -> None:
+    def __init__(self, settings_provider: Callable[[], IniConfigLoaderType] | None = None) -> None:
         self._settings_provider = settings_provider or get_settings
         self._rules = LoadedRules.empty()
         self._files_loaded = False

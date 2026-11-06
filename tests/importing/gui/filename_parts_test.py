@@ -10,6 +10,8 @@ from src.importing.gui.filename_parts import build_filename_row
 if TYPE_CHECKING:
     from PyQt6.QtGui import QAction
 
+    from src.importing.gui.window import ImporterWindow
+
 
 @pytest.fixture(scope="module")
 def qapp() -> QApplication:
@@ -56,7 +58,7 @@ def test_build_filename_row_creates_controls_and_wires_callbacks(qapp: QApplicat
     container = QWidget()
     layout = QVBoxLayout(container)
 
-    build_filename_row(window, layout)
+    build_filename_row(cast("ImporterWindow", window), layout)
 
     assert layout.count() == 2
     assert window.filename_input_box.placeholderText() == "Leave blank for default filename"
