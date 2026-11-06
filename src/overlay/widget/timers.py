@@ -11,7 +11,7 @@ from src.automation import is_self_foreground, is_window_foreground
 from src.loot import get_filter_colors
 from src.overlay.settings import load_settings as load_info_settings
 from src.overlay.settings import setting_int as _setting_int
-from src.overlay.statistics import SessionStats
+from src.overlay.statistics import SessionStats, StatsSnapshot
 from src.overlay.tracking import InventoryExpTracker
 from src.overlay.widget.shared import LOGGER, PROGRESS_YELLOW, TEXT, WARNING_ORANGE, BossTimerContract
 
@@ -222,14 +222,7 @@ class _OverlayTimers(BossTimerContract):
         aid = self.after(250, self._update_timers)
         self._after_ids.append(aid)
 
-    def update_stats(
-        self,
-        gph: int | None = None,
-        total_gained: int | None = None,
-        eph: int | None = None,
-        total_exp: int | None = None,
-        t2l: str | None = None,
-    ) -> None:
+    def update_stats(self, snapshot: StatsSnapshot) -> None:
         """Update the gold and experience statistics display."""
 
         def _do_update() -> None:
@@ -238,28 +231,28 @@ class _OverlayTimers(BossTimerContract):
             repack_needed = False
             capture_gold_stats: bool = self.capture_gold_stats
             capture_exp_stats: bool = self.capture_exp_stats
-            if gph is not None and capture_gold_stats:
-                self.gph_value_label.config(text=f"{gph:,}")
+            if snapshot.gph is not None and capture_gold_stats:
+                self.gph_value_label.config(text=f"{snapshot.gph:,}")
                 if not self._gold_initialized:
                     self._gold_initialized = True
                     repack_needed = True
-            if total_gained is not None and capture_gold_stats:
-                self.total_gained_value_label.config(text=f"{total_gained:,}")
+            if snapshot.total_gained is not None and capture_gold_stats:
+                self.total_gained_value_label.config(text=f"{snapshot.total_gained:,}")
                 if not self._gold_initialized:
                     self._gold_initialized = True
                     repack_needed = True
-            if eph is not None and capture_exp_stats:
-                self.eph_value_label.config(text=f"{eph:,}")
+            if snapshot.eph is not None and capture_exp_stats:
+                self.eph_value_label.config(text=f"{snapshot.eph:,}")
                 if not self._exp_initialized:
                     self._exp_initialized = True
                     repack_needed = True
-            if total_exp is not None and capture_exp_stats:
-                self.total_exp_value_label.config(text=f"{total_exp:,}")
+            if snapshot.total_exp is not None and capture_exp_stats:
+                self.total_exp_value_label.config(text=f"{snapshot.total_exp:,}")
                 if not self._exp_initialized:
                     self._exp_initialized = True
                     repack_needed = True
-            if t2l is not None and capture_exp_stats:
-                self.t2l_value_label.config(text=t2l)
+            if snapshot.t2l is not None and capture_exp_stats:
+                self.t2l_value_label.config(text=snapshot.t2l)
 
             if repack_needed:
                 self._repack()

@@ -1,7 +1,7 @@
 import tkinter as tk
 
 from src.overlay.settings import save_settings as save_info_settings
-from src.overlay.statistics import SessionStats
+from src.overlay.statistics import SessionStats, StatsSnapshot
 from src.overlay.widget.shared import ACTIVE_GREEN, LOGGER, BossTimerContract
 from src.perception import monitor_to_window
 
@@ -31,7 +31,7 @@ class _OverlayActions(BossTimerContract):
     def _reset_gold_stats(self) -> None:
         SessionStats().reset_gold()
         self._gold_initialized = False
-        self.update_stats(gph=0, total_gained=0)
+        self.update_stats(StatsSnapshot(gph=0, total_gained=0))
         self._repack()
 
     def _change_font_family(self, new_font_family: str) -> None:
@@ -43,7 +43,7 @@ class _OverlayActions(BossTimerContract):
     def _reset_exp_stats(self) -> None:
         SessionStats().reset_exp()
         self._exp_initialized = False
-        self.update_stats(eph=0, total_exp=0, t2l="-")
+        self.update_stats(StatsSnapshot(eph=0, total_exp=0, t2l="-"))
         self._repack()
 
     def _pick_exp_bar_pos(self) -> None:
