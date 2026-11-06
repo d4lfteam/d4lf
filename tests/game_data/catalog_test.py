@@ -6,7 +6,6 @@ import pytest
 from src.game_data import GameCatalog, ItemType
 from src.game_data import catalog as catalog_module
 from src.game_data.catalog import _load_string_map
-from src.item import Item, ItemJSONEncoder
 
 
 class _LoaderFailure(BaseException):
@@ -60,15 +59,6 @@ def test_catalog_resolves_item_type_aliases() -> None:
     catalog = GameCatalog()
 
     assert catalog.item_type_from_text("Phase Blade") is ItemType.Sword
-
-
-def test_item_type_serialization_uses_canonical_value_after_catalog_load() -> None:
-    catalog = GameCatalog()
-    catalog.load_data()
-
-    encoded = json.dumps(Item(item_type=ItemType.Incense), cls=ItemJSONEncoder)
-
-    assert '"item_type": "incense"' in encoded
 
 
 def test_catalog_retries_after_failed_initialization(monkeypatch) -> None:

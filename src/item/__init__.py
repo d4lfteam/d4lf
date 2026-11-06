@@ -3,7 +3,7 @@
 from src.item.data.affix import Affix, AffixType
 from src.item.data.aspect import Aspect
 from src.item.data.seasonal_attribute import SeasonalAttribute
-from src.item.models import FilterResult, Item, ItemJSONEncoder, MatchedFilter
+from src.item.models import FilterResult, Item, MatchedFilter
 
 ASPECT_UPGRADES_LABEL = "AspectUpgrades"
 MYTHICS_ALWAYS_KEPT_LABEL = "Mythics always kept"
@@ -16,7 +16,6 @@ __all__ = [
     "Aspect",
     "FilterResult",
     "Item",
-    "ItemJSONEncoder",
     "MatchedFilter",
     "SeasonalAttribute",
 ]
