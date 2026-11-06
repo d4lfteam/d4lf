@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.game_data import ItemRarity, ItemType
@@ -10,8 +10,6 @@ if TYPE_CHECKING:
 
 @dataclass
 class Item:
-    __hash__ = None
-
     affixes: list[Affix] = field(default_factory=list)
     aspect: Aspect | None = None
     codex_upgrade: bool = False
@@ -21,53 +19,11 @@ class Item:
     is_in_shop: bool = False
     item_type: ItemType | None = None
     name: str | None = None
-    original_name: str | None = None
+    original_name: str | None = field(default=None, compare=False)
     power: int | None = None
     rarity: ItemRarity | None = None
     seasonal_attribute: SeasonalAttribute | None = None
     set: str | None = None
-
-    @override
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Item):
-            return False
-        res = True
-        if self.affixes != other.affixes:
-            # LOGGER.debug("Affixes do not match")
-            res = False
-        if self.aspect != other.aspect:
-            # LOGGER.debug("Aspect not the same")
-            res = False
-        if self.codex_upgrade != other.codex_upgrade:
-            # LOGGER.debug("Codex upgrade not the same")
-            res = False
-        if self.cosmetic_upgrade != other.cosmetic_upgrade:
-            # LOGGER.debug("Cosmetic upgrade not the same")
-            res = False
-        if self.inherent != other.inherent:
-            # LOGGER.debug("Inherent affixes do not match")
-            res = False
-        if self.item_type != other.item_type:
-            # LOGGER.debug("Type not the same")
-            res = False
-        if self.power != other.power:
-            # LOGGER.debug("Power not the same")
-            res = False
-        if self.name != other.name:
-            # LOGGER.debug("Names do not match")
-            res = False
-        if self.rarity != other.rarity:
-            # LOGGER.debug("Rarity not the same")
-            res = False
-        if self.is_ancestral != other.is_ancestral:
-            res = False
-        if self.is_in_shop != other.is_in_shop:
-            res = False
-        if self.seasonal_attribute != other.seasonal_attribute:
-            res = False
-        if self.set != other.set:
-            res = False
-        return res
 
 
 @dataclass
