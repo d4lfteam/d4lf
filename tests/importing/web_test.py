@@ -24,7 +24,7 @@ def test_retry_importer_closes_an_owned_browser_after_exhausting_retries(mocker)
     assert exc_info.value is errors[-1]
     assert str(exc_info.value) == "final Maxroll schema failure"
     assert attempts == 2
-    setup.assert_called_once_with(uc=False)
+    setup.assert_called_once_with()
     driver.quit.assert_called_once_with()
 
 
@@ -48,7 +48,7 @@ def test_retry_importer_injects_driver_when_config_is_positional(mocker) -> None
 
     importing(config)
 
-    setup.assert_called_once_with(uc=False)
+    setup.assert_called_once_with()
     owned_driver.quit.assert_called_once_with()
 
 
@@ -64,7 +64,7 @@ def test_retry_importer_injects_driver_when_optional_driver_is_none(mocker) -> N
 
     importing(config, None)
 
-    setup.assert_called_once_with(uc=False)
+    setup.assert_called_once_with()
     owned_driver.quit.assert_called_once_with()
 
 

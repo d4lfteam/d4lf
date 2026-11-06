@@ -10,12 +10,12 @@ import httpx
 from lxml.html import HTMLParser, fromstring
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.chromium.options import ChromiumOptions
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
-from seleniumbase import Driver
 
 from src.importing.contracts import ImportRequest
 from src.settings import BrowserType, get_settings
@@ -33,10 +33,10 @@ HEADERS = {"User-Agent": "Diablo 4 Loot Filter - Profile Importer"}
 type ImporterArgument = ImportRequest | WebDriver | str | bool | None
 
 
-def get_with_retry(url: str, custom_headers: dict[str, str] | None = None) -> httpx.Response:
+def get_with_retry(url: str) -> httpx.Response:
     for _ in range(10):
         try:
-            response = httpx.get(url, headers=custom_headers if custom_headers is not None else HEADERS)
+            response = httpx.get(url, headers=HEADERS)
         except httpx.RequestError:
             LOGGER.debug(f"Request {url} timed out, retrying...")
             continue
@@ -97,17 +97,17 @@ def hover_and_get_tooltip_html(
 
 
 @overload
-def retry_importer[R](func: Callable[..., R], inject_webdriver: bool = False, uc: bool = False) -> Callable[..., R]: ...
+def retry_importer[R](func: Callable[..., R], inject_webdriver: bool = False) -> Callable[..., R]: ...
 
 
 @overload
 def retry_importer[R](
-    func: None = None, inject_webdriver: bool = False, uc: bool = False
+    func: None = None, inject_webdriver: bool = False
 ) -> Callable[[Callable[..., R]], Callable[..., R]]: ...
 
 
 def retry_importer[R](
-    func: Callable[..., R] | None = None, inject_webdriver: bool = False, uc: bool = False
+    func: Callable[..., R] | None = None, inject_webdriver: bool = False
 ) -> Callable[[Callable[..., R]], Callable[..., R]] | Callable[..., R]:
     def decorator(wrap_function: Callable[..., R]) -> Callable[..., R]:
         signature = inspect.signature(wrap_function, annotation_format=annotationlib.Format.STRING)
@@ -129,7 +129,7 @@ def retry_importer[R](
             call_args = args
             call_kwargs = kwargs
             if owns_driver:
-                owned_driver = setup_webdriver(uc=uc)
+                owned_driver = setup_webdriver()
                 if "driver" in signature.parameters:
                     bound.arguments["driver"] = owned_driver
                     call_args, call_kwargs = bound.args, bound.kwargs
@@ -154,28 +154,20 @@ def retry_importer[R](
     return decorator if func is None else decorator(func)
 
 
-def setup_webdriver(uc: bool = False) -> WebDriver:
-    if uc:
-        driver = Driver(uc=uc, headless2=True, agent=HEADERS["User-Agent"])
-        if not isinstance(driver, WebDriver):
-            msg = "seleniumbase did not return a Selenium WebDriver"
-            raise TypeError(msg)
-        return driver
+def _chromium_options[O: ChromiumOptions](options: O) -> O:
+    options.enable_bidi = True
+    options.add_argument("--headless=new")
+    options.add_argument("log-level=3")
+    options.add_argument(f"--user-agent={HEADERS['User-Agent']}")
+    return options
+
+
+def setup_webdriver() -> WebDriver:
     match get_settings().general.browser:
         case BrowserType.edge:
-            options = webdriver.EdgeOptions()
-            options.enable_bidi = True
-            options.add_argument("--headless=new")
-            options.add_argument("log-level=3")
-            options.add_argument(f"--user-agent={HEADERS['User-Agent']}")
-            return webdriver.Edge(options=options)
+            return webdriver.Edge(options=_chromium_options(webdriver.EdgeOptions()))
         case BrowserType.chrome:
-            options = webdriver.ChromeOptions()
-            options.enable_bidi = True
-            options.add_argument("--headless=new")
-            options.add_argument("log-level=3")
-            options.add_argument(f"--user-agent={HEADERS['User-Agent']}")
-            return webdriver.Chrome(options=options)
+            return webdriver.Chrome(options=_chromium_options(webdriver.ChromeOptions()))
         case BrowserType.firefox:
             options = webdriver.FirefoxOptions()
             options.enable_bidi = True
