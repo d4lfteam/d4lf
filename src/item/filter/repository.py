@@ -175,13 +175,12 @@ class ProfileRulesRepository:
             self._last_loaded = time.time()
             self._last_profile_list = []
             self._missing_recheck_pending = False
-            self._publish_rules(filters, ())
+            self._publish_rules(filters)
             self._emit_load_report([])
             return self._rules
 
         custom_profile_path = settings.user_dir / "profiles"
         profile_store = ProfileDocumentStore(profiles_dir=custom_profile_path, full_dump=False)
-        all_file_paths: list[Path] = []
         for profile_str in profiles:
             custom_file_path = _contained_profile_path(custom_profile_path, profile_str)
             if custom_file_path is None or not custom_file_path.is_file():
@@ -191,7 +190,6 @@ class ProfileRulesRepository:
                 self._missing_profile_checks[profile_str] = self._missing_profile_checks.get(profile_str, 0) + 1
                 self._missing_recheck_pending = self._missing_profile_checks[profile_str] < MISSING_PROFILE_CHECK_LIMIT
                 continue
-            all_file_paths.append(custom_file_path)
             signature = self.profile_signature(custom_file_path)
             if signature is not None:
                 self._profile_signatures[custom_file_path] = signature
@@ -244,11 +242,11 @@ class ProfileRulesRepository:
                 profiles = remaining
         self._last_loaded = time.time()
         self._last_profile_list = profiles.copy()
-        self._publish_rules(filters, tuple(all_file_paths))
+        self._publish_rules(filters)
         self._emit_load_report(failures)
         return self._rules
 
-    def _publish_rules(self, filters: _MutableRules, paths: tuple[Path, ...]) -> None:
+    def _publish_rules(self, filters: _MutableRules) -> None:
         self._rules = LoadedRules(
             affix_filters=filters.affix_filters,
             aspect_upgrade_filters=filters.aspect_upgrade_filters,
@@ -258,5 +256,4 @@ class ProfileRulesRepository:
             charm_filters=filters.charm_filters,
             sigil_filters=filters.sigil_filters,
             tribute_filters=filters.tribute_filters,
-            all_file_paths=paths,
         )

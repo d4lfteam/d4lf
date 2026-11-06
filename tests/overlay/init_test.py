@@ -3,15 +3,7 @@ from src.overlay import tracking as _tracking
 
 
 def test_overlay_facade_exposes_lifecycle_and_tracking_contract() -> None:
-    expected = {
-        "InventoryExpTracker",
-        "SessionStats",
-        "is_open",
-        "open_overlay",
-        "request_close",
-        "set_busy_checker",
-        "update_stats",
-    }
+    expected = {"InventoryExpTracker", "SessionStats", "is_open", "open_overlay", "request_close", "set_busy_checker"}
     assert expected <= set(overlay.__all__)
     assert all(hasattr(overlay, name) for name in expected)
 

@@ -7,7 +7,6 @@ from src.settings import AspectFilterType, CosmeticFilterType, UnfilteredUniques
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-    from pathlib import Path
 
     from src.profiles import (
         DynamicCharmFilterModel,
@@ -38,7 +37,6 @@ class LoadedRules:
     charm_filters: Mapping[str, list[DynamicCharmFilterModel]]
     sigil_filters: Mapping[str, SigilFilterModel]
     tribute_filters: Mapping[str, TributeFilterModel]
-    all_file_paths: tuple[Path, ...] = ()
 
     @classmethod
     def empty(cls) -> LoadedRules:
@@ -74,7 +72,6 @@ class EvaluationSettings:
     handle_cosmetics: CosmeticFilterType = field(default_factory=lambda: CosmeticFilterType.ignore)
     keep_aspects: AspectFilterType = AspectFilterType.upgrade
     handle_uniques: UnfilteredUniquesType = UnfilteredUniquesType.favorite
-    ignore_escalation_sigils: bool = True
 
     @classmethod
     def from_settings(cls, settings: Settings) -> EvaluationSettings:
@@ -89,5 +86,4 @@ class EvaluationSettings:
             handle_cosmetics=general.handle_cosmetics,
             keep_aspects=general.keep_aspects,
             handle_uniques=general.handle_uniques,
-            ignore_escalation_sigils=general.ignore_escalation_sigils,
         )

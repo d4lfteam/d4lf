@@ -274,7 +274,7 @@ def notify_if_update() -> None:
         LOGGER.info("=" * 50)
 
 
-def _should_check_for_update(check_interval_hours: float = 4) -> bool:
+def _should_check_for_update() -> bool:
     """Check if it's time to check for updates based on a cooldown period."""
     check_file = Path.cwd() / "assets" / "last_update"
     current_time = time.time()
@@ -288,7 +288,7 @@ def _should_check_for_update(check_interval_hours: float = 4) -> bool:
     elapsed_time = current_time - last_check_time
 
     # Check if enough time has passed
-    if elapsed_time >= (check_interval_hours * 3600):
+    if elapsed_time >= (4 * 3600):
         # Update the last check time
         Path(check_file).write_text(str(current_time), encoding="utf-8")
         return True

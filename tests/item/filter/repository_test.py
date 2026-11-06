@@ -27,7 +27,6 @@ def test_repository_publishes_a_complete_rules_snapshot(tmp_path, monkeypatch) -
 
     assert first is second
     assert second.aspect_upgrade_filters == {"profile": ["accelerating"]}
-    assert second.all_file_paths == (tmp_path / "profiles" / "profile.yaml",)
     assert repository.files_loaded
 
 
@@ -59,7 +58,6 @@ def test_repository_rejects_profile_paths_outside_profiles_directory(tmp_path) -
     loaded = repository.load_files()
 
     assert loaded.aspect_upgrade_filters == {}
-    assert loaded.all_file_paths == ()
     assert repository.did_files_change()
     external_path.write_text(external_path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
     assert not repository.did_files_change()

@@ -167,10 +167,10 @@ class FilterMatchingMixin:
         return True
 
     @staticmethod
-    def _match_item_power(min_power: int, item_power: int | None, max_power: int = sys.maxsize) -> bool:
+    def _match_item_power(min_power: int, item_power: int | None) -> bool:
         if item_power is None:
             return False
-        return min_power <= item_power <= max_power
+        return min_power <= item_power
 
     @staticmethod
     def _match_item_type(expected_item_types: list[ItemType], item_type: ItemType | None) -> bool:
