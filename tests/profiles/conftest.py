@@ -1,6 +1,12 @@
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import pytest
+from PyQt6.QtWidgets import QWidget
+
+import src.profiles.editor.profile.tab as profile_tab_module
+
+if TYPE_CHECKING:
+    from src.profiles import LoadedProfile, ProfileModel
 
 
 class FakeSettings:
@@ -23,3 +29,24 @@ def fake_settings(monkeypatch: pytest.MonkeyPatch) -> dict[str, bool]:
     FakeSettings.store = {}
     monkeypatch.setattr("src.profiles.pool_controls.greater.QSettings", FakeSettings)
     return FakeSettings.store
+
+
+class FakeGameCatalog:
+    item_types_dict: ClassVar[dict[str, str]] = {}
+    affix_dict: ClassVar[dict[str, str]] = {}
+
+
+class FakeEditor(QWidget):
+    def __init__(self, loaded_profile: LoadedProfile, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._model: ProfileModel = loaded_profile.profile
+
+    def get_current_model(self) -> ProfileModel:
+        return self._model
+
+
+@pytest.fixture
+def fake_tab_editor(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Replace ProfileTab's game catalog and editor with lightweight fakes."""
+    monkeypatch.setattr(profile_tab_module, "GameCatalog", FakeGameCatalog)
+    monkeypatch.setattr(profile_tab_module, "ProfileEditor", FakeEditor)

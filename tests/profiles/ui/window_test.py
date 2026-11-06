@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 import pytest
 from PyQt6.QtGui import QCloseEvent
@@ -19,18 +19,7 @@ def qapp():
     return QApplication.instance() or QApplication([])
 
 
-class FakeGameCatalog:
-    item_types_dict: ClassVar[dict[str, str]] = {}
-    affix_dict: ClassVar[dict[str, str]] = {}
-
-
-class FakeEditor(QWidget):
-    def __init__(self, loaded_profile, parent=None) -> None:
-        super().__init__(parent)
-        self._model = loaded_profile.profile
-
-    def get_current_model(self):
-        return self._model
+pytestmark = pytest.mark.usefixtures("fake_tab_editor")
 
 
 class FakeSession:
@@ -62,8 +51,6 @@ def make_tab(monkeypatch, qapp, tmp_path, results, names=("alpha", "beta"), init
     paths = {name: tmp_path / f"{name}.yaml" for name in names}
     catalog = ProfileCatalog(active=list(names), inactive=[], paths=paths)
     session = FakeSession(catalog, results)
-    monkeypatch.setattr(tab_module, "GameCatalog", FakeGameCatalog)
-    monkeypatch.setattr(tab_module, "ProfileEditor", FakeEditor)
     monkeypatch.setattr(tab_module, "ProfileSession", lambda **_: session)
     return tab_module.ProfileTab(initial_profile_name=initial), session
 

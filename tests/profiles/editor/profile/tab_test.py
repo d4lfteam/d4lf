@@ -1,8 +1,8 @@
 import importlib
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 import pytest
-from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget
+from PyQt6.QtWidgets import QApplication, QMessageBox
 
 import src.profiles.editor.profile.tab as profile_tab_module
 from src.profiles import (
@@ -29,18 +29,7 @@ def qapp():
     return QApplication.instance() or QApplication([])
 
 
-class _FakeGameCatalog:
-    item_types_dict: ClassVar[dict[str, str]] = {}
-    affix_dict: ClassVar[dict[str, str]] = {}
-
-
-class _FakeEditor(QWidget):
-    def __init__(self, loaded_profile: LoadedProfile, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self._model: ProfileModel = loaded_profile.profile
-
-    def get_current_model(self) -> ProfileModel:
-        return self._model
+pytestmark = pytest.mark.usefixtures("fake_tab_editor")
 
 
 class _FakeSession:
@@ -76,8 +65,6 @@ def _catalog(tmp_path: Path) -> ProfileCatalog:
 
 
 def _patch_tab_dependencies(monkeypatch, fake_session, tmp_path: Path) -> None:
-    monkeypatch.setattr(profile_tab_module, "GameCatalog", _FakeGameCatalog)
-    monkeypatch.setattr(profile_tab_module, "ProfileEditor", _FakeEditor)
     monkeypatch.setattr(profile_tab_module, "ProfileSession", lambda **_kwargs: fake_session)
 
 
