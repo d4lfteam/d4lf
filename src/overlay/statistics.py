@@ -45,15 +45,7 @@ def unsubscribe_stats(listener: StatsListener) -> None:
             _LISTENERS.remove(listener)
 
 
-def _notify(
-    *,
-    gph: int | None = None,
-    total_gained: int | None = None,
-    eph: int | None = None,
-    total_exp: int | None = None,
-    t2l: str | None = None,
-) -> None:
-    snapshot = StatsSnapshot(gph=gph, total_gained=total_gained, eph=eph, total_exp=total_exp, t2l=t2l)
+def _notify(snapshot: StatsSnapshot) -> None:
     with _LISTENER_LOCK:
         listeners = tuple(_LISTENERS)
     for listener in listeners:
@@ -94,14 +86,14 @@ class _SessionStats:
         self.gold_verify_count = 0
         self.last_gold = None
         self._persist()
-        _notify(gph=0, total_gained=0)
+        _notify(StatsSnapshot(gph=0, total_gained=0))
 
     def reset_exp(self) -> None:
         self.total_exp = 0
         self.last_exp = None
         self.max_exp = None
         self._persist()
-        _notify(eph=0, total_exp=0, t2l="-")
+        _notify(StatsSnapshot(eph=0, total_exp=0, t2l="-"))
 
     def _persist(self) -> None:
         save_settings({"session_total_gold": self.total_gold, "session_total_exp": self.total_exp})
@@ -129,7 +121,7 @@ class _SessionStats:
             if self.last_gold is None:
                 self.last_gold = value
                 self.start_time = self.start_time or time.time()
-                _notify(total_gained=self.total_gold)
+                _notify(StatsSnapshot(total_gained=self.total_gold))
                 return
             if value == self.last_gold:
                 self.pending_gold = None
@@ -148,7 +140,7 @@ class _SessionStats:
                 self.pending_gold = None
                 self.gold_verify_count = 0
                 self._persist()
-                _notify(gph=self._rate(self.total_gold), total_gained=self.total_gold)
+                _notify(StatsSnapshot(gph=self._rate(self.total_gold), total_gained=self.total_gold))
             return
         match = re.search(r"Experience:\s+([0-9,.]+)\s+/\s+([0-9,.]+)", raw_line, re.IGNORECASE)
         if "experience" not in text or not match or not capture_exp:
@@ -157,7 +149,7 @@ class _SessionStats:
         if self.last_exp is None:
             self.last_exp, self.max_exp = value, maximum
             self.start_time = self.start_time or time.time()
-            _notify(total_exp=self.total_exp, t2l="-")
+            _notify(StatsSnapshot(total_exp=self.total_exp, t2l="-"))
             return
         self.total_exp += max(0, value - self.last_exp)
         self.last_exp, self.max_exp = value, maximum or self.max_exp
@@ -167,7 +159,7 @@ class _SessionStats:
             hours = max(0, self.max_exp - value) / eph
             t2l = f"{int(hours * 60)}m" if hours < 1 else f"{int(hours)}h {int(hours % 1 * 60)}m"
         self._persist()
-        _notify(eph=eph, total_exp=self.total_exp, t2l=t2l)
+        _notify(StatsSnapshot(eph=eph, total_exp=self.total_exp, t2l=t2l))
 
 
 SessionStats = singleton(_SessionStats)

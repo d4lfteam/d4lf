@@ -27,7 +27,7 @@ def test_experience_increments_and_reset_clears_session(monkeypatch) -> None:
     stats = SessionStats()
     stats.reset_exp()
     monkeypatch.setattr(_statistics, "load_settings", lambda: {"capture_gold_stats": False, "capture_exp_stats": True})
-    monkeypatch.setattr(_statistics, "_notify", lambda **_: None)
+    monkeypatch.setattr(_statistics, "_notify", lambda _: None)
     stats.on_info_stat("Level 10 Experience: 100 / 500")
     stats.start_time = time.time() - 3600
     stats.on_info_stat("Level 10 Experience: 250 / 500")
@@ -41,7 +41,7 @@ def test_gold_updates_only_after_three_monotonic_observations(monkeypatch) -> No
     stats = SessionStats()
     stats.reset_gold()
     monkeypatch.setattr(_statistics, "load_settings", lambda: {"capture_gold_stats": True, "capture_exp_stats": False})
-    monkeypatch.setattr(_statistics, "_notify", lambda **_: None)
+    monkeypatch.setattr(_statistics, "_notify", lambda _: None)
 
     stats.on_info_stat("1,000 Gold")
     stats.on_info_stat("1,100 Gold")
@@ -62,8 +62,8 @@ def test_verified_totals_are_saved_and_restored_without_qsettings(monkeypatch) -
     }
     monkeypatch.setattr(_statistics, "load_settings", lambda: dict(stored))
     monkeypatch.setattr(_statistics, "save_settings", stored.update)
-    notifications: list[dict[str, JsonValue]] = []
-    monkeypatch.setattr(_statistics, "_notify", lambda **values: notifications.append(values))
+    notifications: list[StatsSnapshot] = []
+    monkeypatch.setattr(_statistics, "_notify", notifications.append)
 
     stats = _statistics._SessionStats()
     stats.on_info_stat("1,000 Gold")
@@ -75,9 +75,9 @@ def test_verified_totals_are_saved_and_restored_without_qsettings(monkeypatch) -
 
     assert stored["session_total_gold"] == 150
     assert stored["session_total_exp"] == 175
-    assert notifications[0] == {"total_gained": 50}
-    assert notifications[1] == {"gph": 0, "total_gained": 150}
-    assert notifications[2] == {"total_exp": 25, "t2l": "-"}
+    assert notifications[0] == StatsSnapshot(total_gained=50)
+    assert notifications[1] == StatsSnapshot(gph=0, total_gained=150)
+    assert notifications[2] == StatsSnapshot(total_exp=25, t2l="-")
     restored = _statistics._SessionStats()
     assert restored.total_gold == 150
     assert restored.total_exp == 175

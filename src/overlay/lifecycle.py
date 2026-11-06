@@ -8,24 +8,13 @@ from src.overlay.widget.widget import BossTimerOverlay
 LOGGER = logging.getLogger(__name__)
 
 
-def _on_stats(snapshot: StatsSnapshot) -> None:
-    """Compose the UI update at the lifecycle boundary."""
-    update_stats(
-        gph=snapshot.gph,
-        total_gained=snapshot.total_gained,
-        eph=snapshot.eph,
-        total_exp=snapshot.total_exp,
-        t2l=snapshot.t2l,
-    )
-
-
 def open_overlay() -> None:
     def create() -> None:
         with BOSS_TIMER_SLOT.lock:
             if BOSS_TIMER_SLOT.get() is None:
                 overlay = BossTimerOverlay(get_root(), on_closed=_forget)
                 BOSS_TIMER_SLOT.set(overlay)
-                subscribe_stats(_on_stats)
+                subscribe_stats(update_stats)
 
     call_on_ui_thread(create)
 
@@ -49,22 +38,11 @@ def is_open() -> bool:
 def _forget(overlay: BossTimerOverlay | None) -> None:
     if overlay is None or BOSS_TIMER_SLOT.get() is overlay:
         BOSS_TIMER_SLOT.clear(overlay)
-        unsubscribe_stats(_on_stats)
+        unsubscribe_stats(update_stats)
 
 
-def update_stats(
-    *,
-    gph: int | None = None,
-    total_gained: int | None = None,
-    eph: int | None = None,
-    total_exp: int | None = None,
-    t2l: str | None = None,
-) -> None:
+def update_stats(snapshot: StatsSnapshot) -> None:
     overlay = BOSS_TIMER_SLOT.get()
     if overlay is not None:
         visible_overlay = overlay
-        call_on_ui_thread(
-            lambda: visible_overlay.update_stats(
-                gph=gph, total_gained=total_gained, eph=eph, total_exp=total_exp, t2l=t2l
-            )
-        )
+        call_on_ui_thread(lambda: visible_overlay.update_stats(snapshot))
