@@ -58,18 +58,6 @@ class ProfileLoadFailure:
     signature: tuple[int, int] | None
 
 
-@dataclass
-class _MutableRules:
-    affix_filters: dict[str, list[DynamicItemFilterModel]]
-    aspect_upgrade_filters: dict[str, list[str]]
-    paragon_filters: dict[str, ParagonPayloadModel]
-    global_unique_filters: dict[str, list[GlobalUniqueModel]]
-    seal_filters: dict[str, list[DynamicSealFilterModel]]
-    charm_filters: dict[str, list[DynamicCharmFilterModel]]
-    sigil_filters: dict[str, SigilFilterModel]
-    tribute_filters: dict[str, TributeFilterModel]
-
-
 class ProfileRulesRepository:
     """Own profile-file state and publish complete ``LoadedRules`` snapshots."""
 
@@ -163,7 +151,6 @@ class ProfileRulesRepository:
         """Load enabled profiles and publish one new rules snapshot."""
         settings = self._settings_provider()
         profiles = [p.strip() for p in settings.general.profiles if p.strip()]
-        filters = _MutableRules({}, {}, {}, {}, {}, {}, {}, {})
         self._files_loaded = True
         self._profile_signatures = {}
         failures: list[ProfileLoadFailure] = []
@@ -175,12 +162,20 @@ class ProfileRulesRepository:
             self._last_loaded = time.time()
             self._last_profile_list = []
             self._missing_recheck_pending = False
-            self._publish_rules(filters)
+            self._rules = LoadedRules.empty()
             self._emit_load_report([])
             return self._rules
 
         custom_profile_path = settings.user_dir / "profiles"
         profile_store = ProfileDocumentStore(profiles_dir=custom_profile_path, full_dump=False)
+        affix_filters: dict[str, list[DynamicItemFilterModel]] = {}
+        aspect_upgrade_filters: dict[str, list[str]] = {}
+        paragon_filters: dict[str, ParagonPayloadModel] = {}
+        global_unique_filters: dict[str, list[GlobalUniqueModel]] = {}
+        seal_filters: dict[str, list[DynamicSealFilterModel]] = {}
+        charm_filters: dict[str, list[DynamicCharmFilterModel]] = {}
+        sigil_filters: dict[str, SigilFilterModel] = {}
+        tribute_filters: dict[str, TributeFilterModel] = {}
         for profile_str in profiles:
             custom_file_path = _contained_profile_path(custom_profile_path, profile_str)
             if custom_file_path is None or not custom_file_path.is_file():
@@ -204,28 +199,28 @@ class ProfileRulesRepository:
             info_str = f"Loading profile {profile_str}: "
             sections: list[str] = []
             if data.affixes:
-                filters.affix_filters[data.name] = data.affixes
+                affix_filters[data.name] = data.affixes
                 sections.append("Affixes")
             if data.aspect_upgrades:
-                filters.aspect_upgrade_filters[data.name] = data.aspect_upgrades
+                aspect_upgrade_filters[data.name] = data.aspect_upgrades
                 sections.append(ASPECT_UPGRADES_LABEL)
             if data.seals:
-                filters.seal_filters[data.name] = data.seals
+                seal_filters[data.name] = data.seals
                 sections.append("Seals")
             if data.charms:
-                filters.charm_filters[data.name] = data.charms
+                charm_filters[data.name] = data.charms
                 sections.append("Charms")
             if data.sigils and (data.sigils.blacklist or data.sigils.whitelist or data.sigils.rarities):
-                filters.sigil_filters[data.name] = data.sigils
+                sigil_filters[data.name] = data.sigils
                 sections.append("Sigils")
             if data.tributes is not None:
-                filters.tribute_filters[data.name] = data.tributes
+                tribute_filters[data.name] = data.tributes
                 sections.append("Tributes")
             if data.global_uniques:
-                filters.global_unique_filters[data.name] = data.global_uniques
+                global_unique_filters[data.name] = data.global_uniques
                 sections.append("GlobalUniques")
             if data.paragon:
-                filters.paragon_filters[custom_file_path.stem] = data.paragon
+                paragon_filters[custom_file_path.stem] = data.paragon
                 sections.append("Paragon")
             LOGGER.info((info_str + " ".join(sections)).rstrip())
 
@@ -242,18 +237,15 @@ class ProfileRulesRepository:
                 profiles = remaining
         self._last_loaded = time.time()
         self._last_profile_list = profiles.copy()
-        self._publish_rules(filters)
+        self._rules = LoadedRules(
+            affix_filters=affix_filters,
+            aspect_upgrade_filters=aspect_upgrade_filters,
+            paragon_filters=paragon_filters,
+            global_unique_filters=global_unique_filters,
+            seal_filters=seal_filters,
+            charm_filters=charm_filters,
+            sigil_filters=sigil_filters,
+            tribute_filters=tribute_filters,
+        )
         self._emit_load_report(failures)
         return self._rules
-
-    def _publish_rules(self, filters: _MutableRules) -> None:
-        self._rules = LoadedRules(
-            affix_filters=filters.affix_filters,
-            aspect_upgrade_filters=filters.aspect_upgrade_filters,
-            paragon_filters=filters.paragon_filters,
-            global_unique_filters=filters.global_unique_filters,
-            seal_filters=filters.seal_filters,
-            charm_filters=filters.charm_filters,
-            sigil_filters=filters.sigil_filters,
-            tribute_filters=filters.tribute_filters,
-        )
