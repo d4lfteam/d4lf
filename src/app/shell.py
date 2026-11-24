@@ -26,7 +26,6 @@ from src.desktop.activity import ANSIConsoleWidget, QtLogHandler
 from src.desktop.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.desktop.widgets import set_accent_color
 from src.importing import create_importer_window
-from src.importing.gui import ImporterWindow
 from src.logger import (
     apply_log_level,
     consume_startup_log_records,
@@ -271,9 +270,9 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
 
     def open_import_dialog(self) -> None:
         set_accent_color(get_filter_colors().matched)
-        win = self._show_singleton_modal("importer", create_importer_window)
-        if isinstance(win, ImporterWindow):
-            win.import_completed.connect(self.activity_tab.refresh_profiles, Qt.ConnectionType.UniqueConnection)
+        self._show_singleton_modal(
+            "importer", create_importer_window, on_import_completed=self.activity_tab.refresh_profiles
+        )
 
     def open_settings_dialog(self) -> None:
         set_accent_color(get_filter_colors().matched)

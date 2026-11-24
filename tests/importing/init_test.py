@@ -1,3 +1,5 @@
+from PyQt6.QtCore import QObject, pyqtSignal
+
 from src import importing
 from src.importing import (
     FilenamePart,
@@ -101,3 +103,35 @@ def test_select_source_uses_supported_hostname_and_rejects_unknown_urls() -> Non
     else:
         message = "unsupported URLs must not select a source"
         raise AssertionError(message)
+
+
+class ImporterWindowStub(QObject):
+    import_completed = pyqtSignal()  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
+
+
+class CompletionRecorder(QObject):
+    def __init__(self) -> None:
+        super().__init__()
+        self.calls = 0
+
+    def record(self) -> None:
+        self.calls += 1
+
+
+def test_create_importer_window_connects_import_completed_callback(monkeypatch) -> None:
+    monkeypatch.setattr(importing, "ImporterWindow", ImporterWindowStub)
+    recorder = CompletionRecorder()
+
+    window = importing.create_importer_window(on_import_completed=recorder.record)
+    window.import_completed.emit()
+
+    assert recorder.calls == 1
+
+
+def test_create_importer_window_without_callback_still_creates_window(monkeypatch) -> None:
+    monkeypatch.setattr(importing, "ImporterWindow", ImporterWindowStub)
+
+    window = importing.create_importer_window()
+
+    assert isinstance(window, ImporterWindowStub)
+    window.import_completed.emit()
