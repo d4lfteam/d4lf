@@ -29,7 +29,7 @@ __all__ = ["ActivityLogWidget", "DragHandleButton"]
 
 class ActivityLogWidget(ActivityProfileRowsMixin, ActivityProfileDragMixin, ActivityLogControlsMixin, QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
+        super().__init__(parent)  # ty: ignore[invalid-argument-type]  # PyQt6 stub bug, see #912
         self._main_window = cast("UnifiedMainWindow | None", parent)
         self._config = get_settings()
         self._config.register_change_listener(self._on_config_changed)

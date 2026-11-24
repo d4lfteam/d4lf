@@ -37,7 +37,7 @@ def get_perception_module() -> ModuleType | None:
 class BackendWorker(QObject):
     """Own the game-facing runtime and expose its lifecycle to the Qt shell."""
 
-    finished = pyqtSignal()
+    finished = pyqtSignal()  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
     script_handler = None
 
     def run(self) -> None:

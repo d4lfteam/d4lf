@@ -37,7 +37,7 @@ class BaseGroupEditor[ConfigT: CharmFilterModel | SealFilterModel](QWidget):
     def __init__(
         self, dynamic_filter: RootModel[dict[str, ConfigT]], is_charm: bool, parent: QWidget | None = None
     ) -> None:
-        super().__init__(parent)
+        super().__init__(parent)  # ty: ignore[invalid-argument-type]  # PyQt6 stub bug, see #912
         self.type_prefix = "charm" if is_charm else "seal"
         if len(dynamic_filter.root) != 1:
             msg = "BaseGroupEditor requires a single-key dynamic filter model."

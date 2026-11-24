@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class AffixPoolSection(Container):
     """Collapsible list of "Count N" affix pools backed by ``pools``; pool widgets load on first expansion."""
 
-    pools_removed = pyqtSignal()
+    pools_removed = pyqtSignal()  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
 
     def __init__(
         self, title: str, pools: list[AffixFilterCountModel], default_affix: str, inherent: bool = False
@@ -47,7 +47,7 @@ class AffixPoolSection(Container):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         for index in reversed(dialog.get_value()):
-            containers[index].setParent(None)
+            containers[index].setParent(None)  # ty: ignore[invalid-argument-type]  # PyQt6 stub bug, see #912
             self._pools.pop(index)
         for index, container in enumerate(self._pool_containers()):
             container.header.set_name(f"Count {index}")

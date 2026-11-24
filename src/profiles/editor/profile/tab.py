@@ -34,7 +34,7 @@ PROFILE_TABNAME = "edit profile (beta)"
 
 
 class ProfileTab(QWidget):
-    profile_saved = pyqtSignal(str)
+    profile_saved = pyqtSignal(str)  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
 
     def __init__(self, initial_profile_name: str | None = None) -> None:
         super().__init__()

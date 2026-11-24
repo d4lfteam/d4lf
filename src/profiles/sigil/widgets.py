@@ -25,10 +25,10 @@ SIGILS_TABNAME = "Sigils"
 
 
 class ConditionWidget(QWidget):
-    condition_changed = pyqtSignal(str, str)
+    condition_changed = pyqtSignal(str, str)  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
 
     def __init__(self, condition: str, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
+        super().__init__(parent)  # ty: ignore[invalid-argument-type]  # PyQt6 stub bug, see #912
         self.condition = condition
         widget_layout = QHBoxLayout()
         widget_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -52,7 +52,7 @@ class ConditionWidget(QWidget):
 
 
 class SigilWidget(Container):
-    dungeon_changed = pyqtSignal()
+    dungeon_changed = pyqtSignal()  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
 
     def __init__(
         self, sigil_name: str, sigil: SigilConditionModel, whitelist: bool, kind: SigilRuleTargetType = "dungeon"

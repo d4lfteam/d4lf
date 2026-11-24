@@ -37,6 +37,6 @@ def test_get_affixes_for_set_filters_and_strips_set_label() -> None:
 )
 def test_affix_dict_for_widget_follows_parent_config(qapp, mock_ini_loader, config, dict_name) -> None:
     parent = ConfigParent(config) if config is not None else None
-    widget = QWidget(parent)
+    widget = QWidget(parent)  # ty: ignore[invalid-argument-type]  # PyQt6 stub bug, see #912
 
     assert affix_dict_for_widget(widget) is getattr(GameCatalog(), dict_name)

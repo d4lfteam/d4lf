@@ -57,5 +57,5 @@ def fetch_variants_worker(request: ImportRequest, finished: Callable[[], None], 
 
 
 class WorkerSignals(QObject):
-    finished = pyqtSignal()
-    variants_extracted = pyqtSignal(object)
+    finished = pyqtSignal()  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
+    variants_extracted = pyqtSignal(object)  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912

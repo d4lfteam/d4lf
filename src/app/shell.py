@@ -26,6 +26,7 @@ from src.desktop.activity import ANSIConsoleWidget, QtLogHandler
 from src.desktop.themes import DARK_THEME_TEMPLATE, LIGHT_THEME_TEMPLATE
 from src.desktop.widgets import set_accent_color
 from src.importing import create_importer_window
+from src.importing.gui import ImporterWindow
 from src.logger import (
     apply_log_level,
     consume_startup_log_records,
@@ -54,8 +55,8 @@ perception_module = get_perception_module()
 
 
 class UnifiedMainWindow(UnifiedWindowLifecycle):
-    profile_load_report_signal = pyqtSignal(object)
-    settings_load_error_signal = pyqtSignal(object)
+    profile_load_report_signal = pyqtSignal(object)  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
+    settings_load_error_signal = pyqtSignal(object)  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
 
     def __init__(self) -> None:
         super().__init__()
@@ -271,7 +272,8 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
     def open_import_dialog(self) -> None:
         set_accent_color(get_filter_colors().matched)
         win = self._show_singleton_modal("importer", create_importer_window)
-        win.import_completed.connect(self.activity_tab.refresh_profiles, Qt.ConnectionType.UniqueConnection)  # ty: ignore[unresolved-attribute]
+        if isinstance(win, ImporterWindow):
+            win.import_completed.connect(self.activity_tab.refresh_profiles, Qt.ConnectionType.UniqueConnection)
 
     def open_settings_dialog(self) -> None:
         set_accent_color(get_filter_colors().matched)

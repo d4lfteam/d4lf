@@ -37,7 +37,7 @@ def test_parse_d4builds_paragon_boards_produces_valid_typed_payload_input() -> N
             self._attrs = {"data-board-id": "Paragon_Barb_00"}
 
         @override
-        def find_element(self, by: str | By = By.ID, value: str | None = None) -> WebElement:
+        def find_element(self, by: str | By | RelativeBy = By.ID, value: str | None = None) -> WebElement:
             if value is None:
                 value = str(by)
             if value == "paragon__board__name":
@@ -46,7 +46,7 @@ def test_parse_d4builds_paragon_boards_produces_valid_typed_payload_input() -> N
             raise AssertionError(msg)
 
         @override
-        def find_elements(self, by: str | By = By.ID, value: str | None = None) -> list[WebElement]:
+        def find_elements(self, by: str | By | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
             if value is None:
                 value = str(by)
             if value == "paragon__board__name__glyph":
@@ -111,7 +111,7 @@ def test_parse_d4builds_paragon_boards_keeps_supported_rotation_transform_behavi
             self._attrs = {"data-board-id": "Paragon_Barb_00"}
 
         @override
-        def find_element(self, by: str | By = By.ID, value: str | None = None) -> WebElement:
+        def find_element(self, by: str | By | RelativeBy = By.ID, value: str | None = None) -> WebElement:
             if value is None:
                 value = str(by)
             if value == "paragon__board__name":
@@ -120,7 +120,7 @@ def test_parse_d4builds_paragon_boards_keeps_supported_rotation_transform_behavi
             raise AssertionError(msg)
 
         @override
-        def find_elements(self, by: str | By = By.ID, value: str | None = None) -> list[WebElement]:
+        def find_elements(self, by: str | By | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
             if value is None:
                 value = str(by)
             if value == "paragon__board__name__glyph":
@@ -184,7 +184,7 @@ def test_parse_d4builds_paragon_boards_uses_question_mark_fallback_for_unsupport
             self._attrs = {"data-board-id": "Paragon_Barb_00"}
 
         @override
-        def find_element(self, by: str | By = By.ID, value: str | None = None) -> WebElement:
+        def find_element(self, by: str | By | RelativeBy = By.ID, value: str | None = None) -> WebElement:
             if value is None:
                 value = str(by)
             if value == "paragon__board__name":
@@ -193,7 +193,7 @@ def test_parse_d4builds_paragon_boards_uses_question_mark_fallback_for_unsupport
             raise AssertionError(msg)
 
         @override
-        def find_elements(self, by: str | By = By.ID, value: str | None = None) -> list[WebElement]:
+        def find_elements(self, by: str | By | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
             if value is None:
                 value = str(by)
             if value == "paragon__board__name__glyph":

@@ -16,7 +16,7 @@ UNIQUE_ASPECTS_TITLE = "Unique Aspects"
 
 class AffixPoolWidget(QWidget):
     def __init__(self, pool: AffixFilterCountModel, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
+        super().__init__(parent)  # ty: ignore[invalid-argument-type]  # PyQt6 stub bug, see #912
         self.pool = pool
         self.setup_ui()
 
