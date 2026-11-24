@@ -14,7 +14,7 @@ UNIQUE_ASPECTS_TITLE = "Unique Aspects"
 
 class AffixesTab(QWidget):
     def __init__(self, affixes_model: list[DynamicItemFilterModel], parent: QWidget | None = None) -> None:
-        super().__init__(parent)
+        super().__init__(parent)  # ty: ignore[invalid-argument-type]  # PyQt6 stub bug, see #912
         self.affixes_model = affixes_model
         self.loaded = False
         self.item_names: list[str] = []

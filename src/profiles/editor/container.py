@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QSpacerItem, QStac
 
 
 class Header(QWidget):
-    first_expansion = pyqtSignal()  # Signal emitted on first expansion
+    first_expansion = pyqtSignal()  # Signal emitted on first expansion  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
 
     def __init__(self, name: str, content_widget: QWidget) -> None:
         super().__init__()
@@ -82,7 +82,7 @@ class Header(QWidget):
 
 
 class Container(QWidget):
-    first_expansion = pyqtSignal()  # Signal emitted on first expansion
+    first_expansion = pyqtSignal()  # Signal emitted on first expansion  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
 
     def __init__(self, name: str, color_background: bool = False) -> None:
         super().__init__()  # Call the constructor of the parent class

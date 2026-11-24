@@ -23,7 +23,7 @@ class GreaterCountParent(Protocol):
 
 class AffixWidget(QWidget):
     def __init__(self, affix: AffixFilterModel, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
+        super().__init__(parent)  # ty: ignore[invalid-argument-type]  # PyQt6 stub bug, see #912
         self.affix = affix
         self.filtered_affixes: dict[str, str] = {}
         self.setup_ui()

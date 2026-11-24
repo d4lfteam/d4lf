@@ -34,7 +34,7 @@ jobs:
           } else {
             echo "IS_BETA=false" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
           }
-      - uses: softprops/action-gh-release@v3.0.3
+      - uses: softprops/action-gh-release@v3.0.4
         id: create_release
         with:
           files: ${{ steps.build_zip.outputs.zip_path }}

@@ -50,7 +50,7 @@ THREADPOOL = QThreadPool()
 class ImporterWindow(QMainWindow):
     """Standalone window for importing profiles from supported build guides."""
 
-    import_completed = pyqtSignal()
+    import_completed = pyqtSignal()  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
 
     import_aspect_upgrades_checkbox: CheckmarkCheckBox
     import_charms_checkbox: CheckmarkCheckBox

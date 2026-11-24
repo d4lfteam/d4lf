@@ -26,7 +26,7 @@ SIGILS_TABNAME = "Sigils"
 
 class SigilsTab(QWidget):
     def __init__(self, sigil_model: SigilFilterModel, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
+        super().__init__(parent)  # ty: ignore[invalid-argument-type]  # PyQt6 stub bug, see #912
         self.sigil_model = sigil_model
         self.loaded = False
 
@@ -164,7 +164,7 @@ class SigilsTab(QWidget):
                 if not isinstance(widget, SigilWidget) or widget.sigil.name not in to_delete:
                     continue
                 layout.takeAt(index)
-                widget.setParent(None)
+                widget.setParent(None)  # ty: ignore[invalid-argument-type]  # PyQt6 stub bug, see #912
                 rules.remove(widget.sigil)
 
     def update_priority(self) -> None:

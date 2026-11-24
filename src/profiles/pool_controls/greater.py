@@ -31,7 +31,7 @@ class GreaterAffixControls(QWidget):
         settings_key: str,
         parent: QWidget | None = None,
     ) -> None:
-        super().__init__(parent)
+        super().__init__(parent)  # ty: ignore[invalid-argument-type]  # PyQt6 stub bug, see #912
         self._config = config
         self._settings = QSettings("d4lf", "profile_editor")
         self._settings_key = f"auto_sync_ga_{settings_key}"

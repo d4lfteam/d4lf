@@ -22,7 +22,7 @@ type DialogFactory = Callable[[], QDialog]
 
 class RuleListTab[ItemType](QWidget):
     def __init__(self, items: list[ItemType] | None, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
+        super().__init__(parent)  # ty: ignore[invalid-argument-type]  # PyQt6 stub bug, see #912
         self.items = items if items is not None else []
         self.list_widget = QListWidget()
         self.loaded = False

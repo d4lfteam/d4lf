@@ -76,7 +76,7 @@ class QtLogHandler(logging.Handler, QObject):
     # Keep logging.shutdown from resolving this attribute through QObject after
     # Qt has already torn down the C++ wrapper.
     flushOnClose = True  # ruff:ignore[N815]
-    log_signal = pyqtSignal(str)
+    log_signal = pyqtSignal(str)  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
 
     def __init__(self, text_widget: QTextEdit | None = None) -> None:
         logging.Handler.__init__(self)

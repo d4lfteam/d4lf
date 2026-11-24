@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 class AffixGroupEditor(QWidget):
     def __init__(self, dynamic_filter: DynamicItemFilterModel, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
+        super().__init__(parent)  # ty: ignore[invalid-argument-type]  # PyQt6 stub bug, see #912
         self.item_name, self.config = next(iter(dynamic_filter.root.items()))
         self.item_types = [
             item for item in ItemType.__members__.values() if is_armor(item) or is_jewelry(item) or is_weapon(item)

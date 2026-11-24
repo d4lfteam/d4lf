@@ -54,8 +54,8 @@ perception_module = get_perception_module()
 
 
 class UnifiedMainWindow(UnifiedWindowLifecycle):
-    profile_load_report_signal = pyqtSignal(object)
-    settings_load_error_signal = pyqtSignal(object)
+    profile_load_report_signal = pyqtSignal(object)  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
+    settings_load_error_signal = pyqtSignal(object)  # ty: ignore[missing-argument]  # PyQt6 stub bug, see #912
 
     def __init__(self) -> None:
         super().__init__()
@@ -270,8 +270,9 @@ class UnifiedMainWindow(UnifiedWindowLifecycle):
 
     def open_import_dialog(self) -> None:
         set_accent_color(get_filter_colors().matched)
-        win = self._show_singleton_modal("importer", create_importer_window)
-        win.import_completed.connect(self.activity_tab.refresh_profiles, Qt.ConnectionType.UniqueConnection)  # ty: ignore[unresolved-attribute]
+        self._show_singleton_modal(
+            "importer", create_importer_window, on_import_completed=self.activity_tab.refresh_profiles
+        )
 
     def open_settings_dialog(self) -> None:
         set_accent_color(get_filter_colors().matched)

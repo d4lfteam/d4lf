@@ -152,7 +152,7 @@ class _FakePaperdollItem(WebElement):
         self._icon = icon
 
     @override
-    def find_elements(self, by: str | By = By.ID, value: str | None = None) -> list[WebElement]:
+    def find_elements(self, by: str | By | RelativeBy = By.ID, value: str | None = None) -> list[WebElement]:
         if value is None:
             value = str(by)
         if value == d4builds_constants.PAPERDOLL_ITEM_SLOT_CSS:
